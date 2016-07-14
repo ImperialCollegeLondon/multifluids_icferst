@@ -38,7 +38,7 @@ module cv_advection
 
     use solvers_module
     use spud
-    use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi, after_adapt
+    use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi, after_adapt, first_nonlinear_time_step
     use futils, only: int2str
     use adapt_state_prescribed_module
     use sparse_tools
@@ -77,9 +77,10 @@ module cv_advection
     ! Public totout needed when calculating outfluxes across a specified boundary. Will store the sum of totoutflux across all elements contained in the boundary.
     ! Multiphase_TimeLoop needs to access this variable so easiest to make it public. (Same situation with mat1, mat2)
 
-    public ::  totout, mat1, mat2
+    public ::  totout, mat1, mat2, porevolume
 
     real, allocatable, dimension(:,:) :: totout
+    real :: porevolume ! for outfluxes.csv to calculate the pore volume injected
 
     ! Variables needed for the mesh to mesh interpolation calculations
 
@@ -117,7 +118,7 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
-        RECALC_C_CV, Permeability_tensor_field)
+        RECALC_C_CV, SUF_INT_MASS_MATRIX, Permeability_tensor_field, calculate_mass_delta)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -284,8 +285,11 @@ contains
         integer, optional, intent(in) :: Phase_with_Pc
         !Variables to cache get_int_vel OLD
         real, optional, intent(inout) :: Courant_number
-        logical, optional, intent(in) :: RECALC_C_CV
+        logical, optional, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
+        ! Calculate_mass variable
+        real, dimension(:,:), optional :: calculate_mass_delta
+
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -433,7 +437,7 @@ contains
         INTEGER, DIMENSION( 1 , Mdims%nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
         INTEGER, DIMENSION( Mdims%ndim , Mdims%nphase , surface_element_count(tracer) ) :: WIC_U_BC_ALL
         type( tensor_field ), pointer ::  pressure
-        INTEGER, DIMENSION ( 1,Mdims%npres,surface_element_count(tracer) ) :: WIC_P_BC_ALL
+        INTEGER, DIMENSION ( 1,1,surface_element_count(tracer) ) :: WIC_P_BC_ALL
         REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL,&
             SUF_T_BC_ROB1_ALL, SUF_T_BC_ROB2_ALL
         REAL, DIMENSION(:,:,: ), pointer :: SUF_D_BC_ALL,&
@@ -471,12 +475,15 @@ contains
         real :: Diffusive_cap_only_real
         !Variables for get_int_vel_porous_vel
         logical :: anisotropic_and_frontier, anisotropic_perm, not_use_DG_within_ele
+        !Logical to do a surface integral for the Mass matrix
+        logical :: SUF_INT_MASS_MATRIX2
         real, dimension(Mdims%nphase):: rsum_nodi, rsum_nodj
         integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
         REAL :: MM_GRAVTY
         !Variables to calculate flux across boundaries
         logical :: calculate_flux
         real :: reservoir_P( Mdims%npres ) ! this is the background reservoir pressure
+        !real :: porevolume ! pore volume for outfluxes.csv to calculate pore volume injected 
         real, dimension( :, :, : ), pointer :: fem_p
         integer :: U_JLOC
         real :: h_nano, RP_NANO, dt_pipe_factor
@@ -496,6 +503,13 @@ contains
         real, dimension( : , : ), allocatable :: phaseV
         real, dimension( : , : ), allocatable :: Dens
         real, dimension(:), pointer :: Por
+
+        ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'caluclate_mass_boundary'
+        ! and the internal changes in mass will be captured by 'calculate_mass_internal'
+        real, allocatable, dimension(:,:) :: calculate_mass_boundary
+        real, allocatable, dimension(:) :: calculate_mass_internal  ! used in calculate_internal_mass subroutine
+!        real, allocatable, dimension(:) :: calculate_mass_internal_previous
+        !   Calculate_mass_delta to store the change in mass calculated over the whole domain
         !#########################################
 
         have_absorption=.false.
@@ -523,9 +537,14 @@ contains
         end if
         !Check pressure matrix based on Control Volumes
         !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
+        SUF_INT_MASS_MATRIX2 = .false.
         RECAL_C_CV_RHS = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         if (present_and_true(RECALC_C_CV)) then
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
+            if (present_and_true(SUF_INT_MASS_MATRIX)) then
+                Mmat%PIVIT_MAT = 0.
+                SUF_INT_MASS_MATRIX2 = .true.
+            end if
         else
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
         end if
@@ -605,6 +624,13 @@ contains
                 totoutflux(:,ioutlet) = 0
             enddo
         end if
+
+        ! Initialise the calculate_mass variables
+        allocate (calculate_mass_boundary(Mdims%nphase,1), calculate_mass_internal(Mdims%nphase))
+        calculate_mass_boundary(:,1) = 0.0
+        calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
+
+
         !! Get boundary conditions from field
         call get_entire_boundary_condition(tracer,&
             ['weakdirichlet','robin        '],&
@@ -637,16 +663,11 @@ contains
             SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
             SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
         end if
-
-!!-PY changed it for k_epsilon model
-        if (tracer%name == "PackedTemperature" .or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation")  then
-!         if (tracer%name == "PackedTemperature" )  then
-
-
+        if (tracer%name == "PackedTemperature")  then
             allocate( suf_t_bc( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
                 suf_t_bc_rob2( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
             call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, Mdims%nphase, &
-                suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
+                suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
             SUF_T_BC_ALL=>suf_t_bc
             SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
             SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
@@ -1087,10 +1108,47 @@ contains
                 ! This was causing extreme slowdown in the code. Hence we now do all the necessary extractions from state relevant
                 ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
                 ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
-        if(is_porous_media .and. calculate_flux ) then
+
+                ! This will also need to be done if we need to calculate the mass entering the whole domain (mass conservation criterion
+                ! within an Fixed Point Iteration)
+
+        if ( is_porous_media .and. GETCT ) then
 
             allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
             allocate(Dens(Mdims%nphase,Mdims%cv_nonods))
+
+            if (first_nonlinear_time_step ) then
+                calculate_mass_delta(:,1) = 0.0 ! reinitialise
+                tenfield1 => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
+                phaseV = tenfield1%val(1,:,:)
+                ! Extract the Density
+                tenfield2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+                Dens =  tenfield2%val(1,:,:)
+                ! Extract the Porosity
+                vecfield => extract_vector_field( packed_state, "Porosity" )
+                Por =>  vecfield%val(1,:)
+                  call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
+                calculate_mass_delta(:,1) , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc )
+            endif
+
+            tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+            phaseV = tenfield1%val(1,:,:)
+            ! Extract the Density
+            tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
+            Dens =  tenfield2%val(1,:,:)
+            ! Extract the Porosity
+            vecfield => extract_vector_field( packed_state, "Porosity" )
+            Por =>  vecfield%val(1,:)
+            call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
+                calculate_mass_internal , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc )
+        endif
+
+        if(is_porous_media .and. calculate_flux .and. GETCT ) then
+
+!            variable allocated above in the calculate_mass section
+!            allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
+!            allocate(Dens(Mdims%nphase,Mdims%cv_nonods))
+
             ! Extract Pressure
             CVPressure => extract_tensor_field( packed_state, "PackedCVPressure" ) ! Note no %val(:,:,:) needed here anymore
             ! Extract the Phase Volume Fraction
@@ -1102,6 +1160,13 @@ contains
             ! Extract the Porosity
             vecfield => extract_vector_field( packed_state, "Porosity" )
             Por =>  vecfield%val(1,:)
+
+        ! Calculate Pore volume
+        porevolume = 0.0
+        DO ELE = 1, Mdims%totele
+                porevolume = porevolume + MASS_ELE(ELE) * Por(IDs_ndgln(ELE))
+        END DO
+
         endif
 
         !Allocate derivatives of the shape functions
@@ -1625,11 +1690,11 @@ contains
                                         .true., anisotropic_and_frontier)
                                 else
                                     call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                        TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
+                                        T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
                                         LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
                                         UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
                                     call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
-                                        T_ALL(:, CV_NODI), T_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
+                                        T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
                                         LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
                                 end if
                             ENDIF
@@ -1834,6 +1899,7 @@ contains
                                     END IF
                                 END IF
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
+
                                 CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                     Mdims, CV_funs, ndgln, Mmat, GI,  &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
@@ -1846,7 +1912,7 @@ contains
                                     RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, THETA_VEL, &
                                     rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, &
                                     !rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
-                                    recal_c_cv_rhs)
+                                    SUF_INT_MASS_MATRIX2, recal_c_cv_rhs)
                                 do ipres=1,Mdims%npres
                                     call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
                                     if ( integrate_other_side_and_not_boundary ) then
@@ -1863,8 +1929,19 @@ contains
                                         call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
                                             ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL)
                                     enddo
-                                end if
-                            end if
+                                endif
+
+
+!                               Calculate mass flux across the boundary
+                                if ( is_porous_media .and. GETCT .and. sele > 0 ) then
+                                        !Subroutine call to calculate the mass across this element if the element is part of the boundary. Adds value to calculate_mass_boundary
+                                        ! same rountine as one used for calculating outlet fluxes through specified boundaries. Surface ID set to -1 here as this is not needed
+                                        call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, (/-1/) , calculate_mass_boundary(:,1) , ele , sele, &
+                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL)
+                                endif
+
+                            endif
+
                             !#########################################################################################
                             Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                 ! Obtain the CV discretised advection/diffusion equations
@@ -2075,11 +2152,42 @@ contains
         !#########################
         ! Deallocations for the calculate_outflux() code
         ! 27/01/2016
-        if(is_porous_media .and. calculate_flux) then
+        !if(is_porous_media .and. calculate_flux) then
+        if(is_porous_media .and. GETCT) then
             deallocate(phaseV)
             deallocate(dens)
         endif
         !#########################
+        !Adjust the value introduced in Mmat%PIVIT_MAT to compensate the fact that we are doing a
+        !surface integral of what should be a volume integral
+        if (SUF_INT_MASS_MATRIX2) then
+            do ele =1, Mdims%totele
+                ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
+                call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
+
+                DO IPHASE = 1, Mdims%nphase
+                    DO IDIM = 1, Mdims%ndim
+                        JPHASE = IPHASE
+                        JDIM = IDIM
+                        rsum=0.0
+                        DO U_JLOC = 1, Mdims%u_nloc
+                            DO U_ILOC = 1, Mdims%u_nloc
+                                I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                rsum = rsum +Mmat%PIVIT_MAT(i,j,ele)
+                            end do
+                        end do
+                        DO U_JLOC = 1, Mdims%u_nloc
+                            DO U_ILOC = 1, Mdims%u_nloc
+                                I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                Mmat%PIVIT_MAT(i,j,ele) =Mmat%PIVIT_MAT(i,j,ele)* SdevFuns%volume/rsum
+                            end do
+                        end do
+                    end do
+                end do
+            end do
+        end if
         IF(GET_GTHETA) THEN
             DO CV_NODI = 1, Mdims%cv_nonods
                 THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
@@ -2441,6 +2549,16 @@ contains
                 call allsum(totout(:,ioutlet))
             enddo
         endif
+
+
+        if(GETCT) then
+!       After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
+			! Difference in Total mass
+             calculate_mass_delta(1,2) = abs( sum(calculate_mass_internal) - sum(calculate_mass_delta(:,1)) + &
+             sum(calculate_mass_boundary(:,1)*dt) ) / sum(calculate_mass_delta(:,1))
+        endif
+
+
         ! Deallocating temporary working arrays
         IF(GETCT) THEN
             DEALLOCATE( JCOUNT_KLOC )
@@ -2478,10 +2596,7 @@ contains
         !      deallocate( T_ALL_TARGET, TOLD_ALL_TARGET, FEMT_ALL_TARGET, FEMTOLD_ALL_TARGET)
         !end if
         !      if ( Field_selector == 1 ) then ! Temperature
-
-!!-PY changed it for k_epsilon model
-        if (tracer%name == "PackedTemperature" .or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation")  then
-!         if (tracer%name == "PackedTemperature" )  then
+        if (tracer%name == "PackedTemperature")  then
             deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
         end if
         if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
@@ -2891,10 +3006,6 @@ contains
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
-
-
-
-
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
                         ! is the same as just outside the domain.
@@ -2942,7 +3053,6 @@ contains
                             ELSE
                                 UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) + CV_funs%sufen( U_KLOC, GI )*SUF_U_BC_ALL(:, IPHASE, Mdims%u_snloc* (SELE-1) +U_SKLOC)
                             END IF
-
                         END DO
                         UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
                     END IF
@@ -4334,17 +4444,6 @@ contains
                     option_path=trim(psi(1)%ptr%option_path)//"/prognostic"
                 end if
             end if
-!!-PY add it for k_epsilon model
-            if (tracer%name == "PackedTurbulentKineticEnergy") then
-                option_path="/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"
-            else if (tracer%name == "PackedTurbulentDissipation") then
-                option_path="/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation"
-            !else if (tracer%name == "PackedTemperature") then
-            !    option_path="/material_phase[0]/scalar_field::Temperature"
-
-            end if
-
-
             do it = 1, size(fempsi)
                 call zero_non_owned(fempsi_rhs(it))
                 call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = option_path)
@@ -4769,16 +4868,12 @@ contains
                     if (NDIM >= 3) XSL( 3, X_SILOC ) = Z( X_INOD )
                 END DO
 
-!!-PY this is the problem
-if ( .not. (have_option("/material_phase["//&
-                  int2str(0)//"]/subgridscale_parameterisations/k-epsilon") )) then
                 CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
                     XSL( 1, : ), XSL( 2, : ), XSL( 3, : ), &
                     X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
                     (NDIM==1), (NDIM==3), (NDIM==-2), &
                     SNORMXN( 1, : ), SNORMXN( 2, : ), SNORMXN( 3, : ), &
                     NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
-end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
@@ -6088,7 +6183,7 @@ end if
         loc_u, THETA_VEL,&
         ! local memory sent down for speed...
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, &
-        RECAL_C_CV_RHS)
+        SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS)
         ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. Mmat%CT, Mmat%CT_RHS
         IMPLICIT NONE
         ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO Mmat%CT MATRIX
@@ -6101,7 +6196,7 @@ end if
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u
         LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
-            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, RECAL_C_CV_RHS
+            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
         INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC
@@ -6128,7 +6223,6 @@ end if
             IPHASE, U_SKLOC, I, J, U_KKLOC, &
             u_iloc, u_siloc
         real :: Mass_corrector
-
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
                ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
@@ -6163,19 +6257,48 @@ end if
             END DO
             IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                 rcon(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
-                DO IPHASE=1,Mdims%n_in_pres!Mdims%nphase
+                DO IPHASE=1,Mdims%nphase
                     IF ( between_elements) THEN
                         ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
                         !This is to perform the average between two DG pressures (same mass => 0.5)
                         Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
 
+                        !WORSE THAN THE SIMPLE MASS_CORRECTION
+!                        !Mass correction also considering permeabilities (Harmonic average)
+!                        if (iphase == 1) then
+!                            perm_corrector = (perm%val(:,:, ele)*MASS_ELE( ELE )+perm%val(:,:, ele2)*MASS_ELE( ELE2 ))
+!                            call invert(perm_corrector)
+!                            perm_corrector = matmul(perm_corrector, perm%val(:,:, ele)*MASS_ELE( ELE ))
+!                            Mass_corrector = dot_product(CVNORMX_ALL(:, GI),matmul(perm_corrector, CVNORMX_ALL(:, GI)))
+!                        end if
+
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
+                        !WORSE THAN THE SIMPLE MASS_CORRECTION
+!                        absorp_corrector(:,:, iphase) = I_adv_coef(:,:, iphase)*MASS_ELE( ELE )+J_adv_coef(:,:, iphase)*MASS_ELE( ELE2 )
+!                        call invert(absorp_corrector(:,:, iphase))
+!                        absorp_corrector(:,:, iphase) = matmul(absorp_corrector(:,:, iphase), J_adv_coef(:,:,IPHASE)*MASS_ELE( ELE2 ))
+!
+!                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+!                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+!                            + matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* rcon(IPHASE))
                     else
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Bound_ele_correct(:, IPHASE, U_KLOC)
+                        !Calculate mass matrix
+                        if (SUF_INT_MASS_MATRIX) then
+                            do IDIM = 1, Mdims%ndim
+                                do u_kkloc=1,Mdims%u_nloc
+                                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
+                                    J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
+                                    Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &
+                                        + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(IDIM, IPHASE, U_KLOC)&
+                                        * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
+                                end do
+                            end do
+                        end if
                     endif
                 END DO
             ENDIF
@@ -6193,15 +6316,32 @@ end if
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                     RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
-                    DO IPHASE=1,Mdims%n_in_pres!Mdims%nphase
+                    DO IPHASE=1,Mdims%nphase
                         IF ( between_elements ) THEN
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector!(1.- Mass_corrector)
+
+
+!                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+!                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+!                                - matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* RCON_J(IPHASE))
                         else
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)!Bound_ele_correct unnecessary here?
+                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)
+                            !Calculate mass matrix
+                            if (SUF_INT_MASS_MATRIX) then
+                                do IDIM = 1, Mdims%ndim
+                                    do u_kkloc=1,Mdims%u_nloc
+                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
+                                        J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
+                                        Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &
+                                            + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(idim, IPHASE, U_KLOC)&
+                                            * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
+                                    end do
+                                end do
+                            end if
                         endif
                     END DO
                 ENDIF
@@ -6254,10 +6394,29 @@ end if
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                     RCON(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
-                    DO IPHASE=1,Mdims%n_in_pres!Mdims%nphase
+                    DO IPHASE=1,Mdims%nphase
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             + RCON(IPHASE) * CVNORMX_ALL( :, GI )* (1.- Mass_corrector)
+
+!                        absorp_corrector(:,:, iphase) = I_adv_coef(:,:, iphase)*MASS_ELE( ELE )+J_adv_coef(:,:, iphase)*MASS_ELE( ELE2 )
+!                        call invert(absorp_corrector(:,:, iphase))
+!                        absorp_corrector(:,:, iphase) = matmul(absorp_corrector(:,:, iphase), I_adv_coef(:,:,IPHASE)*MASS_ELE( ELE ))
+!                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+!                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+!                            + matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* rcon(IPHASE))
+                        !Calculate mass matrix
+                        if (SUF_INT_MASS_MATRIX) then
+                            do IDIM = 1, Mdims%ndim
+                                do u_kkloc=1,Mdims%u_nloc
+                                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
+                                    J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
+                                    Mmat%PIVIT_MAT( I, J, ELE2 ) = Mmat%PIVIT_MAT( I, J, ELE2 ) &
+                                        + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
+                                        * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
+                                end do
+                            end do
+                        end if
                     END DO
                 ENDIF
                 ! flux from the other side (change of sign because normal is -ve)...
@@ -6275,10 +6434,28 @@ end if
                     END DO
                     IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                         RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
-                        DO IPHASE=1,Mdims%n_in_pres!Mdims%nphase
+                        DO IPHASE=1,Mdims%nphase
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* (1.-Mass_corrector)!Mass_corrector
+
+
+!                            Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+!                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+!                                - matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* RCON_J(IPHASE))
+
+                            !Calculate mass matrix
+                            if (SUF_INT_MASS_MATRIX) then
+                                do IDIM = 1, Mdims%ndim
+                                    do u_kkloc=1,Mdims%u_nloc
+                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
+                                        J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
+                                        Mmat%PIVIT_MAT( I, J, ELE2 ) = Mmat%PIVIT_MAT( I, J, ELE2 ) &
+                                            + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
+                                            * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
+                                    end do
+                                end do
+                            end if
                         END DO
                     ENDIF
                 end if  ! endof if ( integrate_other_side_and_not_boundary ) then
@@ -6292,34 +6469,45 @@ end if
             implicit none
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
-            integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC, P_ILOC
+            integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC
+            real :: corrector
             logical, save :: show_warn_msg = .true.
             !By default no modification is required
             Bound_ele_correct = 1.0
             IF ( on_domain_boundary ) THEN
-                !By default the position must not be added to the matrix
-                Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
+                !Prepare to apply the boundary conditions
+                DO IPHASE=1,size(Bound_ele_correct,2)
+                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET) then
+                        DO U_SKLOC = 1, Mdims%u_snloc
+                            U_KLOC = U_SLOC2LOC( U_SKLOC )
+                            Bound_ele_correct( :, IPHASE, U_KLOC ) = 0.
+                        end do
+                    end if
+                end do
                 !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
-                DO IPRES = 1, 1!Mdims%npres
+                DO IPRES = 1, Mdims%npres
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
+                        corrector = dble(Mdims%cv_snloc)/dble(Mdims%u_snloc)
                         DO U_SILOC = 1, Mdims%u_snloc
                             U_ILOC = U_SLOC2LOC( U_SILOC )
+                            Bound_ele_correct( :, :, U_ILOC ) = 0.
                             U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                            DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
-                                !We give priority to velocity boundary conditions
-                                if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
-                                    !Only in the boundaries with a defined pressure it needs to be added into
-                                    !the matrix and into the RHS
-                                    Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                    Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                        - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                        * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
-                                else
-                                    if (show_warn_msg) then
-                                        ewrite(0,*) "WARNING: One or more boundaries have velocity and pressure boundary conditions."
-                                        show_warn_msg = .false.
+                            DO P_SJLOC = 1, Mdims%cv_snloc
+                                CV_KLOC = CV_SLOC2LOC( P_SJLOC )
+                                DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
+                                    !We give priority to velocity boundary conditions
+                                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET) then
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = Bound_ele_correct( :, IPHASE, U_ILOC ) + corrector
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI )&
+                                            * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )*corrector
+                                    else
+                                        if (show_warn_msg) then
+                                            ewrite(0,*) "WARNING: One or more boundaries have velocity and pressure boundary conditions."
+                                            show_warn_msg = .false.
+                                        end if
                                     end if
-                                end if
+                                end do
                             end do
                         end do
                     end if

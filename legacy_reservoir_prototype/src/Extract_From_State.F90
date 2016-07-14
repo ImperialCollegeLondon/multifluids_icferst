@@ -64,11 +64,11 @@ module Copy_Outof_State
     private
 
     public :: Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
-        Get_Ele_Type, Get_Discretisation_Options, Get_Discretisation_Options_k_epsilon, &
+        Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass
 
 
     interface Get_SNdgln
@@ -554,150 +554,8 @@ contains
         return
     end subroutine Get_Discretisation_Options
 
-
-
-!!-PY changed it for k_epsilon model
-
-
- subroutine Get_Discretisation_Options_k_epsilon( state, Mdims, Mdisopt, tracer )
-        !!$ This subroutine extract all discretisation options from the schema
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        type(multi_dimensions), intent(in) :: Mdims
-        type (multi_discretization_opts) :: Mdisopt
-        type(tensor_field), pointer :: tracer
-
-        !!$ Local variables:
-        integer :: iphase
-        character( len = option_path_len ) :: option_path, option_path2, option_path3
-        !!$ DISOPT Options:
-        !!$ =0      1st order in space          Theta=specified    UNIVERSAL
-        !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
-        !!$ =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
-        !!$ =2      if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
-        !!$ =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
-        !!$ =4      Finite elements in space    Theta=specified    UNIVERSAL
-        !!$ =5      Finite elements in space    Theta=non-linear   UNIVERSAL
-        !!$ =6      Finite elements in space    Theta=specified    NONE
-        !!$ =7      Finite elements in space    Theta=non-linear   NONE
-        !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
-        !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
-        !!$ Solving Advection Field: Temperature
-
-!!-PY changed it for k_epsilon model
-        if (tracer%name== "PackedTurbulentKineticEnergy") then 
-             option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
-        else if (tracer%name == "PackedTurbulentDissipation") then
-             option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
-        end if 
-
-!        option_path = '/material_phase[0]/scalar_field::Temperature'
-
-
-!        if (have_option( "/material_phase[0]/scalar_field::Temperature") ) then
-!            option_path = '/material_phase[0]/scalar_field::Temperature'
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"))  then
-!            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
-!            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
-!        end if 
-
-
-        option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
-        option_path3 = trim( option_path ) //  '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        Mdisopt%t_disopt = 1
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_t, default = 3 )
-        Conditional_TDISOPT: if( have_option( trim( option_path2 ) ) ) then
-            if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value/' // &
-                'limiter::CompressiveAdvection' ) ) then
-                Mdisopt%t_disopt = 9
-            else
-                if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value' ) ) &
-                    Mdisopt%t_disopt = 5
-            end if
-        end if Conditional_TDISOPT
-        call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
-        
-!!-PY changed it for k_epsilon model
-
-       call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
-            Mdisopt%t_theta, default = 1. )
-
-
-!        if (have_option( "/material_phase[0]/scalar_field::Temperature") ) then
-!            call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
-!                Mdisopt%t_theta, default = 1. )
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"))  then
-!            call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy/prognostic/temporal_discretisation/theta', &
-!                Mdisopt%t_theta, default = 1. )
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
-!            call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation/prognostic/temporal_discretisation/theta', &
-!                Mdisopt%t_theta, default = 1. )
-!        end if 
-
-
-
-
-
-        !!$ Solving Advection Field: Volume fraction
-        option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction'
-        option_path2 = trim( option_path ) // '/prognostic/spatial_discretisation/control_volumes/face_value'
-        option_path3 = trim( option_path ) // '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        Mdisopt%v_disopt = 8
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_volfra, default = 3 )
-        Conditional_VDISOPT: if( have_option( trim( option_path ) ) ) then
-            if( have_option( trim( option_path2 ) // '::FirstOrderUpwind' ) ) Mdisopt%v_disopt = 0
-            if( have_option( trim( option_path2 ) // '::Trapezoidal' ) ) Mdisopt%v_disopt = 2
-            if( have_option( trim( option_path2 ) // '::FiniteElement/do_not_limit_face_value' ) ) Mdisopt%v_disopt = 6
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) Mdisopt%v_disopt = 5
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) Mdisopt%v_disopt = 9
-        end if Conditional_VDISOPT
-        call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', Mdisopt%v_beta )
-        call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', Mdisopt%v_theta )
-        !!$ Solving Velocity Field
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/temporal_discretisation/theta', Mdisopt%u_theta )
-        !!$ Solving Component Field
-        option_path3 = '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-            'temporal_discretisation/control_volumes/number_advection_iterations'
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_comp, default = 3 )
-        !!$ Scaling factor for the momentum equation
-        Mdisopt%scale_momentum_by_volume_fraction = .false.
-        do iphase = 1, Mdims%nphase
-            option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/Mdisopt%scale_momentum_by_volume_fraction'
-            if( have_option( trim( option_path ) ) ) Mdisopt%scale_momentum_by_volume_fraction = .true.
-        end do
-        !!$ Options below are hardcoded and need to be added into the schema
-        Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
-        if(is_porous_media) then
-            if ( have_option( &
-                '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/DG_weighting') &
-                ) Mdisopt%v_dg_vel_int_opt = 10
-        else
-            Mdisopt%v_dg_vel_int_opt = 1
-        end if
-        Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
-        Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
-        Mdisopt%t_use_theta_flux = .false. ; Mdisopt%t_get_theta_flux = .false.
-        !!$ IN/Mdisopt%dg_ele_upwind are options for optimisation of upwinding across faces in the compact_overlapping
-        !!$ formulation. The data structure and options for this formulation need to be added later.
-        Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
-        return
-    end subroutine Get_Discretisation_Options_k_epsilon
-
-
-
-
-
-
-
-
-
-
-
-
-!!-PY changed it for k_epsilon model
     subroutine update_boundary_conditions( state, stotel, cv_snloc, nphase, &
-        &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer )
+        &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         integer, intent( in ) :: stotel, cv_snloc, nphase
@@ -707,7 +565,6 @@ contains
         integer :: shape_option(2), iphase, nobcs, kk, k, j , sele, stat
         integer, dimension( : ), allocatable :: SufID_BC
         integer, dimension( : ), pointer:: surface_element_list, face_nodes
-        type(tensor_field), intent(inout), target :: tracer
 
         type( scalar_field ), pointer :: field, field_prot_bc, field_prot1, field_prot2
         type( scalar_field ), pointer :: field_prot_bc1, field_prot_bc2
@@ -722,47 +579,10 @@ contains
 
         do iphase = 1, nphase
 
-!!-Py changed it for k_epsilon model
-            if (tracer%name == "PackedTemperature") then 
-                field_name = 'Temperature'
-            else if (tracer%name == "PackedTurbulentKineticEnergy") then
-                field_name = 'TurbulentKineticEnergy'
-            else if (tracer%name == "PackedTurbulentDissipation" ) then
-                field_name = 'TurbulentDissipation'
-            end if
-
- !.or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation"            
- 
-
-
-
- !          field_name = 'Temperature'
+            field_name = 'Temperature'
             field => extract_scalar_field( state( iphase ), trim( field_name ) )
 
-
-
-
-
-
-
-!!-Py changed it for k_epsilon model
-            if (tracer%name == "PackedTemperature") then 
-                option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-            else if (tracer%name == "PackedTurbulentKineticEnergy") then
-                option_path = '/material_phase['//int2str( iphase - 1 )//']/subgridscale_parameterisations/k-epsilon/scalar_field::'//trim( field_name )
-            else if (tracer%name == "PackedTurbulentDissipation" ) then
-                option_path = '/material_phase['//int2str( iphase - 1 )//']/subgridscale_parameterisations/k-epsilon/scalar_field::'//trim( field_name )
-            end if
-
-
-
-
-!            option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-
-
-
-
-
+            option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
             option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
 
             nobcs = get_boundary_condition_count( field )
@@ -1063,26 +883,6 @@ contains
             call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
-!!-PY add it for k_epsilon model
-       if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
-            call insert_sfield(packed_state,"TurbulentKineticEnergy",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FETurbulentKineticEnergy",1,nphase)
-
-            call insert_sfield(packed_state,"TurbulentDissipation",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FETurbulentDissipation",1,nphase)
-            
-        end if
-
-
-        
-        
-
-
-
-
-
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
         call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
@@ -1320,48 +1120,6 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
 
-!!-PY add it for k_epsilon model
-               if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
- print *, 'copy memory from state to packed_state'
-                    call unpack_sfield(state(i),packed_state,"OldTurbulentKineticEnergy",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentKineticEnergy"),&
-                        extract_scalar_field(state(i),"OldTurbulentKineticEnergy")))
-                    call unpack_sfield(state(i),packed_state,"IteratedTurbulentKineticEnergy",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentKineticEnergy"),&
-                        extract_scalar_field(state(i),"IteratedTurbulentKineticEnergy")))
-                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergySource",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergyAbsorption",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergy",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"TurbulentKineticEnergy"),"TurbulentKineticEnergy")
-
-
-
-
-                    call unpack_sfield(state(i),packed_state,"OldTurbulentDissipation",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentDissipation"),&
-                        extract_scalar_field(state(i),"OldTurbulentDissipation")))
-                    call unpack_sfield(state(i),packed_state,"IteratedTurbulentDissipation",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentDissipation"),&
-                        extract_scalar_field(state(i),"IteratedTurbulentDissipation")))
-                    call unpack_sfield(state(i),packed_state,"TurbulentDissipationSource",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentDissipationAbsorption",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentDissipation",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"TurbulentDissipation"),"TurbulentDissipation")
-
-
-                end if
-
-
-
-
-
-
-
-
-
-
-
-
                 if(has_phase_volume_fraction) then
                     call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
@@ -1397,21 +1155,9 @@ contains
             call insert(multi_state(1,ipres),extract_scalar_field(state(i),"Pressure"),"FEPressure")
         end do
 
-!!-PY add it for k_epsilon model
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
         end if
-
-        if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
-            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"TurbulentKineticEnergy")
-            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"TurbulentDissipation")
-        end if
-
-
-
-
-
-
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"PhaseVolumeFraction")
         call allocate_multiphase_vector_bcs(packed_state,multi_state,"Velocity")
@@ -2172,7 +1918,7 @@ end subroutine finalise_multistate
 
 
 subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
-    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order)
+    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order, calculate_mass_delta)
     !This subroutine either store variables before the nonlinear timeloop starts, or checks
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
@@ -2193,7 +1939,13 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
     !Variables for automatic non-linear iterations
     real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch,&
-        Inifinite_norm_tol
+        Inifinite_norm_tol, calculate_mass_tol
+    !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
+    real, dimension(:,:), optional :: calculate_mass_delta
+    !! local variable, holds the maximum mass error
+    real :: max_calculate_mass_delta
+
+
     !Variables for adaptive time stepping based on non-linear iterations
     real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val
     integer :: variable_selection, NonLinearIteration
@@ -2233,6 +1985,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     else
         decrease_ts_switch = min(tolerance_between_non_linear * 10.,1.0)
     end if
+
+    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
+            calculate_mass_tol, default = 5d-3)
 
     !Get time step
     call get_option( '/timestepping/timestep', initial_dt )
@@ -2314,21 +2069,31 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
                 end select
 
+                ! find the maximum mass error to compare with the tolerance below
+                !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
+                ! In this case we only calculate the total mass - we could calculate the mass of each phase
+                max_calculate_mass_delta = calculate_mass_delta(1,2)
                 !If it is parallel then we want to be consistent between cpus
-                if (IsParallel()) call allmax(ts_ref_val)
+                if (IsParallel()) then
+                    call allmax(ts_ref_val)
+                    call allmax(max_calculate_mass_delta)
+                end if
+
 
                 !TEMPORARY, re-use of global variable backtrack_or_convergence to send
                 !information about convergence to the trust_region_method
 !                backtrack_or_convergence = ts_ref_val
-                ewrite(1,*) "FPI convergence: ",ts_ref_val,";L_inf:", inf_norm_val, ";Total iterations:", its
+                ewrite(1,*) "FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
+
                 !If only non-linear iterations
                 if (.not.nonLinearAdaptTs) then
                     !Automatic non-linear iteration checking
-                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol)&
-                        .or. its >= NonLinearIteration)
+                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
+                    .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+
                     if (ExitNonLinearLoop .and. show_FPI_conv) then
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        print *, "FPI convergence: ", ts_ref_val,";L_inf:", inf_norm_val, ";Total iterations:", its
+                        print *, "FPI convergence: ", ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
                     end if
                     return
                 end if
@@ -2339,10 +2104,12 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor')) then
                     !Tell the user if we have not converged
                     if (its == NonLinearIteration) then
-                        ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
+                        ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val, &
+                        "Mass error:", calculate_mass_delta(1,2)
                     end if
                     !Increase Ts section
-                    if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
+                    if (ts_ref_val < increase_ts_switch .and. dt*increaseFactor<max_ts .and. max_calculate_mass_delta < calculate_mass_tol/10 &
+                    .and..not.Repeat_time_step ) then
                         call get_option( '/timestepping/timestep', dt )
                         dt = min(dt * increaseFactor,max_ts)
                         call set_option( '/timestepping/timestep', dt )
@@ -2350,12 +2117,12 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ExitNonLinearLoop = .true.
                         return
                     else !Maybe it is not enough to increase the time step, but we could go to the next time step
-                        ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                        ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear .and. max_calculate_mass_delta < calculate_mass_tol )
                     end if
 
                     !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
-                    if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
-                        .and.its>=int(0.90*NonLinearIteration)) then
+                    if ((ts_ref_val > decrease_ts_switch .or. max_calculate_mass_delta > min(calculate_mass_tol * 10.,5d-3) &
+                     .or. Repeat_time_step).and.its>=int(0.90*NonLinearIteration)) then
 
                         if ( dt / decreaseFactor < min_ts) then
                             !Do not decrease
@@ -2377,7 +2144,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ExitNonLinearLoop = .true.
                     end if
                 else!Adaptive Ts for Dumping based on the number of FPI
-                    if (ts_ref_val < tolerance_between_non_linear) then
+                    if (ts_ref_val < tolerance_between_non_linear .and. max_calculate_mass_delta < calculate_mass_tol ) then
                         if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
                             !Increase time step
                             call get_option( '/timestepping/timestep', dt )
@@ -2415,7 +2182,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !For adaptive time stepping we need to put this again
                     if (ExitNonLinearLoop .and. show_FPI_conv) then
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        ewrite(0,*) "FPI convergence:", ts_ref_val, "Total iterations:", its
+                        ewrite(0,*) "FPI convergence:", ts_ref_val, "Total iterations:", its, "Mass error:", calculate_mass_delta(1,2)
                     end if
 
                 end if
@@ -2543,9 +2310,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     NonlinearVelocity, OldNonlinearVelocity,IteratedNonlinearVelocity, ComponentDensity, &
     OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
     Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
-!!-PY add it for k_epsilon model
-    TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
-    TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
     IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
@@ -2573,9 +2337,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
-!!-PY add it for k_epsilon model
-    TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
-    TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent
@@ -2698,73 +2459,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
         IteratedFETemperature =>  tfield%val(1,:,:)
     end if
-
-!!-PY add it for k_epsilon model
-    if (present(TurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedTurbulentKineticEnergy" )
-        TurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(OldTurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldTurbulentKineticEnergy" )
-        OldTurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedTurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedTurbulentKineticEnergy" )
-        IteratedTurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(FETurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedFETurbulentKineticEnergy" )
-        FETurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(OldFETurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldFETurbulentKineticEnergy" )
-        OldFETurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedFETurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedFETurbulentKineticEnergy" )
-        IteratedFETurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-
-
-
-
-    if (present(TurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedTurbulentDissipation" )
-        TurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(OldTurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldTurbulentDissipation" )
-        OldTurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedTurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedTurbulentDissipation" )
-        IteratedTurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(FETurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedFETurbulentDissipation" )
-        FETurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(OldFETurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldFETurbulentDissipation" )
-        OldFETurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedFETurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedFETurbulentDissipation" )
-        IteratedFETurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-
-
-
-
-
-
-
-
-
-
-
-
-
     if (present(Velocity)) then
         tfield => extract_tensor_field( packed_state, "PackedVelocity" )
         Velocity => tfield%val(:,:,:)
@@ -3062,7 +2756,13 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     ! This function will return true for surfaces we should be integrating over (this entire subroutine is called inside a loop over ele, cv_iloc, gi in cv-adv-dif)
     ! i.e. when sele is part of a surface labelled by ID = surface_ids. We then add up (integrate) flux contributions from all elements that test true.
 
-    test = integrate_over_surface_element(CVPressure, sele, surface_ids)
+    ! if we are calculating the total mass entering the domain we will integrate over the whole domain and will therefore skip this test.
+    ! This is done by setting surface_ids = /-1/ when calling it in cv-adv-diff
+    if (surface_ids(1) < 0) then
+        test = .true.
+    else
+        test = integrate_over_surface_element(CVPressure, sele, surface_ids)
+    endif
 
     ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
     ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
@@ -3094,6 +2794,80 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     return
 
 end subroutine calculate_outflux
+
+
+subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculate_mass, TOTELE , &
+    cv_ndgln, IDs_ndgln, cv_nloc)
+
+    implicit none
+
+    ! Subroutine to calculate the integrated mass inside the domain
+
+    ! Input/output variables
+
+    real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
+    integer, intent(in) :: nphase
+    real, dimension( : , : ),  intent(in) :: phaseV
+    real, dimension( : , : ), intent(in) :: Dens
+    real, dimension( : ), intent(in) :: Por
+
+    real, dimension(:), intent(inout) :: calculate_mass
+    integer, intent(in) :: TOTELE
+
+    integer, dimension(:), intent( in ) ::  cv_ndgln
+    integer, dimension(:), intent( in ) :: IDs_ndgln
+    integer, intent(in) :: cv_nloc
+
+
+    ! Local variables
+
+    real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
+    real, dimension( : ), allocatable :: DensVG
+    real :: PorG
+    real :: Mass_ELEG
+    integer  :: cv_knod
+    integer :: cv_iloc
+    integer :: ele
+    integer :: i
+
+    ! ALLOCATIONS
+    allocate(phaseVG(nphase))
+    allocate(DensVG(nphase))
+
+    ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
+    ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
+    ! Since the CV shape functions are 1 or 0, the value at Gauss point gi, is given by the value at the nearest CV_node. So
+    ! we pass down the value of cv_iloc from cv_adv_diff and calculate cv_knod. This will be the node corresponding to a given
+    ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
+    ! Similar calculation done for density.
+
+
+    Do ELE=1, TOTELE
+        DO CV_ILOC =1, cv_nloc
+                cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
+
+                phaseVG(:) = phaseV(:,cv_knod)
+                DensVG(:) = Dens(:,cv_knod)
+                Mass_ELEG = Mass_ELE(ele)
+
+                !     Porosity constant element-wise so simply extract that value associated to a given element ele
+                PorG = Por(IDs_ndgln(ele))
+
+                do i = 1, nphase
+                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)
+                enddo
+
+        ENDDO
+    ENDDO
+
+    ! DEALLOCATIONS
+    deallocate(phaseVG)
+    deallocate(densVG)
+
+    return
+
+end subroutine calculate_internal_mass
+
 
 logical function have_option_for_any_phase(path, nphase)
     !The path must be the part of the path inside the phase, i.e. /multiphase_properties/capillary_pressure
@@ -3502,12 +3276,14 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Vector_SNdgln
 
-    subroutine dump_outflux(current_time, itime, outflux, intflux)
-        ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
+    subroutine dump_outflux(current_time, porevolume, itime, outflux, intflux)
+
+        ! Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file  called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux
         ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
         ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
         !wish to integrate over).
         real,intent(in) :: current_time
+        real, intent(in) :: porevolume
         integer, intent(in) :: itime
         real, dimension(:,:), intent(inout) :: outflux, intflux
         integer :: ioutlet
@@ -3519,19 +3295,24 @@ end subroutine get_DarcyVelocity
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
         character (len = 1000000), dimension(size(outflux,1)) :: fluxstring
         character (len = 1000000), dimension(size(outflux,1)) :: intfluxstring
+        character (len = 50) :: simulation_name
+
+        call get_option('/simulation_name', simulation_name)
+
         default_stat%conv_unit=free_unit()
         if (itime == 1) then
             !The first time, remove file if already exists
-            open(unit=default_stat%conv_unit, file="outfluxes.csv", status="replace", action="write")
+            open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
         else
-            open(unit=default_stat%conv_unit, file="outfluxes.csv", action="write", position="append")
+            open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
         end if
         ! Write column headings to file
         counter = 0
         if(itime.eq.1) then
-            write(whole_line,*) "Current Time"
+            write(whole_line,*) "Current Time" // "," // "Pore Volume"
+            whole_line = trim(whole_line)
             do ioutlet =1, size(outflux,2)
-                write(numbers,*) "Surface_id=", outlet_id(ioutlet)
+                write(numbers,'(a,i0)') "Surface_id=", outlet_id(ioutlet)
                 if(counter.eq.0) then
                     whole_line = trim(numbers) //","// trim(whole_line)
                 else
@@ -3539,11 +3320,11 @@ end subroutine get_DarcyVelocity
                 endif
                 !write(whole_line,*)trim(numbers)  //","//  "Current Time"
                 do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),*) "Phase", iphase, "boundary flux"
+                    write(fluxstring(iphase),'(a, i0, a)') "Phase ", iphase, " boundary flux"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux (volume/time)"
+                    write(intfluxstring(iphase),'(a, i0, a)') "Phase ", iphase,  " time integrated flux (volume/time)"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 counter = counter + 1
@@ -3553,7 +3334,7 @@ end subroutine get_DarcyVelocity
         else
             ! Write the actual numbers to the file now
             counter = 0
-            write(numbers,*) current_time
+            write(numbers,'(f10.7,a,f10.7)') current_time, "," , porevolume
             whole_line =  ","// trim(numbers)
             do ioutlet =1, size(outflux,2)
                 if(counter > 0) then
@@ -3561,11 +3342,11 @@ end subroutine get_DarcyVelocity
                 endif
                 !write(whole_line,*) current_time
                 do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),*) outflux(iphase,ioutlet)
+                    write(fluxstring(iphase),'(f10.7)') outflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),*) intflux(iphase,ioutlet)
+                    write(intfluxstring(iphase),'(f10.7)') intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 counter = counter + 1
