@@ -1948,10 +1948,16 @@ start =
             element DG_advection {
                empty
             }?,  
+            ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
+            ## the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.
+            ## The default value is for P1DGP1 => 100 and P2DGP1DG => 3
+            element CV_press_homogenisation {
+               real
+            }?,
             ## Use the fast method to create the pressure matrix. Be aware that some me
             element create_P_mat_fast {
                empty
-            }?   
+            }? 
          }?
       }
    )

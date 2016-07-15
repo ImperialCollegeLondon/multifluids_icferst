@@ -2891,10 +2891,6 @@ contains
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
-
-
-
-
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
                         ! is the same as just outside the domain.
@@ -2923,9 +2919,9 @@ contains
                                 UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)= matmul(I_inv_adv_coef(:,:,IPHASE),UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC))
                             END DO
                         end if
-                        IF(Incomming_flow) THEN ! Incomming...
-                            UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
-                        ENDIF
+
+                        if(Incomming_flow) UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
+
                         deallocate(SUF_SIG_DIAGTEN_BC_GI)
                     ELSE ! Specified vel bc.
                         UDGI_ALL(:, IPHASE) = 0.0

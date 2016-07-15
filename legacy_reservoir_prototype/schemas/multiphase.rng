@@ -2613,6 +2613,14 @@ Recommended value: [0.5,1.0]. Default =1.</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="CV_press_homogenisation">
+              <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
+the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.
+The default value is for P1DGP1 =&gt; 100 and P2DGP1DG =&gt; 3</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+          <optional>
             <element name="create_P_mat_fast">
               <a:documentation>Use the fast method to create the pressure matrix. Be aware that some me</a:documentation>
               <empty/>
