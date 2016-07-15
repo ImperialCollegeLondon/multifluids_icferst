@@ -489,6 +489,13 @@ start =
                     }?
                   ),
                   (
+                    ## Convergence criterion based on the 
+                    ## conservation of mass for the Fixed Point Iteration solver
+	            ## 
+		    ## By default the tolerance is 5e-3
+                    element Test_mass_consv{real}?
+                  ),
+                  (
                     ## Prints the number of iterations and
                     ## the final convergence achieved by the FPI solver
                     element Show_Convergence{comment}?
@@ -5132,7 +5139,7 @@ represcribe_before_interpolation =
 equation_of_state =
                (
                   (
-
+## Use this option to specify the density of fluids
 element equation_of_state{
 
                      ## Equations of state

@@ -68,7 +68,7 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass
 
 
     interface Get_SNdgln
@@ -2172,7 +2172,7 @@ end subroutine finalise_multistate
 
 
 subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
-    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order)
+    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order, calculate_mass_delta)
     !This subroutine either store variables before the nonlinear timeloop starts, or checks
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
@@ -2193,7 +2193,13 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
     !Variables for automatic non-linear iterations
     real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch,&
-        Inifinite_norm_tol
+        Inifinite_norm_tol, calculate_mass_tol
+    !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
+    real, dimension(:,:), optional :: calculate_mass_delta
+    !! local variable, holds the maximum mass error
+    real :: max_calculate_mass_delta
+
+
     !Variables for adaptive time stepping based on non-linear iterations
     real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val
     integer :: variable_selection, NonLinearIteration
@@ -2233,6 +2239,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     else
         decrease_ts_switch = min(tolerance_between_non_linear * 10.,1.0)
     end if
+
+    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
+            calculate_mass_tol, default = 5d-3)
 
     !Get time step
     call get_option( '/timestepping/timestep', initial_dt )
@@ -2314,21 +2323,31 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
                 end select
 
+                ! find the maximum mass error to compare with the tolerance below
+                !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
+                ! In this case we only calculate the total mass - we could calculate the mass of each phase
+                max_calculate_mass_delta = calculate_mass_delta(1,2)
                 !If it is parallel then we want to be consistent between cpus
-                if (IsParallel()) call allmax(ts_ref_val)
+                if (IsParallel()) then
+                    call allmax(ts_ref_val)
+                    call allmax(max_calculate_mass_delta)
+                end if
+
 
                 !TEMPORARY, re-use of global variable backtrack_or_convergence to send
                 !information about convergence to the trust_region_method
 !                backtrack_or_convergence = ts_ref_val
-                ewrite(1,*) "FPI convergence: ",ts_ref_val,";L_inf:", inf_norm_val, ";Total iterations:", its
+                ewrite(1,*) "FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
+
                 !If only non-linear iterations
                 if (.not.nonLinearAdaptTs) then
                     !Automatic non-linear iteration checking
-                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol)&
-                        .or. its >= NonLinearIteration)
+                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
+                    .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+
                     if (ExitNonLinearLoop .and. show_FPI_conv) then
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        print *, "FPI convergence: ", ts_ref_val,";L_inf:", inf_norm_val, ";Total iterations:", its
+                        print *, "FPI convergence: ", ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
                     end if
                     return
                 end if
@@ -2339,10 +2358,12 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor')) then
                     !Tell the user if we have not converged
                     if (its == NonLinearIteration) then
-                        ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
+                        ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val, &
+                        "Mass error:", calculate_mass_delta(1,2)
                     end if
                     !Increase Ts section
-                    if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
+                    if (ts_ref_val < increase_ts_switch .and. dt*increaseFactor<max_ts .and. max_calculate_mass_delta < calculate_mass_tol/10 &
+                    .and..not.Repeat_time_step ) then
                         call get_option( '/timestepping/timestep', dt )
                         dt = min(dt * increaseFactor,max_ts)
                         call set_option( '/timestepping/timestep', dt )
@@ -2350,12 +2371,12 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ExitNonLinearLoop = .true.
                         return
                     else !Maybe it is not enough to increase the time step, but we could go to the next time step
-                        ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                        ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear .and. max_calculate_mass_delta < calculate_mass_tol )
                     end if
 
                     !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
-                    if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
-                        .and.its>=int(0.90*NonLinearIteration)) then
+                    if ((ts_ref_val > decrease_ts_switch .or. max_calculate_mass_delta > min(calculate_mass_tol * 10.,5d-3) &
+                     .or. Repeat_time_step).and.its>=int(0.90*NonLinearIteration)) then
 
                         if ( dt / decreaseFactor < min_ts) then
                             !Do not decrease
@@ -2377,7 +2398,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ExitNonLinearLoop = .true.
                     end if
                 else!Adaptive Ts for Dumping based on the number of FPI
-                    if (ts_ref_val < tolerance_between_non_linear) then
+                    if (ts_ref_val < tolerance_between_non_linear .and. max_calculate_mass_delta < calculate_mass_tol ) then
                         if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
                             !Increase time step
                             call get_option( '/timestepping/timestep', dt )
@@ -2415,7 +2436,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !For adaptive time stepping we need to put this again
                     if (ExitNonLinearLoop .and. show_FPI_conv) then
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        ewrite(0,*) "FPI convergence:", ts_ref_val, "Total iterations:", its
+                        ewrite(0,*) "FPI convergence:", ts_ref_val, "Total iterations:", its, "Mass error:", calculate_mass_delta(1,2)
                     end if
 
                 end if
@@ -3062,7 +3083,13 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     ! This function will return true for surfaces we should be integrating over (this entire subroutine is called inside a loop over ele, cv_iloc, gi in cv-adv-dif)
     ! i.e. when sele is part of a surface labelled by ID = surface_ids. We then add up (integrate) flux contributions from all elements that test true.
 
-    test = integrate_over_surface_element(CVPressure, sele, surface_ids)
+    ! if we are calculating the total mass entering the domain we will integrate over the whole domain and will therefore skip this test.
+    ! This is done by setting surface_ids = /-1/ when calling it in cv-adv-diff
+    if (surface_ids(1) < 0) then
+        test = .true.
+    else
+        test = integrate_over_surface_element(CVPressure, sele, surface_ids)
+    endif
 
     ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
     ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
@@ -3094,6 +3121,80 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     return
 
 end subroutine calculate_outflux
+
+
+subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculate_mass, TOTELE , &
+    cv_ndgln, IDs_ndgln, cv_nloc)
+
+    implicit none
+
+    ! Subroutine to calculate the integrated mass inside the domain
+
+    ! Input/output variables
+
+    real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
+    integer, intent(in) :: nphase
+    real, dimension( : , : ),  intent(in) :: phaseV
+    real, dimension( : , : ), intent(in) :: Dens
+    real, dimension( : ), intent(in) :: Por
+
+    real, dimension(:), intent(inout) :: calculate_mass
+    integer, intent(in) :: TOTELE
+
+    integer, dimension(:), intent( in ) ::  cv_ndgln
+    integer, dimension(:), intent( in ) :: IDs_ndgln
+    integer, intent(in) :: cv_nloc
+
+
+    ! Local variables
+
+    real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
+    real, dimension( : ), allocatable :: DensVG
+    real :: PorG
+    real :: Mass_ELEG
+    integer  :: cv_knod
+    integer :: cv_iloc
+    integer :: ele
+    integer :: i
+
+    ! ALLOCATIONS
+    allocate(phaseVG(nphase))
+    allocate(DensVG(nphase))
+
+    ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
+    ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
+    ! Since the CV shape functions are 1 or 0, the value at Gauss point gi, is given by the value at the nearest CV_node. So
+    ! we pass down the value of cv_iloc from cv_adv_diff and calculate cv_knod. This will be the node corresponding to a given
+    ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
+    ! Similar calculation done for density.
+
+
+    Do ELE=1, TOTELE
+        DO CV_ILOC =1, cv_nloc
+                cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
+
+                phaseVG(:) = phaseV(:,cv_knod)
+                DensVG(:) = Dens(:,cv_knod)
+                Mass_ELEG = Mass_ELE(ele)
+
+                !     Porosity constant element-wise so simply extract that value associated to a given element ele
+                PorG = Por(IDs_ndgln(ele))
+
+                do i = 1, nphase
+                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)
+                enddo
+
+        ENDDO
+    ENDDO
+
+    ! DEALLOCATIONS
+    deallocate(phaseVG)
+    deallocate(densVG)
+
+    return
+
+end subroutine calculate_internal_mass
+
 
 logical function have_option_for_any_phase(path, nphase)
     !The path must be the part of the path inside the phase, i.e. /multiphase_properties/capillary_pressure
@@ -3502,12 +3603,14 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Vector_SNdgln
 
-    subroutine dump_outflux(current_time, itime, outflux, intflux)
-        ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
+    subroutine dump_outflux(current_time, porevolume, itime, outflux, intflux)
+
+        ! Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file  called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux
         ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
         ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
         !wish to integrate over).
         real,intent(in) :: current_time
+        real, intent(in) :: porevolume
         integer, intent(in) :: itime
         real, dimension(:,:), intent(inout) :: outflux, intflux
         integer :: ioutlet
@@ -3519,19 +3622,24 @@ end subroutine get_DarcyVelocity
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
         character (len = 1000000), dimension(size(outflux,1)) :: fluxstring
         character (len = 1000000), dimension(size(outflux,1)) :: intfluxstring
+        character (len = 50) :: simulation_name
+
+        call get_option('/simulation_name', simulation_name)
+
         default_stat%conv_unit=free_unit()
         if (itime == 1) then
             !The first time, remove file if already exists
-            open(unit=default_stat%conv_unit, file="outfluxes.csv", status="replace", action="write")
+            open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
         else
-            open(unit=default_stat%conv_unit, file="outfluxes.csv", action="write", position="append")
+            open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
         end if
         ! Write column headings to file
         counter = 0
         if(itime.eq.1) then
-            write(whole_line,*) "Current Time"
+            write(whole_line,*) "Current Time" // "," // "Pore Volume"
+            whole_line = trim(whole_line)
             do ioutlet =1, size(outflux,2)
-                write(numbers,*) "Surface_id=", outlet_id(ioutlet)
+                write(numbers,'(a,i0)') "Surface_id=", outlet_id(ioutlet)
                 if(counter.eq.0) then
                     whole_line = trim(numbers) //","// trim(whole_line)
                 else
@@ -3539,11 +3647,11 @@ end subroutine get_DarcyVelocity
                 endif
                 !write(whole_line,*)trim(numbers)  //","//  "Current Time"
                 do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),*) "Phase", iphase, "boundary flux"
+                    write(fluxstring(iphase),'(a, i0, a)') "Phase ", iphase, " boundary flux"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux (volume/time)"
+                    write(intfluxstring(iphase),'(a, i0, a)') "Phase ", iphase,  " time integrated flux (volume/time)"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 counter = counter + 1
@@ -3553,7 +3661,7 @@ end subroutine get_DarcyVelocity
         else
             ! Write the actual numbers to the file now
             counter = 0
-            write(numbers,*) current_time
+            write(numbers,'(f10.7,a,f10.7)') current_time, "," , porevolume
             whole_line =  ","// trim(numbers)
             do ioutlet =1, size(outflux,2)
                 if(counter > 0) then
@@ -3561,11 +3669,11 @@ end subroutine get_DarcyVelocity
                 endif
                 !write(whole_line,*) current_time
                 do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),*) outflux(iphase,ioutlet)
+                    write(fluxstring(iphase),'(f10.7)') outflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),*) intflux(iphase,ioutlet)
+                    write(intfluxstring(iphase),'(f10.7)') intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 counter = counter + 1

@@ -15,20 +15,20 @@ toleranceMass = 2e-5
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system('rm -f ' + path+ '/outfluxes.csv')
+os.system('rm -f ' + path+ '/QuickTest_DG_outfluxes.csv')
 os.system(binpath + ' ' + path + '/*mpml')
 
-with open('outfluxes.csv','r') as f1:
+with open('QuickTest_DG_outfluxes.csv','r') as f1:
 # Need a slightly modified script to correctly read this file in       
     f1.readline()
     for row in f1:
         columns = row.split(",")
         try:
             tC.append(float(columns[1]))
-            f1C.append(float(columns[2]))
-            f2C.append(float(columns[3]))
-            t1C.append(float(columns[4]))
-            t2C.append(float(columns[5]))        
+            f1C.append(float(columns[3]))
+            f2C.append(float(columns[4]))
+            t1C.append(float(columns[5]))
+            t2C.append(float(columns[6]))        
         except:
             print "some error"
 

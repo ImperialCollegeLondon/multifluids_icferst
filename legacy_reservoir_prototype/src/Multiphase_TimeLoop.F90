@@ -191,14 +191,19 @@ contains
         ! Variables used in the CVGalerkin interpolation calculation
         integer :: numberfields
 
-        !!-PY use it for the k-epsilon model
+!       Variables used for calculating conservation of mass (entering/leaving and within the domain).
+
+!      calculate_mass_delta to store the change in mass calculated over the whole domain
+        real, allocatable, dimension(:,:) :: calculate_mass_delta
+
+!!-PY use it for the k-epsilon model
         integer :: ntsol
         logical :: new_ntsol_loop
         character(len=OPTION_PATH_LEN) :: option_buffer
         character(len=FIELD_NAME_LEN) :: tmp_name
         logical :: use_advdif, multiphase_scalar
         integer :: it, it2, nphase_scalar
-
+       
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -385,6 +390,10 @@ contains
                 totout(:, ioutlet) = 0.
             enddo
         endif
+!       Allocate memory and initialise calculate_mass_global if calculate_mass_flag is switched on to store the total mass change in the domain
+        allocate(calculate_mass_delta(Mdims%nphase,2))
+        calculate_mass_delta(:,:) = 0.0
+
         checkpoint_number=1
 !!$ Time loop
         Loop_Time: do
@@ -444,6 +453,7 @@ contains
             end if
 #endif
             !!$ Start non-linear loop
+            first_nonlinear_time_step = .true.
             its = 1
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
@@ -763,7 +773,7 @@ end if
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln )
+                        IDs_ndgln, calculate_mass_delta )
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
@@ -802,7 +812,7 @@ end if
                     exit Loop_NonLinearIteration
                 end if
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, calculate_mass_delta)
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
@@ -816,6 +826,7 @@ end if
                 end if
                 after_adapt=.false.
                 its = its + 1
+                first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
             ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
@@ -829,7 +840,7 @@ end if
             ! If calculating boundary fluxes, dump them to outfluxes.txt
             if(calculate_flux) then
                 if(getprocno() == 1) then
-                    call dump_outflux(acctim,itime,totout,intflux)
+                    call dump_outflux(acctim,porevolume,itime,totout,intflux)
                 endif
             endif
             if (nonLinearAdaptTs) then
