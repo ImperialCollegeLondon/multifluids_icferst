@@ -74,6 +74,11 @@ module multiphase_time_loop
     use multi_data_types
     use vtk_interfaces
     use multi_interpolation
+    use gls
+    use k_epsilon
+
+    use momentum_diagnostic_fields, only: calculate_densities
+
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
@@ -84,6 +89,20 @@ module multiphase_time_loop
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
     !type(rheology_type), dimension(:), allocatable :: rheology
+
+
+    !!-PY add it for k-epsilon model
+    ! An array of submaterials of the current phase in state(istate).
+    ! Needed for k-epsilon VelocityBuoyancyDensity calculation line:~630
+    ! S Parkinson 31-08-12
+    type(state_type), dimension(:), pointer :: submaterials
+    type(scalar_field), pointer :: sfield
+    integer :: i
+
+
+
+
+
 contains
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
@@ -113,8 +132,8 @@ contains
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
-            NonLinearIteration, NonLinearIteration_Components, dtime
-        real :: acctim, finish_time
+            NonLinearIteration, NonLinearIteration_Components
+        real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
         logical :: have_temperature_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
@@ -169,19 +188,17 @@ contains
         integer :: ioutlet
         real, dimension(:,:),  allocatable  :: intflux
         logical :: calculate_flux
-
-!       Variables used for calculating conservation of mass (entering/leaving and within the domain).
-
-!      calculate_mass_delta to store the change in mass calculated over the whole domain
-        real, allocatable, dimension(:,:) :: calculate_mass_delta
         ! Variables used in the CVGalerkin interpolation calculation
         integer :: numberfields
-        !integer :: ntsol
-        !logical :: new_ntsol_loop
-        !character(len=OPTION_PATH_LEN) :: option_buffer
-        !character(len=FIELD_NAME_LEN) :: tmp_name
-        !logical :: use_advdif, multiphase_scalar
-        !integer :: it, it2, nphase_scalar
+
+        !!-PY use it for the k-epsilon model
+        integer :: ntsol
+        logical :: new_ntsol_loop
+        character(len=OPTION_PATH_LEN) :: option_buffer
+        character(len=FIELD_NAME_LEN) :: tmp_name
+        logical :: use_advdif, multiphase_scalar
+        integer :: it, it2, nphase_scalar
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -295,7 +312,11 @@ contains
         call get_option( '/timestepping/current_time', acctim )
         call get_option( '/timestepping/timestep', dt )
         call get_option( '/timestepping/finish_time', finish_time )
-        call get_option( '/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1 )
+        if ( have_option('/io/dump_period_in_timesteps') ) then
+            call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+        elseif ( have_option('/io/dump_period') ) then
+            call get_option('/io/dump_period/constant', dump_period, default = 0.01)
+        end if
         call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
         !call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
         !!$
@@ -341,7 +362,6 @@ contains
         end if
         !!$ Starting Time Loop
         itime = 0
-        dtime = 0
         if( &
              ! if this is not a zero timestep simulation (otherwise, there would
              ! be two identical dump files)
@@ -365,10 +385,6 @@ contains
                 totout(:, ioutlet) = 0.
             enddo
         endif
-!       Allocate memory and initialise calculate_mass_global if calculate_mass_flag is switched on to store the total mass change in the domain
-        allocate(calculate_mass_delta(Mdims%nphase,2))
-        calculate_mass_delta(:,:) = 0.0
-
         checkpoint_number=1
 !!$ Time loop
         Loop_Time: do
@@ -376,13 +392,6 @@ contains
 
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
-
-            if ( do_checkpoint_simulation( dtime ) ) then
-               call checkpoint_simulation( state, cp_no=checkpoint_number, &
-                    protect_simulation_name=.true., file_type='.mpml' )
-               checkpoint_number=checkpoint_number+1
-            end if
-            dtime = dtime + 1
 
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
@@ -435,7 +444,6 @@ contains
             end if
 #endif
             !!$ Start non-linear loop
-            first_nonlinear_time_step = .true.
             its = 1
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
@@ -448,6 +456,153 @@ contains
                         velocity_absorption, temperature_absorption )
                    deallocate ( Velocity_Absorption, temperature_absorption )
                 end if
+
+
+
+
+
+
+   !!-PY add the k_epsilon model
+
+          ! Do we have the k-epsilon turbulence model?
+          ! If we do then we want to calculate source terms and diffusivity for the k and epsilon
+          ! fields and also tracer field diffusivities at n + theta_nl
+          do i= 1, size(state)
+             if(have_option("/material_phase["//&
+                  int2str(i-1)//"]/subgridscale_parameterisations/k-epsilon")) then
+
+print *, 'k_epsilon model'
+
+                if(timestep == 1 .and. its == 1 .and. have_option('/physical_parameters/gravity')) then
+                   ! The very first time k-epsilon is called, VelocityBuoyancyDensity
+                   ! is set to zero until calculate_densities is called in the momentum equation
+                   ! solve. Calling calculate_densities here is a work-around for this problem.
+                   sfield => extract_scalar_field(state, 'VelocityBuoyancyDensity')
+                   if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
+                      call get_phase_submaterials(state, i, submaterials)
+                      call calculate_densities(submaterials, buoyancy_density=sfield)
+                      deallocate(submaterials)
+                   else
+                      call calculate_densities(state, buoyancy_density=sfield)
+                   end if
+                   ewrite_minmax(sfield)
+                end if
+                call keps_advdif_diagnostics(state(i))
+             end if
+          end do
+
+
+
+!!-PY solve k_epsilon model advections
+
+if (.true.)  then
+if ( have_option("/material_phase["//&
+                  int2str(0)//"]/subgridscale_parameterisations/k-epsilon")  ) then
+
+
+print *, 'solve k_epsilon model advections'
+
+!call print_state (packed_state)
+
+        call get_ntsol( ntsol )
+        call initialise_field_lists_from_options( state, ntsol )
+
+
+        call set_nu_to_u( packed_state )
+        !call calculate_diffusivity( state, Mdim, ndgln, ScalarAdvectionField_Diffusion )
+        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+        density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
+
+
+
+
+        do it = 1, ntsol
+
+           call get_option( trim( field_optionpath_list( it ) ) // &
+                '/prognostic/equation[0]/name', &
+                option_buffer, default = "UnknownEquationType" )
+           select case( trim( option_buffer ) )
+           case ( "KEpsilon" )
+              use_advdif = .true.
+           case default
+              use_advdif = .false.
+           end select
+
+           !use_advdif=.true.
+
+
+           if ( use_advdif ) then
+
+              ! figure out if scalar field is mutli-phase
+              multiphase_scalar = .false.
+              do it2 = it+1, ntsol
+                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
+                    multiphase_scalar = .true.
+                 end if
+              end do
+
+              tmp_name = "Packed" //field_name_list( it )
+              nphase_scalar = 1
+              if ( multiphase_scalar ) then
+                 nphase_scalar = Mdims%nphase
+                 tmp_name = "Packed" // field_name_list( it )
+              end if
+              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
+
+
+              if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
+                    cycle
+              elseif (multiphase_scalar) then
+
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, IDs_ndgln, &
+                        option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it), &
+                        thermal = have_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it)//'/prognostic/equation::KEpsilon'),&
+                        saturation=saturation_field )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+
+                    exit
+              else
+              print *, 'solve', '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//  field_name_list(it)
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc,  Porosity_field%val, &
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, IDs_ndgln, &
+                        option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it), &
+                        thermal = have_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it)//'/prognostic/equation::KEpsilon'),&
+                        saturation=saturation_field)
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+               end if
+
+
+           end if
+
+        end do
+
+end if
+end if
+
+
+
+
+
+
+
+
+
+
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
@@ -608,7 +763,7 @@ contains
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta )
+                        IDs_ndgln )
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
@@ -647,7 +802,7 @@ contains
                     exit Loop_NonLinearIteration
                 end if
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, calculate_mass_delta)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
@@ -661,7 +816,6 @@ contains
                 end if
                 after_adapt=.false.
                 its = its + 1
-                first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
             ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
@@ -675,7 +829,7 @@ contains
             ! If calculating boundary fluxes, dump them to outfluxes.txt
             if(calculate_flux) then
                 if(getprocno() == 1) then
-                    call dump_outflux(acctim,porevolume,itime,totout,intflux)
+                    call dump_outflux(acctim,itime,totout,intflux)
                 endif
             endif
             if (nonLinearAdaptTs) then
@@ -699,22 +853,41 @@ contains
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
 
-            Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
-                dtime=dtime+1
-                if (do_checkpoint_simulation(dtime)) then
-                    CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                    FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                    call set(pressure_field,FE_Pressure)
-                    call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                        protect_simulation_name=.true.,file_type='.mpml')
-                    checkpoint_number=checkpoint_number+1
-                    call set(pressure_field,CV_Pressure)
-                end if
-                call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
-                not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
-                call write_state( dump_no, state ) ! Now writing into the vtu files
-            end if Conditional_TimeDump
+            !!$ Write outputs (vtu and checkpoint files)
+            if (have_option('/io/dump_period_in_timesteps')) then
+                ! dump based on the prescribed period of time steps
+                Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
+                    if (do_checkpoint_simulation(dump_no)) then
+                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                        call set(pressure_field,FE_Pressure)
+                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                            protect_simulation_name=.true.,file_type='.mpml')
+                        checkpoint_number=checkpoint_number+1
+                        call set(pressure_field,CV_Pressure)
+                    end if
+                    call get_option( '/timestepping/current_time', current_time ) ! Find the current time
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    not_to_move_det_yet = .false. ;
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                end if Conditional_Dump_TimeStep
+            else if (have_option('/io/dump_period')) then
+                ! dump based on the prescribed period of real time
+                Conditional_Dump_RealTime: if( current_time>=dump_period*dump_no .and. current_time/=finish_time) then
+                    if (do_checkpoint_simulation(dump_no)) then
+                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                        call set(pressure_field,FE_Pressure)
+                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                            protect_simulation_name=.true.,file_type='.mpml')
+                        checkpoint_number=checkpoint_number+1
+                        call set(pressure_field,CV_Pressure)
+                    end if
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    not_to_move_det_yet = .false. ;
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                end if Conditional_Dump_RealTime
+            end if
 
             ! CALL INITIAL MESH TO MESH INTERPOLATION ROUTINE (Before adapting the mesh)
             numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file

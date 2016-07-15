@@ -163,7 +163,13 @@ contains
 
            IGOT_T2_loc = 0
 
-           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
+!!-PY changed it for k_epsilon model
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation' ) then
+!            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
+
+
                p => extract_tensor_field( packed_state, "PackedCVPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
@@ -188,19 +194,51 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+           if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
 
-           if( present( option_path ) ) then ! solving for Temperature or Internal Energy
+!!-PY this part need work for k_epsilon model
                if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
                        'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+                   Field_selector = 1
+                   Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
+                   T_source( :, : ) = Q % val( 1, :, : )
+
                end if
-               Field_selector = 1
-               Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-               T_source( :, : ) = Q % val( 1, :, : )
+             
+
+
+               if( trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' ) then
+                   call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy/prognostic/temporal_discretisation/' // &
+                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+
+
+                   Field_selector = 1
+                   Q => extract_tensor_field( packed_state, "PackedTurbulentKineticEnergySource" )
+                   T_source( :, : ) = Q % val( 1, :, : )
+                   
+              
+
+
+
+
+               else if( trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation' ) then
+                   call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation/prognostic/temporal_discretisation/' // &
+                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+
+
+                   Field_selector = 1
+                   Q => extract_tensor_field( packed_state, "PackedTurbulentDissipationSource" )
+                   T_source( :, : ) = Q % val( 1, :, : )
+                   
+               end if
+
+
                cv_disopt = Mdisopt%t_disopt
                cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
                cv_theta = Mdisopt%t_theta
                cv_beta = Mdisopt%t_beta
+
            else ! solving for Composition
                call get_option( '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
                    'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
@@ -220,8 +258,18 @@ contains
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
-           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
-              call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION )
+
+
+
+
+
+!!-PY changed it for k_epsilon model
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation') then
+ !          if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
+ 
+              call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer )
            end if
 
            ! get diffusivity for compositional
@@ -682,7 +730,7 @@ contains
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IDs_ndgln, calculate_mass_delta )
+        IDs_ndgln )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -726,8 +774,8 @@ contains
         real, dimension(:,:,:), allocatable :: velocity_absorption, U_SOURCE_CV_ALL
         real, dimension(:,:,:,:), allocatable :: UDIFFUSION_ALL
 
-        real, dimension(:,:) :: calculate_mass_delta
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
+
         type( multi_field ) :: UDIFFUSION_ALL2
 
 
@@ -769,8 +817,6 @@ contains
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         INTEGER :: IPLIKE_GRAD_SOU
-
-
         !!$ magma stuff -- to be deleted shortly
         integer :: idim, idx1, idx2, ndim
         type( scalar_field ), pointer :: beta
@@ -960,7 +1006,7 @@ contains
         end if
 
         ! update velocity source
-        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, u_source_all)
+        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, u_source_all )
 
         PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
         if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
@@ -977,7 +1023,6 @@ contains
              if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
                 RECALC_C_CV = .true.!sprint_to_do; we may not need this logical
-                !Check if use Mmat%C_CV to get velocities or use Mmat%C
             else!allocate C
                 allocate(Mmat%C(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C = 0.
             end if
@@ -1035,7 +1080,7 @@ contains
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
-            symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV, calculate_mass_delta)
+            symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
         deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -1070,6 +1115,7 @@ contains
             else
                nullify(halo)
             end if
+
             !Form pressure matrix
             CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -1236,7 +1282,6 @@ END IF
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
-
             call halo_update(p_all)
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
@@ -1252,6 +1297,7 @@ END IF
             call halo_update(cdp_tensor)
             ! Correct velocity...
             ! DU = BLOCK_MAT * CDP
+
             ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
             CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
@@ -1341,7 +1387,7 @@ END IF
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV, calculate_mass_delta)
+        symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1404,10 +1450,6 @@ END IF
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
-
-        real, dimension(:,:) :: calculate_mass_delta
-!        real, dimension(:) :: calculate_mass_internal_previous
-
 
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
@@ -1487,8 +1529,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MEAN_PORE_CV, &
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
-            dummy_transp, IDs_ndgln, &                                                 !sprint_to_do; remove SUF_INT_MASS_MATRIX?
-            RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., calculate_mass_delta = calculate_mass_delta)
+            dummy_transp, IDs_ndgln, &
+            RECALC_C_CV = RECALC_C_CV)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
@@ -1626,7 +1668,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         SUDOLD_ALL_KEEP, SUD2_ALL_KEEP, SUDOLD2_ALL_KEEP
         REAL, DIMENSION ( : ), allocatable :: vel_dot, vel_dot2, velold_dot, velold_dot2, grad_fact
         ! Nonlinear Petrov-Galerkin stuff...
-        REAL, DIMENSION ( : , : ), allocatable ::LOC_MASS_INV, LOC_MASS, P_DX
+        REAL, DIMENSION ( : , : ), allocatable ::LOC_MASS_INV, LOC_MASS, P_DX        
         REAL, DIMENSION ( : ), allocatable :: VLK_UVW, U_R2_COEF, U_GRAD_N_MAX2
         REAL, DIMENSION ( :, :, : ), allocatable :: &
         MAT_ELE, DIFFGI_U, RHS_DIFF_U, DIFF_VEC_U, SOUGI_X, RESID_U, U_DT, &
@@ -1651,7 +1693,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! LES_THETA =1 is backward Euler for the LES viscocity.
 ! COEFF_SOLID_FLUID is the coeffficient that determins the magnitude of the relaxation to the solid vel...
 ! min_den_for_solid_fluid is the minimum density that is used in the solid-fluid coupling term.
-            REAL, PARAMETER :: min_den_for_solid_fluid = 1.0, COEFF_SOLID_FLUID_stab=1.0, COEFF_SOLID_FLUID_relax=1.0
+!!-PY: COEFF_SOLID_FLUID_stab=1.0 means there is relaxation in the shell by using the immersed-shell method.
+!!-PY: COEFF_SOLID_FLUID_relax=0.0 means there is no relaxtion inside the solid. If switch to COEFF_SOLID_FLUID_relax=1.0, that means there is relaxtion inside the solid.
+            REAL, PARAMETER :: min_den_for_solid_fluid = 1.0, COEFF_SOLID_FLUID_stab=1.0, COEFF_SOLID_FLUID_relax=0.0
 ! include_viscous_solid_fluid_drag_force switches on the solid-fluid coupling viscocity boundary conditions...
 !            LOGICAL, PARAMETER :: include_viscous_solid_fluid_drag_force = .FALSE.
             LOGICAL :: include_viscous_solid_fluid_drag_force
@@ -1905,16 +1949,28 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             beta )
         if (beta>=.999) mom_conserv=.true.
         ewrite(3,*) 'mom_conserv:', mom_conserv
-        lump_mass = .false.
-        if ( have_option( &
-            '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix') &
-            ) lump_mass = .true.
+
+        lump_mass = have_option( &
+            '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix')
         !retrieve lump_weight parameter
         call get_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix/lump_weight', &
             lump_weight, default = -1. )
         !Act only if the parameter is above zero
         homogenize_mass_matrix = (lump_weight > 0)
+
+
+        !For P1DGP1 or P1DGP2 using the new formulation this solves the problem with pressure boundary conditions
+        !also, this requires to use the old way to get the Pivit Matrix
+        if (Mmat%CV_pressure) then
+            lump_mass = .true.
+            homogenize_mass_matrix = .true.
+            call get_option( &
+            '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
+            !For P1DGP1 the correct value is 100 and for P1DGP2 the correct value seems to be 10.
+            lump_weight = 100.**(1./j)
+        end if
+
         lump_absorption = .false.
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/vector_field::Absorption/lump_absorption') &
@@ -2153,12 +2209,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ALLOCATE(FOURCE_SOLID_FLUID_COUP(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
                 f_x => extract_vector_field( packed_state, "f_x" )
                 do IDIMSF= 1, Mdims%ndim
-                    FOURCE_SOLID_FLUID_COUP( IDIMSF, 1, : ) = f_x%val(IDIMSF, : ) !f_x do not include Mdims%nphase
+                    FOURCE_SOLID_FLUID_COUP( IDIMSF, 1, : ) = 7.5*f_x%val(IDIMSF, : ) !f_x do not include Mdims%nphase
                 end do
                 a_xx => extract_tensor_field( packed_state, "a_xx")
                 do IDIMSF=1, Mdims%ndim
                     do JDIMSF=1, Mdims%ndim
-                        ABS_SOLID_FLUID_COUP(IDIMSF, JDIMSF, 1, :)=a_xx%val(IDIMSF, JDIMSF, :) ! a_xx do not include Mdims%nphase
+                        ABS_SOLID_FLUID_COUP(IDIMSF, JDIMSF, 1, :)=7.5*a_xx%val(IDIMSF, JDIMSF, :) ! a_xx do not include Mdims%nphase
                     end do
                 end do
             ENDIF
@@ -2366,21 +2422,21 @@ end if
                             exit
                         end if
                     end do
-                    if (Porous_media_PIVIT_not_stored_yet.and. Mmat%CV_pressure) then
+!                    if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure .and.is_porous_media) then
+                    if (.false.) then
                         if (skip) then
-                            Mmat%PIVIT_MAT(:,:,ELE)=0.0
                             do i=1,size(Mmat%PIVIT_MAT,1)
-!                               Mmat%PIVIT_MAT(I,I,ELE)= 1.0
-                                Mmat%PIVIT_MAT(I,I,ELE)= 2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
+                                Mmat%PIVIT_MAT(I,I,ELE)= DevFuns%VOLUME/dble(Mdims%u_nloc)
                             END DO
                         end if
                     end if
                 end if
             else
-                if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure) then
-                    Mmat%PIVIT_MAT(:,:,ELE)=0.0
+!                if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure.and.is_porous_media) then
+                !FOR P2DGP1DG THE PIVIT MATRIX HAVE TO BE DIAGONAL!! OTHERWISE IT DOES NOT WORK
+                if (.false.) then
                     do i=1,size(Mmat%PIVIT_MAT,1)
-                        Mmat%PIVIT_MAT(I,I,ELE) = 2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
+                        Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)
                     END DO
                 end if
             end if
@@ -2691,8 +2747,8 @@ end if
                     END DO
                 END DO
             END IF
-            if (Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure) then!sprint_to_do; Internal subroutine for this?
-!            if (.not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
+!            if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
+            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi
@@ -3714,6 +3770,7 @@ end if
                             if(.not.got_c_matrix) JCV_NOD = ndgln%suf_p(( SELE - 1 ) * Mdims%p_snloc + P_SJLOC )
                             !Calculate aid variable NMX_ALL
                             NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
+
                             IF(IGOT_VOL_X_PRESSURE==1) THEN
                                 DO IPHASE = 1, Mdims%nphase
                                     VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )

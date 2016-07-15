@@ -15,20 +15,20 @@ toleranceMass = 2e-5
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system('rm -f ' + path+ '/QuickTest_DG_outfluxes.csv')
+os.system('rm -f ' + path+ '/outfluxes.csv')
 os.system(binpath + ' ' + path + '/*mpml')
 
-with open('QuickTest_DG_outfluxes.csv','r') as f1:
+with open('outfluxes.csv','r') as f1:
 # Need a slightly modified script to correctly read this file in       
     f1.readline()
     for row in f1:
         columns = row.split(",")
         try:
             tC.append(float(columns[1]))
-            f1C.append(float(columns[3]))
-            f2C.append(float(columns[4]))
-            t1C.append(float(columns[5]))
-            t2C.append(float(columns[6]))        
+            f1C.append(float(columns[2]))
+            f2C.append(float(columns[3]))
+            t1C.append(float(columns[4]))
+            t2C.append(float(columns[5]))        
         except:
             print "some error"
 
@@ -97,13 +97,12 @@ pos = len(tC)-1
 totalMass = t2C[pos]+t1C[pos]
 totalMass_reference = fn3(tC[pos])+fn4(tC[pos])
 InjectedMass = 0.008
-print "Total mass", totalMass
-print "Total mass - Injected mass", (totalMass - InjectedMass)
-print  L1_sum1, L1_sum2, L1_sum3, L1_sum4, L1_sum5, L1_sum6, L1_sum7, L1_sum8
+#print totalMass - InjectedMass
+#print  L1_sum1, L1_sum2, L1_sum3, L1_sum4, L1_sum5, L1_sum6, L1_sum7, L1_sum8
 
 #First and most important thing of this test is to check if we conserve Mass
 if (abs(totalMass-InjectedMass) < toleranceMass):
-    print "BL with fluxes conserves mass :OK"
+    print "BL with fluxes conserves mass OK"
 else:
     if(L1_sum1 < tolerance1 and L1_sum2 < tolerance1 and  L1_sum3 < tolerance1 and L1_sum4 < tolerance1 and L1_sum5 < tolerance2 and L1_sum6 < tolerance2 and L1_sum7 < tolerance2 and L1_sum8 < tolerance2) :
         print "BL with fluxes works OK"

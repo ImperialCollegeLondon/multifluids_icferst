@@ -70,11 +70,6 @@
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="PressureMesh"/>
-    <dump_boundaryflux>
-      <surface_ids>
-        <integer_value shape="1" rank="1">1</integer_value>
-      </surface_ids>
-    </dump_boundaryflux>
     <stat/>
   </io>
   <timestepping>
@@ -97,10 +92,6 @@
         <Inifinite_norm_tol>
           <real_value rank="0">0.02</real_value>
         </Inifinite_norm_tol>
-        <Test_mass_consv>
-          <real_value rank="0">5e-3</real_value>
-        </Test_mass_consv>
-        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
     <adaptive_timestep>

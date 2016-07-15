@@ -70,7 +70,7 @@
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="PressureMesh"/>
-    <dump_boundaryflux>
+    <dump_boundaryflux name="Boundaryflux">
       <surface_ids>
         <integer_value shape="1" rank="1">8</integer_value>
       </surface_ids>
