@@ -585,11 +585,11 @@ contains
         !!$ Solving Advection Field: Temperature
 
 !!-PY changed it for k_epsilon model
-        if (tracer%name== "PackedTurbulentKineticEnergy") then 
+        if (tracer%name== "PackedTurbulentKineticEnergy") then
              option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
         else if (tracer%name == "PackedTurbulentDissipation") then
              option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
-        end if 
+        end if
 
 !        option_path = '/material_phase[0]/scalar_field::Temperature'
 
@@ -600,7 +600,7 @@ contains
 !            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
 !        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
 !            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
-!        end if 
+!        end if
 
 
         option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
@@ -617,7 +617,7 @@ contains
             end if
         end if Conditional_TDISOPT
         call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
-        
+
 !!-PY changed it for k_epsilon model
 
        call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
@@ -633,7 +633,7 @@ contains
 !        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
 !            call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation/prognostic/temporal_discretisation/theta', &
 !                Mdisopt%t_theta, default = 1. )
-!        end if 
+!        end if
 
 
 
@@ -723,7 +723,7 @@ contains
         do iphase = 1, nphase
 
 !!-Py changed it for k_epsilon model
-            if (tracer%name == "PackedTemperature") then 
+            if (tracer%name == "PackedTemperature") then
                 field_name = 'Temperature'
             else if (tracer%name == "PackedTurbulentKineticEnergy") then
                 field_name = 'TurbulentKineticEnergy'
@@ -731,8 +731,8 @@ contains
                 field_name = 'TurbulentDissipation'
             end if
 
- !.or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation"            
- 
+ !.or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation"
+
 
 
 
@@ -746,7 +746,7 @@ contains
 
 
 !!-Py changed it for k_epsilon model
-            if (tracer%name == "PackedTemperature") then 
+            if (tracer%name == "PackedTemperature") then
                 option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
             else if (tracer%name == "PackedTurbulentKineticEnergy") then
                 option_path = '/material_phase['//int2str( iphase - 1 )//']/subgridscale_parameterisations/k-epsilon/scalar_field::'//trim( field_name )
@@ -1072,12 +1072,12 @@ contains
             call insert_sfield(packed_state,"TurbulentDissipation",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
             call insert_sfield(packed_state,"FETurbulentDissipation",1,nphase)
-            
+
         end if
 
 
-        
-        
+
+
 
 
 
@@ -3661,7 +3661,7 @@ end subroutine get_DarcyVelocity
         else
             ! Write the actual numbers to the file now
             counter = 0
-            write(numbers,'(f10.7,a,f10.7)') current_time, "," , porevolume
+            write(numbers,'(f15.5,a,f15.5)') current_time, "," , porevolume
             whole_line =  ","// trim(numbers)
             do ioutlet =1, size(outflux,2)
                 if(counter > 0) then
@@ -3669,11 +3669,11 @@ end subroutine get_DarcyVelocity
                 endif
                 !write(whole_line,*) current_time
                 do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),'(f10.7)') outflux(iphase,ioutlet)
+                    write(fluxstring(iphase),'(f15.5)') outflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),'(f10.7)') intflux(iphase,ioutlet)
+                    write(intfluxstring(iphase),'(f15.5)') intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 counter = counter + 1

@@ -203,7 +203,7 @@ contains
         character(len=FIELD_NAME_LEN) :: tmp_name
         logical :: use_advdif, multiphase_scalar
         integer :: it, it2, nphase_scalar
-       
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -922,6 +922,7 @@ end if
                 !For porous media we need to use the Courant number obtained in cv_assemb
                 if (is_porous_media) then
                     c = max ( c, Courant_number )
+                    ewrite(1,*) "maximum cfl number at", current_time, "s =", c
                 else
                     do iphase = 1, Mdims%nphase
                         ! requested cfl
