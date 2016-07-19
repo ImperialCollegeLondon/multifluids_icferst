@@ -138,9 +138,7 @@ interpolated for VTK output.</a:documentation>
         <optional>
           <element name="dump_boundaryflux">
             <a:documentation>Surface to Integrate Over</a:documentation>
-            <attribute name="name">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
+            <empty/>
             <element name="surface_ids">
               <a:documentation>Surface id:</a:documentation>
               <ref name="integer_vector"/>

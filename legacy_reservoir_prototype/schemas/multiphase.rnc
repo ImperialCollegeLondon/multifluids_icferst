@@ -120,7 +120,7 @@ start =
             }?,
             ## Surface to Integrate Over
             element dump_boundaryflux {
-            attribute name { string },
+            empty,
             ## Surface id:
             element surface_ids {
             integer_vector
