@@ -4613,7 +4613,7 @@ end if
             logical :: P_BC_element
             !Weight parameter, controls the strenght of the homogenization of the velocity nodes per element
             !the bigger the more P0DG it tends to be
-            real :: factor, factor_default
+            real :: factor, factor_default, bc_factor
             real, save :: lump_vol_factor =-1.
 
             !Create the mass matrix normally by distributting the mass evenly between the nodes
@@ -4622,6 +4622,7 @@ end if
             END DO
 
             !Next check if the element is on the boundary and has pressure boundary conditions
+!            bc_factor = 1.
 !            P_BC_element = .false.
 !            DO IFACE = 1, FE_GIdims%nface
 !                ELE2  = FACE_ELE( IFACE, ELE )
@@ -4629,7 +4630,7 @@ end if
 !                SELE  = SELE2
 !                if (SELE/=0 ) P_BC_element = (WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_DIRICHLET)
 !                if (P_BC_element) exit!If one side is pressure boundary, exit
-!                !if (ele2>0) then
+!                !if (ele2>0) then!Check another row of elements
 !                !    DO IFACE2 = 1, FE_GIdims%nface
 !                !        ELE3  = FACE_ELE( IFACE2, ELE2 )
 !                !        SELE2 = MAX( 0, - ELE3 )
@@ -4639,68 +4640,53 @@ end if
 !                !    end do
 !                !end if
 !            end do
-!
-!            !THIS METHOD SEEMS TO HELP FOR P2DGP1DG AS WELL... MAYBE A BETTER ONE THAT TENDS FROM P2DG TO P1DG??
-!            if (P_BC_element)then
-!                factor = 1d4
-!            else
-!                factor = 1d2
-!            end if
-
-!factor = 1d10
+!            if (P_BC_element) bc_factor = 1d1
 
 
             !If pressure boundary element, then we homogenize the velocity in the element
-            !AT PRESENT OVERWRITTEN TO APPLY IT TO EVERY ELEMENT
-!            if (P_BC_element) then
-            if (.true.) then
-                if (lump_vol_factor<0) then
-                    call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )
-                    call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', pres_degree )
+            if (lump_vol_factor<0) then
+                call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )
+                call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', pres_degree )
 
-                    if (max(pres_degree,vel_degree)>1) then
-                        factor_default = 3.
-                    else
-                        factor_default = 100.
-                    end if
-
-                    !Obtain the value from diamond
-                    call get_option( '/numerical_methods/CV_press_homogenisation', factor, default = factor_default )
-                    !For P1DGP1 a good value is 100 and for P1DGP2 the value seems to be 10.
-!                    lump_vol_factor = factor**(1./max(pres_degree,vel_degree))
-                    !This value is the amount of mass used to homogenize the element
-                    lump_vol_factor = factor * DevFuns%VOLUME/dble(Mdims%u_nloc)
+                if (max(pres_degree,vel_degree)>1) then
+                    factor_default = 3.
+                else
+                    factor_default = 100.
                 end if
-                !No coupling between dimensions nor phases, only based on geometry
-                DO U_JLOC = 1, Mdims%u_nloc
-                    DO U_ILOC = 1, Mdims%u_nloc
-                        DO IPHASE = 1, Mdims%nphase
-                            DO IDIM = 1, Mdims%ndim
-                                J = IDIM+(IPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
-                                Mmat%PIVIT_MAT(I,I,ELE) = Mmat%PIVIT_MAT(I,I,ELE) + lump_vol_factor
-                                Mmat%PIVIT_MAT(I,J,ELE) = Mmat%PIVIT_MAT(I,J,ELE) - lump_vol_factor
-                            end do
+                !Obtain the value from diamond
+                call get_option( '/numerical_methods/CV_press_homogenisation', factor, default = factor_default )
+                !This value is the amount of mass used to homogenize the element
+                lump_vol_factor = factor * DevFuns%VOLUME/dble(Mdims%u_nloc)
+            end if
+            !No coupling between dimensions nor phases, only based on geometry
+            DO U_JLOC = 1, Mdims%u_nloc
+                DO U_ILOC = 1, Mdims%u_nloc
+                    DO IPHASE = 1, Mdims%nphase
+                        DO IDIM = 1, Mdims%ndim
+                            J = IDIM+(IPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                            I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                            Mmat%PIVIT_MAT(I,I,ELE) = Mmat%PIVIT_MAT(I,I,ELE) + lump_vol_factor!*bc_factor
+                            Mmat%PIVIT_MAT(I,J,ELE) = Mmat%PIVIT_MAT(I,J,ELE) - lump_vol_factor!*bc_factor
                         end do
                     end do
                 end do
-!                DO U_JLOC = 1, Mdims%u_nloc
-!                    !if (any(U_JLOC == (/1,3,6/))) cycle!to homogenize the inner nodes
-!                    if (any((/2,4,5/) == U_JLOC)) cycle
-!                    DO U_ILOC = 1, Mdims%u_nloc
-!                    !    if (any(U_ILOC == (/1,3,6/))) cycle!to homogenize the inner nodes
-!                        if (any((/2,4,5/) == U_ILOC)) cycle
-!                        DO IPHASE = 1, Mdims%nphase
-!                            DO IDIM = 1, Mdims%ndim
-!                                J = IDIM+(IPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-!                                I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
-!                                Mmat%PIVIT_MAT(I,I,ELE) = Mmat%PIVIT_MAT(I,I,ELE) + lump_vol_factor
-!                                Mmat%PIVIT_MAT(I,J,ELE) = Mmat%PIVIT_MAT(I,J,ELE) - lump_vol_factor
-!                            end do
+            end do
+!            DO U_JLOC = 1, Mdims%u_nloc
+!                !if (any(U_JLOC == (/1,3,6/))) cycle!to homogenize the inner nodes
+!                if (any((/2,4,5/) == U_JLOC)) cycle
+!                DO U_ILOC = 1, Mdims%u_nloc
+!                !    if (any(U_ILOC == (/1,3,6/))) cycle!to homogenize the inner nodes
+!                    if (any((/2,4,5/) == U_ILOC)) cycle
+!                    DO IPHASE = 1, Mdims%nphase
+!                        DO IDIM = 1, Mdims%ndim
+!                            J = IDIM+(IPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+!                            I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+!                            Mmat%PIVIT_MAT(I,I,ELE) = Mmat%PIVIT_MAT(I,I,ELE) + lump_vol_factor
+!                            Mmat%PIVIT_MAT(I,J,ELE) = Mmat%PIVIT_MAT(I,J,ELE) - lump_vol_factor
 !                        end do
 !                    end do
 !                end do
-            end if
+!            end do
 
         end subroutine get_porous_Mass_matrix
 

@@ -1417,7 +1417,9 @@ prognostic_pressure_field =
          }
       )?,
      (	
-       ## Use a Control Volume discretization to form the Pressure matrix
+       ## Use a Control Volume discretization to form the Pressure matrix.
+       ## If NOT using Pressure inlet boundary conditions, it is recommended to disable 
+       ## CV_press_homogenisation in the numerical_methods section.
          element CV_P_matrix {
             empty}
       )?,

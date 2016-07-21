@@ -1950,11 +1950,12 @@ start =
             }?,  
             ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
             ## the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.
-            ## The default value is for P1DGP1 => 100 and P2DGP1DG => 3
+            ## The default value is for P1DGP1 => 100 and P2DGP1DG => 3;
+            ## To disable, set it to zero. This SHOULD be disabled if there are no pressure inlet boundary conditions
             element CV_press_homogenisation {
                real
             }?,
-            ## Use the fast method to create the pressure matrix. Be aware that some me
+            ## Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method
             element create_P_mat_fast {
                empty
             }? 
