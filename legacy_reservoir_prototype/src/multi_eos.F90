@@ -1483,6 +1483,7 @@ print *, 'get TurbulentDissipationDiffusivity'
                               mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
                            end if
                         end if
+
                         do iloc = 1, Mdims%cv_nloc
                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                            momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( 1, 1, iloc ) ! isotropic only - to be deleted...
