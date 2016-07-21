@@ -138,9 +138,7 @@ interpolated for VTK output.</a:documentation>
         <optional>
           <element name="dump_boundaryflux">
             <a:documentation>Surface to Integrate Over</a:documentation>
-            <attribute name="name">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
+            <empty/>
             <element name="surface_ids">
               <a:documentation>Surface id:</a:documentation>
               <ref name="integer_vector"/>
@@ -558,6 +556,15 @@ If having problems converging the recomendation is to try different parameters f
                     <a:documentation>Tolerance for the infinite norm of the variation in saturation
 between two FPI
 By default 0.03; Recommended between 0.05 and 0.005</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Test_mass_consv">
+                    <a:documentation>Convergence criterion based on the 
+conservation of mass for the Fixed Point Iteration solver
+
+By default the tolerance is 5e-3</a:documentation>
                     <ref name="real"/>
                   </element>
                 </optional>
@@ -6443,6 +6450,7 @@ This means the interpolation will not be conservative from the previous mesh so 
   </define>
   <define name="equation_of_state">
     <element name="equation_of_state">
+      <a:documentation>Use this option to specify the density of fluids</a:documentation>
       <choice>
         <element name="incompressible">
           <a:documentation>Equations of state</a:documentation>

@@ -730,7 +730,7 @@ contains
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IDs_ndgln )
+        IDs_ndgln, calculate_mass_delta )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -774,6 +774,7 @@ contains
         real, dimension(:,:,:), allocatable :: velocity_absorption, U_SOURCE_CV_ALL
         real, dimension(:,:,:,:), allocatable :: UDIFFUSION_ALL
 
+        real, dimension(:,:) :: calculate_mass_delta
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
 
         type( multi_field ) :: UDIFFUSION_ALL2
@@ -1080,8 +1081,7 @@ contains
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
-            symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
-
+            symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV, calculate_mass_delta)
         deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -1389,7 +1389,7 @@ END IF
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
+        symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV, calculate_mass_delta)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1452,6 +1452,10 @@ END IF
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
+
+        real, dimension(:,:) :: calculate_mass_delta
+!        real, dimension(:) :: calculate_mass_internal_previous
+
 
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
@@ -1532,7 +1536,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
-            RECALC_C_CV = RECALC_C_CV)
+            RECALC_C_CV = RECALC_C_CV, calculate_mass_delta = calculate_mass_delta)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
