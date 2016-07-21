@@ -83,15 +83,21 @@
       <real_value rank="0">0.6</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">20</integer_value>
+      <integer_value rank="0">250</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Backtracking_factor>
-          <real_value rank="0">-0.1</real_value>
+          <real_value rank="0">-0.05</real_value>
         </Backtracking_factor>
         <Acceleration_exp>
           <real_value rank="0">100</real_value>
         </Acceleration_exp>
+        <Inifinite_norm_tol>
+          <real_value rank="0">0.01</real_value>
+        </Inifinite_norm_tol>
+        <Test_mass_consv>
+          <real_value rank="0">1e-3</real_value>
+        </Test_mass_consv>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -492,7 +498,7 @@
         </scalar_field>
       </immobile_fraction>
       <Sat_overRelax>
-        <real_value rank="0">0.001</real_value>
+        <real_value rank="0">0.005</real_value>
       </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
