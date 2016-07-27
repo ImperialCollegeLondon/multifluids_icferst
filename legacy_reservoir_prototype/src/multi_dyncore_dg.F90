@@ -4662,6 +4662,10 @@ end if
                 !This value is the amount of mass used to homogenize the element
                 lump_vol_factor = factor * DevFuns%VOLUME/dble(Mdims%u_nloc)
             end if
+
+            !If CV_press_homogenisation negative or zero, then, do not apply this method
+            if (lump_vol_factor <= 0.) return
+
             !No coupling between dimensions nor phases, only based on geometry
             DO U_JLOC = 1, Mdims%u_nloc
                 DO U_ILOC = 1, Mdims%u_nloc
