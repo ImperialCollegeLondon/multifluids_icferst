@@ -1,0 +1,383 @@
+GFORTRAN module version '10' created from Exodusii_F_Interface.F90
+MD5:dcd7755d89aefa91838204db10001f96 -- If you edit this, you'll get what you deserve.
+
+(() () () () () () () () () () () () () () () () () () () () () () () ()
+() () ())
+
+()
+
+(('f_ex_close' 'exodusii_f_interface' 2) ('f_ex_get_coord'
+'exodusii_f_interface' 3) ('f_ex_get_elem_blk_ids' 'exodusii_f_interface'
+4) ('f_ex_get_elem_block' 'exodusii_f_interface' 5) (
+'f_ex_get_elem_block_parameters' 'exodusii_f_interface' 6) (
+'f_ex_get_elem_connectivity' 'exodusii_f_interface' 7) (
+'f_ex_get_elem_num_map' 'exodusii_f_interface' 8) (
+'f_ex_get_elem_order_map' 'exodusii_f_interface' 9) ('f_ex_get_init'
+'exodusii_f_interface' 10) ('f_ex_get_node_num_map' 'exodusii_f_interface'
+11) ('f_ex_get_node_set_node_list' 'exodusii_f_interface' 12) (
+'f_ex_get_node_set_param' 'exodusii_f_interface' 13) ('f_ex_get_side_set'
+'exodusii_f_interface' 14) ('f_ex_get_side_set_ids' 'exodusii_f_interface'
+15) ('f_ex_get_side_set_node_list' 'exodusii_f_interface' 16) (
+'f_ex_get_side_set_param' 'exodusii_f_interface' 17) ('f_read_ex_open'
+'exodusii_f_interface' 18))
+
+()
+
+()
+
+()
+
+(19 'f_ex_close' 'exodusii_f_interface' '' 1 ((PROCEDURE UNKNOWN-INTENT
+UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (UNKNOWN 0 0 0 0
+UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+20 'f_ex_get_coord' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+21 'f_ex_get_elem_blk_ids' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+22 'f_ex_get_elem_block' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+23 'f_ex_get_elem_block_parameters' 'exodusii_f_interface' '' 1 ((
+PROCEDURE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION
+GENERIC) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+24 'f_ex_get_elem_connectivity' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+25 'f_ex_get_elem_num_map' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+26 'f_ex_get_elem_order_map' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+27 'f_ex_get_init' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+28 'f_ex_get_node_num_map' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+29 'f_ex_get_node_set_node_list' 'exodusii_f_interface' '' 1 ((
+PROCEDURE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION
+GENERIC) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+30 'f_ex_get_node_set_param' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+31 'f_ex_get_side_set' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+32 'f_ex_get_side_set_ids' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+33 'f_ex_get_side_set_node_list' 'exodusii_f_interface' '' 1 ((
+PROCEDURE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION
+GENERIC) (UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+34 'f_ex_get_side_set_param' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+35 'f_read_ex_open' 'exodusii_f_interface' '' 1 ((PROCEDURE
+UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 FUNCTION GENERIC) (
+UNKNOWN 0 0 0 0 UNKNOWN ()) 0 0 () () 0 () () () 0 0)
+2 'c_ex_close' 'exodusii_f_interface' 'c_ex_close' 1 ((PROCEDURE
+UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C
+IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 36 0 (37) () 38 () () () 0 0)
+3 'c_ex_get_coord' 'exodusii_f_interface' 'c_ex_get_coord' 1 ((
+PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL FUNCTION
+IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 39 0 (40 41 42 43)
+() 44 () () () 0 0)
+4 'c_ex_get_elem_blk_ids' 'exodusii_f_interface' 'c_ex_get_elem_blk_ids'
+1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL
+FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 45 0 (46
+47) () 48 () () () 0 0)
+5 'c_ex_get_elem_block' 'exodusii_f_interface' 'c_ex_get_elem_block' 1 (
+(PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL FUNCTION
+IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 49 0 (50 51 52 53
+54 55) () 56 () () () 0 0)
+6 'c_ex_get_elem_block_parameters' 'exodusii_f_interface'
+'c_ex_get_elem_block_parameters' 1 ((PROCEDURE UNKNOWN-INTENT
+MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C IS_C_INTEROP) (
+INTEGER 4 0 1 0 INTEGER ()) 57 0 (58 59 60 61 62) () 63 () () () 0 0)
+7 'c_ex_get_elem_connectivity' 'exodusii_f_interface'
+'c_ex_get_elem_connectivity' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC
+BODY UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0
+1 0 INTEGER ()) 64 0 (65 66 67) () 68 () () () 0 0)
+8 'c_ex_get_elem_num_map' 'exodusii_f_interface' 'c_ex_get_elem_num_map'
+1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL
+FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 69 0 (70
+71) () 72 () () () 0 0)
+9 'c_ex_get_elem_order_map' 'exodusii_f_interface'
+'c_ex_get_elem_order_map' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY
+UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0
+INTEGER ()) 73 0 (74 75) () 76 () () () 0 0)
+10 'c_ex_get_init' 'exodusii_f_interface' 'c_ex_get_init' 1 ((PROCEDURE
+UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C
+IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 77 0 (78 79 80 81 82 83 84 85)
+() 86 () () () 0 0)
+11 'c_ex_get_node_num_map' 'exodusii_f_interface' 'c_ex_get_node_num_map'
+1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL
+FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 87 0 (88
+89) () 90 () () () 0 0)
+12 'c_ex_get_node_set_node_list' 'exodusii_f_interface'
+'c_ex_get_node_set_node_list' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC
+BODY UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0
+1 0 INTEGER ()) 91 0 (92 93 94 95) () 96 () () () 0 0)
+13 'c_ex_get_node_set_param' 'exodusii_f_interface'
+'c_ex_get_node_set_param' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY
+UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0
+INTEGER ()) 97 0 (98 99 100 101) () 102 () () () 0 0)
+14 'c_ex_get_side_set' 'exodusii_f_interface' 'c_ex_get_side_set' 1 ((
+PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL FUNCTION
+IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 103 0 (104 105 106
+107) () 108 () () () 0 0)
+15 'c_ex_get_side_set_ids' 'exodusii_f_interface' 'c_ex_get_side_set_ids'
+1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL
+FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 109 0 (
+110 111) () 112 () () () 0 0)
+16 'c_ex_get_side_set_node_list' 'exodusii_f_interface'
+'c_ex_get_side_set_node_list' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC
+BODY UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0
+1 0 INTEGER ()) 113 0 (114 115 116 117) () 118 () () () 0 0)
+17 'c_ex_get_side_set_param' 'exodusii_f_interface'
+'c_ex_get_side_set_param' 1 ((PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY
+UNKNOWN 0 0 EXTERNAL FUNCTION IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0
+INTEGER ()) 119 0 (120 121 122 123) () 124 () () () 0 0)
+18 'c_read_ex_open' 'exodusii_f_interface' 'c_read_ex_open' 1 ((
+PROCEDURE UNKNOWN-INTENT MODULE-PROC BODY UNKNOWN 0 0 EXTERNAL FUNCTION
+IS_BIND_C IS_C_INTEROP) (INTEGER 4 0 1 0 INTEGER ()) 125 0 (126 127 128
+129 130) () 131 () () () 0 0)
+37 'exoid' '' '' 36 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+38 'ierr' '' '' 36 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+40 'exoid' '' '' 39 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+41 'x' '' '' 39 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0
+0 DIMENSION DUMMY) (REAL 4 0 1 0 REAL ()) 0 0 () (1 0 ASSUMED_SIZE (
+CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () () 0 0)
+42 'y' '' '' 39 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0
+0 DIMENSION DUMMY) (REAL 4 0 1 0 REAL ()) 0 0 () (1 0 ASSUMED_SIZE (
+CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () () 0 0)
+43 'z' '' '' 39 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN UNKNOWN 0
+0 DIMENSION DUMMY) (REAL 4 0 1 0 REAL ()) 0 0 () (1 0 ASSUMED_SIZE (
+CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () () 0 0)
+44 'error' '' '' 39 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+46 'exoid' '' '' 45 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+47 'block_ids' '' '' 45 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () (1 0
+ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () ()
+0 0)
+48 'error' '' '' 45 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+50 'exoid' '' '' 49 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+51 'block_id' '' '' 49 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+52 'elem_type' '' '' 49 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (CHARACTER 1 0 1 0 CHARACTER ((CONSTANT (INTEGER 4 0
+0 0 INTEGER ()) 0 '1'))) 0 0 () () 0 () () () 0 0)
+53 'num_elem_in_block' '' '' 49 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+54 'num_nodes_per_elem' '' '' 49 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+55 'num_attr' '' '' 49 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+56 'error' '' '' 49 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+58 'exoid' '' '' 57 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+59 'num_elem_blk' '' '' 57 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+60 'block_ids' '' '' 57 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () (1 0
+ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () ()
+0 0)
+61 'num_elem_in_block' '' '' 57 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+62 'num_nodes_per_elem' '' '' 57 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+63 'error' '' '' 57 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+65 'exoid' '' '' 64 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+66 'block_id' '' '' 64 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+67 'elem_connectivity' '' '' 64 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+68 'error' '' '' 64 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+70 'exoid' '' '' 69 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+71 'elem_num_map' '' '' 69 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+72 'error' '' '' 69 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+74 'exoid' '' '' 73 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+75 'elem_order_map' '' '' 73 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+76 'error' '' '' 73 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+78 'exoid' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+79 'title' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (CHARACTER 1 0 1 0 CHARACTER ((CONSTANT (INTEGER 4 0
+0 0 INTEGER ()) 0 '1'))) 0 0 () () 0 () () () 0 0)
+80 'num_dim' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+81 'num_nodes' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+82 'num_elem' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+83 'num_elem_blk' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+84 'num_node_sets' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+85 'num_side_sets' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+86 'error' '' '' 77 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+88 'exoid' '' '' 87 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+89 'node_map' '' '' 87 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () (1 0
+ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () ()
+0 0)
+90 'error' '' '' 87 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+92 'exoid' '' '' 91 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+93 'num_node_sets' '' '' 91 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+94 'node_set_id' '' '' 91 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+95 'node_set_node_list' '' '' 91 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+96 'error' '' '' 91 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+98 'exoid' '' '' 97 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+99 'num_node_sets' '' '' 97 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+100 'node_set_ids' '' '' 97 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+101 'num_nodes_in_set' '' '' 97 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+102 'error' '' '' 97 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+104 'exoid' '' '' 103 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+105 'side_set_id' '' '' 103 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+106 'elem_list' '' '' 103 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () (1 0
+ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () ()
+0 0)
+107 'side_list' '' '' 103 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () (1 0
+ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 () () ()
+0 0)
+108 'error' '' '' 103 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+110 'exoid' '' '' 109 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+111 'side_set_ids' '' '' 109 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 ()
+(1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER ()) 0 '1') ()) 0 ()
+() () 0 0)
+112 'error' '' '' 109 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+114 'exoid' '' '' 113 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+115 'side_set_id' '' '' 113 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+116 'side_set_node_cnt_list' '' '' 113 ((VARIABLE UNKNOWN-INTENT
+UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0
+INTEGER ()) 0 0 () (1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER
+()) 0 '1') ()) 0 () () () 0 0)
+117 'side_set_node_list' '' '' 113 ((VARIABLE UNKNOWN-INTENT
+UNKNOWN-PROC UNKNOWN UNKNOWN 0 0 DIMENSION DUMMY) (INTEGER 4 0 1 0
+INTEGER ()) 0 0 () (1 0 ASSUMED_SIZE (CONSTANT (INTEGER 4 0 0 0 INTEGER
+()) 0 '1') ()) 0 () () () 0 0)
+118 'error' '' '' 113 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+120 'exoid' '' '' 119 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+121 'side_set_id' '' '' 119 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+122 'num_sides_in_set' '' '' 119 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+123 'num_df_in_set' '' '' 119 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC
+UNKNOWN UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () ()
+() 0 0)
+124 'error' '' '' 119 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+126 'path' '' '' 125 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (CHARACTER 1 0 1 0 CHARACTER ((CONSTANT (INTEGER 4 0
+0 0 INTEGER ()) 0 '1'))) 0 0 () () 0 () () () 0 0)
+127 'mode' '' '' 125 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+128 'comp_ws' '' '' 125 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+129 'io_ws' '' '' 125 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0 0)
+130 'version' '' '' 125 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 DUMMY) (REAL 4 0 1 0 REAL ()) 0 0 () () 0 () () () 0 0)
+131 'exoid' '' '' 125 ((VARIABLE UNKNOWN-INTENT UNKNOWN-PROC UNKNOWN
+UNKNOWN 0 0 RESULT) (INTEGER 4 0 1 0 INTEGER ()) 0 0 () () 0 () () () 0
+0)
+)
+
+('f_ex_close' 0 19 'f_ex_get_coord' 0 20 'f_ex_get_elem_blk_ids' 0 21
+'f_ex_get_elem_block' 0 22 'f_ex_get_elem_block_parameters' 0 23
+'f_ex_get_elem_connectivity' 0 24 'f_ex_get_elem_num_map' 0 25
+'f_ex_get_elem_order_map' 0 26 'f_ex_get_init' 0 27
+'f_ex_get_node_num_map' 0 28 'f_ex_get_node_set_node_list' 0 29
+'f_ex_get_node_set_param' 0 30 'f_ex_get_side_set' 0 31
+'f_ex_get_side_set_ids' 0 32 'f_ex_get_side_set_node_list' 0 33
+'f_ex_get_side_set_param' 0 34 'f_read_ex_open' 0 35)
