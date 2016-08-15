@@ -3636,25 +3636,38 @@ end subroutine get_DarcyVelocity
         ! Write column headings to file
         counter = 0
         if(itime.eq.1) then
-            write(whole_line,*) "Current Time (s)" // "," // "Current Time (days)" // "," // "Pore Volume"
+            write(whole_line,*) "Current Time" // "," // "Pore Volume"
             whole_line = trim(whole_line)
             do ioutlet =1, size(outflux,2)
+                write(numbers,'(a,i0)') "Surface_id=", outlet_id(ioutlet)
+                if(counter.eq.0) then
+                    whole_line = trim(numbers) //","// trim(whole_line)
+                else
+                    whole_line = trim(whole_line) //","// trim(numbers)
+                endif
+                !write(whole_line,*)trim(numbers)  //","//  "Current Time"
                 do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outlet_id(ioutlet), " flux"
+                    write(fluxstring(iphase),'(a, i0, a)') "Phase ", iphase, " boundary flux"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " time integrated flux"
+                    write(intfluxstring(iphase),'(a, i0, a)') "Phase ", iphase,  " time integrated flux (volume/time)"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
+                counter = counter + 1
             end do
              ! Write out the line
             write(default_stat%conv_unit,*), trim(whole_line)
-        endif
+        else
             ! Write the actual numbers to the file now
-            write(numbers,'(f15.5,a,f15.5, a, f15.5)') current_time, "," , current_time/(24*60*60) , ",",  porevolume
-            whole_line =  trim(numbers)
+            counter = 0
+            write(numbers,'(f15.5,a,f15.5)') current_time, "," , porevolume
+            whole_line =  ","// trim(numbers)
             do ioutlet =1, size(outflux,2)
+                if(counter > 0) then
+                    whole_line = trim(whole_line) //","
+                endif
+                !write(whole_line,*) current_time
                 do iphase = 1, size(outflux,1)
                     write(fluxstring(iphase),'(f15.5)') outflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
@@ -3663,9 +3676,11 @@ end subroutine get_DarcyVelocity
                     write(intfluxstring(iphase),'(f15.5)') intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
+                counter = counter + 1
             end do
             ! Write out the line
             write(default_stat%conv_unit,*), trim(whole_line)
+        endif
         close (default_stat%conv_unit)
     end subroutine dump_outflux
 
