@@ -45,7 +45,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use global_parameters, only: current_time, dt, timestep, option_path_len, &
         simulation_start_time, &
         simulation_start_cpu_time, &
-        simulation_start_wall_time, is_porous_media, first_time_step
+        simulation_start_wall_time, is_porous_media, first_time_step, multi_generic_warning
     use diagnostic_fields_new_multiphase, only : &
         & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
         & check_diagnostic_dependencies
@@ -110,6 +110,10 @@ subroutine multiphase_prototype_wrapper() bind(C)
     !allocate(rheology(size(state)))
     !call initialize_rheologies(state,rheology)
     !call calculate_rheologies(state,rheology)
+
+    !Prepare the generic warning message for users, this message is intended to help to debug a bad input file/mesh
+    call set_up_generic_warning_message()!print *, trim(multi_generic_warning)
+
 
     !--------------------------------------------------------------------------------------------------------
     ! This should be read by the Copy_Outof_Into_State subrts
@@ -339,6 +343,24 @@ contains
         call populate_state(state)
 
     end subroutine populate_multi_state
+
+    subroutine set_up_generic_warning_message()
+        implicit none
+
+        character(len=1) :: aux
+        multi_generic_warning = "WARNING: The set up of the numerical experiment may have some issues and a physical solution cannot be guaranteed."
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"ONLY IF A PROBLEM APPEARS IN THE NUMERICAL SOLUTION, follow the next steps to try to find/solve the problem:"
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"1. Reduce the time-step/use a fix time-step method"
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"2. If using an adaptive mesh => use a fix mesh"
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"3. Does the problem occur with a different mesh/element type? => Change the mesh and/or element type"
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"4. Check the convergence criteria of the non-linear/linear solvers => make them tighter"
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"5. Simplify the physics of the problem until it works => remove physical effects and/or phases"
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')
+        multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"May a bug be found, please file it in the corresponding repository following the standard procedure"
+
+    end subroutine set_up_generic_warning_message
 
 
 end subroutine multiphase_prototype_wrapper
