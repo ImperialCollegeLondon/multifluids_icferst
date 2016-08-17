@@ -405,6 +405,12 @@ NOTE: Requires -v2</a:documentation>
             </optional>
           </element>
         </optional>
+        <optional>
+          <element name="Courant_number">
+            <a:documentation>If porous_media, printout the Courant number every time-step</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
       </element>
       <element name="timestepping">
         <a:documentation>Options dealing with time discretisation</a:documentation>

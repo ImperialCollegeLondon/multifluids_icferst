@@ -864,6 +864,14 @@ end if
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
 
+            if (is_porous_media) then
+                if (have_option('/io/Courant_number')) then!printout in the terminal
+                    ewrite(0,*) "Maximum Courant number at", current_time, "Courant_number =", Courant_number
+                else!printout only in the log
+                    ewrite(1,*) "Maximum Courant number at", current_time, "Courant_number =", Courant_number
+                end if
+            end if
+
             !!$ Write outputs (vtu and checkpoint files)
             if (have_option('/io/dump_period_in_timesteps')) then
                 ! dump based on the prescribed period of time steps

@@ -345,6 +345,10 @@ start =
                element memory_diagnostics {
                   empty
                }?
+            }?,
+            ## If porous_media, printout the Courant number every time-step
+            element Courant_number {
+               comment
             }?
          },
          ## Options dealing with time discretisation
