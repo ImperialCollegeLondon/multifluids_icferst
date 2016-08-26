@@ -96,7 +96,8 @@ module cv_advection
         WIC_U_BC_DIRI_ADV_AND_ROBIN = 3, &
         WIC_U_BC_DIRICHLET_INOUT = 2, &
         WIC_P_BC_DIRICHLET = 1, &
-        WIC_P_BC_FREE = 2
+        WIC_P_BC_FREE = 2, &
+        WIC_P_BC_VEL_ACTING = 100
 
 contains
 
@@ -118,7 +119,7 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
-        RECALC_C_CV, Permeability_tensor_field, calculate_mass_delta)
+        Permeability_tensor_field, calculate_mass_delta)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -285,7 +286,6 @@ contains
         integer, optional, intent(in) :: Phase_with_Pc
         !Variables to cache get_int_vel OLD
         real, optional, intent(inout) :: Courant_number
-        logical, optional, intent(in) :: RECALC_C_CV
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
         ! Calculate_mass variable
         real, dimension(:,:), optional :: calculate_mass_delta
@@ -319,7 +319,7 @@ contains
         logical, PARAMETER :: MULTB_BY_POROSITY= .false.
         ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
         ! if RECAL_C_CV_RHS, calculate the RHS forr the Mmat%C_CV matrix
-        logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, RECAL_C_CV_RHS
+        logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
         REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
         ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement
         ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained
@@ -535,8 +535,7 @@ contains
         end if
         !Check pressure matrix based on Control Volumes
         !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
-        RECAL_C_CV_RHS = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
-        if (present_and_true(RECALC_C_CV)) then
+        if (Mmat%CV_pressure) then
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
         else
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
@@ -639,7 +638,7 @@ contains
         call get_entire_boundary_condition(velocity,&
             ['weakdirichlet'],&
             velocity_BCs,WIC_U_BC_ALL)
-        if(got_free_surf.or.RECAL_C_CV_RHS) then
+        if(got_free_surf.or.Mmat%CV_pressure) then
             pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
             call get_entire_boundary_condition(pressure,&
                 ['weakdirichlet','freesurface  '],&
@@ -1076,6 +1075,7 @@ contains
             call zero(Mmat%CT_RHS)
             Mmat%CT = 0.0
             if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
+            if ( Mmat%CV_pressure ) MASS_SUF=0.0
         END IF
         IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
             call zero(Mmat%CV_RHS)
@@ -1159,11 +1159,11 @@ contains
             vecfield => extract_vector_field( packed_state, "Porosity" )
             Por =>  vecfield%val(1,:)
 
-        ! Calculate Pore volume
-        porevolume = 0.0
-        DO ELE = 1, Mdims%totele
-                porevolume = porevolume + MASS_ELE(ELE) * Por(IDs_ndgln(ELE))
-        END DO
+            ! Calculate Pore volume
+            porevolume = 0.0
+            DO ELE = 1, Mdims%totele
+                    porevolume = porevolume + MASS_ELE(ELE) * Por(IDs_ndgln(ELE))
+            END DO
 
         endif
 
@@ -1446,6 +1446,8 @@ contains
                             ! (this is needed to compute the local courant number and the non-linear theta)
                             IF ( on_domain_boundary) THEN
                                 HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
+                                    !sprint_to_do: pressure bcs as vel bcs, remove
+!                                if (Mmat%CV_pressure) hdc_p = abs( dot_product( CVNORMX_ALL(:,GI),(XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XGI_VAL(1:Mdims%ndim)) ) )
                             ELSE
                                 HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
                             END IF
@@ -1907,9 +1909,7 @@ contains
                                     NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
                                     FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                                     RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, THETA_VEL, &
-                                    rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, &
-                                    !rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
-                                    recal_c_cv_rhs)
+                                    rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3)
                                 do ipres=1,Mdims%npres
                                     call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
                                     if ( integrate_other_side_and_not_boundary ) then
@@ -2551,7 +2551,7 @@ contains
         call deallocate(tracer_BCs_robin2)
         call deallocate(density_BCs)
         call deallocate(velocity_BCs)
-        if(got_free_surf .or. RECAL_C_CV_RHS) call deallocate(pressure_BCs)
+        if(got_free_surf .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
         if (present(saturation)) then
             call deallocate(saturation_BCs)
             call deallocate(saturation_BCs_robin2)
@@ -2973,6 +2973,27 @@ contains
                 end if
                 DO IPHASE = 1, Mdims%nphase
                     IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
+!                         IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN!sprint_to_do: pressure bcs as vel bcs, remove
+!                            allocate(SUF_SIG_DIAGTEN_BC_GI(Mdims%ndim))
+!                            DO CV_SKLOC = 1, Mdims%cv_snloc
+!                                CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
+!                                IF(CV_KLOC==CV_ILOC) THEN
+!                                    CV_SNODK = ( SELE - 1 ) * Mdims%cv_snloc + CV_SKLOC
+!                                    CV_SNODK_IPHA = CV_SNODK + ( IPHASE - 1 ) * Mdims%stotel*Mdims%cv_snloc
+!                                    SUF_SIG_DIAGTEN_BC_GI( 1:Mdims%ndim ) = SUF_SIG_DIAGTEN_BC( CV_SNODK_IPHA, 1:Mdims%ndim )
+!                                    exit
+!                                ENDIF
+!                            END DO
+!                            UDGI_ALL(:, IPHASE) = 0.0
+!                            UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0
+!                            !Calculate velocity as n*(P_in-P_bcs)/hdc_p
+!                            UDGI_ALL_FOR_INV(:, IPHASE) = CVNORMX_ALL(:, GI) * (pressure%val(1,1,CV_NODI) - pressure_BCs%val(1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ))/hdc_p
+!                            !Velocity like for P bcs
+!                            UDGI_ALL(:, IPHASE) =  matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
+!                            Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) < 0.0
+!                            if(Incomming_flow) UDGI_ALL(:, IPHASE) =  UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
+!                            deallocate(SUF_SIG_DIAGTEN_BC_GI)
+!                        else  ! endof IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
@@ -2992,10 +3013,10 @@ contains
                             ENDIF
                         END DO
                         ! Only modify boundary velocity for incoming velocity...
-                        Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) .LT. 0.0
+                        Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) < 0.0
                         if (not_OLD_VEL) then
                             DO U_KLOC = 1, Mdims%u_nloc
-!                                IF (.false.) THEN !<= this one for strong boundary conditions
+!                         IF (.false.) THEN !<= this one for strong boundary conditions
                                 IF (Incomming_flow) THEN ! Incomming...
                                     UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=SUF_SIG_DIAGTEN_BC_GI(:)
                                 ELSE
@@ -3008,6 +3029,7 @@ contains
                         if(Incomming_flow) UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
 
                         deallocate(SUF_SIG_DIAGTEN_BC_GI)
+!                        end if  ! endof IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN else
                     ELSE ! Specified vel bc.
                         UDGI_ALL(:, IPHASE) = 0.0
                         UDGI_ALL_FOR_INV(:, IPHASE) = 0.0
@@ -3315,7 +3337,7 @@ contains
 
 
 
-        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL)
+        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, XGI_VAL)
             !     --------------------------------------------------
             !
             !     - this subroutine calculates the control volume (CV)
@@ -3332,7 +3354,7 @@ contains
             REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
             REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
             REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-
+            REAL, DIMENSION( Mdims%ndim ), optional, intent( out ) ::   XGI_VAL!<=Retrieve the position of the GI coordinates
             !     - Local variables
             INTEGER :: NODJ,  JLOC
             REAL :: A, B, C
@@ -3480,6 +3502,14 @@ contains
 
             ENDIF Conditional_Dimension
 
+            !Retrieve the position of the GI coordinates
+            if (present(XGI_VAL)) then
+                XGI_VAL(1) = POSVGIX
+                if (Mdims%ndim>1) XGI_VAL(2) = POSVGIY
+                if (Mdims%ndim>2) XGI_VAL(3) = POSVGIZ
+
+                XGI_VAL = XGI_VAL + XC_ALL
+            end if
         END SUBROUTINE SCVDETNX_new
 
 
@@ -6168,8 +6198,7 @@ end if
         RETRIEVE_SOLID_CTY,theta_cty_solid, &
         loc_u, THETA_VEL,&
         ! local memory sent down for speed...
-        UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, &
-        RECAL_C_CV_RHS)
+        UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP)
         ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. Mmat%CT, Mmat%CT_RHS
         IMPLICIT NONE
         ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO Mmat%CT MATRIX
@@ -6182,7 +6211,7 @@ end if
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u
         LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
-            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, RECAL_C_CV_RHS
+            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
         INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC
@@ -6207,13 +6236,18 @@ end if
         ! Local variables...
         INTEGER :: U_KLOC, U_KLOC2, IDIM, &
             IPHASE, U_SKLOC, I, J, U_KKLOC, &
-            u_iloc, u_siloc
+            u_iloc, u_siloc, count, COUNT_SUF
         real :: Mass_corrector
+        !Local variables for CV pressure bcs
+        integer :: KPHASE, CV_SNODK, CV_SNODK_IPHA, CV_SKLOC
+        real, dimension(:,:), allocatable :: SUF_SIG_DIAGTEN_BC_pha_GI
+
+
+
 
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
-        if (RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
-               ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
-                 ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
+        if (Mmat%CV_pressure) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
+
         IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
             ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the Mmat%CT matrix and add what we really want)
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
@@ -6304,6 +6338,42 @@ end if
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * (NDOTQOLD(:) -NDOTQ_IMP(:)*THETA_VEL(:)) &
                 + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
                 ) / DEN_ALL( :, CV_NODI ) )
+
+!            ! Pressure bc acting like vel bc...
+!            ! Note we must put memory aside for MASS_SUF if we have a pressure b.c. acting like a vel bc.
+!            IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN
+!                allocate(SUF_SIG_DIAGTEN_BC_pha_GI(Mdims%ndim,Mdims%NPHASE))
+!                DO KPHASE=1,Mdims%NPHASE
+!                    CV_SKLOC = 1
+!                        CV_SNODK = ( SELE - 1 ) * Mdims%cv_snloc + CV_SKLOC
+!                        CV_SNODK_IPHA = CV_SNODK + ( KPHASE - 1 ) * Mdims%stotel*Mdims%cv_snloc
+!                        SUF_SIG_DIAGTEN_BC_pha_GI( 1:Mdims%ndim, KPHASE ) = SUF_SIG_DIAGTEN_BC( CV_SNODK_IPHA, 1:Mdims%ndim )
+!                END DO
+!                !if incomming flow
+!                DO KPHASE=1,Mdims%NPHASE
+!                    if(DOT_PRODUCT(UDGI_ALL(:, KPHASE), CVNORMX_ALL(:, GI)) > 0.0) then
+!                            SUF_SIG_DIAGTEN_BC_pha_GI( :,KPHASE ) = 1.0
+!                    end if
+!                    SUF_SIG_DIAGTEN_BC_pha_GI( :,KPHASE ) = matmul(I_inv_adv_coef(:,:,KPHASE),SUF_SIG_DIAGTEN_BC_pha_GI( :,KPHASE ))
+!                end do
+!                RCON(:) = (1.0/HDC_P) * SUF_SIG_DIAGTEN_BC_pha_GI( 1,: )*SCVDETWEI( GI ) * (  ( &
+!                ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:)  &
+!                + FTHETA_T2(:)  * LIMDT(:)  &
+!                ) / DEN_ALL( :, CV_NODI ) )
+!                ! add in the vel bc:
+!               ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
+!                + SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) * RCON(:)
+!               ! Use the same sparcity as the MN matrix...
+!               COUNT_SUF = 0
+!               DO COUNT = Mspars%CMC%fin( CV_NODI ), Mspars%CMC%fin( CV_NODI + 1 ) - 1
+!                  IF ( Mspars%CMC%col( COUNT ) == CV_NODI ) THEN ! the diagonal of the matrix...
+!                      COUNT_SUF = COUNT
+!                     EXIT
+!                  END IF
+!               END DO
+!               MASS_SUF( COUNT_SUF ) = MASS_SUF( COUNT_SUF ) + SUM( RCON(:) )
+!               DEALLOCATE(SUF_SIG_DIAGTEN_BC_pha_GI)
+!            END IF ! ENDOF IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN
         ELSE
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
                 - SCVDETWEI( GI ) * (  ( &
@@ -6381,6 +6451,9 @@ end if
             IF ( on_domain_boundary ) THEN
                 !By default the position must not be added to the matrix
                 Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
+!                !If Pres bcs as vel boundaries, then they are already implemented
+!                if (WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING) return !sprint_to_do: pressure bcs as vel bcs, remove?
+
                 !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
                 DO IPRES = 1, 1!Mdims%npres
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN

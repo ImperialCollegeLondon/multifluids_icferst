@@ -446,7 +446,8 @@ contains
                                 CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
                                     + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
                             ENDIF
-                            if ( got_free_surf ) then
+!                            if ( got_free_surf .or.Mmat%CV_pressure) then!sprint_to_do: pressure bcs as vel bcs, remove
+                            if ( got_free_surf) then
                                 CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) +&
                                     MASS_SUF( COUNT ) * COLOR_VEC( CV_JNOD )
                             end if
@@ -833,6 +834,7 @@ contains
                         ENDIF
                         CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
                             DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+!                        if ( got_free_surf .or. Mmat%CV_pressure) then!sprint_to_do: pressure bcs as vel bcs, remove
                         if ( got_free_surf ) then
                             CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
                                 MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )

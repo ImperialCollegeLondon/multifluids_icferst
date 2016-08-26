@@ -787,7 +787,7 @@ contains
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: DU_VEL, U_RHS_CDP2
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
-        LOGICAL :: JUST_BL_DIAG_MAT, LINEARISE_DENSITY, diag, RECALC_C_CV, SUF_INT_MASS_MATRIX
+        LOGICAL :: JUST_BL_DIAG_MAT, LINEARISE_DENSITY, diag, SUF_INT_MASS_MATRIX
         INTEGER :: stat
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
@@ -858,11 +858,6 @@ contains
         allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE(Mspars%CMC%ncol), MASS_PIPE2CVFEM(Mspars%CMC%ncol), MASS_CVFEM2PIPE_TRUE(Mspars%CMC%ncol))
         ALLOCATE( CMC_PRECON( Mdims%npres, Mdims%npres, Mspars%CMC%ncol*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
         ALLOCATE( MASS_MN_PRES( Mspars%CMC%ncol )) ; MASS_MN_PRES=0.
-        IF(got_free_surf) THEN
-           ALLOCATE( MASS_SUF( Mspars%CMC%ncol )) ; MASS_SUF=0.
-        ELSE
-           ALLOCATE( MASS_SUF( 1 )) ; MASS_SUF=0.
-        ENDIF
         ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
         gamma=>extract_scalar_field(state(1),"Gamma1",stat)
         GAMMA_PRES_ABS = 0.0
@@ -1014,8 +1009,6 @@ contains
 
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
-        !sprint_to_do!RECALC_C_CV should be consistent with one of these variables like after_adapt
-        RECALC_C_CV = .false. !Only calculate Mmat%C_CV if it has not been calculated already
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
 
@@ -1023,7 +1016,6 @@ contains
         if (.not.Mmat%Stored) then
              if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
-                RECALC_C_CV = .true.!sprint_to_do; we may not need this logical
             else!allocate C
                 allocate(Mmat%C(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C = 0.
             end if
@@ -1042,6 +1034,13 @@ contains
             call calculate_capillary_pressure(packed_state, .false., &!sprint_to_do; shouldn't this flag change after the first non-linear iteration?
                 ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
         end if
+
+!        IF(got_free_surf .or. Mmat%CV_pressure) THEN!sprint_to_do: pressure bcs as vel bcs, remove
+        IF(got_free_surf) THEN
+           ALLOCATE( MASS_SUF( Mspars%CMC%ncol )) ; MASS_SUF=0.
+        ELSE
+           ALLOCATE( MASS_SUF( 1 )) ; MASS_SUF=0.
+        ENDIF
 
         ! calculate surface tension
         !!$ extended to surface tension -like term.
@@ -1081,7 +1080,7 @@ contains
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
-            symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV, calculate_mass_delta)
+            symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
         deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -1244,6 +1243,10 @@ END IF
                         rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                              -MASS_SUF( COUNT ) * ( P_ALL%VAL( 1, IPRES, CV_JNOD ) - POLD_ALL%VAL( 1, IPRES, CV_JNOD ) )
                      end if
+!                     !For the pressure bcs of CV pressure formulation this is part of the projection method to make them vel bcs
+!                     if ( Mmat%CV_pressure) then!sprint_to_do: pressure bcs as vel bcs, remove
+!                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) - MASS_SUF( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+!                      end if
                      IF ( Mdims%npres > 1 ) THEN
                         DO JPRES = 1, Mdims%npres
                            IF(PIPES_1D) THEN
@@ -1389,7 +1392,7 @@ END IF
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV, calculate_mass_delta)
+        symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1436,7 +1439,6 @@ END IF
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
-        logical, intent(in) :: RECALC_C_CV
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -1536,7 +1538,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
-            RECALC_C_CV = RECALC_C_CV, calculate_mass_delta = calculate_mass_delta)
+            calculate_mass_delta = calculate_mass_delta)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
@@ -4625,35 +4627,13 @@ end if
                 Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)
             END DO
 
-            !Next check if the element is on the boundary and has pressure boundary conditions
-!            bc_factor = 1.
-!            P_BC_element = .false.
-!            DO IFACE = 1, FE_GIdims%nface
-!                ELE2  = FACE_ELE( IFACE, ELE )
-!                SELE2 = MAX( 0, - ELE2 )
-!                SELE  = SELE2
-!                if (SELE/=0 ) P_BC_element = (WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_DIRICHLET)
-!                if (P_BC_element) exit!If one side is pressure boundary, exit
-!                !if (ele2>0) then!Check another row of elements
-!                !    DO IFACE2 = 1, FE_GIdims%nface
-!                !        ELE3  = FACE_ELE( IFACE2, ELE2 )
-!                !        SELE2 = MAX( 0, - ELE3 )
-!                !        SELE  = SELE2
-!                !        if (SELE/=0 ) P_BC_element = (WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_DIRICHLET)
-!                !        if (P_BC_element) exit!If one side is pressure boundary, exit
-!                !    end do
-!                !end if
-!            end do
-!            if (P_BC_element) bc_factor = 1d1
-
-
             !If pressure boundary element, then we homogenize the velocity in the element
             if (lump_vol_factor<0) then
                 call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )
                 call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', pres_degree )
 
                 if (max(pres_degree,vel_degree)>1) then
-                    factor_default = 3.
+                    factor_default = 0.
                 else
                     factor_default = 100.
                 end if
@@ -4673,28 +4653,12 @@ end if
                         DO IDIM = 1, Mdims%ndim
                             J = IDIM+(IPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
-                            Mmat%PIVIT_MAT(I,I,ELE) = Mmat%PIVIT_MAT(I,I,ELE) + lump_vol_factor!*bc_factor
-                            Mmat%PIVIT_MAT(I,J,ELE) = Mmat%PIVIT_MAT(I,J,ELE) - lump_vol_factor!*bc_factor
+                            Mmat%PIVIT_MAT(I,I,ELE) = Mmat%PIVIT_MAT(I,I,ELE) + lump_vol_factor
+                            Mmat%PIVIT_MAT(I,J,ELE) = Mmat%PIVIT_MAT(I,J,ELE) - lump_vol_factor
                         end do
                     end do
                 end do
             end do
-!            DO U_JLOC = 1, Mdims%u_nloc
-!                !if (any(U_JLOC == (/1,3,6/))) cycle!to homogenize the inner nodes
-!                if (any((/2,4,5/) == U_JLOC)) cycle
-!                DO U_ILOC = 1, Mdims%u_nloc
-!                !    if (any(U_ILOC == (/1,3,6/))) cycle!to homogenize the inner nodes
-!                    if (any((/2,4,5/) == U_ILOC)) cycle
-!                    DO IPHASE = 1, Mdims%nphase
-!                        DO IDIM = 1, Mdims%ndim
-!                            J = IDIM+(IPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-!                            I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
-!                            Mmat%PIVIT_MAT(I,I,ELE) = Mmat%PIVIT_MAT(I,I,ELE) + lump_vol_factor
-!                            Mmat%PIVIT_MAT(I,J,ELE) = Mmat%PIVIT_MAT(I,J,ELE) - lump_vol_factor
-!                        end do
-!                    end do
-!                end do
-!            end do
 
         end subroutine get_porous_Mass_matrix
 
