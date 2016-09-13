@@ -33,10 +33,7 @@ module multiphase_time_loop
     use diagnostic_fields_new_multiphase, only : &
         calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
         check_diagnostic_dependencies
-    use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
-        simulation_start_wall_time, new_mesh, &
-        topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture, &
-        OPTION_PATH_LEN, FIELD_NAME_LEN
+    use global_parameters
     use fldebug
     use reference_counting
     use state_module
@@ -888,6 +885,7 @@ end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
                     not_to_move_det_yet = .false. ;
+
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then

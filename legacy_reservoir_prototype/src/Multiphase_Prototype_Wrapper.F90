@@ -42,10 +42,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use timers
     use parallel_tools
     use reference_counting
-    use global_parameters, only: current_time, dt, timestep, option_path_len, &
-        simulation_start_time, &
-        simulation_start_cpu_time, &
-        simulation_start_wall_time, is_porous_media, first_time_step, multi_generic_warning
+    use global_parameters
     use diagnostic_fields_new_multiphase, only : &
         & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
         & check_diagnostic_dependencies
@@ -96,8 +93,9 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     call initialise_write_state
 
-    ! Check if porous media model
-    is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
+    !!Retrieve what type of simulation are we doing
+    call get_simulation_type()
+
     !Flag the first time step
     first_time_step = .true.
     ! Read state from .mpml file
@@ -291,7 +289,7 @@ contains
                 !Make sure the field is not shown
                 if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
                     !Don't know how to set exclude_from_vtu to true from the spud options, hence,
-                    !since Porous_media HAS to be true I copy it to obtain the same effect
+                    !since Porous_media HAS to be true I copy it to obtain the same effect!sprint_to_do
                     call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
                      trim(option_path)//"/prognostic/output/exclude_from_vtu")
                 end if
@@ -362,5 +360,21 @@ contains
 
     end subroutine set_up_generic_warning_message
 
+    subroutine get_simulation_type()
+        !This subroutine selects the type of simulator to perform
+        !and activates the flags from global_parameters accordingly
+        implicit none
+        !By default it is intertia dominated
+        is_porous_media = have_option('/simulation_type/porous_media')
+        is_magma = have_option('/simulation_type/magma')
+        is_flooding = have_option('/simulation_type/flooding')
+        !Flag to set up the coupling with femdem
+        is_multifracture = have_option( '/simulation_type/femdem_fracture' )
+        !Flag to set up boiling
+        is_boiling = have_option( '/simulation_type/boiling' )
+        !Flag to set up blasting
+        is_blasting = have_option( '/simulation_type/blasting' )
+
+    end subroutine get_simulation_type
 
 end subroutine multiphase_prototype_wrapper

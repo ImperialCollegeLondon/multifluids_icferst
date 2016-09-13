@@ -33,7 +33,7 @@ module multiphase_EOS
     use state_module
     use fields
     use state_module
-    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_porous_media, first_time_step
+    use global_parameters
     use spud
     use futils, only: int2str
     use vector_tools
@@ -47,7 +47,7 @@ module multiphase_EOS
     use arbitrary_function
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
-    use initialise_fields_module, only: initialise_field_over_regions
+    use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     implicit none
 
@@ -374,6 +374,10 @@ contains
         real, dimension( : ), allocatable :: pressure_back_up, density_back_up, temperature_local
         real :: dt, current_time
         integer :: ncoef, stat
+        !Variables for python function for the coefficient_B for linear density (this is for bathymetry)
+        type (scalar_field) :: sfield
+        type (scalar_field), pointer :: pnt_sfield
+        type (vector_field), pointer :: position
 
         !!$ Den = c1 * ( P + c2 ) / T           :: Stiffened EOS
         !!$ Den = c1 * P + c2                   :: Linear_1 EOS
@@ -476,23 +480,12 @@ contains
 
 
 
-        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
-            !!$ Den = C0 * P +C1
-            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
-            call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
-            call get_option( trim( eos_option_path ) // '/coefficient_B', eos_coefs( 2 ) )
-            Rho = eos_coefs( 1 ) * pressure % val(1,1,:) + eos_coefs( 2 )
-            perturbation_pressure = 1.
-            !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) + eos_coefs( 2 )
-            !RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) + eos_coefs( 2 )
-            dRhodP = eos_coefs( 1 ) !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
-            deallocate( eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
             !!$ Den = C0 * P/T +C1
             if( .not. have_temperature_field ) FLAbort( 'Temperature Field not defined' )
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
             call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_A', eos_coefs( 1 ) )
-            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B', eos_coefs( 2 ) )
+            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', eos_coefs( 2 ) )
             Rho = eos_coefs( 1 ) * pressure % val(1,1,:) / temperature % val + eos_coefs( 2 )
             perturbation_pressure = 1.
             !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) / &
@@ -501,7 +494,26 @@ contains
             !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
             dRhodP =  eos_coefs( 1 ) / temperature % val !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
             deallocate( eos_coefs )
-
+        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
+            !!$ Den = C0 * P +C1
+            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
+            !By default the pressure mesh (position 1)
+            pnt_sfield => extract_scalar_field(state(1),1)
+            position => get_external_coordinate_field(packed_state, pnt_sfield%mesh)
+            call allocate (sfield, pnt_sfield%mesh, "Temporary_linear_Coefficient_B")
+            !Retrieve coefficients
+            call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
+            call initialise_field(sfield, trim( option_path_comp )//"/linear_in_pressure/coefficient_B" , position)
+            !If it is flooding, then the second coefficient is the bathymetry and it has to be negative.
+            !The formula becomes: rho = P * eos_coefs( 1 ) - bathymetry
+            if (is_flooding .and. minval(sfield%val, sfield%val> 0.) > 0.) sfield%val = - sfield%val
+            Rho = eos_coefs( 1 ) * pressure % val(1,1,:) + sfield%val
+            perturbation_pressure = 1.
+            !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) + eos_coefs( 2 )
+            !RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) + eos_coefs( 2 )
+            dRhodP = eos_coefs( 1 ) !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
+            deallocate( eos_coefs )
+            call deallocate(sfield)
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_oil_gas' ) then
             !!$ Den = Den0 * Exp[ C0 * ( P - P0 ) ]
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
@@ -673,7 +685,6 @@ contains
 
         return
     end subroutine Density_Polynomial
-
 
     subroutine Assign_Equation_of_State( eos_option_path_out )
         implicit none

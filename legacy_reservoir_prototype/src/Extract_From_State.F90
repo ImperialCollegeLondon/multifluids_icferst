@@ -40,7 +40,7 @@ module Copy_Outof_State
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_porous_media, backtrack_or_convergence, is_multifracture, FPI_have_converged
+    use global_parameters
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -131,7 +131,7 @@ contains
         Mdims%n_in_pres = Mdims%nphase / Mdims%npres
 
         !!$ Get the vel element type.
-        is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
+        is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media') .or. is_porous_media
         if (is_porous_media) then!Check that the FPI method is on
             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
@@ -141,7 +141,7 @@ contains
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
             end if
         end if
-        is_multifracture = have_option( '/femdem_fracture' )
+        is_multifracture = have_option( '/femdem_fracture' ) .or. is_multifracture
 
         positions => extract_vector_field( state, 'Coordinate' )
         pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -1184,7 +1184,7 @@ contains
             call insert_sfield(packed_state,"FEComponentMassFraction",ncomp,nphase)
         end if
 
-        if (have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')) then
+        if (is_porous_media) then
             ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
             call allocate(ten_field,ovmesh,"PorousMedia_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
             call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")

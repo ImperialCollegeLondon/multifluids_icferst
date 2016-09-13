@@ -49,7 +49,7 @@ mesh_info =
                  "lagrangian"
               }
             },
-             ## Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.
+             ## Activate for porous media. Deprecated, use simulation_type instead.
              element Porous_media { comment }?
          }?,
          element mesh_continuity {

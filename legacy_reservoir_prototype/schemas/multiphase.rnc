@@ -23,6 +23,22 @@ start =
          element simulation_name {
             anystring
          },
+         ## Select the simulation type
+         element simulation_type {
+             (
+                ## Navier-stokes simulator
+                element intertia_dominated{comment}|
+                ## Darcy flow simulator
+                element porous_media{comment}|
+                ## Magma flow simulator
+                element magma{comment}|
+                ## Flooding simulator
+                element flooding{comment}
+             ),
+          element femdem_fracture{comment}?,
+          element blasting{comment}?,
+          element boiling{comment}?
+         },
          geometry,
          ## Input/output options
          element io {
@@ -5282,12 +5298,27 @@ element equation_of_state{
                         ##
                         ## DEN = A * P + B
                         ##
+                        ## Use this option for flooding, being A = 1/gravity and B the bathymetry
                         element linear_in_pressure {
                            element coefficient_A { 
                               real 
                            },
                            element coefficient_B {
-                              real
+                            (
+                                 ## list of bin bounds
+                                 element constant { 
+                                     real
+                                 }|
+                                ## Python function prescribing real input. Functions should be of the form:
+                                ##    def val(X, t):
+                                ##    # Function code
+                                ##    return # Return value
+                                ##
+                                ##    where X is a tuple of length geometry dimension.
+                                 element python {
+                                     python_code
+                                   }
+                              )
                            },
                            ## If chosen: DEN = A * P / T + B
                            element include_internal_energy {

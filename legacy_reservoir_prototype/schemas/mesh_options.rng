@@ -66,7 +66,7 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
             </element>
             <optional>
               <element name="Porous_media">
-                <a:documentation>Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.</a:documentation>
+                <a:documentation>Activate for porous media. Deprecated, use simulation_type instead.</a:documentation>
                 <ref name="comment"/>
               </element>
             </optional>

@@ -36,7 +36,7 @@ module multi_pipes
     use reference_counting
     use memory_diagnostics
 
-    use global_parameters, only: pi, after_adapt
+    use global_parameters
 
     use Petsc_Tools
     use Sparse_tools
@@ -585,25 +585,42 @@ contains
                         CV_NODI = CV_GL_GL(CV_LILOC)
 
                         DO IPHASE = 1, N_IN_PRES
-                            TT1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1(:) )
-                            T1TT1 = SUM(T1(:)*TT1(:))
-                            IF ( NDIM==3 ) THEN
-                                TT2(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2(:) )
+                            if (is_porous_media) then
+                                    TT1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1(:) )
+                                    T1TT1 = SUM(T1(:)*TT1(:))
+                                IF ( NDIM==3 ) THEN
+                                    TT2(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2(:) )
 
-                                T1TT2 = SUM( T1(:)*TT2(:) )
-                                T2TT1 = SUM( T2(:)*TT1(:) )
-                                T2TT2 = SUM( T2(:)*TT2(:) )
-                            ELSE
-                                T1TT2 = 0.0
-                                T2TT1 = 0.0
-                                T2TT2 = T1TT1
-                            END IF
+                                    T1TT2 = SUM( T1(:)*TT2(:) )
+                                    T2TT1 = SUM( T2(:)*TT1(:) )
+                                    T2TT2 = SUM( T2(:)*TT2(:) )
+                                ELSE
+                                    T1TT2 = 0.0
+                                    T2TT1 = 0.0
+                                    T2TT2 = T1TT1
+                                END IF
+                            else
+                                T1TT1 =SUM(T1(:)*T1(:))
+                                IF ( NDIM==3 ) THEN
+                                    T1TT2 = SUM( T1(:)*T2(:) )
+                                    T2TT1 = SUM( T2(:)*T1(:) )
+                                    T2TT2 = SUM( T2(:)*T2(:) )
+                                else
+                                    T1TT2 = 0.0
+                                    T2TT1 = 0.0
+                                    T2TT2 = T1TT1
+                                end if
+                            end if
                             DET_SQRT = SQRT( ABS( T1TT1*T2TT2 - T1TT2*T2TT1 ) )
                             INV_SIGMA_ND = 1.0 / MAX( 1.E-25, DET_SQRT)
                             INV_SIGMA(IPHASE,CV_NODI) = INV_SIGMA(IPHASE,CV_NODI) + INV_SIGMA_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                             ! For the nano laterals...
-                            NN1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION(:) )
-                            N1NN1 = SUM( DIRECTION(:)*NN1(:) )
+                            if (is_porous_media) then
+                                NN1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION(:) )
+                                N1NN1 = SUM( DIRECTION(:)*NN1(:) )
+                            else
+                                N1NN1 = SUM( DIRECTION(:) )
+                            end if
                             INV_SIGMA_NANO_ND = 1.0/MAX(1.E-25, N1NN1)
                             INV_SIGMA_NANO(IPHASE,CV_NODI) = INV_SIGMA_NANO(IPHASE,CV_NODI) + INV_SIGMA_NANO_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                         END DO
@@ -660,7 +677,7 @@ contains
 
 
                             ! Value of sigma in the force balance eqn...
-                            IF ( SOLVE_ACTUAL_VEL ) THEN
+                            IF ( SOLVE_ACTUAL_VEL .or. .not.is_porous_media ) THEN
                                 INV_SIGMA_GI = 1.0
                             ELSE
                                 IF ( PIPE_MIN_DIAM ) THEN

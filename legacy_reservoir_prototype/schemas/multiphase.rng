@@ -22,6 +22,42 @@ name, e.g. [simulation_name]_0.vtu. Non-standard
 characters in the simulation name should be avoided.</a:documentation>
         <ref name="anystring"/>
       </element>
+      <element name="simulation_type">
+        <a:documentation>Select the simulation type</a:documentation>
+        <choice>
+          <element name="intertia_dominated">
+            <a:documentation>Navier-stokes simulator</a:documentation>
+            <ref name="comment"/>
+          </element>
+          <element name="porous_media">
+            <a:documentation>Darcy flow simulator</a:documentation>
+            <ref name="comment"/>
+          </element>
+          <element name="magma">
+            <a:documentation>Magma flow simulator</a:documentation>
+            <ref name="comment"/>
+          </element>
+          <element name="flooding">
+            <a:documentation>Flooding simulator</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </choice>
+        <optional>
+          <element name="femdem_fracture">
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="blasting">
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="boiling">
+            <ref name="comment"/>
+          </element>
+        </optional>
+      </element>
       <ref name="geometry"/>
       <element name="io">
         <a:documentation>Input/output options</a:documentation>
@@ -6627,12 +6663,27 @@ DEN = DEN_REF * EXP( COMPRES_FACTOR * ( P_oil * P_oil_ref ))
               <a:documentation>Linear in Pressure EOS 
 
 DEN = A * P + B
-</a:documentation>
+
+Use this option for flooding, being A = 1/gravity and B the bathymetry</a:documentation>
               <element name="coefficient_A">
                 <ref name="real"/>
               </element>
               <element name="coefficient_B">
-                <ref name="real"/>
+                <choice>
+                  <element name="constant">
+                    <a:documentation>list of bin bounds</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <element name="python">
+                    <a:documentation>Python function prescribing real input. Functions should be of the form:
+   def val(X, t):
+   # Function code
+   return # Return value
+
+   where X is a tuple of length geometry dimension.</a:documentation>
+                    <ref name="python_code"/>
+                  </element>
+                </choice>
               </element>
               <optional>
                 <element name="include_internal_energy">

@@ -169,11 +169,20 @@ module global_parameters
   integer, parameter :: COLOURING_DG2 = 4
   integer, parameter :: NUM_COLOURINGS = 4
 
-  !! Multiphase prototype
+  !! Multiphase prototype, reservoir simulator
   logical :: is_porous_media = .false.
+  !! Multiphase prototype, flooding simulator
+  logical :: is_flooding = .false.
+  !! Multiphase prototype, magma simulator
+  logical :: is_magma = .false.
 
   !! Checking multifracture
   logical :: is_multifracture = .false.
+  !! Multiphase prototype, boiling simulator
+  logical :: is_boiling = .false.
+  !! Multiphase prototype, blasting simulator
+  logical :: is_blasting = .false.
+
 
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence

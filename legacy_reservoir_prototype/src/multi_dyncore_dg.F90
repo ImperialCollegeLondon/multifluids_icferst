@@ -33,7 +33,7 @@ module multiphase_1D_engine
     use field_options
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_porous_media, backtrack_or_convergence, after_adapt, first_time_step
+    use global_parameters
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
@@ -469,9 +469,10 @@ contains
              ALLOCATE( Mmat%CT( 0,0,0 ) )
              ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
              ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( Mdims%nphase,Mdims%nphase,Mdims%cv_nonods ), GAMMA_PRES_ABS_NANO( Mdims%nphase,Mdims%nphase,Mdims%cv_nonods ), INV_B( 0,0,0 ) )
-             allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE( size(Mspars%small_acv%col)), MASS_PIPE2CVFEM( size(Mspars%small_acv%col)), MASS_CVFEM2PIPE_TRUE(size(Mspars%small_acv%col)))
              ALLOCATE( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION = 0.
              ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
+             !Shouldn't these allocate bellow be only for NPRES > 1?
+             allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE(Mspars%CMC%ncol), MASS_PIPE2CVFEM(Mspars%CMC%ncol), MASS_CVFEM2PIPE_TRUE(Mspars%CMC%ncol))
              gamma=>extract_scalar_field(state(1),"Gamma1",stat)
              GAMMA_PRES_ABS = 0.0
              do ipres = 1, Mdims%npres
@@ -577,6 +578,9 @@ contains
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
                  call deallocate(Mmat%petsc_ACV)
+                 !For non-porous media make sure all the phases sum to one
+                 if (.not. is_porous_media) call non_porous_ensure_sum_to_one(vtracer)
+
                  !Correct the solution obtained to make sure we are on track towards the final solution
                  if (backtrack_par_factor < 1.01) then
                      !If convergence is not good, then we calculate a new saturation using backtracking
@@ -641,6 +645,25 @@ contains
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
+
+        subroutine non_porous_ensure_sum_to_one(vtracer)
+            implicit none
+            type(vector_field), intent(inout)  :: vtracer
+            !Local variables
+            real:: RSUM
+            integer :: CV_INOD, IPHASE
+            ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
+            vtracer % val = min ( max ( vtracer % val, 0.0), 1.0)
+            DO CV_INOD = 1, Mdims%cv_nonods
+                RSUM = SUM (vtracer % val ( :, CV_INOD) )
+                DO IPHASE = 1, Mdims%nphase
+                    vtracer % val ( IPHASE, CV_INOD) = vtracer % val ( IPHASE, CV_INOD) / RSUM
+                END DO
+            END DO
+
+        end subroutine non_porous_ensure_sum_to_one
+
+
 
          subroutine auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
             !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
@@ -879,7 +902,6 @@ contains
         GAMMA_PRES_ABS_NANO = GAMMA_PRES_ABS
         ! this can be optimised in the future...
 
-
         U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
         UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
@@ -926,7 +948,7 @@ contains
            if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
            call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, uden3, U_SOURCE_CV_ALL )
            deallocate( uden3 )
-           if ( boussinesq ) then
+           if ( boussinesq .or. is_flooding) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
         end if
@@ -1511,7 +1533,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            DEN_OR_ONE = DEN_ALL
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
-        if ( boussinesq ) then
+        if ( boussinesq .or. is_flooding ) then
            DEN_OR_ONE = 1.0
            DENOLD_OR_ONE = 1.0
         end if
@@ -6104,7 +6126,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  if ( boussinesq ) then
+                  if ( boussinesq .or. is_flooding ) then
                      den_gi( :, iphase ) = 1.0
                   else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &

@@ -38,7 +38,7 @@ module cv_advection
 
     use solvers_module
     use spud
-    use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi, after_adapt, first_nonlinear_time_step
+    use global_parameters
     use futils, only: int2str
     use adapt_state_prescribed_module
     use sparse_tools
@@ -262,7 +262,7 @@ contains
         REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
-        REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
+        REAL, DIMENSION( :, : ), intent( inout ) :: DEN_ALL, DENOLD_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (Mdims%nphase,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
@@ -679,6 +679,15 @@ contains
         ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS:', &
             CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS
         ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
+
+        !For flooding, only for the saturation equation we need to take out the density
+        !from the equations, we do so by forcing it to be 1, it needs to be recalculated
+        !after this before it is used somewhere else
+        if (is_flooding .and. GETCV_DISC) then
+            DEN_ALL= 1.0
+            DENOLD_ALL = 1.0
+        end if
+
         !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
         one_m_cv_beta = 1.0 - cv_beta
         conservative_advection = abs(one_m_cv_beta) <= 1e-8
@@ -2171,10 +2180,14 @@ contains
                 DO CV_ILOC = 1, Mdims%cv_nloc
                     CV_NODI = ndgln%cv( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
                     MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
-                    RSUM_VEC = 0.0
-                    DO IDIM = 1, Mdims%ndim
-                        RSUM_VEC = RSUM_VEC + upwnd%adv_coef( IDIM, IDIM, :, MAT_NODI ) / REAL( Mdims%ndim )
-                    END DO
+                    if (is_porous_media) then
+                        RSUM_VEC = 0.0
+                        DO IDIM = 1, Mdims%ndim
+                            RSUM_VEC = RSUM_VEC + upwnd%adv_coef( IDIM, IDIM, :, MAT_NODI ) / REAL( Mdims%ndim )
+                        END DO
+                    else
+                        RSUM_VEC = 1.0
+                    end if
                     OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) = OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) + &
                         RSUM_VEC * MASS_ELE( ELE )
                     N( CV_NODI ) = N( CV_NODI ) + MASS_ELE( ELE )
