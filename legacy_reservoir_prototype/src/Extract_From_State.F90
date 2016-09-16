@@ -1201,6 +1201,15 @@ contains
             end if
         end if
 
+
+        if (is_flooding) then
+            ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
+            call allocate(ten_field,ovmesh,"Flooding_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
+            call insert(packed_state,ten_field,"Flooding_AbsorptionTerm")
+            call deallocate(ten_field)
+        end if
+
+
         call allocate(porosity,npres,element_mesh,"Porosity")
         do ipres = 1, npres
             call set(porosity,ipres,1.0)

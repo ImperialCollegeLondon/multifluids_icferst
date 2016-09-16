@@ -1186,6 +1186,7 @@ contains
         allocate( SUF_P_BC_ALL_NODS(Mdims%npres, Mdims%cv_nonods), RVEC_SUM(Mdims%npres, Mdims%cv_nonods) )
         allocate( LOC_U_RHS_U_ILOC(Mdims%ndim, Mdims%nphase) )
         WIC_P_BC_ALL_NODS=0 ; RVEC_SUM=0.0 ; SUF_P_BC_ALL_NODS=0.0
+
         DO SELE = 1, Mdims%stotel
             DO IPRES = 2, Mdims%npres
                 IF ( WIC_P_BC_ALL( 1, IPRES, SELE ) == WIC_P_BC_DIRICHLET ) THEN
@@ -1384,7 +1385,7 @@ contains
                                             i_indx = IDIM + (IPHASE-1)*Mdims%ndim + (U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             j_indx = JDIM + (JPHASE-1)*Mdims%ndim + (U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                             pivit_mat( i_indx, j_indx, ele ) = pivit_mat( i_indx, j_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
-                                           !pivit_mat( i_indx, i_indx, ele ) = pivit_mat( i_indx, i_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
+!                                            pivit_mat( i_indx, i_indx, ele ) = pivit_mat( i_indx, i_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
                                         END DO
                                     END DO
                                 END DO
@@ -1399,7 +1400,7 @@ contains
                                                 i_indx = IDIM + (IPHASE-1)*Mdims%ndim + (U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                 j_indx = JDIM + (JPHASE-1)*Mdims%ndim + (U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                                 pivit_mat( i_indx, j_indx, ele ) = pivit_mat( i_indx, j_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
-                                               !pivit_mat( i_indx, i_indx, ele ) = pivit_mat( i_indx, i_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
+!                                                pivit_mat( i_indx, i_indx, ele ) = pivit_mat( i_indx, i_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
                                             END DO
                                         END DO
                                     END DO
@@ -1465,6 +1466,10 @@ contains
                     END DO ! DO IPRES = 2, Mdims%npres
                 END DO ! DO IPIPE = 1, NPIPES
             END IF ! IF ( ELE_HAS_PIPE ) THEN
+
+
+
+
         END DO ! DO ELE = 1, Mdims%totele
         if ( GET_PIVIT_MAT ) then
             DO U_ILOC = 1, Mdims%u_nloc
@@ -1482,6 +1487,7 @@ contains
                 END DO
             END DO
         end if
+
         RETURN
     END SUBROUTINE MOD_1D_FORCE_BAL_C
 

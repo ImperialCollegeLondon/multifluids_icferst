@@ -741,7 +741,31 @@ contains
         return
     end subroutine Assign_Equation_of_State
 
+    subroutine Calculate_flooding_absorptionTerm(state, packed_state, Mdims)
+        implicit none
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        type( state_type ), intent( inout ) :: packed_state
+        type( multi_dimensions ), intent( in ) :: Mdims
+        !Local variables
+        integer :: ipres, iphase, idim, loc
+        type( scalar_field ), pointer :: Spipe
+        type( tensor_field ), pointer :: Flooding_AbsorptionTerm
+        !Only for pipes
+        if (Mdims%npres==1) return
 
+        Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm" )
+        do ipres = 1, Mdims%npres
+            Spipe => extract_scalar_field( state(1), "Sigma1" )
+            do iphase = 1, Mdims%n_in_pres
+                do idim = 1, Mdims%ndim
+                    ! set \sigma for the pipes here
+                    LOC = (IPRES-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
+                    call assign_val(Flooding_AbsorptionTerm%val( LOC, LOC, : ),Spipe%val)
+                end do
+            end do
+        end do
+
+    end subroutine Calculate_flooding_absorptionTerm
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                       upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )

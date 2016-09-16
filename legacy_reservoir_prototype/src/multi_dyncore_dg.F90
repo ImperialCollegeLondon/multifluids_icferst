@@ -579,8 +579,13 @@ contains
                  call zero(Mmat%CV_RHS)
                  call deallocate(Mmat%petsc_ACV)
                  !For non-porous media make sure all the phases sum to one
-                 if (.not. is_porous_media) call non_porous_ensure_sum_to_one(vtracer)
-
+                 if (.not. is_porous_media) then
+                    call non_porous_ensure_sum_to_one(packed_state)
+                    if (is_flooding .and. Mdims%n_in_pres > 1) then
+                        !The real domain can only have water, air is automatically removed from the system
+                        vtracer%val(1,:) = 1.0; vtracer%val(2,:) = 0.0
+                    end if
+                 end if
                  !Correct the solution obtained to make sure we are on track towards the final solution
                  if (backtrack_par_factor < 1.01) then
                      !If convergence is not good, then we calculate a new saturation using backtracking
@@ -646,21 +651,35 @@ contains
 
          contains
 
-        subroutine non_porous_ensure_sum_to_one(vtracer)
-            implicit none
-            type(vector_field), intent(inout)  :: vtracer
+        subroutine non_porous_ensure_sum_to_one(packed_state)
+            !This subroutines eliminates the oscillations in the saturation that are bigger than a
+            !certain tolerance and also sets the saturation to be between bounds
+            Implicit none
+            !Global variables
+            type( state_type ), intent(inout) :: packed_state
             !Local variables
-            real:: RSUM
-            integer :: CV_INOD, IPHASE
-            ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
-            vtracer % val = min ( max ( vtracer % val, 0.0), 1.0)
-            DO CV_INOD = 1, Mdims%cv_nonods
-                RSUM = SUM (vtracer % val ( :, CV_INOD) )
-                DO IPHASE = 1, Mdims%nphase
-                    vtracer % val ( IPHASE, CV_INOD) = vtracer % val ( IPHASE, CV_INOD) / RSUM
-                END DO
-            END DO
+            integer :: iphase, cv_nod, i_start, i_end, ipres
+            real :: correction, sum_of_phases
+            real, dimension(:,:), pointer :: satura
 
+            call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+            !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
+            do ipres = 1, Mdims%npres
+                i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+                i_end = ipres * Mdims%nphase/Mdims%npres
+                !Set saturation to be between bounds
+                do cv_nod = 1, size(satura,2 )
+                    sum_of_phases = sum(satura(i_start:i_end, cv_nod))
+                    correction = (1.0 - sum_of_phases)
+                    !Spread the error to all the phases weighted by their presence in that CV
+                    !Increase the range to look for solutions by allowing oscillations below 0.1 percent
+                    if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
+                    !Make sure saturation is between bounds after the modification
+                    do iphase = i_start, i_end
+                        satura(iphase,cv_nod) =  min(max(0., satura(iphase,cv_nod)),1.0)
+                    end do
+                end do
+            end do
         end subroutine non_porous_ensure_sum_to_one
 
 
@@ -822,7 +841,7 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, PorousMedia_AbsorptionTerm
+        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, PorousMedia_AbsorptionTerm, Flooding_AbsorptionTerm
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer ::  sf, soldf, gamma
         type( vector_field ) :: packed_vel, rhs
@@ -1029,6 +1048,9 @@ contains
         PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
         if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
 
+        Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm", stat )
+        if (stat == 0) velocity_absorption = velocity_absorption + Flooding_AbsorptionTerm%val
+
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         !Check if as well the Mass matrix
@@ -1111,6 +1133,7 @@ contains
            DO IPHASE = 1, Mdims%nphase
               SIGMA( IPHASE, : ) = velocity_absorption( (IPHASE-1)*Mdims%ndim+1, (IPHASE-1)*Mdims%ndim+1, : )
            END DO
+
            call get_entire_boundary_condition( pressure,&
                 ['weakdirichlet','freesurface  '],&
                 pressure_BCs, WIC_P_BC_ALL )

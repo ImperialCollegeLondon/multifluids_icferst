@@ -618,6 +618,8 @@ end if
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
                        Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
+                else if (is_flooding) then
+                    call Calculate_flooding_absorptionTerm(state, packed_state, Mdims)
                 end if
 
 

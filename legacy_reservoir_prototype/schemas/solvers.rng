@@ -582,6 +582,13 @@ PETSc has to do extra computations.</a:documentation>
           </element>
         </optional>
         <optional>
+          <element name="singular_values">
+            <a:documentation>Same as true_residual option plus also show the 
+min/max singular values (eigenvalues).</a:documentation>
+            <empty/>
+          </element>
+        </optional>
+        <optional>
           <element name="preconditioned_residual_graph">
             <a:documentation>Draws a graph over the convergence of the preconditioned residual
 during the solve. This option only works for systems where PETSc

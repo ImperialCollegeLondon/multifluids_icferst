@@ -1646,8 +1646,8 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
 #endif
     KSPType ksptype
     PC pc
-    PetscReal rtol, atol, dtol
-    PetscInt max_its
+    PetscReal rtol, atol, dtol, rnorm
+    PetscInt max_its, iteration
     PetscErrorCode ierr
     
     logical startfromzero, remove_null_space
@@ -1704,7 +1704,6 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
       startfromzero=.false.
     end if
 
-
     ! Inquire about settings as they may have changed by PETSc options:
     call KSPGetTolerances(ksp, rtol, atol, dtol, max_its, ierr)
     
@@ -1732,7 +1731,12 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
         FLExit("Solver option diagnostics/monitors/preconditioned_residual_graph not supported with petsc version >=3.4")
 #endif
     end if
-
+    !Calculate the approximation of the conditioning number
+    if (have_option(trim(solver_option_path)// &
+       '/diagnostics/monitors/singular_values')) then
+        call KSPMonitorSet(ksp,KSPMonitorSingularValue,PETSC_NULL_OBJECT,PETSC_NULL_FUNCTION,ierr)
+        call KSPSetComputeSingularValues(ksp,PETSC_TRUE,ierr)
+    end if
     if (have_option(trim(solver_option_path)// &
        '/diagnostics/monitors/true_error') &
        .and. .not. petsc_monitor_has_exact) then
