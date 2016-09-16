@@ -201,6 +201,15 @@ contains
         logical :: use_advdif, multiphase_scalar
         integer :: it, it2, nphase_scalar
 
+!!-Variables related to the detection and correction of bad elements
+        real :: Max_bad_angle ! set in timeloop from diamond input
+        type(bad_elements), allocatable, dimension(:) :: Quality_list
+        real, dimension(:,:), pointer:: X_ALL
+        real, dimension(:), allocatable :: quality_table
+        integer, dimension(:), allocatable :: diagnostics ! number of bad elements - used to generate a diagnostics table
+        integer, dimension(2) :: shape
+        logical :: mesh_diagnostics = .false., bad_element = .false. ! print out mesh diagnostics / change properties of bad elements to improve deltaP calculations for bad meshes (with large angles)
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -392,10 +401,63 @@ contains
         calculate_mass_delta(:,:) = 0.0
 
         checkpoint_number=1
+
+!       Allocate memory for the quality_table to check the angles of each element and print out the diagnostics for the mesh
+        if (is_porous_media) then
+            if (have_option('/numerical_methods/Bad_element_fix/')) then
+                bad_element = .true.
+            end if
+            if (have_option('/geometry/Mesh_Diagnostics/Angles') ) then
+                mesh_diagnostics = .true.
+                shape = option_shape('/geometry/Mesh_Diagnostics/Angles')
+                allocate(quality_table(shape(1)))
+                call get_option( '/geometry/Mesh_Diagnostics/Angles', quality_table)
+                allocate(diagnostics(shape(1)))
+                diagnostics(:) = -1
+            end if
+        end if
+
 !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
 
+            if (bad_element .or. mesh_diagnostics)  then
+                ! Check bad elements (angles larger than specified in Max_bad_angle) at first time step or after mesh adapt
+                if (first_time_step .or. after_adapt) then
+                        if (allocated(Quality_list)) then
+                            deallocate(Quality_list)
+                        end if
+                        allocate(Quality_list(Mdims%totele))
+                        call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
+
+                        ! create table for stats on the angles of the mesh
+                        if (mesh_diagnostics) then
+                            do i=1, size(quality_table)
+                            call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x, Mdims%x_nloc ,quality_table(i), Quality_list, diagnostics(i))
+                            end do
+
+                             if (after_adapt) then
+                               ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
+                             else
+                               ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
+                             end if
+
+                             ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
+                            do i=1, size(quality_table)
+                              ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
+                            end do
+                             ewrite(0, '(38("-"))')
+                        end if
+
+                        if (.not. bad_element) then
+                            deallocate(Quality_list) ! don't change element properties - throw away Quality list
+                        else
+                            call get_option( '/numerical_methods/Bad_element_fix/Angle', Max_bad_angle, default = 170. )
+                            call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x, Mdims%x_nloc ,Max_bad_angle, Quality_list)
+                        endif
+
+                end if
+            end if
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
@@ -617,9 +679,10 @@ end if
 
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                       Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
+                       Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                 else if (is_flooding) then
                     call Calculate_flooding_absorptionTerm(state, packed_state, Mdims)
+
                 end if
 
 
@@ -798,7 +861,7 @@ end if
                         its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
+                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.

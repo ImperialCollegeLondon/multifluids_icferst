@@ -39,6 +39,7 @@ module multiphase_EOS
     use vector_tools
     use python_state
     use Copy_Outof_State
+    use multi_tools !!!!! WHY is the bad_elements type not being picked up by Copy_Outof_State??????
 
     use shape_functions_Linear_Quadratic
     use sparse_tools
@@ -768,7 +769,7 @@ contains
     end subroutine Calculate_flooding_absorptionTerm
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                      upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
+                                                      upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
        implicit none
        type( state_type ), dimension( : ), intent( inout ) :: state
        type( state_type ), intent( inout ) :: packed_state
@@ -780,16 +781,46 @@ contains
        type (porous_adv_coefs), intent(inout) :: upwnd
        integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
+       type(bad_elements), dimension(:), optional :: Quality_list
        !Local variables
        type( tensor_field ), pointer :: PorousMedia_AbsorptionTerm, perm
        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
        real, dimension(:,:), allocatable :: viscosities
-       integer :: i
+       integer :: i, ele
+       real :: kv_kh_ratio, Angle, bad_element_perm_mult, Max_aspect_ratio, height ! the height of an isosceles triangle for the top angle to be equal to the trigger angle
+       logical :: kv_kh_ratio_log = .False. ! check if we use the kv_kh ratio or Aspect_ratio for the bad elements. Aspect ratio is the default
+       real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
 
        perm => extract_tensor_field( packed_state, "Permeability" )
        do i = 1, size(perm%val,3)
         inv_perm( :, :, i)=inverse(perm%val( :, :, i))
        end do
+
+        if (present(Quality_list) .and. have_option('/numerical_methods/Bad_element_fix/') ) then
+! TODO (hoo06#1#): Add the other way of adjusting element permeability
+!            if (have_option('/numerical_methods/Bad_element_fix/Adjustment_method/KvKh_ratio')) then
+!                kv_kh_ratio_log = .True.
+                call get_option('/numerical_methods/Bad_element_fix/Adjustment_method/KvKh_ratio', kv_kh_ratio, default = 0.05)
+!            else
+!                call get_option('/numerical_methods/Bad_element_fix/Angle', Angle, default = 170.)
+!            end if
+
+            ! adjust the kv/kh ratio of the bad elements - this should act to artificially stretch the element in the vertical direction -
+            ! giving a better element to calculate deltaP. We are decreasing the kv with respect to kh
+            do ele = 1, Mdims%totele
+                if (Quality_list(ele)%bad_ele > 0) then
+!                    if (kv_kh_ratio_
+                        inv_perm(Mdims%ndim, Mdims%ndim, ele) =  inv_perm(1, 1, ele) * (1./kv_kh_ratio)
+!                    else
+!                        height = (Quality_list(ele)%base/2)/tan(Angle*pi/360)
+!                        bad_element_perm_mult = height/(Quality_list(ele)%perp_height)
+!                        inv_perm(Mdims%ndim, Mdims%ndim, ele) =  inv_perm(Mdims%ndim, Mdims%ndim, ele) * bad_element_perm_mult**2
+!                    end if
+                end if
+            end do
+        end if
+
+
 
        !For simple Black-Oil modelling the viscosity is calculated using the PVT tables
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
