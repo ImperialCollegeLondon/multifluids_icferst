@@ -2351,6 +2351,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 !If only non-linear iterations
                 if (.not.nonLinearAdaptTs) then
                     !Automatic non-linear iteration checking
+                    !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
+                    if (first_time_step) ts_ref_val = tolerance_between_non_linear/2.
+
                     ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
 
