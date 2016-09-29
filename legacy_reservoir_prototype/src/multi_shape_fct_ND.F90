@@ -9962,7 +9962,7 @@ contains
 
     Conditional_Dimensionality: if( d3 ) then
        Select Case ( nloc )
-       case( 4 ) ! Linear tets
+       case( 4, 5 ) ! Linear tets
           nwicel = 4
        case( 8 ) ! Linear hex
           nwicel = 1
