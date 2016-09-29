@@ -60,8 +60,11 @@ vanish on the element boundaries, and
 trace defines an element that is only defined on faces
 and is undefined on the element interior (used for 
 enforcing continuity by Lagrange multipliers).</a:documentation>
-                <!--                 "lagrangian" | "bubble" | "trace" -->
-                <value>lagrangian</value>
+                <choice>
+                  <!--                 "lagrangian" | "bubble" | "trace" -->
+                  <value>lagrangian</value>
+                  <value>bubble</value>
+                </choice>
               </element>
             </element>
             <optional>

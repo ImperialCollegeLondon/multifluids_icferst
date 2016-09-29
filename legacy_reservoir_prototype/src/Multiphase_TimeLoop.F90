@@ -407,7 +407,7 @@ contains
             if (have_option('/numerical_methods/Bad_element_fix/')) then
                 bad_element = .true.
             end if
-            if (have_option('/geometry/Mesh_Diagnostics/Angles') ) then
+            if (have_option('/geometry/Mesh_Diagnostics/Angles')) then
                 mesh_diagnostics = .true.
                 shape = option_shape('/geometry/Mesh_Diagnostics/Angles')
                 allocate(quality_table(shape(1)))

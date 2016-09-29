@@ -46,7 +46,7 @@ mesh_info =
                ## enforcing continuity by Lagrange multipliers).
               element string_value{
 #                 "lagrangian" | "bubble" | "trace" 
-                 "lagrangian"
+                 "lagrangian"| "bubble" 
               }
             },
              ## Activate for porous media. Deprecated, use simulation_type instead.

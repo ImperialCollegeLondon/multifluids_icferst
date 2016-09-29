@@ -9413,7 +9413,8 @@ contains
     ELSE IF(NDIM==2) THEN
        ! 2d:
        ! linear triangle:
-       IF(CV_NLOC==3) THEN
+       IF(CV_NLOC==3 .or. CV_NLOC==4) THEN
+          !Bubble linear, same ordering. Bubble node is internal
           IF(NFACE/=3) THEN
              EWRITE(3,*) 'NFACE not correct NFACE=',NFACE
              STOP 4333
@@ -9437,22 +9438,22 @@ contains
              CV_SLOCLIST(3,1)=3
              CV_SLOCLIST(3,2)=2
           end if
-
-          ! linear quad:
-       ELSE IF(CV_NLOC==4) THEN
-          IF(NFACE/=4) THEN
-             EWRITE(3,*) 'NFACE not correct NFACE=',NFACE
-             STOP 4334
-          END IF
-          CV_SLOCLIST(1,1)=1
-          CV_SLOCLIST(1,2)=3
-          CV_SLOCLIST(2,1)=2
-          CV_SLOCLIST(2,2)=4
-          CV_SLOCLIST(3,1)=1
-          CV_SLOCLIST(3,2)=2
-          CV_SLOCLIST(4,1)=1
-          CV_SLOCLIST(4,2)=2
           ! quadratic triangle:
+!          ! linear quad:
+!       ELSE IF(CV_NLOC==4) THEN
+!          IF(NFACE/=4) THEN
+!             EWRITE(3,*) 'NFACE not correct NFACE=',NFACE
+!             STOP 4334
+!          END IF
+!          CV_SLOCLIST(1,1)=1
+!          CV_SLOCLIST(1,2)=3
+!          CV_SLOCLIST(2,1)=2
+!          CV_SLOCLIST(2,2)=4
+!          CV_SLOCLIST(3,1)=1
+!          CV_SLOCLIST(3,2)=2
+!          CV_SLOCLIST(4,1)=1
+!          CV_SLOCLIST(4,2)=2
+!          ! quadratic triangle:
        ELSE IF(CV_NLOC==6) THEN
           IF(NFACE/=3) THEN
              EWRITE(3,*) 'NFACE not correct NFACE=',NFACE
@@ -9547,7 +9548,8 @@ contains
     ELSE IF(NDIM==3) THEN
        ! 3d:
        ! linear triangle:
-       IF(CV_NLOC==4) THEN
+       IF(CV_NLOC==4 .or. CV_NLOC==5) THEN
+       !Bubble linear, same ordering. Bubble node is internal
           IF(NFACE/=4) THEN
              EWRITE(3,*) 'NFACE not correct NFACE=',NFACE
              STOP 4337

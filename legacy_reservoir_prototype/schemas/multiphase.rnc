@@ -1975,6 +1975,11 @@ start =
             element DG_advection {
                empty
             }?,  
+            ## Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
+            ## This is os by default for the CV pressure formulation 
+            element simple_mass_matrix {
+               empty
+            }?,  
             ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
             ## the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.
             ## The default value for P1DGP1 => 100 for P1DGP2 this is not required and for P2DGP1DG stability cannot be guaranteed;

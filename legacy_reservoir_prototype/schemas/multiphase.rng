@@ -2662,6 +2662,13 @@ Recommended value: [0.5,1.0]. Default =1.</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="simple_mass_matrix">
+              <a:documentation>Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
+This is os by default for the CV pressure formulation </a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="CV_press_homogenisation">
               <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
 the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.

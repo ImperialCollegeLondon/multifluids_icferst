@@ -857,7 +857,7 @@ contains
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
-        integer :: IGOT_THERM_VIS
+        integer :: IGOT_THERM_VIS, ierr
         real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
         real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
@@ -1170,7 +1170,6 @@ contains
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, symmetric_P )
-
         END IF
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
@@ -1863,6 +1862,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !Variables to account for the lumping homogeneization
         logical :: homogenize_mass_matrix
         real :: lump_weight
+        logical :: use_simple_lumped_homogenenous_mass_matrix
         ! memory for linear high order viscocity calculation...
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_ELE_EXT
         REAL, DIMENSION ( :, :, : ), allocatable :: S_INV_NNX_MAT12
@@ -1972,6 +1972,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         end if
         !If we have calculated already the Mmat%PIVIT_MAT and stored then we don't need to calculate it again
         Porous_media_PIVIT_not_stored_yet = (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))
+
+        !Decide whether to use the simple mass matrix (Volume/U_NLOC) or the one using shape functions
+        use_simple_lumped_homogenenous_mass_matrix = (Porous_media_PIVIT_not_stored_yet .and.is_porous_media&
+                 .and. (Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')))
+
         !If we do not have an index where we have stored Mmat%C, then we need to calculate it
         got_c_matrix  = Mmat%stored .or. Mmat%CV_pressure
         ewrite(3,*) 'In ASSEMB_FORCE_CTY'
@@ -2480,11 +2485,8 @@ end if
                     end do
                 end if
             end if
-
-
-
-
-            if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure.and.is_porous_media) then
+            !Default mass matrix for porous media
+            if (use_simple_lumped_homogenenous_mass_matrix) then
                 call get_porous_Mass_matrix(ELE, Mdims, FE_funs, FE_GIdims, DevFuns, Mmat, WIC_P_BC_ALL, FACE_ELE)
             end if
 
@@ -4668,7 +4670,7 @@ end if
             !Weight parameter, controls the strenght of the homogenization of the velocity nodes per element
             !the bigger the more P0DG it tends to be
             real :: factor, factor_default, bc_factor
-            real, save :: lump_vol_factor =-1.
+            real, save :: lump_vol_factor =-1d25
 
             !Create the mass matrix normally by distributting the mass evenly between the nodes
             do i=1,size(Mmat%PIVIT_MAT,1)
@@ -4676,10 +4678,9 @@ end if
             END DO
 
             !If pressure boundary element, then we homogenize the velocity in the element
-            if (lump_vol_factor<0) then
+            if (lump_vol_factor<-1d24) then
                 call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )
                 call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', pres_degree )
-
                 if (max(pres_degree,vel_degree)>1) then
                     factor_default = 0.
                 else
@@ -4690,7 +4691,6 @@ end if
                 !This value is the amount of mass used to homogenize the element
                 lump_vol_factor = factor * DevFuns%VOLUME/dble(Mdims%u_nloc)
             end if
-
             !If CV_press_homogenisation negative or zero, then, do not apply this method
             if (lump_vol_factor <= 0.) return
 
