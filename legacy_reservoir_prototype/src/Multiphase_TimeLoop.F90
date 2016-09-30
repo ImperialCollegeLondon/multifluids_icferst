@@ -311,6 +311,8 @@ contains
         ScalarField_Source_Store=0.
         !!$ Defining discretisation options
         call Get_Discretisation_Options( state, Mdims, Mdisopt )
+        !Check if the pressure matrix is a CV matrix
+        Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         !!$ Defining problem to be solved:
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
             velocity_max_iterations,  default =  500 )

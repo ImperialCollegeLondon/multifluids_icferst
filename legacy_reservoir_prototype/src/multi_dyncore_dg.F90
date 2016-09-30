@@ -1054,8 +1054,6 @@ contains
         Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm", stat )
         if (stat == 0) velocity_absorption = velocity_absorption + Flooding_AbsorptionTerm%val
 
-        !Check if the pressure matrix is a CV matrix
-        Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
 
@@ -4678,7 +4676,10 @@ end if
                 scaling_vel_nodes = dble(Mdims%u_nloc)
                 !Adjust for linear bubble functions, P1(BL)DG
                 if ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or.&
-                     (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) scaling_vel_nodes = scaling_vel_nodes - 1.
+                        (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) then
+                    scaling_vel_nodes = scaling_vel_nodes - 1.
+                    lump_vol_factor = 0.!No homogenisation for bubble functions
+                end if
             end if
 
             !Create the mass matrix normally by distributting the mass evenly between the nodes

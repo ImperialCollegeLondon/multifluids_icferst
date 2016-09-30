@@ -1075,14 +1075,6 @@ contains
 
         end if
 
-
-
-
-
-
-
-
-
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
         call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
