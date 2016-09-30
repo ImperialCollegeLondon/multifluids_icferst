@@ -4671,10 +4671,19 @@ end if
             !the bigger the more P0DG it tends to be
             real :: factor, factor_default, bc_factor
             real, save :: lump_vol_factor =-1d25
+            real, save :: scaling_vel_nodes = -1
+
+            !Obtain the scaling factor to spread the volume of the mass matrix
+            if (scaling_vel_nodes<0) then
+                scaling_vel_nodes = dble(Mdims%u_nloc)
+                !Adjust for linear bubble functions, P1(BL)DG
+                if ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or.&
+                     (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) scaling_vel_nodes = scaling_vel_nodes - 1.
+            end if
 
             !Create the mass matrix normally by distributting the mass evenly between the nodes
             do i=1,size(Mmat%PIVIT_MAT,1)
-                Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)
+                Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/scaling_vel_nodes
             END DO
 
             !If pressure boundary element, then we homogenize the velocity in the element
@@ -4691,6 +4700,7 @@ end if
                 !This value is the amount of mass used to homogenize the element
                 lump_vol_factor = factor * DevFuns%VOLUME/dble(Mdims%u_nloc)
             end if
+
             !If CV_press_homogenisation negative or zero, then, do not apply this method
             if (lump_vol_factor <= 0.) return
 
