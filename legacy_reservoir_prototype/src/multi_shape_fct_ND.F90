@@ -1209,12 +1209,12 @@ contains
        end Select Conditional_CV_NLOC_1D
        GIdims%sbcvngi = 1 ; GIdims%nface = 2
 !!$
-    case( 3, 4 ) ! Triangles
+    case( 3) ! Triangles
        Conditional_CV_NLOC_2D_Tri: Select Case( cv_nloc )
        case( 3 ) ! Linear triangle
           Conditional_LinTriangle: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
-             if( u_nloc == 6 ) then
+             if( u_nloc == 6 .or. u_nloc == 4) then!Quadratic or bubble velocity element
                 GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
              elseif( u_nloc == 10 ) then
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
@@ -1388,7 +1388,7 @@ contains
        case( 4 ) ! Linear
           Conditional_LinTets: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             if( u_nloc == 10 ) & ! Use a quadratic interpolation pt set
+             if( u_nloc == 10 .or. u_nloc == 5) & ! Use a quadratic interpolation pt set for quad tets and bubble tets
                   GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
 !!$
              Select Case( whole_ele_volume_order )
