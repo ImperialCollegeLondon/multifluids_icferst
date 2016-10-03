@@ -1209,7 +1209,7 @@ contains
        end Select Conditional_CV_NLOC_1D
        GIdims%sbcvngi = 1 ; GIdims%nface = 2
 !!$
-    case( 3) ! Triangles
+    case( 3, 4) ! Triangles
        Conditional_CV_NLOC_2D_Tri: Select Case( cv_nloc )
        case( 3 ) ! Linear triangle
           Conditional_LinTriangle: if( QUAD_OVER_WHOLE_ELE ) then
