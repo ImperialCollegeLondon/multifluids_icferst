@@ -179,6 +179,7 @@ contains
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
+        type(scalar_field), pointer :: bathymetry
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
@@ -217,6 +218,8 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
+
+
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
             if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
@@ -239,6 +242,17 @@ contains
 
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
+        !Sincd this is a hack for Flooding, we want to do this before we actually start using the density as the height
+        !which depends on the pressure. However, for th initial condition we need to use the density to set up the initial Pressure
+        !Therefore, we correct the initial condition for the pressure before anything is modified
+        !If it is flooding we impose the initial pressure to match the equation P = gravity * (height+bathymetry)
+        !The height is the initial condition of the density
+        if (is_flooding) then
+            density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
+            FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
+            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(:))
+        end if
         call set_boundary_conditions_values(state, shift_time=.true.)
 
         !  Access boundary conditions via a call like
