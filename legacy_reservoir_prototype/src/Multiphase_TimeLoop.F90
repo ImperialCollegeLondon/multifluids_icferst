@@ -251,7 +251,7 @@ contains
             density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
             FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
             bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
-            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(:))
+            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(1))
         end if
         call set_boundary_conditions_values(state, shift_time=.true.)
 
