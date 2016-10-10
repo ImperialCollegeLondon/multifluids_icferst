@@ -1214,7 +1214,8 @@ contains
        case( 3 ) ! Linear triangle
           Conditional_LinTriangle: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
-             if( u_nloc == 6 .or. u_nloc == 4) then!Quadratic or bubble velocity element
+             if( u_nloc == 6 .or. u_nloc == 4) then!Quadratic or bubble velocity element!For bubble and normal mass matrix it should
+                                                    !use the cubic method
                 GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
              elseif( u_nloc == 10 ) then
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4

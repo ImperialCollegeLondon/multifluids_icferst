@@ -4670,11 +4670,14 @@ end if
             real :: factor, factor_default, bc_factor
             real, save :: lump_vol_factor =-1d25
             real, save :: scaling_vel_nodes = -1
-
+            !Weights for lumping taken from Zienkiewicz vol 1 page 475
+            real, parameter :: corner = 3./57.
+            real, parameter :: midpoint = 16./57.
             !Obtain the scaling factor to spread the volume of the mass matrix
             if (scaling_vel_nodes<0) then
                 scaling_vel_nodes = dble(Mdims%u_nloc)
                 !Adjust for linear bubble functions, P1(BL)DG
+                !We are adding an extra node that adds extra velocity that needs to be compensated
                 if ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or.&
                         (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) then
                     scaling_vel_nodes = scaling_vel_nodes - 1.
@@ -4682,11 +4685,29 @@ end if
                 end if
             end if
 
-            !Create the mass matrix normally by distributting the mass evenly between the nodes
-            do i=1,size(Mmat%PIVIT_MAT,1)
-                Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/scaling_vel_nodes
-            END DO
+            select case (Mdims%u_nloc)
+                case (6) !Quadratic 2D
+                    DO U_JLOC = 1, Mdims%u_nloc
+                        DO JPHASE = 1, Mdims%nphase
+                            DO JDIM = 1, Mdims%ndim
+                                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                select case (U_JLOC)
+                                    case (1,3,6)
+                                        Mmat%PIVIT_MAT( J, J, ELE ) = DevFuns%volume * corner
+                                    case default
+                                        Mmat%PIVIT_MAT( J, J, ELE ) = DevFuns%volume * midpoint
+                                end select
+                            end do
+                        end do
+                    end do
+                case default !Create the mass matrix normally by distributting the mass evenly between the nodes
+                    do i=1,size(Mmat%PIVIT_MAT,1)
+                        Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/scaling_vel_nodes
+                    END DO
+            end select
 
+
+!            Porous_media_PIVIT_not_stored_yet = .false.
             !If pressure boundary element, then we homogenize the velocity in the element
             if (lump_vol_factor<-1d24) then
                 call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )

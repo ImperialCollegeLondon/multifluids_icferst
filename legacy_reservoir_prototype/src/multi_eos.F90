@@ -1457,13 +1457,13 @@ contains
 
             if (tracer%name == "PackedTemperature" )  then
                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-print *, 'get TemperatureDiffusivity'
+!print *, 'get TemperatureDiffusivity'
             else if (tracer%name == "PackedTurbulentKineticEnergy") then
                 diffusivity => extract_tensor_field( state(iphase), 'TurbulentKineticEnergyDiffusivity', stat )
-print *, 'get TurbulentKineticEnergyDiffusivity'
+!print *, 'get TurbulentKineticEnergyDiffusivity'
             else if (tracer%name == "PackedTurbulentDissipation") then
                 diffusivity => extract_tensor_field( state(iphase), 'TurbulentDissipationDiffusivity', stat )
-print *, 'get TurbulentDissipationDiffusivity'
+!print *, 'get TurbulentDissipationDiffusivity'
             else
             end if
 
