@@ -247,7 +247,7 @@ contains
         !Therefore, we correct the initial condition for the pressure before anything is modified
         !If it is flooding we impose the initial pressure to match the equation P = gravity * (height+bathymetry)
         !The height is the initial condition of the density
-!        if (is_flooding .and. have_field('/material_phase[0]/scalar_field::Temperature')) then
+!        if (is_flooding .and. have_option('/material_phase[0]/scalar_field::Temperature')) then
 !            density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
 !            FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
 !            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry

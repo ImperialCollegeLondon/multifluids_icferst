@@ -440,6 +440,8 @@ contains
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
+
+
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -501,7 +503,21 @@ contains
              ELSE
                  DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
                  DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-                 DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
+                 if (is_flooding) then
+                    !For Flooding the densities not in the pipes have to be equal to unity
+                     ALLOCATE( DEN_ALL( Mdims%nphase, Mdims%cv_nonods ))
+                     ALLOCATE( DENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ))
+                     do iphase = 1, mdims%n_in_pres
+                         DEN_ALL(iphase,:) = 1.0
+                         DENOLD_ALL(iphase,:) = 1.0
+                     end do
+                     do iphase = mdims%n_in_pres+1, mdims%nphase
+                         DEN_ALL(iphase,:) = DEN_ALL2%VAL( 1, iphase, : )
+                         DENOLD_ALL(iphase,:) = DENOLD_ALL2%VAL( 1, iphase, : )
+                     end do
+                 else
+                     DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
+                 end if
              END IF
              TDIFFUSION = 0.0
              Mdisopt%v_beta = 1.0
@@ -646,7 +662,7 @@ contains
              call deallocate(Mmat%CV_RHS)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
-             if (IGOT_THETA_FLUX == 1) then
+             if (IGOT_THETA_FLUX == 1 .or. is_flooding) then
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
@@ -970,7 +986,7 @@ contains
            if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
            call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, uden3, U_SOURCE_CV_ALL )
            deallocate( uden3 )
-           if ( boussinesq .or. is_flooding) then
+           if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
         end if
@@ -1126,6 +1142,7 @@ contains
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
+
         deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -1556,7 +1573,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            DEN_OR_ONE = DEN_ALL
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
-        if ( boussinesq .or. is_flooding ) then
+        if ( boussinesq ) then
            DEN_OR_ONE = 1.0
            DENOLD_OR_ONE = 1.0
         end if
@@ -2521,6 +2538,10 @@ end if
                     LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD )
                     LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
                 ENDIF
+                if (is_flooding) then
+                    LOC_UDEN( :, CV_ILOC ) = 1.0
+                    LOC_UDENOLD( :, CV_ILOC) = 1.0
+                end if
                 IF(GOT_VIRTUAL_MASS) THEN
                     LOC_VIRTUAL_MASS( :,:, CV_ILOC )         = VIRTUAL_MASS( :,:, CV_INOD )
                     LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )     = VIRTUAL_MASS_OLD( :,:, CV_INOD )
@@ -3639,6 +3660,12 @@ end if
                         SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD )
                         SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 )
                     ENDIF
+                    if (is_flooding) then
+                        SLOC_UDEN( :, CV_SILOC )  = 1.0
+                        SLOC2_UDEN( :, CV_SILOC ) = 1.0
+                        SLOC_UDENOLD( :, CV_SILOC ) = 1.0
+                        SLOC2_UDENOLD( :, CV_SILOC ) = 1.0
+                    end if
                     IF(GOT_VIRTUAL_MASS) THEN
                         SLOC_VIRTUAL_MASS( :,:, CV_SILOC )   = VIRTUAL_MASS( :,:, CV_INOD )
                         SLOC2_VIRTUAL_MASS( :,:, CV_SILOC )  = VIRTUAL_MASS( :,:, CV_INOD2 )

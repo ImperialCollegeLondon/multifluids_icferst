@@ -586,6 +586,8 @@ contains
         TOLD_ALL =>old_tracer%val(1,:,:)
         if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
         T_ALL_KEEP = T_ALL
+
+
         IF( GETCT ) THEN
             IF( RETRIEVE_SOLID_CTY ) THEN
                 ALLOCATE(VOL_FRA_FLUID(Mdims%cv_nonods))
