@@ -247,12 +247,12 @@ contains
         !Therefore, we correct the initial condition for the pressure before anything is modified
         !If it is flooding we impose the initial pressure to match the equation P = gravity * (height+bathymetry)
         !The height is the initial condition of the density
-        if (is_flooding) then
-            density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
-            FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
-            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(1))
-        end if
+!        if (is_flooding .and. have_field('/material_phase[0]/scalar_field::Temperature')) then
+!            density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
+!            FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+!            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
+!            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(1))
+!        end if
         call set_boundary_conditions_values(state, shift_time=.true.)
 
         !  Access boundary conditions via a call like
@@ -679,15 +679,6 @@ print *, 'solve k_epsilon model advections'
 end if
 end if
 
-
-
-
-
-
-
-
-
-
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
@@ -698,7 +689,6 @@ end if
                        Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                 else if (is_flooding) then
                     call Calculate_flooding_absorptionTerm(state, packed_state, Mdims)
-
                 end if
 
 

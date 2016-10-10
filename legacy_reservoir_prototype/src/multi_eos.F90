@@ -1662,15 +1662,27 @@ contains
             option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/vector_field::Velocity' // &
                 '/prognostic/vector_field::Absorption/diagnostic/algorithm::vector_python_diagnostic'
             have_absorption = have_option( trim(option_path) )
+            if (.not.have_absorption) then!Test if it is prescribed and constant
+                option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/vector_field::Velocity' // &
+                    '/prognostic/vector_field::Absorption/prescribed/value'
+                have_absorption = have_option( trim(option_path) )
+            end if
             if ( have_absorption ) then
                 absorption => extract_vector_field( states( iphase ), 'VelocityAbsorption' )
-                do idim = 1, ndim
-                    velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
-                        absorption % val( idim, : )
-                end do
+                if (size(velocity_absorption,2) == size(absorption % val,2)) then
+                    do idim = 1, ndim
+                        velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
+                            absorption % val( idim, : )
+                    end do
+                else
+                    do idim = 1, ndim
+                        velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
+                            absorption % val( idim, size(absorption % val,2) )
+                    end do
+                end if
             else
                 do idim = 1, ndim
-                    velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) = 0.0
+                    velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) = 0.
                 end do
             end if
         end do
