@@ -1667,9 +1667,10 @@ contains
                     '/prognostic/vector_field::Absorption/prescribed/value'
                 have_absorption = have_option( trim(option_path) )
             end if
+
             if ( have_absorption ) then
                 absorption => extract_vector_field( states( iphase ), 'VelocityAbsorption' )
-                if (size(velocity_absorption,2) == size(absorption % val,2)) then
+                if (size(velocity_absorption,3) == size(absorption % val,2)) then
                     do idim = 1, ndim
                         velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
                             absorption % val( idim, : )
