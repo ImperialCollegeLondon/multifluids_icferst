@@ -780,7 +780,8 @@ contains
             !Local variables
             integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
             type( tensor_field ), pointer :: velocity, Nm, density
-            real, parameter :: hmin = 1d-5
+            real, parameter :: hmin = 1d-2
+            real, parameter :: u_min = 1d-2
             real :: g
             type(vector_field), pointer :: gravity_direction
 
@@ -801,7 +802,7 @@ contains
                         cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + u_iloc )
                         do i = 1, Mdims%ndim*Mdims%n_in_pres!Onle for the phases not in the pipes
                             absorpt(i, i, mat_nod) = absorpt(i, i, mat_nod) + Nm%val(1,1,ele)**2. * g *&
-                              sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod)))&
+                              max(u_min,sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod))))&
                              /(max(hmin, density%val(1,1,cv_nod))**(4./3.) * dble(mdims%u_nloc) )!This last term to get an average
                         end do
                     end do
