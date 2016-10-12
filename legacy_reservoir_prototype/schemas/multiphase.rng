@@ -2647,6 +2647,25 @@ Recommended value: [0.5,1.0]. Default =1.</a:documentation>
         </element>
       </optional>
       <optional>
+        <element name="flooding">
+          <a:documentation>Flooding parameters</a:documentation>
+          <element name="scalar_field">
+            <a:documentation>This is the term Nm of the manning formula:
+b = Nm^2*g * |u|/h^1.33; 
+Nm is the manning coefficent. Values between [0.01 and 0.025];
+Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
+For no friction set this to zero or do not activate it.</a:documentation>
+            <attribute name="name">
+              <value>manning_coef</value>
+            </attribute>
+            <element name="prescribed">
+              <ref name="material_mesh_choice"/>
+              <ref name="prescribed_scalar_field"/>
+            </element>
+          </element>
+        </element>
+      </optional>
+      <optional>
         <element name="numerical_methods">
           <a:documentation>numerical_methods options</a:documentation>
           <optional>

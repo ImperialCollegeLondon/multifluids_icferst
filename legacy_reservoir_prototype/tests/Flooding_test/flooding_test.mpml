@@ -476,4 +476,21 @@
       </prognostic>
     </scalar_field>
   </material_phase>
+  <flooding>
+    <scalar_field name="manning_coef">
+      <prescribed>
+        <mesh name="P0DG"/>
+        <value name="WholeMesh">
+          <constant>
+            <real_value rank="0">0.011</real_value>
+          </constant>
+        </value>
+        <output/>
+        <stat/>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
+      </prescribed>
+    </scalar_field>
+  </flooding>
 </multiphase_options>

@@ -387,6 +387,9 @@ contains
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
         end if
+        !Retrieve manning coefficient for flooding
+        if (is_flooding) call get_FloodingProp(state, packed_state)
+
         !!$ Starting Time Loop
         itime = 0
         if( &
@@ -684,11 +687,13 @@ end if
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
-                if( solve_force_balance .and. is_porous_media ) then
-                    call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                       Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
-                else if (is_flooding) then
-                    call Calculate_flooding_absorptionTerm(state, packed_state, Mdims)
+                if( solve_force_balance) then
+                    if ( is_porous_media ) then
+                        call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
+                            Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
+                    else if (is_flooding) then
+                        call Calculate_flooding_absorptionTerm(state, packed_state, Mdims, ndgln)
+                    end if
                 end if
 
 
@@ -1350,6 +1355,8 @@ end if
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                 end if
+                !Retrieve manning coefficient for flooding
+                if (is_flooding) call get_FloodingProp(state, packed_state)
 
                 call put_CSR_spars_into_packed_state()
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************

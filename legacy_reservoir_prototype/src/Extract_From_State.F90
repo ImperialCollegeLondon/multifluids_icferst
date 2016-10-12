@@ -993,6 +993,11 @@ contains
         call insert(packed_state,ten_field,"PackedRockFluidProp")
         call deallocate(ten_field)
 
+        ! For Flooding: Manning coefficient
+        if(have_option('/flooding')) call allocate(ten_field,element_mesh,"PackedManningcoef",dim=[1,1])
+        call insert(packed_state,ten_field,"PackedManningcoef")
+        call deallocate(ten_field)
+
         pressure=>extract_scalar_field(state(1),"Pressure")
         call insert(packed_state,pressure%mesh,"PressureMesh")
 
