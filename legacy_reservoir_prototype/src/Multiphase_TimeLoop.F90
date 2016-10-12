@@ -242,7 +242,7 @@ contains
 
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
-        !Sincd this is a hack for Flooding, we want to do this before we actually start using the density as the height
+        !Since this is a hack for Flooding, we want to do this before we actually start using the density as the height
         !which depends on the pressure. However, for th initial condition we need to use the density to set up the initial Pressure
         !Therefore, we correct the initial condition for the pressure before anything is modified
         !If it is flooding we impose the initial pressure to match the equation P = gravity * (height+bathymetry)
@@ -253,6 +253,10 @@ contains
 !            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
 !            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(1))
 !        end if
+        !Retrieve manning coefficient for flooding, this has to be after the call to pack_multistate
+        if (is_flooding) call get_FloodingProp(state, packed_state)
+
+
         call set_boundary_conditions_values(state, shift_time=.true.)
 
         !  Access boundary conditions via a call like
@@ -387,8 +391,6 @@ contains
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
         end if
-        !Retrieve manning coefficient for flooding
-        if (is_flooding) call get_FloodingProp(state, packed_state)
 
         !!$ Starting Time Loop
         itime = 0

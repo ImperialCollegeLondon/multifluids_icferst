@@ -780,7 +780,7 @@ contains
             !Local variables
             integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
             type( tensor_field ), pointer :: velocity, Nm, density
-            real, parameter :: hmin = 1d-2
+            real, parameter :: hmin = 1d-5
             real, parameter :: u_min = 1d-2
             real :: g
             type(vector_field), pointer :: gravity_direction
@@ -800,7 +800,7 @@ contains
                     do cv_iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
                         cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + u_iloc )
-                        do i = 1, Mdims%ndim*Mdims%n_in_pres!Onle for the phases not in the pipes
+                        do i = 1, Mdims%ndim*Mdims%n_in_pres!Only for the phases not in the pipes
                             absorpt(i, i, mat_nod) = absorpt(i, i, mat_nod) + Nm%val(1,1,ele)**2. * g *&
                               max(u_min,sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod))))&
                              /(max(hmin, density%val(1,1,cv_nod))**(4./3.) * dble(mdims%u_nloc) )!This last term to get an average
@@ -2521,6 +2521,19 @@ contains
         !Retrieve Manning coefficent
         path = "/flooding/scalar_field::manning_coef/prescribed/value"
         if (have_option(trim(path))) then
+            call initialise_field_over_regions(targ_Store, trim(path) , position)
+            t_field%val(1,1,:) = targ_Store%val(:)
+        end if
+        call deallocate(targ_Store)
+
+
+        fl_mesh => extract_mesh( state(1), "PressureMesh" )
+        Auxmesh = fl_mesh
+        call allocate (targ_Store, Auxmesh, "Temporary_Bathymetry")
+        !Retrieve Bathymetry coefficent
+        path = "/material_phase::phase1/scalar_field::Bathymetry/prescribed/value"
+        if (have_option(trim(path))) then
+            t_field=>extract_tensor_field(packed_state,"PackedBathymetry")
             call initialise_field_over_regions(targ_Store, trim(path) , position)
             t_field%val(1,1,:) = targ_Store%val(:)
         end if

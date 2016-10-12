@@ -1068,6 +1068,11 @@ contains
             call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
+        if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
+            call insert_sfield(packed_state,"Bathymetry",1,1,&
+                add_source=.false.,add_absorption=.false.)
+            call insert_sfield(packed_state,"Bathymetry",1,1)
+        end if
 !!-PY add it for k_epsilon model
        if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
             call insert_sfield(packed_state,"TurbulentKineticEnergy",1,nphase,&

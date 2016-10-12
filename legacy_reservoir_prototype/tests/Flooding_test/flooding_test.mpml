@@ -90,23 +90,20 @@
   </timestepping>
   <material_phase name="phase1">
     <equation_of_state>
-      <compressible>
-        <linear_in_pressure>
-          <coefficient_A>
-            <real_value rank="0">0.101936799</real_value>
-            <comment>1/gravity = 0.101936799</comment>
-          </coefficient_A>
-          <coefficient_B>
-            <python>
-              <string_value lines="20" type="code" language="python">def val(X, t):
-  val = ((X[0] - 5)/5)**2.
-  if (X[0]&gt;=5.0):
-    val += 1.
-  return val</string_value>
-            </python>
-          </coefficient_B>
-        </linear_in_pressure>
-      </compressible>
+      <python_state>
+        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
+          <string_value lines="20" type="code" language="python">p = state.tensor_fields["PackedCVPressure"]
+bd = state.tensor_fields["PackedBathymetry"]
+
+A = 0.101936799
+
+for i in range( p.node_count ):
+ P = p.node_val( i )
+ B = bd.node_val( i )
+ val = A*P-B
+ field.set( i, val )</string_value>
+        </algorithm>
+      </python_state>
     </equation_of_state>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
@@ -474,6 +471,26 @@
         </detectors>
         <consistent_interpolation/>
       </prognostic>
+    </scalar_field>
+    <scalar_field name="Bathymetry" rank="0">
+      <prescribed>
+        <mesh name="PressureMesh"/>
+        <value name="WholeMesh">
+          <python>
+            <string_value lines="20" type="code" language="python">def val(X, t):
+  val = ((X[0] - 5)/5)**2.
+  if (X[0]&gt;=5.0):
+    val += 1.
+  return val</string_value>
+          </python>
+        </value>
+        <output/>
+        <stat/>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
+        <do_not_recalculate/>
+      </prescribed>
     </scalar_field>
   </material_phase>
   <flooding>
