@@ -253,10 +253,8 @@ contains
 !            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
 !            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(1))
 !        end if
-        !Retrieve manning coefficient for flooding, this has to be after the call to pack_multistate
+        !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
         if (is_flooding) call get_FloodingProp(state, packed_state)
-
-
         call set_boundary_conditions_values(state, shift_time=.true.)
 
         !  Access boundary conditions via a call like
@@ -1317,6 +1315,8 @@ end if
                 call Get_Primary_Scalars_new( state, Mdims )
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
+                !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
+                if (is_flooding) call get_FloodingProp(state, packed_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
                 !!$ Deallocating array variables:
                 deallocate( &
@@ -1357,8 +1357,6 @@ end if
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                 end if
-                !Retrieve manning coefficient for flooding
-                if (is_flooding) call get_FloodingProp(state, packed_state)
 
                 call put_CSR_spars_into_packed_state()
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
