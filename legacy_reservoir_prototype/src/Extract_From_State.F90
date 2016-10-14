@@ -995,7 +995,7 @@ contains
 
         ! For Flooding: Manning coefficient
         if(have_option('/flooding')) then
-            call allocate(ten_field,element_mesh,"PackedManningcoef",dim=[1,1])
+            call allocate(ten_field,element_mesh,"PackedManningcoef",dim=[1,nphase])
             call insert(packed_state,ten_field,"PackedManningcoef")
             call deallocate(ten_field)
         end if
@@ -1071,9 +1071,9 @@ contains
         end if
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
-            call insert_sfield(packed_state,"Bathymetry",1,1,&
+            call insert_sfield(packed_state,"Bathymetry",1,nphase,&
                 add_source=.false.,add_absorption=.false.)
-            call insert_sfield(packed_state,"Bathymetry",1,1)
+            call insert_sfield(packed_state,"Bathymetry",1,nphase)
         end if
 !!-PY add it for k_epsilon model
        if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then

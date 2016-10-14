@@ -1980,9 +1980,9 @@ start =
               }
                     )
                  },
-               ##Perform the harmonic mean of the bathymetry when calculating the Manning formula;
-               ##At present averages per element.
-               element harmonic_mean {
+               ##Do not perform the harmonic mean of the bathymetry when calculating the Manning formula;
+               ##By default performs the harmonic average.
+               element no_averaging {
                comment
             }?
          }?,

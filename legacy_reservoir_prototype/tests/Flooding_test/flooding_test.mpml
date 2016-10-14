@@ -100,7 +100,7 @@ A = 0.101936799
 for i in range( p.node_count ):
  P = p.node_val( i )
  B = bd.node_val( i )
- val = A*P-B
+ val = A*P[0][0]-B[0][0]
  field.set( i, val )</string_value>
         </algorithm>
       </python_state>
