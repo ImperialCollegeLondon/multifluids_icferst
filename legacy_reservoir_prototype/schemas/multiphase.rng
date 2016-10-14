@@ -2663,6 +2663,13 @@ For no friction set this to zero or do not activate it.</a:documentation>
               <ref name="prescribed_scalar_field"/>
             </element>
           </element>
+          <optional>
+            <element name="harmonic_mean">
+              <a:documentation>Perform the harmonic mean of the bathymetry when calculating the Manning formula;
+At present averages per element.</a:documentation>
+              <ref name="comment"/>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>

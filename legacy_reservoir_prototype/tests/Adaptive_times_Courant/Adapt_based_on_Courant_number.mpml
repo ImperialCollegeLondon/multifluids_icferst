@@ -3,6 +3,9 @@
   <simulation_name>
     <string_value lines="1">Adapt_based_on_Courant_number</string_value>
   </simulation_name>
+  <simulation_type>
+    <porous_media/>
+  </simulation_type>
   <geometry>
     <dimension>
       <integer_value rank="0">2</integer_value>

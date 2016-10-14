@@ -1979,7 +1979,12 @@ start =
                           prescribed_scalar_field
               }
                     )
-                 }
+                 },
+               ##Perform the harmonic mean of the bathymetry when calculating the Manning formula;
+               ##At present averages per element.
+               element harmonic_mean {
+               comment
+            }?
          }?,
          ## numerical_methods options
          element numerical_methods {

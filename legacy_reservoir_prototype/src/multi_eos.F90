@@ -784,10 +784,12 @@ contains
             real, parameter :: u_min = 1d-2
             real :: g
             type(vector_field), pointer :: gravity_direction
-
-
+            real, dimension(mdims%cv_nloc) :: bathymetry
+            logical :: harm_mean
             if(.not.have_option('/flooding')) return !Nothing to do here, return
 
+            !Check whether to use the harmonic mean of the bathymetry
+            harm_mean = have_option('/flooding/harmonic_mean')
             call get_option( "/physical_parameters/gravity/magnitude", g, stat )
             if (stat /= 0) g = 9.81!Set default value if not specified by the user
             Nm => extract_tensor_field( packed_state, "PackedManningcoef" )!Defined element-wise
@@ -795,15 +797,21 @@ contains
             density => extract_tensor_field( packed_state, "PackedDensity" )!For flooding the first phase is the height
             iphase = 1!First phase of velocity only
             do ele = 1, Mdims%totele
+                do cv_iloc = 1, Mdims%cv_nloc
+                    !Create bathymetry field just in case of using the harmonic mean
+                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                    bathymetry(cv_iloc) = max(hmin, density%val(1,1,cv_nod))
+                end do
+                if (harm_mean) bathymetry = (sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
                 do u_iloc = 1, mdims%u_nloc
                     u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
                     do cv_iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
-                        cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + u_iloc )
+                        cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                         do i = 1, Mdims%ndim*Mdims%n_in_pres!Only for the phases not in the pipes
-                            absorpt(i, i, mat_nod) = absorpt(i, i, mat_nod) + Nm%val(1,1,ele)**2. * g *&
+                            absorpt(i, i, mat_nod) = absorpt(i, i, mat_nod)  + Nm%val(1,1,ele)**2. * g *&
                               max(u_min,sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod))))&
-                             /(max(hmin, density%val(1,1,cv_nod))**(4./3.) * dble(mdims%u_nloc) )!This last term to get an average
+                             /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average
                         end do
                     end do
                 end do

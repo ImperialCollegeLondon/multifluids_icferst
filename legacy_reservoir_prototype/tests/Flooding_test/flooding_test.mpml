@@ -492,6 +492,23 @@ for i in range( p.node_count ):
         <do_not_recalculate/>
       </prescribed>
     </scalar_field>
+    <scalar_field name="Height_with_bathymetry" rank="0">
+      <diagnostic>
+        <algorithm source_field_2_type="scalar" name="scalar_sum" source_field_1_name="Bathymetry" source_field_2_name="Density" material_phase_support="single" source_field_1_type="scalar"/>
+        <mesh name="PressureMesh"/>
+        <output/>
+        <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
+        <steady_state>
+          <include_in_steady_state/>
+        </steady_state>
+      </diagnostic>
+    </scalar_field>
   </material_phase>
   <flooding>
     <scalar_field name="manning_coef">
