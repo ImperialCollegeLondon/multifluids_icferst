@@ -358,7 +358,7 @@ contains
            if (have_option('/boiling')) deallocate(T_absorb)
 
            call deallocate(Mmat%petsc_ACV)
-           call deallocate(Mmat%CV_RHS)
+           call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
@@ -441,6 +441,7 @@ contains
              logical :: satisfactory_convergence
              integer :: its, useful_sats
 
+if (is_flooding) return!<== Temporary fix for flooding
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -604,7 +605,6 @@ contains
                         !The real domain can only have water
                         tracer%val(1,1,:) = 1.0
                         if(Mdims%n_in_pres > 1) tracer%val(1,2,:) = 0.0!air is automatically removed from the system
-
                     else
                         call non_porous_ensure_sum_to_one(packed_state)
                     end if
@@ -663,7 +663,7 @@ contains
                  DEALLOCATE( T2OLD )
              END IF
              DEALLOCATE( THETA_GDIFF )
-             call deallocate(Mmat%CV_RHS)
+             call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
              if (IGOT_THETA_FLUX == 1 .or. is_flooding) then
