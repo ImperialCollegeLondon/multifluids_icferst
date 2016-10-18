@@ -2347,14 +2347,17 @@ contains
                    A_GAMMA_PRES_ABS( 1, 4, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 2, :, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 3, 1, CV_NODI ) = l_frac*A_GAMMA_PRES_ABS( 3, 1, CV_NODI )* DEN_FOR_PIPE_PHASE(3)
+                   A_GAMMA_PRES_ABS( 3, 2, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 3, 3, CV_NODI ) = l_frac*A_GAMMA_PRES_ABS( 3, 3, CV_NODI )* K_PIPES
+                   A_GAMMA_PRES_ABS( 3, 4, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 4, 1:3, CV_NODI ) = 0.0
+                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = l_frac*A_GAMMA_PRES_ABS( 4, 4, CV_NODI )
 ! A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) IS UNALTERED. 
 !
 ! cty rhs...
-                   ct_rhs_phase(1)= -l_frac*A_GAMMA_PRES_ABS( 1, 1, CV_NODI )*gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
+                   ct_rhs_phase(1)= -A_GAMMA_PRES_ABS( 1, 1, CV_NODI )*gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
                    ct_rhs_phase(2)=0.0
-                   ct_rhs_phase(3)= l_frac*A_GAMMA_PRES_ABS( 3, 1, CV_NODI ) *gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
+                   ct_rhs_phase(3)= A_GAMMA_PRES_ABS( 3, 1, CV_NODI ) *gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
                    ct_rhs_phase(4)=0.0
                    ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI ) ! We have already divided through by density in GAMMA_PRES_ABS2.
 !                   ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI )/ DEN_FOR_PIPE_PHASE(:) ! Pablo we should not use this one
@@ -2693,6 +2696,9 @@ contains
                 DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &
                     +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
                     / ( DT * DEN_ALL( :, CV_NODI ) )
+
+!print *, maxval(DEN_ALL)  ,  maxval(MEAN_PORE_CV_PHASE),     maxval(T_ALL_KEEP),    maxval(DERIV)
+!read*
                 ct_rhs_phase(:)=ct_rhs_phase(:)  &
                     + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )
                 IF ( HAVE_ABSORPTION ) THEN

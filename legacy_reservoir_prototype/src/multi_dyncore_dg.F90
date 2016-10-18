@@ -441,7 +441,6 @@ contains
              logical :: satisfactory_convergence
              integer :: its, useful_sats
 
-
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -599,13 +598,15 @@ contains
                  call deallocate(Mmat%petsc_ACV)
                  !For non-porous media make sure all the phases sum to one
                  if (.not. is_porous_media) then
-                    call non_porous_ensure_sum_to_one(packed_state)
                     if (is_flooding ) then
                         !For flooding ensure that the height is non-zero and positive
                         density%val(1,1,:) = max(density%val(1,1,:),1e-5)
                         !The real domain can only have water
                         tracer%val(1,1,:) = 1.0
-                        if(Mdims%n_in_pres > 1) tracer%val(1,:,:) = 0.0!air is automatically removed from the system
+                        if(Mdims%n_in_pres > 1) tracer%val(1,2,:) = 0.0!air is automatically removed from the system
+
+                    else
+                        call non_porous_ensure_sum_to_one(packed_state)
                     end if
                  end if
                  !Correct the solution obtained to make sure we are on track towards the final solution
@@ -953,6 +954,11 @@ contains
 
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+        !For flooding ensure that the height is non-zero and positive
+        if (is_flooding) then
+            DEN_ALL2%val(1,1,:)    = max(DEN_ALL2%val(1,1,:),1e-5)
+            DENOLD_ALL2%val(1,1,:) = max(DENOLD_ALL2%val(1,1,:),1e-5)
+        end if
         DEN_ALL(1:, 1:) => DEN_ALL2%VAL( 1, :, : )
         DENOLD_ALL(1:, 1:) => DENOLD_ALL2%VAL( 1, :, : )
 
@@ -1188,6 +1194,7 @@ contains
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, symmetric_P )
+
         END IF
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
@@ -1584,8 +1591,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IGOT_THERM_VIS = 0
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
-        !For flooding ensure that the height is non-zero and positive
-        if (is_flooding) density%val(1,1,:) = max(density%val(1,1,:),1e-5)
+
         call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -1606,10 +1612,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
             calculate_mass_delta = calculate_mass_delta)
-
-        !For flooding ensure that the height is non-zero and positive
-        if (is_flooding) density%val(1,1,:) = max(density%val(1,1,:),1e-5)
-
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
