@@ -115,7 +115,7 @@ contains
            REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
-           REAL, DIMENSION( : , : ), allocatable :: t_source, den_all, denold_all
+           REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
            INTEGER :: IPHASE
@@ -359,7 +359,6 @@ contains
 
            call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS)
-           deallocate(den_all,denold_all)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
@@ -600,13 +599,13 @@ contains
                  call deallocate(Mmat%petsc_ACV)
                  !For non-porous media make sure all the phases sum to one
                  if (.not. is_porous_media) then
-                    if (is_flooding) then
-                        !Ensure that the height is non-zero and positive
+                    call non_porous_ensure_sum_to_one(packed_state)
+                    if (is_flooding ) then
+                        !For flooding ensure that the height is non-zero and positive
                         density%val(1,1,:) = max(density%val(1,1,:),1e-5)
-                        tracer%val(1,1,:) = 1.0;!The real domain can only have water
-                        if (size(tracer%val,2) > 1) tracer%val(1,2,:) = 0.0 !air is automatically removed from the system
-                    else
-                        call non_porous_ensure_sum_to_one(packed_state)
+                        !The real domain can only have water
+                        tracer%val(1,1,:) = 1.0
+                        if(Mdims%n_in_pres > 1) tracer%val(1,:,:) = 0.0!air is automatically removed from the system
                     end if
                  end if
                  !Correct the solution obtained to make sure we are on track towards the final solution
@@ -1182,6 +1181,7 @@ contains
             else
                nullify(halo)
             end if
+
             !Form pressure matrix
             CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -1347,7 +1347,6 @@ END IF
                 rhs_p%val = rhs_p%val / rescaleVal
                 !End of re-scaling
             end if
-
             call zero(deltaP)
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
@@ -1513,7 +1512,7 @@ END IF
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
-        REAL, DIMENSION( : , : ), pointer :: DEN_OR_ONE, DENOLD_OR_ONE
+        REAL, DIMENSION( : , : ), allocatable :: DEN_OR_ONE, DENOLD_OR_ONE
         REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
         LOGICAL :: GET_THETA_FLUX
         INTEGER :: IGOT_T2, I, IGOT_THERM_VIS
@@ -1585,6 +1584,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IGOT_THERM_VIS = 0
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
+        !For flooding ensure that the height is non-zero and positive
+        if (is_flooding) density%val(1,1,:) = max(density%val(1,1,:),1e-5)
         call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -1605,6 +1606,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
             calculate_mass_delta = calculate_mass_delta)
+
+        !For flooding ensure that the height is non-zero and positive
+        if (is_flooding) density%val(1,1,:) = max(density%val(1,1,:),1e-5)
 
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
