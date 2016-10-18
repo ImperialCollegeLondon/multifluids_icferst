@@ -251,10 +251,16 @@ contains
 !            density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
 !            FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
 !            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
-!            FE_Pressure%val(1,1,:) =  9.81 * (density_field%val(1,1,:) + bathymetry%val(1))
+!            FE_Pressure%val(1,1,:) =  9.80665 * (density_field%val(1,1,:) + bathymetry%val(1))
 !        end if
         !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
-        if (is_flooding) call get_FloodingProp(state, packed_state)
+        if (is_flooding) then
+            call get_FloodingProp(state, packed_state)
+            if (have_option( "/physical_parameters/gravity/magnitude")) then
+                ewrite(1,*) "ERROR: For flooding DO NOT define gravity, it is already defined in the code"
+                stop
+            end if
+        end if
         call set_boundary_conditions_values(state, shift_time=.true.)
 
         !  Access boundary conditions via a call like

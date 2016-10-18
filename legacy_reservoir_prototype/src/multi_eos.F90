@@ -772,17 +772,18 @@ contains
                 end do
             end do
         end do
+
         contains
 
         subroutine calculate_manning_coef(absorpt)
             implicit none
             real, dimension(:,:,:), intent(inout) :: absorpt
             !Local variables
-            integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
-            type( tensor_field ), pointer :: velocity, Nm, density
             real, parameter :: hmin = 1d-9!The velocity solver is very sensitive to this parameter
             real, parameter :: u_min = 1d-2 !increase it if having problems to converge
-            real :: g
+            real, parameter :: g = 9.80665!Set default value if not specified by the user
+            integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
+            type( tensor_field ), pointer :: velocity, Nm, density
             type(vector_field), pointer :: gravity_direction
             real, dimension(mdims%cv_nloc) :: bathymetry
             real, dimension(:), allocatable :: r_nod_count
@@ -791,8 +792,7 @@ contains
 
             !Check whether to use the harmonic mean of the bathymetry
             no_averaging = have_option('/flooding/no_averaging')
-            call get_option( "/physical_parameters/gravity/magnitude", g, stat )
-            if (stat /= 0) g = 9.81!Set default value if not specified by the user
+
             Nm => extract_tensor_field( packed_state, "PackedManningcoef" )!Defined element-wise
             velocity => extract_tensor_field( packed_state, "PackedVelocity" )
             density => extract_tensor_field( packed_state, "PackedDensity" )!For flooding the first phase is the height

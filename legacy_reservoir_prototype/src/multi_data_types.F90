@@ -1056,8 +1056,8 @@ contains
             deallocate (Mmat%PIVIT_MAT); nullify(Mmat%PIVIT_MAT)
         end if
         if (associated(Mmat%CT_RHS%val)) call deallocate(Mmat%CT_RHS)
-!!-PY: delete this for correcting the adaptive mesh works for single phase flow.
-        !if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)      
+        if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)!<=This one seems to give problems to PY
+!        if (associated(Mmat%CV_RHS%val)) deallocate(Mmat%CV_RHS%val)!if that is the case, at least use this line instead
         if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)
         if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
         !Set flag to recalculate
