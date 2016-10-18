@@ -1581,6 +1581,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IGOT_THERM_VIS = 0
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
+        !For flooding ensure that the height is non-zero and positive
+        if (is_flooding) density%val(1,1,:) = max(density%val(1,1,:),1e-5)
         call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -1601,6 +1603,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
             calculate_mass_delta = calculate_mass_delta)
+
+        !For flooding ensure that the height is non-zero and positive
+        if (is_flooding) density%val(1,1,:) = max(density%val(1,1,:),1e-5)
+
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
