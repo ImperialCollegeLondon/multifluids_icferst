@@ -492,7 +492,7 @@ contains
         !Variables for Flooding
         logical, parameter :: implicit_fs = .false.
         real, parameter :: gravity_flooding = 9.80665
-        real, parameter :: K_TOP = 1.
+        real, parameter :: K_TOP = 1.0
         real :: fs_height, K_PIPES, l_surface_pipe, q_pipes, RDUM, RDUM2, CV_PIPE_LENGTH, l_frac
         type( tensor_field ), pointer :: Flooding_AbsorptionTerm, bathymetry
         type( scalar_field ), pointer :: depth_of_drain
@@ -2277,11 +2277,12 @@ contains
                     END DO
                 PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                 IF ( is_flooding ) then ! Should really use the manhole diameter here...
-                       DO IPRES = 1, Mdims%npres
-                          PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
-                       END DO
-                       PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
+                   DO IPRES = 1, Mdims%npres
+                      PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                   END DO
+                   PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                    DEN_FOR_PIPE_PHASE(1)=DEN_FOR_PIPE_PHASE(3)
+                   DEN_FOR_PIPE_PHASE(2)=DEN_FOR_PIPE_PHASE(4)
                    fs_height = DEN_ALL(1,CV_NODI )!for flooding density of the first phase is the height, to make it more readable
                                                 !we set a new variable here
                    SIGMA_INV_APPROX( 2, CV_NODI )=SIGMA_INV_APPROX( 4, CV_NODI )
@@ -2303,11 +2304,11 @@ contains
                         ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                         IF ( IPRES /= JPRES ) THEN
                             !Peaceman correction
+
                             IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
                                 GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                                     cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                                     / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-
                                 IF ( GOT_NANO ) THEN
                                     GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) +GAMMA_PRES_ABS_nano( IPHASE, JPHASE, CV_NODI ) * &
                                         cc * SAT_FOR_PIPE(IPHASE) * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
@@ -2344,7 +2345,7 @@ contains
                    l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
                    A_GAMMA_PRES_ABS( 1, 1, CV_NODI ) = A_GAMMA_PRES_ABS( 1, 1, CV_NODI ) * L_surface_pipe
                    A_GAMMA_PRES_ABS( 1, 2, CV_NODI ) = 0.0
-                   A_GAMMA_PRES_ABS( 1, 3: Mdims%nphase, CV_NODI ) = A_GAMMA_PRES_ABS( 1, 3:Mdims%nphase, CV_NODI )*L_surface_pipe*K_PIPES/DEN_FOR_PIPE_PHASE(Mdims%n_in_pres + 1)
+                   A_GAMMA_PRES_ABS( 1, 3, CV_NODI ) = A_GAMMA_PRES_ABS( 1, 3, CV_NODI )*L_surface_pipe*K_PIPES/DEN_FOR_PIPE_PHASE(3)
                    A_GAMMA_PRES_ABS( 1, 4, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 2, :, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 3, 1, CV_NODI ) = l_frac*A_GAMMA_PRES_ABS( 3, 1, CV_NODI )* DEN_FOR_PIPE_PHASE(3)
@@ -2362,6 +2363,12 @@ contains
                    ct_rhs_phase(3)= RDUM *gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
                    ct_rhs_phase(4)=0.0
                    ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI ) ! We have already divided through by density in GAMMA_PRES_ABS2.
+!                   ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI )/ DEN_FOR_PIPE_PHASE(:) ! Pablo we should not use this one
+
+! now divid through by the free surface height to be consistent with the rest of the cty equation:
+                   ct_rhs_phase(1) = ct_rhs_phase(1)/DEN_ALL( 1, CV_NODI )
+                   A_GAMMA_PRES_ABS( 1, :, CV_NODI ) = A_GAMMA_PRES_ABS( 1, :, CV_NODI )/DEN_ALL( 1, CV_NODI )
+
                    DO IPRES = 1, Mdims%npres
                         call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
                    END DO
