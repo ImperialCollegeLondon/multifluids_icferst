@@ -1152,6 +1152,12 @@ if (is_flooding) return!<== Temporary fix for flooding
             IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
 
+!For flooding ensure that the height is non-zero and positive
+if (is_flooding) then
+    DEN_ALL2%val(1,1,:)    = max(DEN_ALL2%val(1,1,:),1e-5)
+    DENOLD_ALL2%val(1,1,:) = max(DENOLD_ALL2%val(1,1,:),1e-5)
+end if
+
         deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
