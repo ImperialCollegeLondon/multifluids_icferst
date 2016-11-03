@@ -1230,7 +1230,8 @@ contains
         mxnele = mx_nface_p1 * totele
 
         mx_nct = totele * u_nloc * cv_nloc * ndim * nphase
-        mx_ncolm = mxnele * cv_nloc * cv_nloc * nphase * nphase
+        mx_ncolm = abs(mxnele * cv_nloc * cv_nloc * nphase * nphase)!the abs() is to solve an odd bug apearing in gfortran
+
         if( cv_nonods == cv_nloc * totele ) then ! Discontinuous in Pressure
             !   mx_nct = mx_nct * mx_nface_p1 * 10
             !   mx_ncolm = mx_ncolm * 5
