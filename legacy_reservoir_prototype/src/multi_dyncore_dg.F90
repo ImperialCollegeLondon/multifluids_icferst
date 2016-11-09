@@ -954,11 +954,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-        !For flooding ensure that the height is non-zero and positive
-        if (is_flooding) then
-            DEN_ALL2%val(1,1,:)    = max(DEN_ALL2%val(1,1,:),1e-5)
-            DENOLD_ALL2%val(1,1,:) = max(DENOLD_ALL2%val(1,1,:),1e-5)
-        end if
+
         DEN_ALL(1:, 1:) => DEN_ALL2%VAL( 1, :, : )
         DENOLD_ALL(1:, 1:) => DENOLD_ALL2%VAL( 1, :, : )
 
@@ -1151,12 +1147,6 @@ if (is_flooding) return!<== Temporary fix for flooding
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
-
-!For flooding ensure that the height is non-zero and positive
-if (is_flooding) then
-    DEN_ALL2%val(1,1,:)    = max(DEN_ALL2%val(1,1,:),1e-5)
-    DENOLD_ALL2%val(1,1,:) = max(DENOLD_ALL2%val(1,1,:),1e-5)
-end if
 
         deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV

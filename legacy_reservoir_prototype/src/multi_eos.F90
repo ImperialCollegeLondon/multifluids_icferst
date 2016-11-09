@@ -667,6 +667,9 @@ contains
             FLAbort( 'No option given for choice of EOS' )
         end if Conditional_EOS_Option
 
+        !For flooding ensure that the height (density of phase 1) is non-zero and positive
+        if (is_flooding .and. iphase == 1) Rho = max(Rho, 1d-5)
+
         deallocate( perturbation_pressure, RhoPlus, RhoMinus )
 
     end subroutine Calculate_Rho_dRhodP
