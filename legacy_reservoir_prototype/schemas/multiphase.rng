@@ -2599,6 +2599,11 @@ This will over-write the field specified in Sigma1.</a:documentation>
               </choice>
             </element>
           </optional>
+          <optional>
+            <element name="include_pore_pressure">
+              <empty/>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>
