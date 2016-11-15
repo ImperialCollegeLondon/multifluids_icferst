@@ -1932,6 +1932,9 @@ start =
 	    element oneway_coupling_only {
 	       attribute rank {"0"},
                ("1way"|"p2way")
+	    }?,
+            element include_pore_pressure {
+               empty
 	    }?
          )
          }?,
