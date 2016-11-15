@@ -373,7 +373,7 @@ contains
          nonlinear_iteration, IDs_ndgln,&
          IDs2CV_ndgln, Courant_number,&
          option_path,&
-         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, Quality_list, overrelax_set_to_zero)
+         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, Quality_list)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
              type( state_type ) :: packed_state
@@ -398,7 +398,6 @@ contains
              real, intent(inout) :: Courant_number
              character(len= * ), intent(in), optional :: option_path
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-             logical, intent(in) :: overrelax_set_to_zero
              ! Local Variables
              LOGICAL, PARAMETER :: THERMAL= .false.
              integer :: igot_t2
@@ -449,10 +448,6 @@ if (is_flooding) return!<== Temporary fix for flooding
              call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
              !Get information for capillary pressure to be use in CV_ASSEMB
              call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
-             ! If we are doing an NI where we force zero over-relaxation, then override the OvRelax_param
-             if(overrelax_set_to_zero) then
-             	OvRelax_param = 0.0
-             endif
              !Get variable for global convergence method
              if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
                  backtrack_par_factor = 1.1
@@ -640,10 +635,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                                    Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                              !Also recalculate the Over-relaxation parameter
                              call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
-			     ! If we are doing an NI where we force zero over-relaxation, then override the OvRelax_param
-			     if(overrelax_set_to_zero) then
-			     	OvRelax_param = 0.0
-			     endif
                          else
                              exit Loop_NonLinearFlux
                          end if

@@ -188,8 +188,6 @@ contains
         logical :: calculate_flux
         ! Variables used in the CVGalerkin interpolation calculation
         integer :: numberfields
-        ! Variable used in the treatment of overrelaxation	
-	logical :: overrelax_set_to_zero
 
 !       Variables used for calculating conservation of mass (entering/leaving and within the domain).
 
@@ -212,7 +210,6 @@ contains
         integer, dimension(:), allocatable :: diagnostics ! number of bad elements - used to generate a diagnostics table
         integer, dimension(2) :: shape
         logical :: mesh_diagnostics = .false., bad_element = .false. ! print out mesh diagnostics / change properties of bad elements to improve deltaP calculations for bad meshes (with large angles)
-
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -540,13 +537,6 @@ contains
             end if
 #endif
             !!$ Start non-linear loop
-            ! Work out if we have over-relaxation and have to force an extra NI at the end of the loop to remove it at the end.
-	    if( have_option("/material_phase::phase1/multiphase_properties/Sat_overRelax") ) then
-	    	overrelax_set_to_zero = .false.
-            else      
-            	overrelax_set_to_zero = .true. ! i.e. if we don't have overrelaxation then overrelax being zero is true automatically
-            end if
-
             first_nonlinear_time_step = .true.
             its = 1
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
@@ -888,7 +878,7 @@ end if
                         its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list, overrelax_set_to_zero = overrelax_set_to_zero)
+                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
@@ -902,16 +892,6 @@ end if
                 end if
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, calculate_mass_delta)
-
-                ! This is the point where we need to force overrelaxation to zero and do another nonlinear iteration. We only
-                ! want to allow this switch to happen once, hence we flip it to true after executing once.                
-                if(overrelax_set_to_zero .eqv. .false.) then                
-			if (ExitNonLinearLoop) then  ! If we were meant to exit the non-linear iteration loop, force at least one more NI,
-                                                     ! by setting ExitNonLinearLoop = .false. This extra NI will have zero overrelaxation.
-				ExitNonLinearLoop = .false.
-                        	overrelax_set_to_zero = .true.
-                	end if
-                end if
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
