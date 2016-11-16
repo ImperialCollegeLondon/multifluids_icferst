@@ -71,8 +71,6 @@ module multiphase_time_loop
     use multi_data_types
     use vtk_interfaces
     use multi_interpolation
-    use gls
-    use k_epsilon
 
     use momentum_diagnostic_fields, only: calculate_densities
 
@@ -86,17 +84,6 @@ module multiphase_time_loop
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
     !type(rheology_type), dimension(:), allocatable :: rheology
-
-
-    !!-PY add it for k-epsilon model
-    ! An array of submaterials of the current phase in state(istate).
-    ! Needed for k-epsilon VelocityBuoyancyDensity calculation line:~630
-    ! S Parkinson 31-08-12
-    type(state_type), dimension(:), pointer :: submaterials
-    type(scalar_field), pointer :: sfield
-    integer :: i
-
-
 
 
 
@@ -194,16 +181,9 @@ contains
 !      calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
 
-!!-PY use it for the k-epsilon model
-        integer :: ntsol
-        logical :: new_ntsol_loop
-        character(len=OPTION_PATH_LEN) :: option_buffer
-        character(len=FIELD_NAME_LEN) :: tmp_name
-        logical :: use_advdif, multiphase_scalar
-        integer :: it, it2, nphase_scalar
-
 !!-Variables related to the detection and correction of bad elements
         real :: Max_bad_angle ! set in timeloop from diamond input
+        integer :: i
         type(bad_elements), allocatable, dimension(:) :: Quality_list
         real, dimension(:,:), pointer:: X_ALL
         real, dimension(:), allocatable :: quality_table
@@ -550,143 +530,6 @@ contains
                         velocity_absorption, temperature_absorption )
                    deallocate ( Velocity_Absorption, temperature_absorption )
                 end if
-
-
-
-
-
-
-   !!-PY add the k_epsilon model
-
-          ! Do we have the k-epsilon turbulence model?
-          ! If we do then we want to calculate source terms and diffusivity for the k and epsilon
-          ! fields and also tracer field diffusivities at n + theta_nl
-          do i= 1, size(state)
-             if(have_option("/material_phase["//&
-                  int2str(i-1)//"]/subgridscale_parameterisations/k-epsilon")) then
-
-print *, 'k_epsilon model'
-
-                if(timestep == 1 .and. its == 1 .and. have_option('/physical_parameters/gravity')) then
-                   ! The very first time k-epsilon is called, VelocityBuoyancyDensity
-                   ! is set to zero until calculate_densities is called in the momentum equation
-                   ! solve. Calling calculate_densities here is a work-around for this problem.
-                   sfield => extract_scalar_field(state, 'VelocityBuoyancyDensity')
-                   if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
-                      call get_phase_submaterials(state, i, submaterials)
-                      call calculate_densities(submaterials, buoyancy_density=sfield)
-                      deallocate(submaterials)
-                   else
-                      call calculate_densities(state, buoyancy_density=sfield)
-                   end if
-                   ewrite_minmax(sfield)
-                end if
-                call keps_advdif_diagnostics(state(i))
-             end if
-          end do
-
-
-
-!!-PY solve k_epsilon model advections
-
-if (.true.)  then
-if ( have_option("/material_phase["//&
-                  int2str(0)//"]/subgridscale_parameterisations/k-epsilon")  ) then
-
-
-print *, 'solve k_epsilon model advections'
-
-!call print_state (packed_state)
-
-        call get_ntsol( ntsol )
-        call initialise_field_lists_from_options( state, ntsol )
-
-
-        call set_nu_to_u( packed_state )
-        !call calculate_diffusivity( state, Mdim, ndgln, ScalarAdvectionField_Diffusion )
-        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-        density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-
-
-
-
-
-        do it = 1, ntsol
-
-           call get_option( trim( field_optionpath_list( it ) ) // &
-                '/prognostic/equation[0]/name', &
-                option_buffer, default = "UnknownEquationType" )
-           select case( trim( option_buffer ) )
-           case ( "KEpsilon" )
-              use_advdif = .true.
-           case default
-              use_advdif = .false.
-           end select
-
-           !use_advdif=.true.
-
-
-           if ( use_advdif ) then
-
-              ! figure out if scalar field is mutli-phase
-              multiphase_scalar = .false.
-              do it2 = it+1, ntsol
-                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
-                    multiphase_scalar = .true.
-                 end if
-              end do
-
-              tmp_name = "Packed" //field_name_list( it )
-              nphase_scalar = 1
-              if ( multiphase_scalar ) then
-                 nphase_scalar = Mdims%nphase
-                 tmp_name = "Packed" // field_name_list( it )
-              end if
-              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
-
-
-              if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
-                    cycle
-              elseif (multiphase_scalar) then
-
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
-                        !!$
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, &
-                        option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it), &
-                        thermal = have_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it)//'/prognostic/equation::KEpsilon'),&
-                        saturation=saturation_field )
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-
-                    exit
-              else
-              print *, 'solve', '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//  field_name_list(it)
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, dt, &
-                        suf_sig_diagten_bc,  Porosity_field%val, &
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, &
-                        option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it), &
-                        thermal = have_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::'//field_name_list(it)//'/prognostic/equation::KEpsilon'),&
-                        saturation=saturation_field)
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-               end if
-
-
-           end if
-
-        end do
-
-end if
-end if
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
