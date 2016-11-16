@@ -1478,7 +1478,6 @@ contains
       integer :: iloc, mat_inod, cv_inod
       logical, parameter :: harmonic_average=.false.
 
-!! -PY changed it for k_epsilon model
       type(tensor_field), intent(inout) :: tracer
       ScalarAdvectionField_Diffusion = 0.0
 
@@ -1514,30 +1513,17 @@ contains
             end do
          end do
       else
-         do iphase = 1, Mdims%nphase
 
-!! -PY changed it for k_epsilon model
+        diffusivity => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat )
 
-            if (tracer%name == "PackedTemperature" )  then
+        if ( stat == 0 ) then
+            do iphase = 1, Mdims%nphase
                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-!print *, 'get TemperatureDiffusivity'
-            else if (tracer%name == "PackedTurbulentKineticEnergy") then
-                diffusivity => extract_tensor_field( state(iphase), 'TurbulentKineticEnergyDiffusivity', stat )
-!print *, 'get TurbulentKineticEnergyDiffusivity'
-            else if (tracer%name == "PackedTurbulentDissipation") then
-                diffusivity => extract_tensor_field( state(iphase), 'TurbulentDissipationDiffusivity', stat )
-!print *, 'get TurbulentDissipationDiffusivity'
-            else
-            end if
-
-
-
-            if ( stat == 0 ) then
-               do idim = 1, Mdims%ndim
-                  ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, 1 )
-               end do
-            end if
-         end do
+                do idim = 1, Mdims%ndim
+                    ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
+                end do
+           end do
+        end if
       end if
       if ( harmonic_average ) then
          ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion

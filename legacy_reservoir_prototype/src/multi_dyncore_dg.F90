@@ -163,12 +163,7 @@ contains
 
            IGOT_T2_loc = 0
 
-!!-PY changed it for k_epsilon model
-           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' &
-                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' &
-                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation' ) then
-!            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
-
+            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
                p => extract_tensor_field( packed_state, "PackedCVPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
@@ -196,7 +191,6 @@ contains
            end if
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
 
-!!-PY this part need work for k_epsilon model
                if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
                        'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
@@ -205,34 +199,6 @@ contains
                    T_source( :, : ) = Q % val( 1, :, : )
 
                end if
-             
-
-
-               if( trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' ) then
-                   call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy/prognostic/temporal_discretisation/' // &
-                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-
-
-                   Field_selector = 1
-                   Q => extract_tensor_field( packed_state, "PackedTurbulentKineticEnergySource" )
-                   T_source( :, : ) = Q % val( 1, :, : )
-                   
-              
-
-
-
-
-               else if( trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation' ) then
-                   call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation/prognostic/temporal_discretisation/' // &
-                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-
-
-                   Field_selector = 1
-                   Q => extract_tensor_field( packed_state, "PackedTurbulentDissipationSource" )
-                   T_source( :, : ) = Q % val( 1, :, : )
-                   
-               end if
-
 
                cv_disopt = Mdisopt%t_disopt
                cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
@@ -259,16 +225,7 @@ contains
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
 
-
-
-
-
-!!-PY changed it for k_epsilon model
-           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' &
-                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' &
-                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation') then
- !          if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
- 
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
               call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer )
            end if
 
@@ -1770,8 +1727,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! LES_THETA =1 is backward Euler for the LES viscocity.
 ! COEFF_SOLID_FLUID is the coeffficient that determins the magnitude of the relaxation to the solid vel...
 ! min_den_for_solid_fluid is the minimum density that is used in the solid-fluid coupling term.
-!!-PY: COEFF_SOLID_FLUID_stab=1.0 means there is relaxation in the shell by using the immersed-shell method.
-!!-PY: COEFF_SOLID_FLUID_relax=0.0 means there is no relaxtion inside the solid. If switch to COEFF_SOLID_FLUID_relax=1.0, that means there is relaxtion inside the solid.
             REAL, PARAMETER :: min_den_for_solid_fluid = 1.0, COEFF_SOLID_FLUID_stab=1.0, COEFF_SOLID_FLUID_relax=0.0
 ! include_viscous_solid_fluid_drag_force switches on the solid-fluid coupling viscocity boundary conditions...
 !            LOGICAL, PARAMETER :: include_viscous_solid_fluid_drag_force = .FALSE.
