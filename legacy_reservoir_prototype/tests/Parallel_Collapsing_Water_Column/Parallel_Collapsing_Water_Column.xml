@@ -2,19 +2,19 @@
 <testproblem>
   <name>Parallel_Collapsing_Water_Column</name>
   <owner userid="jrper"/>
-  <tags>mpml parallel</tags>
+  <tags>mpml parallel testy</tags>
   <problem_definition length="short" nprocs="2">
     <command_line>make
 
 ../../../bin/multiphase_prototype cwc_P1DGP1.mpml
-mv cwc_P1DGP1_1.vtu serial_P1DGP1.vtu
+cp cwc_P1DGP1_1.vtu serial_P1DGP1.vtu
 mpiexec  ../../../bin/multiphase_prototype cwc_P1DGP1.mpml
 ../../../bin/pvtu2vtu cwc_P1DGP1 1
 ../../../bin/vtudiff serial_P1DGP1.vtu cwc_P1DGP1_1.vtu diff_P1DGP1.vtu
 
 
 ../../../bin/multiphase_prototype cwc_P1DGP2.mpml
-mv cwc_P1DGP2_1.vtu serial_P1DGP2.vtu
+cp cwc_P1DGP2_1.vtu serial_P1DGP2.vtu
 mpiexec  ../../../bin/multiphase_prototype cwc_P1DGP2.mpml
 ../../../bin/pvtu2vtu cwc_P1DGP2 1
 ../../../bin/vtudiff serial_P1DGP2.vtu cwc_P1DGP2_1.vtu diff_P1DGP2.vtu</command_line>
