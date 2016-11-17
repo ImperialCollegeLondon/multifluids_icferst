@@ -2129,6 +2129,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (IsParallel()) then
                     call allmax(ts_ref_val)
                     call allmax(max_calculate_mass_delta)
+		    call allmax(inf_norm_val)
                 end if
 
 
