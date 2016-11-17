@@ -68,7 +68,7 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass, prepare_absorptions
 
 
     interface Get_SNdgln
@@ -1854,6 +1854,31 @@ contains
         end function check_vpaired
 
     end subroutine pack_multistate
+
+    subroutine prepare_absorptions(state, Mdims, multi_absorp)
+        implicit none
+        type(state_type), dimension(:), intent(inout) :: state
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_absorption), intent(inout) :: multi_absorp
+        !Local variables
+        integer :: k
+        type(mesh_type), pointer :: ovmesh
+
+        !Prepare array that will contain the different absorptions
+        ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
+
+        if (is_porous_media) then
+             call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
+!            if ( ncomp > 0 ) !"Not ready yet"
+        end if
+        !Need to add this
+!        if (is_flooding) then!I think it is always memory_type=1
+!             call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="Flooding_AbsorptionTerm")
+!        end if
+
+    end subroutine prepare_absorptions
+
+
 
 !    function wrap_as_tensor(field) result(tfield)
 !
