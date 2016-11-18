@@ -847,7 +847,7 @@ contains
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
        type(bad_elements), dimension(:), optional :: Quality_list
        !Local variables
-       type( tensor_field ), pointer :: PorousMedia_AbsorptionTerm, perm
+       type( tensor_field ), pointer :: perm
        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
        real, dimension(:,:), allocatable :: viscosities
        integer :: i, j, ele
@@ -903,21 +903,20 @@ contains
             allocate(viscosities(Mdims%nphase, 1))
             call set_viscosity(state, Mdims, viscosities(:,1))
        end if
-       PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
        call Calculate_PorousMedia_adv_terms( state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-              PorousMedia_AbsorptionTerm%val, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities)
+              upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities)
 
        ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
        ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
        ! is diagonal
        call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-                              Mspars, ndgln, PorousMedia_AbsorptionTerm%val, state, ids_ndgln, inv_perm, viscosities)
+                              Mspars, ndgln, PorousMedia_absorp, state, ids_ndgln, inv_perm, viscosities)
 
        deallocate(viscosities)
        contains
 
            subroutine Calculate_PorousMedia_adv_terms( state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-               material_absorption, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities )
+               upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities )
 
                implicit none
                type( state_type ), dimension( : ), intent( in ) :: state
@@ -927,7 +926,6 @@ contains
                type( multi_ndgln ), intent( in ) :: ndgln
                type (porous_adv_coefs), intent(inout) :: upwnd
                integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
-               real, dimension( :, :, : ), intent(inout) :: material_absorption
                real, dimension(:, :, :), target, intent(in):: inv_perm
                real, dimension(:,:), intent(in) :: viscosities
                !!$ Local variables:
@@ -949,8 +947,7 @@ contains
                perm=>extract_tensor_field(packed_state,"Permeability")
 
 
-               allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) )
-               material_absorption = 0.0; satura2 = 0.
+               allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
                    PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
@@ -1009,10 +1006,7 @@ contains
                        END DO
                    END DO
                END DO
-    !Conversion to old method, sprint_to_do
-do imat = 1, size(material_absorption,3)
-call get_multi_field(PorousMedia_absorp, imat, material_absorption(:,:, imat))
-end do
+
                deallocate( satura2, Max_sat)
                call deallocate_multi_field(PorousMedia_absorp2, .true.)
 
@@ -1020,7 +1014,7 @@ end do
 
 
            subroutine calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-               Mspars, ndgln, material_absorption, state, IDs_ndgln, inv_perm, viscosities)
+               Mspars, ndgln, PorousMedia_absorp, state, IDs_ndgln, inv_perm, viscosities)
                implicit none
                type( state_type ), intent( inout ) :: packed_state
                type(multi_dimensions), intent(in) :: Mdims
@@ -1029,7 +1023,7 @@ end do
                type (multi_sparsities), intent(in) :: Mspars
                type(multi_ndgln), intent(in) :: ndgln
                integer, dimension( : ), intent( in ) :: IDs_ndgln
-               real, dimension( :, :, : ), intent( inout ) :: material_absorption
+               type (multi_field), intent( inout ) :: PorousMedia_absorp
                type(state_type), dimension( : ), intent(in) :: state
                real, dimension( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), intent( inout ) :: suf_sig_diagten_bc
                real, dimension(:, :, :), target, intent(in):: inv_perm
@@ -1040,16 +1034,12 @@ end do
                integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
                    ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
                real, dimension( Mdims%ndim, Mdims%ndim ) :: sigma_out, sigma_in, mat, mat_inv
+               real, dimension( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase) :: mat_absorp
                integer, dimension( CV_GIdims%nface, Mdims%totele) :: face_ele
                integer, dimension( Mdims%mat_nonods*Mdims%n_in_pres ) :: idone
                integer, dimension( Mdims%cv_snloc ) :: cv_sloc2loc
                integer, dimension( :, :, : ),  allocatable :: wic_u_bc, wic_vol_bc
                integer, parameter :: WIC_BC_DIRICHLET = 1
-               !!$ for the pressure b.c. and compact_overlapping method
-               !!$ make the material property change just inside the domain else on the surface only
-               logical, parameter :: mat_change_inside = .false.
-               !!$ if mat_perm_bc_dg use the method that is used for DG between the elements
-               logical, parameter :: mat_perm_bc_dg = .true.
                type(tensor_field), pointer :: velocity, volfrac, perm
                type(tensor_field) :: velocity_BCs, volfrac_BCs
                integer :: one_or_zero, visc_node
@@ -1079,66 +1069,49 @@ end do
                    CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
 
-               do iphase = 1, Mdims%n_in_pres
-                   s = ( iphase - 1 ) * Mdims%ndim + 1
-                   e = iphase * Mdims%ndim
                    do ele = 1, Mdims%totele
                        !Get properties from packed state
                        Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
                        Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
                        Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
-!                       inv_perm = inverse( perm%val(:, :, ele) )
                        do iface = 1, CV_GIdims%nface
                            ele2  = face_ele( iface, ele )
                            sele2 = max( 0, -ele2 )
                            sele  = sele2
                            if ( sele > 0 ) then
-                               if ( wic_u_bc(1,iphase,sele) /= WIC_BC_DIRICHLET .and. &
-                                   wic_vol_bc(1,iphase,sele) == WIC_BC_DIRICHLET ) then
-                                   cv_sloc2loc( : ) = CV_funs%cv_sloclist( iface, : )
-                                   do cv_siloc = 1, Mdims%cv_snloc
-                                       cv_iloc = cv_sloc2loc( cv_siloc )
-                                       cv_snodi = ( sele - 1 ) * Mdims%cv_snloc + cv_siloc
-                                       cv_nodi = ndgln%suf_cv(cv_snodi)
-                                       visc_node = (cv_nodi-1)*one_or_zero + 1
-                                       cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
-                                       mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
-                                       do idim = 1, Mdims%ndim
-                                           do jdim = 1, Mdims%ndim
-                                               call get_relperm(Mdims%n_in_pres, iphase, sigma_out( idim, jdim ),&
-                                                   ! this is the boundary condition
-                                                   volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node), inv_perm( idim, jdim, ele ),&
-                                                   Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                               do iphase = 1, Mdims%n_in_pres
+                                   s = ( iphase - 1 ) * Mdims%ndim + 1
+                                   e = iphase * Mdims%ndim
+                                   if ( wic_u_bc(1,iphase,sele) /= WIC_BC_DIRICHLET .and. &
+                                       wic_vol_bc(1,iphase,sele) == WIC_BC_DIRICHLET ) then
+                                       cv_sloc2loc( : ) = CV_funs%cv_sloclist( iface, : )
+                                       do cv_siloc = 1, Mdims%cv_snloc
+                                           cv_iloc = cv_sloc2loc( cv_siloc )
+                                           cv_snodi = ( sele - 1 ) * Mdims%cv_snloc + cv_siloc
+                                           cv_nodi = ndgln%suf_cv(cv_snodi)
+                                           visc_node = (cv_nodi-1)*one_or_zero + 1
+                                           cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
+                                           mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
+                                           do idim = 1, Mdims%ndim
+                                               do jdim = 1, Mdims%ndim
+                                                   call get_relperm(Mdims%n_in_pres, iphase, sigma_out( idim, jdim ),&
+                                                       ! this is the boundary condition
+                                                       volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node), inv_perm( idim, jdim, ele ),&
+                                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                                               end do
                                            end do
+                                           ! Adjust suf_sig_diagten_bc based on the internal absorption
+                                           mat = sigma_out  +  matmul(  PorousMedia_absorp%val(:,:,iphase, mat_nod),  &
+                                                    matmul( inverse( sigma_out ), PorousMedia_absorp%val(:,:,iphase, mat_nod) ) )
+                                           mat_inv = matmul( inverse( PorousMedia_absorp%val(:,:,iphase, mat_nod)+sigma_out ), mat )
+                                           suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = (/ (mat_inv(i, i), i = 1, Mdims%ndim) /)
                                        end do
-                                       if ( mat_perm_bc_dg ) then
-                                           ! if mat_perm_bc_dg use the method that is used for DG between the elements.
-                                           sigma_in=0.0
-                                           sigma_in = material_absorption( s : e, s : e, mat_nod )
-                                           mat = sigma_out  +  matmul(  sigma_in,  matmul( inverse( sigma_out ), sigma_in ) )
-                                           mat_inv = matmul( inverse( sigma_in+sigma_out ), mat )
-                                           suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = (/ (mat_inv(i, i), i = 1, Mdims%ndim) /)
-!                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = 1.
-                                       else
-                                           mat = matmul( sigma_out, inverse( material_absorption( s : e, s : e, mat_nod ) ) )
-                                           mat_inv = inverse( mat )
-                                           suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = (/ (mat_inv(i, i), i = 1, Mdims%ndim) /)
-                                       end if
-                                       if ( mat_change_inside ) then
-                                           suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = 1.
-                                           if ( idone( mat_nod+(iphase-1)*Mdims%mat_nonods ) == 0 ) then
-                                               material_absorption( s : e, s : e, mat_nod  ) &
-                                                   = matmul( mat, material_absorption( s : e, s : e, mat_nod ) )
-                                               idone( mat_nod+(iphase-1)*Mdims%mat_nonods ) = 1
-                                           end if
-                                       end if
-                                   end do
-                               end if
+                                   end if
+                               end do
                            end if
                        end do
                    end do
-               end do
-               call deallocate(velocity_BCs)
+                   call deallocate(velocity_BCs)
                call deallocate(volfrac_BCs)
                deallocate(wic_u_bc, wic_vol_bc)
                return

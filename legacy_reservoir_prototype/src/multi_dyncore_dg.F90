@@ -381,7 +381,7 @@ contains
              !Working pointers
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
-             type(tensor_field), pointer :: tracer, velocity, density, deriv, PorousMedia_AbsorptionTerm
+             type(tensor_field), pointer :: tracer, velocity, density, deriv
              type(scalar_field), pointer :: gamma
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
@@ -413,7 +413,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
                      backtrack_par_factor, default = 1.0)
              end if
-             if ( backtrack_par_factor < 1.01 ) PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
 
@@ -745,8 +744,8 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
-        velocity, pressure, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
+        Mmat, multi_absorp, upwnd, velocity, pressure, &
         DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
@@ -765,6 +764,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
         type (multi_matrices), intent(inout) :: Mmat
+        type(multi_absorption), intent(inout) :: multi_absorp
         type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
@@ -822,7 +822,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, PorousMedia_AbsorptionTerm, Flooding_AbsorptionTerm
+        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, Flooding_AbsorptionTerm
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer ::  sf, soldf, gamma
         type( vector_field ) :: packed_vel, rhs
@@ -1027,8 +1027,14 @@ if (is_flooding) return!<== Temporary fix for flooding
         ! update velocity source
         call update_velocity_source( state, Mdims%ndim, Mdims%nphase, u_source_all )
 
-        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
-        if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
+!        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
+!        if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
+!Temporary conversion
+if (associated(multi_absorp%PorousMedia%val))then
+    do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)
+        call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
+    end do
+end if
 
         Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm", stat )
         if (stat == 0) velocity_absorption = velocity_absorption + Flooding_AbsorptionTerm%val

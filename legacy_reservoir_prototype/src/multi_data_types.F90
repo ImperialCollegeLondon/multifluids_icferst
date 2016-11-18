@@ -457,6 +457,49 @@ contains
 
     end subroutine get_multi_field
 
+
+    subroutine get_multi_field_inverse(mfield, inode_in, output)
+        implicit none
+        integer, intent(in) :: inode_in
+        type( multi_field ), intent( in ) :: mfield
+        real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
+        !local variables
+        integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
+
+        inode = inode_in
+        if (mfield%is_constant) inode = 1
+        select case (mfield%memory_type)
+            case (1)!Isotropic
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3!nphase
+                    do idim = 1, ndim
+                        output(idim+(iphase-1)*ndim, idim+(iphase-1)*ndim) = 1./mfield%val(1,1,iphase,inode)
+                    end do
+                end do
+            case (2)!Anisotropic
+                output = 0.
+                do iphase = 1, mfield%ndim3!nphase
+                    output(1+(iphase-1)*mfield%ndim2:mfield%ndim2+(iphase-1)*mfield%ndim2,&
+                        1+(iphase-1)*mfield%ndim2:mfield%ndim2+(iphase-1)*mfield%ndim2) = &
+                                inverse(mfield%val(:,:,iphase,inode))
+                end do
+            case (3)!isotropic coupled
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3
+                    do jphase = 1, mfield%ndim3
+                        do idim = 1, ndim
+                            output(idim+(iphase-1)*ndim, idim+(jphase-1)*ndim) = 1./mfield%val(1,iphase,jphase,inode)
+                        end do
+                    end do
+                end do
+            case default !Anisotropic coupled
+                output = inverse(mfield%val(1,:,:,inode))
+        end select
+
+
+
+    end subroutine get_multi_field_inverse
+
     subroutine print_multi_field(mfield, inode_in, dimension)
         implicit none
         integer, intent(in) :: inode_in

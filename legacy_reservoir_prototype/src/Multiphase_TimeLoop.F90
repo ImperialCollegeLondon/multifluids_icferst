@@ -691,8 +691,8 @@ contains
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        velocity_field, pressure_field, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat,multi_absorp, upwnd,velocity_field, pressure_field, &
                         dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
@@ -703,9 +703,9 @@ contains
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
                         ! temporarily not working for adaptivity -- will be updated soon
-                        if((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
-                            call get_DarcyVelocity( Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, &
-                                ndgln%cv, ndgln%u, ndgln%mat, state, packed_state )
+                        !Do not calculate unless necessary, this is not specially efficient...
+                        if((have_option('/io/output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
+                            call get_DarcyVelocity( Mdims, ndgln, packed_state, multi_absorp%PorousMedia )
                         end if
                     end if
 
@@ -717,8 +717,8 @@ contains
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd,&
-                        dt, SUF_SIG_DIAGTEN_BC, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat, multi_absorp, upwnd, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, mass_ele, &
                         its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &

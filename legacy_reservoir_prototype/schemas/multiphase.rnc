@@ -131,7 +131,7 @@ start =
                empty
             }?,
             ## Output the absorption velocity (internally used) instead of the Darcy velocity.
-            element not_output_darcy_vel {
+            element output_darcy_vel {
                empty
             }?,
             ## Surface to Integrate Over
