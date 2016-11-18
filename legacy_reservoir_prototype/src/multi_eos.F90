@@ -934,33 +934,26 @@ contains
                integer :: ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, loc
                real :: Mobility, pert
                real, dimension(:), allocatable :: Max_sat
-               real, dimension( :, :, : ), allocatable :: material_absorption2
                real, dimension( :, : ), allocatable :: satura2
+               type (multi_field) :: PorousMedia_absorp2
                !Working pointers
                real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
                type( tensor_field ), pointer :: perm
                type( scalar_field ), pointer :: Spipe
 
                !Initialize variables
-               upwnd%adv_coef=0.0 ; upwnd%adv_coef_grad=0.0;upwnd%inv_adv_coef=0.0
+               upwnd%adv_coef_grad=0.0;upwnd%inv_adv_coef=0.0
                !Get from packed_state
                call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
                    OldPhaseVolumeFraction = OldSatura, Immobile_fraction = Immobile_fraction)
                perm=>extract_tensor_field(packed_state,"Permeability")
 
 
-               !sprint_to_do get directly upwnd%adv_coef, upwnd%inv_adv_coef without requiring material_absorption
-               allocate( material_absorption2( Mdims%nphase * Mdims%ndim, Mdims%nphase * Mdims%ndim, Mdims%mat_nonods ))
                allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) )
-               material_absorption = 0.0;material_absorption2 = 0. ; satura2 = 0.
+               material_absorption = 0.0; satura2 = 0.
 
                CALL calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
                    PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
-
-    !Conversion to old method, sprint_to_do
-do imat = 1, size(material_absorption,3)
-call get_multi_field(PorousMedia_absorp, imat, material_absorption(:,:, imat))
-end do
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
@@ -978,20 +971,24 @@ end do
                end do
 
 
-               !Perturbations calculated directly into material_absorption2, PorousMedia_absorp is not used
-               CALL calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA2, &
-                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm, mat_absorp = material_absorption2)
+               call allocate_multi_field( Mdims, PorousMedia_absorp2, size(PorousMedia_absorp%val,4), field_name="PorousMedia_AbsorptionTerm")
+               CALL calculate_absorption2( packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, &
+                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma1" )
-                   do iphase = 1, Mdims%n_in_pres
+                   do iphase = Mdims%n_in_pres+1, Mdims%nphase
                        do idim = 1, Mdims%ndim
                            ! set \sigma for the pipes here
-                           LOC = (IPRES-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
-                           call assign_val(material_absorption( LOC, LOC, : ),Spipe%val)
+                           call assign_val(PorousMedia_absorp%val(idim, idim, iphase, :),Spipe%val)
                        end do
                    end do
                end do
+
+               !Temporary pointer, maybe we should unify memories
+               nullify(upwnd%adv_coef)
+               upwnd%adv_coef => PorousMedia_absorp%val
+
                DO ELE = 1, Mdims%totele
                    DO CV_ILOC = 1, Mdims%cv_nloc
                        IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
@@ -999,15 +996,11 @@ end do
                        DO IPHASE = 1, Mdims%nphase
                            DO JDIM = 1, Mdims%ndim
                                DO IDIM = 1, Mdims%ndim
-                                   upwnd%adv_coef(IDIM, JDIM, IPHASE, IMAT) = &
-                                       material_absorption( IDIM + ( IPHASE - 1 ) * Mdims%ndim, JDIM + ( IPHASE - 1 ) * Mdims%ndim ,IMAT)
                                    if ( iphase <= Mdims%n_in_pres ) then
                                        ! This is the gradient
                                        ! Assume d\sigma / dS = 0.0 for the pipes for now
-                                       upwnd%adv_coef_grad(IDIM, JDIM, IPHASE, IMAT) = &
-                                           (material_absorption2( IDIM + ( IPHASE - 1 ) * Mdims%ndim, JDIM + ( IPHASE - 1 ) * Mdims%ndim , IMAT) -&
-                                           material_absorption( IDIM + ( IPHASE - 1 ) * Mdims%ndim, JDIM + ( IPHASE - 1 ) * Mdims%ndim ,IMAT)) &
-                                           / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
+                                       upwnd%adv_coef_grad(IDIM, JDIM, IPHASE, IMAT) = (PorousMedia_absorp2%val( idim,jdim, iphase ,IMAT) -&
+                                           PorousMedia_absorp%val( idim,jdim, iphase ,IMAT)) / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
                                    end if
                                END DO
                            !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
@@ -1016,9 +1009,12 @@ end do
                        END DO
                    END DO
                END DO
-
-               deallocate( material_absorption2, satura2, Max_sat)
-
+    !Conversion to old method, sprint_to_do
+do imat = 1, size(material_absorption,3)
+call get_multi_field(PorousMedia_absorp, imat, material_absorption(:,:, imat))
+end do
+               deallocate( satura2, Max_sat)
+               call deallocate_multi_field(PorousMedia_absorp2, .true.)
 
            end subroutine Calculate_PorousMedia_adv_terms
 
@@ -1185,7 +1181,7 @@ end do
 
 
     SUBROUTINE calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
-        PERM, viscosities, IDs_ndgln, inv_mat_absorp, inv_perm1, mat_absorp)
+        PERM, viscosities, IDs_ndgln, inv_mat_absorp, inv_perm1)
         ! Calculate absorption for momentum eqns
         implicit none
         type( state_type ), intent( inout ) :: packed_state
@@ -1198,7 +1194,6 @@ end do
         real, intent(in), dimension(:,:) :: viscosities
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: inv_mat_absorp
         real, dimension(:,:,:), target, optional ::inv_perm1
-        real, dimension( :, :, : ), optional :: mat_absorp
         ! Local variable
         type (tensor_field), pointer :: RockFluidProp
         real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
@@ -1223,8 +1218,6 @@ end do
             end do
         end if
         Maux = 0.
-        !Initialise absorption
-        PorousMedia_absorp%val = 0.
         DO ELE = 1, Mdims%totele
             !Get properties from packed state
             Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
@@ -1241,23 +1234,17 @@ end do
                         DO JDIM = 1, Mdims%ndim
                             JPHA_JDIM = ( IPHASE - 1 ) * Mdims%ndim + JDIM
                             if (present(inv_mat_absorp)) then
-                                call get_relperm(Mdims%n_in_pres, iphase, Maux(IPHA_IDIM, JPHA_JDIM),&
+                                call get_relperm(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
                                     SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
                                     Immobile_fraction, Corey_exponent, Endpoint_relperm, perm( IDIM, JDIM, ELE), inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ))
                             else
-                                call get_relperm(Mdims%n_in_pres, iphase, Maux(IPHA_IDIM, JPHA_JDIM),&
+                                call get_relperm(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
                                     SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
                                     Immobile_fraction, Corey_exponent, Endpoint_relperm)
                             end if
                         END DO
                     END DO
                 END DO
-                !Store absorption
-                if (present(mat_absorp)) then
-                    mat_absorp(:,:,mat_nod) = Maux
-                else
-                    call add_array_to_multi_field(PorousMedia_absorp, Maux, 1, 1, MAT_NOD)
-                end if
             END DO
         END DO
         if (.not. present(inv_perm1)) DEALLOCATE( INV_PERM )

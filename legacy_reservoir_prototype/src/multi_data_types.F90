@@ -224,7 +224,7 @@ module multi_data_types
 
     type multi_absorption
         !Comprises all the absorption terms that migth be required
-        type (multi_field) :: PorousMedia
+        type (multi_field) :: PorousMedia ! <= Always memory_type = 2
         type (multi_field) :: Components
         type (multi_field) :: Temperature
         type (multi_field) :: Velocity
@@ -327,23 +327,25 @@ contains
             if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
                 mfield%memory_type = 0
                 mfield%is_constant = .false.!For porous media it cannot be constant
+                mfield%memory_type = max(mfield%memory_type, 2)!We force this memory despite not being the most comprised
+                !because it enables us to remove copies of memory and because for real 3D problems it is very unlikely that
+                !the permeability will be isotropic in all the regions
+
                 !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
-                if (have_option('porous_media/scalar_field::Permeability')) then
-                    mfield%memory_type = max(mfield%memory_type, 1)
-                    root_path = 'porous_media/scalar_field::Permeability/prescribed/value'
-                    k = option_count(trim(root_path))
-                else
-                    root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
-                    k = option_count(trim(root_path))
-                    do i = 0, k-1
-                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
-                        if (have_option(path_option//"/isotropic")) then
-                            mfield%memory_type = max(mfield%memory_type, 0)
-                        else
-                            mfield%memory_type = max(mfield%memory_type, 2)
-                        end if
-                    end do
-                end if
+!                if (have_option('porous_media/scalar_field::Permeability')) then
+!                    mfield%memory_type = max(mfield%memory_type, 1)
+!                else
+!                    root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
+!                    k = option_count(trim(root_path))
+!                    do i = 0, k-1
+!                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
+!                        if (have_option(path_option//"/isotropic")) then
+!                            mfield%memory_type = max(mfield%memory_type, 0)
+!                        else
+!                            mfield%memory_type = max(mfield%memory_type, 2)
+!                        end if
+!                    end do
+!                end if
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then
@@ -1172,7 +1174,7 @@ contains
         type (porous_adv_coefs), intent(inout) :: upwnd
         type (multi_dimensions), intent(in)  ::Mdims
 
-        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+!        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
     end subroutine allocate_porous_adv_coefs
@@ -1180,7 +1182,8 @@ contains
     subroutine deallocate_porous_adv_coefs(upwnd)
         type (porous_adv_coefs), intent(inout) :: upwnd
 
-        if (associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)
+!        if (associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)!This memory is pointing to
+                                            !multi_absorption%porousMedia as is being deallocated there
         if (associated(upwnd%inv_adv_coef)) deallocate(upwnd%inv_adv_coef)
         if (associated(upwnd%adv_coef_grad)) deallocate(upwnd%adv_coef_grad)
 
