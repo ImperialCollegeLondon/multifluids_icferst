@@ -34,10 +34,11 @@ module multi_data_types
     use sparse_tools
     use fields_data_types
     use fields_allocates
-    use global_parameters, only: option_path_len, is_porous_media
+    use global_parameters
     use state_module
     use fields
     use spud
+    use multi_tools
 
 
     interface allocate_multi_dev_shape_funs
@@ -227,12 +228,13 @@ module multi_data_types
         type (multi_field) :: Components
         type (multi_field) :: Temperature
         type (multi_field) :: Velocity
+        type (multi_field) :: Flooding
     end type multi_absorption
 
 
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
-         allocate_multi_field1,allocate_multi_field2
+         allocate_multi_field1, allocate_multi_field2
 
 contains
 
@@ -324,25 +326,15 @@ contains
             !Depending on the field, different possibilities
             if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
                 mfield%memory_type = 0
-                mfield%is_constant = .false.
+                mfield%is_constant = .false.!For porous media it cannot be constant
                 !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
                 if (have_option('porous_media/scalar_field::Permeability')) then
                     mfield%memory_type = max(mfield%memory_type, 1)
                     root_path = 'porous_media/scalar_field::Permeability/prescribed/value'
                     k = option_count(trim(root_path))
-                    !Check if field is constant
-                    mfield%is_constant = (k == 1)
-                    if (mfield%is_constant) then
-                        !Check that it is not a python field
-                        do i = 0, k-1
-                            path_option = trim(root_path)//'['//int2str(i)//']/python'
-                            if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        end do
-                    end if
                 else
                     root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
                     k = option_count(trim(root_path))
-                    if (k == 1) nonods = 1
                     do i = 0, k-1
                         path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
                         if (have_option(path_option//"/isotropic")) then
@@ -350,21 +342,6 @@ contains
                         else
                             mfield%memory_type = max(mfield%memory_type, 2)
                         end if
-                    end do
-                end if
-                !Check if field is constant
-                mfield%is_constant = (k == 1)
-                if (mfield%is_constant) then
-                    !Check that it is not a python field
-                    do i = 0, k-1
-                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        path_option = trim(root_path)//'['//int2str(i)//']/diagonal/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        path_option = trim(root_path)//'['//int2str(i)//']/anisotropic_symmetric/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        path_option = trim(root_path)//'['//int2str(i)//']/anisotropic_asymmetric/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
                     end do
                 end if
             end if
@@ -387,7 +364,6 @@ contains
             case default
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select
-
         !Allocate and initialize memory
         allocate(mfield%val(1:mfield%ndim1, 1:mfield%ndim2, 1:mfield%ndim3, 1:nonods)); mfield%val = 0.
 
@@ -418,14 +394,13 @@ contains
     subroutine get_multi_field(mfield, inode_in, output)
         implicit none
         integer, intent(in) :: inode_in
-        type( multi_field ), intent( inout ) :: mfield
+        type( multi_field ), intent( in ) :: mfield
         real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
         !local variables
         integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
 
         inode = inode_in
         if (mfield%is_constant) inode = 1
-
         select case (mfield%memory_type)
             case (0)!Isotropic full
                 ndim = size(output,2)/mfield%ndim3
@@ -464,6 +439,18 @@ contains
 
     end subroutine get_multi_field
 
+    subroutine print_multi_field(mfield, inode_in, dimension)
+        implicit none
+        integer, intent(in) :: inode_in
+        type( multi_field ), intent( in ) :: mfield
+        integer :: dimension!must have size(ndim*nphase, ndim*nphase)
+        !Local variables
+        real, dimension(dimension,dimension) :: Matrix
+
+        call get_multi_field(mfield, inode_in, Matrix)
+        call printMatrix(Matrix)
+
+    end subroutine print_multi_field
 
     subroutine add_array_to_multi_field(mfield, b, xpos, ypos, inode)
         !mfield = mfield + b

@@ -112,6 +112,8 @@ contains
         type (multi_matrices) :: Mmat
         !!$ Defining variables to calculate the sigmas at the interface for porous media
         type (porous_adv_coefs) :: upwnd
+        !!$ Variable storing all the absorptions we may need
+        type(multi_absorption) :: multi_absorp
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
@@ -222,6 +224,7 @@ contains
 
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
+        call prepare_absorptions(state, Mdims, multi_absorp)
         !Since this is a hack for Flooding, we want to do this before we actually start using the density as the height
         !which depends on the pressure. However, for th initial condition we need to use the density to set up the initial Pressure
         !Therefore, we correct the initial condition for the pressure before anything is modified
@@ -538,8 +541,8 @@ contains
 
                 if( solve_force_balance) then
                     if ( is_porous_media ) then
-                        call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                            Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
+                        call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, Mdims, ndgln)
                     end if
@@ -714,7 +717,7 @@ contains
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd,&
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, mass_ele, &
@@ -1164,6 +1167,7 @@ contains
                 call Get_Primary_Scalars_new( state, Mdims )
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
+                call prepare_absorptions(state, Mdims, multi_absorp)
                 !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
                 if (is_flooding) call get_FloodingProp(state, packed_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
