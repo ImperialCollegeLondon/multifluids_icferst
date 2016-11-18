@@ -390,6 +390,22 @@ contains
 
     end subroutine deallocate_multi_field
 
+    subroutine deallocate_multi_absorption(multi_absorp, and_destroy)
+        implicit none
+        type( multi_absorption ), intent( inout ) :: multi_absorp
+        logical, optional, intent(in) :: and_destroy
+        !Local variables
+        logical :: and_destroy2
+
+        and_destroy2 = present_and_true(and_destroy)
+
+        if (associated(multi_absorp%PorousMedia%val)) call deallocate_multi_field(multi_absorp%PorousMedia, and_destroy2)
+        if (associated(multi_absorp%Components%val))  call deallocate_multi_field(multi_absorp%Components, and_destroy2)
+        if (associated(multi_absorp%Temperature%val)) call deallocate_multi_field(multi_absorp%Temperature, and_destroy2)
+        if (associated(multi_absorp%Velocity%val))    call deallocate_multi_field(multi_absorp%Velocity, and_destroy2)
+        if (associated(multi_absorp%Flooding%val))    call deallocate_multi_field(multi_absorp%Flooding, and_destroy2)
+
+    end subroutine deallocate_multi_absorption
 
     subroutine get_multi_field(mfield, inode_in, output)
         implicit none

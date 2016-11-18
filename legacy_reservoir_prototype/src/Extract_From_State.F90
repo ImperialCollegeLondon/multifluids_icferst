@@ -1864,8 +1864,11 @@ contains
         integer :: k
         type(mesh_type), pointer :: ovmesh
 
+        !Make sure that the memory is cleaned before using it
+        call deallocate_multi_absorption(multi_absorp, .true.)
         !Prepare array that will contain the different absorptions
         ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
+
 
         if (is_porous_media) then
              call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")

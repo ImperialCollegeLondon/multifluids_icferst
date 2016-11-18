@@ -914,6 +914,7 @@ contains
         call deallocate_multi_ndgln(ndgln)
         call destroy_multi_matrices(Mmat)
         call deallocate_porous_adv_coefs(upwnd)
+        call deallocate_multi_absorption(multi_absorp, .true.)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields > 0) then

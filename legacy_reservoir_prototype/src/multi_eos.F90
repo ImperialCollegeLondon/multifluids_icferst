@@ -936,7 +936,6 @@ contains
                real, dimension(:), allocatable :: Max_sat
                real, dimension( :, :, : ), allocatable :: material_absorption2
                real, dimension( :, : ), allocatable :: satura2
-               type (multi_field) :: PorousMedia_absorp2
                !Working pointers
                real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
                type( tensor_field ), pointer :: perm
@@ -979,17 +978,9 @@ end do
                end do
 
 
-               call allocate_multi_field( Mdims, PorousMedia_absorp2, size(PorousMedia_absorp%val,4),&
-                         field_name="PorousMedia_AbsorptionTerm")
-
-
-               CALL calculate_absorption2( packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, &
-                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
-
-    !Conversion to old method, sprint_to_do
-do imat = 1, size(PorousMedia_absorp%val,4)
-call get_multi_field(PorousMedia_absorp2, imat, material_absorption2(:,:, imat))
-end do
+               !Perturbations calculated directly into material_absorption2, PorousMedia_absorp is not used
+               CALL calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA2, &
+                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm, mat_absorp = material_absorption2)
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma1" )
@@ -1028,7 +1019,6 @@ end do
 
                deallocate( material_absorption2, satura2, Max_sat)
 
-               call deallocate_multi_field(PorousMedia_absorp2, .true.)
 
            end subroutine Calculate_PorousMedia_adv_terms
 
@@ -1195,7 +1185,7 @@ end do
 
 
     SUBROUTINE calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
-        PERM, viscosities, IDs_ndgln, inv_mat_absorp, inv_perm1)
+        PERM, viscosities, IDs_ndgln, inv_mat_absorp, inv_perm1, mat_absorp)
         ! Calculate absorption for momentum eqns
         implicit none
         type( state_type ), intent( inout ) :: packed_state
@@ -1208,6 +1198,7 @@ end do
         real, intent(in), dimension(:,:) :: viscosities
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: inv_mat_absorp
         real, dimension(:,:,:), target, optional ::inv_perm1
+        real, dimension( :, :, : ), optional :: mat_absorp
         ! Local variable
         type (tensor_field), pointer :: RockFluidProp
         real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
@@ -1262,7 +1253,11 @@ end do
                     END DO
                 END DO
                 !Store absorption
-                call add_array_to_multi_field(PorousMedia_absorp, Maux, 1, 1, MAT_NOD)
+                if (present(mat_absorp)) then
+                    mat_absorp(:,:,mat_nod) = Maux
+                else
+                    call add_array_to_multi_field(PorousMedia_absorp, Maux, 1, 1, MAT_NOD)
+                end if
             END DO
         END DO
         if (.not. present(inv_perm1)) DEALLOCATE( INV_PERM )
