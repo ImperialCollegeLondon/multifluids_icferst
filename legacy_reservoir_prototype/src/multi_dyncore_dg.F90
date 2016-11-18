@@ -171,7 +171,7 @@ contains
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
                ! open the boiling test for two phases-gas and liquid
-               if (have_option('/boiling')) then ! don't the divide int. energy equation by the volume fraction
+               if (is_boiling) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
                    den_all = den_all * a%val(1,:,:)
                    aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
@@ -246,7 +246,7 @@ contains
            end if
 
            ! calculate T_ABSORB
-           if (have_option('/boiling')) then
+           if (is_boiling) then
               allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
               allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
               call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
@@ -254,7 +254,7 @@ contains
               deallocate ( Velocity_Absorption )
            end if
 
-           if ( have_option( "/magma" ) ) then
+           if ( is_magma) then
 
               ! set the absorption for magma sims here
               sfield => extract_scalar_field( state(1), "TemperatureAbsorption")
@@ -312,7 +312,7 @@ contains
                END IF Conditional_Lumping
            END DO Loop_NonLinearFlux
 
-           if (have_option('/boiling')) deallocate(T_absorb)
+           if (is_boiling) deallocate(T_absorb)
 
            call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
@@ -984,7 +984,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
 
 
-        if ( have_option( "/magma" ) ) then
+        if ( is_magma ) then
            ndim = Mdims%ndim
 
            beta => extract_scalar_field( state( 1 ), "beta" )
@@ -1017,7 +1017,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option('/boiling')) then
+        if (is_boiling) then
            allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
                 velocity_absorption, temperature_absorption )
@@ -1077,7 +1077,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         end if
 
         ! solid pressure term - use the surface tension code
-        if ( have_option( "/magma" ) ) IPLIKE_GRAD_SOU = 2
+        if ( is_magma ) IPLIKE_GRAD_SOU = 2
 
 
         IF ( GLOBAL_SOLVE ) then
@@ -1902,7 +1902,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
         ! open the boiling test for two phases-gas and liquid
-        if (have_option('/boiling')) then
+        if (is_boiling) then
             GOT_VIRTUAL_MASS=.true.
         end if
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
@@ -2386,7 +2386,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-if ( have_option( "/magma" ) ) then
+if ( is_magma ) then
    sfield => extract_scalar_field( state(1), "VolumetricViscosity" ) ! this should be on a material mesh
    UDIFFUSION_VOL_ALL(2,:) = sfield%val
 end if
@@ -2394,7 +2394,7 @@ end if
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-if ( have_option( "/magma" ) ) then
+if ( is_magma ) then
    sfield => extract_scalar_field( state(1), "Ksi_s" ) ! this is the volumetric viscosity
    UDIFFUSION_VOL_ALL(2,:) = sfield%val                ! and it should be on a material mesh
 

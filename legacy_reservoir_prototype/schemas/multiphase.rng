@@ -2640,18 +2640,6 @@ Recommended value: [0.5,1.0]. Default =1.</a:documentation>
         </element>
       </optional>
       <optional>
-        <element name="boiling">
-          <a:documentation>boiling options</a:documentation>
-          <empty/>
-        </element>
-      </optional>
-      <optional>
-        <element name="magma">
-          <a:documentation>is this a magma run?</a:documentation>
-          <empty/>
-        </element>
-      </optional>
-      <optional>
         <element name="flooding">
           <a:documentation>Flooding parameters</a:documentation>
           <element name="scalar_field">

@@ -525,7 +525,7 @@ contains
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
                 ! open the boiling test for two phases-gas and liquid
-                if (have_option('/boiling') ) then
+                if (is_boiling) then
                    call set_nu_to_u( packed_state )!sprint_to_do, this seems odd, the outputs of boiling are deallocated instantly
                    allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                               Temperature_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )

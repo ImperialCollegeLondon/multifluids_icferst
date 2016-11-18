@@ -1958,15 +1958,6 @@ start =
                empty
             }?
          }?,
-         ## boiling options
-         element boiling {
-            empty           
-         }?,
-
-         ## is this a magma run?
-         element magma {
-            empty
-         }?,
          ## Flooding parameters
             element flooding{
              ## This is the term Nm of the manning formula:

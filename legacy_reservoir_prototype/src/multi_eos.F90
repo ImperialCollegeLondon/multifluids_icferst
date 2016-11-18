@@ -1592,7 +1592,7 @@ end do
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
-      if ( is_porous_media .or. have_option('boiling')) then
+      if ( is_porous_media .or. is_boiling) then
          momentum_diffusion=0.0
       else
          momentum_diffusion=0.0
@@ -1866,7 +1866,7 @@ end do
         ! Momentum absorption
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option('/boiling')) then
+        if (is_boiling) then
             S_ls_l=0.0
             S_gs_g=0.0
         end if
@@ -1920,7 +1920,7 @@ end do
         ! Temperature absorption
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option('/boiling')) then
+        if (is_boiling) then
             St_sl=0.0
             St_sg=0.0
         end if
