@@ -954,21 +954,48 @@ contains
 
 
 
-    SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, TOTELE, NBLOCK )
+    SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, Mdims )
         implicit none
-        INTEGER, intent( in ) :: TOTELE, NBLOCK
         REAL, DIMENSION( : , : , : ), intent( inout ), CONTIGUOUS :: PIVIT_MAT
+        type(multi_dimensions), intent(in) :: Mdims
         ! Local variables
-        INTEGER :: ELE
+        INTEGER :: ELE, iphase, idim, u_iloc, i, u_jloc, k
+        REAL, DIMENSION( :,: ), allocatable :: MAT
+        REAL, DIMENSION( : ), allocatable :: B
 
-        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
-        REAL, DIMENSION( NBLOCK ) :: B
-
-        DO ELE = 1, TOTELE
-!            CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
-            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, B )
-        END DO
-
+        if (is_porous_media) then !No coupling between phases nor dimensions, inverse can be done faster
+             allocate(mat(Mdims%u_nloc, Mdims%u_nloc))
+             DO ELE = 1, Mdims%TOTELE
+                k = 0
+                do i = 1, mdims%nphase * mdims%ndim
+                    k = k + 1
+                    !Compress into a mini matrix
+                    do u_iloc = 1, Mdims%u_nloc
+                        do u_jloc = 1, Mdims%u_nloc
+                            mat(u_iloc, u_jloc) = PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
+                                     k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele )
+                        end do
+                    end do
+                    !Invert
+                    mat = inverse(mat)
+                    !Decompress into a mini matrix
+                    do u_iloc = 1, Mdims%u_nloc
+                        do u_jloc = 1, Mdims%u_nloc
+                            PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
+                                     k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele ) = mat(u_iloc, u_jloc)
+                        end do
+                    end do
+                end do
+            END DO
+        else
+            allocate(MAT( Mdims%u_nloc * Mdims%nphase * Mdims%ndim , Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+            allocate(B( Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+            DO ELE = 1, Mdims%TOTELE
+                CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
+            END DO
+            deallocate(b)
+        end if
+        deallocate(MAT)
         RETURN
     END SUBROUTINE PHA_BLOCK_INV
 

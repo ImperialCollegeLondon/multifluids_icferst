@@ -1135,8 +1135,8 @@ end if
         deallocate(velocity_absorption, U_SOURCE_CV_ALL)
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
-            if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  CALL PHA_BLOCK_INV(&
-                                        Mmat%PIVIT_MAT, Mdims%totele, Mdims%u_nloc * Mdims%nphase * Mdims%ndim )
+            if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  &
+                                                    CALL PHA_BLOCK_INV(Mmat%PIVIT_MAT, Mdims )
             sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
             diag=.true.
             if ( Mdims%npres>1 ) diag=.false.
