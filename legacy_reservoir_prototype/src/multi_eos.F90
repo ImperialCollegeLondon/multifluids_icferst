@@ -1334,6 +1334,7 @@ contains
         logical, intent(in) :: Sat_in_FEM
         ! Local Variables
         INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
+	logical :: Cap_Brooks, Cap_TOTAL
         !Working pointers
         real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
         real, dimension(:), allocatable :: Cont_correction
@@ -1350,11 +1351,23 @@ contains
 
         CapPressure = 0.
 
+        ! Logical switches that determine which capillary pressure function to use
+        Cap_Brooks = .false.
+        Cap_TOTAL = .false.
+
         DO IPHASE = 1, NPHASE
 
+          ! Determine which capillary pressure formulation we are using
 
-            if (have_option("/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+            if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+               Cap_Brooks = .true.
+            endif
+
+	    if(have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) then
+          	Cap_TOTAL = .true.
+            endif
+
+	    if ( (Cap_Brooks) .or. (Cap_TOTAL) ) then          
 
                 !Apply Brooks-Corey model
                 do jphase = 1, nphase
@@ -1389,26 +1402,59 @@ contains
                 !Local
                 real, parameter :: eps = 1d-3 !Small values requires smaller time steps
 
-                Get_capPressure = &
-                    Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - Immobile_fraction(iphase)), 1.0) ** (-a)
+                if(Cap_Brooks) then
+                    Get_capPressure = &
+                        Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - sum(Immobile_fraction(:)) ), 1.0) ** (-a)
+                endif
+
+                if(Cap_TOTAL) then
+                    ! Function is CMC * sqrt(phi/K) * (1-S_norm) ^ a  ! Absorb the sqrt(phi/K) into the constant CMC (User has to specify it !!!)
+                    ! Note also this model only really makes physical sense with a > 0
+
+                    Get_capPressure = &
+                        Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**a
+                endif
+
             end function Get_capPressure
     END SUBROUTINE calculate_capillary_pressure
 
-    PURE real function Get_DevCapPressure(sat, Pe, a, immobile_fraction, iphase)
-        !This functions returns the derivative of the capillary pressure with the saturation
+    real function Get_DevCapPressure(sat, Pe, a, immobile_fraction, iphase, nphase)
+        !This functions returns the derivative of the capillary pressure with respect to the saturation
         Implicit none
-        integer, intent(in) :: iphase
+        integer, intent(in) :: iphase, nphase
         real, intent(in) :: sat, Pe, a
         real, dimension(:), intent(in) :: immobile_fraction
         !Local
         real, parameter :: eps = 1d-3
         real :: aux
+        integer :: i
+        logical :: Cap_Brooks, Cap_TOTAL
 
-        aux = (1.0 - immobile_fraction(iphase))
+	aux = ( 1.0 - sum(immobile_fraction(:)) )
 
-        Get_DevCapPressure = &
-            -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
+        ! Determine which capillary pressure model is to be used (note we have to do this again as this function is actually not called in multi.eos.F90)
+        Cap_Brooks = .false.
+        Cap_TOTAL = .false.
+        do i = 1, nphase
+            if (have_option("/material_phase["//int2str(i-1)//"]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+               Cap_Brooks = .true.
+            endif
 
+
+	    if(have_option("/material_phase["//int2str(i-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) then
+          	Cap_TOTAL = .true.
+            endif 
+        enddo
+
+        if(Cap_Brooks) then	
+        	Get_DevCapPressure = &
+                -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
+        endif
+    
+        if(Cap_TOTAL) then
+        	Get_DevCapPressure = &
+                -(a/(1.0 - sum(Immobile_fraction(:))))* Pe * (1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**(a-1)
+        endif
 
     end function Get_DevCapPressure
 
@@ -2402,7 +2448,7 @@ contains
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
         integer :: iphase, nphase
-        character(len=500) :: path
+        character(len=500) :: path, path2
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         nphase = size(t_field%val,2)
@@ -2456,10 +2502,15 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+		path2 = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::C/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
                     t_field%val(4,iphase,:) = targ_Store%val(:)
-                else!default value
+                elseif (have_option(trim(path2))) then
+                    call initialise_field_over_regions(targ_Store, trim(path2) , position)
+                    t_field%val(4,iphase,:) = targ_Store%val(:)
+                else !default value
                     t_field%val(4,iphase,:) = 0.0
                 end if
             end do
@@ -2468,10 +2519,15 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+		path2 = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::a/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
                     t_field%val(5,iphase,:) = targ_Store%val(:)
-                else!default value
+                elseif (have_option(trim(path2))) then
+                    call initialise_field_over_regions(targ_Store, trim(path2) , position)
+                    t_field%val(5,iphase,:) = targ_Store%val(:)
+                else !default value
                     t_field%val(5,iphase,:) = 1.0
                 end if
             end do

@@ -1827,7 +1827,35 @@ start =
                              generic_aliased_field
                           }
                        )
-                    }}
+                    }}?,
+                  ## Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)
+                  element type_TOTALCapillary {
+                    ## Overall coefficient scaling the capillary pressure
+                    element scalar_field {
+                       attribute name { "C" },
+                       (
+                          element prescribed {
+                             velocity_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    },
+                    ## Exponent in the capillary pressure formula
+                    element scalar_field {
+                       attribute name { "a" },
+                       (
+                          element prescribed {
+                             velocity_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    }}?
                }?,
                ## Immobile volume of fluid phase
                element immobile_fraction {
