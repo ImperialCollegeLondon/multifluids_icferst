@@ -177,7 +177,6 @@ contains
         logical :: calculate_flux
         ! Variables used in the CVGalerkin interpolation calculation
         integer :: numberfields
-        real :: t_adapt_threshold
 
 !       Variables used for calculating conservation of mass (entering/leaving and within the domain).
 
@@ -835,15 +834,6 @@ contains
                 end if Conditional_Dump_RealTime
             end if
 
-	    ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
-            if(have_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay")) then
-            	call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold ) 
-			else
-                 t_adapt_threshold = 0.0
-            endif
-
-            T_Adapt_Delay: if(acctim >= t_adapt_threshold) then
-
             ! CALL INITIAL MESH TO MESH INTERPOLATION ROUTINE (Before adapting the mesh)
             numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
             if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
@@ -856,9 +846,6 @@ contains
             !!!$! ******************
 
             call adapt_mesh_mp()
-
-	    end if T_Adapt_Delay 
-
             !!$ Simple adaptive time stepping algorithm
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6

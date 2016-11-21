@@ -492,12 +492,6 @@ Manual suggests disabling this option.</a:documentation>
         </element>
       </optional>
       <optional>
-        <element name="t_adapt_delay">
-          <a:documentation>Delay start of adaptive algorithm until this time</a:documentation>
-          <ref name="real"/>
-        </element>
-      </optional>
-      <optional>
         <element name="minimum_number_of_nodes">
           <a:documentation>The minimum number of nodes this simulation may use.
 In parallel, by default, this is the global minimum number of nodes.
