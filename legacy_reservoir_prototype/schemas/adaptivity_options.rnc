@@ -428,6 +428,10 @@ hr_adaptivity =
          element cpu_period {
             real
          }?,
+         ## Delay start of adaptive algorithm until this time
+	 element t_adapt_delay {
+            real
+         }?,
          ## The minimum number of nodes this simulation may use.
          ## In parallel, by default, this is the global minimum number of nodes.
          ##

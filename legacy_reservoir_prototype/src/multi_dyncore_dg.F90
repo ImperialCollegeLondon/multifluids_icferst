@@ -5843,8 +5843,9 @@ end if
      Artificial_Pe = .false.
      if (Phase_with_Pc>0) then
          !Get information for capillary pressure to be use
-         if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+         if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+             "]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) ) then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
                  Cap_exponent = Cap_exponent)
          end if
@@ -5887,7 +5888,7 @@ end if
              !Calculate the Overrelaxation
              do cv_nodi = 1, size(Overrelaxation)
                  Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
-                     Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc)
+                     Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc, nphase)
              end do
          else
              !Calculate the Overrelaxation
@@ -5895,7 +5896,7 @@ end if
                  Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
                      Cap_entry_pressure(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)), &
                      Cap_exponent(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)),&
-                     immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc)
+                     immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc, nphase)
              end do
          end if
 
