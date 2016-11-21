@@ -526,7 +526,7 @@ contains
                 ewrite(2,*) '  NEW ITS', its
                 ! open the boiling test for two phases-gas and liquid
                 if (is_boiling) then
-                   call set_nu_to_u( packed_state )!sprint_to_do, this seems odd, the outputs of boiling are deallocated instantly
+                   call set_nu_to_u( packed_state )
                    allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                               Temperature_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                    call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
@@ -929,7 +929,6 @@ contains
         return
     contains
 
-        !!!!!sprint_to_do!!!move elsewhere (it requires to pass down all the fields...)
         subroutine put_CSR_spars_into_packed_state()
             !!! routine puts various CSR sparsities into packed_state
             use sparse_tools
@@ -1310,7 +1309,6 @@ contains
         tfield%val=ntfield%val
     end subroutine copy_packed_new_to_old
 
-        !!!!!sprint_to_do!!! (don't know where to put it... maybe this is correct place)
     subroutine set_nu_to_u(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(tensor_field), pointer :: u, uold, nu, nuold

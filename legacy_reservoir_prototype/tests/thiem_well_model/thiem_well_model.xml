@@ -2,7 +2,7 @@
 <testproblem>
   <name>thiem_well_model</name>
   <owner userid="dimitrios.pavlidis"/>
-  <tags>mpml wellst tbc</tags>
+  <tags>mpml wells tbc</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/multiphase_prototype thiem_well_model.mpml</command_line>
   </problem_definition>

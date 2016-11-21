@@ -746,7 +746,7 @@ if (is_flooding) return!<== Temporary fix for flooding
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
         Mmat, multi_absorp, upwnd, velocity, pressure, &
-        DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
+        DT, NLENMCY, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -1042,7 +1042,7 @@ end if
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
 
-        !Allocation of storable matrices !SPRINT_TO_DO; move as an initialization subroutine
+        !Allocation of storable matrices
         if (.not.Mmat%Stored) then
              if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
@@ -1065,7 +1065,6 @@ end if
                 ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
         end if
 
-!        IF(got_free_surf .or. Mmat%CV_pressure) THEN!sprint_to_do: pressure bcs as vel bcs, remove
         IF(got_free_surf) THEN
            ALLOCATE( MASS_SUF( Mspars%CMC%ncol )) ; MASS_SUF=0.
         ELSE
@@ -3186,7 +3185,6 @@ end if
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-!            IF( (.NOT.first_time_step) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN!sprint_to_do; first_time_step had to be always true
             if (RESID_BASED_STAB_DIF/=0) then
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************

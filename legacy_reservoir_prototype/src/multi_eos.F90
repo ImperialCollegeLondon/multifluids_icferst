@@ -1671,7 +1671,6 @@ contains
 
 
 
-    !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
     subroutine update_velocity_absorption( states, ndim, nphase, velocity_absorption )
 
         implicit none
@@ -1721,7 +1720,6 @@ contains
         return
     end subroutine update_velocity_absorption
 
-    !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
     subroutine update_velocity_absorption_coriolis( states, ndim, nphase, velocity_absorption )
 
       implicit none

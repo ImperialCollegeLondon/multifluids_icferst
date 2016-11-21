@@ -2361,7 +2361,7 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
 
 end subroutine copy_packed_new_to_iterated
 
-!sprint_to_do! move everything to just use pointers and remove this
+!deprecated, do not use. Use pointers instead
 subroutine get_var_from_packed_state(packed_state,FEDensity,&
     OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
     OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
