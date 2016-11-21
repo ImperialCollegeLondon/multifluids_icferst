@@ -3002,8 +3002,11 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     all_fields_costant = .true.
     !Check capillary
     if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
-        root_path = '/multiphase_properties/capillary_pressure/'&
-            //'type_Brooks_Corey/scalar_field::C/prescribed/value'
+        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
+        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::C/prescribed/value'
+        endif
         k = 0
         do i = 0, nphase-1
             k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
@@ -3013,8 +3016,11 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             if (have_option_for_any_phase(trim(path), nphase))&
                 all_fields_costant = .false.
         end do
-        root_path = '/multiphase_properties/capillary_pressure/'&
-            //'type_Brooks_Corey/scalar_field::a/prescribed/value'
+        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
+        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::a/prescribed/value'
+        endif
         k = 0
         do i = 0, nphase-1
             k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
