@@ -3,6 +3,9 @@
   <simulation_name>
     <string_value lines="1">cwc</string_value>
   </simulation_name>
+  <simulation_type>
+    <intertia_dominated/>
+  </simulation_type>
   <geometry>
     <dimension>
       <integer_value rank="0">2</integer_value>
@@ -564,6 +567,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -704,6 +708,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -844,6 +849,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -984,6 +990,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -1124,6 +1131,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>

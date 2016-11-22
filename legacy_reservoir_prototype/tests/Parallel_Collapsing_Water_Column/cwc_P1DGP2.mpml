@@ -3,6 +3,9 @@
   <simulation_name>
     <string_value lines="1">cwc_P1DGP2</string_value>
   </simulation_name>
+  <simulation_type>
+    <intertia_dominated/>
+  </simulation_type>
   <geometry>
     <dimension>
       <integer_value rank="0">2</integer_value>
@@ -412,8 +415,17 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <diagnostic>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh_Discontinuous"/>
             <algorithm name="Internal" material_phase_support="multiple"/>
             <output/>
             <stat>
@@ -606,7 +618,17 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -738,7 +760,17 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -870,7 +902,17 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -1002,7 +1044,17 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -1134,7 +1186,17 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>

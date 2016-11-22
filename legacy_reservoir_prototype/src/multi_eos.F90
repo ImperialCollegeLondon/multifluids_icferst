@@ -1647,8 +1647,7 @@ contains
                      do ele = 1, Mdims%totele
                         do iloc = 1, Mdims%mat_nloc
                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                           cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
-                           call addto( tp_field, mat_nod, node_val( component, cv_nod ) * node_val( tc_field, mat_nod ) )
+                           call addto( tp_field, mat_nod, node_val( component, mat_nod ) * node_val( tc_field, mat_nod ) )
                         end do
                      end do
                   end do
