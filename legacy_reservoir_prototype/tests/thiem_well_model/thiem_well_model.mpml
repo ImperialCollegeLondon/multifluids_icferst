@@ -72,7 +72,6 @@
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="P0DG"/>
-    <not_output_darcy_vel/>
     <stat/>
   </io>
   <timestepping>
@@ -278,11 +277,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">1</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">3</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>
@@ -695,11 +694,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">2</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">3</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>
