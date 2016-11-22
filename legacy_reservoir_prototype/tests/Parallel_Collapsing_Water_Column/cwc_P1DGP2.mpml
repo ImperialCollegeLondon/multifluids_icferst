@@ -425,7 +425,7 @@
             <Anisotropic_coupled/>
           </type>
           <diagnostic>
-            <mesh name="PressureMesh"/>
+            <mesh name="PressureMesh_Discontinuous"/>
             <algorithm name="Internal" material_phase_support="multiple"/>
             <output/>
             <stat>
@@ -628,6 +628,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -769,6 +770,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -910,6 +912,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -1051,6 +1054,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
@@ -1192,6 +1196,7 @@
             <Anisotropic_coupled/>
           </type>
           <prescribed>
+            <mesh name="PressureMesh_Discontinuous"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
