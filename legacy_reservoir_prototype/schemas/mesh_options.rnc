@@ -48,9 +48,7 @@ mesh_info =
 #                 "lagrangian" | "bubble" | "trace" 
                  "lagrangian"| "bubble" 
               }
-            },
-             ## Activate for porous media. Deprecated, use simulation_type instead.
-             element Porous_media { comment }?
+            }
          }?,
          element mesh_continuity {
             element string_value{

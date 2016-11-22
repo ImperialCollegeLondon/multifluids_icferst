@@ -288,10 +288,8 @@ contains
                      trim(option_path))
                 !Make sure the field is not shown
                 if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
-                    !Don't know how to set exclude_from_vtu to true from the spud options, hence,
-                    !since Porous_media HAS to be true I copy it to obtain the same effect!sprint_to_do
-                    call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
-                     trim(option_path)//"/prognostic/output/exclude_from_vtu")
+                    !Copy an option that lways exists to ensure we exclude the new field from vtu
+                    call copy_option("/simulation_type",trim(option_path)//"/prognostic/output/exclude_from_vtu")
                 end if
                 !Make sure that this field is not the objective of adaptivity
                 if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then

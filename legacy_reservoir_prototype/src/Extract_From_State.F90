@@ -68,7 +68,7 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass, prepare_absorptions
 
 
     interface Get_SNdgln
@@ -1003,9 +1003,9 @@ contains
 
         if (is_porous_media) then
             ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-            call allocate(ten_field,ovmesh,"PorousMedia_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
-            call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")
-            call deallocate(ten_field)
+!            call allocate(ten_field,ovmesh,"PorousMedia_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
+!            call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")
+!            call deallocate(ten_field)
             if ( ncomp > 0 ) then
                 ovmesh=>extract_mesh(packed_state,"PressureMesh")
                 do icomp = 1, ncomp
@@ -1855,6 +1855,34 @@ contains
 
     end subroutine pack_multistate
 
+    subroutine prepare_absorptions(state, Mdims, multi_absorp)
+        implicit none
+        type(state_type), dimension(:), intent(inout) :: state
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_absorption), intent(inout) :: multi_absorp
+        !Local variables
+        integer :: k
+        type(mesh_type), pointer :: ovmesh
+
+        !Make sure that the memory is cleaned before using it
+        call deallocate_multi_absorption(multi_absorp, .true.)
+        !Prepare array that will contain the different absorptions
+        ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
+
+
+        if (is_porous_media) then
+             call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
+!            if ( ncomp > 0 ) !"Not ready yet"
+        end if
+        !Need to add this
+!        if (is_flooding) then!I think it is always memory_type=1
+!             call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="Flooding_AbsorptionTerm")
+!        end if
+
+    end subroutine prepare_absorptions
+
+
+
 !    function wrap_as_tensor(field) result(tfield)
 !
 !      type(scalar_field), intent(inout) :: field
@@ -2104,6 +2132,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (IsParallel()) then
                     call allmax(ts_ref_val)
                     call allmax(max_calculate_mass_delta)
+		    call allmax(inf_norm_val)
                 end if
 
 
@@ -2332,7 +2361,7 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
 
 end subroutine copy_packed_new_to_iterated
 
-!sprint_to_do! move everything to just use pointers and remove this
+!deprecated, do not use. Use pointers instead
 subroutine get_var_from_packed_state(packed_state,FEDensity,&
     OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
     OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
@@ -3198,21 +3227,16 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
 end subroutine get_regionIDs2nodes
 
 !!$ This subroutine calculates the actual Darcy velocity
-subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, cv_ndgln, u_ndgln, mat_ndgln, &
-    state, packed_state)
+subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
 
     implicit none
-
-    ! I/O variables
-    integer, intent(in) :: totele, cv_nloc, u_nloc, mat_nloc
-    integer, dimension(:) :: cv_ndgln, u_ndgln, mat_ndgln
+    type(multi_ndgln), intent(in) :: ndgln
+    type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(in) :: packed_state
-    type(state_type), dimension(:), intent(inout) :: state
+    type (multi_field), intent(in) :: PorousMedia_absorp
 
     ! Local variables
-    type(tensor_field), pointer :: darcy_velocity, velocity, saturation, oldsaturation, &
-        permeability, absorption_term
-    type(scalar_field), pointer :: porosity
+    type(tensor_field), pointer :: darcy_velocity, velocity, saturation
     real, dimension(:,:), allocatable :: loc_absorp_matrix
     real, dimension(:), allocatable :: sat_weight_velocity
     integer :: cv_iloc, u_iloc, ele, iphase, ndim, nphase, imat, u_inod, cv_loc, idim
@@ -3221,28 +3245,21 @@ subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, cv_ndgln, u_ndgl
     darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-    oldsaturation => extract_tensor_field( packed_state,"PackedOldPhaseVolumeFraction")
-    porosity => extract_scalar_field(state(1),"Porosity")
-    permeability => extract_tensor_field(packed_state,"Permeability")
-    absorption_term => extract_tensor_field(packed_state,"PorousMedia_AbsorptionTerm")
 
     call zero(darcy_velocity)
-    allocate(loc_absorp_matrix(size(absorption_term%val,1),size(absorption_term%val,2)))
-    nphase = size(velocity%val,2)
-    ndim = size(velocity%val,1)
+    allocate(loc_absorp_matrix(nphase*ndim,nphase*ndim))
     allocate(sat_weight_velocity(ndim))
 
     ! Calculation
-    do ele = 1, totele
-        do u_iloc = 1, u_nloc
-            u_inod = u_ndgln((ele-1)*u_nloc+u_iloc)
-            do cv_iloc = 1, cv_nloc
-                imat = mat_ndgln((ele-1)*mat_nloc+cv_iloc)
-                cv_loc = cv_ndgln((ele-1)*cv_nloc+cv_iloc)
+    do ele = 1, Mdims%totele
+        do u_iloc = 1, Mdims%u_nloc
+            u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+            do cv_iloc = 1, Mdims%cv_nloc
+                imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                 !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
-                loc_absorp_matrix = absorption_term%val(:,:,imat)
-                call invert(loc_absorp_matrix)
-                do iphase = 1, nphase
+                call get_multi_field_inverse(PorousMedia_absorp, imat, loc_absorp_matrix)
+                do iphase = 1, Mdims%nphase
                     !Inverse of sigma avoiding inversion
                     !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = matmul(permeability%val(:,:,ele),&
                     !    absorption_term%val(imat,ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim))
@@ -3255,7 +3272,7 @@ subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, cv_ndgln, u_ndgl
                         (iphase-1)*ndim+1:iphase*ndim),velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
                     darcy_velocity%val(:,iphase,u_inod) = darcy_velocity%val(:,iphase,u_inod)+ &
-                        sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(cv_nloc)
+                        sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
                 end do
             end do
         end do

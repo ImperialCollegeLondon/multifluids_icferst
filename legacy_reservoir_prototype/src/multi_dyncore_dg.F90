@@ -171,7 +171,7 @@ contains
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
                ! open the boiling test for two phases-gas and liquid
-               if (have_option('/boiling')) then ! don't the divide int. energy equation by the volume fraction
+               if (is_boiling) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
                    den_all = den_all * a%val(1,:,:)
                    aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
@@ -246,7 +246,7 @@ contains
            end if
 
            ! calculate T_ABSORB
-           if (have_option('/boiling')) then
+           if (is_boiling) then
               allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
               allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
               call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
@@ -254,7 +254,7 @@ contains
               deallocate ( Velocity_Absorption )
            end if
 
-           if ( have_option( "/magma" ) ) then
+           if ( is_magma) then
 
               ! set the absorption for magma sims here
               sfield => extract_scalar_field( state(1), "TemperatureAbsorption")
@@ -312,7 +312,7 @@ contains
                END IF Conditional_Lumping
            END DO Loop_NonLinearFlux
 
-           if (have_option('/boiling')) deallocate(T_absorb)
+           if (is_boiling) deallocate(T_absorb)
 
            call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
@@ -323,7 +323,7 @@ contains
 
 
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
-         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, &
          igot_theta_flux, mass_ele_transp,&
@@ -337,10 +337,11 @@ contains
              type(multi_dimensions), intent(in) :: Mdims
              type(multi_GI_dimensions), intent(in) :: CV_GIdims
              type(multi_shape_funs), intent(inout) :: CV_funs
-             type (multi_sparsities), intent(in) :: Mspars
+             type(multi_sparsities), intent(in) :: Mspars
              type(multi_ndgln), intent(in) :: ndgln
              type (multi_discretization_opts) :: Mdisopt
              type (multi_matrices), intent(inout) :: Mmat
+             type(multi_absorption), intent(inout) :: multi_absorp
              type (porous_adv_coefs), intent(inout) :: upwnd
              INTEGER, intent( in ) :: igot_theta_flux
              INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
@@ -380,7 +381,7 @@ contains
              !Working pointers
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
-             type(tensor_field), pointer :: tracer, velocity, density, deriv, PorousMedia_AbsorptionTerm
+             type(tensor_field), pointer :: tracer, velocity, density, deriv
              type(scalar_field), pointer :: gamma
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
@@ -412,7 +413,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
                      backtrack_par_factor, default = 1.0)
              end if
-             if ( backtrack_par_factor < 1.01 ) PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
 
@@ -588,8 +588,8 @@ if (is_flooding) return!<== Temporary fix for flooding
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
-                             call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                                   Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
+                             call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                                   CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                              !Also recalculate the Over-relaxation parameter
                              call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
                          else
@@ -744,9 +744,9 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
-        velocity, pressure, &
-        DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
+        Mmat, multi_absorp, upwnd, velocity, pressure, &
+        DT, NLENMCY, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -764,6 +764,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
         type (multi_matrices), intent(inout) :: Mmat
+        type(multi_absorption), intent(inout) :: multi_absorp
         type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
@@ -821,7 +822,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, PorousMedia_AbsorptionTerm, Flooding_AbsorptionTerm
+        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, Flooding_AbsorptionTerm
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer ::  sf, soldf, gamma
         type( vector_field ) :: packed_vel, rhs
@@ -983,7 +984,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
 
 
-        if ( have_option( "/magma" ) ) then
+        if ( is_magma ) then
            ndim = Mdims%ndim
 
            beta => extract_scalar_field( state( 1 ), "beta" )
@@ -1016,7 +1017,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option('/boiling')) then
+        if (is_boiling) then
            allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
                 velocity_absorption, temperature_absorption )
@@ -1026,8 +1027,14 @@ if (is_flooding) return!<== Temporary fix for flooding
         ! update velocity source
         call update_velocity_source( state, Mdims%ndim, Mdims%nphase, u_source_all )
 
-        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
-        if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
+!        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
+!        if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
+!Temporary conversion
+if (associated(multi_absorp%PorousMedia%val))then
+    do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)
+        call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
+    end do
+end if
 
         Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm", stat )
         if (stat == 0) velocity_absorption = velocity_absorption + Flooding_AbsorptionTerm%val
@@ -1035,7 +1042,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
 
-        !Allocation of storable matrices !SPRINT_TO_DO; move as an initialization subroutine
+        !Allocation of storable matrices
         if (.not.Mmat%Stored) then
              if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
@@ -1058,7 +1065,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                 ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
         end if
 
-!        IF(got_free_surf .or. Mmat%CV_pressure) THEN!sprint_to_do: pressure bcs as vel bcs, remove
         IF(got_free_surf) THEN
            ALLOCATE( MASS_SUF( Mspars%CMC%ncol )) ; MASS_SUF=0.
         ELSE
@@ -1076,7 +1082,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         end if
 
         ! solid pressure term - use the surface tension code
-        if ( have_option( "/magma" ) ) IPLIKE_GRAD_SOU = 2
+        if ( is_magma ) IPLIKE_GRAD_SOU = 2
 
 
         IF ( GLOBAL_SOLVE ) then
@@ -1129,8 +1135,8 @@ if (is_flooding) return!<== Temporary fix for flooding
         deallocate(velocity_absorption, U_SOURCE_CV_ALL)
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
-            if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  CALL PHA_BLOCK_INV(&
-                                        Mmat%PIVIT_MAT, Mdims%totele, Mdims%u_nloc * Mdims%nphase * Mdims%ndim )
+            if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  &
+                                                    CALL PHA_BLOCK_INV(Mmat%PIVIT_MAT, Mdims )
             sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
             diag=.true.
             if ( Mdims%npres>1 ) diag=.false.
@@ -1901,7 +1907,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
         ! open the boiling test for two phases-gas and liquid
-        if (have_option('/boiling')) then
+        if (is_boiling) then
             GOT_VIRTUAL_MASS=.true.
         end if
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
@@ -2385,7 +2391,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-if ( have_option( "/magma" ) ) then
+if ( is_magma ) then
    sfield => extract_scalar_field( state(1), "VolumetricViscosity" ) ! this should be on a material mesh
    UDIFFUSION_VOL_ALL(2,:) = sfield%val
 end if
@@ -2393,7 +2399,7 @@ end if
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-if ( have_option( "/magma" ) ) then
+if ( is_magma ) then
    sfield => extract_scalar_field( state(1), "Ksi_s" ) ! this is the volumetric viscosity
    UDIFFUSION_VOL_ALL(2,:) = sfield%val                ! and it should be on a material mesh
 
@@ -3179,7 +3185,6 @@ end if
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-!            IF( (.NOT.first_time_step) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN!sprint_to_do; first_time_step had to be always true
             if (RESID_BASED_STAB_DIF/=0) then
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************

@@ -215,8 +215,6 @@ contains
     END SUBROUTINE SMLINNGOT
 
 
-    !sprint_to_do!try to delete this and only use the fast version???
-    !remove if we finally remove this subroutine all the subroutines that are only called in here
     SUBROUTINE COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
@@ -446,7 +444,6 @@ contains
                                 CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
                                     + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
                             ENDIF
-!                            if ( got_free_surf .or.Mmat%CV_pressure) then!sprint_to_do: pressure bcs as vel bcs, remove
                             if ( got_free_surf) then
                                 CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) +&
                                     MASS_SUF( COUNT ) * COLOR_VEC( CV_JNOD )
@@ -834,7 +831,6 @@ contains
                         ENDIF
                         CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
                             DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-!                        if ( got_free_surf .or. Mmat%CV_pressure) then!sprint_to_do: pressure bcs as vel bcs, remove
                         if ( got_free_surf ) then
                             CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
                                 MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
@@ -958,21 +954,48 @@ contains
 
 
 
-    SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, TOTELE, NBLOCK )
+    SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, Mdims )
         implicit none
-        INTEGER, intent( in ) :: TOTELE, NBLOCK
         REAL, DIMENSION( : , : , : ), intent( inout ), CONTIGUOUS :: PIVIT_MAT
+        type(multi_dimensions), intent(in) :: Mdims
         ! Local variables
-        INTEGER :: ELE
+        INTEGER :: ELE, iphase, idim, u_iloc, i, u_jloc, k
+        REAL, DIMENSION( :,: ), allocatable :: MAT
+        REAL, DIMENSION( : ), allocatable :: B
 
-        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
-        REAL, DIMENSION( NBLOCK ) :: B
-
-        DO ELE = 1, TOTELE
-!            CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
-            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, B )
-        END DO
-
+        if (is_porous_media) then !No coupling between phases nor dimensions, inverse can be done faster
+             allocate(mat(Mdims%u_nloc, Mdims%u_nloc))
+             DO ELE = 1, Mdims%TOTELE
+                k = 0
+                do i = 1, mdims%nphase * mdims%ndim
+                    k = k + 1
+                    !Compress into a mini matrix
+                    do u_iloc = 1, Mdims%u_nloc
+                        do u_jloc = 1, Mdims%u_nloc
+                            mat(u_iloc, u_jloc) = PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
+                                     k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele )
+                        end do
+                    end do
+                    !Invert
+                    mat = inverse(mat)
+                    !Decompress into a mini matrix
+                    do u_iloc = 1, Mdims%u_nloc
+                        do u_jloc = 1, Mdims%u_nloc
+                            PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
+                                     k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele ) = mat(u_iloc, u_jloc)
+                        end do
+                    end do
+                end do
+            END DO
+        else
+            allocate(MAT( Mdims%u_nloc * Mdims%nphase * Mdims%ndim , Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+            allocate(B( Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+            DO ELE = 1, Mdims%TOTELE
+                CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
+            END DO
+            deallocate(b)
+        end if
+        deallocate(MAT)
         RETURN
     END SUBROUTINE PHA_BLOCK_INV
 
@@ -1274,7 +1297,9 @@ contains
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY_REUSING
 
-    !sprint_to_do!have a look at this one
+
+
+
     SUBROUTINE CT_MULT( CV_RHS, U, V, W, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
         ! CV_RHS=CT*U
@@ -1288,24 +1313,20 @@ contains
 
         ! Local variables
         INTEGER :: CV_INOD, COUNT, U_JNOD, IPHASE, J
+        logical :: is_3d
 
+        is_3d = (NDIM >= 3)
         CV_RHS = 0.0
 
         DO CV_INOD = 1, CV_NONODS
-
             DO COUNT = FINDCT( CV_INOD ), FINDCT( CV_INOD + 1 ) - 1, 1
                 U_JNOD = COLCT( COUNT )
-
                 DO IPHASE = 1, NPHASE
                     J = U_JNOD + ( IPHASE - 1 ) * U_NONODS
-
-                    CV_RHS( CV_INOD ) = CV_RHS( CV_INOD ) + CT( 1, IPHASE, COUNT ) * U( J )
-                    IF( NDIM >= 2 ) CV_RHS( CV_INOD ) = CV_RHS( CV_INOD ) + CT( 2, IPHASE, COUNT ) * V( J )
-                    IF( NDIM >= 3 ) CV_RHS( CV_INOD ) = CV_RHS( CV_INOD ) + CT( 3, IPHASE, COUNT ) * W( J )
+                    CV_RHS( CV_INOD ) = CV_RHS( CV_INOD ) + CT( 1, IPHASE, COUNT ) * U( J ) + CT( 2, IPHASE, COUNT ) * V( J )
+                    IF( is_3d ) CV_RHS( CV_INOD ) = CV_RHS( CV_INOD ) + CT( 3, IPHASE, COUNT ) * W( J )
                 END DO
-
             END DO
-
         END DO
 
         RETURN
@@ -1313,7 +1334,6 @@ contains
     END SUBROUTINE CT_MULT
 
 
-    !sprint_to_do !try to use the many version only
     SUBROUTINE CT_MULT2( CV_RHS, U, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
         ! CV_RHS=CT*U
@@ -1327,20 +1347,13 @@ contains
 
         ! Local variables
         INTEGER :: CV_INOD, COUNT, U_JNOD
-
         CV_RHS = 0.0
-
         DO CV_INOD = 1, CV_NONODS
-
             DO COUNT = FINDCT( CV_INOD ), FINDCT( CV_INOD + 1 ) - 1
                 U_JNOD = COLCT( COUNT )
-
                 CV_RHS( CV_INOD ) = CV_RHS( CV_INOD ) + SUM( CT( :, :, COUNT ) * U( :, :, U_JNOD ) )
-
             END DO
-
         END DO
-
         RETURN
 
     END SUBROUTINE CT_MULT2
@@ -1376,9 +1389,6 @@ contains
         DO CV_INOD = 1, CV_NONODS
             DO COUNT = FINDCT( CV_INOD ), FINDCT( CV_INOD + 1 ) - 1
                 U_JNOD = COLCT( COUNT )
-                !            forall ( IVEC = 1 : NBLOCK, IPHASE = 1 : NPHASE,IDIM =1:NDIM)
-                !                  CV_RHS( IVEC, CV_INOD ) = CV_RHS( IVEC, CV_INOD )+ U( IVEC, IDIM, IPHASE, U_JNOD ) * CT( IDIM, IPHASE, COUNT  )
-                !            end forall
                 call dgemv('N',NBLOCK,NPHASE*NDIM,1.0,U(:,:,:,U_JNOD),NBLOCK,CT(:,:,COUNT),1,1.0,CV_RHS(:,CV_INOD),1)
             END DO
         END DO
@@ -1481,9 +1491,6 @@ contains
 
     END SUBROUTINE CT_MULT_WITH_C
 
-
-
-    !sprint_to_do!can this go?
     SUBROUTINE CT_MULT_WITH_C3( DP, U_ALL, U_NONODS, NDIM, NPHASE, &
         C, NCOLC, FINDC, COLC )
         implicit none
@@ -1570,8 +1577,7 @@ contains
         DO IPHASE = 1, NPHASE
             U( 1 + ( IPHASE - 1 ) * U_NONODS : U_NONODS + ( IPHASE - 1 ) * U_NONODS ) = &
                 UP( 1 + ( IPHASE - 1 ) * NDIM * U_NONODS : U_NONODS + ( IPHASE - 1 ) * NDIM * U_NONODS )
-            IF( NDIM >= 2 ) &
-                V( 1 + ( IPHASE - 1 ) * U_NONODS : U_NONODS + ( IPHASE - 1 ) * U_NONODS ) = &
+            V( 1 + ( IPHASE - 1 ) * U_NONODS : U_NONODS + ( IPHASE - 1 ) * U_NONODS ) = &
                 UP( 1 + U_NONODS + ( IPHASE - 1 ) * NDIM * U_NONODS : 2 * U_NONODS + ( IPHASE - 1 ) * NDIM * U_NONODS )
             IF( NDIM >= 3 ) &
                 W( 1 + ( IPHASE - 1 ) * U_NONODS : U_NONODS + ( IPHASE - 1 ) * U_NONODS ) = &

@@ -131,7 +131,7 @@ start =
                empty
             }?,
             ## Output the absorption velocity (internally used) instead of the Darcy velocity.
-            element not_output_darcy_vel {
+            element output_darcy_vel {
                empty
             }?,
             ## Surface to Integrate Over
@@ -1957,15 +1957,6 @@ start =
             element include_viscous_drag_force {
                empty
             }?
-         }?,
-         ## boiling options
-         element boiling {
-            empty           
-         }?,
-
-         ## is this a magma run?
-         element magma {
-            empty
          }?,
          ## Flooding parameters
             element flooding{

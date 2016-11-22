@@ -109,7 +109,8 @@ multi_data_types.o ../include/multi_data_types.mod: multi_data_types.F90 \
    ../../include/fields_allocates.mod ../../include/fields_data_types.mod \
    ../../include/fldebug.mod ../../include/global_parameters.mod \
    ../../include/sparse_tools.mod ../../include/sparse_tools_petsc.mod \
-   ../../include/spud.mod ../../include/state_module.mod
+   ../../include/spud.mod ../../include/state_module.mod \
+   ../include/multi_tools.mod
 
 ../include/multiphase_1d_engine.mod: multi_dyncore_dg.o
 	@true

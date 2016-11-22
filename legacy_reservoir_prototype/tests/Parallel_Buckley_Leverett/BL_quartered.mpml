@@ -28,7 +28,6 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
-          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>

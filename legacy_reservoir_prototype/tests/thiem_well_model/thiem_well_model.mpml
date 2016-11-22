@@ -28,7 +28,6 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
-          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -73,6 +72,7 @@
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="P0DG"/>
+    <not_output_darcy_vel/>
     <stat/>
   </io>
   <timestepping>

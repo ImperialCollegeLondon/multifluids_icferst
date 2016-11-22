@@ -1482,8 +1482,6 @@ contains
                             ! (this is needed to compute the local courant number and the non-linear theta)
                             IF ( on_domain_boundary) THEN
                                 HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
-                                    !sprint_to_do: pressure bcs as vel bcs, remove
-!                                if (Mmat%CV_pressure) hdc_p = abs( dot_product( CVNORMX_ALL(:,GI),(XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XGI_VAL(1:Mdims%ndim)) ) )
                             ELSE
                                 HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
                             END IF
@@ -6665,8 +6663,6 @@ contains
             IF ( on_domain_boundary ) THEN
                 !By default the position must not be added to the matrix
                 Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
-!                !If Pres bcs as vel boundaries, then they are already implemented
-!                if (WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING) return !sprint_to_do: pressure bcs as vel bcs, remove?
 
                 !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
                 DO IPRES = 1, 1!Mdims%npres

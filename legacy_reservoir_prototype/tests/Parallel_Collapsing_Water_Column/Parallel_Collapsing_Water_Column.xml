@@ -7,14 +7,14 @@
     <command_line>make
 
 ../../../bin/multiphase_prototype cwc_P1DGP1.mpml
-mv cwc_P1DGP1_1.vtu serial_P1DGP1.vtu
+cp cwc_P1DGP1_1.vtu serial_P1DGP1.vtu
 mpiexec  ../../../bin/multiphase_prototype cwc_P1DGP1.mpml
 ../../../bin/pvtu2vtu cwc_P1DGP1 1
 ../../../bin/vtudiff serial_P1DGP1.vtu cwc_P1DGP1_1.vtu diff_P1DGP1.vtu
 
 
 ../../../bin/multiphase_prototype cwc_P1DGP2.mpml
-mv cwc_P1DGP2_1.vtu serial_P1DGP2.vtu
+cp cwc_P1DGP2_1.vtu serial_P1DGP2.vtu
 mpiexec  ../../../bin/multiphase_prototype cwc_P1DGP2.mpml
 ../../../bin/pvtu2vtu cwc_P1DGP2 1
 ../../../bin/vtudiff serial_P1DGP2.vtu cwc_P1DGP2_1.vtu diff_P1DGP2.vtu</command_line>
@@ -44,7 +44,7 @@ check_P1DGP2=abs(d1)
 print max(check_P1DGP2)</variable>
   </variables>
   <pass_tests>
-    <test name="ParallelDiscrepancy_P1DGP1" language="python">assert all(abs(check_P1DGP1)&lt;1.1e-3)</test>
+    <test name="ParallelDiscrepancy_P1DGP1" language="python">assert all(abs(check_P1DGP1)&lt;2.1e-3)</test>
     <test name="ParallelDiscrepancy_P1DGP2" language="python">assert all(abs(check_P1DGP2)&lt;1.1e-3)</test>
   </pass_tests>
   <warn_tests/>

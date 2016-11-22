@@ -112,6 +112,8 @@ contains
         type (multi_matrices) :: Mmat
         !!$ Defining variables to calculate the sigmas at the interface for porous media
         type (porous_adv_coefs) :: upwnd
+        !!$ Variable storing all the absorptions we may need
+        type(multi_absorption) :: multi_absorp
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
@@ -222,6 +224,7 @@ contains
 
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
+        call prepare_absorptions(state, Mdims, multi_absorp)
         !Since this is a hack for Flooding, we want to do this before we actually start using the density as the height
         !which depends on the pressure. However, for th initial condition we need to use the density to set up the initial Pressure
         !Therefore, we correct the initial condition for the pressure before anything is modified
@@ -522,8 +525,8 @@ contains
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
                 ! open the boiling test for two phases-gas and liquid
-                if (have_option('/boiling') ) then
-                   call set_nu_to_u( packed_state )!sprint_to_do, this seems odd, the outputs of boiling are deallocated instantly
+                if (is_boiling) then
+                   call set_nu_to_u( packed_state )
                    allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                               Temperature_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                    call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
@@ -538,8 +541,8 @@ contains
 
                 if( solve_force_balance) then
                     if ( is_porous_media ) then
-                        call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                            Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
+                        call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, Mdims, ndgln)
                     end if
@@ -688,8 +691,8 @@ contains
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        velocity_field, pressure_field, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat,multi_absorp, upwnd,velocity_field, pressure_field, &
                         dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
@@ -700,9 +703,9 @@ contains
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
                         ! temporarily not working for adaptivity -- will be updated soon
-                        if((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
-                            call get_DarcyVelocity( Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, &
-                                ndgln%cv, ndgln%u, ndgln%mat, state, packed_state )
+                        !Do not calculate unless necessary, this is not specially efficient...
+                        if((have_option('/io/output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
+                            call get_DarcyVelocity( Mdims, ndgln, packed_state, multi_absorp%PorousMedia )
                         end if
                     end if
 
@@ -714,8 +717,8 @@ contains
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-                        dt, SUF_SIG_DIAGTEN_BC, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat, multi_absorp, upwnd, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, mass_ele, &
                         its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
@@ -911,6 +914,7 @@ contains
         call deallocate_multi_ndgln(ndgln)
         call destroy_multi_matrices(Mmat)
         call deallocate_porous_adv_coefs(upwnd)
+        call deallocate_multi_absorption(multi_absorp, .true.)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields > 0) then
@@ -925,7 +929,6 @@ contains
         return
     contains
 
-        !!!!!sprint_to_do!!!move elsewhere (it requires to pass down all the fields...)
         subroutine put_CSR_spars_into_packed_state()
             !!! routine puts various CSR sparsities into packed_state
             use sparse_tools
@@ -1164,6 +1167,7 @@ contains
                 call Get_Primary_Scalars_new( state, Mdims )
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
+                call prepare_absorptions(state, Mdims, multi_absorp)
                 !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
                 if (is_flooding) call get_FloodingProp(state, packed_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
@@ -1305,7 +1309,6 @@ contains
         tfield%val=ntfield%val
     end subroutine copy_packed_new_to_old
 
-        !!!!!sprint_to_do!!! (don't know where to put it... maybe this is correct place)
     subroutine set_nu_to_u(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(tensor_field), pointer :: u, uold, nu, nuold
