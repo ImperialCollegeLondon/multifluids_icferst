@@ -966,25 +966,26 @@ contains
         if (is_porous_media) then !No coupling between phases nor dimensions, inverse can be done faster
              allocate(mat(Mdims%u_nloc, Mdims%u_nloc))
              DO ELE = 1, Mdims%TOTELE
-                k = 0
-                do i = 1, mdims%nphase * mdims%ndim
-                    k = k + 1
-                    !Compress into a mini matrix
-                    do u_iloc = 1, Mdims%u_nloc
-                        do u_jloc = 1, Mdims%u_nloc
-                            mat(u_iloc, u_jloc) = PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
-                                     k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele )
-                        end do
+                k = 1
+                !Compress into a mini matrix
+                do u_iloc = 1, Mdims%u_nloc
+                    do u_jloc = 1, Mdims%u_nloc
+                        mat(u_iloc, u_jloc) = PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
+                                 k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele )
                     end do
-                    !Invert
-                    mat = inverse(mat)
-                    !Decompress into a mini matrix
+                end do
+                !Invert
+                mat = inverse(mat)
+                !Populate PIVIT_MAT. SInce the matrix is repeated mdims%nphase * mdims%ndim times we don't need to
+                !invert it that many times
+                do i = 1, mdims%nphase * mdims%ndim
                     do u_iloc = 1, Mdims%u_nloc
                         do u_jloc = 1, Mdims%u_nloc
                             PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
                                      k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele ) = mat(u_iloc, u_jloc)
                         end do
                     end do
+                    k = k + 1
                 end do
             END DO
         else
