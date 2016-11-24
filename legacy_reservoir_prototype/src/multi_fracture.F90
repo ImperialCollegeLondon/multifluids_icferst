@@ -706,23 +706,23 @@ print *, "passed populate here" !!-ao
         porosity => extract_vector_field( packed_state, "Porosity" )
         vf => extract_scalar_field( packed_state, "SolidConcentration" )
 	
-        !        !visualising permeability in 'totalflux'Dummy field
-        perm2_val => extract_scalar_field( state(1), "TotalFlux" )
-        allocate(perm2_val%val(totele))
-        call zero( perm2_val)
+	! PRINT *, "size of porosity is ", size(porosity % val)    ====== 1
 
 
-        ! for adaptivity (bound porosity field)
+        ! for adaptivity (bound perm field)
         perm_val => extract_scalar_field( state(1), "Dummy" )
         allocate(perm_val%val(totele))
         call zero( perm_val)
 
+!        !visualising permeability in 'totalflux'Dummy field
+        perm2_val => extract_scalar_field( state(1), "TotalFlux" )
+        allocate(perm2_val%val(totele))
+        call zero( perm2_val)
 !!-ao comment - porosity is not scaled due to problems arising in the wall
 !               where porosities (rvf) can arise lower than background porosity
-        allocate( scale( totele ) ) ; scale = 1.0
         do ele = 1, totele
             if (rvf % val (ele) > 0.0) then
-                porosity % val (1, ele) = bg_poro*(1-rvf % val(ele))+ rvf % val (ele) ! calcualtion of effective phi --->  Phi_bg*(1-rvf_ring)+1*(rvf_ring)
+                 porosity % val (:,ele) = bg_poro*(1-rvf % val(ele))+ rvf % val (ele) ! calcualtion of effective phi --->  Phi_bg*(1-rvf_ring)+1*(rvf_ring)
             endif
 
             if (rvf%val(ele)> 0.0) perm_val % val (ele)=1
@@ -738,22 +738,11 @@ print *, "passed populate here" !!-ao
 
         ! deallocate
         deallocate( perm)
-        deallocate( scale )
-
-
         call deallocate( rvf )
 
-
-    call remove_scalar_field(alg_fl, "Permeability11")
-    call remove_scalar_field(alg_fl, "Permeability12")
-    call remove_scalar_field(alg_fl, "Permeability21")
-    call remove_scalar_field(alg_fl, "Permeability22")
-
-        fl_mesh => extract_mesh( alg_fl, "Mesh" )
-        call deallocate(fl_mesh)
-        nullify(fl_mesh)
-
         call deallocate( alg_ext )
+        call deallocate( alg_fl )
+
 
         ewrite(3,*) "leaving calculate_phi_and_perm"
 
