@@ -325,27 +325,15 @@ contains
         if (present(field_name)) then
             !Depending on the field, different possibilities
             if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
-                mfield%memory_type = 0
                 mfield%is_constant = .false.!For porous media it cannot be constant
-                mfield%memory_type = max(mfield%memory_type, 2)!We force this memory despite not being the most comprised
+                mfield%memory_type = 2 !We force this memory despite not being the most comprised
                 !because it enables us to remove copies of memory and because for real 3D problems it is very unlikely that
                 !the permeability will be isotropic in all the regions
+            end if
 
-                !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
-!                if (have_option('porous_media/scalar_field::Permeability')) then
-!                    mfield%memory_type = max(mfield%memory_type, 1)
-!                else
-!                    root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
-!                    k = option_count(trim(root_path))
-!                    do i = 0, k-1
-!                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
-!                        if (have_option(path_option//"/isotropic")) then
-!                            mfield%memory_type = max(mfield%memory_type, 0)
-!                        else
-!                            mfield%memory_type = max(mfield%memory_type, 2)
-!                        end if
-!                    end do
-!                end if
+            if (trim(field_name)=="Flooding_AbsorptionTerm") then
+                mfield%is_constant = .false.!It cannot be constant
+                mfield%memory_type = 1!The absorption is always isotropic
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then

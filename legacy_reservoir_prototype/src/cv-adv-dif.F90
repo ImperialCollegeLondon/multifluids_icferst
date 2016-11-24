@@ -103,7 +103,7 @@ contains
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        tracer, velocity, density, &
+        tracer, velocity, density, multi_absorp, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
         DEN_ALL, DENOLD_ALL, &
         TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -252,6 +252,7 @@ contains
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
+        type(multi_absorption), intent(inout) :: multi_absorp
         INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
             IGOT_T2, IGOT_THETA_FLUX
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
@@ -494,7 +495,7 @@ contains
         real, parameter :: gravity_flooding = 9.80665
         real, parameter :: K_TOP = 1.0
         real :: fs_height, K_PIPES, l_surface_pipe, q_pipes, RDUM, RDUM2, CV_PIPE_LENGTH, l_frac
-        type( tensor_field ), pointer :: Flooding_AbsorptionTerm, bathymetry
+        type( tensor_field ), pointer :: bathymetry
         type( scalar_field ), pointer :: depth_of_drain
         real, dimension(Mdims%nphase):: SAT_FOR_PIPE, DEN_FOR_PIPE_PHASE
         real, dimension(Mdims%nphase, Mdims%nphase):: CONT_PIPE_ABS
@@ -520,8 +521,6 @@ contains
 !        real, allocatable, dimension(:) :: calculate_mass_internal_previous
         !   Calculate_mass_delta to store the change in mass calculated over the whole domain
         !#########################################
-        !Get the pointer for flooding
-        if (is_flooding) Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm" )
 
 
         have_absorption=.false.
@@ -2224,10 +2223,8 @@ contains
                     SIGMA_INV_APPROX( :, CV_NODI ) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) / N( CV_NODI ) )
                 END DO
             else if(is_flooding) then
-                do iphase = 1, Mdims%nphase
-                    ! set \sigma for the pipes here
-                    SIGMA_INV_APPROX(iphase, cv_nodi)=1.0/Flooding_AbsorptionTerm%val( iphase, iphase, cv_nodi ) !Only has the friction inside the pipes
-                end do
+                ! set \sigma for the pipes here      !multi_absorp%Flooding is always of memory type 1
+                SIGMA_INV_APPROX(:, cv_nodi)=1.0/multi_absorp%Flooding%val( 1, 1, :, cv_nodi )!Only has the friction inside the pipes
             else
                SIGMA_INV_APPROX( :, CV_NODI ) = 1.0
             end if

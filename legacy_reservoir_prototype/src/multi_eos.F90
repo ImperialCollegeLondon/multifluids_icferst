@@ -745,42 +745,38 @@ contains
         return
     end subroutine Assign_Equation_of_State
 
-    subroutine Calculate_flooding_absorptionTerm(state, packed_state, Mdims, ndgln)
+    subroutine Calculate_flooding_absorptionTerm(state, packed_state, Flooding_absorp, Mdims, ndgln)
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
+        type (multi_field) :: Flooding_absorp
         type( multi_dimensions ), intent( in ) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         !Local variables
         integer :: ipres, iphase, idim, loc
         type( scalar_field ), pointer :: Spipe
-        type( tensor_field ), pointer :: Flooding_AbsorptionTerm
+
+        if(.not.is_flooding) return !Nothing to do here, return
 
         !Initialise
-        Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm" )
-        Flooding_AbsorptionTerm%val = 0.
+        Flooding_absorp%val=0.
         !For the non-pipe phases, add manually the manning coefficient use equation 13 from the manual (the one that defines the b)
-        call calculate_manning_coef(Flooding_AbsorptionTerm%val)
+        call calculate_manning_coef(Flooding_absorp)
 
-        !The following part is only for pipes
-        if (Mdims%npres==1) return
-
-        do ipres = 1, Mdims%npres
+        !The following part is the absorption for the pipes
+        if (Mdims%npres > 1) then
             Spipe => extract_scalar_field( state(1), "Sigma1" )
-            do iphase = 1, Mdims%n_in_pres
-                do idim = 1, Mdims%ndim
-                    ! set \sigma for the pipes here
-                    LOC = (IPRES-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
-                    call assign_val(Flooding_AbsorptionTerm%val( LOC, LOC, : ),Spipe%val)
-                end do
+            do iphase = Mdims%n_in_pres + 1, Mdims%nphase
+                ! set \sigma for the pipes here
+                call assign_val(Flooding_absorp%val( 1,1, iphase, : ),Spipe%val)
             end do
-        end do
+        end if
 
         contains
 
-        subroutine calculate_manning_coef(absorpt)
+        subroutine calculate_manning_coef(Flooding_absorp)
             implicit none
-            real, dimension(:,:,:), intent(inout) :: absorpt
+            type (multi_field) :: Flooding_absorp
             !Local variables
             real, parameter :: hmin = 1d-9!The velocity solver is very sensitive to this parameter
             real, parameter :: u_min = 1d-2 !increase it if having problems to converge
@@ -791,7 +787,6 @@ contains
             real, dimension(mdims%cv_nloc) :: bathymetry
             real, dimension(:), allocatable :: r_nod_count
             logical :: no_averaging
-            if(.not.have_option('/flooding')) return !Nothing to do here, return
 
             !Check whether to use the harmonic mean of the bathymetry
             no_averaging = have_option('/flooding/no_averaging')
@@ -801,7 +796,7 @@ contains
             density => extract_tensor_field( packed_state, "PackedDensity" )!For flooding the first phase is the height
             iphase = 1!First phase of velocity only
 
-            allocate(r_nod_count(size(absorpt,3))); r_nod_count = 0.
+            allocate(r_nod_count(size(Flooding_absorp%val,4))); r_nod_count = 0.
             do ele = 1, Mdims%totele
                 do cv_iloc = 1, Mdims%cv_nloc
                     !Create bathymetry field just in case of using the harmonic mean
@@ -815,8 +810,9 @@ contains
                     r_nod_count(mat_nod) = r_nod_count(mat_nod) + 1
                     do u_iloc = 1, mdims%u_nloc
                         u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
-                        do i = 1, Mdims%ndim*Mdims%n_in_pres!Only for the phases not in the pipes
-                            absorpt(i, i, mat_nod) = absorpt(i, i, mat_nod)  + Nm%val(1,1,ele)**2. * g *&
+                        !Since Flooding_absorp is of memory_type 1 we can populate it directly
+                        do i = 1, Mdims%n_in_pres!Only for the phases not in the pipes
+                            Flooding_absorp%val(1,1,i, mat_nod) = Flooding_absorp%val(1,1,i, mat_nod) + Nm%val(1,1,ele)**2. * g *&
                                 max(u_min,sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod))))&
                                 /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average
                         end do
@@ -824,8 +820,8 @@ contains
                 end do
             end do
             !Average considering times node has been visited
-            do i = 1, Mdims%ndim*Mdims%n_in_pres
-                absorpt(i, i, :) = absorpt(i, i, :) / r_nod_count
+            do i = 1, Mdims%n_in_pres
+                Flooding_absorp%val(1, 1, i, :) = Flooding_absorp%val(1, 1, i, :) / r_nod_count
             end do
             deallocate(r_nod_count)
         end subroutine calculate_manning_coef

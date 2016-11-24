@@ -545,7 +545,7 @@ contains
                         call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
                             CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                     else if (is_flooding) then
-                        call Calculate_flooding_absorptionTerm(state, packed_state, Mdims, ndgln)
+                        call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
                 end if
 
@@ -562,7 +562,7 @@ contains
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, dt, &
+                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
                         !!$
@@ -1374,7 +1374,7 @@ contains
                 Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
                 call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                    tracer_field,velocity_field,density_field, dt, &
+                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
                     SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                     igot_t2, igot_theta_flux, &
                     Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &
