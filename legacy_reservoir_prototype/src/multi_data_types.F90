@@ -325,27 +325,15 @@ contains
         if (present(field_name)) then
             !Depending on the field, different possibilities
             if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
-                mfield%memory_type = 0
                 mfield%is_constant = .false.!For porous media it cannot be constant
-                mfield%memory_type = max(mfield%memory_type, 2)!We force this memory despite not being the most comprised
+                mfield%memory_type = 2 !We force this memory despite not being the most comprised
                 !because it enables us to remove copies of memory and because for real 3D problems it is very unlikely that
                 !the permeability will be isotropic in all the regions
+            end if
 
-                !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
-!                if (have_option('porous_media/scalar_field::Permeability')) then
-!                    mfield%memory_type = max(mfield%memory_type, 1)
-!                else
-!                    root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
-!                    k = option_count(trim(root_path))
-!                    do i = 0, k-1
-!                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
-!                        if (have_option(path_option//"/isotropic")) then
-!                            mfield%memory_type = max(mfield%memory_type, 0)
-!                        else
-!                            mfield%memory_type = max(mfield%memory_type, 2)
-!                        end if
-!                    end do
-!                end if
+            if (trim(field_name)=="Flooding_AbsorptionTerm") then
+                mfield%is_constant = .false.!It cannot be constant
+                mfield%memory_type = 1!The absorption is always isotropic
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then
@@ -962,15 +950,41 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         integer :: mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
 
-        allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ), Mspars%ACV%col( mx_ncolacv ), Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ), &
-            Mspars%MCY%fin( nlenmcy + 1 ), Mspars%MCY%col( mx_ncolmcy ), Mspars%MCY%mid( nlenmcy ), &
-            Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ), Mspars%DGM_PHA%col( mx_ncoldgm_pha ), &
-            Mspars%DGM_PHA%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim ), &
-            Mspars%CT%fin( Mdims%cv_nonods + 1 ), Mspars%CT%col( mx_nct ), &
-            Mspars%C%fin( Mdims%u_nonods + 1 ), Mspars%C%col( mx_nc ), &
-            Mspars%CMC%fin( Mdims%cv_nonods + 1 ), Mspars%CMC%col( 0 ), Mspars%CMC%mid( Mdims%cv_nonods ), &
-            Mspars%M%fin( Mdims%cv_nonods + 1 ), Mspars%M%col( mx_ncolm ), Mspars%M%mid( Mdims%cv_nonods ), &
-            Mspars%ph%fin( Mdims%ph_nonods + 1 ), Mspars%ph%col( mx_ncolph ) )
+
+
+
+            if(.not.associated(Mspars%ACV%fin))          allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ))
+            if(.not.associated(Mspars%ACV%col))          allocate( Mspars%ACV%col( mx_ncolacv ))
+            if(.not.associated(Mspars%ACV%mid))          allocate(  Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ))
+
+            if(.not.associated( Mspars%MCY%fin))         allocate(   Mspars%MCY%fin( nlenmcy + 1 ))
+            if(.not.associated(Mspars%MCY%col))          allocate( Mspars%MCY%col( mx_ncolmcy ))
+            if(.not.associated(Mspars%MCY%mid))          allocate(  Mspars%MCY%mid( nlenmcy ))
+
+            if(.not.associated(Mspars%DGM_PHA%fin))      allocate(  Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ))
+            if(.not.associated(Mspars%DGM_PHA%col))      allocate(  Mspars%DGM_PHA%col( mx_ncoldgm_pha ))
+            if(.not.associated(Mspars%DGM_PHA%mid))      allocate(  Mspars%DGM_PHA%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim ))
+
+            if(.not.associated(Mspars%CT%fin))           allocate(  Mspars%CT%fin( Mdims%cv_nonods + 1 ))
+            if(.not.associated(Mspars%CT%col))           allocate(  Mspars%CT%col( mx_nct ))
+      		if(.not.associated(Mspars%CT%mid))           allocate(  Mspars%CT%mid(  Mdims%cv_nonods )) 
+
+
+            if(.not.associated(Mspars%C%fin))            allocate(  Mspars%C%fin( Mdims%u_nonods + 1 ))
+            if(.not.associated(Mspars%C%col))            allocate(  Mspars%C%col( mx_nc ))
+        	if(.not.associated(Mspars%C%mid))            allocate(  Mspars%C%mid( Mdims%u_nonods)) 
+
+            if(.not.associated(Mspars%CMC%fin))          allocate( Mspars%CMC%fin( Mdims%cv_nonods + 1 ))
+            if(.not.associated(Mspars%CMC%col))          allocate(  Mspars%CMC%col( 0 ))
+            if(.not.associated(Mspars%CMC%mid))          allocate( Mspars%CMC%mid( Mdims%cv_nonods ))
+
+            if(.not.associated( Mspars%M%fin))           allocate(  Mspars%M%fin( Mdims%cv_nonods + 1 ))
+            if(.not.associated( Mspars%M%col))           allocate(  Mspars%M%col( mx_ncolm ))
+            if(.not.associated( Mspars%M%mid))           allocate(  Mspars%M%mid( Mdims%cv_nonods ))
+
+            if(.not.associated(Mspars%ph%fin))           allocate(  Mspars%ph%fin( Mdims%ph_nonods + 1 ))
+            if(.not.associated(Mspars%ph%col))           allocate(  Mspars%ph%col( mx_ncolph ) )
+       		if(.not.associated(Mspars%ph%mid))           allocate(  Mspars%ph%mid( Mdims%ph_nonods ))  
 
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0

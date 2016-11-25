@@ -1004,9 +1004,6 @@ contains
 
         if (is_porous_media) then
             ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-!            call allocate(ten_field,ovmesh,"PorousMedia_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
-!            call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")
-!            call deallocate(ten_field)
             if ( ncomp > 0 ) then
                 ovmesh=>extract_mesh(packed_state,"PressureMesh")
                 do icomp = 1, ncomp
@@ -1020,12 +1017,6 @@ contains
         end if
 
 
-        if (is_flooding) then
-            ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-            call allocate(ten_field,ovmesh,"Flooding_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
-            call insert(packed_state,ten_field,"Flooding_AbsorptionTerm")
-            call deallocate(ten_field)
-        end if
 
 
         call allocate(porosity,npres,element_mesh,"Porosity")
@@ -1876,9 +1867,9 @@ contains
 !            if ( ncomp > 0 ) !"Not ready yet"
         end if
         !Need to add this
-!        if (is_flooding) then!I think it is always memory_type=1
-!             call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="Flooding_AbsorptionTerm")
-!        end if
+        if (is_flooding) then
+             call allocate_multi_field( Mdims, multi_absorp%Flooding, ovmesh%nodes, field_name="Flooding_AbsorptionTerm")
+        end if
 
     end subroutine prepare_absorptions
 

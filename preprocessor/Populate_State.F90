@@ -1778,7 +1778,6 @@ contains
     character(len = *), intent(in) :: option_path
 
     logical :: is_constant
-
     if(option_count(trim(option_path) // "/prescribed/value") == 1) then
       is_constant = have_option(trim(option_path) // "/prescribed/value/isotropic/constant") .or. &
         & have_option(trim(option_path) // "/prescribed/value/anisotropic_symmetric/constant") .or. &
@@ -1786,7 +1785,6 @@ contains
     else
       is_constant = .false.
     end if
-
   end function allocate_tensor_field_as_constant
 
   function allocate_field_as_constant_scalar(s_field) result(is_constant)

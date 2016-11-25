@@ -1284,10 +1284,11 @@ contains
         type(mesh_type), pointer :: element_mesh, ph_mesh
         ewrite(3,*)'In Get_Sparsity_Patterns'
         !Check if sparsities have been associated (allocated), if not, allocate
-        if (.not.associated(Mspars%ACV%fin)) then
+           
+			call deallocate_multi_sparsities(Mspars)
             call allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, &
                     mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
-        end if
+
         !-
         !- Computing sparsity for element connectivity
         !-

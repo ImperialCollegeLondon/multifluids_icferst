@@ -70,7 +70,7 @@ contains
 
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-       tracer, velocity, density,  DT, &
+       tracer, velocity, density, multi_absorp, DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, IDs_ndgln, &
@@ -92,6 +92,7 @@ contains
            type (porous_adv_coefs), intent(inout) :: upwnd
            type(tensor_field), intent(inout) :: tracer
            type(tensor_field), intent(in) :: velocity, density
+           type(multi_absorption), intent(inout) :: multi_absorp
            INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
            LOGICAL, intent( in ), optional ::THERMAL
@@ -268,7 +269,7 @@ contains
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                   tracer, velocity, density, &
+                   tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                    INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
                    DEN_ALL, DENOLD_ALL, &
@@ -504,7 +505,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                     tracer, velocity, density, &
+                     tracer, velocity, density, multi_absorp, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                      INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
                      DEN_ALL, DENOLD_ALL, &
@@ -822,7 +823,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, Flooding_AbsorptionTerm
+        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer ::  sf, soldf, gamma
         type( vector_field ) :: packed_vel, rhs
@@ -1027,17 +1028,18 @@ if (is_flooding) return!<== Temporary fix for flooding
         ! update velocity source
         call update_velocity_source( state, Mdims%ndim, Mdims%nphase, u_source_all )
 
-!        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
-!        if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
 !Temporary conversion
 if (associated(multi_absorp%PorousMedia%val))then
     do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)
         call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
 end if
-
-        Flooding_AbsorptionTerm => extract_tensor_field( packed_state, "Flooding_AbsorptionTerm", stat )
-        if (stat == 0) velocity_absorption = velocity_absorption + Flooding_AbsorptionTerm%val
+!Temporary conversion
+if (associated(multi_absorp%Flooding%val))then
+    do cv_nod = 1, size(multi_absorp%Flooding%val,4)
+        call add_multi_field_to_array(multi_absorp%Flooding, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
+    end do
+end if
 
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
@@ -1093,7 +1095,7 @@ end if
         end if
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
-             velocity, pressure, &
+             velocity, pressure, multi_absorp, &
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
@@ -1407,7 +1409,7 @@ END IF
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        velocity, pressure, &
+        velocity, pressure, multi_absorp, &
         X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
@@ -1439,6 +1441,7 @@ END IF
         type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
+        type(multi_absorption), intent(inout) :: multi_absorp
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
@@ -1554,7 +1557,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-            tracer, velocity, density, &
+            tracer, velocity, density, multi_absorp, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
             INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
