@@ -513,10 +513,11 @@ contains
         real, dimension( : , : ), allocatable :: Dens
         real, dimension(:), pointer :: Por
 
-        ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'caluclate_mass_boundary'
+        ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'calculate_mass_boundary'
         ! and the internal changes in mass will be captured by 'calculate_mass_internal'
         real, allocatable, dimension(:,:) :: calculate_mass_boundary
         real, allocatable, dimension(:) :: calculate_mass_internal  ! used in calculate_internal_mass subroutine
+        real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
 !        real, allocatable, dimension(:) :: calculate_mass_internal_previous
         !   Calculate_mass_delta to store the change in mass calculated over the whole domain
         !#########################################
@@ -1161,8 +1162,8 @@ contains
                 ! Extract the Porosity
                 vecfield => extract_vector_field( packed_state, "Porosity" )
                 Por =>  vecfield%val(1,:)
-                  call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
-                calculate_mass_delta(:,1) , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc )
+                call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
+                calculate_mass_delta(:,1) , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc, tenfield1)
             endif
 
             tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -1174,7 +1175,8 @@ contains
             vecfield => extract_vector_field( packed_state, "Porosity" )
             Por =>  vecfield%val(1,:)
             call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
-                calculate_mass_internal , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc )
+                calculate_mass_internal , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc, tenfield1)
+
         endif
 
         if(is_porous_media .and. calculate_flux .and. GETCT ) then
@@ -1958,7 +1960,7 @@ contains
                                     do ioutlet = 1, size(outlet_id)
                                         !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
                                         call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
-                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL)
+                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL, tenfield1)
                                     enddo
                                 endif
 
@@ -1968,7 +1970,7 @@ contains
                                         !Subroutine call to calculate the mass across this element if the element is part of the boundary. Adds value to calculate_mass_boundary
                                         ! same rountine as one used for calculating outlet fluxes through specified boundaries. Surface ID set to -1 here as this is not needed
                                         call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, (/-1/) , calculate_mass_boundary(:,1) , ele , sele, &
-                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL)
+                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL, tenfield1)
                                 endif
 
                             endif
@@ -2754,10 +2756,20 @@ contains
 
 
         if(GETCT) then
-!       After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
+        ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
         ! Difference in Total mass
-            calculate_mass_delta(1,2) = abs( sum(calculate_mass_internal) - sum(calculate_mass_delta(:,1)) + &
-                sum(calculate_mass_boundary(:,1)*dt) ) / sum(calculate_mass_delta(:,1))
+
+        ! NEED TO MAKE THIS PARALLEL SAFE (allsum the individial deltaM contributions over all processors).
+       
+        tmp1 = sum(calculate_mass_internal)
+	tmp2 = sum(calculate_mass_delta(:,1))
+        tmp3 = sum(calculate_mass_boundary(:,1)*dt)
+
+	call allsum(tmp1)
+	call allsum(tmp2)
+	call allsum(tmp3)
+
+            calculate_mass_delta(1,2) = abs( tmp1 - tmp2 + tmp3 ) / tmp2
         endif
 
 
