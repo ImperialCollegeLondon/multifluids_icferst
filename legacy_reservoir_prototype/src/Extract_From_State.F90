@@ -49,6 +49,7 @@ module Copy_Outof_State
     use futils, only: int2str
     use boundary_conditions_from_options
     use parallel_tools, only : allmax, allmin, isparallel
+    use parallel_fields
     use memory_diagnostics
     use initialise_fields_module, only: initialise_field_over_regions
     use halos
@@ -2246,8 +2247,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 end subroutine Adaptive_NonLinear
 
 real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
-    !We create the potential to optimize F = sum (f**2), so the solution is when this potential
-    !reach a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
+    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
+    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
     !f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
     !
     !The convergence is independent of the dumping parameter
@@ -2261,14 +2262,18 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     integer :: cv_inod, modified_vals, iphase
     real :: aux
     real, parameter :: tol = 1d-5
+    real :: tmp ! Variable used for parallel consistency
 
     modified_vals = 0
     get_Convergence_Functional = 0.0
 
     !(L2)**2 norm of all the elements
     do iphase = 1, size(phasevolumefraction,1)
-        get_Convergence_Functional = max(sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))&
-            /size(phasevolumefraction,2))**2.0), get_Convergence_Functional)
+
+        tmp = sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))/size(phasevolumefraction,2))**2.0)
+        call allsum(tmp)
+
+        get_Convergence_Functional = max(tmp, get_Convergence_Functional)
     end do
 
 !        !(L2)**2 norm of all the elements whose value has changed (has problems to converge at
@@ -2745,7 +2750,7 @@ function GetFEMName(tfield) result(fem_name)
 end function GetFEMName
 
 subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
-    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL)
+    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL, Ele_owned_field)
 
     implicit none
 
@@ -2753,6 +2758,7 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
 
     ! Input/output variables
 
+    type(tensor_field), intent(in) :: Ele_owned_field
     integer, intent(in) :: nphase
     type(tensor_field), intent(in), pointer :: CVPressure
     real, dimension( : , : ),  intent(in), allocatable :: phaseV
@@ -2825,23 +2831,27 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
     ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
 
-    if(test) then
+    if (element_owned(Ele_owned_field, ele)) then ! Check if the element number read into the subroutine is owned by the processor that has entered this loop at run-time (so that we don't overcount).
 
-            ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
-            ! Need to pass down an array with the saturation boundary conditions to deal with these cases
-            ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
+	    if(test) then ! Check if we're on a domain boundary (we only want to include contributions there)
 
-        do i = 1, size(ndotqnew)
-            surf = (sele - 1 ) * cv_snloc + cv_siloc
-            if(ndotqnew(i) < 0 ) then
-                ! Inlet boundary - so use boundary phase volume fraction
-                totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
+		    ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
+		    ! Need to pass down an array with the saturation boundary conditions to deal with these cases
+		    ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
 
-            else
-                ! Outlet boundary - so use internal (to the domain) phase volume fraction
-                totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
-            endif
-        enddo
+		do i = 1, size(ndotqnew)
+		    surf = (sele - 1 ) * cv_snloc + cv_siloc
+		    if(ndotqnew(i) < 0 ) then
+		        ! Inlet boundary - so use boundary phase volume fraction
+		        totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
+
+		    else
+		        ! Outlet boundary - so use internal (to the domain) phase volume fraction
+		        totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
+		    endif
+		enddo
+
+	    endif
 
     endif
 
@@ -2855,13 +2865,15 @@ end subroutine calculate_outflux
 
 
 subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculate_mass, TOTELE , &
-    cv_ndgln, IDs_ndgln, cv_nloc)
+    cv_ndgln, IDs_ndgln, cv_nloc, Ele_owned_field)
 
     implicit none
 
     ! Subroutine to calculate the integrated mass inside the domain
 
     ! Input/output variables
+
+    type(tensor_field), intent(in) :: Ele_owned_field
 
     real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
     integer, intent(in) :: nphase
@@ -2875,7 +2887,6 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
     integer, dimension(:), intent( in ) ::  cv_ndgln
     integer, dimension(:), intent( in ) :: IDs_ndgln
     integer, intent(in) :: cv_nloc
-
 
     ! Local variables
 
@@ -2899,8 +2910,8 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
     ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
     ! Similar calculation done for density.
 
-
     Do ELE=1, TOTELE
+       if (element_owned(Ele_owned_field, ELE)) then
         DO CV_ILOC =1, cv_nloc
                 cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
 
@@ -2912,10 +2923,11 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
                 PorG = Por(IDs_ndgln(ele))
 
                 do i = 1, nphase
-                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)
+                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)               
                 enddo
 
         ENDDO
+        end if
     ENDDO
 
     ! DEALLOCATIONS
