@@ -703,9 +703,8 @@ contains
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
-                        ! temporarily not working for adaptivity -- will be updated soon
                         !Do not calculate unless necessary, this is not specially efficient...
-                        if((have_option('/io/output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
+                        if(have_option('/io/output_darcy_vel').or. is_multifracture) then
                             call get_DarcyVelocity( Mdims, ndgln, packed_state, multi_absorp%PorousMedia )
                         end if
                     end if

@@ -130,7 +130,7 @@ start =
             element output_scalars_fem {
                empty
             }?,
-            ## Output the absorption velocity (internally used) instead of the Darcy velocity.
+            ## Output the Darcy velocity instead of the absorption velocity (internally used) 
             element output_darcy_vel {
                empty
             }?,

@@ -335,6 +335,22 @@ contains
             end if
         end if
 
+        if (is_porous_media .and. (have_option('/io/output_darcy_vel'))) then
+            !Create a copy of the velocity fields to store the DarcyVelocity in it
+            do i = 1, nphase
+                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
+                call copy_option(trim(option_path)//"Velocity", trim(option_path)//"DarcyVelocity")
+                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")) &
+                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")
+
+                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption"))&
+                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption")
+
+                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options"))&
+                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options")
+            end do
+        end if
+
         !Call fluidity to populate state
         call populate_state(state)
 
