@@ -132,7 +132,7 @@ contains
         Mdims%n_in_pres = Mdims%nphase / Mdims%npres
 
         !!$ Get the vel element type.
-        is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media') .or. is_porous_media
+        is_porous_media = have_option('/simulation_type/porous_media')
         if (is_porous_media) then!Check that the FPI method is on
             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
