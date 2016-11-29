@@ -167,7 +167,7 @@ interpolated for VTK output.</a:documentation>
         </optional>
         <optional>
           <element name="output_darcy_vel">
-            <a:documentation>Output the Darcy velocity instead of the absorption velocity (internally used) </a:documentation>
+            <a:documentation>Output the Darcy velocity</a:documentation>
             <empty/>
           </element>
         </optional>

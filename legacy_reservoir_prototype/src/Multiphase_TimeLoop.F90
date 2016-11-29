@@ -158,6 +158,7 @@ contains
         real :: Courant_number = -1
         !Variables for adapting the mesh within the FPI solver
         logical :: adapt_mesh_in_FPI
+        real :: Accum_Courant = 0., Courant_tol
         !type( scalar_field ) :: Saturation_bak, ConvSats
         integer :: checkpoint_number
         !Array to map nodes to region ids
@@ -368,7 +369,6 @@ contains
         if ( have_option( '/mesh_adaptivity/hr_adaptivity' ) ) then
             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'ErrorMetric' )
         end if
-        adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
 
         if (is_porous_media) then
             !Get into packed state relative permeability, immobile fractions, ...
@@ -472,6 +472,9 @@ contains
 
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
+            if (adapt_mesh_in_FPI) call get_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI', Courant_tol, default = -1.)
+
+
             itime = itime + 1
             timestep = itime
             call get_option( '/timestepping/timestep', dt )
@@ -744,7 +747,13 @@ contains
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
-                        call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its)
+                        Accum_Courant = Accum_Courant + Courant_number
+                        if (Accum_Courant >= Courant_tol .or. first_time_step) then
+                            Accum_Courant = 0.
+                            call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its)
+                        else
+                            exit Loop_NonLinearIteration
+                        end if
                     else
                         exit Loop_NonLinearIteration
                     end if

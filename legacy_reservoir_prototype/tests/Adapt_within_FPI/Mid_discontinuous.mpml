@@ -790,7 +790,9 @@
   </material_phase>
   <mesh_adaptivity>
     <hr_adaptivity>
-      <adapt_mesh_within_FPI/>
+      <adapt_mesh_within_FPI>
+        <real_value rank="0">-1</real_value>
+      </adapt_mesh_within_FPI>
       <maximum_number_of_nodes>
         <integer_value rank="0">100000</integer_value>
       </maximum_number_of_nodes>

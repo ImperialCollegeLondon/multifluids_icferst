@@ -28,7 +28,7 @@ DarcyVel1 = stat("mid_discontinuous.stat")["phase1"]["DarcyVelocity%1"]["max"][-
     <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 0.225) &lt; 0.001)</test>
     <test name="Assert outlet pressure boundary condition" language="python">assert(abs(min_P - 1.5) &lt; 0.1)</test>
     <test name="Assert density is introduced" language="python">assert(abs(density_Sat1 - 1.0) &lt; 0.0001)</test>
-    <test name="Assert final max Darcy velocity" language="python">assert(abs(DarcyVel1 - 1.217) &lt; 0.01)</test>
+    <test name="Assert final max Darcy velocity" language="python">assert(abs(DarcyVel1 - 1.217) &lt; 0.02)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
