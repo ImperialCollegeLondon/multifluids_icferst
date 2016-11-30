@@ -315,7 +315,7 @@ contains
             if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
                 !Don't know how to set exclude_from_vtu to true from the spud options, hence,
                 !since Porous_media HAS to be true I copy it to obtain the same effect
-                call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
+                call copy_option("/simulation_type/porous_media",&
                  trim(option_path)//"/prognostic/output/exclude_from_vtu")
             end if
             !Make sure that this field is not the objective of adaptivity
@@ -330,7 +330,7 @@ contains
             !Don't know how to set exclude_from_vtu to true from the spud options, hence,
             !since Porous_media HAS to be true I copy it to obtain the same effect
             if (.not.have_option("/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")) then
-                call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
+                call copy_option("/simulation_type/porous_media",&
                  "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
             end if
         end if
