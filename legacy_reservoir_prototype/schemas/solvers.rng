@@ -451,7 +451,7 @@ Default : -0.1</a:documentation>
       <a:documentation>Relative error
 
 The solver finishes if the preconditioned error becomes smaller than the original preconditioned error times this value.
-Suggested value: 1.0e-7</a:documentation>
+Suggested value: 1.0e-10</a:documentation>
       <ref name="real"/>
     </element>
     <optional>
@@ -484,29 +484,15 @@ imposing a reference_node to pin the solution.</a:documentation>
       </element>
     </optional>
     <choice>
+      <element name="ignore_all_solver_failures">
+        <a:documentation>Ignore all solver failures. This is a dangerous option
+that, however, should be used for the PhaseVolumeFraction for Porous Media.</a:documentation>
+        <empty/>
+      </element>
       <element name="never_ignore_solver_failures">
         <a:documentation>Solver failures are always treated as fatal errors. The
 model stops at the end of the time step in order to allow
 for the latest output to be written.</a:documentation>
-        <empty/>
-      </element>
-      <element name="ignore_non_convergence_during_spin_up">
-        <a:documentation>Allow for an initial period in which solver failures
-caused by non-convergence in the maximum number of
-iterations are ignored.</a:documentation>
-        <element name="spin_up_time">
-          <a:documentation>As long as current_time &lt; spin_up_time, solver failures
-due to non-convergence in the maximum number of
-iterations are ignored. This might be used for spinning
-up the model. As there is no guarantee we're actually
-solving the flow equations to any accuracy, the results
-in this period should not be trusted.</a:documentation>
-          <ref name="real"/>
-        </element>
-      </element>
-      <element name="ignore_all_solver_failures">
-        <a:documentation>Ignore all solver failures. This is a dangerous option
-that should only be used in exceptional cases.</a:documentation>
         <empty/>
       </element>
     </choice>

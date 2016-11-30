@@ -251,9 +251,11 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
           <max_iterations>
             <integer_value rank="0">500</integer_value>
@@ -525,7 +527,9 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-7</real_value>
           </relative_error>
@@ -655,9 +659,11 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
           <max_iterations>
             <integer_value rank="0">500</integer_value>
