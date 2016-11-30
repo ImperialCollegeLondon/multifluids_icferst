@@ -58,12 +58,10 @@ module metric_assemble
     vertically_structured_adaptivity = have_option("/mesh_adaptivity/hr_adaptivity/vertically_structured_adaptivity")
     ! are we waiting until later to apply the gradation?
     split_gradation = have_option("/mesh_adaptivity/hr_adaptivity/vertically_structured_adaptivity/split_gradation")
-
     do i=1,size(state)
       positions => extract_vector_field(state(i), "Coordinate", stat=stat)
       if (stat == 0) exit
     end do
-
     max_tensor => extract_tensor_field(state(1), "MinMetricEigenbound")
 
     if (debug_metric) then

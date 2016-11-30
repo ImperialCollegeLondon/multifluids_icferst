@@ -177,7 +177,7 @@ contains
         real, dimension(:,:),  allocatable  :: intflux
         logical :: calculate_flux
         ! Variables used in the CVGalerkin interpolation calculation
-        integer :: numberfields
+        integer, save :: numberfields = -1
         real :: t_adapt_threshold
 
 !       Variables used for calculating conservation of mass (entering/leaving and within the domain).
@@ -202,6 +202,8 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
+        ! Check wether we are using the CV_Galerkin method
+        numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
 
         !Read info for adaptive timestep based on non_linear_iterations
@@ -852,20 +854,13 @@ contains
 
             T_Adapt_Delay: if(acctim >= t_adapt_threshold) then
 
-            ! CALL INITIAL MESH TO MESH INTERPOLATION ROUTINE (Before adapting the mesh)
-            numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
-            if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
-                if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
-                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type, 0)
-                endif
-            endif
-            !!!$! ******************
-            !!!$! *** Mesh adapt ***
-            !!!$! ******************
+                !!!$! ******************
+                !!!$! *** Mesh adapt ***
+                !!!$! ******************
 
-            call adapt_mesh_mp()
+                call adapt_mesh_mp()
 
-	    end if T_Adapt_Delay 
+	        end if T_Adapt_Delay
 
             !!$ Simple adaptive time stepping algorithm
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
@@ -1119,6 +1114,13 @@ contains
 
         !This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
+
+            if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
+                if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
+                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type, 0)
+                endif
+            endif
+
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
                 if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
@@ -1126,6 +1128,7 @@ contains
                         adapt_time_steps, default=5 )
                 else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                     do_reallocate_fields = .true.
+                    adapt_time_steps = 5!adapt_time_steps requires a default value
                 end if
                 if( mod( itime, adapt_time_steps ) == 0 ) do_reallocate_fields = .true.
             elseif (have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric') ) then
@@ -1138,6 +1141,7 @@ contains
                 if( do_adapt_state_prescribed( current_time ) ) do_reallocate_fields = .true.
             end if Conditional_Adaptivity_ReallocatingFields
             new_mesh = do_reallocate_fields
+
             Conditional_ReallocatingFields: if( do_reallocate_fields ) then
                 !The stored variables must be recalculated
                 Conditional_Adaptivity: if( have_option( '/mesh_adaptivity/hr_adaptivity ') .or. have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
@@ -1213,6 +1217,7 @@ contains
                 !!$ Computing Sparsity Patterns Matrices
                 !!$
                 !!$ Defining lengths and allocating space for the matrices
+
                 call Defining_MaxLengths_for_Sparsity_Matrices( Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, Mdims%cv_nloc, Mdims%ph_nloc, Mdims%cv_nonods, &
                     mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
                     mx_ncolacv, mx_ncolm, mx_ncolph )
