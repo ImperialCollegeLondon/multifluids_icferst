@@ -421,7 +421,7 @@
           <max_iterations>
             <integer_value rank="0">300</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>

@@ -222,7 +222,7 @@ Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 if (Passed): 
     print 'CWC works OK'
 else:
