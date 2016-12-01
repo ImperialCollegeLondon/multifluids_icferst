@@ -6340,6 +6340,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
 
       ! deallocate
+      call deallocate_multi_shape_funs( ph_funs )
       call deallocate( rhs )
       call deallocate( ph_sol )
       call deallocate( matrix )

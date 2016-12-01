@@ -169,7 +169,7 @@ contains
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
-        type(scalar_field), pointer :: bathymetry
+        !type(scalar_field), pointer :: bathymetry
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
@@ -847,9 +847,9 @@ contains
 
 	    ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
             if(have_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay")) then
-            	call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold ) 
-			else
-                 t_adapt_threshold = 0.0
+               call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold )
+            else
+               t_adapt_threshold = 0.0
             endif
 
             T_Adapt_Delay: if(acctim >= t_adapt_threshold) then
@@ -860,7 +860,7 @@ contains
 
                 call adapt_mesh_mp()
 
-	        end if T_Adapt_Delay
+             end if T_Adapt_Delay
 
             !!$ Simple adaptive time stepping algorithm
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
@@ -928,6 +928,7 @@ contains
         call deallocate_multi_shape_funs(CV_funs)
         call deallocate_multi_shape_funs(FE_funs)
         call deallocate_multi_ndgln(ndgln)
+        call deallocate_multi_sparsities(Mspars)
         call destroy_multi_matrices(Mmat)
         call deallocate_porous_adv_coefs(upwnd)
         call deallocate_multi_absorption(multi_absorp, .true.)
