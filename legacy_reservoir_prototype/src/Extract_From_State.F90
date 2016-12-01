@@ -136,8 +136,14 @@ contains
         if (is_porous_media) then!Check that the FPI method is on
             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
+            else!Check that the user is allowing the linear solver to fail
+                if (.not. have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic'//&
+                'solver/ignore_all_solver_failures')) then
+                    ewrite(0,*) "WARNING: The option <PhaseVolumeFraction/prognostic/solver/ignore_all_solver_failures>"//&
+                    " is HIGHLY recommended for multiphase porous media flow to allow the FPI method to find a solution."
+                end if
             end if
-            !Don;'t use for single phase porous media flows
+            !Donn't use for single phase porous media flows
             if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres < 2) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
             end if

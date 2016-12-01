@@ -408,7 +408,7 @@ subroutine petsc_solve_vector_components(x, matrix, rhs, option_path)
 end subroutine petsc_solve_vector_components
 
 subroutine petsc_solve_scalar_petsc_csr(x, matrix, rhs, option_path, &
-  prolongators, surface_node_list)
+  prolongators, surface_node_list, iterations_taken)
   !!< Solve a linear system the nice way. Options for this
   !!< come via the options mechanism. 
   type(scalar_field), intent(inout) :: x
@@ -419,6 +419,8 @@ subroutine petsc_solve_scalar_petsc_csr(x, matrix, rhs, option_path, &
   type(petsc_csr_matrix), dimension(:), optional, intent(in) :: prolongators
   !! surface_node_list for internal smoothing
   integer, dimension(:), optional, intent(in) :: surface_node_list
+  !! the number of petsc iterations taken
+  integer, intent(out), optional :: iterations_taken
 
   KSP ksp
   Vec y, b
@@ -447,6 +449,9 @@ subroutine petsc_solve_scalar_petsc_csr(x, matrix, rhs, option_path, &
   call petsc_solve_core(y, matrix%M, b, ksp, matrix%row_numbering, &
           solver_option_path, lstartfromzero, literations, &
           sfield=x, x0=x%val)
+  ! set the optional variable passed out of this procedure
+  ! for the number of petsc iterations taken
+  if (present(iterations_taken)) iterations_taken = literations
         
   ! Copy back the result using the petsc numbering:
   call petsc2field(y, matrix%column_numbering, x)
@@ -457,7 +462,7 @@ subroutine petsc_solve_scalar_petsc_csr(x, matrix, rhs, option_path, &
 end subroutine petsc_solve_scalar_petsc_csr
 
 subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
-  prolongators, positions, rotation_matrix)
+  prolongators, positions, rotation_matrix, iterations_taken)
   !!< Solve a linear system the nice way. Options for this
   !!< come via the options mechanism. 
   type(vector_field), intent(inout) :: x
@@ -470,6 +475,8 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   type(vector_field), intent(in), optional :: positions
   !! with rotated bcs: matrix to transform from x,y,z aligned vectors to boundary aligned
   Mat, intent(in), optional:: rotation_matrix
+  !! the number of petsc iterations taken
+  integer, intent(out), optional :: iterations_taken
 
   KSP ksp
   Vec y, b
@@ -499,7 +506,10 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   call petsc_solve_core(y, matrix%M, b, ksp, matrix%row_numbering, &
           solver_option_path, lstartfromzero, literations, &
           vfield=x, vector_x0=x)
-        
+  ! set the optional variable passed out of this procedure
+  ! for the number of petsc iterations taken
+  if (present(iterations_taken)) iterations_taken = literations
+
   ! Copy back the result using the petsc numbering:
   call petsc2field(y, matrix%column_numbering, x)
   
