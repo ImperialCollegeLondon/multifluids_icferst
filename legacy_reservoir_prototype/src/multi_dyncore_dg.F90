@@ -399,8 +399,16 @@ contains
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
-
+             !Variables to control the PETCs solver
+             integer, save :: max_allowed_its = -1, max_FPI = -1
+             integer :: its_taken
 if (is_flooding) return!<== Temporary fix for flooding
+
+            if(max_allowed_its < 0) then
+                call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
+                     max_allowed_its, default = 100000)
+                call get_option( '/timestepping/nonlinear_iterations', max_FPI, default = 3 )
+            end if
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -551,7 +559,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                  end if
                  call zero(vtracer)
                  call zero_non_owned(Mmat%CV_RHS)
-                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path))
+                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
                  call deallocate(Mmat%petsc_ACV)
@@ -610,6 +618,14 @@ if (is_flooding) return!<== Temporary fix for flooding
              else
                  backtrack_or_convergence = 1
              end if
+
+             !If the final saturation solve of the final non-linear FPI fails, then we ensure that the result is not accepted
+             !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
+             if (nonlinear_iteration>=max_FPI .and. its_taken >= max_allowed_its) then
+                backtrack_or_convergence = 1d-10!Modify the parameter that controls the convengerce to ensure it does not pass the check
+                ewrite(0,*) "WARNING: The phase volume fraction solver failed to converge for the last non-linear iteration."
+             end if
+
              !Make sure the parameter is consistent between cpus
              if (IsParallel()) call allmin(backtrack_or_convergence)
              DEALLOCATE( mass_mn_pres )
