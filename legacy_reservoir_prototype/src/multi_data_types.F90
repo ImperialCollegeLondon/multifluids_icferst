@@ -1199,9 +1199,9 @@ contains
         end if
 
         if (nx_all_FE_size2) then
-            allocate(DevFuns%nx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3)))
+            allocate(DevFuns%nx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3))) ; DevFuns%nx_all=0.0
         else
-            allocate(DevFuns%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3)))
+            allocate(DevFuns%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3))) ; DevFuns%nx_all=0.0
         end if
     end subroutine allocate_multi_dev_shape_funs3
 
