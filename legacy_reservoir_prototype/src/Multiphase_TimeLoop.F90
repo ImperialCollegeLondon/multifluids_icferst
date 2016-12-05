@@ -718,7 +718,7 @@ contains
                         end if
                     end if
 
-					!!$ Calculate Density_Component for compositional
+                    !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
 
                 end if Conditional_ForceBalanceEquation
