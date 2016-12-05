@@ -6319,19 +6319,19 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
             ! solver for pressure ph
             call set_solver_options( path, &
-                 ksptype = "cg", &
-                 pctype = "hypre", &
-                 !ksptype = "gmres", &
-                 !pctype = "sor", &
+                 !ksptype = "cg", &
+                 !pctype = "hypre", &
+                 ksptype = "gmres", &
+                 pctype = "sor", &
                  !ksptype = "preonly", &
                  !pctype = "lu", &
                  rtol = 1.0e-10, &
                  atol = 0.0, &
                  max_its = 10000 )
-            call add_option( &
-                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
-            call set_option( &
-                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
+            !call add_option( &
+            !     trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
+            !call set_option( &
+            !     trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
             !call add_option( &
             !     trim( path ) // "/solver/preconditioner[0]/factorization_package[0]/name", stat )
             !call set_option( &
@@ -6356,6 +6356,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
 
       ! deallocate
+      call deallocate_multi_shape_funs( ph_funs )
       call deallocate( rhs )
       call deallocate( ph_sol )
       call deallocate( matrix )

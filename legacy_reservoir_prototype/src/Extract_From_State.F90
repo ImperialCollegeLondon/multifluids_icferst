@@ -1316,6 +1316,7 @@ contains
                     call allocate(vfield,tfield%mesh,names(count),field_type=FIELD_TYPE_DEFERRED,dim=[1,nphase])
                     vfield%option_path=tfield%option_path
                     deallocate(vfield%val)
+                    deallocate(vfield%bc)
                     vfield%val=>tfield%val(icomp:icomp,:,:)
                     vfield%wrapped=.true.
                     vfield%field_type=FIELD_TYPE_NORMAL
