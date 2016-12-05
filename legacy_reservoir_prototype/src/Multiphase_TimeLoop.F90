@@ -1505,57 +1505,57 @@ contains
             case (1)
                 !Relax the convergence criteria since we don't need much precision at this stage
                 !Since non_linear_tol is they key convergence criterion, we use a relative value and we reduce it half-order
-                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol*5.)
+                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', min(non_linear_tol*5., 1e-1))
                 if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol'))then
                     !Create the option
                     call copy_option( '/timestepping/timestep/', &
                         '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol')
                 end if
                 !10% tolerance provides a good enough result
-                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',0.1)
+                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',min(Inf_tol*10.,0.05))
                 return
         case default
 
-
-        !Four steps
-        !1. Store OldPhaseVolumeFraction
-        do iphase = 1, Mdims%n_in_pres
-            sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-            sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-            sat2%val = sat1%val
-        end do
-        !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
-        sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
-        sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-        !It is important that the average keep the sharpness of the interfaces
-        sat1%val = abs(sat1%val - sat2%val)**0.8
-        call adapt_mesh_mp()
-        !3.Reconstruct the Saturation of the first phase
-        sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-        sat1%val = 1.0
-        do iphase = 1, Mdims%n_in_pres
-            if (iphase /= phaseToAdapt) then
-                sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
-                sat1%val = sat1%val - sat2%val
-            end if
-        end do
-        !4. Copy back to OldPhaseVolumeFraction
-        do iphase = 1, Mdims%n_in_pres
-            sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-            sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-            sat1%val = sat2%val
-        end do
-        !Pointing to porosity again is required
-        porosity_field=>extract_vector_field(packed_state,"Porosity")
-        !Now we have to converge again within the same time-step
-        ExitNonLinearLoop = .false.; its = 1
-        adapt_mesh_in_FPI = .false.
+            !Four steps
+            !1. Store OldPhaseVolumeFraction
+            do iphase = 1, Mdims%n_in_pres
+                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat2%val = sat1%val
+            end do
+            !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
+            sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
+            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+            !It is important that the average keep the sharpness of the interfaces
+            sat1%val = abs(sat1%val - sat2%val)**0.8
+            call adapt_mesh_mp()
+            !3.Reconstruct the Saturation of the first phase
+            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+            sat1%val = 1.0
+            do iphase = 1, Mdims%n_in_pres
+                if (iphase /= phaseToAdapt) then
+                    sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
+                    sat1%val = sat1%val - sat2%val
+                end if
+            end do
+            !4. Copy back to OldPhaseVolumeFraction
+            do iphase = 1, Mdims%n_in_pres
+                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat1%val = sat2%val
+            end do
+            !Pointing to porosity again is required
+            porosity_field=>extract_vector_field(packed_state,"Porosity")
+            !Now we have to converge again within the same time-step
+            ExitNonLinearLoop = .false.; its = 1
+            adapt_mesh_in_FPI = .false.
 
             !Set the original convergence criteria since we are now solving the equations
             call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol)
             call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',Inf_tol)
-            !Do not re-adapt the mesh
-            t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
+
+!            !Do not re-adapt the mesh
+!            t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
         end select
 
     end subroutine adapt_mesh_within_FPI
