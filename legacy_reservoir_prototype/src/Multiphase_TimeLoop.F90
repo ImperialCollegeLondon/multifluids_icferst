@@ -205,6 +205,8 @@ contains
         ! Check wether we are using the CV_Galerkin method
         numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
+        ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
+        call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold, default = 0.0 )
 
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
@@ -529,6 +531,9 @@ contains
             its = 1
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
+                !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
+                if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
+
                 ! open the boiling test for two phases-gas and liquid
                 if (is_boiling) then
                    call set_nu_to_u( packed_state )
@@ -751,7 +756,7 @@ contains
                         Accum_Courant = Accum_Courant + Courant_number
                         if (Accum_Courant >= Courant_tol .or. first_time_step) then
                             Accum_Courant = 0.
-                            call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its)
+                            call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 2)
                         else
                             exit Loop_NonLinearIteration
                         end if
@@ -801,7 +806,7 @@ contains
 
             if (is_porous_media) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
-                    ewrite(0,*) "Maximum Courant number at", current_time, "Courant_number =", Courant_number
+                    ewrite(0,*) "Maximum Courant number at time", current_time, "Courant_number =", Courant_number
                 else!printout only in the log
                     ewrite(1,*) "Maximum Courant number at", current_time, "Courant_number =", Courant_number
                 end if
@@ -844,19 +849,13 @@ contains
                 end if Conditional_Dump_RealTime
             end if
 
-	    ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
-            if(have_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay")) then
-            	call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold ) 
-			else
-                 t_adapt_threshold = 0.0
-            endif
+
 
             T_Adapt_Delay: if(acctim >= t_adapt_threshold) then
 
                 !!!$! ******************
                 !!!$! *** Mesh adapt ***
                 !!!$! ******************
-
                 call adapt_mesh_mp()
 
 	        end if T_Adapt_Delay
@@ -1470,14 +1469,17 @@ contains
     end subroutine calc_components
 
 
-    subroutine adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its)
+    subroutine adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, flag)
         implicit none
         logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
         integer, intent(inout) :: its
+        integer, intent(in) :: flag
         !Local variables
         type(scalar_field), pointer :: sat1, sat2
         integer :: iphase
         integer, save :: phaseToAdapt = -1
+        real, save :: Inf_tol = -1, non_linear_tol = -1
+
 
         if (phaseToAdapt<0) then
             !Retrieve which phase has the options to adapt to
@@ -1492,41 +1494,68 @@ contains
                 ewrite(0,*) "WARNING: Adapt_mesh_within_FPI requires porous media flow and the last PhaseVolumeFraction NOT to be the only target for adapting the mesh"
                 return
             end if
+            !Store the settings selected by the user
+            call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
+            call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',Inf_tol, default = 0.03)
         end if
 
-        !Four steps
-        !1. Store OldPhaseVolumeFraction
-        do iphase = 1, Mdims%n_in_pres
-            sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-            sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-            sat2%val = sat1%val
-        end do
-        !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
-        sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
-        sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-        !It is important that the average keep the sharpness of the interfaces
-        sat1%val = abs(sat1%val - sat2%val)**0.8
-        call adapt_mesh_mp()
-        !3.Reconstruct the Saturation of the first phase
-        sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-        sat1%val = 1.0
-        do iphase = 1, Mdims%n_in_pres
-            if (iphase /= phaseToAdapt) then
-                sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
-                sat1%val = sat1%val - sat2%val
-            end if
-        end do
-        !4. Copy back to OldPhaseVolumeFraction
-        do iphase = 1, Mdims%n_in_pres
-            sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-            sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-            sat1%val = sat2%val
-        end do
-        !Pointing to porosity again is required
-        porosity_field=>extract_vector_field(packed_state,"Porosity")
-        !Now we have to converge again within the same time-step
-        ExitNonLinearLoop = .false.; its = 1
-        adapt_mesh_in_FPI = .false.
+
+        select case (flag)
+            case (1)
+                !Relax the convergence criteria since we don't need much precision at this stage
+                !Since non_linear_tol is they key convergence criterion, we use a relative value and we reduce it half-order
+                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol*5.)
+                if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol'))then
+                    !Create the option
+                    call copy_option( '/timestepping/timestep/', &
+                        '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol')
+                end if
+                !10% tolerance provides a good enough result
+                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',0.1)
+                return
+        case default
+
+
+            !Four steps
+            !1. Store OldPhaseVolumeFraction
+            do iphase = 1, Mdims%n_in_pres
+                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat2%val = sat1%val
+            end do
+            !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
+            sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
+            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+            !It is important that the average keep the sharpness of the interfaces
+            sat1%val = abs(sat1%val - sat2%val)**0.8
+            call adapt_mesh_mp()
+            !3.Reconstruct the Saturation of the first phase
+            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+            sat1%val = 1.0
+            do iphase = 1, Mdims%n_in_pres
+                if (iphase /= phaseToAdapt) then
+                    sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
+                    sat1%val = sat1%val - sat2%val
+                end if
+            end do
+            !4. Copy back to OldPhaseVolumeFraction
+            do iphase = 1, Mdims%n_in_pres
+                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat1%val = sat2%val
+            end do
+            !Pointing to porosity again is required
+            porosity_field=>extract_vector_field(packed_state,"Porosity")
+            !Now we have to converge again within the same time-step
+            ExitNonLinearLoop = .false.; its = 1
+            adapt_mesh_in_FPI = .false.
+
+            !Set the original convergence criteria since we are now solving the equations
+            call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol)
+            call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',Inf_tol)
+            !Do not re-adapt the mesh
+            t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
+        end select
 
     end subroutine adapt_mesh_within_FPI
 
