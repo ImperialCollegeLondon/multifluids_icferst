@@ -531,6 +531,8 @@ if (is_flooding) return!<== Temporary fix for flooding
                      mass_ele_transp,IDs_ndgln, &          !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number)
+                 !Make the inf norm of the Courant number across cpus
+                 if (IsParallel()) call allmax(Courant_number)
                  !Solve the system
                  vtracer=as_vector(tracer,dim=2)
                  !If using FPI with backtracking

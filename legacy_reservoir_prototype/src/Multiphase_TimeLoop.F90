@@ -1505,15 +1505,14 @@ contains
             case (1)
                 !Relax the convergence criteria since we don't need much precision at this stage
                 !Since non_linear_tol is they key convergence criterion, we use a relative value and we reduce it half-order
-                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', min(non_linear_tol*5., 1e-1))
+                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', min(non_linear_tol*10., 1e-1))
                 if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol'))then
                     !Create the option
                     call copy_option( '/timestepping/timestep/', &
                         '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol')
                 end if
                 !10% tolerance provides a good enough result
-                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',min(Inf_tol*10.,0.05))
-                return
+                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',min(Inf_tol*5.,0.1))
         case default
 
             !Four steps
@@ -1553,9 +1552,8 @@ contains
             !Set the original convergence criteria since we are now solving the equations
             call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol)
             call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',Inf_tol)
-
-!            !Do not re-adapt the mesh
-!            t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
+            !Do not re-adapt the mesh
+            t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
         end select
 
     end subroutine adapt_mesh_within_FPI
