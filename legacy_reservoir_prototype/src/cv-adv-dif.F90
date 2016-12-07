@@ -286,7 +286,7 @@ contains
         real, optional, dimension(:), intent(in) :: OvRelax_param
         integer, optional, intent(in) :: Phase_with_Pc
         !Variables to cache get_int_vel OLD
-        real, optional, intent(inout) :: Courant_number
+        real, optional, dimension(:), intent(inout) :: Courant_number
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
         ! Calculate_mass variable
         real, dimension(:,:), optional :: calculate_mass_delta
@@ -513,7 +513,7 @@ contains
         real, dimension( : , : ), allocatable :: phaseV
         real, dimension( : , : ), allocatable :: Dens
         real, dimension(:), pointer :: Por
-
+        real, dimension( : , : ), pointer ::Imble_frac
         ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'calculate_mass_boundary'
         ! and the internal changes in mass will be captured by 'calculate_mass_internal'
         real, allocatable, dimension(:,:) :: calculate_mass_boundary
@@ -579,7 +579,8 @@ contains
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
         !#################SET WORKING VARIABLES#################
-        call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
+
+        call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL, Immobile_fraction = Imble_frac,&
             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
         !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
         U_ALL => NU_ALL
@@ -749,7 +750,7 @@ contains
         !Use the advection scheme for CVs not sharing element also within an element
         not_use_DG_within_ele = (CV_DG_VEL_INT_OPT /= 10)
         !Initialize Courant number for porous media
-        if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
+        if (present(Courant_number) .and. is_porous_media) Courant_number = 1.!Set to 1 just in case there a no shock-fronts
         ALLOCATE( CVNORMX_ALL( Mdims%ndim, CV_GIdims%scvngi )) ; CVNORMX_ALL=0.0
         ALLOCATE( CV_OTHER_LOC( Mdims%cv_nloc ))
         ALLOCATE( U_OTHER_LOC( Mdims%u_nloc ))
@@ -1744,8 +1745,15 @@ contains
                             if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
                                 do ipres = 1, Mdims%npres
                                     !ndotq = velocity * normal
-                                    Courant_number = max(Courant_number, abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
+                                    Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
                                 end do
+                                !and the shock-front Courant number
+                                if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, IDs_ndgln(ELE)))) then
+                                    do ipres = 1, Mdims%npres
+                                        !ndotq = velocity * normal
+                                        Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
+                                    end do
+                                end if
                             end if
                             If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
                                 IF(SELE == 0) THEN
@@ -2753,18 +2761,18 @@ contains
 
 
         if(GETCT) then
-        ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
-        ! Difference in Total mass
+            ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
+            ! Difference in Total mass
 
-        ! NEED TO MAKE THIS PARALLEL SAFE (allsum the individial deltaM contributions over all processors).
-       
-        tmp1 = sum(calculate_mass_internal)
-	tmp2 = sum(calculate_mass_delta(:,1))
-        tmp3 = sum(calculate_mass_boundary(:,1)*dt)
+            ! NEED TO MAKE THIS PARALLEL SAFE (allsum the individial deltaM contributions over all processors).
 
-	call allsum(tmp1)
-	call allsum(tmp2)
-	call allsum(tmp3)
+            tmp1 = sum(calculate_mass_internal)
+            tmp2 = sum(calculate_mass_delta(:,1))
+            tmp3 = sum(calculate_mass_boundary(:,1)*dt)
+
+            call allsum(tmp1)
+            call allsum(tmp2)
+            call allsum(tmp3)
 
             calculate_mass_delta(1,2) = abs( tmp1 - tmp2 + tmp3 ) / tmp2
         endif
@@ -7845,6 +7853,33 @@ contains
 
     end subroutine triloccords2d
 
+
+    logical function shock_front_in_ele(ele, Mdims, sat, ndgln, Imble_frac)
+        !Detects whether the element has a shockfront or not
+        implicit none
+        integer :: ele
+        type(multi_dimensions), intent(in) :: Mdims
+        real, dimension(:,:), intent(in) :: sat !(saturations of an element)
+        real, dimension(:), intent(in) ::Imble_frac
+        type(multi_ndgln), intent(in) :: ndgln
+        !Local variables
+        integer :: iphase, cv_iloc
+        real :: minival, maxival, aux
+        real, parameter :: tol = 0.05!Shock fronts smaller than this are unlikely to require extra handling
+
+        minival = 10.; maxival = 0.
+        shock_front_in_ele = .false.
+        do cv_iloc = 1, Mdims%cv_nloc
+            do iphase = 1, mdims%nphase - 1
+                aux = sat(iphase, ndgln%cv((ELE-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase)
+                minival = min(aux, minival)
+                maxival = max(aux, maxival)
+            end do
+        end do
+
+        if (minival < tol .and. (maxival-minival) > tol ) shock_front_in_ele = .true.
+
+    end function shock_front_in_ele
 
 end module cv_advection
 

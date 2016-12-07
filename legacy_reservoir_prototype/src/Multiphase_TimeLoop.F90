@@ -155,7 +155,7 @@ contains
         !! face value storage
         integer :: ncv_faces
         !Courant number for porous media
-        real :: Courant_number = -1
+        real, dimension(2) :: Courant_number = -1!Stored like this[Courant_number, Shock-front Courant number]
         !Variables for adapting the mesh within the FPI solver
         logical :: adapt_mesh_in_FPI
         real :: Accum_Courant = 0., Courant_tol
@@ -753,7 +753,7 @@ contains
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
-                        Accum_Courant = Accum_Courant + Courant_number
+                        Accum_Courant = Accum_Courant + Courant_number(2)
                         if (Accum_Courant >= Courant_tol .or. first_time_step) then
                             Accum_Courant = 0.
                             call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 2)
@@ -806,9 +806,9 @@ contains
 
             if (is_porous_media) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
-                    ewrite(0,*) "Maximum Courant number at time", current_time, "Courant_number =", Courant_number
+                    ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
                 else!printout only in the log
-                    ewrite(1,*) "Maximum Courant number at", current_time, "Courant_number =", Courant_number
+                    ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
                 end if
             end if
 
@@ -869,7 +869,7 @@ contains
                 call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat )
                 !For porous media we need to use the Courant number obtained in cv_assemb
                 if (is_porous_media) then
-                    c = max ( c, Courant_number )
+                    c = max ( c, Courant_number(1) )
                     ! ewrite(1,*) "maximum cfl number at", current_time, "s =", c
                 else
                     do iphase = 1, Mdims%nphase

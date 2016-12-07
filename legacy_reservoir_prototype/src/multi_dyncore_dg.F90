@@ -354,7 +354,7 @@ contains
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
-             real, intent(inout) :: Courant_number
+             real, dimension(:), intent(inout) :: Courant_number
              character(len= * ), intent(in), optional :: option_path
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
              ! Local Variables
@@ -532,7 +532,9 @@ if (is_flooding) return!<== Temporary fix for flooding
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number)
                  !Make the inf norm of the Courant number across cpus
-                 if (IsParallel()) call allmax(Courant_number)
+                 if (IsParallel()) then
+                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
+                 end if
                  !Solve the system
                  vtracer=as_vector(tracer,dim=2)
                  !If using FPI with backtracking
@@ -541,8 +543,8 @@ if (is_flooding) return!<== Temporary fix for flooding
                      sat_bak = satura
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
-                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the Courant number
-                           call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                           call auto_backtracking(backtrack_par_factor, courant_number(2), first_time_step, nonlinear_iteration)
                          end if
 
                          !Calculate the actual residual using a previous backtrack_par
