@@ -1113,6 +1113,10 @@ contains
 
         !This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
+            !local variables
+            type( scalar_field ), pointer ::  s_field, s_field2, s_field3
+
+
 
             if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1187,6 +1191,17 @@ contains
                 deallocate(multicomponent_state)
                 call deallocate_projection_matrices(CV_funs)
                 call deallocate_projection_matrices(FE_funs)
+if (is_flooding) then
+    !sprint_to_do HACK (we should solve this properly): Reconstruct pressure from density because the pressure is uncorrectly interpolated between meshes
+    s_field => extract_scalar_field( state(1), "Density" )
+    s_field2 => extract_scalar_field( state(1), "Bathymetry" )
+    s_field3 => extract_scalar_field( state(1), "Pressure" )
+    if (size(s_field2%val)/=size(s_field%val)) then
+        s_field3%val(:) = 9.81 * (s_field%val(:) + s_field2%val(1))
+    else
+        s_field3%val(:) = 9.81 * (s_field%val(:) + s_field2%val(:))
+    end if
+end if
                 !!$ Compute primary scalars used in most of the code
                 call Get_Primary_Scalars_new( state, Mdims )
                 call pack_multistate(Mdims%npres,state,packed_state,&
@@ -1293,6 +1308,7 @@ contains
                     END DO
                     DEALLOCATE( RSUM )
                 end if
+
                 call Calculate_All_Rhos( state, packed_state, Mdims )
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
