@@ -116,7 +116,8 @@ contains
            REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
-           REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
+           REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
+           REAL, DIMENSION( : , : ), target, allocatable :: den_all
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
            INTEGER :: IPHASE
@@ -1501,7 +1502,8 @@ END IF
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
-        REAL, DIMENSION( : , : ), allocatable :: DEN_OR_ONE, DENOLD_OR_ONE
+        REAL, DIMENSION( : , : ), allocatable :: DENOLD_OR_ONE
+        REAL, DIMENSION( : , : ), target, allocatable :: DEN_OR_ONE
         REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
         LOGICAL :: GET_THETA_FLUX
         INTEGER :: IGOT_T2, I, IGOT_THERM_VIS

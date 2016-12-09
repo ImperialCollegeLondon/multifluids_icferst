@@ -263,7 +263,8 @@ contains
         REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
-        REAL, DIMENSION( :, : ), intent( inout ) :: DEN_ALL, DENOLD_ALL
+        REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
+        REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (Mdims%nphase,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
@@ -491,6 +492,7 @@ contains
 
         logical :: have_absorption
         !Variables for Flooding
+        real, dimension( : , : ), pointer :: DEN_ALL_DIVID
         logical, parameter :: implicit_fs = .false.
         real, parameter :: gravity_flooding = 9.80665
         real, parameter :: K_TOP = 1.0
@@ -511,7 +513,7 @@ contains
         type(tensor_field), pointer :: tenfield1, tenfield2
         type(vector_field), pointer :: vecfield
         real, dimension( : , : ), allocatable :: phaseV
-        real, dimension( : , : ), allocatable :: Dens, DEN_ALL_DIVID
+        real, dimension( : , : ), allocatable :: Dens
         real, dimension(:), pointer :: Por
         real, dimension( : , : ), pointer ::Imble_frac
         ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'calculate_mass_boundary'
@@ -580,8 +582,10 @@ contains
 
         !#################SET WORKING VARIABLES#################
 
-        call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL, Immobile_fraction = Imble_frac,&
+        call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
+        if (present(Courant_number) .and. is_porous_media) &
+                     call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
         !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
         U_ALL => NU_ALL
         old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
@@ -930,10 +934,12 @@ contains
             end do
         ENDIF
 
-        allocate(DEN_ALL_DIVID( Mdims%nphase, Mdims%cv_nonods )) 
-        DEN_ALL_DIVID( :, : ) = DEN_ALL( :, : )
         if( is_flooding ) then
+            allocate(DEN_ALL_DIVID( Mdims%nphase, Mdims%cv_nonods ))
+            DEN_ALL_DIVID( 2:Mdims%ndim, : ) = DEN_ALL( 2:Mdims%ndim, : )
             DEN_ALL_DIVID( 1, : ) = 1.0
+        else
+            DEN_ALL_DIVID => DEN_ALL
         endif
        
         ndotq = 0. ! ;         ndotqold = 0.
@@ -2829,6 +2835,7 @@ contains
         end if
         if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
         ewrite(3,*) 'Leaving CV_ASSEMB'
+        if (is_flooding) deallocate(DEN_ALL_DIVID)
         RETURN
     contains
         subroutine dump_multiphase(prefix,icp)
