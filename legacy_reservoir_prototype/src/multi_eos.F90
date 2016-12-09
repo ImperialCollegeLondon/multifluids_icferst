@@ -668,7 +668,7 @@ contains
         end if Conditional_EOS_Option
 
         !For flooding ensure that the height (density of phase 1) is non-zero and positive
-        if (is_flooding .and. iphase == 1) Rho = max(Rho, 1d-5)
+        if (is_flooding .and. iphase == 1) Rho = max(Rho, 1d-16)
 
         deallocate( perturbation_pressure, RhoPlus, RhoMinus )
 
