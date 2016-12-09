@@ -1176,6 +1176,7 @@ end if
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, symmetric_P )
+!call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
         END IF
 

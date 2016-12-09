@@ -936,7 +936,7 @@ contains
 
         if( is_flooding ) then
             allocate(DEN_ALL_DIVID( Mdims%nphase, Mdims%cv_nonods ))
-            DEN_ALL_DIVID( 2:Mdims%ndim, : ) = DEN_ALL( 2:Mdims%ndim, : )
+            DEN_ALL_DIVID = DEN_ALL
             DEN_ALL_DIVID( 1, : ) = 1.0
         else
             DEN_ALL_DIVID => DEN_ALL
