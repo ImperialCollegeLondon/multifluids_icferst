@@ -1917,7 +1917,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type (vector_field), pointer :: position
         integer, dimension(:), pointer :: neighbours
         integer :: nb
-        logical :: skip, FEM_BUOYANCY, FIRSTST
+        logical :: skip, FEM_BUOYANCY
         !variables for linear velocity relaxation
         type(tensor_field), pointer :: fem_vol_frac_f
         real, dimension( :, : ), pointer :: fem_vol_frac
@@ -2080,10 +2080,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
         FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
         GOT_DIFFUS = .FALSE.
-
-        FIRSTST = ( SUM( (U_ALL(1,:,:) - UOLD_ALL(1,:,:) ) **2) < 1.e-10 )
-        IF(Mdims%ndim>=2) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(2,:,:) - UOLD_ALL(2,:,:) )**2 ) < 1.e-10 )
-        IF(Mdims%ndim>=3) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(3,:,:) - UOLD_ALL(3,:,:) )**2 ) < 1.e-10 )
 
         UPWIND_DGFLUX = .TRUE.
         if ( have_option( &
@@ -3216,7 +3212,7 @@ end if
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-            IF ( (.NOT.FIRSTST) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
+            IF ( (.NOT.first_nonlinear_time_step) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 DO U_JLOC = 1, Mdims%u_nloc
