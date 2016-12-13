@@ -1199,8 +1199,12 @@ contains
             ! Calculate Pore volume
             porevolume = 0.0
             DO ELE = 1, Mdims%totele
+		if (element_owned(tenfield1, ele)) then
                     porevolume = porevolume + MASS_ELE(ELE) * Por(IDs_ndgln(ELE))
+		end if
             END DO
+
+	call allsum(porevolume) ! Now sum the value over all processors
 
         endif
 
