@@ -447,6 +447,13 @@ NOTE: Requires -v2</a:documentation>
             <ref name="comment"/>
           </element>
         </optional>
+        <optional>
+          <element name="Mesh_Diagnostics_Angles">
+            <a:documentation>Printout the number of elements and percentage that contain an angle
+equal or bigger than the ones specified here</a:documentation>
+            <ref name="real_vector"/>
+          </element>
+        </optional>
       </element>
       <element name="timestepping">
         <a:documentation>Options dealing with time discretisation</a:documentation>
@@ -572,7 +579,7 @@ The Backtracking value introduced is used as reference, so it may have a big imp
 Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
 Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
 
-Backtracking_parameter = -10 automatically selection based on the Courant number and the physics of the problem
+Backtracking_parameter = -10 automatically selection based on the shock-front Courant number and the physics of the problem
 
 The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
                     <ref name="real"/>
@@ -2731,6 +2738,12 @@ the bigger it is the more P0DG the element turns. The default values have been o
 The default value for P1DGP1 =&gt; 100 for P1DGP2 this is not required and for P2DGP1DG stability cannot be guaranteed;
 To disable, set it to negative values. This SHOULD be disabled if there are no pressure inlet boundary conditions</a:documentation>
               <ref name="real"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="Bad_element_fix">
+              <a:documentation>Look for bad elements to change its anisotropic permeability to improve their quality</a:documentation>
+              <empty/>
             </element>
           </optional>
           <optional>

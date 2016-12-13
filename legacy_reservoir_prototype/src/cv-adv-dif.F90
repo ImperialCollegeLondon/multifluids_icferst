@@ -263,7 +263,8 @@ contains
         REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
-        REAL, DIMENSION( :, : ), intent( inout ) :: DEN_ALL, DENOLD_ALL
+        REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
+        REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (Mdims%nphase,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
@@ -286,7 +287,7 @@ contains
         real, optional, dimension(:), intent(in) :: OvRelax_param
         integer, optional, intent(in) :: Phase_with_Pc
         !Variables to cache get_int_vel OLD
-        real, optional, intent(inout) :: Courant_number
+        real, optional, dimension(:), intent(inout) :: Courant_number
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
         ! Calculate_mass variable
         real, dimension(:,:), optional :: calculate_mass_delta
@@ -491,6 +492,7 @@ contains
 
         logical :: have_absorption
         !Variables for Flooding
+        real, dimension( : , : ), pointer :: DEN_ALL_DIVID
         logical, parameter :: implicit_fs = .false.
         real, parameter :: gravity_flooding = 9.80665
         real, parameter :: K_TOP = 1.0
@@ -513,7 +515,7 @@ contains
         real, dimension( : , : ), allocatable :: phaseV
         real, dimension( : , : ), allocatable :: Dens
         real, dimension(:), pointer :: Por
-
+        real, dimension( : , : ), pointer ::Imble_frac
         ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'calculate_mass_boundary'
         ! and the internal changes in mass will be captured by 'calculate_mass_internal'
         real, allocatable, dimension(:,:) :: calculate_mass_boundary
@@ -579,8 +581,11 @@ contains
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
         !#################SET WORKING VARIABLES#################
+
         call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
+        if (present(Courant_number) .and. is_porous_media) &
+                     call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
         !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
         U_ALL => NU_ALL
         old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
@@ -749,7 +754,7 @@ contains
         !Use the advection scheme for CVs not sharing element also within an element
         not_use_DG_within_ele = (CV_DG_VEL_INT_OPT /= 10)
         !Initialize Courant number for porous media
-        if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
+        if (present(Courant_number) .and. is_porous_media) Courant_number = 1.!Set to 1 just in case there a no shock-fronts
         ALLOCATE( CVNORMX_ALL( Mdims%ndim, CV_GIdims%scvngi )) ; CVNORMX_ALL=0.0
         ALLOCATE( CV_OTHER_LOC( Mdims%cv_nloc ))
         ALLOCATE( U_OTHER_LOC( Mdims%u_nloc ))
@@ -928,7 +933,16 @@ contains
                 end do
             end do
         ENDIF
-        ndotq = 0. ;        ! ndotqold = 0.
+
+        if( is_flooding ) then
+            allocate(DEN_ALL_DIVID( Mdims%nphase, Mdims%cv_nonods ))
+            DEN_ALL_DIVID = DEN_ALL
+            DEN_ALL_DIVID( 1, : ) = 1.0
+        else
+            DEN_ALL_DIVID => DEN_ALL
+        endif
+       
+        ndotq = 0. ! ;         ndotqold = 0.
         ! variables for get_int_tden********************
         !      print *,'after allocate'
         ! END OF TEMP STUFF HERE
@@ -1748,8 +1762,15 @@ contains
                             if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
                                 do ipres = 1, Mdims%npres
                                     !ndotq = velocity * normal
-                                    Courant_number = max(Courant_number, abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
+                                    Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
                                 end do
+                                !and the shock-front Courant number
+                                if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, IDs_ndgln(ELE)))) then
+                                    do ipres = 1, Mdims%npres
+                                        !ndotq = velocity * normal
+                                        Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
+                                    end do
+                                end if
                             end if
                             If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
                                 IF(SELE == 0) THEN
@@ -1892,11 +1913,11 @@ contains
                             ONE_M_FTHETA_T2OLD_J(:) = ONE_M_FTHETA_T2OLD(:)!(1.0-FTHETA(:)) * LIMT2OLD(:)
                             IF(IGOT_THETA_FLUX == 1) THEN
                                 IF ( GET_THETA_FLUX ) THEN
-                                    THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL(:, CV_NODI)
-                                    ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL(:, CV_NODI)
+                                    THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(:, CV_NODI)
+                                    ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(:, CV_NODI)
                                     if(integrate_other_side) then ! for the flux on the other side of the CV face...
-                                        THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL(:, CV_NODJ)
-                                        ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL(:, CV_NODJ)
+                                        THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(:, CV_NODJ)
+                                        ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(:, CV_NODJ)
                                     endif
                                 END IF
                                 IF ( USE_THETA_FLUX ) THEN
@@ -1942,7 +1963,7 @@ contains
                                     Mdims, CV_funs, ndgln, Mmat, GI,  &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
-                                    SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+                                    SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL_DIVID, CV_NODI, CV_NODJ, &
                                     WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                     UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
                                     NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
@@ -2277,7 +2298,8 @@ contains
                 PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                 IF ( is_flooding ) then ! Should really use the manhole diameter here...
                    DO IPRES = 1, Mdims%npres
-                      PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+!                      PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                      PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
                    END DO
                    PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                    DEN_FOR_PIPE_PHASE(1)=DEN_FOR_PIPE_PHASE(3)
@@ -2364,9 +2386,10 @@ contains
                    ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI ) ! We have already divided through by density in GAMMA_PRES_ABS2.
 !                   ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI )/ DEN_FOR_PIPE_PHASE(:) ! Pablo we should not use this one
 
+! Remeber for flooding DEN_ALL_DIVID( 1, CV_NODI )=1.0
 ! now divid through by the free surface height to be consistent with the rest of the cty equation:
-                   ct_rhs_phase(1) = ct_rhs_phase(1)/DEN_ALL( 1, CV_NODI )
-                   A_GAMMA_PRES_ABS( 1, :, CV_NODI ) = A_GAMMA_PRES_ABS( 1, :, CV_NODI )/DEN_ALL( 1, CV_NODI )
+                   ct_rhs_phase(1) = ct_rhs_phase(1)/DEN_ALL_DIVID( 1, CV_NODI )
+                   A_GAMMA_PRES_ABS( 1, :, CV_NODI ) = A_GAMMA_PRES_ABS( 1, :, CV_NODI )/DEN_ALL_DIVID( 1, CV_NODI )
 
                    DO IPRES = 1, Mdims%npres
                         call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
@@ -2443,6 +2466,7 @@ contains
                     else ! IF ( .not. is_flooding ) then (flooding)
                         ! Should really use the manhole diameter here...
                         DO IPRES = 1, Mdims%npres
+!                           PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
                            PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
                         END DO
                         PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
@@ -2699,16 +2723,16 @@ contains
                     - R_PHASE(:) * ( &
                     + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
-                    - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) )
+                    - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL_DIVID(:, CV_NODI ) )
                 DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &
                     +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
-                    / ( DT * DEN_ALL( :, CV_NODI ) )
+                    / ( DT * DEN_ALL_DIVID(:, CV_NODI) )
                 ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                    + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )
+                    + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
                 IF ( HAVE_ABSORPTION ) THEN
                    DO JPHASE = 1, Mdims%nphase
                       ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                         - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )
+                         - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
                    END DO
                 END IF
                 ! scaling coefficient...
@@ -2757,18 +2781,18 @@ contains
 
 
         if(GETCT) then
-        ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
-        ! Difference in Total mass
+            ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
+            ! Difference in Total mass
 
-        ! NEED TO MAKE THIS PARALLEL SAFE (allsum the individial deltaM contributions over all processors).
-       
-        tmp1 = sum(calculate_mass_internal)
-	tmp2 = sum(calculate_mass_delta(:,1))
-        tmp3 = sum(calculate_mass_boundary(:,1)*dt)
+            ! NEED TO MAKE THIS PARALLEL SAFE (allsum the individial deltaM contributions over all processors).
 
-	call allsum(tmp1)
-	call allsum(tmp2)
-	call allsum(tmp3)
+            tmp1 = sum(calculate_mass_internal)
+            tmp2 = sum(calculate_mass_delta(:,1))
+            tmp3 = sum(calculate_mass_boundary(:,1)*dt)
+
+            call allsum(tmp1)
+            call allsum(tmp2)
+            call allsum(tmp3)
 
             calculate_mass_delta(1,2) = abs( tmp1 - tmp2 + tmp3 ) / tmp2
         endif
@@ -2817,6 +2841,7 @@ contains
         end if
         if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
         ewrite(3,*) 'Leaving CV_ASSEMB'
+        if (is_flooding) deallocate(DEN_ALL_DIVID)
         RETURN
     contains
         subroutine dump_multiphase(prefix,icp)
@@ -6413,7 +6438,7 @@ contains
         ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
         C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
         U_SLOC2LOC, CV_SLOC2LOC,  &
-        SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+        SCVDETWEI, CVNORMX_ALL, DEN_ALL_DIVID, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
         UGI_COEF_ELE2_ALL,  &
@@ -6445,7 +6470,7 @@ contains
         REAL, DIMENSION( Mdims%ndim, Mdims%nphase, Mdims%u_nloc ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI, MASS_ELE
         REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL
+        REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL_DIVID
         REAL, DIMENSION( : ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT
         REAL, intent( in ) :: NDOTQ_HAT
         REAL, DIMENSION( : ), intent( in ) :: THETA_VEL
@@ -6492,7 +6517,7 @@ contains
         END IF ! For solid modelling...
         DO U_KLOC = 1, Mdims%u_nloc
             RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
+                * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODI )
             IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                 RCON(:) = RCON(:) + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                     * CV_funs%sufen( U_KLOC, GI )
@@ -6522,7 +6547,7 @@ contains
             ! flux from the other side (change of sign because normal is -ve)...
             if ( integrate_other_side_and_not_boundary ) then
                 RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))  &
-                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
+                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODJ )
                 IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
                     RCON_J(:) = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                         * CV_funs%sufen( U_KLOC, GI )
@@ -6562,7 +6587,7 @@ contains
                 - SCVDETWEI( GI ) * (  ( &
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * (NDOTQOLD(:) -NDOTQ_IMP(:)*THETA_VEL(:)) &
                 + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
-                ) / DEN_ALL( :, CV_NODI ) )
+                ) / DEN_ALL_DIVID( :, CV_NODI ) )
 
 !            ! Pressure bc acting like vel bc...
 !            ! Note we must put memory aside for MASS_SUF if we have a pressure b.c. acting like a vel bc.
@@ -6584,7 +6609,7 @@ contains
 !                RCON(:) = (1.0/HDC_P) * SUF_SIG_DIAGTEN_BC_pha_GI( 1,: )*SCVDETWEI( GI ) * (  ( &
 !                ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:)  &
 !                + FTHETA_T2(:)  * LIMDT(:)  &
-!                ) / DEN_ALL( :, CV_NODI ) )
+!                ) / DEN_ALL_DIVID( :, CV_NODI ) )
 !                ! add in the vel bc:
 !               ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
 !                + SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) * RCON(:)
@@ -6603,13 +6628,13 @@ contains
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
                 - SCVDETWEI( GI ) * (  ( &
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
-                ) / DEN_ALL( :, CV_NODI )   )
+                ) / DEN_ALL_DIVID( :, CV_NODI )   )
             ! flux from the other side (change of sign because normal is -ve)...
             if ( integrate_other_side_and_not_boundary ) then
                 ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
                     + SCVDETWEI( GI ) * ( ( &
                     ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
-                    ) / DEN_ALL( :, CV_NODJ ) )
+                    ) / DEN_ALL_DIVID( :, CV_NODJ ) )
             end if
         END IF
         IF ( between_elements ) THEN
@@ -6618,7 +6643,7 @@ contains
                 U_KLOC = U_SLOC2LOC(U_SKLOC)
                 U_KLOC2 = U_OTHER_LOC( U_KLOC )
                 RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
+                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODI  )
                 IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                     RCON(:)    = RCON(:)    + SCVDETWEI( GI )  * (LIMT_HAT(:) - LIMT(:))  &
                         * CV_funs%sufen( U_KLOC, GI )
@@ -6639,7 +6664,7 @@ contains
                 ! flux from the other side (change of sign because normal is -ve)...
                 if ( integrate_other_side_and_not_boundary ) then
                     RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                        * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
+                        * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODJ )
                     IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
                         RCON_J(:)    = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                             * CV_funs%sufen( U_KLOC, GI )
@@ -7849,6 +7874,33 @@ contains
 
     end subroutine triloccords2d
 
+
+    logical function shock_front_in_ele(ele, Mdims, sat, ndgln, Imble_frac)
+        !Detects whether the element has a shockfront or not
+        implicit none
+        integer :: ele
+        type(multi_dimensions), intent(in) :: Mdims
+        real, dimension(:,:), intent(in) :: sat !(saturations of an element)
+        real, dimension(:), intent(in) ::Imble_frac
+        type(multi_ndgln), intent(in) :: ndgln
+        !Local variables
+        integer :: iphase, cv_iloc
+        real :: minival, maxival, aux
+        real, parameter :: tol = 0.05!Shock fronts smaller than this are unlikely to require extra handling
+
+        minival = 10.; maxival = 0.
+        shock_front_in_ele = .false.
+        do cv_iloc = 1, Mdims%cv_nloc
+            do iphase = 1, mdims%nphase - 1
+                aux = sat(iphase, ndgln%cv((ELE-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase)
+                minival = min(aux, minival)
+                maxival = max(aux, maxival)
+            end do
+        end do
+
+        if (minival < tol .and. (maxival-minival) > tol ) shock_front_in_ele = .true.
+
+    end function shock_front_in_ele
 
 end module cv_advection
 

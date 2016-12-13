@@ -950,41 +950,37 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         integer :: mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
 
+        if(.not.associated(Mspars%ACV%fin))          allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ))
+        if(.not.associated(Mspars%ACV%col))          allocate( Mspars%ACV%col( mx_ncolacv ))
+        if(.not.associated(Mspars%ACV%mid))          allocate(  Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ))
 
+        if(.not.associated( Mspars%MCY%fin))         allocate(   Mspars%MCY%fin( nlenmcy + 1 ))
+        if(.not.associated(Mspars%MCY%col))          allocate( Mspars%MCY%col( mx_ncolmcy ))
+        if(.not.associated(Mspars%MCY%mid))          allocate(  Mspars%MCY%mid( nlenmcy ))
 
+        if(.not.associated(Mspars%DGM_PHA%fin))      allocate(  Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ))
+        if(.not.associated(Mspars%DGM_PHA%col))      allocate(  Mspars%DGM_PHA%col( mx_ncoldgm_pha ))
+        if(.not.associated(Mspars%DGM_PHA%mid))      allocate(  Mspars%DGM_PHA%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim ))
 
-            if(.not.associated(Mspars%ACV%fin))          allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ))
-            if(.not.associated(Mspars%ACV%col))          allocate( Mspars%ACV%col( mx_ncolacv ))
-            if(.not.associated(Mspars%ACV%mid))          allocate(  Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ))
+        if(.not.associated(Mspars%CT%fin))           allocate(  Mspars%CT%fin( Mdims%cv_nonods + 1 ))
+        if(.not.associated(Mspars%CT%col))           allocate(  Mspars%CT%col( mx_nct ))
+        if(.not.associated(Mspars%CT%mid))           allocate(  Mspars%CT%mid(  Mdims%cv_nonods ))
 
-            if(.not.associated( Mspars%MCY%fin))         allocate(   Mspars%MCY%fin( nlenmcy + 1 ))
-            if(.not.associated(Mspars%MCY%col))          allocate( Mspars%MCY%col( mx_ncolmcy ))
-            if(.not.associated(Mspars%MCY%mid))          allocate(  Mspars%MCY%mid( nlenmcy ))
+        if(.not.associated(Mspars%C%fin))            allocate(  Mspars%C%fin( Mdims%u_nonods + 1 ))
+        if(.not.associated(Mspars%C%col))            allocate(  Mspars%C%col( mx_nc ))
+        if(.not.associated(Mspars%C%mid))            allocate(  Mspars%C%mid( Mdims%u_nonods))
 
-            if(.not.associated(Mspars%DGM_PHA%fin))      allocate(  Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ))
-            if(.not.associated(Mspars%DGM_PHA%col))      allocate(  Mspars%DGM_PHA%col( mx_ncoldgm_pha ))
-            if(.not.associated(Mspars%DGM_PHA%mid))      allocate(  Mspars%DGM_PHA%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim ))
+        if(.not.associated(Mspars%CMC%fin))          allocate( Mspars%CMC%fin( Mdims%cv_nonods + 1 ))
+        if(.not.associated(Mspars%CMC%col))          allocate(  Mspars%CMC%col( 0 ))
+        if(.not.associated(Mspars%CMC%mid))          allocate( Mspars%CMC%mid( Mdims%cv_nonods ))
 
-            if(.not.associated(Mspars%CT%fin))           allocate(  Mspars%CT%fin( Mdims%cv_nonods + 1 ))
-            if(.not.associated(Mspars%CT%col))           allocate(  Mspars%CT%col( mx_nct ))
-      		if(.not.associated(Mspars%CT%mid))           allocate(  Mspars%CT%mid(  Mdims%cv_nonods )) 
+        if(.not.associated( Mspars%M%fin))           allocate(  Mspars%M%fin( Mdims%cv_nonods + 1 ))
+        if(.not.associated( Mspars%M%col))           allocate(  Mspars%M%col( mx_ncolm ))
+        if(.not.associated( Mspars%M%mid))           allocate(  Mspars%M%mid( Mdims%cv_nonods ))
 
-
-            if(.not.associated(Mspars%C%fin))            allocate(  Mspars%C%fin( Mdims%u_nonods + 1 ))
-            if(.not.associated(Mspars%C%col))            allocate(  Mspars%C%col( mx_nc ))
-        	if(.not.associated(Mspars%C%mid))            allocate(  Mspars%C%mid( Mdims%u_nonods)) 
-
-            if(.not.associated(Mspars%CMC%fin))          allocate( Mspars%CMC%fin( Mdims%cv_nonods + 1 ))
-            if(.not.associated(Mspars%CMC%col))          allocate(  Mspars%CMC%col( 0 ))
-            if(.not.associated(Mspars%CMC%mid))          allocate( Mspars%CMC%mid( Mdims%cv_nonods ))
-
-            if(.not.associated( Mspars%M%fin))           allocate(  Mspars%M%fin( Mdims%cv_nonods + 1 ))
-            if(.not.associated( Mspars%M%col))           allocate(  Mspars%M%col( mx_ncolm ))
-            if(.not.associated( Mspars%M%mid))           allocate(  Mspars%M%mid( Mdims%cv_nonods ))
-
-            if(.not.associated(Mspars%ph%fin))           allocate(  Mspars%ph%fin( Mdims%ph_nonods + 1 ))
-            if(.not.associated(Mspars%ph%col))           allocate(  Mspars%ph%col( mx_ncolph ) )
-       		if(.not.associated(Mspars%ph%mid))           allocate(  Mspars%ph%mid( Mdims%ph_nonods ))  
+        if(.not.associated(Mspars%ph%fin))           allocate(  Mspars%ph%fin( Mdims%ph_nonods + 1 ))
+        if(.not.associated(Mspars%ph%col))           allocate(  Mspars%ph%col( mx_ncolph ) )
+        if(.not.associated(Mspars%ph%mid))           allocate(  Mspars%ph%mid( Mdims%ph_nonods ))
 
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0
@@ -1070,7 +1066,6 @@ contains
         if (associated(Mspars%ph%fin))        nullify(Mspars%ph%fin)
         if (associated(Mspars%ph%col))        nullify(Mspars%ph%col)
         if (associated(Mspars%ph%mid))        nullify(Mspars%ph%mid)
-
 
     end subroutine deallocate_multi_sparsities
 
@@ -1204,9 +1199,9 @@ contains
         end if
 
         if (nx_all_FE_size2) then
-            allocate(DevFuns%nx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3)))
+            allocate(DevFuns%nx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3))) ; DevFuns%nx_all=0.0
         else
-            allocate(DevFuns%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3)))
+            allocate(DevFuns%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3))) ; DevFuns%nx_all=0.0
         end if
     end subroutine allocate_multi_dev_shape_funs3
 

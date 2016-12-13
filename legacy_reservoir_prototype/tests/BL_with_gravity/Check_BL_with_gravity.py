@@ -25,8 +25,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.014
-Tolerance_L2_NORM = 0.0018
+Tolerance_L1_NORM = 0.011
+Tolerance_L2_NORM = 0.0014
 
 
 
@@ -44,7 +44,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = False
+#showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'

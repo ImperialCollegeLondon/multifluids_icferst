@@ -111,9 +111,13 @@
           <continuous_galerkin/>
         </spatial_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -225,9 +229,13 @@
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -236,7 +244,7 @@
             <real_value rank="0">1e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">250</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -375,9 +383,13 @@
           </theta>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -386,7 +398,7 @@
             <real_value rank="0">1e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">300</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -649,9 +661,13 @@
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -660,7 +676,7 @@
             <real_value rank="0">1e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">250</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -799,9 +815,13 @@
           </theta>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -810,7 +830,7 @@
             <real_value rank="0">1e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">300</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>

@@ -97,6 +97,7 @@ contains
         type( scalar_field ), pointer :: pressure
         type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
         integer :: i, stat
+        logical , save :: warning_displayed = .false.
 
         ewrite(3,*)' In Get_Primary_Scalars'
 
@@ -136,8 +137,15 @@ contains
         if (is_porous_media) then!Check that the FPI method is on
             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
+            else!Check that the user is allowing the linear solver to fail
+                if (.not. have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/'//&
+                'solver/ignore_all_solver_failures') .and. .not.warning_displayed) then
+                    ewrite(0,*) "WARNING: The option <PhaseVolumeFraction/prognostic/solver/ignore_all_solver_failures>"//&
+                    " is HIGHLY recommended for multiphase porous media flow to allow the FPI method to find a solution."
+                    warning_displayed = .true.
+                end if
             end if
-            !Don;'t use for single phase porous media flows
+            !Donn't use for single phase porous media flows
             if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres < 2) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
             end if
@@ -1308,6 +1316,7 @@ contains
                     call allocate(vfield,tfield%mesh,names(count),field_type=FIELD_TYPE_DEFERRED,dim=[1,nphase])
                     vfield%option_path=tfield%option_path
                     deallocate(vfield%val)
+                    deallocate(vfield%bc)
                     vfield%val=>tfield%val(icomp:icomp,:,:)
                     vfield%wrapped=.true.
                     vfield%field_type=FIELD_TYPE_NORMAL
@@ -2006,7 +2015,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Tolerance for the infinite norm
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',&
         Inifinite_norm_tol, default = 0.03 )
-    !retirve number of Fixed Point Iterations
+    !retrieve number of Fixed Point Iterations
     call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
     !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)

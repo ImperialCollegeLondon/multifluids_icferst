@@ -4,7 +4,7 @@
     <string_value lines="1">BL_Checkpointing_P1DGP1</string_value>
   </simulation_name>
   <simulation_type>
-    <intertia_dominated/>
+    <porous_media/>
   </simulation_type>
   <geometry>
     <dimension>

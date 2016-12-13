@@ -116,7 +116,8 @@ contains
            REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
-           REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
+           REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
+           REAL, DIMENSION( : , : ), target, allocatable :: den_all
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
            INTEGER :: IPHASE
@@ -354,7 +355,7 @@ contains
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
-             real, intent(inout) :: Courant_number
+             real, dimension(:), intent(inout) :: Courant_number
              character(len= * ), intent(in), optional :: option_path
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
              ! Local Variables
@@ -399,8 +400,16 @@ contains
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
-
+             !Variables to control the PETCs solver
+             integer, save :: max_allowed_its = -1, max_FPI = -1
+             integer :: its_taken
 if (is_flooding) return!<== Temporary fix for flooding
+
+            if(max_allowed_its < 0) then
+                call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
+                     max_allowed_its, default = 100000)
+                call get_option( '/timestepping/nonlinear_iterations', max_FPI, default = 3 )
+            end if
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -523,6 +532,10 @@ if (is_flooding) return!<== Temporary fix for flooding
                      mass_ele_transp,IDs_ndgln, &          !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number)
+                 !Make the inf norm of the Courant number across cpus
+                 if (IsParallel()) then
+                    call allmax(Courant_number(1)); call allmax(Courant_number(2))
+                 end if
                  !Solve the system
                  vtracer=as_vector(tracer,dim=2)
                  !If using FPI with backtracking
@@ -531,8 +544,8 @@ if (is_flooding) return!<== Temporary fix for flooding
                      sat_bak = satura
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
-                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the Courant number
-                           call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                           call auto_backtracking(backtrack_par_factor, courant_number(2), first_time_step, nonlinear_iteration)
                          end if
 
                          !Calculate the actual residual using a previous backtrack_par
@@ -551,7 +564,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                  end if
                  call zero(vtracer)
                  call zero_non_owned(Mmat%CV_RHS)
-                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path))
+                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
                  call deallocate(Mmat%petsc_ACV)
@@ -610,6 +623,14 @@ if (is_flooding) return!<== Temporary fix for flooding
              else
                  backtrack_or_convergence = 1
              end if
+
+             !If the final saturation solve of the final non-linear FPI fails, then we ensure that the result is not accepted
+             !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
+             if (nonlinear_iteration>=max_FPI .and. its_taken >= max_allowed_its) then
+                backtrack_or_convergence = 1d-10!Modify the parameter that controls the convengerce to ensure it does not pass the check
+                ewrite(0,*) "WARNING: The phase volume fraction solver failed to converge for the last non-linear iteration."
+             end if
+
              !Make sure the parameter is consistent between cpus
              if (IsParallel()) call allmin(backtrack_or_convergence)
              DEALLOCATE( mass_mn_pres )
@@ -1155,6 +1176,7 @@ end if
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, symmetric_P )
+!call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
         END IF
 
@@ -1481,7 +1503,8 @@ END IF
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
-        REAL, DIMENSION( : , : ), allocatable :: DEN_OR_ONE, DENOLD_OR_ONE
+        REAL, DIMENSION( : , : ), allocatable :: DENOLD_OR_ONE
+        REAL, DIMENSION( : , : ), target, allocatable :: DEN_OR_ONE
         REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
         LOGICAL :: GET_THETA_FLUX
         INTEGER :: IGOT_T2, I, IGOT_THERM_VIS
@@ -2057,6 +2080,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
         FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
         GOT_DIFFUS = .FALSE.
+
         UPWIND_DGFLUX = .TRUE.
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/central_differencing') &
@@ -3188,7 +3212,7 @@ end if
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-            if (RESID_BASED_STAB_DIF/=0) then
+            IF ( (.NOT.first_nonlinear_time_step) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 DO U_JLOC = 1, Mdims%u_nloc
@@ -6298,19 +6322,19 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
             ! solver for pressure ph
             call set_solver_options( path, &
-                 ksptype = "cg", &
-                 pctype = "hypre", &
-                 !ksptype = "gmres", &
-                 !pctype = "sor", &
+                 !ksptype = "cg", &
+                 !pctype = "hypre", &
+                 ksptype = "gmres", &
+                 pctype = "sor", &
                  !ksptype = "preonly", &
                  !pctype = "lu", &
                  rtol = 1.0e-10, &
                  atol = 0.0, &
                  max_its = 10000 )
-            call add_option( &
-                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
-            call set_option( &
-                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
+            !call add_option( &
+            !     trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
+            !call set_option( &
+            !     trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
             !call add_option( &
             !     trim( path ) // "/solver/preconditioner[0]/factorization_package[0]/name", stat )
             !call set_option( &
@@ -6335,6 +6359,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
 
       ! deallocate
+      call deallocate_multi_shape_funs( ph_funs )
       call deallocate( rhs )
       call deallocate( ph_sol )
       call deallocate( matrix )
