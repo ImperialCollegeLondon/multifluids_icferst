@@ -754,7 +754,7 @@ contains
         !Use the advection scheme for CVs not sharing element also within an element
         not_use_DG_within_ele = (CV_DG_VEL_INT_OPT /= 10)
         !Initialize Courant number for porous media
-        if (present(Courant_number) .and. is_porous_media) Courant_number = 1.!Set to 1 just in case there a no shock-fronts
+        if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
         ALLOCATE( CVNORMX_ALL( Mdims%ndim, CV_GIdims%scvngi )) ; CVNORMX_ALL=0.0
         ALLOCATE( CV_OTHER_LOC( Mdims%cv_nloc ))
         ALLOCATE( U_OTHER_LOC( Mdims%u_nloc ))

@@ -545,7 +545,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
                          if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                           call auto_backtracking(backtrack_par_factor, courant_number(2), first_time_step, nonlinear_iteration)
+                           call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                          end if
 
                          !Calculate the actual residual using a previous backtrack_par
@@ -686,18 +686,21 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
 
-         subroutine auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+         subroutine auto_backtracking(backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration)
             !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
             implicit none
             real, intent(inout) :: backtrack_par_factor
-            real, intent(in) :: courant_number
+            real, dimension(:), intent(in) :: courant_number_in
             logical, intent(in) :: first_time_step
             integer, intent(in) :: nonlinear_iteration
             !Local variables
-            real :: physics_adjustment
+            real :: physics_adjustment, courant_number
             logical, save :: Readed_options = .false.
             logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
 
+            !Combination of the overall and the shock-front Courant number
+            !We give more value to the normal courant number because its calculation is more reliable
+            courant_number = 0.7 * courant_number_in(1) + 0.3 * courant_number_in(2)
 
             if (.not.readed_options) then
                 !We read the options just once, and then they are stored as logicals
