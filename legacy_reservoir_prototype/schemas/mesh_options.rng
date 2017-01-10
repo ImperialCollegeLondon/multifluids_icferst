@@ -67,12 +67,6 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
                 </choice>
               </element>
             </element>
-            <optional>
-              <element name="Porous_media">
-                <a:documentation>Activate for porous media. Deprecated, use simulation_type instead.</a:documentation>
-                <ref name="comment"/>
-              </element>
-            </optional>
           </element>
         </optional>
         <optional>

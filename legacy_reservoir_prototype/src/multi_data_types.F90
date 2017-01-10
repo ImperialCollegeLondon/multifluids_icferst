@@ -34,10 +34,11 @@ module multi_data_types
     use sparse_tools
     use fields_data_types
     use fields_allocates
-    use global_parameters, only: option_path_len, is_porous_media
+    use global_parameters
     use state_module
     use fields
     use spud
+    use multi_tools
 
 
     interface allocate_multi_dev_shape_funs
@@ -223,16 +224,17 @@ module multi_data_types
 
     type multi_absorption
         !Comprises all the absorption terms that migth be required
-        type (multi_field) :: PorousMedia
+        type (multi_field) :: PorousMedia ! <= Always memory_type = 2
         type (multi_field) :: Components
         type (multi_field) :: Temperature
         type (multi_field) :: Velocity
+        type (multi_field) :: Flooding
     end type multi_absorption
 
 
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
-         allocate_multi_field1,allocate_multi_field2
+         allocate_multi_field1, allocate_multi_field2
 
 contains
 
@@ -323,50 +325,15 @@ contains
         if (present(field_name)) then
             !Depending on the field, different possibilities
             if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
-                mfield%memory_type = 0
-                mfield%is_constant = .false.
-                !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
-                if (have_option('porous_media/scalar_field::Permeability')) then
-                    mfield%memory_type = max(mfield%memory_type, 1)
-                    root_path = 'porous_media/scalar_field::Permeability/prescribed/value'
-                    k = option_count(trim(root_path))
-                    !Check if field is constant
-                    mfield%is_constant = (k == 1)
-                    if (mfield%is_constant) then
-                        !Check that it is not a python field
-                        do i = 0, k-1
-                            path_option = trim(root_path)//'['//int2str(i)//']/python'
-                            if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        end do
-                    end if
-                else
-                    root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
-                    k = option_count(trim(root_path))
-                    if (k == 1) nonods = 1
-                    do i = 0, k-1
-                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
-                        if (have_option(path_option//"/isotropic")) then
-                            mfield%memory_type = max(mfield%memory_type, 0)
-                        else
-                            mfield%memory_type = max(mfield%memory_type, 2)
-                        end if
-                    end do
-                end if
-                !Check if field is constant
-                mfield%is_constant = (k == 1)
-                if (mfield%is_constant) then
-                    !Check that it is not a python field
-                    do i = 0, k-1
-                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        path_option = trim(root_path)//'['//int2str(i)//']/diagonal/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        path_option = trim(root_path)//'['//int2str(i)//']/anisotropic_symmetric/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
-                        path_option = trim(root_path)//'['//int2str(i)//']/anisotropic_asymmetric/python'
-                        if (have_option(trim(path_option))) mfield%is_constant = .false.
-                    end do
-                end if
+                mfield%is_constant = .false.!For porous media it cannot be constant
+                mfield%memory_type = 2 !We force this memory despite not being the most comprised
+                !because it enables us to remove copies of memory and because for real 3D problems it is very unlikely that
+                !the permeability will be isotropic in all the regions
+            end if
+
+            if (trim(field_name)=="Flooding_AbsorptionTerm") then
+                mfield%is_constant = .false.!It cannot be constant
+                mfield%memory_type = 1!The absorption is always isotropic
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then
@@ -387,7 +354,6 @@ contains
             case default
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select
-
         !Allocate and initialize memory
         allocate(mfield%val(1:mfield%ndim1, 1:mfield%ndim2, 1:mfield%ndim3, 1:nonods)); mfield%val = 0.
 
@@ -414,18 +380,33 @@ contains
 
     end subroutine deallocate_multi_field
 
+    subroutine deallocate_multi_absorption(multi_absorp, and_destroy)
+        implicit none
+        type( multi_absorption ), intent( inout ) :: multi_absorp
+        logical, optional, intent(in) :: and_destroy
+        !Local variables
+        logical :: and_destroy2
+
+        and_destroy2 = present_and_true(and_destroy)
+
+        if (associated(multi_absorp%PorousMedia%val)) call deallocate_multi_field(multi_absorp%PorousMedia, and_destroy2)
+        if (associated(multi_absorp%Components%val))  call deallocate_multi_field(multi_absorp%Components, and_destroy2)
+        if (associated(multi_absorp%Temperature%val)) call deallocate_multi_field(multi_absorp%Temperature, and_destroy2)
+        if (associated(multi_absorp%Velocity%val))    call deallocate_multi_field(multi_absorp%Velocity, and_destroy2)
+        if (associated(multi_absorp%Flooding%val))    call deallocate_multi_field(multi_absorp%Flooding, and_destroy2)
+
+    end subroutine deallocate_multi_absorption
 
     subroutine get_multi_field(mfield, inode_in, output)
         implicit none
         integer, intent(in) :: inode_in
-        type( multi_field ), intent( inout ) :: mfield
+        type( multi_field ), intent( in ) :: mfield
         real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
         !local variables
         integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
 
         inode = inode_in
         if (mfield%is_constant) inode = 1
-
         select case (mfield%memory_type)
             case (0)!Isotropic full
                 ndim = size(output,2)/mfield%ndim3
@@ -464,6 +445,61 @@ contains
 
     end subroutine get_multi_field
 
+
+    subroutine get_multi_field_inverse(mfield, inode_in, output)
+        implicit none
+        integer, intent(in) :: inode_in
+        type( multi_field ), intent( in ) :: mfield
+        real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
+        !local variables
+        integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
+
+        inode = inode_in
+        if (mfield%is_constant) inode = 1
+        select case (mfield%memory_type)
+            case (1)!Isotropic
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3!nphase
+                    do idim = 1, ndim
+                        output(idim+(iphase-1)*ndim, idim+(iphase-1)*ndim) = 1./mfield%val(1,1,iphase,inode)
+                    end do
+                end do
+            case (2)!Anisotropic
+                output = 0.
+                do iphase = 1, mfield%ndim3!nphase
+                    output(1+(iphase-1)*mfield%ndim2:mfield%ndim2+(iphase-1)*mfield%ndim2,&
+                        1+(iphase-1)*mfield%ndim2:mfield%ndim2+(iphase-1)*mfield%ndim2) = &
+                                inverse(mfield%val(:,:,iphase,inode))
+                end do
+            case (3)!isotropic coupled
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3
+                    do jphase = 1, mfield%ndim3
+                        do idim = 1, ndim
+                            output(idim+(iphase-1)*ndim, idim+(jphase-1)*ndim) = 1./mfield%val(1,iphase,jphase,inode)
+                        end do
+                    end do
+                end do
+            case default !Anisotropic coupled
+                output = inverse(mfield%val(1,:,:,inode))
+        end select
+
+
+
+    end subroutine get_multi_field_inverse
+
+    subroutine print_multi_field(mfield, inode_in, dimension)
+        implicit none
+        integer, intent(in) :: inode_in
+        type( multi_field ), intent( in ) :: mfield
+        integer :: dimension!must have size(ndim*nphase, ndim*nphase)
+        !Local variables
+        real, dimension(dimension,dimension) :: Matrix
+
+        call get_multi_field(mfield, inode_in, Matrix)
+        call printMatrix(Matrix)
+
+    end subroutine print_multi_field
 
     subroutine add_array_to_multi_field(mfield, b, xpos, ypos, inode)
         !mfield = mfield + b
@@ -914,15 +950,37 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         integer :: mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
 
-        allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ), Mspars%ACV%col( mx_ncolacv ), Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ), &
-            Mspars%MCY%fin( nlenmcy + 1 ), Mspars%MCY%col( mx_ncolmcy ), Mspars%MCY%mid( nlenmcy ), &
-            Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ), Mspars%DGM_PHA%col( mx_ncoldgm_pha ), &
-            Mspars%DGM_PHA%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim ), &
-            Mspars%CT%fin( Mdims%cv_nonods + 1 ), Mspars%CT%col( mx_nct ), &
-            Mspars%C%fin( Mdims%u_nonods + 1 ), Mspars%C%col( mx_nc ), &
-            Mspars%CMC%fin( Mdims%cv_nonods + 1 ), Mspars%CMC%col( 0 ), Mspars%CMC%mid( Mdims%cv_nonods ), &
-            Mspars%M%fin( Mdims%cv_nonods + 1 ), Mspars%M%col( mx_ncolm ), Mspars%M%mid( Mdims%cv_nonods ), &
-            Mspars%ph%fin( Mdims%ph_nonods + 1 ), Mspars%ph%col( mx_ncolph ) )
+        if(.not.associated(Mspars%ACV%fin))          allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ))
+        if(.not.associated(Mspars%ACV%col))          allocate( Mspars%ACV%col( mx_ncolacv ))
+        if(.not.associated(Mspars%ACV%mid))          allocate(  Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ))
+
+        if(.not.associated( Mspars%MCY%fin))         allocate(   Mspars%MCY%fin( nlenmcy + 1 ))
+        if(.not.associated(Mspars%MCY%col))          allocate( Mspars%MCY%col( mx_ncolmcy ))
+        if(.not.associated(Mspars%MCY%mid))          allocate(  Mspars%MCY%mid( nlenmcy ))
+
+        if(.not.associated(Mspars%DGM_PHA%fin))      allocate(  Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ))
+        if(.not.associated(Mspars%DGM_PHA%col))      allocate(  Mspars%DGM_PHA%col( mx_ncoldgm_pha ))
+        if(.not.associated(Mspars%DGM_PHA%mid))      allocate(  Mspars%DGM_PHA%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim ))
+
+        if(.not.associated(Mspars%CT%fin))           allocate(  Mspars%CT%fin( Mdims%cv_nonods + 1 ))
+        if(.not.associated(Mspars%CT%col))           allocate(  Mspars%CT%col( mx_nct ))
+        if(.not.associated(Mspars%CT%mid))           allocate(  Mspars%CT%mid(  Mdims%cv_nonods ))
+
+        if(.not.associated(Mspars%C%fin))            allocate(  Mspars%C%fin( Mdims%u_nonods + 1 ))
+        if(.not.associated(Mspars%C%col))            allocate(  Mspars%C%col( mx_nc ))
+        if(.not.associated(Mspars%C%mid))            allocate(  Mspars%C%mid( Mdims%u_nonods))
+
+        if(.not.associated(Mspars%CMC%fin))          allocate( Mspars%CMC%fin( Mdims%cv_nonods + 1 ))
+        if(.not.associated(Mspars%CMC%col))          allocate(  Mspars%CMC%col( 0 ))
+        if(.not.associated(Mspars%CMC%mid))          allocate( Mspars%CMC%mid( Mdims%cv_nonods ))
+
+        if(.not.associated( Mspars%M%fin))           allocate(  Mspars%M%fin( Mdims%cv_nonods + 1 ))
+        if(.not.associated( Mspars%M%col))           allocate(  Mspars%M%col( mx_ncolm ))
+        if(.not.associated( Mspars%M%mid))           allocate(  Mspars%M%mid( Mdims%cv_nonods ))
+
+        if(.not.associated(Mspars%ph%fin))           allocate(  Mspars%ph%fin( Mdims%ph_nonods + 1 ))
+        if(.not.associated(Mspars%ph%col))           allocate(  Mspars%ph%col( mx_ncolph ) )
+        if(.not.associated(Mspars%ph%mid))           allocate(  Mspars%ph%mid( Mdims%ph_nonods ))
 
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0
@@ -1008,7 +1066,6 @@ contains
         if (associated(Mspars%ph%fin))        nullify(Mspars%ph%fin)
         if (associated(Mspars%ph%col))        nullify(Mspars%ph%col)
         if (associated(Mspars%ph%mid))        nullify(Mspars%ph%mid)
-
 
     end subroutine deallocate_multi_sparsities
 
@@ -1142,9 +1199,9 @@ contains
         end if
 
         if (nx_all_FE_size2) then
-            allocate(DevFuns%nx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3)))
+            allocate(DevFuns%nx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3))) ; DevFuns%nx_all=0.0
         else
-            allocate(DevFuns%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3)))
+            allocate(DevFuns%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3))) ; DevFuns%nx_all=0.0
         end if
     end subroutine allocate_multi_dev_shape_funs3
 
@@ -1169,7 +1226,7 @@ contains
         type (porous_adv_coefs), intent(inout) :: upwnd
         type (multi_dimensions), intent(in)  ::Mdims
 
-        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+!        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
         if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
     end subroutine allocate_porous_adv_coefs
@@ -1177,7 +1234,8 @@ contains
     subroutine deallocate_porous_adv_coefs(upwnd)
         type (porous_adv_coefs), intent(inout) :: upwnd
 
-        if (associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)
+!        if (associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)!This memory is pointing to
+                                            !multi_absorption%porousMedia as is being deallocated there
         if (associated(upwnd%inv_adv_coef)) deallocate(upwnd%inv_adv_coef)
         if (associated(upwnd%adv_coef_grad)) deallocate(upwnd%adv_coef_grad)
 

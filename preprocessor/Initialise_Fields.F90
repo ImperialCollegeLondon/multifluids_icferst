@@ -511,7 +511,6 @@ contains
        else
           FLExit("Incorrect initial condition for field")
        end if
-
     end if
 
   end subroutine initialise_tensor_field

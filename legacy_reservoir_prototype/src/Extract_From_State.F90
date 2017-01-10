@@ -49,6 +49,7 @@ module Copy_Outof_State
     use futils, only: int2str
     use boundary_conditions_from_options
     use parallel_tools, only : allmax, allmin, isparallel
+    use parallel_fields
     use memory_diagnostics
     use initialise_fields_module, only: initialise_field_over_regions
     use halos
@@ -64,11 +65,11 @@ module Copy_Outof_State
     private
 
     public :: Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
-        Get_Ele_Type, Get_Discretisation_Options, Get_Discretisation_Options_k_epsilon, &
+        Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass, prepare_absorptions
 
 
     interface Get_SNdgln
@@ -96,6 +97,7 @@ contains
         type( scalar_field ), pointer :: pressure
         type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
         integer :: i, stat
+        logical , save :: warning_displayed = .false.
 
         ewrite(3,*)' In Get_Primary_Scalars'
 
@@ -131,12 +133,19 @@ contains
         Mdims%n_in_pres = Mdims%nphase / Mdims%npres
 
         !!$ Get the vel element type.
-        is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media') .or. is_porous_media
+        is_porous_media = have_option('/simulation_type/porous_media')
         if (is_porous_media) then!Check that the FPI method is on
             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
+            else!Check that the user is allowing the linear solver to fail
+                if (.not. have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/'//&
+                'solver/ignore_all_solver_failures') .and. .not.warning_displayed) then
+                    ewrite(0,*) "WARNING: The option <PhaseVolumeFraction/prognostic/solver/ignore_all_solver_failures>"//&
+                    " is HIGHLY recommended for multiphase porous media flow to allow the FPI method to find a solution."
+                    warning_displayed = .true.
+                end if
             end if
-            !Don;'t use for single phase porous media flows
+            !Donn't use for single phase porous media flows
             if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres < 2) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
             end if
@@ -556,146 +565,6 @@ contains
 
 
 
-!!-PY changed it for k_epsilon model
-
-
- subroutine Get_Discretisation_Options_k_epsilon( state, Mdims, Mdisopt, tracer )
-        !!$ This subroutine extract all discretisation options from the schema
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        type(multi_dimensions), intent(in) :: Mdims
-        type (multi_discretization_opts) :: Mdisopt
-        type(tensor_field), pointer :: tracer
-
-        !!$ Local variables:
-        integer :: iphase
-        character( len = option_path_len ) :: option_path, option_path2, option_path3
-        !!$ DISOPT Options:
-        !!$ =0      1st order in space          Theta=specified    UNIVERSAL
-        !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
-        !!$ =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
-        !!$ =2      if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
-        !!$ =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
-        !!$ =4      Finite elements in space    Theta=specified    UNIVERSAL
-        !!$ =5      Finite elements in space    Theta=non-linear   UNIVERSAL
-        !!$ =6      Finite elements in space    Theta=specified    NONE
-        !!$ =7      Finite elements in space    Theta=non-linear   NONE
-        !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
-        !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
-        !!$ Solving Advection Field: Temperature
-
-!!-PY changed it for k_epsilon model
-        if (tracer%name== "PackedTurbulentKineticEnergy") then
-             option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
-        else if (tracer%name == "PackedTurbulentDissipation") then
-             option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
-        end if
-
-!        option_path = '/material_phase[0]/scalar_field::Temperature'
-
-
-!        if (have_option( "/material_phase[0]/scalar_field::Temperature") ) then
-!            option_path = '/material_phase[0]/scalar_field::Temperature'
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"))  then
-!            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
-!            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
-!        end if
-
-
-        option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
-        option_path3 = trim( option_path ) //  '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        Mdisopt%t_disopt = 1
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_t, default = 3 )
-        Conditional_TDISOPT: if( have_option( trim( option_path2 ) ) ) then
-            if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value/' // &
-                'limiter::CompressiveAdvection' ) ) then
-                Mdisopt%t_disopt = 9
-            else
-                if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value' ) ) &
-                    Mdisopt%t_disopt = 5
-            end if
-        end if Conditional_TDISOPT
-        call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
-
-!!-PY changed it for k_epsilon model
-
-       call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
-            Mdisopt%t_theta, default = 1. )
-
-
-!        if (have_option( "/material_phase[0]/scalar_field::Temperature") ) then
-!            call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
-!                Mdisopt%t_theta, default = 1. )
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"))  then
-!            call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy/prognostic/temporal_discretisation/theta', &
-!                Mdisopt%t_theta, default = 1. )
-!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
-!            call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation/prognostic/temporal_discretisation/theta', &
-!                Mdisopt%t_theta, default = 1. )
-!        end if
-
-
-
-
-
-        !!$ Solving Advection Field: Volume fraction
-        option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction'
-        option_path2 = trim( option_path ) // '/prognostic/spatial_discretisation/control_volumes/face_value'
-        option_path3 = trim( option_path ) // '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        Mdisopt%v_disopt = 8
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_volfra, default = 3 )
-        Conditional_VDISOPT: if( have_option( trim( option_path ) ) ) then
-            if( have_option( trim( option_path2 ) // '::FirstOrderUpwind' ) ) Mdisopt%v_disopt = 0
-            if( have_option( trim( option_path2 ) // '::Trapezoidal' ) ) Mdisopt%v_disopt = 2
-            if( have_option( trim( option_path2 ) // '::FiniteElement/do_not_limit_face_value' ) ) Mdisopt%v_disopt = 6
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) Mdisopt%v_disopt = 5
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) Mdisopt%v_disopt = 9
-        end if Conditional_VDISOPT
-        call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', Mdisopt%v_beta )
-        call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', Mdisopt%v_theta )
-        !!$ Solving Velocity Field
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/temporal_discretisation/theta', Mdisopt%u_theta )
-        !!$ Solving Component Field
-        option_path3 = '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-            'temporal_discretisation/control_volumes/number_advection_iterations'
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_comp, default = 3 )
-        !!$ Scaling factor for the momentum equation
-        Mdisopt%scale_momentum_by_volume_fraction = .false.
-        do iphase = 1, Mdims%nphase
-            option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/Mdisopt%scale_momentum_by_volume_fraction'
-            if( have_option( trim( option_path ) ) ) Mdisopt%scale_momentum_by_volume_fraction = .true.
-        end do
-        !!$ Options below are hardcoded and need to be added into the schema
-        Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
-        if(is_porous_media) then
-            if ( have_option( &
-                '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/DG_weighting') &
-                ) Mdisopt%v_dg_vel_int_opt = 10
-        else
-            Mdisopt%v_dg_vel_int_opt = 1
-        end if
-        Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
-        Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
-        Mdisopt%t_use_theta_flux = .false. ; Mdisopt%t_get_theta_flux = .false.
-        !!$ IN/Mdisopt%dg_ele_upwind are options for optimisation of upwinding across faces in the compact_overlapping
-        !!$ formulation. The data structure and options for this formulation need to be added later.
-        Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
-        return
-    end subroutine Get_Discretisation_Options_k_epsilon
-
-
-
-
-
-
-
-
-
-
-
-
-!!-PY changed it for k_epsilon model
     subroutine update_boundary_conditions( state, stotel, cv_snloc, nphase, &
         &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer )
         implicit none
@@ -722,46 +591,10 @@ contains
 
         do iphase = 1, nphase
 
-!!-Py changed it for k_epsilon model
-            if (tracer%name == "PackedTemperature") then
-                field_name = 'Temperature'
-            else if (tracer%name == "PackedTurbulentKineticEnergy") then
-                field_name = 'TurbulentKineticEnergy'
-            else if (tracer%name == "PackedTurbulentDissipation" ) then
-                field_name = 'TurbulentDissipation'
-            end if
-
- !.or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation"
-
-
-
-
- !          field_name = 'Temperature'
+            field_name = 'Temperature'
             field => extract_scalar_field( state( iphase ), trim( field_name ) )
 
-
-
-
-
-
-
-!!-Py changed it for k_epsilon model
-            if (tracer%name == "PackedTemperature") then
-                option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-            else if (tracer%name == "PackedTurbulentKineticEnergy") then
-                option_path = '/material_phase['//int2str( iphase - 1 )//']/subgridscale_parameterisations/k-epsilon/scalar_field::'//trim( field_name )
-            else if (tracer%name == "PackedTurbulentDissipation" ) then
-                option_path = '/material_phase['//int2str( iphase - 1 )//']/subgridscale_parameterisations/k-epsilon/scalar_field::'//trim( field_name )
-            end if
-
-
-
-
-!            option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-
-
-
-
+            option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
 
             option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
 
@@ -1075,17 +908,6 @@ contains
                 add_source=.false.,add_absorption=.false.)
             call insert_sfield(packed_state,"Bathymetry",1,nphase)
         end if
-!!-PY add it for k_epsilon model
-       if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
-            call insert_sfield(packed_state,"TurbulentKineticEnergy",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FETurbulentKineticEnergy",1,nphase)
-
-            call insert_sfield(packed_state,"TurbulentDissipation",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FETurbulentDissipation",1,nphase)
-
-        end if
 
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
@@ -1190,9 +1012,6 @@ contains
 
         if (is_porous_media) then
             ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-            call allocate(ten_field,ovmesh,"PorousMedia_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
-            call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")
-            call deallocate(ten_field)
             if ( ncomp > 0 ) then
                 ovmesh=>extract_mesh(packed_state,"PressureMesh")
                 do icomp = 1, ncomp
@@ -1206,12 +1025,6 @@ contains
         end if
 
 
-        if (is_flooding) then
-            ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-            call allocate(ten_field,ovmesh,"Flooding_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
-            call insert(packed_state,ten_field,"Flooding_AbsorptionTerm")
-            call deallocate(ten_field)
-        end if
 
 
         call allocate(porosity,npres,element_mesh,"Porosity")
@@ -1333,48 +1146,6 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
 
-!!-PY add it for k_epsilon model
-               if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
- print *, 'copy memory from state to packed_state'
-                    call unpack_sfield(state(i),packed_state,"OldTurbulentKineticEnergy",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentKineticEnergy"),&
-                        extract_scalar_field(state(i),"OldTurbulentKineticEnergy")))
-                    call unpack_sfield(state(i),packed_state,"IteratedTurbulentKineticEnergy",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentKineticEnergy"),&
-                        extract_scalar_field(state(i),"IteratedTurbulentKineticEnergy")))
-                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergySource",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergyAbsorption",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergy",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"TurbulentKineticEnergy"),"TurbulentKineticEnergy")
-
-
-
-
-                    call unpack_sfield(state(i),packed_state,"OldTurbulentDissipation",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentDissipation"),&
-                        extract_scalar_field(state(i),"OldTurbulentDissipation")))
-                    call unpack_sfield(state(i),packed_state,"IteratedTurbulentDissipation",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"TurbulentDissipation"),&
-                        extract_scalar_field(state(i),"IteratedTurbulentDissipation")))
-                    call unpack_sfield(state(i),packed_state,"TurbulentDissipationSource",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentDissipationAbsorption",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TurbulentDissipation",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"TurbulentDissipation"),"TurbulentDissipation")
-
-
-                end if
-
-
-
-
-
-
-
-
-
-
-
-
                 if(has_phase_volume_fraction) then
                     call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
@@ -1410,20 +1181,9 @@ contains
             call insert(multi_state(1,ipres),extract_scalar_field(state(i),"Pressure"),"FEPressure")
         end do
 
-!!-PY add it for k_epsilon model
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
         end if
-
-        if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
-            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"TurbulentKineticEnergy")
-            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"TurbulentDissipation")
-        end if
-
-
-
-
-
 
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"PhaseVolumeFraction")
@@ -1444,22 +1204,25 @@ contains
         end if
 
         !!$ memory allocation for darcy velocity
-        ! temporarily only work for adaptivity is switched off -- the last condition will soon be removed
         if(is_porous_media) then
-            if((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
+            if(have_option('/io/output_darcy_vel') .or. is_multifracture) then
                 ! allocate darcy velocity[in packed_state]
                 call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
                 call zero(ten_field)
                 call insert(packed_state,ten_field,"PackedDarcyVelocity")
                 call deallocate(ten_field)
 
-                ! let velocity[in state] point to darcy velocity[packed_state]
-                tfield=>extract_tensor_field(packed_state,"PackedDarcyVelocity")
-
-                do iphase=1,size(state)
-                    vfield=>extract_vector_field(state(iphase),"Velocity")
-                    vfield%val=>tfield%val(:,iphase,:)
+                do iphase = 1, n_in_pres
+                    call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
                 end do
+
+!                ! let velocity[in state] point to darcy velocity[packed_state]
+!                tfield=>extract_tensor_field(packed_state,"PackedDarcyVelocity")
+!
+!                do iphase=1,size(state)
+!                    vfield=>extract_vector_field(state(iphase),"Velocity")
+!                    vfield%val=>tfield%val(:,iphase,:)
+!                end do
 
                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 ! unfinished part -- still working on the field copy for when adaptivity is switched on
@@ -1553,6 +1316,7 @@ contains
                     call allocate(vfield,tfield%mesh,names(count),field_type=FIELD_TYPE_DEFERRED,dim=[1,nphase])
                     vfield%option_path=tfield%option_path
                     deallocate(vfield%val)
+                    deallocate(vfield%bc)
                     vfield%val=>tfield%val(icomp:icomp,:,:)
                     vfield%wrapped=.true.
                     vfield%field_type=FIELD_TYPE_NORMAL
@@ -1590,7 +1354,6 @@ contains
             do index=1,size(mstate%tensor_fields)
                 tfield=>extract_tensor_field(mstate,index)
                 si=len(trim(tfield%name))
-                !!-PY changed it
                 !s1=max(0,si) ; s2=si
                 if(si<=7)then
                    ! do nothing...
@@ -2096,6 +1859,34 @@ contains
 
     end subroutine pack_multistate
 
+    subroutine prepare_absorptions(state, Mdims, multi_absorp)
+        implicit none
+        type(state_type), dimension(:), intent(inout) :: state
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_absorption), intent(inout) :: multi_absorp
+        !Local variables
+        integer :: k
+        type(mesh_type), pointer :: ovmesh
+
+        !Make sure that the memory is cleaned before using it
+        call deallocate_multi_absorption(multi_absorp, .true.)
+        !Prepare array that will contain the different absorptions
+        ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
+
+
+        if (is_porous_media) then
+             call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
+!            if ( ncomp > 0 ) !"Not ready yet"
+        end if
+        !Need to add this
+        if (is_flooding) then
+             call allocate_multi_field( Mdims, multi_absorp%Flooding, ovmesh%nodes, field_name="Flooding_AbsorptionTerm")
+        end if
+
+    end subroutine prepare_absorptions
+
+
+
 !    function wrap_as_tensor(field) result(tfield)
 !
 !      type(scalar_field), intent(inout) :: field
@@ -2224,7 +2015,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Tolerance for the infinite norm
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',&
         Inifinite_norm_tol, default = 0.03 )
-    !retirve number of Fixed Point Iterations
+    !retrieve number of Fixed Point Iterations
     call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
     !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
@@ -2345,6 +2136,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (IsParallel()) then
                     call allmax(ts_ref_val)
                     call allmax(max_calculate_mass_delta)
+		    call allmax(inf_norm_val)
                 end if
 
 
@@ -2464,8 +2256,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 end subroutine Adaptive_NonLinear
 
 real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
-    !We create the potential to optimize F = sum (f**2), so the solution is when this potential
-    !reach a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
+    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
+    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
     !f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
     !
     !The convergence is independent of the dumping parameter
@@ -2479,14 +2271,18 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     integer :: cv_inod, modified_vals, iphase
     real :: aux
     real, parameter :: tol = 1d-5
+    real :: tmp ! Variable used for parallel consistency
 
     modified_vals = 0
     get_Convergence_Functional = 0.0
 
     !(L2)**2 norm of all the elements
     do iphase = 1, size(phasevolumefraction,1)
-        get_Convergence_Functional = max(sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))&
-            /size(phasevolumefraction,2))**2.0), get_Convergence_Functional)
+
+        tmp = sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))/size(phasevolumefraction,2))**2.0)
+        call allsum(tmp)
+
+        get_Convergence_Functional = max(tmp, get_Convergence_Functional)
     end do
 
 !        !(L2)**2 norm of all the elements whose value has changed (has problems to converge at
@@ -2573,7 +2369,7 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
 
 end subroutine copy_packed_new_to_iterated
 
-!sprint_to_do! move everything to just use pointers and remove this
+!deprecated, do not use. Use pointers instead
 subroutine get_var_from_packed_state(packed_state,FEDensity,&
     OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
     OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
@@ -2581,7 +2377,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     NonlinearVelocity, OldNonlinearVelocity,IteratedNonlinearVelocity, ComponentDensity, &
     OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
     Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
-!!-PY add it for k_epsilon model
     TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
     TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
     IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
@@ -2611,9 +2406,8 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
-!!-PY add it for k_epsilon model
-    TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
-    TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
+        TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
+        TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent
@@ -2736,72 +2530,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
         IteratedFETemperature =>  tfield%val(1,:,:)
     end if
-
-!!-PY add it for k_epsilon model
-    if (present(TurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedTurbulentKineticEnergy" )
-        TurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(OldTurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldTurbulentKineticEnergy" )
-        OldTurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedTurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedTurbulentKineticEnergy" )
-        IteratedTurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(FETurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedFETurbulentKineticEnergy" )
-        FETurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(OldFETurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldFETurbulentKineticEnergy" )
-        OldFETurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedFETurbulentKineticEnergy)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedFETurbulentKineticEnergy" )
-        IteratedFETurbulentKineticEnergy =>  tfield%val(1,:,:)
-    end if
-
-
-
-
-    if (present(TurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedTurbulentDissipation" )
-        TurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(OldTurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldTurbulentDissipation" )
-        OldTurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedTurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedTurbulentDissipation" )
-        IteratedTurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(FETurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedFETurbulentDissipation" )
-        FETurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(OldFETurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldFETurbulentDissipation" )
-        OldFETurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedFETurbulentDissipation)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedFETurbulentDissipation" )
-        IteratedFETurbulentDissipation =>  tfield%val(1,:,:)
-    end if
-
-
-
-
-
-
-
-
-
-
-
-
 
     if (present(Velocity)) then
         tfield => extract_tensor_field( packed_state, "PackedVelocity" )
@@ -3031,7 +2759,7 @@ function GetFEMName(tfield) result(fem_name)
 end function GetFEMName
 
 subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
-    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL)
+    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL, Ele_owned_field)
 
     implicit none
 
@@ -3039,6 +2767,7 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
 
     ! Input/output variables
 
+    type(tensor_field), intent(in) :: Ele_owned_field
     integer, intent(in) :: nphase
     type(tensor_field), intent(in), pointer :: CVPressure
     real, dimension( : , : ),  intent(in), allocatable :: phaseV
@@ -3111,23 +2840,27 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
     ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
 
-    if(test) then
+    if (element_owned(Ele_owned_field, ele)) then ! Check if the element number read into the subroutine is owned by the processor that has entered this loop at run-time (so that we don't overcount).
 
-            ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
-            ! Need to pass down an array with the saturation boundary conditions to deal with these cases
-            ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
+	    if(test) then ! Check if we're on a domain boundary (we only want to include contributions there)
 
-        do i = 1, size(ndotqnew)
-            surf = (sele - 1 ) * cv_snloc + cv_siloc
-            if(ndotqnew(i) < 0 ) then
-                ! Inlet boundary - so use boundary phase volume fraction
-                totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
+		    ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
+		    ! Need to pass down an array with the saturation boundary conditions to deal with these cases
+		    ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
 
-            else
-                ! Outlet boundary - so use internal (to the domain) phase volume fraction
-                totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
-            endif
-        enddo
+		do i = 1, size(ndotqnew)
+		    surf = (sele - 1 ) * cv_snloc + cv_siloc
+		    if(ndotqnew(i) < 0 ) then
+		        ! Inlet boundary - so use boundary phase volume fraction
+		        totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
+
+		    else
+		        ! Outlet boundary - so use internal (to the domain) phase volume fraction
+		        totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
+		    endif
+		enddo
+
+	    endif
 
     endif
 
@@ -3141,13 +2874,15 @@ end subroutine calculate_outflux
 
 
 subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculate_mass, TOTELE , &
-    cv_ndgln, IDs_ndgln, cv_nloc)
+    cv_ndgln, IDs_ndgln, cv_nloc, Ele_owned_field)
 
     implicit none
 
     ! Subroutine to calculate the integrated mass inside the domain
 
     ! Input/output variables
+
+    type(tensor_field), intent(in) :: Ele_owned_field
 
     real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
     integer, intent(in) :: nphase
@@ -3161,7 +2896,6 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
     integer, dimension(:), intent( in ) ::  cv_ndgln
     integer, dimension(:), intent( in ) :: IDs_ndgln
     integer, intent(in) :: cv_nloc
-
 
     ! Local variables
 
@@ -3185,8 +2919,8 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
     ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
     ! Similar calculation done for density.
 
-
     Do ELE=1, TOTELE
+       if (element_owned(Ele_owned_field, ELE)) then
         DO CV_ILOC =1, cv_nloc
                 cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
 
@@ -3198,10 +2932,11 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
                 PorG = Por(IDs_ndgln(ele))
 
                 do i = 1, nphase
-                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)
+                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)               
                 enddo
 
         ENDDO
+        end if
     ENDDO
 
     ! DEALLOCATIONS
@@ -3282,8 +3017,11 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     all_fields_costant = .true.
     !Check capillary
     if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
-        root_path = '/multiphase_properties/capillary_pressure/'&
-            //'type_Brooks_Corey/scalar_field::C/prescribed/value'
+        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
+        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::C/prescribed/value'
+        endif
         k = 0
         do i = 0, nphase-1
             k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
@@ -3293,8 +3031,11 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             if (have_option_for_any_phase(trim(path), nphase))&
                 all_fields_costant = .false.
         end do
-        root_path = '/multiphase_properties/capillary_pressure/'&
-            //'type_Brooks_Corey/scalar_field::a/prescribed/value'
+        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
+        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
+        	root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::a/prescribed/value'
+        endif
         k = 0
         do i = 0, nphase-1
             k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
@@ -3507,51 +3248,39 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
 end subroutine get_regionIDs2nodes
 
 !!$ This subroutine calculates the actual Darcy velocity
-subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, cv_ndgln, u_ndgln, mat_ndgln, &
-    state, packed_state)
+subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
 
     implicit none
-
-    ! I/O variables
-    integer, intent(in) :: totele, cv_nloc, u_nloc, mat_nloc
-    integer, dimension(:) :: cv_ndgln, u_ndgln, mat_ndgln
+    type(multi_ndgln), intent(in) :: ndgln
+    type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(in) :: packed_state
-    type(state_type), dimension(:), intent(inout) :: state
+    type (multi_field), intent(in) :: PorousMedia_absorp
 
     ! Local variables
-    type(tensor_field), pointer :: darcy_velocity, velocity, saturation, oldsaturation, &
-        permeability, absorption_term
-    type(scalar_field), pointer :: porosity
+    type(tensor_field), pointer :: darcy_velocity, velocity, saturation
     real, dimension(:,:), allocatable :: loc_absorp_matrix
     real, dimension(:), allocatable :: sat_weight_velocity
-    integer :: cv_iloc, u_iloc, ele, iphase, ndim, nphase, imat, u_inod, cv_loc, idim
+    integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
 
     ! Initialisation
     darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-    oldsaturation => extract_tensor_field( packed_state,"PackedOldPhaseVolumeFraction")
-    porosity => extract_scalar_field(state(1),"Porosity")
-    permeability => extract_tensor_field(packed_state,"Permeability")
-    absorption_term => extract_tensor_field(packed_state,"PorousMedia_AbsorptionTerm")
 
     call zero(darcy_velocity)
-    allocate(loc_absorp_matrix(size(absorption_term%val,1),size(absorption_term%val,2)))
-    nphase = size(velocity%val,2)
-    ndim = size(velocity%val,1)
-    allocate(sat_weight_velocity(ndim))
+    allocate(loc_absorp_matrix(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim))
+    allocate(sat_weight_velocity(Mdims%ndim))
 
     ! Calculation
-    do ele = 1, totele
-        do u_iloc = 1, u_nloc
-            u_inod = u_ndgln((ele-1)*u_nloc+u_iloc)
-            do cv_iloc = 1, cv_nloc
-                imat = mat_ndgln((ele-1)*mat_nloc+cv_iloc)
-                cv_loc = cv_ndgln((ele-1)*cv_nloc+cv_iloc)
+    do ele = 1, Mdims%totele
+        do u_iloc = 1, Mdims%u_nloc
+            u_inod = ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+            do cv_iloc = 1, Mdims%cv_nloc
+                imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                 !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
-                loc_absorp_matrix = absorption_term%val(:,:,imat)
-                call invert(loc_absorp_matrix)
-                do iphase = 1, nphase
+                call get_multi_field_inverse(PorousMedia_absorp, imat, loc_absorp_matrix)
+                do iphase = 1, Mdims%nphase
                     !Inverse of sigma avoiding inversion
                     !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = matmul(permeability%val(:,:,ele),&
                     !    absorption_term%val(imat,ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim))
@@ -3560,11 +3289,11 @@ subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, cv_ndgln, u_ndgl
                     !    permeability%val(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim,ele)/&
                     !    loc_absorp_matrix(ndim*(iphase-1)+1,ndim*(iphase-1)+1)!Inverse
 
-                    sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*ndim+1:iphase*ndim, &
-                        (iphase-1)*ndim+1:iphase*ndim),velocity%val(:,iphase,u_inod))
+                    sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim, &
+                        (iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim),velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
                     darcy_velocity%val(:,iphase,u_inod) = darcy_velocity%val(:,iphase,u_inod)+ &
-                        sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(cv_nloc)
+                        sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
                 end do
             end do
         end do

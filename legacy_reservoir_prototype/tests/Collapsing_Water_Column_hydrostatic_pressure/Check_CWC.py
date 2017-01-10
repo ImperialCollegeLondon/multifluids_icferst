@@ -45,10 +45,9 @@ os.system(binpath + ' ' + path + '/*mpml')
 #The present values are just above the values I got when writing the script
 #The errors seem big but that is 
 #because the MAXIMUM pressure is about 10^6
-Tolerance_L1_NORM = 330
-Tolerance_L2_NORM = 22
+Tolerance_L1_NORM = 0.003
+Tolerance_L2_NORM = 0.0002
 
-AutomaticLine = 0
 
 #The name of the file and number can be introduced here
 #To use this, don't introduce a command argument
@@ -104,29 +103,11 @@ reader = vtk.vtkXMLUnstructuredGridReader()
 reader.SetFileName(filename+'_'+str(vtu_number)+'.vtu')
 
 #reader.Update()
-ugrid = reader.GetOutput()
-ugrid.Update()
+
+ugrid = reader.GetOutputPort()
+#ugrid.Update()
+
 ###########Create the probe line#############
-#Get bounds of the domain
-Aux = ugrid.GetBounds()
-
-if (AutomaticLine > 0):
-    x0 = float(Aux[0])
-    x1 = float(Aux[1])
-    y0 = float(Aux[2])
-    y1 = float(Aux[3])
-    z0 = float(Aux[4])
-    z1 = float(Aux[5])  
-
-if (AutomaticLine == 1):#Straight line across the middle
-    x0 = float(Aux[0])
-    x1 = float(Aux[1])
-    y0 = max(float(Aux[2])/2., float(Aux[3])/2.)
-    y1 = y0
-    z0 = max(float(Aux[4])/2., float(Aux[5])/2.)
-    z1 = z0
-
-#Nothing to do for diagonal, it is already prepared
         
 detector = []
 
@@ -161,8 +142,11 @@ detectors.SetPoints(points)
 
 
 probe = vtk.vtkProbeFilter()
-probe.SetSource(ugrid)
-probe.SetInput(detectors)
+probe.SetInputConnection(ugrid)
+
+
+probe.SetSourceConnection(ugrid)
+probe.SetInputData(detectors)
 probe.Update()
 
 data = probe.GetOutput()
@@ -231,14 +215,14 @@ for i in range(len(Experimental_X)):
         L2_sum_shock_front = L2_sum_shock_front + (x - Experimental_Y[i])**2      
         
         
-L1_norm= L1_sum / len(Experimental_X)
-L2_norm = L2_sum**0.5 / len(Experimental_X)    
+L1_norm= L1_sum / (len(Experimental_X) * max(Analytical_Y))
+L2_norm = L2_sum**0.5 / (len(Experimental_X) * max(Analytical_Y))
 
 Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 if (Passed): 
     print 'CWC works OK'
 else:

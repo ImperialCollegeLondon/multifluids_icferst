@@ -3,6 +3,9 @@
   <simulation_name>
     <string_value lines="1">CM_2D_2P3C_LVI_P1DGP1DG_10layers</string_value>
   </simulation_name>
+  <simulation_type>
+    <intertia_dominated/>
+  </simulation_type>
   <geometry>
     <dimension>
       <integer_value rank="0">2</integer_value>
@@ -25,7 +28,6 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
-          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -171,9 +173,13 @@
           <continuous_galerkin/>
         </spatial_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-8</real_value>
@@ -294,10 +300,13 @@
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">500</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -350,6 +359,15 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0">1</integer_value>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0">2</integer_value>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -436,10 +454,13 @@
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">500</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -628,10 +649,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">500</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -684,6 +708,15 @@ for i in range( field.node_count ):
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0">2</integer_value>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0">2</integer_value>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -770,10 +803,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">500</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1120,10 +1156,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5000</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1194,10 +1233,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1288,10 +1330,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1362,10 +1407,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1456,10 +1504,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1530,10 +1581,13 @@ for i in range( field.node_count ):
             <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
-            <real_value rank="0">1e-7</real_value>
+            <real_value rank="0">1e-8</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1e-10</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">2500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>

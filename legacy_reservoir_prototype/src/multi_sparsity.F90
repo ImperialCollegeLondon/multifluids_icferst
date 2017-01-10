@@ -1230,7 +1230,8 @@ contains
         mxnele = mx_nface_p1 * totele
 
         mx_nct = totele * u_nloc * cv_nloc * ndim * nphase
-        mx_ncolm = mxnele * cv_nloc * cv_nloc * nphase * nphase
+        mx_ncolm = abs(mxnele * cv_nloc * cv_nloc * nphase * nphase)!the abs() is to solve an odd bug apearing in gfortran
+
         if( cv_nonods == cv_nloc * totele ) then ! Discontinuous in Pressure
             !   mx_nct = mx_nct * mx_nface_p1 * 10
             !   mx_ncolm = mx_ncolm * 5
@@ -1281,12 +1282,14 @@ contains
         logical :: presym
         type(csr_sparsity), pointer :: sparsity
         type(mesh_type), pointer :: element_mesh, ph_mesh
+        integer, dimension( : ), allocatable :: ph_mid
         ewrite(3,*)'In Get_Sparsity_Patterns'
         !Check if sparsities have been associated (allocated), if not, allocate
-        if (.not.associated(Mspars%ACV%fin)) then
-            call allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, &
-                    mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
-        end if
+
+        call deallocate_multi_sparsities(Mspars)
+        call allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, &
+             mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
+
         !-
         !- Computing sparsity for element connectivity
         !-
@@ -1451,17 +1454,17 @@ contains
             Mdims%ph_nonods = node_count( ph_mesh )
             Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
             ph_ndgln => get_ndglno( ph_mesh )
-            allocate( Mspars%ph%mid( Mdims%ph_nonods ) )
-            Mspars%ph%fin = 0 ; Mspars%ph%col = 0 ; Mspars%ph%mid = 0
+            allocate( ph_mid( Mdims%ph_nonods ) )
+            Mspars%ph%fin = 0 ; Mspars%ph%col = 0 ; ph_mid = 0
             if ( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh   ! BUG HERE!!!
                 call pousinmc2( Mdims%totele, Mdims%ph_nloc, Mdims%ph_nonods, Mdims%ph_nloc, &
-                    mx_ncolph, ph_ndgln, ph_ndgln, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid )
+                    mx_ncolph, ph_ndgln, ph_ndgln, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col, ph_mid )
             else ! a DG pressure field mesh
                 call CT_DG_Sparsity( mx_nface_p1, Mdims%totele, Mdims%ph_nloc, Mdims%ph_nloc, &
                     Mdims%ph_nonods, ph_ndgln, ph_ndgln, Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
                     mx_ncolph, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col )
             end if
-            deallocate( Mspars%ph%mid )
+            deallocate( ph_mid )            
             call resize( Mspars%ph%col, Mspars%ph%ncol )
         end if
         !-

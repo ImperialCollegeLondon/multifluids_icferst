@@ -28,7 +28,6 @@ os.system(binpath + ' ' + path + '/*mpml')
 Tolerance_L1_NORM = 0.011
 Tolerance_L2_NORM = 0.0014
 
-AutomaticLine = 1
 
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
@@ -45,7 +44,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = False
+#showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
@@ -93,29 +92,11 @@ reader = vtk.vtkXMLUnstructuredGridReader()
 reader.SetFileName(filename+'_'+str(vtu_number)+'.vtu')
 
 #reader.Update()
-ugrid = reader.GetOutput()
-ugrid.Update()
+
+ugrid = reader.GetOutputPort()
+#ugrid.Update()
+
 ###########Create the probe line#############
-#Get bounds of the domain
-Aux = ugrid.GetBounds()
-
-if (AutomaticLine > 0):
-    x0 = float(Aux[0])
-    x1 = float(Aux[1])
-    y0 = float(Aux[2])
-    y1 = float(Aux[3])
-    z0 = float(Aux[4])
-    z1 = float(Aux[5])  
-
-if (AutomaticLine == 1):#Straight line across the middle
-    x0 = float(Aux[0])
-    x1 = float(Aux[1])
-    y0 = max(float(Aux[2])/2., float(Aux[3])/2.)
-    y1 = y0
-    z0 = max(float(Aux[4])/2., float(Aux[5])/2.)
-    z1 = z0
-
-#Nothing to do for diagonal, it is already prepared
         
 detector = []
 
@@ -150,8 +131,11 @@ detectors.SetPoints(points)
 
 
 probe = vtk.vtkProbeFilter()
-probe.SetSource(ugrid)
-probe.SetInput(detectors)
+probe.SetInputConnection(ugrid)
+
+
+probe.SetSourceConnection(ugrid)
+probe.SetInputData(detectors)
 probe.Update()
 
 data = probe.GetOutput()

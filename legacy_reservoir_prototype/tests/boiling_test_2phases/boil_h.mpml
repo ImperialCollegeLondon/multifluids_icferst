@@ -3,6 +3,10 @@
   <simulation_name>
     <string_value lines="1">boil_h</string_value>
   </simulation_name>
+  <simulation_type>
+    <intertia_dominated/>
+    <boiling/>
+  </simulation_type>
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
@@ -514,6 +518,15 @@ for i in range( t.node_count ):
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0">3</integer_value>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0">2</integer_value>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <value name="WholeMesh">
               <anisotropic_asymmetric>
@@ -1003,6 +1016,15 @@ for i in range( t.node_count ):
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0">3</integer_value>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0">3</integer_value>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <value name="WholeMesh">
               <anisotropic_asymmetric>
@@ -1487,6 +1509,15 @@ for i in range( t.node_count ):
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0">3</integer_value>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0">3</integer_value>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <value name="WholeMesh">
               <anisotropic_asymmetric>
@@ -1704,5 +1735,4 @@ for i in range( t.node_count ):
       </diagnostic>
     </scalar_field>
   </material_phase>
-  <boiling/>
 </multiphase_options>

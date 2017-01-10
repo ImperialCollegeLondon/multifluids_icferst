@@ -28,7 +28,6 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
-          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -73,6 +72,7 @@
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="PressureMesh"/>
+    <output_darcy_vel/>
     <stat/>
   </io>
   <timestepping>
@@ -147,9 +147,13 @@
           <continuous_galerkin/>
         </spatial_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -263,9 +267,13 @@
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -328,11 +336,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">1</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">2</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>
@@ -739,9 +747,13 @@
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -804,11 +816,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">2</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">2</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>
@@ -889,9 +901,13 @@
           </theta>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>

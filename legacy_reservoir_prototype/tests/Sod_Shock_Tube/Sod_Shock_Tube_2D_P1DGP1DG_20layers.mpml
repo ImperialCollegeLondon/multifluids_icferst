@@ -154,7 +154,9 @@
             <comment>1/(\gamma-1), where \gamma=1.4</comment>
           </coefficient_A>
           <coefficient_B>
-            <real_value rank="0">0</real_value>
+            <constant>
+              <real_value rank="0">0.0</real_value>
+            </constant>
           </coefficient_B>
           <include_internal_energy/>
         </linear_in_pressure>

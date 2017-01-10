@@ -28,7 +28,6 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
-          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -252,9 +251,11 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
           <max_iterations>
             <integer_value rank="0">500</integer_value>
@@ -291,11 +292,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">1</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">2</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>
@@ -526,7 +527,9 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-7</real_value>
           </relative_error>
@@ -565,11 +568,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">2</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">2</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>
@@ -656,9 +659,11 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
           <max_iterations>
             <integer_value rank="0">500</integer_value>

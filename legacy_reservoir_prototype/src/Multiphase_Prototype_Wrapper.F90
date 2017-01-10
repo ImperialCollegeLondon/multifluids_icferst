@@ -288,10 +288,8 @@ contains
                      trim(option_path))
                 !Make sure the field is not shown
                 if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
-                    !Don't know how to set exclude_from_vtu to true from the spud options, hence,
-                    !since Porous_media HAS to be true I copy it to obtain the same effect!sprint_to_do
-                    call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
-                     trim(option_path)//"/prognostic/output/exclude_from_vtu")
+                    !Copy an option that lways exists to ensure we exclude the new field from vtu
+                    call copy_option("/simulation_type",trim(option_path)//"/prognostic/output/exclude_from_vtu")
                 end if
                 !Make sure that this field is not the objective of adaptivity
                 if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
@@ -317,7 +315,7 @@ contains
             if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
                 !Don't know how to set exclude_from_vtu to true from the spud options, hence,
                 !since Porous_media HAS to be true I copy it to obtain the same effect
-                call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
+                call copy_option("/simulation_type/porous_media",&
                  trim(option_path)//"/prognostic/output/exclude_from_vtu")
             end if
             !Make sure that this field is not the objective of adaptivity
@@ -332,9 +330,25 @@ contains
             !Don't know how to set exclude_from_vtu to true from the spud options, hence,
             !since Porous_media HAS to be true I copy it to obtain the same effect
             if (.not.have_option("/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")) then
-                call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
+                call copy_option("/simulation_type/porous_media",&
                  "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
             end if
+        end if
+
+        if (is_porous_media .and. (have_option('/io/output_darcy_vel'))) then
+            !Create a copy of the velocity fields to store the DarcyVelocity in it
+            do i = 1, nphase
+                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
+                call copy_option(trim(option_path)//"Velocity", trim(option_path)//"DarcyVelocity")
+                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")) &
+                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")
+
+                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption"))&
+                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption")
+
+                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options"))&
+                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options")
+            end do
         end if
 
         !Call fluidity to populate state

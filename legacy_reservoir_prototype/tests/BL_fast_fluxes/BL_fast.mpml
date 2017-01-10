@@ -28,7 +28,6 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
-          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -322,11 +321,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">1</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">2</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>
@@ -624,11 +623,11 @@
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
           <nphase>
-            <integer_value rank="0"/>
+            <integer_value rank="0">2</integer_value>
           </nphase>
           <type>
             <dimensions>
-              <integer_value rank="0"/>
+              <integer_value rank="0">2</integer_value>
             </dimensions>
             <Anisotropic_coupled/>
           </type>

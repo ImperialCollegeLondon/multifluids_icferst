@@ -166,8 +166,8 @@ interpolated for VTK output.</a:documentation>
           </element>
         </optional>
         <optional>
-          <element name="not_output_darcy_vel">
-            <a:documentation>Output the absorption velocity (internally used) instead of the Darcy velocity.</a:documentation>
+          <element name="output_darcy_vel">
+            <a:documentation>Output the Darcy velocity</a:documentation>
             <empty/>
           </element>
         </optional>
@@ -572,7 +572,7 @@ The Backtracking value introduced is used as reference, so it may have a big imp
 Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
 Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
 
-Backtracking_parameter = -10 automatically selection based on the Courant number and the physics of the problem
+Backtracking_parameter = -10 automatically selection based on the shock-front Courant number and the physics of the problem
 
 The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
                     <ref name="real"/>
@@ -2406,42 +2406,79 @@ The capillary pressure term is introduced only in the saturation equation, actin
                       <ref name="comment"/>
                     </element>
                   </optional>
-                  <element name="type_Brooks_Corey">
-                    <a:documentation>Brooks-Corey equation
+                  <optional>
+                    <element name="type_Brooks_Corey">
+                      <a:documentation>Brooks-Corey equation
 
 Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a
 You should specify this ONLY for the wetting phase</a:documentation>
-                    <element name="scalar_field">
-                      <a:documentation>Entry pressure of the formula</a:documentation>
-                      <attribute name="name">
-                        <value>C</value>
-                      </attribute>
-                      <choice>
-                        <element name="prescribed">
-                          <ref name="velocity_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                        <element name="aliased">
-                          <ref name="generic_aliased_field"/>
-                        </element>
-                      </choice>
+                      <element name="scalar_field">
+                        <a:documentation>Entry pressure of the formula</a:documentation>
+                        <attribute name="name">
+                          <value>C</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="velocity_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
+                      <element name="scalar_field">
+                        <a:documentation>exponent -a</a:documentation>
+                        <attribute name="name">
+                          <value>a</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="velocity_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
                     </element>
-                    <element name="scalar_field">
-                      <a:documentation>exponent -a</a:documentation>
-                      <attribute name="name">
-                        <value>a</value>
-                      </attribute>
-                      <choice>
-                        <element name="prescribed">
-                          <ref name="velocity_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                        <element name="aliased">
-                          <ref name="generic_aliased_field"/>
-                        </element>
-                      </choice>
+                  </optional>
+                  <optional>
+                    <element name="type_TOTALCapillary">
+                      <a:documentation>Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)</a:documentation>
+                      <element name="scalar_field">
+                        <a:documentation>Overall coefficient scaling the capillary pressure</a:documentation>
+                        <attribute name="name">
+                          <value>C</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="velocity_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
+                      <element name="scalar_field">
+                        <a:documentation>Exponent in the capillary pressure formula</a:documentation>
+                        <attribute name="name">
+                          <value>a</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="velocity_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
                     </element>
-                  </element>
+                  </optional>
                 </element>
               </optional>
               <optional>
@@ -2599,6 +2636,11 @@ This will over-write the field specified in Sigma1.</a:documentation>
               </choice>
             </element>
           </optional>
+          <optional>
+            <element name="include_pore_pressure">
+              <empty/>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>
@@ -2632,18 +2674,6 @@ Recommended value: [0.5,1.0]. Default =1.</a:documentation>
               <empty/>
             </element>
           </optional>
-        </element>
-      </optional>
-      <optional>
-        <element name="boiling">
-          <a:documentation>boiling options</a:documentation>
-          <empty/>
-        </element>
-      </optional>
-      <optional>
-        <element name="magma">
-          <a:documentation>is this a magma run?</a:documentation>
-          <empty/>
         </element>
       </optional>
       <optional>
