@@ -3001,8 +3001,6 @@ contains
 
         end function eval_table
 
-
-
         subroutine populate_with_Black_Oil(PVT_table, density_reference)
             implicit none!Nothing in SI but the pressure
             real, dimension(:,:), allocatable, intent(inout) :: PVT_table

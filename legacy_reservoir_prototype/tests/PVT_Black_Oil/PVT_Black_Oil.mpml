@@ -4,7 +4,7 @@
     <string_value lines="1">Black_oil</string_value>
   </simulation_name>
   <simulation_type>
-    <intertia_dominated/>
+    <porous_media/>
   </simulation_type>
   <geometry>
     <dimension>
@@ -92,6 +92,9 @@
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>
         </Backtracking_factor>
+        <Test_mass_consv>
+          <real_value rank="0">1e9</real_value>
+        </Test_mass_consv>
         <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
