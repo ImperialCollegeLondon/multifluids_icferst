@@ -103,7 +103,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 !    call populate_state(state)
 
     !If desired by the user create a bin msh file
-    if (have_option("/numerical_methods/convert_msh2binary")) call create_bin_msh_file(state)
+    if (have_option("/geometry/create_binary_msh")) call create_bin_msh_file(state)
 
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
@@ -384,15 +384,11 @@ contains
         type(vector_field), pointer :: output_positions
         character(len= OPTION_PATH_LEN ) :: msh_file
 
-
-
         ewrite(0, *) "Converting the input msh file into binary format..."
-
         call get_option('/geometry/mesh::CoordinateMesh/from_file/file_name',msh_file)
-
         output_positions => extract_vector_field(state(1), "Coordinate")
         call write_gmsh_file(trim(msh_file), output_positions)
-        ewrite(0, *) "Conversion done."
+        ewrite(0, *) "...Conversion done."
 
     end subroutine create_bin_msh_file
 

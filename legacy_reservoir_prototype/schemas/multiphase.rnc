@@ -2026,11 +2026,7 @@ start =
             ## Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method
             element create_P_mat_fast {
                empty
-            }?,
-            ## Use Fluidity to overwrite the input .msh file into a binary .msh file. Useful when having to run in parallel and gmsh fails to convert your ascii file
-            element convert_msh2binary {
-               empty
-            }? 
+            }?
          }?
       }
    )
@@ -2261,7 +2257,13 @@ geometry =
                   ( "family_cools" | "family_grundmann_moeller" | "family_wandzura" ) 
                }
             }?
-         }
+         },
+        ## Use Fluidity to overwrite the input .msh file into a binary .msh file. 
+        ##
+        ## Useful to convert your ASCII msh files into binary to be able to decompose the mesh.
+        element create_binary_msh {
+           empty
+        }? 
       }
    )
 

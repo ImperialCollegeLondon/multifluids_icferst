@@ -2736,12 +2736,6 @@ To disable, set it to negative values. This SHOULD be disabled if there are no p
               <empty/>
             </element>
           </optional>
-          <optional>
-            <element name="convert_msh2binary">
-              <a:documentation>Use Fluidity to overwrite the input .msh file into a binary .msh file. Useful when having to run in parallel and gmsh fails to convert your ascii file</a:documentation>
-              <empty/>
-            </element>
-          </optional>
         </element>
       </optional>
     </element>
@@ -3046,6 +3040,14 @@ not the number of gauss points</a:documentation>
           </element>
         </optional>
       </element>
+      <optional>
+        <element name="create_binary_msh">
+          <a:documentation>Use Fluidity to overwrite the input .msh file into a binary .msh file. 
+
+Useful to convert your ASCII msh files into binary to be able to decompose the mesh.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
     </element>
   </define>
   <!-- Default child of diagnostic scalar field -->
