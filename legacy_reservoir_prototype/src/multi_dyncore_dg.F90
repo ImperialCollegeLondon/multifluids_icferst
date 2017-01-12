@@ -1343,7 +1343,22 @@ END IF
             call zero(deltaP)
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
-            P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
+
+            if (is_flooding) then
+                !This helps a bit, but for the time being not too much...
+                !Keeping the pressure under control helps but even with this the velocity field can vary a lot...
+                !Maybe the idea is to control the velocity and the pressure using the height as reference
+                !as controlling the pressure is hard to understand
+                !For example the height has to be positive and also when the height does not vary we can consider that the
+                !non-linear solver has converged
+                !The simulation fails when the velocity goes out of control, is that what we have to control and see why that happens
+                !even with really tiny variations of pressure (backtrack of 1d-6, that eventually happens)
+
+                deltap%val = max(deltap%val,0.)
+                P_all % val(1,:,:) = P_all % val(1,:,:) + 0.1*deltap%val!take 10% only
+            else
+                P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
+            end if
 
 
             call halo_update(p_all)
