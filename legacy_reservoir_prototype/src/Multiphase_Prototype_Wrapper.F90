@@ -384,6 +384,11 @@ contains
         type(vector_field), pointer :: output_positions
         character(len= OPTION_PATH_LEN ) :: msh_file
 
+        if (IsParallel()) then
+            ewrite(1, *) "In parallel we do not perform the conversion of the msh file."
+            return
+        end if
+
         ewrite(0, *) "Converting the input msh file into binary format..."
         call get_option('/geometry/mesh::CoordinateMesh/from_file/file_name',msh_file)
         output_positions => extract_vector_field(state(1), "Coordinate")
