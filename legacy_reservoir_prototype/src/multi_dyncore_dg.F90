@@ -1344,6 +1344,8 @@ END IF
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
+
+
             call halo_update(p_all)
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
