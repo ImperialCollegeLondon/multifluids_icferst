@@ -585,9 +585,9 @@ if (is_flooding) return!<== Temporary fix for flooding
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_factor, IDs2CV_ndgln,&
+                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration,&
-                             useful_sats,res, res/resold, first_res, Mdims%npres)
+                             useful_sats,res, res/resold, first_res, Mdims%npres, IDs2CV_ndgln = IDs2CV_ndgln)
                          !Store the accumulated updated done
                          updating = updating + new_backtrack_par
                          !If the backtrack_par factor is not adaptive, then, just one iteration
@@ -777,7 +777,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IDs_ndgln, calculate_mass_delta )
+        IDs_ndgln, calculate_mass_delta, non_its, deltaP_old )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -793,7 +793,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
-        INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY, non_its
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
@@ -802,6 +802,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+        real, pointer, dimension(:,:), intent(inout) :: deltaP_old
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
@@ -1344,22 +1345,9 @@ END IF
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
 
-            if (is_flooding) then
-                !This helps a bit, but for the time being not too much...
-                !Keeping the pressure under control helps but even with this the velocity field can vary a lot...
-                !Maybe the idea is to control the velocity and the pressure using the height as reference
-                !as controlling the pressure is hard to understand
-                !For example the height has to be positive and also when the height does not vary we can consider that the
-                !non-linear solver has converged
-                !The simulation fails when the velocity goes out of control, is that what we have to control and see why that happens
-                !even with really tiny variations of pressure (backtrack of 1d-6, that eventually happens)
+            if (is_flooding) call Backtrack_pressure(P_all, deltap, non_its, deltaP_old)
 
-                deltap%val = max(deltap%val,0.)
-                P_all % val(1,:,:) = P_all % val(1,:,:) + 0.1*deltap%val!take 10% only
-            else
-                P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
-            end if
-
+            P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
             call halo_update(p_all)
             call deallocate(rhs_p)
@@ -1446,6 +1434,73 @@ END IF
         end if
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
+
+
+    contains
+
+        subroutine Backtrack_pressure(p_all, deltap, non_its, deltaP_old)
+            !Method to stabilize the system by backtracking the pressure correction for flooding
+            implicit none
+            type( vector_field ), intent(inout) :: deltap
+            type( tensor_field ), pointer, intent(in) :: p_all
+            integer, intent(in) :: non_its
+            real, pointer, dimension(:,:), intent(inout) :: deltaP_old
+            !Local variables
+            real, save :: backtrack_par_factor = -1., anders_exp = 0.4, Previous_convergence = -1, convold = 1.0
+            integer, save :: useful_pres
+            !Variables to stabilize the non-linear iteration solver
+            real :: new_backtrack_par, aux, conv
+            logical :: satisfactory_convergence
+            !Make sure that this is never used for Porous media, as it will clash with VolumeFraction_Assemble_Solve
+            if (is_porous_media) return
+
+            if (backtrack_par_factor < 0) then
+                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
+                 backtrack_par_factor, default = 1.0)
+                !Retrieve the shape of the function to use to weight the importance of previous saturations
+                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
+                    anders_exp, default = 0.4 )
+            end if
+            !Impose physical constrains
+            !Have to work more on this... (deltap can be negative, what matters is that the consequent height has to be positive...)
+            deltap%val = max(deltap%val,0.)
+
+            conv = backtrack_or_convergence
+            !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
+            call FPI_backtracking(packed_state, p_all%val(1,:,:), p_all%val(1,:,:), backtrack_par_factor,&
+                Previous_convergence, satisfactory_convergence, new_backtrack_par, min(non_its,2), non_its,&!min(non_its,2) this is because here we do not have an SFPI
+                useful_pres,conv, conv/convold, 0.0, Mdims%npres)!0.0 is to disable the internal checks for the SFPI
+            !Pass the backtracking parameter
+            backtrack_or_convergence = new_backtrack_par
+            !Store the convergence
+            convold = conv
+            !The new pressure correction is based on the Anderson acceleration if possible
+            if (non_its == 1 .or. backtrack_par_factor > 0 .or. non_its > 20) then
+                deltap%val = new_backtrack_par * deltap%val
+            else!Only for automatic backtracking
+                deltap%val = new_backtrack_par * deltap%val + (1. - new_backtrack_par)**(1.+anders_exp)*new_backtrack_par*(deltaP_old)
+            end if
+            if (backtrack_par_factor <0) then!Only for automatic backtracking
+                !Allocate or reallocate if necessary
+                if (associated(deltaP_old)) then
+                    if (size(deltap%val,1) /= size(deltaP_old,1) .or. size(deltap%val,2)/= size(deltaP_old,2)) then
+                        deallocate(deltaP_old)
+                        nullify(deltaP_old)
+                        allocate(deltaP_old(size(deltap%val,1), size(deltap%val,2)))
+                    end if
+                else
+                    allocate(deltaP_old(size(deltap%val,1), size(deltap%val,2)))
+                end if
+                !store this deltaP for the next FPI
+                deltaP_old = deltap%val
+            end if
+
+            !Need to add that the last FPI is done without acceleration and conv better based on the residual
+            !Better physical constraints and also add another convergence criterion and check mass conservation
+
+
+        end subroutine Backtrack_pressure
+
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 

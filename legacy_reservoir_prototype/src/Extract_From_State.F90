@@ -1995,7 +1995,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:,:), pointer :: pressure
     real, dimension(:,:), pointer :: phasevolumefraction
     real, dimension(:,:,:), pointer :: velocity
-
+    character (len = OPTION_PATH_LEN) :: output_message
     !Variables for automatic non-linear iterations
     real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch,&
         Inifinite_norm_tol, calculate_mass_tol
@@ -2019,8 +2019,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
     !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
+    if (is_porous_media)  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
         variable_selection, default = 3)
+    if (is_flooding)  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
+        variable_selection, default = 1)
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
         increaseFactor, default = 1.05 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
@@ -2111,14 +2113,19 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
                 phasevolumefraction = phasevolumefraction)
 
-            if (its == 1) then
+            if (its == 1 .and. (variable_selection == 3)) then
                 ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
             else
                 select case (variable_selection)
                     case (1)
-                        ts_ref_val = maxval(abs(reference_field(1,1,:)-pressure(1,1,:)))
+                        !Calculate normalized infinite norm of the difference
+                        inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/pressure(1,1,:)))
+                        inf_norm_val = inf_norm_val/backtrack_or_convergence
+                        backtrack_or_convergence = inf_norm_val!Use the infinite norm for the time being
+                        ts_ref_val = 0.0!Only infinite norm for the time being
                     case (2)
-                        ts_ref_val = maxval(abs(reference_field-velocity))
+                        inf_norm_val = maxval(abs(reference_field-velocity))
+                        ts_ref_val = 0.0!Only infinite norm for the time being
                     case default
                         !Calculate infinite norm
                         inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
@@ -2136,14 +2143,21 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (IsParallel()) then
                     call allmax(ts_ref_val)
                     call allmax(max_calculate_mass_delta)
-		    call allmax(inf_norm_val)
+		            call allmax(inf_norm_val)
                 end if
 
+                if (is_porous_media) then
+                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
+!                    output_message = "FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
+                else
+                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+!                    output_message = "L_inf:", inf_norm_val
+                end if
 
                 !TEMPORARY, re-use of global variable backtrack_or_convergence to send
                 !information about convergence to the trust_region_method
 !                backtrack_or_convergence = ts_ref_val
-                ewrite(1,*) "FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
+                ewrite(1,*) trim(output_message)
 
                 !If only non-linear iterations
                 if (.not.nonLinearAdaptTs) then
@@ -2154,10 +2168,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
 
-                    if (ExitNonLinearLoop .and. show_FPI_conv) then
-                        !Tell the user the number of FPI and final convergence to help improving the parameters
-                        print *, "FPI convergence: ", ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
-                    end if
+                    if (is_flooding) ExitNonLinearLoop = (inf_norm_val < Inifinite_norm_tol) .or. its >= NonLinearIteration
+                    !Tell the user the number of FPI and final convergence to help improving the parameters
+                    if (ExitNonLinearLoop .and. show_FPI_conv) print *, trim(output_message)
                     return
                 end if
 
@@ -2418,6 +2431,10 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     type(tensor_field), pointer :: tfield
 
     !Scalar stored
+    if (present(Pressure)) then
+        tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
+        Pressure => tfield%val(:,:,:)
+    end if
     if (present(FEPressure)) then
         tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
         FEPressure => tfield%val(:,:,:)

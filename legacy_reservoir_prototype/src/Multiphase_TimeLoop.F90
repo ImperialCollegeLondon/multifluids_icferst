@@ -179,7 +179,8 @@ contains
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields = -1
         real :: t_adapt_threshold
-
+        !Variables for FPI acceleration for flooding
+        real, pointer, dimension(:,:) :: deltaP_old => null()
 !       Variables used for calculating conservation of mass (entering/leaving and within the domain).
 
 !      calculate_mass_delta to store the change in mass calculated over the whole domain
@@ -612,7 +613,7 @@ call solve_transport()
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta )
+                        IDs_ndgln, calculate_mass_delta, its, deltaP_old )
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
