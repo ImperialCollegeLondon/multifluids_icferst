@@ -231,6 +231,13 @@ module multi_data_types
         type (multi_field) :: Flooding
     end type multi_absorption
 
+    type multi_transport_scalar
+        !Contains all the information for generic scalar fields to solve for
+        character(len = FIELD_NAME_LEN) :: name!To extract from state
+        character(len = option_path_len) :: path!Path from diamond
+        logical :: coupled_field!Is the field coupled between phases?
+        type (multi_field) :: absorption!Absorption of this field
+    end type
 
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&

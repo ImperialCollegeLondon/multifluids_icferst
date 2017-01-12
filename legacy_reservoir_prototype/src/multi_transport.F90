@@ -47,6 +47,8 @@ contains
     subroutine solve_transport_scalars()
        implicit none
 
+        type(multi_transport_scalar) :: test
+
         !!$ Solve advection of the scalars.   'Temperature':
 
 !!$ Fields...
