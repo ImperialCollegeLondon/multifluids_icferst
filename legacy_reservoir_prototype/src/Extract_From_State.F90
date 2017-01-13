@@ -2148,15 +2148,13 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
                 if (is_porous_media) then
                     write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
-!                    output_message = "FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
                 else
                     write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
-!                    output_message = "L_inf:", inf_norm_val
                 end if
 
                 !TEMPORARY, re-use of global variable backtrack_or_convergence to send
                 !information about convergence to the trust_region_method
-!                backtrack_or_convergence = ts_ref_val
+                if (is_flooding) backtrack_or_convergence = ts_ref_val
                 ewrite(1,*) trim(output_message)
 
                 !If only non-linear iterations
@@ -2230,7 +2228,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                             ExitNonLinearLoop = .true.
                             return
                         end if
-                    else if (its >= NonLinearIteration) then
+                    else if (its >= NonLinearIteration - 1) then
                         !If it has not converged when reaching the maximum number of non-linear iterations,
                         !reduce ts and repeat
                         !Decrease time step for next time step

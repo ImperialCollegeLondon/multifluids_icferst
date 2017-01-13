@@ -1201,7 +1201,6 @@ end if
         ELSE ! solve using a projection method
             call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
             ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
-!            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%C, NCOLC, FINDC, COLC)
             DO IPRES = 1, Mdims%npres
                CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), P_ALL%val( 1, IPRES, : ), &
                     Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
@@ -1302,10 +1301,6 @@ END IF
                         rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                              -MASS_SUF( COUNT ) * ( P_ALL%VAL( 1, IPRES, CV_JNOD ) - POLD_ALL%VAL( 1, IPRES, CV_JNOD ) )
                      end if
-!                     !For the pressure bcs of CV pressure formulation this is part of the projection method to make them vel bcs
-!                     if ( Mmat%CV_pressure) then!sprint_to_do: pressure bcs as vel bcs, remove
-!                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) - MASS_SUF( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
-!                      end if
                      IF ( Mdims%npres > 1 ) THEN
                         DO JPRES = 1, Mdims%npres
                            IF(PIPES_1D) THEN
@@ -1461,10 +1456,35 @@ END IF
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
                     anders_exp, default = 0.4 )
             end if
+
+!            if (backtrack_par_factor < 1.01) then
+!                !Backup of the saturation field, to adjust the solution
+!                sat_bak = satura
+!                !If using ADAPTIVE FPI with backtracking
+!                if (backtrack_par_factor < 0) then
+!                    if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+!                        call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+!                    end if
+!
+!                    !Calculate the actual residual using a previous backtrack_par
+!                    call mult(residual, Mmat%petsc_ACV, vtracer)
+!                    !Calculate residual
+!                    residual%val = Mmat%CV_RHS%val - residual%val
+!                    resold = res; res = 0
+!                    do iphase = 1, Mdims%nphase
+!                        aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
+!                        if (aux > res) res = aux
+!                    end do
+!                    !We use the highest residual across the domain
+!                    if (IsParallel()) call allmax(res)
+!                    if (its==1) first_res = res!Variable to check total convergence of the SFPI method
+!                end if
+!            end if
+
+
             !Impose physical constrains
             !Have to work more on this... (deltap can be negative, what matters is that the consequent height has to be positive...)
             deltap%val = max(deltap%val,0.)
-
             conv = backtrack_or_convergence
             !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
             call FPI_backtracking(packed_state, p_all%val(1,:,:), p_all%val(1,:,:), backtrack_par_factor,&
