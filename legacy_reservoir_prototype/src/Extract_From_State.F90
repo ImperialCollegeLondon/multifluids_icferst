@@ -2099,101 +2099,99 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
                 phasevolumefraction = phasevolumefraction)
 
-            if (its == 1 .and. (variable_selection == 3)) then
-                ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
+            select case (variable_selection)
+                case (1)
+                    !Calculate normalized infinite norm of the difference
+                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/pressure(1,1,:)))
+                    inf_norm_val = inf_norm_val/backtrack_or_convergence
+                    backtrack_or_convergence = inf_norm_val!Use the infinite norm for the time being
+                    ts_ref_val = 0.0!Only infinite norm for the time being
+                case (2)
+                    inf_norm_val = maxval(abs(reference_field-velocity))
+                    ts_ref_val = 0.0!Only infinite norm for the time being
+                case default
+                    !Calculate infinite norm
+                    inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
+
+                    !Calculate value of the functional
+                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
+                    backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
+            end select
+            ! find the maximum mass error to compare with the tolerance below
+            !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
+            ! In this case we only calculate the total mass - we could calculate the mass of each phase
+            max_calculate_mass_delta = calculate_mass_delta(1,2)
+            !If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) then
+                call allmax(ts_ref_val)
+                call allmax(max_calculate_mass_delta)
+                call allmax(inf_norm_val)
+            end if
+
+            if (is_porous_media) then
+                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
             else
-                select case (variable_selection)
-                    case (1)
-                        !Calculate normalized infinite norm of the difference
-                        inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/pressure(1,1,:)))
-                        inf_norm_val = inf_norm_val/backtrack_or_convergence
-                        backtrack_or_convergence = inf_norm_val!Use the infinite norm for the time being
-                        ts_ref_val = 0.0!Only infinite norm for the time being
-                    case (2)
-                        inf_norm_val = maxval(abs(reference_field-velocity))
-                        ts_ref_val = 0.0!Only infinite norm for the time being
-                    case default
-                        !Calculate infinite norm
-                        inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
+                write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+            end if
 
-                        !Calculate value of the functional
-                        ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
-                        backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
-                end select
+            !TEMPORARY, re-use of global variable backtrack_or_convergence to send
+            !information about convergence to the trust_region_method
+            if (is_flooding) backtrack_or_convergence = ts_ref_val
+            ewrite(1,*) trim(output_message)
 
-                ! find the maximum mass error to compare with the tolerance below
-                !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
-                ! In this case we only calculate the total mass - we could calculate the mass of each phase
-                max_calculate_mass_delta = calculate_mass_delta(1,2)
-                !If it is parallel then we want to be consistent between cpus
-                if (IsParallel()) then
-                    call allmax(ts_ref_val)
-                    call allmax(max_calculate_mass_delta)
-                    call allmax(inf_norm_val)
+            !Automatic non-linear iteration checking
+            !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
+            if (is_porous_media) then
+                if (first_time_step) ts_ref_val = tolerance_between_non_linear/2.
+                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
+                    .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+            else
+                ExitNonLinearLoop = (inf_norm_val < Inifinite_norm_tol) .or. its >= NonLinearIteration
+            end if
+
+            !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) call alland(ExitNonLinearLoop)
+            !Tell the user the number of FPI and final convergence to help improving the parameters
+            if (ExitNonLinearLoop) then
+                ewrite(show_FPI_conv,*) trim(output_message)
+            end if
+            !If time adapted based on the non-linear solver then
+            if (nonLinearAdaptTs) then
+                !If we have a dumping parameter we only reduce the time-step if we reach
+                !the maximum number of non-linear iterations
+                !Adaptive Ts for Backtracking only based on the number of FPI
+                if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
+                    !Increase time step
+                    call get_option( '/timestepping/timestep', dt )
+                    dt = min(dt * increaseFactor, max_ts)
+                    call set_option( '/timestepping/timestep', dt )
+                    ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                    ExitNonLinearLoop = .true.
+                    return
                 end if
-
-                if (is_porous_media) then
-                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
-                else
-                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
-                end if
-
-                !TEMPORARY, re-use of global variable backtrack_or_convergence to send
-                !information about convergence to the trust_region_method
-                if (is_flooding) backtrack_or_convergence = ts_ref_val
-                ewrite(1,*) trim(output_message)
-
-                !Automatic non-linear iteration checking
-                !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
-                if (is_porous_media) then
-                    if (first_time_step) ts_ref_val = tolerance_between_non_linear/2.
-                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
-                        .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-                else
-                    ExitNonLinearLoop = (inf_norm_val < Inifinite_norm_tol) .or. its >= NonLinearIteration
-                end if
-                !Tell the user the number of FPI and final convergence to help improving the parameters
-                if (ExitNonLinearLoop) then
-                    ewrite(show_FPI_conv,*) trim(output_message)
-                end if
-                !If only non-linear iterations
-                if (nonLinearAdaptTs) then
-                    !If we have a dumping parameter we only reduce the time-step if we reach
-                    !the maximum number of non-linear iterations
-                    !Adaptive Ts for Backtracking only based on the number of FPI
-                    if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
-                        !Increase time step
-                        call get_option( '/timestepping/timestep', dt )
-                        dt = min(dt * increaseFactor, max_ts)
-                        call set_option( '/timestepping/timestep', dt )
-                        ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                if (its >= NonLinearIteration) then
+                    !If it has not converged when reaching the maximum number of non-linear iterations,
+                    !reduce ts and repeat
+                    !Decrease time step for next time step
+                    if ( dt / decreaseFactor < min_ts) then
+                        !Do not decrease
+                        Repeat_time_step = .false.
                         ExitNonLinearLoop = .true.
+                        deallocate(reference_field)
+                        !Tell the user the number of FPI and final convergence to help improving the parameters
+                        ewrite(show_FPI_conv,*)  "Minimum time-step reached, advancing time."
                         return
                     end if
-                    if (its >= NonLinearIteration) then
-                        !If it has not converged when reaching the maximum number of non-linear iterations,
-                        !reduce ts and repeat
-                        !Decrease time step for next time step
-                        if ( dt / decreaseFactor < min_ts) then
-                            !Do not decrease
-                            Repeat_time_step = .false.
-                            ExitNonLinearLoop = .true.
-                            deallocate(reference_field)
-                            !Tell the user the number of FPI and final convergence to help improving the parameters
-                            ewrite(show_FPI_conv,*)  "Minimum time-step reached, advancing time."
-                            return
-                        end if
-                        !Decrease time step, reset the time and repeat!
-                        call get_option( '/timestepping/timestep', dt )
-                        call get_option( '/timestepping/current_time', acctim )
-                        acctim = acctim - dt
-                        call set_option( '/timestepping/current_time', acctim )
-                        dt = max(dt / decreaseFactor,min_ts)
-                        call set_option( '/timestepping/timestep', dt )
-                        ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
-                        Repeat_time_step = .true.
-                        ExitNonLinearLoop = .true.
-                    end if
+                    !Decrease time step, reset the time and repeat!
+                    call get_option( '/timestepping/timestep', dt )
+                    call get_option( '/timestepping/current_time', acctim )
+                    acctim = acctim - dt
+                    call set_option( '/timestepping/current_time', acctim )
+                    dt = max(dt / decreaseFactor,min_ts)
+                    call set_option( '/timestepping/timestep', dt )
+                    ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
+                    Repeat_time_step = .true.
+                    ExitNonLinearLoop = .true.
                 end if
             end if
     end select
