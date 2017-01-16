@@ -503,20 +503,6 @@ contains
                     exit Loop_Time
                 end if
             end if
-            ExitNonLinearLoop = .false.
-            !Store backup to be able to repeat a timestep
-            if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
-                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
-            porosity_field=>extract_vector_field(packed_state,"Porosity")
-            ! evaluate prescribed fields at time = current_time+dt
-            call set_prescribed_field_values( state, exclude_interpolated = .true., &
-                exclude_nonreprescribed = .true., time = acctim )
-            !! Update all fields from time-step 'N - 1'
-            call copy_packed_new_to_old( packed_state )
-            !Initialize gas molar fraction, this has to occur after copy_packed_new_to_old
-            !since for consistency, (later it is called as well) it uses the old values of pressure,
-            !however, they have to be the most updated at this point
-            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
             !!$ FEMDEM...
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
@@ -526,9 +512,27 @@ contains
                call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
+            !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
+            !Store backup to be able to repeat a timestep
+            if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
+                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
+            !! Update all fields from time-step 'N - 1'
+            call copy_packed_new_to_old( packed_state )
+            ExitNonLinearLoop = .false.
+            porosity_field=>extract_vector_field(packed_state,"Porosity")
+            ! evaluate prescribed fields at time = current_time+dt
+            call set_prescribed_field_values( state, exclude_interpolated = .true., &
+                exclude_nonreprescribed = .true., time = acctim )
+            !Initialize gas molar fraction, this has to occur after copy_packed_new_to_old
+            !since for consistency, (later it is called as well) it uses the old values of pressure,
+            !however, they have to be the most updated at this point
+            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
+            !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
+
+
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow

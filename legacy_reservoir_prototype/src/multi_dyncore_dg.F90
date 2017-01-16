@@ -1446,6 +1446,8 @@ END IF
             !Variables to stabilize the non-linear iteration solver
             real :: new_backtrack_par, aux, conv
             logical :: satisfactory_convergence
+            real, dimension(size(deltap%val,1), size(deltap%val,2)) :: residual
+
             !Make sure that this is never used for Porous media, as it will clash with VolumeFraction_Assemble_Solve
             if (is_porous_media) return
 
@@ -1456,31 +1458,6 @@ END IF
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
                     anders_exp, default = 0.4 )
             end if
-
-!            if (backtrack_par_factor < 1.01) then
-!                !Backup of the saturation field, to adjust the solution
-!                sat_bak = satura
-!                !If using ADAPTIVE FPI with backtracking
-!                if (backtrack_par_factor < 0) then
-!                    if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-!                        call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-!                    end if
-!
-!                    !Calculate the actual residual using a previous backtrack_par
-!                    call mult(residual, Mmat%petsc_ACV, vtracer)
-!                    !Calculate residual
-!                    residual%val = Mmat%CV_RHS%val - residual%val
-!                    resold = res; res = 0
-!                    do iphase = 1, Mdims%nphase
-!                        aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
-!                        if (aux > res) res = aux
-!                    end do
-!                    !We use the highest residual across the domain
-!                    if (IsParallel()) call allmax(res)
-!                    if (its==1) first_res = res!Variable to check total convergence of the SFPI method
-!                end if
-!            end if
-
 
             !Impose physical constrains
             !Have to work more on this... (deltap can be negative, what matters is that the consequent height has to be positive...)
