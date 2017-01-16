@@ -545,7 +545,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
                          if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                           call auto_backtracking(backtrack_par_factor, courant_number(2), first_time_step, nonlinear_iteration)
+                           call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                          end if
 
                          !Calculate the actual residual using a previous backtrack_par
@@ -686,18 +686,21 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
 
-         subroutine auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+         subroutine auto_backtracking(backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration)
             !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
             implicit none
             real, intent(inout) :: backtrack_par_factor
-            real, intent(in) :: courant_number
+            real, dimension(:), intent(in) :: courant_number_in
             logical, intent(in) :: first_time_step
             integer, intent(in) :: nonlinear_iteration
             !Local variables
-            real :: physics_adjustment
+            real :: physics_adjustment, courant_number
             logical, save :: Readed_options = .false.
             logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
 
+            !Combination of the overall and the shock-front Courant number
+            !We give more value to the normal courant number because its calculation is more reliable
+            courant_number = 0.7 * courant_number_in(1) + 0.3 * courant_number_in(2)
 
             if (.not.readed_options) then
                 !We read the options just once, and then they are stored as logicals
@@ -1917,7 +1920,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type (vector_field), pointer :: position
         integer, dimension(:), pointer :: neighbours
         integer :: nb
-        logical :: skip, FEM_BUOYANCY, FIRSTST
+        logical :: skip, FEM_BUOYANCY
         !variables for linear velocity relaxation
         type(tensor_field), pointer :: fem_vol_frac_f
         real, dimension( :, : ), pointer :: fem_vol_frac
@@ -2080,10 +2083,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
         FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
         GOT_DIFFUS = .FALSE.
-
-        FIRSTST = ( SUM( (U_ALL(1,:,:) - UOLD_ALL(1,:,:) ) **2) < 1.e-10 )
-        IF(Mdims%ndim>=2) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(2,:,:) - UOLD_ALL(2,:,:) )**2 ) < 1.e-10 )
-        IF(Mdims%ndim>=3) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(3,:,:) - UOLD_ALL(3,:,:) )**2 ) < 1.e-10 )
 
         UPWIND_DGFLUX = .TRUE.
         if ( have_option( &
@@ -3216,7 +3215,7 @@ end if
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-            IF ( (.NOT.FIRSTST) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
+            IF ( (.NOT.first_nonlinear_time_step) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 DO U_JLOC = 1, Mdims%u_nloc

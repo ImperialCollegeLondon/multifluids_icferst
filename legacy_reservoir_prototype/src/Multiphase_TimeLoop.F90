@@ -413,17 +413,16 @@ contains
         calculate_mass_delta(:,:) = 0.0
 
         checkpoint_number=1
-
 !       Allocate memory for the quality_table to check the angles of each element and print out the diagnostics for the mesh
         if (is_porous_media) then
             if (have_option('/numerical_methods/Bad_element_fix/')) then
                 bad_element = .true.
             end if
-            if (have_option('/geometry/Mesh_Diagnostics/Angles')) then
+            if (have_option('/io/Mesh_Diagnostics_Angles')) then
                 mesh_diagnostics = .true.
-                shape = option_shape('/geometry/Mesh_Diagnostics/Angles')
+                shape = option_shape('/io/Mesh_Diagnostics_Angles')
                 allocate(quality_table(shape(1)))
-                call get_option( '/geometry/Mesh_Diagnostics/Angles', quality_table)
+                call get_option( '/io/Mesh_Diagnostics_Angles', quality_table)
                 allocate(diagnostics(shape(1)))
                 diagnostics(:) = -1
             end if

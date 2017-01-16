@@ -365,6 +365,11 @@ start =
             ## If porous_media, printout the Courant number every time-step
             element Courant_number {
                comment
+            }?,
+            ## Printout the number of elements and percentage that contain an angle
+            ## equal or bigger than the ones specified here
+            element Mesh_Diagnostics_Angles {
+               real_vector
             }?
          },
          ## Options dealing with time discretisation
@@ -456,29 +461,13 @@ start =
                element Fixed_Point_Iteration{
                   real,
                   (
-                    ## dSat obtained from the Saturation equation is backtracked by this factor
-                    ##
-                    ## Sat = Sat(Previous FPI) + Backtracking_parameter * dSat
-                    ##
-                    ## Defined as: 0.01 < Backtracking_parameter < 1. Negative values => automatically 
-                    ##
-                    ## Default value is 1.
-                    ##
-                    ## For FIXED backtracking parameters:
-                    ## Recommended settings: Non-linear iterations >= 100
-                    ##
-                    ## Recommended settings: Courant < 1 => Backtracking_parameter = 1;
-                    ## Courant > 1 => Backtracking_parameter from 1.0 to 0.01;
-                    ##
-                    ## For DYNAMIC dumping parameters:
-                    ##
                     ## Recommended settings: Non-linear iterations >= 30
+                    ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+                    ##
                     ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
                     ##
                     ## Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
                     ## Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
-                    ##
-                    ## Backtracking_parameter = -10 automatically selection based on the shock-front Courant number and the physics of the problem
                     ##
                     ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
                     element Backtracking_factor{
@@ -2029,6 +2018,10 @@ start =
             ## To disable, set it to negative values. This SHOULD be disabled if there are no pressure inlet boundary conditions
             element CV_press_homogenisation {
                real
+            }?,
+            ## Look for bad elements to change its anisotropic permeability to improve their quality
+            element Bad_element_fix {
+               empty
             }?,
             ## Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method
             element create_P_mat_fast {
