@@ -180,7 +180,7 @@ contains
         integer, save :: numberfields = -1
         real :: t_adapt_threshold
         !Variables for FPI acceleration for flooding
-        real, pointer, dimension(:,:) :: deltaP_old => null()
+        type( vector_field ) :: deltaP_old
 !       Variables used for calculating conservation of mass (entering/leaving and within the domain).
 
 !      calculate_mass_delta to store the change in mass calculated over the whole domain
