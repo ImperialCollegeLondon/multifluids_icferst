@@ -2377,7 +2377,7 @@ contains
                             IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
                             JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
 !                    print *,'iphase,jphase,ipres,jpres,ISWITCH:',iphase,jphase,ipres,jpres,ISWITCH
-                            IF ( PRES_FOR_PIPE_PHASE_FULL(IPRES) > PRES_FOR_PIPE_PHASE_FULL(JPRES) ) THEN
+                            IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
                                 R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                                     cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                                     / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
@@ -2444,6 +2444,8 @@ contains
                              do iphase=1,Mdims%nphase
                                 print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
                              end do
+                             print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
+                             print *,'h,rp:',h,rp
                        endif
                endif
 !
