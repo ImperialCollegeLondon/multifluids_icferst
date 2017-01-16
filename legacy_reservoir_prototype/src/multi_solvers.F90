@@ -436,22 +436,22 @@ contains
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
-    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, IDs2CV_ndgln,&
+    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
         Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration, useful_sats, res, &
-        res_ratio, first_res, npres)
+        res_ratio, first_res, npres, IDs2CV_ndgln)
         !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
         !this idea is based on the paper SPE-173267-MS.
         !The method ensures convergence "independent" of the time step.
         implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
-        integer, dimension(:) :: IDs2CV_ndgln
         real, dimension(:, :), intent(in) :: sat_bak, backtrack_sat
         real, intent(in) :: backtrack_par_from_schema, res, res_ratio, first_res
         logical, intent(inout) :: satisfactory_convergence
         real, intent(inout) :: new_backtrack_par, Previous_convergence
         integer, intent(in) :: its, nonlinear_iteration, npres
         integer, intent(inout) :: useful_sats
+        integer, dimension(:), optional :: IDs2CV_ndgln
         !Local parameters
         integer, parameter :: Max_sat_its = 9
         real, parameter :: Conv_to_achiv = 10.0
@@ -476,11 +476,15 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
-
-        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-        Satura =>  sat_field%val(1,:,:)
-
+        if (present(IDs2CV_ndgln)) call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
+        if (is_porous_media) then
+            sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+            Satura =>  sat_field%val(1,:,:)
+        else if (is_flooding) then
+            !Use the pressure as it is in this case the field of interest
+            sat_field => extract_tensor_field( packed_state, "PackedFEPressure" )
+            Satura =>  sat_field%val(1,:,:)
+        end if
 
         !Automatic method based on the history of convergence
         if (backtrack_par_from_schema < 0.0) then
@@ -573,24 +577,25 @@ contains
             call allmin(Convergences(1))
         end if
         !***Calculate new saturation***
-        !Obtain new saturation using the backtracking method
-        if (useful_sats < 2 .or. satisfactory_convergence) then
-            !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
-            Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
-        else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
+        if (is_porous_media) then
+            !Obtain new saturation using the backtracking method
+            if (useful_sats < 2 .or. satisfactory_convergence) then
+                !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
+                Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
+            else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
 
-            !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
-            !The highest value of backtrack_sat is displaced to low values of alpha
-            aux = 1.0 - backtrack_pars(1)
-            Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
-                aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
+                !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
+                !The highest value of backtrack_sat is displaced to low values of alpha
+                aux = 1.0 - backtrack_pars(1)
+                Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
+                    aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
+            end if
+            !Update halos with the new values
+            if (IsParallel()) call halo_update(sat_field)
         end if
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
-
-        !Update halos with the new values
-        if (IsParallel()) call halo_update(sat_field)
 
     contains
 

@@ -52,6 +52,7 @@ module multiphase_EOS
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     implicit none
 
+    real, parameter :: flooding_hmin = 0.0
 
 contains
 
@@ -668,7 +669,7 @@ contains
         end if Conditional_EOS_Option
 
         !For flooding ensure that the height (density of phase 1) is non-zero and positive
-        if (is_flooding .and. iphase == 1) Rho = max(Rho, 1d-5)
+        if (is_flooding .and. iphase == 1) Rho = max(Rho, flooding_hmin)
 
         deallocate( perturbation_pressure, RhoPlus, RhoMinus )
 
@@ -784,7 +785,7 @@ contains
             integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
             type( tensor_field ), pointer :: velocity, Nm, density
             type(vector_field), pointer :: gravity_direction
-            real, dimension(mdims%cv_nloc) :: bathymetry
+            real, dimension(mdims%cv_nloc) :: bathymetry, Nm_aux
             real, dimension(:), allocatable :: r_nod_count
             logical :: no_averaging
 
@@ -803,16 +804,17 @@ contains
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     bathymetry(cv_iloc) = max(hmin, density%val(1,1,cv_nod))
                 end do
-                if (.not.no_averaging) bathymetry = (sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
+                if (.not.no_averaging) bathymetry = dble(Mdims%cv_nloc) / sum(1./bathymetry)
                 do cv_iloc = 1, Mdims%cv_nloc
                     mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     r_nod_count(mat_nod) = r_nod_count(mat_nod) + 1
+                    Nm_aux(cv_iloc) = Nm%val(1,1,ele) + max(flooding_hmin, 1d3*(2*hmin-density%val(1,1,cv_nod))/hmin)
                     do u_iloc = 1, mdims%u_nloc
                         u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
                         !Since Flooding_absorp is of memory_type 1 we can populate it directly
                         do i = 1, Mdims%n_in_pres!Only for the phases not in the pipes
-                            Flooding_absorp%val(1,1,i, mat_nod) = Flooding_absorp%val(1,1,i, mat_nod) + Nm%val(1,1,ele)**2. * g *&
+                            Flooding_absorp%val(1,1,i, mat_nod) = Flooding_absorp%val(1,1,i, mat_nod) + Nm_aux(cv_iloc)**2. * g *&
                                 max(u_min,sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod))))&
                                 /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average
                         end do
@@ -3000,8 +3002,6 @@ contains
             end if
 
         end function eval_table
-
-
 
         subroutine populate_with_Black_Oil(PVT_table, density_reference)
             implicit none!Nothing in SI but the pressure

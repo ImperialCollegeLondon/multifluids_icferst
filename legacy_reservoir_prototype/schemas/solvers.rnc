@@ -19,20 +19,18 @@ linear_solver_options_asym =
       ),
       ## Preconditioner to be used in combination with the iterative method.
       (
+         pchypre_options|
+         pcgamg_options|
          pcsor_options|
          pceisenstat_options|
          pcilu_options|
+         pcicc_options|
          pclu_options|
          pcmg_options|
-         pcprometheus_options|
-         pchypre_options|
-         pcbjacobi_options|
-         pcasm_options|
-         pcgamg_options|
-         pchypre_options|
          pcbjacobi_options|
          pcpbjacobi_options|
          pcasm_options|
+         pcksp_options|
          pcother_options
       ),
       generic_solver_options
@@ -53,14 +51,14 @@ linear_solver_options_sym =
       ),
       ## Preconditioner to be used in combination with the iterative method.
       (
+         pchypre_options|
+         pcgamg_options|
          pcsor_options|
          pceisenstat_options|
          pcilu_options|
          pcicc_options|
          pclu_options|
          pcmg_options|
-         pcgamg_options|
-         pchypre_options|
          pcbjacobi_options|
          pcpbjacobi_options|
          pcasm_options|

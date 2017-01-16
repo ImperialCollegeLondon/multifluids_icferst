@@ -71,7 +71,7 @@ module multiphase_time_loop
     use multi_data_types
     use vtk_interfaces
     use multi_interpolation
-
+    use multi_transport
     use momentum_diagnostic_fields, only: calculate_densities
 
 #ifdef HAVE_ZOLTAN
@@ -179,7 +179,8 @@ contains
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields = -1
         real :: t_adapt_threshold
-
+        !Variables for FPI acceleration for flooding
+        real, pointer, dimension(:,:) :: deltaP_old => null()
 !       Variables used for calculating conservation of mass (entering/leaving and within the domain).
 
 !      calculate_mass_delta to store the change in mass calculated over the whole domain
@@ -502,20 +503,6 @@ contains
                     exit Loop_Time
                 end if
             end if
-            ExitNonLinearLoop = .false.
-            !Store backup to be able to repeat a timestep
-            if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
-                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
-            porosity_field=>extract_vector_field(packed_state,"Porosity")
-            ! evaluate prescribed fields at time = current_time+dt
-            call set_prescribed_field_values( state, exclude_interpolated = .true., &
-                exclude_nonreprescribed = .true., time = acctim )
-            !! Update all fields from time-step 'N - 1'
-            call copy_packed_new_to_old( packed_state )
-            !Initialize gas molar fraction, this has to occur after copy_packed_new_to_old
-            !since for consistency, (later it is called as well) it uses the old values of pressure,
-            !however, they have to be the most updated at this point
-            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
             !!$ FEMDEM...
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
@@ -525,9 +512,27 @@ contains
                call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
+            !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
+            !Store backup to be able to repeat a timestep
+            if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
+                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
+            !! Update all fields from time-step 'N - 1'
+            call copy_packed_new_to_old( packed_state )
+            ExitNonLinearLoop = .false.
+            porosity_field=>extract_vector_field(packed_state,"Porosity")
+            ! evaluate prescribed fields at time = current_time+dt
+            call set_prescribed_field_values( state, exclude_interpolated = .true., &
+                exclude_nonreprescribed = .true., time = acctim )
+            !Initialize gas molar fraction, this has to occur after copy_packed_new_to_old
+            !since for consistency, (later it is called as well) it uses the old values of pressure,
+            !however, they have to be the most updated at this point
+            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
+            !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
+
+
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
@@ -583,104 +588,9 @@ contains
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
 
+!Testing multi_transport
+call solve_transport()
 
-!!$ Solve advection of the scalars.   'Temperature':
-
-!!$ Fields...
-!!-
-!!!!!!!!!DO NOT REMOVE THE CODE COMMENTED BELOW!!!!
-!        new_ntsol_loop = .false.
-!
-!if ( new_ntsol_loop  ) then
-!
-!        call get_ntsol( ntsol )
-!        call initialise_field_lists_from_options( state, ntsol )
-!
-!
-!        call set_nu_to_u( packed_state )
-!        !call calculate_diffusivity( state, Mdim, ndgln, ScalarAdvectionField_Diffusion )
-!        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-!        density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-!        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-!
-!
-!
-!
-!
-!        do it = 1, ntsol
-!
-!           call get_option( trim( field_optionpath_list( it ) ) // &
-!                '/prognostic/equation[0]/name', &
-!                option_buffer, default = "UnknownEquationType" )
-!           select case( trim( option_buffer ) )
-!           case ( "AdvectionDiffusion", "InternalEnergy" )
-!              use_advdif = .true.
-!           case default
-!              use_advdif = .false.
-!           end select
-!
-!           !use_advdif=.true.
-!
-!
-!           if ( use_advdif ) then
-!
-!              ! figure out if scalar field is mutli-phase
-!              multiphase_scalar = .false.
-!              do it2 = it+1, ntsol
-!                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
-!                    multiphase_scalar = .true.
-!                 end if
-!              end do
-!
-!              tmp_name = "Packed" //field_name_list( it )
-!              nphase_scalar = 1
-!              if ( multiphase_scalar ) then
-!                 nphase_scalar = Mdims%nphase
-!                 tmp_name = "Packed" // field_name_list( it )
-!              end if
-!              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
-!
-!
-!              if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
-!                    cycle
-!              elseif (multiphase_scalar) then
-!
-!                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-!                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-!                        tracer_field,velocity_field,density_field, dt, &
-!                        suf_sig_diagten_bc, &
-!                        Porosity_field%val, &
-!                        !!$
-!                        0, igot_theta_flux, &
-!                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-!                        THETA_GDIFF, IDs_ndgln, &
-!                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-!                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-!                        saturation=saturation_field )
-!                    call Calculate_All_Rhos( state, packed_state, Mdims )
-!
-!                    exit
-!              else
-!
-!                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-!                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-!                        tracer_field,velocity_field,density_field, dt, &
-!                        suf_sig_diagten_bc,  Porosity_field%val, &
-!                        0, igot_theta_flux, &
-!                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-!                        THETA_GDIFF, IDs_ndgln, &
-!                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-!                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-!                        saturation=saturation_field)
-!                    call Calculate_All_Rhos( state, packed_state, Mdims )
-!               end if
-!
-!
-!           end if
-!
-!        end do
-!
-!end if
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -707,7 +617,7 @@ contains
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta )
+                        IDs_ndgln, calculate_mass_delta, its, deltaP_old )
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then

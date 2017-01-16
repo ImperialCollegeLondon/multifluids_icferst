@@ -1989,15 +1989,15 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     integer, intent(in) :: its, order
     !Local variables
     real :: dt
-    logical, save :: show_FPI_conv
+    integer, save :: show_FPI_conv
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
     real, dimension(:,:), pointer :: phasevolumefraction
     real, dimension(:,:,:), pointer :: velocity
-
+    character (len = OPTION_PATH_LEN) :: output_message
     !Variables for automatic non-linear iterations
-    real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch,&
+    real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts,&
         Inifinite_norm_tol, calculate_mass_tol
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
@@ -2019,31 +2019,19 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
     !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
+    if (is_porous_media)  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
         variable_selection, default = 3)
+    if (is_flooding)  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
+        variable_selection, default = 1)
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
-        increaseFactor, default = 1.05 )
+        increaseFactor, default = 1.1 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
-        decreaseFactor, default = 1.2 )
+        decreaseFactor, default = 1.5 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
         max_ts, default = huge(min_ts) )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
         min_ts, default = -1. )
-    show_FPI_conv = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
-    !Switches are relative to the input value unless otherwise stated
-    if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch')) then
-        call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch', &
-            increase_ts_switch, default = 1d-3 )
-    else
-        increase_ts_switch = tolerance_between_non_linear / 10.
-    end if
-
-    if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_ts_switch')) then
-        call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_ts_switch', &
-            decrease_ts_switch, default = 1d-1 )
-    else
-        decrease_ts_switch = min(tolerance_between_non_linear * 10.,1.0)
-    end if
+    show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
 
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 5d-3)
@@ -2111,146 +2099,101 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
                 phasevolumefraction = phasevolumefraction)
 
-            if (its == 1) then
-                ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
-            else
-                select case (variable_selection)
-                    case (1)
-                        ts_ref_val = maxval(abs(reference_field(1,1,:)-pressure(1,1,:)))
-                    case (2)
-                        ts_ref_val = maxval(abs(reference_field-velocity))
-                    case default
-                        !Calculate infinite norm
-                        inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
+            select case (variable_selection)
+                case (1)
+                    !Calculate normalized infinite norm of the difference
+                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/pressure(1,1,:)))
+                    inf_norm_val = inf_norm_val/backtrack_or_convergence
+                    backtrack_or_convergence = inf_norm_val!Use the infinite norm for the time being
+                    ts_ref_val = 0.0!Only infinite norm for the time being
+                case (2)
+                    inf_norm_val = maxval(abs(reference_field-velocity))
+                    ts_ref_val = 0.0!Only infinite norm for the time being
+                case default
+                    !Calculate infinite norm
+                    inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
 
-                        !Calculate value of the functional
-                        ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
-                        backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
-                end select
-
-                ! find the maximum mass error to compare with the tolerance below
-                !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
-                ! In this case we only calculate the total mass - we could calculate the mass of each phase
-                max_calculate_mass_delta = calculate_mass_delta(1,2)
-                !If it is parallel then we want to be consistent between cpus
-                if (IsParallel()) then
-                    call allmax(ts_ref_val)
-                    call allmax(max_calculate_mass_delta)
-		    call allmax(inf_norm_val)
-                end if
-
-
-                !TEMPORARY, re-use of global variable backtrack_or_convergence to send
-                !information about convergence to the trust_region_method
-!                backtrack_or_convergence = ts_ref_val
-                ewrite(1,*) "FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
-
-                !If only non-linear iterations
-                if (.not.nonLinearAdaptTs) then
-                    !Automatic non-linear iteration checking
-                    !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
-                    if (first_time_step) ts_ref_val = tolerance_between_non_linear/2.
-
-                    ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
-                    .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-
-                    if (ExitNonLinearLoop .and. show_FPI_conv) then
-                        !Tell the user the number of FPI and final convergence to help improving the parameters
-                        print *, "FPI convergence: ", ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
-                    end if
-                    return
-                end if
-
-
-                !If we have a dumping parameter we only reduce the time-step if we reach
-                !the maximum number of non-linear iterations
-                if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor')) then
-                    !Tell the user if we have not converged
-                    if (its == NonLinearIteration) then
-                        ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val, &
-                        "Mass error:", calculate_mass_delta(1,2)
-                    end if
-                    !Increase Ts section
-                    if (ts_ref_val < increase_ts_switch .and. dt*increaseFactor<max_ts .and. max_calculate_mass_delta < calculate_mass_tol/10 &
-                    .and..not.Repeat_time_step ) then
-                        call get_option( '/timestepping/timestep', dt )
-                        dt = min(dt * increaseFactor,max_ts)
-                        call set_option( '/timestepping/timestep', dt )
-                        ewrite(1,*) "Time step increased to:", dt
-                        ExitNonLinearLoop = .true.
-                        return
-                    else !Maybe it is not enough to increase the time step, but we could go to the next time step
-                        ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear .and. max_calculate_mass_delta < calculate_mass_tol )
-                    end if
-
-                    !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
-                    if ((ts_ref_val > decrease_ts_switch .or. max_calculate_mass_delta > min(calculate_mass_tol * 10.,5d-3) &
-                     .or. Repeat_time_step).and.its>=int(0.90*NonLinearIteration)) then
-
-                        if ( dt / decreaseFactor < min_ts) then
-                            !Do not decrease
-                            Repeat_time_step = .false.
-                            ExitNonLinearLoop = .true.
-                            deallocate(reference_field)
-                            return
-                        end if
-
-                        !Decrease time step, reset the time and repeat!
-                        call get_option( '/timestepping/timestep', dt )
-                        call get_option( '/timestepping/current_time', acctim )
-                        acctim = acctim - dt
-                        call set_option( '/timestepping/current_time', acctim )
-                        dt = max(dt / decreaseFactor, min_ts)
-                        call set_option( '/timestepping/timestep', dt )
-                        ewrite(1,*) "Time step decreased to:", dt
-                        Repeat_time_step = .true.
-                        ExitNonLinearLoop = .true.
-                    end if
-                else!Adaptive Ts for Dumping based on the number of FPI
-                    if (ts_ref_val < tolerance_between_non_linear .and. max_calculate_mass_delta < calculate_mass_tol ) then
-                        if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
-                            !Increase time step
-                            call get_option( '/timestepping/timestep', dt )
-                            dt = min(dt * increaseFactor, max_ts)
-                            call set_option( '/timestepping/timestep', dt )
-                            ewrite(1,*) "Time step increased to:", dt
-                            ExitNonLinearLoop = .true.
-                            return
-                        end if
-                    else if (its >= NonLinearIteration) then
-                        !If it has not converged when reaching the maximum number of non-linear iterations,
-                        !reduce ts and repeat
-                        !Decrease time step for next time step
-                        if ( dt / decreaseFactor < min_ts) then
-                            !Do not decrease
-                            Repeat_time_step = .false.
-                            ExitNonLinearLoop = .true.
-                            deallocate(reference_field)
-                            return
-                        end if
-
-                        !Decrease time step, reset the time and repeat!
-                        call get_option( '/timestepping/timestep', dt )
-                        call get_option( '/timestepping/current_time', acctim )
-                        acctim = acctim - dt
-                        call set_option( '/timestepping/current_time', acctim )
-                        dt = max(dt / decreaseFactor,min_ts)
-                        call set_option( '/timestepping/timestep', dt )
-                        ewrite(1,*) "Time step decreased to:", dt
-                        Repeat_time_step = .true.
-                        ExitNonLinearLoop = .true.
-                    end if
-
-
-                    !For adaptive time stepping we need to put this again
-                    if (ExitNonLinearLoop .and. show_FPI_conv) then
-                        !Tell the user the number of FPI and final convergence to help improving the parameters
-                        ewrite(0,*) "FPI convergence:", ts_ref_val, "Total iterations:", its, "Mass error:", calculate_mass_delta(1,2)
-                    end if
-
-                end if
+                    !Calculate value of the functional
+                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
+                    backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
+            end select
+            ! find the maximum mass error to compare with the tolerance below
+            !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
+            ! In this case we only calculate the total mass - we could calculate the mass of each phase
+            max_calculate_mass_delta = calculate_mass_delta(1,2)
+            !If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) then
+                call allmax(ts_ref_val)
+                call allmax(max_calculate_mass_delta)
+                call allmax(inf_norm_val)
             end if
 
+            if (is_porous_media) then
+                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
+            else
+                write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+            end if
+
+            !TEMPORARY, re-use of global variable backtrack_or_convergence to send
+            !information about convergence to the trust_region_method
+            if (is_flooding) backtrack_or_convergence = ts_ref_val
+            ewrite(1,*) trim(output_message)
+
+            !Automatic non-linear iteration checking
+            !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
+            if (is_porous_media) then
+                if (first_time_step) ts_ref_val = tolerance_between_non_linear/2.
+                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
+                    .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+            else
+                ExitNonLinearLoop = (inf_norm_val < Inifinite_norm_tol) .or. its >= NonLinearIteration
+            end if
+
+            !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) call alland(ExitNonLinearLoop)
+            !Tell the user the number of FPI and final convergence to help improving the parameters
+            if (ExitNonLinearLoop) then
+                ewrite(show_FPI_conv,*) trim(output_message)
+            end if
+            !If time adapted based on the non-linear solver then
+            if (nonLinearAdaptTs) then
+                !If we have a dumping parameter we only reduce the time-step if we reach
+                !the maximum number of non-linear iterations
+                !Adaptive Ts for Backtracking only based on the number of FPI
+                if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
+                    !Increase time step
+                    call get_option( '/timestepping/timestep', dt )
+                    dt = min(dt * increaseFactor, max_ts)
+                    call set_option( '/timestepping/timestep', dt )
+                    ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                    ExitNonLinearLoop = .true.
+                    return
+                end if
+                if (its >= NonLinearIteration) then
+                    !If it has not converged when reaching the maximum number of non-linear iterations,
+                    !reduce ts and repeat
+                    !Decrease time step for next time step
+                    if ( dt / decreaseFactor < min_ts) then
+                        !Do not decrease
+                        Repeat_time_step = .false.
+                        ExitNonLinearLoop = .true.
+                        deallocate(reference_field)
+                        !Tell the user the number of FPI and final convergence to help improving the parameters
+                        ewrite(show_FPI_conv,*)  "Minimum time-step reached, advancing time."
+                        return
+                    end if
+                    !Decrease time step, reset the time and repeat!
+                    call get_option( '/timestepping/timestep', dt )
+                    call get_option( '/timestepping/current_time', acctim )
+                    acctim = acctim - dt
+                    call set_option( '/timestepping/current_time', acctim )
+                    dt = max(dt / decreaseFactor,min_ts)
+                    call set_option( '/timestepping/timestep', dt )
+                    ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
+                    Repeat_time_step = .true.
+                    ExitNonLinearLoop = .true.
+                end if
+            end if
     end select
 
 end subroutine Adaptive_NonLinear
@@ -2359,14 +2302,6 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
         end if
     end do
 
-    tfield=>extract_tensor_field(packed_state,"OldFEPressure")
-    ntfield=>extract_tensor_field(packed_state,"FEPressure")
-    tfield%val=ntfield%val
-
-    tfield=>extract_tensor_field(packed_state,"OldCVPressure")
-    ntfield=>extract_tensor_field(packed_state,"CVPressure")
-    tfield%val=ntfield%val
-
 end subroutine copy_packed_new_to_iterated
 
 !deprecated, do not use. Use pointers instead
@@ -2418,6 +2353,10 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     type(tensor_field), pointer :: tfield
 
     !Scalar stored
+    if (present(Pressure)) then
+        tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
+        Pressure => tfield%val(:,:,:)
+    end if
     if (present(FEPressure)) then
         tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
         FEPressure => tfield%val(:,:,:)

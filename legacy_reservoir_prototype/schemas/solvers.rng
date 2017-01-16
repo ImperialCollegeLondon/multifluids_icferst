@@ -21,20 +21,18 @@ by the PETSc library. Many more methods are provided.
     </choice>
     <choice>
       <a:documentation>Preconditioner to be used in combination with the iterative method.</a:documentation>
+      <ref name="pchypre_options"/>
+      <ref name="pcgamg_options"/>
       <ref name="pcsor_options"/>
       <ref name="pceisenstat_options"/>
       <ref name="pcilu_options"/>
+      <ref name="pcicc_options"/>
       <ref name="pclu_options"/>
       <ref name="pcmg_options"/>
-      <ref name="pcprometheus_options"/>
-      <ref name="pchypre_options"/>
-      <ref name="pcbjacobi_options"/>
-      <ref name="pcasm_options"/>
-      <ref name="pcgamg_options"/>
-      <ref name="pchypre_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcpbjacobi_options"/>
       <ref name="pcasm_options"/>
+      <ref name="pcksp_options"/>
       <ref name="pcother_options"/>
     </choice>
     <ref name="generic_solver_options"/>
@@ -53,14 +51,14 @@ by the PETSc library. Many more methods are provided.
     </choice>
     <choice>
       <a:documentation>Preconditioner to be used in combination with the iterative method.</a:documentation>
+      <ref name="pchypre_options"/>
+      <ref name="pcgamg_options"/>
       <ref name="pcsor_options"/>
       <ref name="pceisenstat_options"/>
       <ref name="pcilu_options"/>
       <ref name="pcicc_options"/>
       <ref name="pclu_options"/>
       <ref name="pcmg_options"/>
-      <ref name="pcgamg_options"/>
-      <ref name="pchypre_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcpbjacobi_options"/>
       <ref name="pcasm_options"/>

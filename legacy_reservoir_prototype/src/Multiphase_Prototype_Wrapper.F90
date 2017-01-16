@@ -58,7 +58,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use multiphase_time_loop
     !use multiphase_rheology
     use MeshDiagnostics
-
+    use write_gmsh
     use signals
 
     !use mp_prototype
@@ -101,6 +101,9 @@ subroutine multiphase_prototype_wrapper() bind(C)
     ! Read state from .mpml file
     call populate_multi_state(state)
 !    call populate_state(state)
+
+    !If desired by the user create a bin msh file
+    if (have_option("/geometry/create_binary_msh")) call create_bin_msh_file(state)
 
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
@@ -373,6 +376,26 @@ contains
         multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"May a bug be found, please file it in the corresponding repository following the standard procedure"
 
     end subroutine set_up_generic_warning_message
+
+    subroutine create_bin_msh_file(state)
+        implicit none
+        type(state_type), dimension(:), pointer, intent(inout) :: state
+        !Local variables
+        type(vector_field), pointer :: output_positions
+        character(len= OPTION_PATH_LEN ) :: msh_file
+
+        if (IsParallel()) then
+            ewrite(1, *) "In parallel we do not perform the conversion of the msh file."
+            return
+        end if
+
+        ewrite(0, *) "Converting the input msh file into binary format..."
+        call get_option('/geometry/mesh::CoordinateMesh/from_file/file_name',msh_file)
+        output_positions => extract_vector_field(state(1), "Coordinate")
+        call write_gmsh_file(trim(msh_file), output_positions)
+        ewrite(0, *) "...Conversion done."
+
+    end subroutine create_bin_msh_file
 
     subroutine get_simulation_type()
         !This subroutine selects the type of simulator to perform
