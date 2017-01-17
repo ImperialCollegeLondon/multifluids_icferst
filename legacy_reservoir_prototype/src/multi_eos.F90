@@ -3115,6 +3115,34 @@ contains
 
     end subroutine extended_Black_Oil
 
+    subroutine calculate_flooding_height(packed_state, flood_height, deltap, adjust_deltaP)
+        !height = P * gravity - bathymetry
+        !If deltap then P+deltap is used
+        implicit none
+        type( state_type ), intent( in ) :: packed_state
+        real, dimension(:), optional, intent(inout) :: deltap
+        real, dimension(:), intent( out ) :: flood_height
+        logical, optional, intent(in) :: adjust_deltaP
+        !Local variables
+        real, parameter :: gravity_flooding = 9.80665
+        type( tensor_field ), pointer :: bathymetry, Pres
 
+        Pres => extract_tensor_field( packed_state, "PackedFEPressure" )
+        bathymetry => extract_tensor_field(packed_state,"PackedBathymetry")
+
+        if(present(deltap)) then
+            flood_height = (Pres%val(1,1,:) + deltap) * gravity_flooding - bathymetry%val(1,1,:)
+            if (present(adjust_deltaP)) then
+                !Make sure that the flood height after delta_P is above zero
+                where (flood_height < 0)
+                    deltap = bathymetry%val(1,1,:)/gravity_flooding - Pres%val(1,1,:)
+                    flood_height = 0.
+                end where
+            end if
+        else
+            flood_height = Pres%val(1,1,:) * gravity_flooding - bathymetry%val(1,1,:)
+        end if
+
+    end subroutine calculate_flooding_height
 
 end module multiphase_EOS
