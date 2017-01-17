@@ -2148,6 +2148,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             else
                 ExitNonLinearLoop = (inf_norm_val < Inifinite_norm_tol) .or. its >= NonLinearIteration
             end if
+            !At least two non-linear iterations
+            ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
 
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call alland(ExitNonLinearLoop)

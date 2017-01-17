@@ -2372,7 +2372,7 @@ contains
                    R_PEACMAN=0.0
                    DO IPHASE = 1, Mdims%nphase
 !                       DO JPHASE = 1, Mdims%nphase
-                            ISWITCH = MIN( max(IPHASE-2,0)   ,1) ! ISWITCH=0 (for phase 1 and 2) and ISWITCH=1 for phase 3 and 4. 
+                            ISWITCH = MIN( max(IPHASE-2, 0)   ,1) ! ISWITCH=0 (for phase 1 and 2) and ISWITCH=1 for phase 3 and 4.
                             JPHASE= (IPHASE+2)*(1-ISWITCH) + (IPHASE-2)*ISWITCH
                             IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
                             JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
