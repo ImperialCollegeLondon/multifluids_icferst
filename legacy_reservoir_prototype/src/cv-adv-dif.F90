@@ -2405,6 +2405,7 @@ contains
 
                    R_PEACMAN = l_frac * R_PEACMAN
 !                   R_PEACMAN = R_PEACMAN*1.e+10
+                   R_PEACMAN=0.0
                    
 
 
@@ -2447,7 +2448,7 @@ contains
                                 print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
                              end do
                              print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
-                             print *,'h,rp,K_PIPES:',h,rp,K_PIPES
+                             print *,'h,rp,K_PIPES,d:',h,rp,K_PIPES,depth_of_drain%val( CV_NODI )
                              print *,'PRES_FOR_PIPE_PHASE_FULL(:):',PRES_FOR_PIPE_PHASE_FULL(:)
                        endif
                endif
