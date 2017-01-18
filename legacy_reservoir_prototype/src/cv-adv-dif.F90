@@ -2356,7 +2356,6 @@ contains
                    DO JPHASE = 1, Mdims%nphase
                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
                        JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                       !               IF( IPHASE /= JPHASE ) THEN
                        IF( IPRES /= JPRES ) THEN
                            A_GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) = - GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI )
                            A_GAMMA_PRES_ABS( IPHASE, IPHASE, CV_NODI ) = A_GAMMA_PRES_ABS( IPHASE, IPHASE, CV_NODI ) + GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI )
@@ -2364,39 +2363,26 @@ contains
                    END DO
                END DO
                if (is_flooding .and. getct)  then
-! start again by re-setting to 0.0
-!WHY ARE WE SETTING THE VALUE OF A_GAMMA_PRES_ABS TO MAKE IT ZERO NOW?
+                    ! start again by re-setting to 0.0
                    A_GAMMA_PRES_ABS( :, :, CV_NODI ) = 0.0
 
                             !Peaceman correction
 
                    R_PEACMAN=0.0
                    DO IPHASE = 1, Mdims%nphase
-!                       DO JPHASE = 1, Mdims%nphase
-                            ISWITCH = MIN( max(IPHASE-2, 0) ,1) ! ISWITCH=0 (for phase 1 and 2) and ISWITCH=1 for phase 3 and 4.
-                            JPHASE= (IPHASE+2)*(1-ISWITCH) + (IPHASE-2)*ISWITCH
-                            IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                            JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                            IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
-                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                                    cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                            ELSE
-                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                                    cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                            END IF
-!
-!                            IF ( PRES_FOR_PIPE_PHASE_FULL(1) > PRES_FOR_PIPE_PHASE_FULL(2) ) THEN
-!                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-!                                    cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-!                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                            ELSE
-!                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-!                                    cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-!                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                            END IF
-!                       END DO
+                        ISWITCH = MIN( max(IPHASE-2, 0) ,1) ! ISWITCH=0 (for phase 1 and 2) and ISWITCH=1 for phase 3 and 4.
+                        JPHASE= (IPHASE+2)*(1-ISWITCH) + (IPHASE-2)*ISWITCH
+                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                        JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                        IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
+                            R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                                cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                                / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        ELSE
+                            R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                                cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                                / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        END IF
                    END DO
                    
 
@@ -2404,9 +2390,6 @@ contains
                    l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
 
 !                   R_PEACMAN = l_frac * R_PEACMAN
-!                   R_PEACMAN = R_PEACMAN*1.e+10
-                   
-
 
                    A_GAMMA_PRES_ABS( 1, 1, CV_NODI ) = R_PEACMAN( 1 ) * L_surface_pipe
                    A_GAMMA_PRES_ABS( 1, 2, CV_NODI ) = 0.0

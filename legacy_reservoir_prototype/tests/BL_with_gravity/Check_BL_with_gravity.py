@@ -29,7 +29,6 @@ Tolerance_L1_NORM = 0.011
 Tolerance_L2_NORM = 0.0014
 
 
-
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
 for files in os.listdir(path):
@@ -44,7 +43,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-#showPlot = False
+showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
