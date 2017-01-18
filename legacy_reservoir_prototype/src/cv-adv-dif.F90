@@ -2363,37 +2363,39 @@ contains
                    END DO
                END DO
                if (is_flooding .and. getct)  then
-                    ! start again by re-setting to 0.0
+! start again by re-setting to 0.0
                    A_GAMMA_PRES_ABS( :, :, CV_NODI ) = 0.0
 
                             !Peaceman correction
 
                    R_PEACMAN=0.0
                    DO IPHASE = 1, Mdims%nphase
-                        ISWITCH = MIN( max(IPHASE-2, 0) ,1) ! ISWITCH=0 (for phase 1 and 2) and ISWITCH=1 for phase 3 and 4.
-                        JPHASE= (IPHASE+2)*(1-ISWITCH) + (IPHASE-2)*ISWITCH
-                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                        JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                        IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
-                            R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                                cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-                                / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                        ELSE
-                            R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                                cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-                                / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                        END IF
+                            ISWITCH = MIN( max(IPHASE-2, 0) ,1) ! ISWITCH=0 (for phase 1 and 2) and ISWITCH=1 for phase 3 and 4.
+                            JPHASE= (IPHASE+2)*(1-ISWITCH) + (IPHASE-2)*ISWITCH
+                            IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                            JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                            IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
+                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                                    cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                            ELSE
+                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                                    cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                            END IF
                    END DO
                    
 
                    L_surface_pipe = 0.25*pipe_Diameter%val( CV_NODI )
                    l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
 
-!                   R_PEACMAN = l_frac * R_PEACMAN
+                   R_PEACMAN = l_frac * R_PEACMAN                   
+
 
                    A_GAMMA_PRES_ABS( 1, 1, CV_NODI ) = R_PEACMAN( 1 ) * L_surface_pipe
                    A_GAMMA_PRES_ABS( 1, 2, CV_NODI ) = 0.0
-                   A_GAMMA_PRES_ABS( 1, 3, CV_NODI ) = - R_PEACMAN( 1 )*L_surface_pipe*K_PIPES/DEN_FOR_PIPE_PHASE(3)
+!                   A_GAMMA_PRES_ABS( 1, 3, CV_NODI ) = - R_PEACMAN( 1 )*L_surface_pipe*K_PIPES/DEN_FOR_PIPE_PHASE(3)
+                   A_GAMMA_PRES_ABS( 1, 3, CV_NODI ) = - R_PEACMAN( 1 )*L_surface_pipe*K_PIPES
                    A_GAMMA_PRES_ABS( 1, 4, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 2, :, CV_NODI ) = 0.0
 !                   A_GAMMA_PRES_ABS( 3, 1, CV_NODI ) = - l_frac*R_PEACMAN( 3  )* DEN_FOR_PIPE_PHASE(3)
@@ -2428,8 +2430,9 @@ contains
                              do iphase=1,Mdims%nphase
                                 print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
                              end do
-                             print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
-                             print *,'h,rp:',h,rp
+!                             print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
+!                             print *,'h,rp,K_PIPES:',h,rp,K_PIPES
+!                             print *,'PRES_FOR_PIPE_PHASE_FULL(:):',PRES_FOR_PIPE_PHASE_FULL(:)
                        endif
                endif
 !
