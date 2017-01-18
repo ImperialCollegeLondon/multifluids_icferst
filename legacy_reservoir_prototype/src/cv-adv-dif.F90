@@ -2389,7 +2389,7 @@ contains
                    L_surface_pipe = 0.25*pipe_Diameter%val( CV_NODI )
                    l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
 
-                   R_PEACMAN = l_frac * R_PEACMAN                   
+!                   R_PEACMAN = l_frac * R_PEACMAN
 
 
                    A_GAMMA_PRES_ABS( 1, 1, CV_NODI ) = R_PEACMAN( 1 ) * L_surface_pipe
@@ -2405,8 +2405,8 @@ contains
                    A_GAMMA_PRES_ABS( 3, 3, CV_NODI ) = R_PEACMAN( 3 )* K_PIPES
                    A_GAMMA_PRES_ABS( 3, 4, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 4, 1:3, CV_NODI ) = 0.0
-!                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = l_frac*R_PEACMAN( 4 ) 
-                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = R_PEACMAN( 4 ) 
+!                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = l_frac*R_PEACMAN( 4 )
+                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = R_PEACMAN( 4 )
 !
 ! cty rhs...
                    ct_rhs_phase(1)= -R_PEACMAN( 1 ) * L_surface_pipe*gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
@@ -2425,15 +2425,15 @@ contains
                    DO IPRES = 1, Mdims%npres
                         call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
                    END DO
-                       if(abs(R_PEACMAN( 1 )).gt.1.e-10) then
-                             print *,'cv_nodi,R_PEACMAN:',cv_nodi,R_PEACMAN
-                             do iphase=1,Mdims%nphase
-                                print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
-                             end do
+!                       if(abs(R_PEACMAN( 1 )).gt.1.e-10) then
+!                             print *,'cv_nodi,R_PEACMAN:',cv_nodi,R_PEACMAN
+!                             do iphase=1,Mdims%nphase
+!                                print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
+!                             end do
 !                             print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
 !                             print *,'h,rp,K_PIPES:',h,rp,K_PIPES
 !                             print *,'PRES_FOR_PIPE_PHASE_FULL(:):',PRES_FOR_PIPE_PHASE_FULL(:)
-                       endif
+!                       endif
                endif
 !
             END DO  ! DO CV_NODI = 1, Mdims%cv_nonods
