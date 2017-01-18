@@ -180,7 +180,7 @@ contains
         integer, save :: numberfields = -1
         real :: t_adapt_threshold
         !Variables for FPI acceleration for flooding
-        real, pointer, dimension(:,:) :: deltaP_old => null()
+        type( vector_field ) :: deltaP_old
 !       Variables used for calculating conservation of mass (entering/leaving and within the domain).
 
 !      calculate_mass_delta to store the change in mass calculated over the whole domain
@@ -485,16 +485,9 @@ contains
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
             ! Added a tolerance of 0.001dt to the condition below that stops us exiting the loop before printing the last time step.
-            if ( calculate_flux ) then
-               if ( acctim > finish_time + 0.001*dt ) then
-                  ewrite(1,*) "Passed final time"
-                  exit Loop_Time
-               end if
-            else
-               if ( acctim > finish_time ) then
-                  ewrite(1,*) "Passed final time"
-                  exit Loop_Time
-               end if
+            if ( acctim > finish_time + 0.001*dt ) then
+              ewrite(1,*) "Passed final time"
+              exit Loop_Time
             end if
             call get_option( '/timestepping/final_timestep', final_timestep, stat )
             if ( stat == spud_no_error ) then

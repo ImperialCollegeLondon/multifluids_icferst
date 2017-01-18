@@ -2102,13 +2102,14 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             select case (variable_selection)
                 case (1)
                     !Calculate normalized infinite norm of the difference
-                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/pressure(1,1,:)))
+                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/reference_field(1,1,:)))
                     inf_norm_val = inf_norm_val/backtrack_or_convergence
-                    backtrack_or_convergence = inf_norm_val!Use the infinite norm for the time being
-                    ts_ref_val = 0.0!Only infinite norm for the time being
+                    ts_ref_val = inf_norm_val!Use the infinite norm for the time being
+                    tolerance_between_non_linear = 1d9!Only infinite norm for the time being
                 case (2)
                     inf_norm_val = maxval(abs(reference_field-velocity))
-                    ts_ref_val = 0.0!Only infinite norm for the time being
+                    ts_ref_val = inf_norm_val!Use the infinite norm for the time being
+                    tolerance_between_non_linear = 1d9!Only infinite norm for the time being
                 case default
                     !Calculate infinite norm
                     inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
@@ -2148,6 +2149,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             else
                 ExitNonLinearLoop = (inf_norm_val < Inifinite_norm_tol) .or. its >= NonLinearIteration
             end if
+            !At least two non-linear iterations
+            ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
 
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call alland(ExitNonLinearLoop)
@@ -2157,10 +2160,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             end if
             !If time adapted based on the non-linear solver then
             if (nonLinearAdaptTs) then
-                !If we have a dumping parameter we only reduce the time-step if we reach
-                !the maximum number of non-linear iterations
                 !Adaptive Ts for Backtracking only based on the number of FPI
-                if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
+                if (ExitNonLinearLoop .and. its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
                     !Increase time step
                     call get_option( '/timestepping/timestep', dt )
                     dt = min(dt * increaseFactor, max_ts)
@@ -2172,9 +2173,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (its >= NonLinearIteration) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
-                    !Decrease time step for next time step
                     if ( dt / decreaseFactor < min_ts) then
-                        !Do not decrease
+                        !Do not decrease if minimum ts is reached
                         Repeat_time_step = .false.
                         ExitNonLinearLoop = .true.
                         deallocate(reference_field)

@@ -464,7 +464,7 @@ contains
         !Parameters for the automatic backtrack_par
 !        integer, parameter :: History_order = 4!<= Cubic
         integer, parameter :: History_order = 3!<= Quadratic
-        real, parameter :: min_backtrack = 1d-2
+        real :: min_backtrack
         real, dimension(History_order+1), save :: backtrack_pars = -1
         real, dimension(History_order), save :: Convergences = -1
         real, dimension(History_order) :: Coefficients
@@ -480,10 +480,14 @@ contains
         if (is_porous_media) then
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             Satura =>  sat_field%val(1,:,:)
-        else if (is_flooding) then
+            !Stablish minimum backtracking parameter
+            min_backtrack = 0.1
+        else
             !Use the pressure as it is in this case the field of interest
             sat_field => extract_tensor_field( packed_state, "PackedFEPressure" )
             Satura =>  sat_field%val(1,:,:)
+            !Stablish minimum backtracking parameter
+            min_backtrack = 0.05
         end if
 
         !Automatic method based on the history of convergence
@@ -506,7 +510,7 @@ contains
                 anders_exp = max(anders_exp, 0.)
             end if
 
-            if (new_time_step) then
+            if (new_time_step .and.is_porous_media) then
                 !Store last convergence to use it as a reference
                 Previous_convergence = Convergences(1)
                 !restart all the storage
@@ -712,7 +716,7 @@ contains
                 end if
             end if
             !Make sure it is bounded
-            get_optimal_backtrack_par = max(min(get_optimal_backtrack_par, 1.0), 1d-1)
+            get_optimal_backtrack_par = max(min(get_optimal_backtrack_par, 1.0), min_backtrack)
 
             !If we are stuck with the same values force a change
             if (abs(sum(backtrack_pars)/size(backtrack_pars)-get_optimal_backtrack_par)  &
