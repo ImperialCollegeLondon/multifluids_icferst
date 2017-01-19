@@ -2246,23 +2246,35 @@ contains
                     N( CV_NODI ) = N( CV_NODI ) + MASS_ELE( ELE )
                 END DO
             END DO
-            if (is_porous_media) then
-                DO CV_NODI = 1, Mdims%cv_nonods
+            DO CV_NODI = 1, Mdims%cv_nonods
+                if (is_porous_media) then
                     SIGMA_INV_APPROX( :, CV_NODI ) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) / N( CV_NODI ) )
-                END DO
-            else if(is_flooding) then
+                else if(is_flooding) then
                 ! set \sigma for the pipes here      !multi_absorp%Flooding is always of memory type 1
-                SIGMA_INV_APPROX(:, cv_nodi)=1.0/multi_absorp%Flooding%val( 1, 1, :, cv_nodi )!Only has the friction inside the pipes
-            else
-               SIGMA_INV_APPROX( :, CV_NODI ) = 1.0
-            end if
+                    SIGMA_INV_APPROX(:, cv_nodi)=1.0/multi_absorp%Flooding%val( 1, 1, :, cv_nodi )!Only has the friction inside the pipes
+                else
+                    SIGMA_INV_APPROX( :, CV_NODI ) = 1.0
+                end if
+            END DO
             IF ( PIPES_1D ) THEN
                 allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
+!                  print *,'******before SIGMA_INV_APPROX(:, 68):',SIGMA_INV_APPROX(:, 68)
+!                  print *,'n(68):',n(68) 
                 CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%ndim, Mdims%u_nloc, Mdims%cv_nloc, Mdims%x_nloc, Mspars%small_acv%fin, Mspars%small_acv%col, &
                     Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,ndgln%suf_cv,ndgln%suf_u, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     Mdims%cv_nonods, getcv_disc, getct, Mmat%petsc_ACV, Mdims%totele, ndgln%cv, ndgln%x, ndgln%u, ndgln%mat, Mmat%CT, Mmat%C, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, Mmat%CV_RHS, Mmat%CT_RHS, &
                     Mspars%CMC%fin, Mspars%CMC%col, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                     SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef )
+!                  print *,'******after SIGMA_INV_APPROX(:, 68):',SIGMA_INV_APPROX(:, 68)
+
+                if(is_flooding) then
+                    DO CV_NODI = 1, Mdims%cv_nonods
+                        SIGMA_INV_APPROX(:, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, :, CV_NODI )!Only has the friction inside the pipes
+                    END DO
+                endif
+!                  print *,'-----after SIGMA_INV_APPROX(:, 68):',SIGMA_INV_APPROX(:, 68)
+!                  print *,'-----after multi_absorp%Flooding%val( 1, 1, :, 68 ):',multi_absorp%Flooding%val( 1, 1, :, 68 )
+
                 ! Used for pipe modelling...
                 DO CV_NODI = 1, Mdims%cv_nonods
                     MASS_CV_PLUS(2:Mdims%npres,CV_NODI) = mass_pipe(CV_NODI)
@@ -2356,7 +2368,6 @@ contains
                    DO JPHASE = 1, Mdims%nphase
                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
                        JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                       !               IF( IPHASE /= JPHASE ) THEN
                        IF( IPRES /= JPRES ) THEN
                            A_GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) = - GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI )
                            A_GAMMA_PRES_ABS( IPHASE, IPHASE, CV_NODI ) = A_GAMMA_PRES_ABS( IPHASE, IPHASE, CV_NODI ) + GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI )
@@ -2365,14 +2376,12 @@ contains
                END DO
                if (is_flooding .and. getct)  then
 ! start again by re-setting to 0.0
-!WHY ARE WE SETTING THE VALUE OF A_GAMMA_PRES_ABS TO MAKE IT ZERO NOW?
                    A_GAMMA_PRES_ABS( :, :, CV_NODI ) = 0.0
 
                             !Peaceman correction
 
                    R_PEACMAN=0.0
                    DO IPHASE = 1, Mdims%nphase
-!                       DO JPHASE = 1, Mdims%nphase
                             ISWITCH = MIN( max(IPHASE-2, 0) ,1) ! ISWITCH=0 (for phase 1 and 2) and ISWITCH=1 for phase 3 and 4.
                             JPHASE= (IPHASE+2)*(1-ISWITCH) + (IPHASE-2)*ISWITCH
                             IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
@@ -2386,17 +2395,6 @@ contains
                                     cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                                     / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                             END IF
-!
-!                            IF ( PRES_FOR_PIPE_PHASE_FULL(1) > PRES_FOR_PIPE_PHASE_FULL(2) ) THEN
-!                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-!                                    cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-!                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                            ELSE
-!                                R_PEACMAN( IPHASE ) =  GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-!                                    cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-!                                    / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                            END IF
-!                       END DO
                    END DO
                    
 
@@ -2405,8 +2403,8 @@ contains
 
                    R_PEACMAN = l_frac * R_PEACMAN
 !                   R_PEACMAN = R_PEACMAN*1.e+10
-                   R_PEACMAN=0.0
-                   
+!                   R_PEACMAN=0.0
+                    
 
 
                    A_GAMMA_PRES_ABS( 1, 1, CV_NODI ) = R_PEACMAN( 1 ) * L_surface_pipe
@@ -2422,8 +2420,8 @@ contains
                    A_GAMMA_PRES_ABS( 3, 3, CV_NODI ) = R_PEACMAN( 3 )* K_PIPES
                    A_GAMMA_PRES_ABS( 3, 4, CV_NODI ) = 0.0
                    A_GAMMA_PRES_ABS( 4, 1:3, CV_NODI ) = 0.0
-!                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = l_frac*R_PEACMAN( 4 ) 
-                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = R_PEACMAN( 4 ) 
+!                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = l_frac*R_PEACMAN( 4 )
+                   A_GAMMA_PRES_ABS( 4, 4, CV_NODI ) = R_PEACMAN( 4 )
 !
 ! cty rhs...
                    ct_rhs_phase(1)= -R_PEACMAN( 1 ) * L_surface_pipe*gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
@@ -2442,15 +2440,24 @@ contains
                    DO IPRES = 1, Mdims%npres
                         call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
                    END DO
-                       if(abs(R_PEACMAN( 1 )).gt.1.e-10) then
-                             print *,'cv_nodi,R_PEACMAN:',cv_nodi,R_PEACMAN
-                             do iphase=1,Mdims%nphase
-                                print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
-                             end do
-                             print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
-                             print *,'h,rp,K_PIPES,d:',h,rp,K_PIPES,depth_of_drain%val( CV_NODI )
-                             print *,'PRES_FOR_PIPE_PHASE_FULL(:):',PRES_FOR_PIPE_PHASE_FULL(:)
-                       endif
+! Nodes 68 and 92 should be non-zero...
+!                       if(abs(R_PEACMAN( 1 )).gt.1.e-10) then !GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+
+!                       if(abs(GAMMA_PRES_ABS( 1, 3, CV_NODI )).gt.1.e-10) then !GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+!                             print *,'cv_nodi,R_PEACMAN:',cv_nodi,R_PEACMAN
+!                             do iphase=1,Mdims%nphase
+!                                print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
+!                             end do
+!                             print *,'GAMMA_PRES_ABS( 1, 1, CV_NODI ),GAMMA_PRES_ABS( 1, 3, CV_NODI ):',GAMMA_PRES_ABS( 1, 1, CV_NODI ),GAMMA_PRES_ABS( 1, 3, CV_NODI )
+!                             print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
+!                             print *,'h,rp,K_PIPES,d,fs_height:',h,rp,K_PIPES,depth_of_drain%val( CV_NODI ),fs_height
+!                             print *,'PRES_FOR_PIPE_PHASE_FULL(:):',PRES_FOR_PIPE_PHASE_FULL(:)
+!                             print *,'SIGMA_INV_APPROX( :, CV_NODI ):',SIGMA_INV_APPROX( :, CV_NODI )
+!                             print *,'multi_absorp%Flooding%val( 1, 1, :, cv_nodi ):',multi_absorp%Flooding%val( 1, 1, :, cv_nodi )
+!                             print *,' '
+!                       endif
+
+
                endif
 !
             END DO  ! DO CV_NODI = 1, Mdims%cv_nonods

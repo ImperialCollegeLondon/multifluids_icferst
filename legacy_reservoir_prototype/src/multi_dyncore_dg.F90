@@ -1341,7 +1341,7 @@ END IF
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
 
             !Testing, commented out in the meantime
-            if (is_flooding) call Backtrack_pressure(P_all, deltap, non_its, deltaP_old)
+!            if (is_flooding) call Backtrack_pressure(P_all, deltap, non_its, deltaP_old)
 
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 

@@ -91,6 +91,9 @@
         <Backtracking_factor>
           <real_value rank="0">-0.3334</real_value>
         </Backtracking_factor>
+        <Inifinite_norm_tol>
+          <real_value rank="0">0.01</real_value>
+        </Inifinite_norm_tol>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
