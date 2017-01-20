@@ -2402,8 +2402,9 @@ contains
                    L_surface_pipe = 0.25*pipe_Diameter%val( CV_NODI )
                    l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
 
-                   R_PEACMAN = l_frac * R_PEACMAN
+!                   R_PEACMAN = l_frac * R_PEACMAN
 !                   R_PEACMAN = R_PEACMAN*1.e+10
+!                   R_PEACMAN = R_PEACMAN*1.e+2
 !                   R_PEACMAN=0.0
                     
 
@@ -2430,7 +2431,8 @@ contains
 !                   ct_rhs_phase(3)= l_frac*R_PEACMAN( 3 ) *gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
                    ct_rhs_phase(3)= R_PEACMAN( 3 ) *gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
                    ct_rhs_phase(4)=0.0
-                   ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI ) ! We have already divided through by density in R_PEACMAN.
+                   ct_rhs_phase(1:2)=ct_rhs_phase(1:2)*MASS_CV( CV_NODI )         ! We have already divided through by density in R_PEACMAN.
+                   ct_rhs_phase(3:4)=ct_rhs_phase(3:4)*MASS_CV_PLUS( 2, CV_NODI ) ! We have already divided through by density in R_PEACMAN.
 !                   ct_rhs_phase(:)=ct_rhs_phase(:)*MASS_CV( CV_NODI )/ DEN_FOR_PIPE_PHASE(:) ! Pablo we should not use this one
 
 ! Remeber for flooding DEN_ALL_DIVID( 1, CV_NODI )=1.0
@@ -2457,6 +2459,7 @@ contains
                              print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
                              print *,'l_frac,h,rp,K_PIPES,d,fs_height:',l_frac,h,rp,K_PIPES,depth_of_drain%val( CV_NODI ),fs_height
                              print *,'PRES_FOR_PIPE_PHASE_FULL(:):',PRES_FOR_PIPE_PHASE_FULL(:)
+                             print *,'DEN_ALL_DIVID(:, CV_NODI):',DEN_ALL_DIVID(:, CV_NODI)
                              print *,'SIGMA_INV_APPROX( :, CV_NODI ):',SIGMA_INV_APPROX( :, CV_NODI )
                              print *,'multi_absorp%Flooding%val( 1, 1, :, cv_nodi ):',multi_absorp%Flooding%val( 1, 1, :, cv_nodi )
                              print *,' '
