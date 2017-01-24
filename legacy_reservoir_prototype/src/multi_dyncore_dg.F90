@@ -4824,7 +4824,7 @@ end if
                 if (max(pres_degree,vel_degree)>1) then
                     factor_default = 0.
                 else
-                    factor_default = 100.
+                    factor_default = 1e6
                 end if
                 !Obtain the value from diamond
                 call get_option( '/numerical_methods/CV_press_homogenisation', factor, default = factor_default )

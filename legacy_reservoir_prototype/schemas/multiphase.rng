@@ -2702,7 +2702,7 @@ This is os by default for the CV pressure formulation </a:documentation>
             <element name="CV_press_homogenisation">
               <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
 the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.
-The default value for P1DGP1 =&gt; 100 for P1DGP2 this is not required and for P2DGP1DG stability cannot be guaranteed;
+The default value for P1DGP1 =&gt; 1e6 for P1DGP2 this is not required and for P2DGP1DG stability cannot be guaranteed;
 To disable, set it to negative values. This SHOULD be disabled if there are no pressure inlet boundary conditions</a:documentation>
               <ref name="real"/>
             </element>

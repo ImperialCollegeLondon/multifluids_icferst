@@ -2402,7 +2402,7 @@ contains
                    L_surface_pipe = 0.25*pipe_Diameter%val( CV_NODI )
                    l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
 
-!                   R_PEACMAN = l_frac * R_PEACMAN
+                   R_PEACMAN = l_frac * R_PEACMAN
 !                   R_PEACMAN = R_PEACMAN*1.e+10
 !                   R_PEACMAN = R_PEACMAN*1.e+2
 !                   R_PEACMAN=0.0
