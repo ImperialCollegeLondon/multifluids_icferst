@@ -2006,6 +2006,15 @@ start =
             element CV_press_homogenisation {
                real
             }?,
+            ## Parameter to control the amount of pressure homogenisation done.
+            ## The aim of this method is to ancourage a P0DG pressure behaviour from a P1DG. This is to try to stabilise
+            ## the element pair P1DG(BL)P1DG(CV by default is set to 1e-3. for this element pair and zero for the rest.
+            ##
+            ## Note that the pressure may fail to convergence, however good results may be achieved so it is recommended
+            ## to select ignore_convergence_failures for the pressure solver and refine the convergence criteria.
+            element element_press_homogenisation {
+               real
+            }?,
             ## Look for bad elements to change its anisotropic permeability to improve their quality
             element Bad_element_fix {
                empty

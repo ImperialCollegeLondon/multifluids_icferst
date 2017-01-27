@@ -325,6 +325,9 @@ contains
         call Get_Discretisation_Options( state, Mdims, Mdisopt )
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
+        if (.not. Mmat%CV_pressure .and. (Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or. (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) then
+            ewrite(0, *) "WARNING: the only tested element pair using bubble shape functions is the P1DG(BL)P1DG(CV)"
+        end if
         !!$ Defining problem to be solved:
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
             velocity_max_iterations,  default =  500 )

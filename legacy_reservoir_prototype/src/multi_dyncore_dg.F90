@@ -1336,6 +1336,9 @@ END IF
                 rhs_p%val = rhs_p%val / rescaleVal
                 !End of re-scaling
             end if
+            !Option to add a term in the CMC matrix to diffuse Pressure so we effectively
+            !get a closer to P0DG pressure. By default only for the P1(BL)DGP1DG(CV) element pair
+            if (is_porous_media .and. Mmat%CV_pressure ) call DiffusePressure2Element(CMC_petsc, Mdims, Mspars, ndgln, Mmat)
             call zero(deltaP)
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
@@ -4790,9 +4793,12 @@ end if
                 if ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or.&
                         (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) then
                     scaling_vel_nodes = scaling_vel_nodes - 1.
-                    lump_vol_factor = 0.!No homogenisation for bubble functions
+                    lump_vol_factor = 0.!No velocity homogenisation for bubble elements
                 end if
             end if
+
+            !No homogenisation for Pressure discontinuous formulations
+            if (Mdims%mat_nonods == Mdims%p_nonods) lump_vol_factor = 0.
 
             select case (Mdims%u_nloc)
                 case (6) !Quadratic 2D

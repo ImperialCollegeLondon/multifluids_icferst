@@ -2708,6 +2708,17 @@ To disable, set it to negative values. This SHOULD be disabled if there are no p
             </element>
           </optional>
           <optional>
+            <element name="element_press_homogenisation">
+              <a:documentation>Parameter to control the amount of pressure homogenisation done.
+The aim of this method is to ancourage a P0DG pressure behaviour from a P1DG. This is to try to stabilise
+the element pair P1DG(BL)P1DG(CV by default is set to 1e-3. for this element pair and zero for the rest.
+
+Note that the pressure may fail to convergence, however good results may be achieved so it is recommended
+to select ignore_convergence_failures for the pressure solver and refine the convergence criteria.</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+          <optional>
             <element name="Bad_element_fix">
               <a:documentation>Look for bad elements to change its anisotropic permeability to improve their quality</a:documentation>
               <empty/>
