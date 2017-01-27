@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast_pressure_boundaries</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml bubble</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./BL_fast_pressure_boundaries_bubble.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="BL_fast_pressure_boundaries_bubble" language="python">BL_fast = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: BL_fast = True
+
+assert(BL_fast)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
