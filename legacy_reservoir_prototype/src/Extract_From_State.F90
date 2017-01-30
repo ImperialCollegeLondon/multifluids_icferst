@@ -2272,8 +2272,10 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
             nsfield=>extract_scalar_field(packed_state,"Packed"//sfield%name(15:))
             if (viceversa) then
                 nsfield%val = sfield%val
+                if (IsParallel()) call halo_update(nsfield)!Need to update halos
             else
                 sfield%val=nsfield%val
+                if (IsParallel()) call halo_update(sfield)!Need to update halos
             end if
         end if
     end do
@@ -2284,8 +2286,10 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
             nvfield=>extract_vector_field(packed_state,"Packed"//vfield%name(15:))
             if (viceversa) then
                 nvfield%val = vfield%val
+                if (IsParallel()) call halo_update(nvfield)!Need to update halos
             else
                 vfield%val=nvfield%val
+                if (IsParallel()) call halo_update(vfield)!Need to update halos
             end if
         end if
     end do
@@ -2296,11 +2300,16 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
             ntfield=>extract_tensor_field(packed_state,"Packed"//tfield%name(15:))
             if (viceversa) then
                 ntfield%val  = tfield%val
+                if (IsParallel()) call halo_update(ntfield)!Need to update halos
             else
                 tfield%val=ntfield%val
+                if (IsParallel()) call halo_update(tfield)!Need to update halos
             end if
         end if
     end do
+
+
+
 
 end subroutine copy_packed_new_to_iterated
 

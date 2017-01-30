@@ -532,6 +532,9 @@ if (is_flooding) return!<== Temporary fix for flooding
                      mass_ele_transp,IDs_ndgln, &          !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number)
+                !Option to convert from P1 to P0. Has to be just after the creation of the matrix. By default only for the P1(BL)DGP1DG(CV) element pair
+                if (is_porous_media .and. Mmat%CV_pressure ) call DiffuseWithinElement(Mmat%petsc_ACV, Mdims, ndgln%cv, Mdims%cv_nloc, Mdims%nphase, Mmat, diff_par = 0.1)
+
                  !Make the inf norm of the Courant number across cpus
                  if (IsParallel()) then
                     call allmax(Courant_number(1)); call allmax(Courant_number(2))
@@ -562,6 +565,9 @@ if (is_flooding) return!<== Temporary fix for flooding
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
                  end if
+
+
+
                  call zero(vtracer)
                  call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
@@ -1336,9 +1342,10 @@ END IF
                 rhs_p%val = rhs_p%val / rescaleVal
                 !End of re-scaling
             end if
+
             !Option to add a term in the CMC matrix to diffuse Pressure so we effectively
             !get a closer to P0DG pressure. By default only for the P1(BL)DGP1DG(CV) element pair
-            if (is_porous_media .and. Mmat%CV_pressure ) call DiffusePressure2Element(CMC_petsc, Mdims, Mspars, ndgln, Mmat)
+            if (is_porous_media .and. Mmat%CV_pressure ) call DiffuseWithinElement(CMC_petsc, Mdims, ndgln%p, Mdims%p_nloc, 1, Mmat)
             call zero(deltaP)
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
