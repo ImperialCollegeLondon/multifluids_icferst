@@ -640,7 +640,7 @@ By default unlimmited.</a:documentation>
                       <optional>
                         <element name="min_timestep">
                           <a:documentation>Minimum timestep. Beyond this value the timestep will not be decreased.
-By default dt*1e-10.</a:documentation>
+By default dt*1e-3.</a:documentation>
                           <ref name="real"/>
                         </element>
                       </optional>

@@ -2039,8 +2039,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Get time step
     call get_option( '/timestepping/timestep', initial_dt )
     dt = initial_dt
-    !By default the minimum time-steps is ten orders smaller than the initial timestep
-    if(min_ts<0) min_ts = initial_dt * 1d-10
+    !By default the minimum time-steps is 3 orders smaller than the initial timestep
+    if(min_ts<0) min_ts = initial_dt * 1d-3
 
     select case (order)
         case (1)!Store or get from backup
