@@ -59,7 +59,7 @@ module solvers_module
 
     private
 
-    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one, DiffuseWithinElement
+    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one
 
     interface multi_solver
         module procedure solve_via_copy_to_petsc_csr_matrix
@@ -826,61 +826,6 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
-
-  subroutine DiffuseWithinElement(petsc_Mat, Mdims, ndgln_mat, Nloc, nphase, Mmat, diff_par)
-      !We add a term in the CMC matrix to homogenize pressures per element, to make it more P0 style and
-      !encourage an stable behaviour of the element pair P1(BL)DGP1DG(CV)
-      implicit none
-      type(petsc_csr_matrix), intent(inout)::  petsc_Mat
-      type(multi_dimensions), intent(in) :: Mdims
-      integer, dimension(:), intent(in) :: ndgln_mat
-      type (multi_matrices), intent(in) :: Mmat
-      integer, intent(in) :: Nloc, nphase
-      real, optional, intent(in) :: diff_par
-      !Local variables
-      real, save :: diff_strength = -1.
-      integer :: ele, p_iloc, P_NOD, i_node, j_node, count, ierr, p_jloc, iphase
-      real :: auxR, ele_vol
-      real, dimension(1) :: rescal
-
-      !Initialize variables
-      if (diff_strength < 0.) then
-        call get_option( '/numerical_methods/element_press_homogenisation', auxR, default = 0.0 )
-        !If P1DG(BL)P1DG(CV) then apply default value if required
-        if ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or. (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) then
-             if (auxR < 1d-8) auxR = 1d-3  ! <=====  Default value for bubble elements
-        end if
-        diff_strength = auxR
-      end if
-
-      !If zero, do not apply this method
-      if ( abs(diff_strength) < 1d-8) then
-        return
-      else if (present(diff_par)) then!Use internal parameter if requested
-        diff_strength = diff_par
-      end if
-      DO ELE = 1, Mdims%totele
-          !The Mass matrix has to have the u_nloc/volume per diagonal entry
-          ele_vol = 1./Mmat%PIVIT_MAT( 1, 1, ELE )
-          DO p_iloc = 1, Nloc
-              i_node = ndgln_mat((ele-1) * Nloc + P_ILOC)
-              do p_jloc = 1, Nloc
-                j_node = ndgln_mat((ele-1) * Nloc + p_jloc)
-                  if ( j_node == i_node) then!same sign in the diagonal
-                      auxR = -diff_strength*ele_vol
-                  else
-                      auxR = diff_strength*ele_vol
-                  end if
-                  do iphase = 1, nphase
-                      call addto( petsc_Mat, blocki = iphase, blockj = iphase, i = i_node, j = j_node,val = auxR)
-                  end do
-              end do
-          end do
-      end do
-      petsc_Mat%is_assembled = .false.
-      call assemble( petsc_Mat )
-
-      end subroutine DiffuseWithinElement
 
 end module solvers_module
 

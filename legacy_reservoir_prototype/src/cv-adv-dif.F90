@@ -1177,7 +1177,7 @@ contains
                 vecfield => extract_vector_field( packed_state, "Porosity" )
                 Por =>  vecfield%val(1,:)
                 call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
-                calculate_mass_delta(:,1) , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc, tenfield1)
+                    calculate_mass_delta(:,1) , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc, tenfield1)
             endif
 
             tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -1195,9 +1195,6 @@ contains
 
         if(is_porous_media .and. calculate_flux .and. GETCT ) then
 
-!            variable allocated above in the calculate_mass section
-!            allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
-!            allocate(Dens(Mdims%nphase,Mdims%cv_nonods))
 
             ! Extract Pressure
             CVPressure => extract_tensor_field( packed_state, "PackedCVPressure" ) ! Note no %val(:,:,:) needed here anymore
@@ -1214,12 +1211,12 @@ contains
             ! Calculate Pore volume
             porevolume = 0.0
             DO ELE = 1, Mdims%totele
-		if (element_owned(tenfield1, ele)) then
+                if (element_owned(tenfield1, ele)) then
                     porevolume = porevolume + MASS_ELE(ELE) * Por(IDs_ndgln(ELE))
-		end if
+                end if
             END DO
 
-	call allsum(porevolume) ! Now sum the value over all processors
+            call allsum(porevolume) ! Now sum the value over all processors
 
         endif
 
@@ -6948,10 +6945,6 @@ contains
                 CALL TRIQUAold( L1, L2, L3, L4, WEIGHT, ndim==3, NGI )
                 ! Work out the shape functions and there derivatives...
                 call SHATRInew(L1, L2, L3, L4, WEIGHT,  NLOC,NGI,  N,NLX_ALL)
-                !    CALL SHATRIold( L1, L2, L3, L4, WEIGHT, ndim==3, &
-                !         &          NLOC,NGI,&
-                !         &          N,NLX,NLY,NLZ)
-
                 ! ******************************************************************
                 ! Calculate the sub elements for quadratic element SUB_NDGLNO ...
                 IF(CV_NLOC==NLOC) THEN

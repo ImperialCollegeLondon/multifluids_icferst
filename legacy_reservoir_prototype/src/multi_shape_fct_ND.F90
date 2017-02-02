@@ -1214,12 +1214,6 @@ contains
        case( 3 ) ! Linear triangle
           Conditional_LinTriangle: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
-             if( u_nloc == 6 .or. u_nloc == 4) then!Quadratic or bubble velocity element!For bubble and normal mass matrix it should
-                                                    !use the cubic method
-                GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             elseif( u_nloc == 10 ) then
-                GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
-             end if
 !!$
              Select Case( whole_ele_volume_order )
              case( 1 )
@@ -1235,6 +1229,12 @@ contains
                 GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
              end Select
 !!$
+             if( u_nloc == 6 .or. u_nloc == 4) then!Quadratic or bubble velocity element!For bubble and normal mass matrix it should
+                                                    !use the cubic method
+                GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             elseif( u_nloc == 10 ) then
+                GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
+             end if
           else
              Select Case( volume_order )
              case( 1 )
@@ -1389,8 +1389,6 @@ contains
        case( 4 ) ! Linear
           Conditional_LinTets: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             if( u_nloc == 10 .or. u_nloc == 5) & ! Use a quadratic interpolation pt set for quad tets and bubble tets
-                  GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
 !!$
              Select Case( whole_ele_volume_order )
              case( 1 )
@@ -1409,7 +1407,9 @@ contains
              case( 3 )
                 GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end Select
-!!$
+!!$          ! Use a quadratic interpolation pt set for quad tets and bubble tets
+             if( u_nloc == 10 .or. u_nloc == 5) &
+                  GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
           else
              Select Case( volume_order )
              case( 1 )
@@ -1424,7 +1424,6 @@ contains
              case( 2 )
                 GIdims%sbcvngi = 3*4 ; GIdims%scvngi = 6*4
              end Select
-!!$
           end if Conditional_LinTets
 !!$ ===
        case( 10 ) ! Quadratic
