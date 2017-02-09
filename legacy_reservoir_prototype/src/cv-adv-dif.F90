@@ -2255,14 +2255,11 @@ contains
             END DO
             IF ( PIPES_1D ) THEN
                 allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
-!                  print *,'******before SIGMA_INV_APPROX(:, 68):',SIGMA_INV_APPROX(:, 68)
-!                  print *,'n(68):',n(68) 
                 CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%ndim, Mdims%u_nloc, Mdims%cv_nloc, Mdims%x_nloc, Mspars%small_acv%fin, Mspars%small_acv%col, &
                     Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,ndgln%suf_cv,ndgln%suf_u, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     Mdims%cv_nonods, getcv_disc, getct, Mmat%petsc_ACV, Mdims%totele, ndgln%cv, ndgln%x, ndgln%u, ndgln%mat, Mmat%CT, Mmat%C, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, Mmat%CV_RHS, Mmat%CT_RHS, &
                     Mspars%CMC%fin, Mspars%CMC%col, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                     SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef )
-!                  print *,'******after SIGMA_INV_APPROX(:, 68):',SIGMA_INV_APPROX(:, 68)
 
                 if(is_flooding) then
                     DO CV_NODI = 1, Mdims%cv_nonods
@@ -2270,9 +2267,6 @@ contains
 !                        SIGMA_INV_APPROX(1:2, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, 1:2, CV_NODI )!Only has the friction inside the pipes
                     END DO
                 endif
-!                  print *,'-----after SIGMA_INV_APPROX(:, 68):',SIGMA_INV_APPROX(:, 68)
-!                  print *,'-----after multi_absorp%Flooding%val( 1, 1, :, 68 ):',multi_absorp%Flooding%val( 1, 1, :, 68 )
-
                 ! Used for pipe modelling...
                 DO CV_NODI = 1, Mdims%cv_nonods
                     MASS_CV_PLUS(2:Mdims%npres,CV_NODI) = mass_pipe(CV_NODI)
@@ -2438,7 +2432,7 @@ contains
                    DO IPRES = 1, Mdims%npres
                         call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
                    END DO
-! Nodes 68 and 92 should be non-zero...
+
 !                       if(abs(R_PEACMAN( 1 )).gt.1.e-10) then !GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
 
                        if(.false.) then !GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )

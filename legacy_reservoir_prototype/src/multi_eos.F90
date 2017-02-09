@@ -52,7 +52,7 @@ module multiphase_EOS
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     implicit none
 
-    real, parameter :: flooding_hmin = 0.0
+    real, parameter :: flooding_hmin = 1e-5
 
 contains
 
@@ -804,7 +804,7 @@ contains
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     bathymetry(cv_iloc) = max(hmin, density%val(1,1,cv_nod))
                 end do
-                if (.not.no_averaging) bathymetry = dble(Mdims%cv_nloc) / sum(1./bathymetry)
+                if (.not.no_averaging) bathymetry = (sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
                 do cv_iloc = 1, Mdims%cv_nloc
                     mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
@@ -817,7 +817,6 @@ contains
                             Flooding_absorp%val(1,1,i, mat_nod) = Flooding_absorp%val(1,1,i, mat_nod) + Nm_aux(cv_iloc)**2. * g *&
                                 max(u_min,sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod))))&
                                 /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average
-!                                /(max(hmin, density%val(1,1,cv_nod))**(4./3.)*dble(mdims%u_nloc))!This last term to get an average
                         end do
                     end do
                 end do
