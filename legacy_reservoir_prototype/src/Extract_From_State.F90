@@ -1988,7 +1988,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     logical, intent(in) :: nonLinearAdaptTs
     integer, intent(in) :: its, order
     !Local variables
-    real :: dt
+    real :: dt, auxR
     integer, save :: show_FPI_conv
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
@@ -2102,8 +2102,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             select case (variable_selection)
                 case (1)
                     !Calculate normalized infinite norm of the difference
-                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/reference_field(1,1,:)))
-                    inf_norm_val = inf_norm_val/backtrack_or_convergence
+                    auxR = max(maxval(reference_field(1,1,:)), maxval(pressure(1,1,:)))
+
+                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
+!                    inf_norm_val = inf_norm_val/backtrack_or_convergence
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
                 case (2)
@@ -2784,25 +2786,25 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
 
     if (element_owned(Ele_owned_field, ele)) then ! Check if the element number read into the subroutine is owned by the processor that has entered this loop at run-time (so that we don't overcount).
 
-	    if(test) then ! Check if we're on a domain boundary (we only want to include contributions there)
+        if(test) then ! Check if we're on a domain boundary (we only want to include contributions there)
 
-		    ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
-		    ! Need to pass down an array with the saturation boundary conditions to deal with these cases
-		    ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
+            ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
+            ! Need to pass down an array with the saturation boundary conditions to deal with these cases
+            ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
 
-		do i = 1, size(ndotqnew)
-		    surf = (sele - 1 ) * cv_snloc + cv_siloc
-		    if(ndotqnew(i) < 0 ) then
-		        ! Inlet boundary - so use boundary phase volume fraction
-		        totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
+        do i = 1, size(ndotqnew)
+            surf = (sele - 1 ) * cv_snloc + cv_siloc
+            if(ndotqnew(i) < 0 ) then
+                ! Inlet boundary - so use boundary phase volume fraction
+                totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
 
-		    else
-		        ! Outlet boundary - so use internal (to the domain) phase volume fraction
-		        totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
-		    endif
-		enddo
+            else
+                ! Outlet boundary - so use internal (to the domain) phase volume fraction
+                totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
+            endif
+        enddo
 
-	    endif
+        endif
 
     endif
 
@@ -2960,9 +2962,9 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     !Check capillary
     if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
-        	root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
-        	root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::C/prescribed/value'
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::C/prescribed/value'
         endif
         k = 0
         do i = 0, nphase-1
@@ -2974,9 +2976,9 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
                 all_fields_costant = .false.
         end do
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
-        	root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
-        	root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::a/prescribed/value'
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::a/prescribed/value'
         endif
         k = 0
         do i = 0, nphase-1
