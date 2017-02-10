@@ -2125,6 +2125,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/vector_field::Absorption/lump_absorption') &
             ) lump_absorption = .true.
+        if (is_flooding) lump_absorption = .true.!<=This has to be be between these two options
         lump_mass2 = .false.
         if ( lump_absorption ) lump_mass2 = .true.
         ! This applies a non-linear shock capturing scheme which
