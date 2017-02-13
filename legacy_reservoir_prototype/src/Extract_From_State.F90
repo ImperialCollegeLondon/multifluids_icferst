@@ -2162,6 +2162,14 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             end if
             !If time adapted based on the non-linear solver then
             if (nonLinearAdaptTs) then
+                !If any solver fails to converge (and the user care), we may want to repeat the time-level
+                !without waiting for the last non-linear iteration
+                if (solver_not_converged .and.have_option(&
+                  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/ensure_solvers_convergence')) then
+                    Repeat_time_step = .true.
+                    solver_not_converged = .false.
+                    ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
+                end if
                 !Adaptive Ts for Backtracking only based on the number of FPI
                 if (ExitNonLinearLoop .and. its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
                     !Increase time step
@@ -2172,7 +2180,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     ExitNonLinearLoop = .true.
                     return
                 end if
-                if (its >= NonLinearIteration) then
+                if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
                     if ( dt / decreaseFactor < min_ts) then

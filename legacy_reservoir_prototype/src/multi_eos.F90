@@ -809,7 +809,7 @@ contains
                     mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     r_nod_count(mat_nod) = r_nod_count(mat_nod) + 1
-                    Nm_aux(cv_iloc) = Nm%val(1,1,ele) !  + max(flooding_hmin, 1d3*(2*hmin-density%val(1,1,cv_nod))/hmin)
+                    Nm_aux(cv_iloc) = Nm%val(1,1,ele)! + max(flooding_hmin, 1d3*(2*hmin-density%val(1,1,cv_nod))/hmin)
                     do u_iloc = 1, mdims%u_nloc
                         u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
                         !Since Flooding_absorp is of memory_type 1 we can populate it directly

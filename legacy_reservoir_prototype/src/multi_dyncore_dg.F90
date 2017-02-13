@@ -120,7 +120,7 @@ contains
            REAL, DIMENSION( : , : ), target, allocatable :: den_all
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
-           INTEGER :: IPHASE
+           INTEGER :: IPHASE, its_taken
            REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
@@ -300,17 +300,20 @@ contains
                        vtracer=as_vector(tracer,dim=2)
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
-                       call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
+                       call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
+                        '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
                    ELSE
                        vtracer=as_vector(tracer,dim=2)
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
-                       call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path))
+                       call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
                        do iphase = 1, Mdims%nphase
                            ewrite(2,*) 'T phase min_max:', iphase, &
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+                   !Checking solver not fully implemented
+                   !if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping
            END DO Loop_NonLinearFlux
 
@@ -405,11 +408,10 @@ contains
              integer :: its_taken
 if (is_flooding) return!<== Temporary fix for flooding
 
-            if(max_allowed_its < 0) then
-                call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
-                     max_allowed_its, default = 100000)
-                call get_option( '/timestepping/nonlinear_iterations', max_FPI, default = 3 )
-            end if
+            if(max_allowed_its < 0)  call get_option( &
+                '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/solver/max_iterations',&
+                 max_allowed_its, default = 100000)
+
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -630,10 +632,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
              !If the final saturation solve of the final non-linear FPI fails, then we ensure that the result is not accepted
              !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
-             if (nonlinear_iteration>=max_FPI .and. its_taken >= max_allowed_its) then
-                backtrack_or_convergence = 1d-10!Modify the parameter that controls the convengerce to ensure it does not pass the check
-                ewrite(0,*) "WARNING: The phase volume fraction solver failed to converge for the last non-linear iteration."
-             end if
+             if (its_taken >= max_allowed_its) solver_not_converged = .true.
 
              !Make sure the parameter is consistent between cpus
              if (IsParallel()) call allmin(backtrack_or_convergence)
@@ -826,15 +825,9 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
         real, dimension(:,:,:), allocatable :: velocity_absorption, U_SOURCE_CV_ALL
         real, dimension(:,:,:,:), allocatable :: UDIFFUSION_ALL
-
         real, dimension(:,:) :: calculate_mass_delta
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
-
         type( multi_field ) :: UDIFFUSION_ALL2
-
-
-
-
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
@@ -875,8 +868,15 @@ if (is_flooding) return!<== Temporary fix for flooding
         integer :: idim, idx1, idx2, ndim
         type( scalar_field ), pointer :: beta
         !!$ end of magma stuff
-
-
+        !Variables to control de performance of the solvers
+        integer :: its_taken
+        integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
+        if(max_allowed_P_its < 0)  then
+            call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
+             max_allowed_P_its, default = 100000)
+            call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations',&
+             max_allowed_V_its, default = 100000)
+        end if
         ! if q scheme allocate a field in state and use pointers..
         IGOT_THERM_VIS=0
         ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -1235,7 +1235,8 @@ end if
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                   call zero(velocity)
                   packed_vel=as_packed_vector(velocity)
-                  call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS )
+                  call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , iterations_taken = its_taken)
+                  if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
 #ifndef USING_GFORTRAN
                   velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
 #endif
@@ -1342,8 +1343,8 @@ END IF
             end if
             call zero(deltaP)
             !Solve the system to obtain dP (difference of pressure)
-            call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
-
+            call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
+            if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
             !Testing, commented out in the meantime as it seems unstable
 !            if (is_flooding) call Backtrack_pressure(P_all, deltap, non_its, deltaP_old)
 

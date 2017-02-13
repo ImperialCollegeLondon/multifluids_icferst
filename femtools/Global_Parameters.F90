@@ -190,7 +190,7 @@ module global_parameters
   logical :: after_adapt = .false.
   logical :: first_time_step = .false.
   logical :: first_nonlinear_time_step = .false.
-
+  logical :: solver_not_converged = .false.
 
   !!Public string containing a generic warning and tips to get the code working
   character(len=OPTION_PATH_LEN) :: multi_generic_warning =""
