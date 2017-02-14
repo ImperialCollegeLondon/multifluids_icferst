@@ -888,7 +888,8 @@ contains
             call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
         end do
 
-        call insert_sfield(packed_state,"Density",1,nphase)
+        call insert_sfield(packed_state,"Density",1,nphase,&
+            add_source=.true.)
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
@@ -1129,6 +1130,7 @@ contains
                         check_paired(extract_scalar_field(state(i),"Density"),&
                         extract_scalar_field(state(i),"OldDensity")))
                     call unpack_sfield(state(i),packed_state,"Density",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"DensitySource",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Density"),"Density")
                 end if
 
@@ -2124,6 +2126,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
             ! In this case we only calculate the total mass - we could calculate the mass of each phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
+            if (size(pressure,2) > 1) max_calculate_mass_delta = 0.0!<= For wells this does not work correctly, disable it
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
                 call allmax(ts_ref_val)
@@ -2132,7 +2135,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             end if
 
             if (is_porous_media) then
-                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", calculate_mass_delta(1,2)
+                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
             end if

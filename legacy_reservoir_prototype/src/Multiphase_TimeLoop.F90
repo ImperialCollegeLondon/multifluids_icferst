@@ -166,7 +166,7 @@ contains
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
-        type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
+        type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource, DensitySource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         !type(scalar_field), pointer :: bathymetry
@@ -593,6 +593,10 @@ call solve_transport()
                 if ( Mdims%ncomp > 1 ) then
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
                    ScalarField_Source_Store = PhaseVolumeFractionComponentSource%val(1,:,:)
+                end if
+                if (is_flooding) then
+                    DensitySource => extract_tensor_field(packed_state,"PackedDensitySource", stat)
+                    if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + DensitySource%val(1,:,:)
                 end if
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
