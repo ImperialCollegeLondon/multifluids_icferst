@@ -2151,7 +2151,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call get_option('/material_phase[0]/vector_field::Velocity/prognostic/' // &
             'spatial_discretisation/discontinuous_galerkin/stabilisation/method', &
             RESID_BASED_STAB_DIF, default=0 )
-        BETWEEN_ELE_STAB = RESID_BASED_STAB_DIF/=0 ! Always switch on between element diffusion if using non-linear
+        BETWEEN_ELE_STAB = RESID_BASED_STAB_DIF/=0 .and..not.is_flooding! Always switch on between element diffusion if using non-linear
         call get_option('/material_phase[0]/vector_field::Velocity/prognostic/' // &
             'spatial_discretisation/discontinuous_galerkin/stabilisation/nonlinear_velocity_coefficient', &
             U_NONLIN_SHOCK_COEF, default=1.)

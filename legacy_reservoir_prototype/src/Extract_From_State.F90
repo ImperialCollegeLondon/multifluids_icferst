@@ -1991,6 +1991,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     integer, intent(in) :: its, order
     !Local variables
     real :: dt, auxR
+    integer :: Aim_num_FPI, auxI, incr_threshold
     integer, save :: show_FPI_conv
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
@@ -2028,12 +2029,16 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
         increaseFactor, default = 1.1 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
-        decreaseFactor, default = 1.5 )
+        decreaseFactor, default = 2.0 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
         max_ts, default = huge(min_ts) )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
         min_ts, default = -1. )
+    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
+        incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
+    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/Aim_num_FPI', &
+        Aim_num_FPI, default = -1 )
 
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 5d-3)
@@ -2165,6 +2170,27 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             end if
             !If time adapted based on the non-linear solver then
             if (nonLinearAdaptTs) then
+                !We try to always perform a certain amount of FPI
+                if (Aim_num_FPI > 0) then
+                    !We do not follow the normal approach
+                    if (ExitNonLinearLoop.and..not.Repeat_time_step) then
+                        auxI = its - Aim_num_FPI
+                        if (abs(auxI) > 1) then!<= If the difference is 1, we don't do anything
+                            !Increase time step
+                            call get_option( '/timestepping/timestep', dt )
+                            if (auxI > 0 )then!We want to reduce the amount of FPI
+                                dt = max(dt / min(1.+abs(auxI)*0.1, decreaseFactor), min_ts)!Slightly decrement of the time-step size
+                            else if (auxI < 0 )then!We want to increase the amount of FPI
+                                dt = min(dt * min(1.+abs(auxI)*0.025, increaseFactor), max_ts)!Slightly increase of the time-step size
+                            end if
+                            call set_option( '/timestepping/timestep', dt )
+                            ewrite(show_FPI_conv,*) "Time step changed to:", dt
+                            ExitNonLinearLoop = .true.
+                            return
+                        end if
+                    end if
+                end if
+
                 !If any solver fails to converge (and the user care), we may want to repeat the time-level
                 !without waiting for the last non-linear iteration
                 if (solver_not_converged .and.have_option(&
@@ -2174,7 +2200,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
                 end if
                 !Adaptive Ts for Backtracking only based on the number of FPI
-                if (ExitNonLinearLoop .and. its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
+                if (ExitNonLinearLoop .and. its < incr_threshold .and..not.Repeat_time_step) then
                     !Increase time step
                     call get_option( '/timestepping/timestep', dt )
                     dt = min(dt * increaseFactor, max_ts)

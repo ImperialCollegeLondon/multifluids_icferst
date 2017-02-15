@@ -949,12 +949,13 @@ contains
         ! END OF TEMP STUFF HERE
         ALLOCATE( R_PRES( Mdims%npres ), R_PHASE( Mdims%nphase ), MEAN_PORE_CV_PHASE( Mdims%nphase ) )
         IF ( Mdims%npres > 1 ) THEN
-            ALLOCATE( A_GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-            ALLOCATE( GAMMA_PRES_ABS2( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-            ALLOCATE( OPT_VEL_UPWIND_COEFS_NEW_CV( Mdims%nphase, Mdims%cv_nonods ) )
+            ALLOCATE( A_GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ); A_GAMMA_PRES_ABS = 0.
+            ALLOCATE( GAMMA_PRES_ABS2( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ); GAMMA_PRES_ABS2 = 0.
+            ALLOCATE( OPT_VEL_UPWIND_COEFS_NEW_CV( Mdims%nphase, Mdims%cv_nonods ) ); OPT_VEL_UPWIND_COEFS_NEW_CV = 0.
             ALLOCATE( SIGMA_INV_APPROX( Mdims%nphase, Mdims%cv_nonods ), SIGMA_INV_APPROX_NANO( Mdims%nphase, Mdims%cv_nonods ), N( Mdims%cv_nonods ) )
-            ALLOCATE( RSUM_VEC( Mdims%nphase ) )
-            ALLOCATE( PIPE_ABS( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
+            SIGMA_INV_APPROX = 0; SIGMA_INV_APPROX_NANO = 0.; N = 0.
+            ALLOCATE( RSUM_VEC( Mdims%nphase ) ); RSUM_VEC = 0.
+            ALLOCATE( PIPE_ABS( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ); PIPE_ABS = 0.
         END IF
         psi(1)%ptr=>tracer
         psi(2)%ptr=>old_tracer
@@ -2526,7 +2527,7 @@ contains
                             END DO
                         END DO
 
-                    else ! IF ( .not. is_flooding ) then (flooding)
+                    else ! flooding
                         ! Should really use the manhole diameter here...
                         DO IPRES = 1, Mdims%npres
 !                           PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
@@ -2638,7 +2639,7 @@ contains
             endif ! if(GETCV_DISC) then
 
             IF ( GETCT ) THEN
-                INV_B = DT * PIPE_ABS * 1.0
+                INV_B = DT * PIPE_ABS
                 if (.not.is_flooding) then
                     DO IPHASE = 1, Mdims%nphase
                         INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) + DEN_ALL( IPHASE, : )
@@ -2656,6 +2657,7 @@ contains
                     END DO
                 end if
                 DO CV_NODI = 1, Mdims%cv_nonods
+
                     CALL INVERT( INV_B( :, :, CV_NODI ) )
                 END DO
                 IF ( MULTB_BY_POROSITY ) THEN

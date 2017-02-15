@@ -517,19 +517,29 @@ start =
                     element adaptive_timestep_nonlinear{
                         integer,
                       (
+                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced
+                        ## here -+ 1 FPI
+                        element Aim_num_FPI {
+                          integer
+                        }?,
                         ## If any of the solvers failt to achieve convergence the time-step size is 
                         ## reduced and the time-level repeated without waiting to reach the maximum number of FPI.
                         ## Note: For the saturation for porous media it allows to diverge inside the saturation FPI.
-                       element ensure_solvers_convergence {
+                        element ensure_solvers_convergence {
                           empty
-                       }?,
+                        }?,
+                        ## Number of FPI below which the time-step size is increased
+                        ## by default it is the 25% of the maximum allowed FPIs
+                        element increase_threshold{
+                        integer
+                        }?,
                         ## Multiply present timestep by this factor when increasing it.
-                        ## By default 1.05
+                        ## By default 1.5
                         element increase_factor{
                         real
                         }?,
                         ## Multiply present timestep by this factor when decreasing it.
-                        ## By default 1.2
+                        ## By default 2.0
                         element decrease_factor{
                         real
                         }?,
