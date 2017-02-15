@@ -2175,7 +2175,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !We do not follow the normal approach
                     if (ExitNonLinearLoop.and..not.Repeat_time_step) then
                         auxI = its - Aim_num_FPI
-                        if (abs(auxI) > 1) then!<= If the difference is 1, we don't do anything
+                        if (abs(auxI) > 1 .or. (Aim_num_FPI==3 .and. its == 2)) then!<= If the difference is 1, we don't do anything
                             !Increase time step
                             call get_option( '/timestepping/timestep', dt )
                             if (auxI > 0 )then!We want to reduce the amount of FPI
