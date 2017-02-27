@@ -2667,20 +2667,6 @@ contains
                     END DO
                 END IF
             ENDIF ! ENDOF IF ( GETCT ) THEN
-            ! IF (  .NOT.GETCT .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-            ! IF (  .NOT.GETCT  ) THEN
-            IF (  .FALSE. ) THEN
-                DO CV_NODI = 1, Mdims%cv_nonods
-                    DO IPHASE = 1, Mdims%nphase
-                        DO JPHASE = 1, Mdims%nphase
-                            IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                            JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                            !                     PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI )
-                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI )
-                        END DO
-                    END DO
-                END DO
-            END IF ! ENDOF IF ( .NOT. GETCT ) THEN
         END IF ! IF ( Mdims%npres > 1 ) THEN
         Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
             Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix

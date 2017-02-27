@@ -407,47 +407,9 @@ start =
             ## 
             ## Manual suggests 2
             ## 
-            ## If using Fixed_Point_Iteration the recommendation is 100
+            ## If using Fixed_Point_Iteration the recommendation is 25
 			element nonlinear_iterations {
                integer,
-               ## tolerance for non-linear iteration.
-               ## Manual suggests 1.0E-12
-               element tolerance {
-                  real,
-                  (
-                      ## Select the norm with which you want the tolerance to be tested.
-                      ##
-                      ## The infinity norm.
-                      element infinity_norm {
-                        empty
-                      }|
-                      ## Select the norm with which you want the tolerance to be tested.
-                      ##
-                      ## The l2 norm.
-                      element l2_norm {
-                        empty
-                      }|
-                      ## Select the norm with which you want the tolerance to be tested.
-                      ##
-                      ## The l2 norm evaluated on a control volume mesh.
-                      element cv_l2_norm {
-                        empty
-                      }
-                  )
-               }?,
-               ## Terminate the simulation if the number of
-               ## nonlinear_iterations is reached
-               ## and the tolerance criterion is not met.
-               ## This is mostly useful as a debugging option if you
-               ## suspect the solution is not converging.
-               element terminate_if_not_converged {
-                  empty
-               }?,
-               ## Number of non-linear iterations for the first time step after adapting the mesh.
-               ## This option will work only if the mesh_adaptivity is switched on.
-               element nonlinear_iterations_at_adapt {
-                  integer
-               }?,
                ## This is the convergence criterion for the Fixed Point Iteration solver.
                ## The functional to compare is: 
                ##
@@ -517,10 +479,20 @@ start =
                     element adaptive_timestep_nonlinear{
                         integer,
                       (
-                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced
-                        ## here -+ 1 FPI
-                        element Aim_num_FPI {
-                          integer
+                        ## Time-step size controlled using a PID approach.
+                        ## By default the aim of FPIs is the 25% of nonlinear_iterations, this can be changed with Aim_num_FPI.
+                        ## if Aim_num_FPI = 0 then only the error is controlled.
+                        ## The increase_factor and decrease_factor are multiplied by 2, to give more flexibility to the PID controller.
+                        ## 
+                        ## If this is off, a classical method based on the number of FPI performed is used instead.
+                        element PID_controller {
+                          empty,
+                            ## Time-step size is controlled to try to always perform the specified number of FPI introduced
+                            ## here. By default is the 25% of nonlinear_iterations. 
+                            ## if Aim_num_FPI = 0 then this check is disabled and only the error is controlled.
+                            element Aim_num_FPI {
+                              integer
+                            }?
                         }?,
                         ## If any of the solvers failt to achieve convergence the time-step size is 
                         ## reduced and the time-level repeated without waiting to reach the maximum number of FPI.
@@ -534,7 +506,7 @@ start =
                         integer
                         }?,
                         ## Multiply present timestep by this factor when increasing it.
-                        ## By default 1.5
+                        ## By default 1.1
                         element increase_factor{
                         real
                         }?,
