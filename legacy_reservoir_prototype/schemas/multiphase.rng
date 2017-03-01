@@ -2659,8 +2659,8 @@ For no friction set this to zero or do not activate it.</a:documentation>
           </element>
           <optional>
             <element name="no_averaging">
-              <a:documentation>Do not perform the harmonic mean of the bathymetry when calculating the Manning formula;
-By default performs the harmonic average.</a:documentation>
+              <a:documentation>Do not perform the mean of the bathymetry when calculating the Manning formula;
+By default calculates the mean.</a:documentation>
               <ref name="comment"/>
             </element>
           </optional>

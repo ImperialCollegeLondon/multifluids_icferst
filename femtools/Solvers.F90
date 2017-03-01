@@ -2046,7 +2046,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
       if (pctype==PCGAMG) then
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
-        call get_option(trim(option_path)//'/GAMG_threshold', GAMGThreshold, default =-0.1)
+        call get_option(trim(option_path)//'/GAMG_threshold', GAMGThreshold, default = 0.1)
 
         call PCGAMGSetThreshold(pc, abs(GAMGThreshold), ierr)
 

@@ -800,11 +800,11 @@ contains
             allocate(r_nod_count(size(Flooding_absorp%val,4))); r_nod_count = 0.
             do ele = 1, Mdims%totele
                 do cv_iloc = 1, Mdims%cv_nloc
-                    !Create bathymetry field just in case of using the harmonic mean
+                    !Create bathymetry field just in case of using the mean
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     bathymetry(cv_iloc) = max(hmin, density%val(1,1,cv_nod))
-                end do
-                if (.not.no_averaging) bathymetry = (sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
+                end do                               !Normal mean                          !Harmonic mean
+                if (.not.no_averaging) bathymetry = (sum(bathymetry) / dble(Mdims%cv_nloc))!(sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
                 do cv_iloc = 1, Mdims%cv_nloc
                     mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
@@ -1317,76 +1317,67 @@ contains
     end subroutine get_relperm
 
 
-    SUBROUTINE calculate_capillary_pressure( packed_state, Sat_in_FEM,&
+    SUBROUTINE calculate_capillary_pressure( packed_state, &
         CV_NDGLN, ids_ndgln, totele, cv_nloc)
 
-        ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
-        ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
-        ! Capillary pressure coefs have the dims CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE,NPHASE )
-        ! used to calculate the capillary pressure.
+            ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
+            ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
+            ! Capillary pressure coefs have the dims CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE,NPHASE )
+            ! used to calculate the capillary pressure.
 
-        IMPLICIT NONE
-        type(state_type), intent(inout) :: packed_state
-        integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
-        integer, intent(in) :: totele, cv_nloc
-        logical, intent(in) :: Sat_in_FEM
-        ! Local Variables
-        INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
-	logical :: Cap_Brooks, Cap_TOTAL
-        !Working pointers
-        real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
-        real, dimension(:), allocatable :: Cont_correction
-        !Get from packed_state
-        if (Sat_in_FEM) then
-            call get_var_from_packed_state(packed_state,FEPhaseVolumeFraction = Satura)
-        else
+            IMPLICIT NONE
+            type(state_type), intent(inout) :: packed_state
+            integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
+            integer, intent(in) :: totele, cv_nloc
+            ! Local Variables
+            INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
+            logical :: Cap_Brooks, Cap_TOTAL
+            !Working pointers
+            real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
+            real, dimension(:), allocatable :: Cont_correction
+            !Get from packed_state
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
-        end if
-        call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
-            Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, Cap_exponent = Cap_exponent)
-        nphase =size(Satura,1)
-        allocate(Cont_correction(size(satura,2)))
 
-        CapPressure = 0.
+            call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
+                Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, Cap_exponent = Cap_exponent)
+            nphase =size(Satura,1)
+            allocate(Cont_correction(size(satura,2)))
 
-        ! Logical switches that determine which capillary pressure function to use
-        Cap_Brooks = .false.
-        Cap_TOTAL = .false.
+            CapPressure = 0.
 
-        DO IPHASE = 1, NPHASE
+            ! Logical switches that determine which capillary pressure function to use
+            Cap_Brooks = .false.
+            Cap_TOTAL = .false.
 
-          ! Determine which capillary pressure formulation we are using
+            DO IPHASE = 1, NPHASE
 
-            if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
-               Cap_Brooks = .true.
-            endif
+                ! Determine which capillary pressure formulation we are using
 
-	    if(have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) then
-          	Cap_TOTAL = .true.
-            endif
+                Cap_Brooks = have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brooks_Corey")
+                Cap_TOTAL = have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary")
 
-	    if ( (Cap_Brooks) .or. (Cap_TOTAL) ) then          
+                if ( (Cap_Brooks) .or. (Cap_TOTAL) ) then
 
-                !Apply Brooks-Corey model
-                do jphase = 1, nphase
-                    Cont_correction = 0
-                    if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
-                        do ele = 1, totele
-                            do cv_iloc = 1, cv_nloc
-                                cv_nod = cv_ndgln((ele-1)*cv_nloc + cv_iloc)
-                                CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
-                                    Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, IDs_ndgln(ele)), &
-                                    Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), iphase)
-                                Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
+                    !Apply Brooks-Corey model
+                    do jphase = 1, nphase
+                        Cont_correction = 0
+                        if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
+                            do ele = 1, totele
+                                do cv_iloc = 1, cv_nloc
+                                    cv_nod = cv_ndgln((ele-1)*cv_nloc + cv_iloc)
+                                    CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
+                                        Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, IDs_ndgln(ele)), &
+                                        Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), iphase)
+                                    Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
+                                end do
                             end do
-                        end do
-                        !In continuous formulation nodes are visited more than once, hence we need to average the values added here
-                        CapPressure(jphase, :) = CapPressure(jphase, :) / Cont_correction(:)
-                    end if
-                end do
+                            !In continuous formulation nodes are visited more than once, hence we need to average the values added here
+                            CapPressure(jphase, :) = CapPressure(jphase, :) / Cont_correction(:)
+                        end if
+                    end do
 
-            end if
-        END DO
+                end if
+            END DO
 
         deallocate(Cont_correction)
         contains

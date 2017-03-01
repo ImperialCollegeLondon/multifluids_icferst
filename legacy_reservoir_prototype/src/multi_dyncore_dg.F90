@@ -1091,9 +1091,7 @@ end if
         end if
 
         if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
-            !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
-            call calculate_capillary_pressure(packed_state, .false., &!sprint_to_do; shouldn't this flag change after the first non-linear iteration?
-                ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
+            call calculate_capillary_pressure(packed_state, ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
         end if
 
         IF(got_free_surf) THEN
@@ -3707,7 +3705,7 @@ end if
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                    packed_state, Mdims, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
+                    packed_state, Mdims, Mmat, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
                     ndgln%cv, ndgln%x, ele2, iface,&
                     sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
                 ! ********Mapping to local variables****************
@@ -5780,13 +5778,14 @@ end if
  end subroutine linearise_field
 
 
- subroutine Introduce_Cap_press_term(packed_state, Mdims, FE_funs, Devfuns, &
+ subroutine Introduce_Cap_press_term(packed_state, Mdims, Mmat, FE_funs, Devfuns, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
      !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
      type( state_type ), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
+     type (multi_matrices), intent(inout) :: Mmat
      type(multi_shape_funs), intent(in) :: FE_funs
      integer, intent(in) :: ele, iface, ele2
      integer, dimension(:), intent(in) :: cv_ndgln, x_ndgln
@@ -5817,7 +5816,7 @@ end if
         FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
 
      !Project to FEM
-     if (CAP_to_FEM) then
+     if (CAP_to_FEM .and..not. Mmat%CV_pressure) then
          !Point my pointers to the FEM shape functions
          CV_Bound_Shape_Func => FE_funs%sbcvfen
          CV_Shape_Func => FE_funs%cvfen

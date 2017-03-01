@@ -4768,7 +4768,6 @@ contains
                     option_path=trim(psi(1)%ptr%option_path)//"/prognostic"
                 end if
             end if
-
             do it = 1, size(fempsi)
                 call zero_non_owned(fempsi_rhs(it))
                 call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = option_path)

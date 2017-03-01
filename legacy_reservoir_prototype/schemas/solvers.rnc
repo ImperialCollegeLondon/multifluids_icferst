@@ -83,7 +83,8 @@ kspgmres_options =
          attribute name { "gmres" },
          ## Restart value for gmres iteration
          ## Higher values give better convergence but require more memory.
-         ## Suggested value: 30
+         ## Suggested value: 0;
+         ## Suggested value if having problems with the solver: 30.
          element restart {
             integer
          }
@@ -407,7 +408,7 @@ pcgamg_options =
             ## 
             ## Negative values implement stronger smoothers and the value used is the absolute
             ##
-            ## Default : -0.1
+            ## Default : 0.1
             element GAMG_threshold {real}?
          )
         }
