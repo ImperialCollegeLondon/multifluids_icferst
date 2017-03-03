@@ -392,6 +392,7 @@ contains
         INV_SIGMA = 0.0; INV_SIGMA_NANO = 0.0
 
 
+
         DO ELE = 1, TOTELE
 
             ! Look for pipe indicator in element:
@@ -624,6 +625,11 @@ contains
                             INV_SIGMA_NANO_ND = 1.0/MAX(1.E-25, N1NN1)
                             INV_SIGMA_NANO(IPHASE,CV_NODI) = INV_SIGMA_NANO(IPHASE,CV_NODI) + INV_SIGMA_NANO_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                         END DO
+                        !Populate INV_SIGMA inside the pipes; Don't know if this needs to be done as well for the nano
+                        DO IPHASE = N_IN_PRES+1, NPHASE
+                            !Using the first dimension is enough as it is defined the same for all the dimensions and is diagonal
+                            INV_SIGMA(IPHASE,CV_NODI) = 1./OPT_VEL_UPWIND_COEFS_NEW(1,1,IPHASE, MAT_NODI)
+                        end do
                     END DO
 
 
