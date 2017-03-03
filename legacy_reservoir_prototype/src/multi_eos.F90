@@ -787,10 +787,10 @@ contains
             type(vector_field), pointer :: gravity_direction
             real, dimension(mdims%cv_nloc) :: bathymetry, Nm_aux
             real, dimension(:), allocatable :: r_nod_count
-            logical :: no_averaging
+            logical :: averaging
 
             !Check whether to use the harmonic mean of the bathymetry
-            no_averaging = have_option('/flooding/no_averaging')
+            averaging = have_option('/flooding/averaging')
 
             Nm => extract_tensor_field( packed_state, "PackedManningcoef" )!Defined element-wise
             velocity => extract_tensor_field( packed_state, "PackedVelocity" )
@@ -804,7 +804,7 @@ contains
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     bathymetry(cv_iloc) = max(hmin, density%val(1,1,cv_nod))
                 end do                               !Normal mean                          !Harmonic mean
-                if (.not.no_averaging) bathymetry = (sum(bathymetry) / dble(Mdims%cv_nloc))!(sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
+                if (averaging) bathymetry = (sum(bathymetry) / dble(Mdims%cv_nloc))!(sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
                 do cv_iloc = 1, Mdims%cv_nloc
                     mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )

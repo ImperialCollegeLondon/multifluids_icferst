@@ -2658,9 +2658,8 @@ For no friction set this to zero or do not activate it.</a:documentation>
             </element>
           </element>
           <optional>
-            <element name="no_averaging">
-              <a:documentation>Do not perform the mean of the bathymetry when calculating the Manning formula;
-By default calculates the mean.</a:documentation>
+            <element name="averaging">
+              <a:documentation>Perform the mean of the bathymetry when calculating the Manning formula;</a:documentation>
               <ref name="comment"/>
             </element>
           </optional>
@@ -2691,9 +2690,9 @@ This is os by default for the CV pressure formulation </a:documentation>
           <optional>
             <element name="CV_press_homogenisation">
               <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
-the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.
-The default value for P1DGP1 =&gt; 1e6 for P1DGP2 this is not required and for P2DGP1DG stability cannot be guaranteed;
-To disable, set it to negative values. This SHOULD be disabled if there are no pressure inlet boundary conditions</a:documentation>
+the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
+The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
+To disable it manually, set it to negative values. </a:documentation>
               <ref name="real"/>
             </element>
           </optional>
