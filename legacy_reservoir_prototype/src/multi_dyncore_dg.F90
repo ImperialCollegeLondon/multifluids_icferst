@@ -1340,6 +1340,7 @@ END IF
                 !End of re-scaling
             end if
             call zero(deltaP)
+
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
             if (its_taken >= max_allowed_P_its) solver_not_converged = .true.

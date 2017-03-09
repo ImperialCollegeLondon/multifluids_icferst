@@ -3292,27 +3292,6 @@ contains
                 end if
                 DO IPHASE = 1, Mdims%nphase
                     IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
-!                         IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN!sprint_to_do: pressure bcs as vel bcs, remove
-!                            allocate(SUF_SIG_DIAGTEN_BC_GI(Mdims%ndim))
-!                            DO CV_SKLOC = 1, Mdims%cv_snloc
-!                                CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
-!                                IF(CV_KLOC==CV_ILOC) THEN
-!                                    CV_SNODK = ( SELE - 1 ) * Mdims%cv_snloc + CV_SKLOC
-!                                    CV_SNODK_IPHA = CV_SNODK + ( IPHASE - 1 ) * Mdims%stotel*Mdims%cv_snloc
-!                                    SUF_SIG_DIAGTEN_BC_GI( 1:Mdims%ndim ) = SUF_SIG_DIAGTEN_BC( CV_SNODK_IPHA, 1:Mdims%ndim )
-!                                    exit
-!                                ENDIF
-!                            END DO
-!                            UDGI_ALL(:, IPHASE) = 0.0
-!                            UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0
-!                            !Calculate velocity as n*(P_in-P_bcs)/hdc_p
-!                            UDGI_ALL_FOR_INV(:, IPHASE) = CVNORMX_ALL(:, GI) * (pressure%val(1,1,CV_NODI) - pressure_BCs%val(1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ))/hdc_p
-!                            !Velocity like for P bcs
-!                            UDGI_ALL(:, IPHASE) =  matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
-!                            Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) < 0.0
-!                            if(Incomming_flow) UDGI_ALL(:, IPHASE) =  UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
-!                            deallocate(SUF_SIG_DIAGTEN_BC_GI)
-!                        else  ! endof IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))

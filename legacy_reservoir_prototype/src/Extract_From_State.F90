@@ -2000,7 +2000,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
     !Variables for automatic non-linear iterations
-    real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts,&
+    real, save :: dt_by_user = -1
+    real :: tolerance_between_non_linear, min_ts, max_ts,&
         Inifinite_norm_tol, calculate_mass_tol
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
@@ -2032,8 +2033,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         decreaseFactor, default = 2.0 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
         max_ts, default = huge(min_ts) )
+    if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
-        min_ts, default = -1. )
+        min_ts, default = dt_by_user*1d-3 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
@@ -2042,12 +2044,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 5d-3)
     PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
-
-    !Get time step
-    call get_option( '/timestepping/timestep', initial_dt )
-    dt = initial_dt
-    !By default the minimum time-steps is 3 orders smaller than the initial timestep
-    if(min_ts<0) min_ts = initial_dt * 1d-3
 
     select case (order)
         case (1)!Store or get from backup
