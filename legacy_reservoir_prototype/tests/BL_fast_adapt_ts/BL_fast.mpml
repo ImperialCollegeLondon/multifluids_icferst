@@ -102,6 +102,9 @@
           <decrease_factor>
             <real_value rank="0">1.5</real_value>
           </decrease_factor>
+          <min_timestep>
+            <real_value rank="0">1e-10</real_value>
+          </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
