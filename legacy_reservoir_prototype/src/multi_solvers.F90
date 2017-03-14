@@ -437,7 +437,7 @@ contains
 
     !sprint_to_do!not use one global variable
     subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
-        Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration, useful_sats, res, &
+        Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res, npres, IDs2CV_ndgln)
         !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
         !this idea is based on the paper SPE-173267-MS.
@@ -449,11 +449,10 @@ contains
         real, intent(in) :: backtrack_par_from_schema, res, res_ratio, first_res
         logical, intent(inout) :: satisfactory_convergence
         real, intent(inout) :: new_backtrack_par, Previous_convergence
-        integer, intent(in) :: its, nonlinear_iteration, npres
+        integer, intent(in) :: Max_sat_its, its, nonlinear_iteration, npres
         integer, intent(inout) :: useful_sats
         integer, dimension(:), optional :: IDs2CV_ndgln
         !Local parameters
-        integer, parameter :: Max_sat_its = 9
         real, parameter :: Conv_to_achiv = 10.0
         real, save :: anders_exp!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
         !Local variables        !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak

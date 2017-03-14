@@ -398,6 +398,7 @@ contains
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
+             integer, parameter :: Max_sat_its = 9
              real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
@@ -592,7 +593,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      if (.not. satisfactory_convergence) then
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
                          call FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
-                             Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration,&
+                             Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res, Mdims%npres, IDs2CV_ndgln = IDs2CV_ndgln)
                          !Store the accumulated updated done
                          updating = updating + new_backtrack_par
@@ -611,7 +612,14 @@ if (is_flooding) return!<== Temporary fix for flooding
                              call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                              !Also recalculate the Over-relaxation parameter
-                             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
+                            call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
+                            if (nonlinear_iteration > 2) then
+                                OvRelax_param = OvRelax_param / dble(its)!**0.5
+                                !For last SFPI iteration we reduce the over-relaxation drastically,
+                                !because otherwise it may introduce mass conservation errors
+                                if (its == Max_sat_its - 1 ) OvRelax_param = OvRelax_param * 1d-2
+                            end if
+
                          else
                              exit Loop_NonLinearFlux
                          end if
@@ -5992,6 +6000,8 @@ end if
                          end do
                      end do
                  end do
+                 !Homogenise the value, this seems to be better to avoid problems
+                 Pe = (maxval(Pe)+minval(Pe))/2.
              else
                  Pe = Pe_aux
              end if
