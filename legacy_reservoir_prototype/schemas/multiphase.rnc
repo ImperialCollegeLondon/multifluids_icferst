@@ -1842,7 +1842,7 @@ start =
                ##
                ## If negative, the input value is Peclet number desired.
                ##
-               ## Recommended values: from -1e2 to -1e1
+               ## Recommended value => -1e2
                ##
                ## Tip: if Diffusive_cap_only is activated Pe is ignored.
                element Sat_overRelax {real}?

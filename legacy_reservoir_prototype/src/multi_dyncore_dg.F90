@@ -693,17 +693,20 @@ if (is_flooding) return!<== Temporary fix for flooding
             !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
             implicit none
             real, intent(inout) :: backtrack_par_factor
-            real, dimension(:), intent(in) :: courant_number_in
+            real, dimension(:), intent(inout) :: courant_number_in
             logical, intent(in) :: first_time_step
             integer, intent(in) :: nonlinear_iteration
             !Local variables
+            real, save :: backup_shockfront_Courant = 0.
             real :: physics_adjustment, courant_number
             logical, save :: Readed_options = .false.
             logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
 
+            !Sometimes the shock-front courant number is not well calculated, then use previous value
+            if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
             !Combination of the overall and the shock-front Courant number
-            !We give more value to the normal courant number because its calculation is more reliable
-            courant_number = 0.7 * courant_number_in(1) + 0.3 * courant_number_in(2)
+            courant_number = 0.4 * courant_number_in(1) + 0.6 * courant_number_in(2)
+            backup_shockfront_Courant = courant_number_in(2)
 
             if (.not.readed_options) then
                 !We read the options just once, and then they are stored as logicals
@@ -729,19 +732,19 @@ if (is_flooding) return!<== Temporary fix for flooding
             !Depending on the active physics, the problem is more complex and requires more relaxation
             physics_adjustment = 1.
             !Negative effects on the convergence
-            if (gravity) physics_adjustment = physics_adjustment * 1.5
-            if (cap_pressure) physics_adjustment = physics_adjustment * 2.0
+            if (gravity) physics_adjustment = physics_adjustment * 5.0
+            if (cap_pressure) physics_adjustment = physics_adjustment * 5.0
             if (compositional) physics_adjustment = physics_adjustment * 1.5
-            if (many_phases) physics_adjustment = physics_adjustment * 1.2
+            if (many_phases) physics_adjustment = physics_adjustment * 1.5
             !For the first two non-linear iterations, it has to re-adjust, as the gas and oil are again mixed
             if (black_oil .and. nonlinear_iteration <= 2) physics_adjustment = physics_adjustment * 2.
 
             !Positive effects on the convergence !Need to check for shock fronts...
-            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.8
+            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.7
             if (one_phase) physics_adjustment = physics_adjustment * 0.5
 
             !For the time being, it is based on this simple table
-            if (Courant_number * physics_adjustment > 40.) then
+            if (Courant_number * physics_adjustment > 50.) then
                 backtrack_par_factor = -0.1
             else if (Courant_number * physics_adjustment > 25.) then
                 backtrack_par_factor = -0.15
