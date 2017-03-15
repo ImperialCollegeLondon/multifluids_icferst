@@ -843,17 +843,86 @@ contains
        type (porous_adv_coefs), intent(inout) :: upwnd
        integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
-       type(bad_elements), dimension(:), optional :: Quality_list
+       type(bad_elements), allocatable, dimension(:), optional :: Quality_list
        !Local variables
+       real, save :: kv_kh_ratio = -1
        type( tensor_field ), pointer :: perm
        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
        real, dimension(:,:), allocatable :: viscosities
        integer :: i, j, ele
-       real :: kv_kh_ratio, Angle, bad_element_perm_mult, Max_aspect_ratio, height ! the height of an isosceles triangle for the top angle to be equal to the trigger angle
+       real :: Angle, bad_element_perm_mult, Max_aspect_ratio, height ! the height of an isosceles triangle for the top angle to be equal to the trigger angle
+       real, dimension(Mdims%ndim,Mdims%ndim) :: trans_matrix, rot_trans_matrix ! for bad_element permeability transformation matrix
        logical :: kv_kh_ratio_log = .False. ! check if we use the kv_kh ratio or Aspect_ratio for the bad elements. Aspect ratio is the default
        real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
 
        perm => extract_tensor_field( packed_state, "Permeability" )
+
+
+        if (kv_kh_ratio < 0) then
+            if (have_option('/numerical_methods/Bad_element_fix/') ) then
+                call get_option('/numerical_methods/Bad_element_fix/KvKh_ratio', kv_kh_ratio, default = 0.01)
+            else
+                kv_kh_ratio = 0.
+            end if
+            kv_kh_ratio = abs(kv_kh_ratio)
+        end if
+
+        if ( present(Quality_list) .and. kv_kh_ratio > 1d-8 ) then
+            if (allocated(Quality_list)) then
+            ! create transformation matrix with Kv/kh ratio
+            ! |1    0    0    |  |1    0     |
+            ! |0    1    0    |  |0    kv/kh |
+            ! |0    0   kv/kh |
+            trans_matrix(:,:) = 0.
+            do i=1,Mdims%ndim-1
+                trans_matrix(i,i) = 1.
+            end do
+            trans_matrix(Mdims%ndim,Mdims%ndim) = kv_kh_ratio
+            i=1
+            do while ( Quality_list(i)%bad_ele > 0 )
+                ele = Quality_list(i)%bad_ele
+                rot_trans_matrix = matmul(transpose(Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim)) , matmul(trans_matrix,Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim))  )
+                perm%val(:, :, ele) =  matmul(rot_trans_matrix, perm%val(:, :, ele))
+                i = i+1
+            end do
+
+            i=1
+            do while (allocated(Quality_list(i)%rotmatrix) )
+                deallocate(Quality_list(i)%rotmatrix)
+                i = i+1
+            end do
+            deallocate(Quality_list)
+            end if
+        end if
+
+
+            ! adjust the kv/kh ratio of the bad elements - this should act to artificially stretch the element in the vertical direction -
+            ! giving a better element to calculate deltaP. We are decreasing the kv with respect to kh
+!            do ele = 1, Mdims%totele
+!                if (Quality_list(ele)%bad_ele > 0) then
+!!                    if (kv_kh_ratio_
+!!                       rotate trans_matrix
+!                        rot_trans_matrix = matmul(transpose(Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim)) , matmul(trans_matrix,Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim))  )
+!!                        write(*,'(A)') 'trans_matrix='
+!!                        do i=1,size(trans_matrix,1)
+!!                          write(*,'(20G12.4)') trans_matrix(i,:)
+!!                        end do
+!!
+!                        perm%val(:, :, ele) =  matmul(rot_trans_matrix, perm%val(:, :, ele))
+!                        write(*,'(A)') 'After perm%val(:,:,ele)='
+!                        do i=1,size(perm%val(:,:,ele),1)
+!                          write(*,'(20G12.4)') perm%val(i,:,ele)
+!                        end do
+!!                    else
+!!                        height = (Quality_list(ele)%base/2)/tan(Angle*pi/360)
+!!                        bad_element_perm_mult = height/(Quality_list(ele)%perp_height)
+!!                        inv_perm(Mdims%ndim, Mdims%ndim, ele) =  inv_perm(Mdims%ndim, Mdims%ndim, ele) * bad_element_perm_mult**2
+!!                    end if
+!                end if
+!            end do
+!        end if
+
+
        if (PorousMedia_absorp%memory_type<2) then!The permeability is isotropic
            inv_perm = 0.
            do i = 1, size(perm%val,3)
@@ -866,32 +935,6 @@ contains
                inv_perm( :, :, i)=inverse(perm%val( :, :, i))
            end do
        end if
-
-        if (present(Quality_list) .and. have_option('/numerical_methods/Bad_element_fix/') ) then
-! TODO (hoo06#1#): Add the other way of adjusting element permeability
-!            if (have_option('/numerical_methods/Bad_element_fix/Adjustment_method/KvKh_ratio')) then
-!                kv_kh_ratio_log = .True.
-                call get_option('/numerical_methods/Bad_element_fix/Adjustment_method/KvKh_ratio', kv_kh_ratio, default = 0.05)
-!            else
-!                call get_option('/numerical_methods/Bad_element_fix/Angle', Angle, default = 170.)
-!            end if
-
-            ! adjust the kv/kh ratio of the bad elements - this should act to artificially stretch the element in the vertical direction -
-            ! giving a better element to calculate deltaP. We are decreasing the kv with respect to kh
-            do ele = 1, Mdims%totele
-                if (Quality_list(ele)%bad_ele > 0) then
-!                    if (kv_kh_ratio_
-                        inv_perm(Mdims%ndim, Mdims%ndim, ele) =  inv_perm(1, 1, ele) * (1./kv_kh_ratio)
-!                    else
-!                        height = (Quality_list(ele)%base/2)/tan(Angle*pi/360)
-!                        bad_element_perm_mult = height/(Quality_list(ele)%perp_height)
-!                        inv_perm(Mdims%ndim, Mdims%ndim, ele) =  inv_perm(Mdims%ndim, Mdims%ndim, ele) * bad_element_perm_mult**2
-!                    end if
-                end if
-            end do
-        end if
-
-
 
        !For simple Black-Oil modelling the viscosity is calculated using the PVT tables
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
@@ -1365,7 +1408,7 @@ contains
           	Cap_TOTAL = .true.
             endif
 
-	    if ( (Cap_Brooks) .or. (Cap_TOTAL) ) then          
+	    if ( (Cap_Brooks) .or. (Cap_TOTAL) ) then
 
                 !Apply Brooks-Corey model
                 do jphase = 1, nphase
@@ -1436,13 +1479,13 @@ contains
         do i = 1, nphase
 	    if(have_option("/material_phase["//int2str(i-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) then
           	Cap_TOTAL = .true.
-            endif 
+            endif
         enddo
-    
+
         if(Cap_TOTAL) then
         	Get_DevCapPressure = &
                 -(a/(1.0 - sum(Immobile_fraction(:))))* Pe * (1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**(a-1)
-        else	
+        else
         	Get_DevCapPressure = &
                 -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
         endif
@@ -1676,7 +1719,7 @@ contains
 
                   tp_field => extract_tensor_field( state( iphase ), "Viscosity" )
                   call zero( tp_field )
-                  ndim1 = size( tp_field%val, 1 ) ; ndim2 = size( tp_field%val, 2 ) 
+                  ndim1 = size( tp_field%val, 1 ) ; ndim2 = size( tp_field%val, 2 )
 
                   do icomp = 1, Mdims%ncomp
                      component => extract_scalar_field( state( Mdims%nphase + icomp ), "ComponentMassFractionPhase" // int2str( iphase ) )

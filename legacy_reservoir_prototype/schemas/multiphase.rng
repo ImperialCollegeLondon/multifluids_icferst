@@ -450,7 +450,8 @@ NOTE: Requires -v2</a:documentation>
         <optional>
           <element name="Mesh_Diagnostics_Angles">
             <a:documentation>Printout the number of elements and percentage that contain an angle
-equal or bigger than the ones specified here</a:documentation>
+equal or bigger than the ones specified here
+Note: This may slow down your simulation should be used as a diagnostic tool </a:documentation>
             <ref name="real_vector"/>
           </element>
         </optional>
@@ -641,14 +642,14 @@ by default it is the 25% of the maximum allowed FPIs</a:documentation>
                       <optional>
                         <element name="increase_factor">
                           <a:documentation>Multiply present timestep by this factor when increasing it.
-By default 1.05</a:documentation>
+By default 1.5</a:documentation>
                           <ref name="real"/>
                         </element>
                       </optional>
                       <optional>
                         <element name="decrease_factor">
                           <a:documentation>Multiply present timestep by this factor when decreasing it.
-By default 1.2</a:documentation>
+By default 2.0</a:documentation>
                           <ref name="real"/>
                         </element>
                       </optional>
@@ -2732,7 +2733,20 @@ To disable, set it to negative values. This SHOULD be disabled if there are no p
           <optional>
             <element name="Bad_element_fix">
               <a:documentation>Look for bad elements to change its anisotropic permeability to improve their quality</a:documentation>
-              <empty/>
+              <optional>
+                <element name="Angle">
+                  <a:documentation>Select angle considered too large (degrees) 
+Default is 177</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="KvKh_ratio">
+                  <a:documentation>What Kv/Kh ratio to use to artifically stretch element
+Default is 0.01</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
