@@ -82,7 +82,7 @@
       <real_value rank="0">1e-2</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">0.19</real_value>
+      <real_value rank="0">0.20</real_value>
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">30</integer_value>
@@ -461,7 +461,7 @@
         </scalar_field>
       </immobile_fraction>
       <Sat_overRelax>
-        <real_value rank="0">0.1e-3</real_value>
+        <real_value rank="0">-1e1</real_value>
       </Sat_overRelax>
     </multiphase_properties>
   </material_phase>

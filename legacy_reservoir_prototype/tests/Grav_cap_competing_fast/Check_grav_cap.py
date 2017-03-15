@@ -43,7 +43,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = False
+showPlot = True
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
@@ -206,7 +206,7 @@ for i in range(len(Experimental_X)):
         
 L1_norm= L1_sum / len(Experimental_X) 
 L2_norm = L2_sum**0.5 / len(Experimental_X)    
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 
 Passed = True
 if (L1_norm > Tolerance_L1_NORM): Passed = False
