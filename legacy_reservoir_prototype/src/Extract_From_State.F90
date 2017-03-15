@@ -2000,14 +2000,15 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
     !Variables for automatic non-linear iterations
-    real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts,&
+    real, save :: dt_by_user = -1
+    real :: tolerance_between_non_linear, min_ts, max_ts,&
         Inifinite_norm_tol, calculate_mass_tol
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
     !! local variable, holds the maximum mass error
     real :: max_calculate_mass_delta
-
-
+    !Variables for PID time-step size controller
+    logical :: PID_controller
     !Variables for adaptive time stepping based on non-linear iterations
     real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val
     integer :: variable_selection, NonLinearIteration
@@ -2032,22 +2033,17 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         decreaseFactor, default = 2.0 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
         max_ts, default = huge(min_ts) )
+    if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
-        min_ts, default = -1. )
+        min_ts, default = dt_by_user*1d-3 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/Aim_num_FPI', &
+    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = -1 )
-
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 5d-3)
-
-    !Get time step
-    call get_option( '/timestepping/timestep', initial_dt )
-    dt = initial_dt
-    !By default the minimum time-steps is 3 orders smaller than the initial timestep
-    if(min_ts<0) min_ts = initial_dt * 1d-3
+    PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
 
     select case (order)
         case (1)!Store or get from backup
@@ -2170,26 +2166,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             end if
             !If time adapted based on the non-linear solver then
             if (nonLinearAdaptTs) then
-                !We try to always perform a certain amount of FPI
-                if (Aim_num_FPI > 0) then
-                    !We do not follow the normal approach
-                    if (ExitNonLinearLoop.and..not.Repeat_time_step) then
-                        auxI = its - Aim_num_FPI
-                        if (abs(auxI) > 1 .or. (Aim_num_FPI==3 .and. its == 2)) then!<= If the difference is 1, we don't do anything
-                            !Increase time step
-                            call get_option( '/timestepping/timestep', dt )
-                            if (auxI > 0 )then!We want to reduce the amount of FPI
-                                dt = max(dt / min(1.+abs(auxI)*0.1, decreaseFactor), min_ts)!Slightly decrement of the time-step size
-                            else if (auxI < 0 )then!We want to increase the amount of FPI
-                                dt = min(dt * min(1.+abs(auxI)*0.025, increaseFactor), max_ts)!Slightly increase of the time-step size
-                            end if
-                            call set_option( '/timestepping/timestep', dt )
-                            ewrite(show_FPI_conv,*) "Time step changed to:", dt
-                            ExitNonLinearLoop = .true.
-                            return
-                        end if
-                    end if
-                end if
 
                 !If any solver fails to converge (and the user care), we may want to repeat the time-level
                 !without waiting for the last non-linear iteration
@@ -2199,6 +2175,29 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     solver_not_converged = .false.
                     ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
                 end if
+                !If maximum number of FPI reached, then repeat time-step
+                if (its >= NonLinearIteration) Repeat_time_step = .true.
+
+
+                !This controller is supposed to be the most effective
+                if (PID_controller) then
+                    !We do not follow the normal approach
+                    if (ExitNonLinearLoop.and..not.Repeat_time_step) then
+                        !Modify time step
+                        call get_option( '/timestepping/timestep', dt )
+                        auxR = PID_time_controller()
+                        if (auxR < 1.0 )then!Reduce Ts
+                            dt = max(dt * max(auxR, 0.5/decreaseFactor), min_ts)
+                        else
+                            dt = min(dt * min(auxR, 2.*increaseFactor), max_ts)
+                        end if
+                        call set_option( '/timestepping/timestep', dt )
+                        ewrite(show_FPI_conv,*) "Time step changed to:", dt
+                        ExitNonLinearLoop = .true.
+                        return
+                    end if
+                end if
+
                 !Adaptive Ts for Backtracking only based on the number of FPI
                 if (ExitNonLinearLoop .and. its < incr_threshold .and..not.Repeat_time_step) then
                     !Increase time step
@@ -2234,6 +2233,45 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 end if
             end if
     end select
+
+contains
+
+    real function PID_time_controller()
+        !This functions calculates the multiplier to get a new time-step size based on a
+        !Proportional-Integral-Derivative (PID) concept. See: SPE-182601-MS
+        implicit none
+        !Local variables
+        real, parameter:: Ki = 1.34, Kd = 0.01, Kp = 0.001 !Fixed values from the paper, this can be improved, see SPE-182601-MS
+        real, save :: Cn1 = -1, Cn2 = -1
+        real :: Cn
+        real, parameter :: tol = 1e-8
+
+        !Calculate Cn
+        if (is_porous_media) then
+            Cn = ts_ref_val/tolerance_between_non_linear
+        end if
+        !Compare with infinitum norm
+        Cn = max(Cn,inf_norm_val/Inifinite_norm_tol)
+        !Consider as well number of FPIs
+        if (Aim_num_FPI /=0) then
+            if (Aim_num_FPI >0) then
+                Cn = max(Cn,dble(its)/dble(Aim_num_FPI))
+            else
+                Cn = max(Cn,dble(its)/dble(incr_threshold))
+            end if
+        end if
+        Cn = (Cn + tol)! <= To avoid divisions by zero
+        if (Cn2 > 0) then
+            PID_time_controller = (1./Cn)**Ki * (Cn1/Cn)**Kp * (Cn1**2. / (Cn*Cn2))**Kd
+        else if (Cn1 > 0) then
+            PID_time_controller = (1./Cn)**Ki * (Cn1/Cn)**Kp
+        else!Not enough information
+            PID_time_controller = (1./Cn)**1.0
+        end if
+
+        !Store previous values
+        Cn2 = Cn1; Cn1 = Cn
+    end function PID_time_controller
 
 end subroutine Adaptive_NonLinear
 

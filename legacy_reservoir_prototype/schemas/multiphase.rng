@@ -497,52 +497,8 @@ then this is the initial time step size.</a:documentation>
 
 Manual suggests 2
 
-If using Fixed_Point_Iteration the recommendation is 100</a:documentation>
+If using Fixed_Point_Iteration the recommendation is 25</a:documentation>
             <ref name="integer"/>
-            <optional>
-              <element name="tolerance">
-                <a:documentation>tolerance for non-linear iteration.
-Manual suggests 1.0E-12</a:documentation>
-                <ref name="real"/>
-                <choice>
-                  <element name="infinity_norm">
-                    <a:documentation>Select the norm with which you want the tolerance to be tested.
-
-The infinity norm.</a:documentation>
-                    <empty/>
-                  </element>
-                  <element name="l2_norm">
-                    <a:documentation>Select the norm with which you want the tolerance to be tested.
-
-The l2 norm.</a:documentation>
-                    <empty/>
-                  </element>
-                  <element name="cv_l2_norm">
-                    <a:documentation>Select the norm with which you want the tolerance to be tested.
-
-The l2 norm evaluated on a control volume mesh.</a:documentation>
-                    <empty/>
-                  </element>
-                </choice>
-              </element>
-            </optional>
-            <optional>
-              <element name="terminate_if_not_converged">
-                <a:documentation>Terminate the simulation if the number of
-nonlinear_iterations is reached
-and the tolerance criterion is not met.
-This is mostly useful as a debugging option if you
-suspect the solution is not converging.</a:documentation>
-                <empty/>
-              </element>
-            </optional>
-            <optional>
-              <element name="nonlinear_iterations_at_adapt">
-                <a:documentation>Number of non-linear iterations for the first time step after adapting the mesh.
-This option will work only if the mesh_adaptivity is switched on.</a:documentation>
-                <ref name="integer"/>
-              </element>
-            </optional>
             <optional>
               <element name="Fixed_Point_Iteration">
                 <a:documentation>This is the convergence criterion for the Fixed Point Iteration solver.
@@ -618,10 +574,22 @@ A Variable to check has to be chosen:
                     <ref name="integer"/>
                     <group>
                       <optional>
-                        <element name="Aim_num_FPI">
-                          <a:documentation>Time-step size is controlled to try to always perform the specified number of FPI introduced
-here -+ 1 FPI</a:documentation>
-                          <ref name="integer"/>
+                        <element name="PID_controller">
+                          <a:documentation>Time-step size controlled using a PID approach.
+By default the aim of FPIs is the 25% of nonlinear_iterations, this can be changed with Aim_num_FPI.
+if Aim_num_FPI = 0 then only the error is controlled.
+The increase_factor and decrease_factor are multiplied by 2, to give more flexibility to the PID controller.
+
+If this is off, a classical method based on the number of FPI performed is used instead.</a:documentation>
+                          <empty/>
+                          <optional>
+                            <element name="Aim_num_FPI">
+                              <a:documentation>Time-step size is controlled to try to always perform the specified number of FPI introduced
+here. By default is the 25% of nonlinear_iterations. 
+if Aim_num_FPI = 0 then this check is disabled and only the error is controlled.</a:documentation>
+                              <ref name="integer"/>
+                            </element>
+                          </optional>
                         </element>
                       </optional>
                       <optional>
@@ -642,7 +610,7 @@ by default it is the 25% of the maximum allowed FPIs</a:documentation>
                       <optional>
                         <element name="increase_factor">
                           <a:documentation>Multiply present timestep by this factor when increasing it.
-By default 1.5</a:documentation>
+By default 1.1</a:documentation>
                           <ref name="real"/>
                         </element>
                       </optional>
@@ -2497,15 +2465,15 @@ You should specify this ONLY for the wetting phase</a:documentation>
                 <element name="Sat_overRelax">
                   <a:documentation>Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
 This helps to increase the convergence rate of the FPI solver.
-You should specify this ONLY for the wetting phase.
+You MUST specify this ONLY for the wetting phase.
 
 If positive, the input value is the entry pressure.
 
 If negative, the input value is Peclet number desired.
 
-Recommended values: from -1e2 to -1e1
+Recommended value =&gt; -1e1
 
-Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
+Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -2691,9 +2659,8 @@ For no friction set this to zero or do not activate it.</a:documentation>
             </element>
           </element>
           <optional>
-            <element name="no_averaging">
-              <a:documentation>Do not perform the harmonic mean of the bathymetry when calculating the Manning formula;
-By default performs the harmonic average.</a:documentation>
+            <element name="averaging">
+              <a:documentation>Perform the mean of the bathymetry when calculating the Manning formula;</a:documentation>
               <ref name="comment"/>
             </element>
           </optional>
@@ -2724,9 +2691,9 @@ This is os by default for the CV pressure formulation </a:documentation>
           <optional>
             <element name="CV_press_homogenisation">
               <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
-the bigger it is the more P0DG the element turns. The default values have been obtained so the results are stable.
-The default value for P1DGP1 =&gt; 1e6 for P1DGP2 this is not required and for P2DGP1DG stability cannot be guaranteed;
-To disable, set it to negative values. This SHOULD be disabled if there are no pressure inlet boundary conditions</a:documentation>
+the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
+The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
+To disable it manually, set it to negative values. </a:documentation>
               <ref name="real"/>
             </element>
           </optional>

@@ -85,7 +85,7 @@
       <real_value rank="0">0.2</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">5</integer_value>
+      <integer_value rank="0">10</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Backtracking_factor>
@@ -96,14 +96,19 @@
         </Inifinite_norm_tol>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
+          <PID_controller>
+            <Aim_num_FPI>
+              <integer_value rank="0">4</integer_value>
+            </Aim_num_FPI>
+          </PID_controller>
           <increase_factor>
             <real_value rank="0">1.1</real_value>
           </increase_factor>
           <decrease_factor>
-            <real_value rank="0">1.5</real_value>
+            <real_value rank="0">2.0</real_value>
           </decrease_factor>
           <min_timestep>
-            <real_value rank="0">1e-10</real_value>
+            <real_value rank="0">1e-9</real_value>
           </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>

@@ -398,6 +398,7 @@ contains
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
+             integer, parameter :: Max_sat_its = 9
              real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
@@ -592,7 +593,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      if (.not. satisfactory_convergence) then
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
                          call FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
-                             Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration,&
+                             Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res, Mdims%npres, IDs2CV_ndgln = IDs2CV_ndgln)
                          !Store the accumulated updated done
                          updating = updating + new_backtrack_par
@@ -611,7 +612,14 @@ if (is_flooding) return!<== Temporary fix for flooding
                              call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                              !Also recalculate the Over-relaxation parameter
-                             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
+                            call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
+                            if (nonlinear_iteration > 2) then
+                                OvRelax_param = OvRelax_param / dble(its)!**0.5
+                                !For last SFPI iteration we reduce the over-relaxation drastically,
+                                !because otherwise it may introduce mass conservation errors
+                                if (its == Max_sat_its - 1 ) OvRelax_param = OvRelax_param * 1d-2
+                            end if
+
                          else
                              exit Loop_NonLinearFlux
                          end if
@@ -693,17 +701,20 @@ if (is_flooding) return!<== Temporary fix for flooding
             !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
             implicit none
             real, intent(inout) :: backtrack_par_factor
-            real, dimension(:), intent(in) :: courant_number_in
+            real, dimension(:), intent(inout) :: courant_number_in
             logical, intent(in) :: first_time_step
             integer, intent(in) :: nonlinear_iteration
             !Local variables
+            real, save :: backup_shockfront_Courant = 0.
             real :: physics_adjustment, courant_number
             logical, save :: Readed_options = .false.
             logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
 
+            !Sometimes the shock-front courant number is not well calculated, then use previous value
+            if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
             !Combination of the overall and the shock-front Courant number
-            !We give more value to the normal courant number because its calculation is more reliable
-            courant_number = 0.7 * courant_number_in(1) + 0.3 * courant_number_in(2)
+            courant_number = 0.4 * courant_number_in(1) + 0.6 * courant_number_in(2)
+            backup_shockfront_Courant = courant_number_in(2)
 
             if (.not.readed_options) then
                 !We read the options just once, and then they are stored as logicals
@@ -729,19 +740,19 @@ if (is_flooding) return!<== Temporary fix for flooding
             !Depending on the active physics, the problem is more complex and requires more relaxation
             physics_adjustment = 1.
             !Negative effects on the convergence
-            if (gravity) physics_adjustment = physics_adjustment * 1.5
-            if (cap_pressure) physics_adjustment = physics_adjustment * 2.0
+            if (gravity) physics_adjustment = physics_adjustment * 5.0
+            if (cap_pressure) physics_adjustment = physics_adjustment * 5.0
             if (compositional) physics_adjustment = physics_adjustment * 1.5
-            if (many_phases) physics_adjustment = physics_adjustment * 1.2
+            if (many_phases) physics_adjustment = physics_adjustment * 1.5
             !For the first two non-linear iterations, it has to re-adjust, as the gas and oil are again mixed
             if (black_oil .and. nonlinear_iteration <= 2) physics_adjustment = physics_adjustment * 2.
 
             !Positive effects on the convergence !Need to check for shock fronts...
-            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.8
+            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.7
             if (one_phase) physics_adjustment = physics_adjustment * 0.5
 
             !For the time being, it is based on this simple table
-            if (Courant_number * physics_adjustment > 40.) then
+            if (Courant_number * physics_adjustment > 50.) then
                 backtrack_par_factor = -0.1
             else if (Courant_number * physics_adjustment > 25.) then
                 backtrack_par_factor = -0.15
@@ -1091,9 +1102,7 @@ end if
         end if
 
         if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
-            !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
-            call calculate_capillary_pressure(packed_state, .false., &!sprint_to_do; shouldn't this flag change after the first non-linear iteration?
-                ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
+            call calculate_capillary_pressure(packed_state, ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
         end if
 
         IF(got_free_surf) THEN
@@ -1166,8 +1175,9 @@ end if
         deallocate(velocity_absorption, U_SOURCE_CV_ALL)
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
-            if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  &
-                                                    CALL PHA_BLOCK_INV(Mmat%PIVIT_MAT, Mdims )
+            if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1)) then
+                CALL PHA_BLOCK_INV(Mmat%PIVIT_MAT, Mdims )
+            end if
             sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
             diag=.true.
             if ( Mdims%npres>1 ) diag=.false.
@@ -1342,6 +1352,7 @@ END IF
                 !End of re-scaling
             end if
             call zero(deltaP)
+
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
             if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
@@ -3707,7 +3718,7 @@ end if
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                    packed_state, Mdims, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
+                    packed_state, Mdims, Mmat, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
                     ndgln%cv, ndgln%x, ele2, iface,&
                     sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
                 ! ********Mapping to local variables****************
@@ -4823,7 +4834,7 @@ end if
                 if (max(pres_degree,vel_degree)>1) then
                     factor_default = 0.
                 else
-                    factor_default = 1e6
+                    factor_default = 1e4
                 end if
                 !Obtain the value from diamond
                 call get_option( '/numerical_methods/CV_press_homogenisation', factor, default = factor_default )
@@ -5780,13 +5791,14 @@ end if
  end subroutine linearise_field
 
 
- subroutine Introduce_Cap_press_term(packed_state, Mdims, FE_funs, Devfuns, &
+ subroutine Introduce_Cap_press_term(packed_state, Mdims, Mmat, FE_funs, Devfuns, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
      !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
      type( state_type ), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
+     type (multi_matrices), intent(inout) :: Mmat
      type(multi_shape_funs), intent(in) :: FE_funs
      integer, intent(in) :: ele, iface, ele2
      integer, dimension(:), intent(in) :: cv_ndgln, x_ndgln
@@ -5817,7 +5829,7 @@ end if
         FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
 
      !Project to FEM
-     if (CAP_to_FEM) then
+     if (CAP_to_FEM .and..not. Mmat%CV_pressure) then
          !Point my pointers to the FEM shape functions
          CV_Bound_Shape_Func => FE_funs%sbcvfen
          CV_Shape_Func => FE_funs%cvfen
@@ -5989,6 +6001,8 @@ end if
                          end do
                      end do
                  end do
+                 !Homogenise the value, this seems to be better to avoid problems
+                 Pe = (maxval(Pe)+minval(Pe))/2.
              else
                  Pe = Pe_aux
              end if

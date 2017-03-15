@@ -959,9 +959,33 @@ contains
         REAL, DIMENSION( : , : , : ), intent( inout ), CONTIGUOUS :: PIVIT_MAT
         type(multi_dimensions), intent(in) :: Mdims
         ! Local variables
+        logical, save :: lumped_matrix = .false., check_lumped_matrix = .true.
+        real :: aux
         INTEGER :: ELE, iphase, idim, u_iloc, i, u_jloc, k
         REAL, DIMENSION( :,: ), allocatable :: MAT
         REAL, DIMENSION( : ), allocatable :: B
+
+        !First time only, check if the Mass matrix is lumped. If it is, the inverse can be done much quicker
+        if (check_lumped_matrix) then
+            aux = 0.; check_lumped_matrix = .false.
+            !Check first element only
+            do k = 1, size(PIVIT_MAT,1)
+                aux = aux + PIVIT_MAT(k, k, 1)
+            end do
+            !If all the information is contained in the diagonals, then the mass matrix is lumped
+            lumped_matrix = ((sum(abs(PIVIT_MAT(:, :, 1))) - aux)/sum(abs(PIVIT_MAT(:, :, 1))) < 1d-8)
+        end if
+
+        if (lumped_matrix) then
+            !Only invert the diagonal
+             DO ELE = 1, Mdims%TOTELE
+                do k = 1, size(PIVIT_MAT,1)
+                    PIVIT_MAT(k,k,ELE) = 1./PIVIT_MAT(k,k,ELE)
+                end do
+             end do
+            return
+        end if
+
 
         if (is_porous_media) then !No coupling between phases nor dimensions, inverse can be done faster
              allocate(mat(Mdims%u_nloc, Mdims%u_nloc))
@@ -976,7 +1000,7 @@ contains
                 end do
                 !Invert
                 mat = inverse(mat)
-                !Populate PIVIT_MAT. SInce the matrix is repeated mdims%nphase * mdims%ndim times we don't need to
+                !Populate PIVIT_MAT. Since the matrix is repeated mdims%nphase * mdims%ndim times we don't need to
                 !invert it that many times
                 do i = 1, mdims%nphase * mdims%ndim
                     do u_iloc = 1, Mdims%u_nloc

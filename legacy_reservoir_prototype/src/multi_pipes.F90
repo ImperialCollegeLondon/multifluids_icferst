@@ -139,7 +139,7 @@ contains
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
         type(tensor_field), pointer :: t_all, den_all, u_all
-        type(scalar_field), pointer :: pipe_diameter
+        type(scalar_field), pointer :: pipe_diameter, sigma1_pipes
         type(vector_field), pointer :: X
 
         integrate_other_side_and_not_boundary = .FALSE.
@@ -326,6 +326,7 @@ contains
         U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
         PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
         X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
+        sigma1_pipes => extract_scalar_field( state(1), "Sigma1" )
 
         TMAX_ALL=-INFINY; TMIN_ALL=+INFINY; DENMAX_ALL=-INFINY; DENMIN_ALL = +INFINY
         DO CV_NODI = 1, CV_NONODS
@@ -388,9 +389,14 @@ contains
 
         mass_pipe = 0.0; MASS_PIPE_FOR_COUP = 0.0
         MASS_CVFEM2PIPE = 0.0; MASS_PIPE2CVFEM = 0.0; MASS_CVFEM2PIPE_TRUE = 0.0
+        INV_SIGMA = 0.0!; INV_SIGMA_NANO = 0.0
 
-        INV_SIGMA = 0.0; INV_SIGMA_NANO = 0.0
-
+        !Populate INV_SIGMA inside the pipes to ensure that flux from pipes to the domain can happen
+        DO IPHASE = N_IN_PRES+1, NPHASE
+            call assign_val(INV_SIGMA(iphase, : ),1./sigma1_pipes%val)
+        end do
+        !Initialise INV_SIGMA_NANO based on INV_SIGMA
+        INV_SIGMA_NANO = INV_SIGMA
 
         DO ELE = 1, TOTELE
 

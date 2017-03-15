@@ -2488,21 +2488,19 @@ contains
                     DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
 
                     IF ( .not. is_flooding ) then
-   
                         DO IPHASE = 1, Mdims%nphase
                             DO JPHASE = 1, Mdims%nphase
                                 IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
                                 JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
                                 IF ( IPRES /= JPRES ) THEN
                                     DeltaP = PRES_FOR_PIPE_PHASE(IPHASE) - PRES_FOR_PIPE_PHASE(JPHASE)
-                                    !                                DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
+                                    !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                                     ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                                     ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                                     IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) - PRES_FOR_PIPE_PHASE_FULL(JPHASE) >= 0.0 ) THEN
                                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
                                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
                                             cc * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-                                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                             / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                         IF ( GOT_NANO ) THEN
                                             PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
@@ -2514,7 +2512,6 @@ contains
                                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( JPHASE ) * &
                                             cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-                                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                             / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                         IF ( GOT_NANO ) THEN
                                             PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
@@ -2526,7 +2523,6 @@ contains
                                 END IF
                             END DO
                         END DO
-
                     else ! flooding
                         ! Should really use the manhole diameter here...
                         DO IPRES = 1, Mdims%npres
@@ -2667,20 +2663,6 @@ contains
                     END DO
                 END IF
             ENDIF ! ENDOF IF ( GETCT ) THEN
-            ! IF (  .NOT.GETCT .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-            ! IF (  .NOT.GETCT  ) THEN
-            IF (  .FALSE. ) THEN
-                DO CV_NODI = 1, Mdims%cv_nonods
-                    DO IPHASE = 1, Mdims%nphase
-                        DO JPHASE = 1, Mdims%nphase
-                            IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                            JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                            !                     PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI )
-                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI )
-                        END DO
-                    END DO
-                END DO
-            END IF ! ENDOF IF ( .NOT. GETCT ) THEN
         END IF ! IF ( Mdims%npres > 1 ) THEN
         Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
             Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
@@ -3310,27 +3292,6 @@ contains
                 end if
                 DO IPHASE = 1, Mdims%nphase
                     IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
-!                         IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN!sprint_to_do: pressure bcs as vel bcs, remove
-!                            allocate(SUF_SIG_DIAGTEN_BC_GI(Mdims%ndim))
-!                            DO CV_SKLOC = 1, Mdims%cv_snloc
-!                                CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
-!                                IF(CV_KLOC==CV_ILOC) THEN
-!                                    CV_SNODK = ( SELE - 1 ) * Mdims%cv_snloc + CV_SKLOC
-!                                    CV_SNODK_IPHA = CV_SNODK + ( IPHASE - 1 ) * Mdims%stotel*Mdims%cv_snloc
-!                                    SUF_SIG_DIAGTEN_BC_GI( 1:Mdims%ndim ) = SUF_SIG_DIAGTEN_BC( CV_SNODK_IPHA, 1:Mdims%ndim )
-!                                    exit
-!                                ENDIF
-!                            END DO
-!                            UDGI_ALL(:, IPHASE) = 0.0
-!                            UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0
-!                            !Calculate velocity as n*(P_in-P_bcs)/hdc_p
-!                            UDGI_ALL_FOR_INV(:, IPHASE) = CVNORMX_ALL(:, GI) * (pressure%val(1,1,CV_NODI) - pressure_BCs%val(1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ))/hdc_p
-!                            !Velocity like for P bcs
-!                            UDGI_ALL(:, IPHASE) =  matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
-!                            Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) < 0.0
-!                            if(Incomming_flow) UDGI_ALL(:, IPHASE) =  UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
-!                            deallocate(SUF_SIG_DIAGTEN_BC_GI)
-!                        else  ! endof IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
@@ -4782,7 +4743,6 @@ contains
                     option_path=trim(psi(1)%ptr%option_path)//"/prognostic"
                 end if
             end if
-
             do it = 1, size(fempsi)
                 call zero_non_owned(fempsi_rhs(it))
                 call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = option_path)
