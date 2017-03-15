@@ -450,7 +450,8 @@ NOTE: Requires -v2</a:documentation>
         <optional>
           <element name="Mesh_Diagnostics_Angles">
             <a:documentation>Printout the number of elements and percentage that contain an angle
-equal or bigger than the ones specified here</a:documentation>
+equal or bigger than the ones specified here
+Note: This may slow down your simulation should be used as a diagnostic tool </a:documentation>
             <ref name="real_vector"/>
           </element>
         </optional>
@@ -2699,7 +2700,20 @@ To disable it manually, set it to negative values. </a:documentation>
           <optional>
             <element name="Bad_element_fix">
               <a:documentation>Look for bad elements to change its anisotropic permeability to improve their quality</a:documentation>
-              <empty/>
+              <optional>
+                <element name="Angle">
+                  <a:documentation>Select angle considered too large (degrees) 
+Default is 177</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="KvKh_ratio">
+                  <a:documentation>What Kv/Kh ratio to use to artifically stretch element
+Default is 0.01</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
