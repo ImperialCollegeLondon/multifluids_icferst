@@ -211,9 +211,9 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'BL adapt ts works OK'
+    print 'BL adapt PID ts works OK'
 else:
-    print 'BL adapt ts does NOT work'
+    print 'BL adapt PID ts does NOT work'
 
 if (showPlot):
     fig, ax = plt.subplots()

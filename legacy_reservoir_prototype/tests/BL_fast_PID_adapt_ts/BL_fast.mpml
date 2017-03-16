@@ -42,7 +42,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
+            <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -94,6 +94,7 @@
         <Inifinite_norm_tol>
           <real_value rank="0">0.02</real_value>
         </Inifinite_norm_tol>
+        <Show_Convergence/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
           <PID_controller>
@@ -130,6 +131,7 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
+        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>

@@ -2035,7 +2035,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         max_ts, default = huge(min_ts) )
     if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
-        min_ts, default = dt_by_user*1d-3 )
+        min_ts, default = dt_by_user*1d-5 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
@@ -2187,9 +2187,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         call get_option( '/timestepping/timestep', dt )
                         auxR = PID_time_controller()
                         if (auxR < 1.0 )then!Reduce Ts
-                            dt = max(dt * max(auxR, 0.5/decreaseFactor), min_ts)
+                            dt = max(dt * max(abs(auxR), 0.5/decreaseFactor), min_ts)
                         else
-                            dt = min(dt * min(auxR, 2.*increaseFactor), max_ts)
+                            dt = min(dt * min(abs(auxR), 2.*increaseFactor), max_ts)
                         end if
                         call set_option( '/timestepping/timestep', dt )
                         ewrite(show_FPI_conv,*) "Time step changed to:", dt
@@ -2211,17 +2211,20 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
+                    call get_option( '/timestepping/timestep', dt )
                     if ( dt / decreaseFactor < min_ts) then
+                        !Ensure that dt = min_ts
+                        dt = min_ts
+                        call set_option( '/timestepping/timestep', dt )
                         !Do not decrease if minimum ts is reached
                         Repeat_time_step = .false.
                         ExitNonLinearLoop = .true.
                         deallocate(reference_field)
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        ewrite(show_FPI_conv,*)  "Minimum time-step reached, advancing time."
+                        ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts,") reached, advancing time."
                         return
                     end if
                     !Decrease time step, reset the time and repeat!
-                    call get_option( '/timestepping/timestep', dt )
                     call get_option( '/timestepping/current_time', acctim )
                     acctim = acctim - dt
                     call set_option( '/timestepping/current_time', acctim )

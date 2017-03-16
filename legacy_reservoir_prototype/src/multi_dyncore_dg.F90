@@ -570,7 +570,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
                  call zero(vtracer)
-                 call zero_non_owned(Mmat%CV_RHS)
+                 call zero_non_owned(Mmat%CV_RHS)!<= Parallel_fix potentially a problem
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)

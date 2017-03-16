@@ -1989,7 +1989,7 @@ contains
 
 
 !                               Calculate mass flux across the boundary
-                                if ( is_porous_media .and. GETCT .and. sele > 0 ) then
+                                if ( is_porous_media .and. GETCT ) then
                                         !Subroutine call to calculate the mass across this element if the element is part of the boundary. Adds value to calculate_mass_boundary
                                         ! same rountine as one used for calculating outlet fluxes through specified boundaries. Surface ID set to -1 here as this is not needed
                                         call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, (/-1/) , calculate_mass_boundary(:,1) , ele , sele, &

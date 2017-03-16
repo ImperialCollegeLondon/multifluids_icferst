@@ -522,7 +522,7 @@ start =
                         real
                         }?,
                         ## Minimum timestep. Beyond this value the timestep will not be decreased.
-                        ## By default dt*1e-3.
+                        ## By default dt*1e-5.
                         element min_timestep{
                         real
                         }?
