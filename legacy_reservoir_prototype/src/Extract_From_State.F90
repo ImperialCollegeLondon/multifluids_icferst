@@ -2212,6 +2212,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
                     call get_option( '/timestepping/timestep', dt )
+                    !If PID_controller then update the status
+                    if (PID_controller) auxR = PID_time_controller()
                     if ( dt / decreaseFactor < min_ts) then
                         !Ensure that dt = min_ts
                         dt = min_ts
