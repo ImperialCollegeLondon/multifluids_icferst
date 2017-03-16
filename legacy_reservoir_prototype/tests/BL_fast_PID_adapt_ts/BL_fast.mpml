@@ -94,7 +94,6 @@
         <Inifinite_norm_tol>
           <real_value rank="0">0.02</real_value>
         </Inifinite_norm_tol>
-        <Show_Convergence/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
           <PID_controller>
