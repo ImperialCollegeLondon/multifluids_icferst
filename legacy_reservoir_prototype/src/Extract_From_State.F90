@@ -2214,7 +2214,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call get_option( '/timestepping/timestep', dt )
                     !If PID_controller then update the status
                     if (PID_controller) auxR = PID_time_controller()
-                    if ( dt / decreaseFactor < min_ts) then
+                    if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
                         call set_option( '/timestepping/timestep', dt )
