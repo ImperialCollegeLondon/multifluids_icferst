@@ -570,7 +570,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
 
                  call zero(vtracer)
-                 call zero_non_owned(Mmat%CV_RHS)!<= Parallel_fix potentially a problem
+                 call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
@@ -674,8 +674,11 @@ if (is_flooding) return!<== Temporary fix for flooding
             integer :: iphase, cv_nod, i_start, i_end, ipres
             real :: correction, sum_of_phases
             real, dimension(:,:), pointer :: satura
+            type(tensor_field), pointer :: tfield
 
-            call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+            tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+            satura =>  tfield%val(1,:,:)
+
             !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
             do ipres = 1, Mdims%npres
                 i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
@@ -693,6 +696,8 @@ if (is_flooding) return!<== Temporary fix for flooding
                     end do
                 end do
             end do
+            if (IsParallel()) call halo_update(tfield)
+
         end subroutine non_porous_ensure_sum_to_one
 
 

@@ -483,7 +483,7 @@ start =
                         ## Time-step size controlled using a PID approach.
                         ## By default the aim of FPIs is the 25% of nonlinear_iterations, this can be changed with Aim_num_FPI.
                         ## if Aim_num_FPI = 0 then only the error is controlled.
-                        ## The increase_factor and decrease_factor are multiplied by 2, to give more flexibility to the PID controller.
+                        ## The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
                         ## 
                         ## If this is off, a classical method based on the number of FPI performed is used instead.
                         element PID_controller {

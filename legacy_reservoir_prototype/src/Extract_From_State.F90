@@ -889,7 +889,7 @@ contains
         end do
 
         call insert_sfield(packed_state,"Density",1,nphase,&
-            add_source=.true.)
+            add_source=is_flooding)!Only for flooding for the time being
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
@@ -2187,9 +2187,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         call get_option( '/timestepping/timestep', dt )
                         auxR = PID_time_controller()
                         if (auxR < 1.0 )then!Reduce Ts
-                            dt = max(dt * max(abs(auxR), 0.5/decreaseFactor), min_ts)
+                            dt = max(dt * max(abs(auxR), 1./(1.2*decreaseFactor)), min_ts)
                         else
-                            dt = min(dt * min(abs(auxR), 2.*increaseFactor), max_ts)
+                            dt = min(dt * min(abs(auxR), 1.2*increaseFactor), max_ts)
                         end if
                         call set_option( '/timestepping/timestep', dt )
                         ewrite(show_FPI_conv,*) "Time step changed to:", dt
@@ -2213,7 +2213,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !reduce ts and repeat
                     call get_option( '/timestepping/timestep', dt )
                     !If PID_controller then update the status
-                    if (PID_controller) auxR = PID_time_controller()
+                    if (PID_controller) auxR = PID_time_controller(reset=.true.)
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
@@ -2241,15 +2241,20 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
 contains
 
-    real function PID_time_controller()
+    real function PID_time_controller(reset)
         !This functions calculates the multiplier to get a new time-step size based on a
         !Proportional-Integral-Derivative (PID) concept. See: SPE-182601-MS
         implicit none
+        logical, optional, intent(in) :: reset
         !Local variables
         real, parameter:: Ki = 1.34, Kd = 0.01, Kp = 0.001 !Fixed values from the paper, this can be improved, see SPE-182601-MS
         real, save :: Cn1 = -1, Cn2 = -1
         real :: Cn
         real, parameter :: tol = 1e-8
+
+        if (present_and_true(reset))then
+            Cn1 = -1; Cn2 = -1
+        end if
 
         !Calculate Cn
         if (is_porous_media) then
