@@ -96,8 +96,7 @@ module cv_advection
         WIC_U_BC_DIRI_ADV_AND_ROBIN = 3, &
         WIC_U_BC_DIRICHLET_INOUT = 2, &
         WIC_P_BC_DIRICHLET = 1, &
-        WIC_P_BC_FREE = 2, &
-        WIC_P_BC_VEL_ACTING = 100
+        WIC_P_BC_FREE = 2
 
 contains
 
@@ -661,7 +660,7 @@ contains
         call get_entire_boundary_condition(velocity,&
             ['weakdirichlet'],&
             velocity_BCs,WIC_U_BC_ALL)
-        if(got_free_surf.or.Mmat%CV_pressure) then
+        if(got_free_surf.or.is_porous_media) then
             pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
             call get_entire_boundary_condition(pressure,&
                 ['weakdirichlet','freesurface  '],&
@@ -2871,7 +2870,7 @@ contains
         call deallocate(tracer_BCs_robin2)
         call deallocate(density_BCs)
         call deallocate(velocity_BCs)
-        if(got_free_surf .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
+        if(got_free_surf .or. is_porous_media) call deallocate(pressure_BCs)
         if (present(saturation)) then
             call deallocate(saturation_BCs)
             call deallocate(saturation_BCs_robin2)
@@ -3290,8 +3289,8 @@ contains
                         ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(I_inv_adv_coef(IDIM,:,IPHASE))
                     end forall
                 end if
-                DO IPHASE = 1, Mdims%nphase
-                    IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
+                IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
+                    DO IPHASE = 1, Mdims%nphase
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
@@ -3314,7 +3313,7 @@ contains
                         Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) < 0.0
                         if (not_OLD_VEL) then
                             DO U_KLOC = 1, Mdims%u_nloc
-!                         IF (.false.) THEN !<= this one for strong boundary conditions
+!                               IF (.false.) THEN !<= this one for strong boundary conditions
                                 IF (Incomming_flow) THEN ! Incomming...
                                     UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=SUF_SIG_DIAGTEN_BC_GI(:)
                                 ELSE
@@ -3327,8 +3326,9 @@ contains
                         if(Incomming_flow) UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
 
                         deallocate(SUF_SIG_DIAGTEN_BC_GI)
-!                        end if  ! endof IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN else
-                    ELSE ! Specified vel bc.
+                    END DO
+                ELSE ! Specified vel bc.
+                    DO IPHASE = 1, Mdims%nphase
                         UDGI_ALL(:, IPHASE) = 0.0
                         UDGI_ALL_FOR_INV(:, IPHASE) = 0.0
                         UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0
@@ -3346,8 +3346,8 @@ contains
 
                         END DO
                         UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
-                    END IF
-                END DO ! PHASE LOOP
+                    END DO ! PHASE LOOP
+                END IF
             ELSE IF( .not. between_elements .and. not_use_DG_within_ele) THEN!same element
                 !vel(GI) = (vel * shape_functions)/sigma
                 do iphase = 1, Mdims%nphase
@@ -6614,42 +6614,6 @@ contains
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * (NDOTQOLD(:) -NDOTQ_IMP(:)*THETA_VEL(:)) &
                 + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
                 ) / DEN_ALL_DIVID( :, CV_NODI ) )
-
-!            ! Pressure bc acting like vel bc...
-!            ! Note we must put memory aside for MASS_SUF if we have a pressure b.c. acting like a vel bc.
-!            IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN
-!                allocate(SUF_SIG_DIAGTEN_BC_pha_GI(Mdims%ndim,Mdims%NPHASE))
-!                DO KPHASE=1,Mdims%NPHASE
-!                    CV_SKLOC = 1
-!                        CV_SNODK = ( SELE - 1 ) * Mdims%cv_snloc + CV_SKLOC
-!                        CV_SNODK_IPHA = CV_SNODK + ( KPHASE - 1 ) * Mdims%stotel*Mdims%cv_snloc
-!                        SUF_SIG_DIAGTEN_BC_pha_GI( 1:Mdims%ndim, KPHASE ) = SUF_SIG_DIAGTEN_BC( CV_SNODK_IPHA, 1:Mdims%ndim )
-!                END DO
-!                !if incomming flow
-!                DO KPHASE=1,Mdims%NPHASE
-!                    if(DOT_PRODUCT(UDGI_ALL(:, KPHASE), CVNORMX_ALL(:, GI)) > 0.0) then
-!                            SUF_SIG_DIAGTEN_BC_pha_GI( :,KPHASE ) = 1.0
-!                    end if
-!                    SUF_SIG_DIAGTEN_BC_pha_GI( :,KPHASE ) = matmul(I_inv_adv_coef(:,:,KPHASE),SUF_SIG_DIAGTEN_BC_pha_GI( :,KPHASE ))
-!                end do
-!                RCON(:) = (1.0/HDC_P) * SUF_SIG_DIAGTEN_BC_pha_GI( 1,: )*SCVDETWEI( GI ) * (  ( &
-!                ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:)  &
-!                + FTHETA_T2(:)  * LIMDT(:)  &
-!                ) / DEN_ALL_DIVID( :, CV_NODI ) )
-!                ! add in the vel bc:
-!               ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
-!                + SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) * RCON(:)
-!               ! Use the same sparcity as the MN matrix...
-!               COUNT_SUF = 0
-!               DO COUNT = Mspars%CMC%fin( CV_NODI ), Mspars%CMC%fin( CV_NODI + 1 ) - 1
-!                  IF ( Mspars%CMC%col( COUNT ) == CV_NODI ) THEN ! the diagonal of the matrix...
-!                      COUNT_SUF = COUNT
-!                     EXIT
-!                  END IF
-!               END DO
-!               MASS_SUF( COUNT_SUF ) = MASS_SUF( COUNT_SUF ) + SUM( RCON(:) )
-!               DEALLOCATE(SUF_SIG_DIAGTEN_BC_pha_GI)
-!            END IF ! ENDOF IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_VEL_ACTING ) THEN
         ELSE
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
                 - SCVDETWEI( GI ) * (  ( &

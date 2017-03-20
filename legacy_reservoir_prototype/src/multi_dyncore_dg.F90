@@ -567,8 +567,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                      end if
                  end if
 
-
-
                  call zero(vtracer)
                  call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)

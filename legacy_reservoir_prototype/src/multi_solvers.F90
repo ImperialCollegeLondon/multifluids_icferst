@@ -523,11 +523,11 @@ contains
                 Convergences(1) = res_ratio!<=Actual residual ratio
                 !Compare with the Convergence using the first backtrack_par parameter
                 if (new_FPI) Previous_convergence = Convergences(1)
-
                 !####Check convergence of the method####
                 satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
                     .or. (get_Convergence_Functional(Satura, Sat_bak, backtrack_pars(2)) < convergence_tol .and.&
                     maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Inifinite_norm_tol)!<= exit if final convergence is achieved
+                if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
                 if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
                     Satura = backtrack_sat
