@@ -116,7 +116,6 @@ contains
         !!$ Defining dimension and nstate
         call get_option( '/geometry/dimension', Mdims%ndim )
         Mdims%nstate = option_count( '/material_phase' )
-
         !!$ Assume there are the same number of components in each phase (will need to check this eventually)
         Mdims%ncomp = 0
         do i = 1, Mdims%nstate
@@ -127,7 +126,6 @@ contains
         end do
         Mdims%nphase = Mdims%nstate - Mdims%ncomp
         assert( Mdims%nphase > 0 ) ! Check if there is more than 0 phases
-
         ! Number of pressures to solve for
         Mdims%npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
         Mdims%n_in_pres = Mdims%nphase / Mdims%npres
@@ -889,7 +887,7 @@ contains
         end do
 
         call insert_sfield(packed_state,"Density",1,nphase,&
-            add_source=is_flooding)!Only for flooding for the time being
+            add_source=.false.)
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
@@ -1130,7 +1128,7 @@ contains
                         check_paired(extract_scalar_field(state(i),"Density"),&
                         extract_scalar_field(state(i),"OldDensity")))
                     call unpack_sfield(state(i),packed_state,"Density",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"DensitySource",1,iphase)
+!                    call unpack_sfield(state(i),packed_state,"DensitySource",1,iphase, free=.false.)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Density"),"Density")
                 end if
 

@@ -166,9 +166,10 @@ contains
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
-        type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource, DensitySource
+        type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
+        type(scalar_field), pointer :: DensitySource
         !type(scalar_field), pointer :: bathymetry
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
@@ -325,7 +326,6 @@ contains
         call Get_Discretisation_Options( state, Mdims, Mdisopt )
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
-
         if (.not. Mmat%CV_pressure .and. ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or. (Mdims%ndim==3 .and. Mdims%u_nloc == 5))) then
             ewrite(0, *) "WARNING: the only tested element pair using bubble shape functions is the P1DG(BL)P1DG(CV)"
         end if
@@ -425,7 +425,6 @@ contains
 !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
-
             ! Tests bad elements and creates table of angles for model elements
             call BadElementTest(Quality_list, 2)
 
@@ -543,15 +542,16 @@ contains
 !Testing multi_transport
 call solve_transport()
 
-
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
                    ScalarField_Source_Store = PhaseVolumeFractionComponentSource%val(1,:,:)
                 end if
                 if (is_flooding) then
-                    DensitySource => extract_tensor_field(packed_state,"PackedDensitySource", stat)
-                    if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + DensitySource%val(1,:,:)
+                    do iphase = 1, size(state)
+                        DensitySource => extract_scalar_field(state(iphase),"DensitySource", stat)
+                        if ( stat == 0 ) ScalarField_Source_Store(iphase,:) = ScalarField_Source_Store(iphase,:) + DensitySource%val
+                    end do
                 end if
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
