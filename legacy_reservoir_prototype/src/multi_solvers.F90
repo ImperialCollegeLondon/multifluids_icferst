@@ -475,8 +475,8 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        if (present(IDs2CV_ndgln)) call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
         if (is_porous_media) then
+            if (present(IDs2CV_ndgln)) call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             Satura =>  sat_field%val(1,:,:)
             !Stablish minimum backtracking parameter

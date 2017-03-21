@@ -2255,7 +2255,7 @@ contains
         end if
 
         !Calculate Cn
-        if (is_porous_media) then
+        if (is_porous_media.and. .not.first_time_step) then
             Cn = ts_ref_val/tolerance_between_non_linear
         end if
         !Compare with infinitum norm

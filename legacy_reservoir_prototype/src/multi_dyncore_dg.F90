@@ -404,6 +404,7 @@ contains
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
+             type (tensor_field), pointer :: sat_field
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1, max_FPI = -1
              integer :: its_taken
@@ -416,7 +417,9 @@ if (is_flooding) return!<== Temporary fix for flooding
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
-             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
+             !call get_var_from_packed_state(packed_state,CVPressure = P)
+             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+             Satura =>  sat_field%val(1,:,:)
              !Get information for capillary pressure to be use in CV_ASSEMB
              call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
              !Get variable for global convergence method
@@ -640,8 +643,12 @@ if (is_flooding) return!<== Temporary fix for flooding
              !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
              if (its_taken >= max_allowed_its) solver_not_converged = .true.
 
-             !Make sure the parameter is consistent between cpus
-             if (IsParallel()) call allmin(backtrack_or_convergence)
+             if (IsParallel()) then
+                !Make sure the parameter is consistent between cpus
+                call allmin(backtrack_or_convergence)
+                !Update halos with the new values
+                call halo_update(sat_field)
+             end if
              DEALLOCATE( mass_mn_pres )
              DEALLOCATE( Mmat%CT )
              DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO )
