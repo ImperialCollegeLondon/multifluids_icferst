@@ -417,7 +417,6 @@ if (is_flooding) return!<== Temporary fix for flooding
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
-             !call get_var_from_packed_state(packed_state,CVPressure = P)
              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
              Satura =>  sat_field%val(1,:,:)
              !Get information for capillary pressure to be use in CV_ASSEMB
@@ -1398,52 +1397,8 @@ END IF
             call DEALLOCATE( CDP_tensor )
         END if
         ! Calculate control volume averaged pressure CV_P from fem pressure P
-        CVP_ALL%VAL = 0.0
-        IF(Mdims%npres>1.AND.PIPES_1D) THEN
-           MASS_CV = 0.0
-           IPRES = 1
-           DO CV_NOD = 1, Mdims%cv_nonods
-              if (node_owned(CVP_all,CV_NOD)) then
-                 DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
-                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
-                 END DO
-              else
-                 Mass_CV(CV_NOD)=1.0
-              end if
-           END DO
-           CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-           MASS_CV = 0.0
-           IPRES = Mdims%npres
-           DO CV_NOD = 1, Mdims%cv_nonods
-              if (node_owned(CVP_all,CV_NOD)) then
-                 DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
-                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT )
-                 END DO
-                 MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
-              else
-                 Mass_CV(CV_NOD)=1.0
-              end if
-           END DO
-           CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-        ELSE
-           MASS_CV = 0.0
-           DO CV_NOD = 1, Mdims%cv_nonods
-              if (node_owned(CVP_all,CV_NOD)) then
-                 DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, Mspars%CMC%col( COUNT ) )
-                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
-                 END DO
-              else
-                 Mass_CV(CV_NOD)=1.0
-              end if
-           END DO
-           DO IPRES = 1, Mdims%npres
-              CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-           END DO
-        ENDIF
-        call halo_update(CVP_all)
+        call calc_CVPres_from_FEPres()
+
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
         DEALLOCATE( MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE )
@@ -1459,6 +1414,83 @@ END IF
 
 
     contains
+
+        subroutine calc_CVPres_from_FEPres()
+            !This is for FE pressure
+            implicit none
+            if (Mmat%CV_pressure) then!Pressure is already CV...
+                CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
+                !...inside the wells it is still FE pressure
+                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+                    CVP_ALL%VAL(1,Mdims%n_in_pres+1:Mdims%nphase,:) = 0.
+                    IPRES = Mdims%npres
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT )
+                            END DO
+                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                end if
+            else
+                CVP_ALL%VAL = 0.0
+                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+                    MASS_CV = 0.0
+                    IPRES = 1
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                            END DO
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                    MASS_CV = 0.0
+                    IPRES = Mdims%npres
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT )
+                            END DO
+                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                ELSE
+                    MASS_CV = 0.0
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                            END DO
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    DO IPRES = 1, Mdims%npres
+                        CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                    END DO
+                ENDIF
+            end if
+            call halo_update(CVP_all)
+
+
+
+        end subroutine calc_CVPres_from_FEPres
+
+
 
         subroutine Backtrack_pressure(p_all, deltap, non_its, deltaP_old)
             !Method to stabilize the system by backtracking the pressure correction for flooding
