@@ -2033,7 +2033,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         max_ts, default = huge(min_ts) )
     if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
-        min_ts, default = dt_by_user*1d-5 )
+        min_ts, default = dt_by_user*1d-3 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
@@ -2147,7 +2147,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !Automatic non-linear iteration checking
             !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
             if (is_porous_media) then
-                if (first_time_step) ts_ref_val = tolerance_between_non_linear/2.
+                !For very tiny time-steps ts_ref_val may not be good as is it a relative value
+                !So if the infinity norm is way better than the tolerance we consider that the convergence have been achieved
+                if (first_time_step .or. inf_norm_val * 1e2 < Inifinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                 ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
             else
