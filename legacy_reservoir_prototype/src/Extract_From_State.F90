@@ -2038,7 +2038,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
-        Aim_num_FPI, default = 0 )
+        Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 5d-3)
     PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
@@ -2249,32 +2249,44 @@ contains
         !Local variables
         real, parameter:: Ki = 1.34, Kd = 0.01, Kp = 0.001 !Fixed values from the paper, this can be improved, see SPE-182601-MS
         real, save :: Cn1 = -1, Cn2 = -1
-        real :: Cn
+        real, dimension(3) :: Cn
+        real :: aux
         real, parameter :: tol = 1e-8
+        logical, parameter :: max_criteria = .false.!If false, use an average with different weights
 
         if (present_and_true(reset))then
             Cn1 = -1; Cn2 = -1
         end if
-
+        Cn = 0.; aux = 0.
         !Calculate Cn
         if (is_porous_media.and. .not.first_time_step) then
-            Cn = ts_ref_val/tolerance_between_non_linear
+            Cn(1) = ts_ref_val/tolerance_between_non_linear
+            aux = aux + 1.0
         end if
         !Compare with infinitum norm
-        Cn = max(Cn,inf_norm_val/Inifinite_norm_tol)
+        Cn(2) = inf_norm_val/Inifinite_norm_tol
+        aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
-        if (Aim_num_FPI > 0) Cn = max(Cn,dble(its)/dble(Aim_num_FPI))
-        Cn = (Cn + tol)! <= To avoid divisions by zero
+        if (Aim_num_FPI > 0) then
+            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.5
+            aux = aux + 1.0
+        end if
+        if (max_criteria) then
+            Cn(1) = maxval(Cn)
+        else
+            Cn(1) = (sum(Cn)+maxval(Cn))/(aux+1.)
+        end if
+        Cn(1) = (Cn(1) + tol)! <= To avoid divisions by zero
         if (Cn2 > 0) then
-            PID_time_controller = (1./Cn)**Ki * (Cn1/Cn)**Kp * (Cn1**2. / (Cn*Cn2))**Kd
+            PID_time_controller = (1./Cn(1))**Ki * (Cn1/Cn(1))**Kp * (Cn1**2. / (Cn(1)*Cn2))**Kd
         else if (Cn1 > 0) then
-            PID_time_controller = (1./Cn)**Ki * (Cn1/Cn)**Kp
+            PID_time_controller = (1./Cn(1))**Ki * (Cn1/Cn(1))**Kp
         else!Not enough information
-            PID_time_controller = (1./Cn)**1.0
+            PID_time_controller = (1./Cn(1))**1.0
         end if
 
         !Store previous values
-        Cn2 = Cn1; Cn1 = Cn
+        Cn2 = Cn1; Cn1 = Cn(1)
     end function PID_time_controller
 
 end subroutine Adaptive_NonLinear

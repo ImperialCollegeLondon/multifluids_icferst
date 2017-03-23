@@ -482,13 +482,15 @@ start =
                       (
                         ## Time-step size controlled using a PID approach.
                         ## By default this method only controls the errors, and based on that increases or decreases the time-step size.
+                        ## The default aim of number of FPI is the 20% of the maximum number of non-linear iterations.
                         ## The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
                         ## 
                         ## If this is off, a classical method based on the number of FPI performed is used instead.
                         element PID_controller {
                           empty,
                             ## Time-step size is controlled to try to always perform the specified number of FPI introduced
-                            ## here. By default this is off. 
+                            ## here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
+                            ## By default this is the 20% of the maximum number of non-linear iterations.
                             element Aim_num_FPI {
                               integer
                             }?

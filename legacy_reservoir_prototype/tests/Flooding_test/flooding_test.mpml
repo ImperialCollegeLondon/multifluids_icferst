@@ -257,7 +257,7 @@ for i in range( p.node_count ):
               <nonlinear_velocity_coefficient>
                 <real_value rank="0">0.25</real_value>
               </nonlinear_velocity_coefficient>
-              <stress_form/>
+              <tensor_form/>
             </stabilisation>
           </discontinuous_galerkin>
           <conservative_advection>
