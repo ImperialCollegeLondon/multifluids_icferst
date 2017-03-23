@@ -2038,7 +2038,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
-        Aim_num_FPI, default = -1 )
+        Aim_num_FPI, default = 0 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 5d-3)
     PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
@@ -2262,14 +2262,8 @@ contains
         end if
         !Compare with infinitum norm
         Cn = max(Cn,inf_norm_val/Inifinite_norm_tol)
-        !Consider as well number of FPIs
-        if (Aim_num_FPI /=0) then
-            if (Aim_num_FPI >0) then
-                Cn = max(Cn,dble(its)/dble(Aim_num_FPI))
-            else
-                Cn = max(Cn,dble(its)/dble(incr_threshold))
-            end if
-        end if
+        !Maybe consider as well aiming to a certain number of FPIs
+        if (Aim_num_FPI > 0) Cn = max(Cn,dble(its)/dble(Aim_num_FPI))
         Cn = (Cn + tol)! <= To avoid divisions by zero
         if (Cn2 > 0) then
             PID_time_controller = (1./Cn)**Ki * (Cn1/Cn)**Kp * (Cn1**2. / (Cn*Cn2))**Kd
