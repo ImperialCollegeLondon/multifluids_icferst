@@ -92,13 +92,14 @@
           <real_value rank="0">-1</real_value>
         </Backtracking_factor>
         <Inifinite_norm_tol>
-          <real_value rank="0">0.02</real_value>
+          <real_value rank="0">0.01</real_value>
         </Inifinite_norm_tol>
+        <Show_Convergence/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
           <PID_controller>
             <Aim_num_FPI>
-              <integer_value rank="0">4</integer_value>
+              <integer_value rank="0">2</integer_value>
             </Aim_num_FPI>
           </PID_controller>
           <increase_factor>
