@@ -1418,7 +1418,7 @@ END IF
         subroutine calc_CVPres_from_FEPres()
             !This is for FE pressure
             implicit none
-            if (Mmat%CV_pressure) then!Pressure is already CV...
+            if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV... (for some reason this does not work for flooding...)
                 CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
                 !...inside the wells it is still FE pressure
                 IF(Mdims%npres>1.AND.PIPES_1D) THEN
