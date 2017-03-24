@@ -660,7 +660,7 @@ contains
         call get_entire_boundary_condition(velocity,&
             ['weakdirichlet'],&
             velocity_BCs,WIC_U_BC_ALL)
-        if(got_free_surf.or.is_porous_media) then
+        if(got_free_surf.or.is_porous_media .or. Mmat%CV_pressure) then
             pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
             call get_entire_boundary_condition(pressure,&
                 ['weakdirichlet','freesurface  '],&
@@ -2870,7 +2870,7 @@ contains
         call deallocate(tracer_BCs_robin2)
         call deallocate(density_BCs)
         call deallocate(velocity_BCs)
-        if(got_free_surf .or. is_porous_media) call deallocate(pressure_BCs)
+        if(got_free_surf .or. is_porous_media .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
         if (present(saturation)) then
             call deallocate(saturation_BCs)
             call deallocate(saturation_BCs_robin2)
