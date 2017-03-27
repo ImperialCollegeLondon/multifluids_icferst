@@ -1997,6 +1997,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:), pointer :: phasevolumefraction
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
+    logical, save :: match_final_t = .true.
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
@@ -2008,7 +2009,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Variables for PID time-step size controller
     logical :: PID_controller
     !Variables for adaptive time stepping based on non-linear iterations
-    real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val
+    real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
     integer :: variable_selection, NonLinearIteration
     !ewrite(0,*) "entering"
     !First of all, check if the user wants to do something
@@ -2042,6 +2043,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 5d-3)
     PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
+    !Retrieve current time and final time
+    call get_option( '/timestepping/current_time', acctim )
+    call get_option( '/timestepping/finish_time', finish_time )
 
     select case (order)
         case (1)!Store or get from backup
@@ -2194,6 +2198,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         call set_option( '/timestepping/timestep', dt )
                         ewrite(show_FPI_conv,*) "Time step changed to:", dt
                         ExitNonLinearLoop = .true.
+                        if (match_final_t .and. dt + acctim > finish_time) then
+                            call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
+                            match_final_t = .false.
+                        end if
                         return
                     end if
                 end if
@@ -2206,6 +2214,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call set_option( '/timestepping/timestep', dt )
                     ewrite(show_FPI_conv,*) "Time step increased to:", dt
                     ExitNonLinearLoop = .true.
+                    if (match_final_t .and. dt + acctim > finish_time) then
+                        call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
+                        match_final_t = .false.
+                    end if
                     return
                 end if
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
