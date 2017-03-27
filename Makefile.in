@@ -575,7 +575,7 @@ endif
 	$(MAKE) clean-light
 	@echo "    Congratulations, make makefiles succeeded!"
 
-install: default fltools 
+install: default fltools mp
 	@mkdir -p $(DESTDIR)$(bindir) $(DESTDIR)$(docdir)/fluidity
 	find bin/ -maxdepth 1 -type f -exec cp '{}' $(DESTDIR)$(bindir) \;
 	rm -f $(DESTDIR)$(bindir)/spud-* $(DESTDIR)$(bindir)/diamond $(DESTDIR)$(bindir)/silenteval $(DESTDIR)$(bindir)/runut
