@@ -1266,6 +1266,8 @@ end if
                call deallocate(rhs)
                U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             END IF
+            if (isParallel()) call halo_update(U_ALL2)
+
             deallocate( UP_VEL )
 IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
             if ( .not.symmetric_P ) then ! original
