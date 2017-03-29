@@ -16,7 +16,7 @@ import os
 
 print 'Running the model'
 path = os.getcwd()
-binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
+binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
 os.system(binpath + ' ' + path + '/*mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 

@@ -4,7 +4,7 @@
   <owner userid="pablo.salinas"/>
   <tags>flooding mpml </tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/multiphase_prototype flooding_test.mpml</command_line>
+    <command_line>../../../bin/icferst flooding_test.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="max_P" language="python">from fluidity_tools import stat_parser as stat

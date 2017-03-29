@@ -4,7 +4,7 @@
   <owner userid="jefferson.gomes"/>
   <tags>mpml</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/multiphase_prototype Advection_SinglePhase.mpml</command_line>
+    <command_line>../../../bin/icferst Advection_SinglePhase.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="Reference_Advection_Max" language="python">from fluidity_tools import stat_parser as stat

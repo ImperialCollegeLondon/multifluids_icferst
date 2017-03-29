@@ -13,7 +13,7 @@ tolerance2 = 1e-4
 toleranceMass = 2e-5
 
 path = os.getcwd()
-binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
+binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
 os.system('rm -f ' + path+ '/QuickTest_DG_outfluxes.csv')
 os.system(binpath + ' ' + path + '/*mpml')

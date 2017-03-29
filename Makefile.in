@@ -179,16 +179,18 @@ bin/$(FLUIDITY): main.o lib/lib$(FLUIDITY).a
 	@echo "    LD $(PROGRAM)"
 	@$(EVAL) $(LINKER) -o $(PROGRAM) main.o $(LIBS)
 
-mp: bin/multiphase_prototype
+mp: bin/icferst
 
-bin/multiphase_prototype: fluidity_library
-	@echo "    MAKE multiphase_prototype"
+bin/icferst: fluidity_library
+	@echo "    MAKE icferst"
 	@cd legacy_reservoir_prototype; $(MAKE)
-	@echo "BUILD multiphase_prototype"
+	@echo "BUILD icferst"
 	@echo "    MKDIR legacy_reservoir_prototype"
 	@mkdir -p bin
-	@echo "    LD multiphase_prototype"
-	@$(EVAL) $(FLLINKER) -o bin/multiphase_prototype legacy_reservoir_prototype/main.o ./legacy_reservoir_prototype/lib/libmphase.a $(FCFLAGS) $(LIBS)
+	@echo "    LD icferst"
+	@$(EVAL) $(FLLINKER) -o bin/icferst legacy_reservoir_prototype/main.o ./legacy_reservoir_prototype/lib/libmphase.a $(FCFLAGS) $(LIBS)
+	@cd ../
+	@cp ./bin/icferst ./bin/multiphase_prototype
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90
 	@cd reduced_modelling; $(MAKE) Form_Pod_Basis_Main.o

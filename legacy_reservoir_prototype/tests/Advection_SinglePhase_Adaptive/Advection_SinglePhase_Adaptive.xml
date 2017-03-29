@@ -4,9 +4,9 @@
   <owner userid="jefferson.gomes"/>
   <tags>mpml</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/multiphase_prototype Advection_SinglePhase_Adaptive.mpml
-../../../bin/multiphase_prototype Advection_SinglePhase_Unstructured.mpml
-../../../bin/multiphase_prototype Advection_Square_New.mpml</command_line>
+    <command_line>../../../bin/icferst Advection_SinglePhase_Adaptive.mpml
+../../../bin/icferst Advection_SinglePhase_Unstructured.mpml
+../../../bin/icferst Advection_Square_New.mpml</command_line>
   </problem_definition>
   <variables>
     <variable name="solvers_converged" language="python">import os
