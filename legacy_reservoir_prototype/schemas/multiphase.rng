@@ -2664,6 +2664,13 @@ For no friction set this to zero or do not activate it.</a:documentation>
               <ref name="comment"/>
             </element>
           </optional>
+          <optional>
+            <element name="shallow_drag">
+              <a:documentation>Factor that controls the strenght of the drag introduced in the dry areas;
+it has a simmilar effect as the artificial diffusion. Default value = 1e-1.</a:documentation>
+              <ref name="comment"/>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>

@@ -779,7 +779,7 @@ contains
             implicit none
             type (multi_field) :: Flooding_absorp
             !Local variables
-            real, parameter :: hmin = 1d-9!The velocity solver is very sensitive to this parameter
+            real, parameter :: hmin = max(flooding_hmin, 1d-8) * 1d1!The velocity solver is very sensitive to this parameter
             real, parameter :: u_min = 1d-2 !increase it if having problems to converge
             real, parameter :: g = 9.80665!Set default value if not specified by the user
             integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
@@ -788,9 +788,12 @@ contains
             real, dimension(mdims%cv_nloc) :: bathymetry, Nm_aux
             real, dimension(:), allocatable :: r_nod_count
             logical :: averaging
+            real :: shallow_drag
 
             !Check whether to use the harmonic mean of the bathymetry
             averaging = have_option('/flooding/averaging')
+            !Strenght shallow_drag
+            call get_option('/flooding/shallow_drag', shallow_drag, default = 1d-1)
 
             Nm => extract_tensor_field( packed_state, "PackedManningcoef" )!Defined element-wise
             velocity => extract_tensor_field( packed_state, "PackedVelocity" )
@@ -809,7 +812,7 @@ contains
                     mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     r_nod_count(mat_nod) = r_nod_count(mat_nod) + 1
-                    Nm_aux(cv_iloc) = Nm%val(1,1,ele)! + max(flooding_hmin, 1d3*(2*hmin-density%val(1,1,cv_nod))/hmin)
+                    Nm_aux(cv_iloc) = Nm%val(1,1,ele) + max(flooding_hmin, shallow_drag*(2*hmin-density%val(1,1,cv_nod))/hmin)
                     do u_iloc = 1, mdims%u_nloc
                         u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
                         !Since Flooding_absorp is of memory_type 1 we can populate it directly
