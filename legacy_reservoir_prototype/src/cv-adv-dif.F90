@@ -2433,6 +2433,7 @@ contains
                         call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
                    END DO
 
+! Nodes 68 and 92 should be non-zero...
 !                       if(abs(R_PEACMAN( 1 )).gt.1.e-10) then !GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
 
                        if(.false.) then !GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
