@@ -3289,8 +3289,10 @@ contains
                         ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(I_inv_adv_coef(IDIM,:,IPHASE))
                     end forall
                 end if
-                IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
-                    DO IPHASE = 1, Mdims%nphase
+!                IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
+                DO IPHASE = 1, Mdims%nphase
+                    IPRES = 1 + (IPHASE-1)/mdims%N_IN_PRES
+                    IF( WIC_P_BC_ALL( 1, IPRES, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
@@ -3326,9 +3328,7 @@ contains
                         if(Incomming_flow) UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
 
                         deallocate(SUF_SIG_DIAGTEN_BC_GI)
-                    END DO
-                ELSE ! Specified vel bc.
-                    DO IPHASE = 1, Mdims%nphase
+                    ELSE ! Specified vel bc.
                         UDGI_ALL(:, IPHASE) = 0.0
                         UDGI_ALL_FOR_INV(:, IPHASE) = 0.0
                         UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0
@@ -3346,8 +3346,8 @@ contains
 
                         END DO
                         UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
-                    END DO ! PHASE LOOP
-                END IF
+                    END IF
+                END DO ! PHASE LOOP
             ELSE IF( .not. between_elements .and. not_use_DG_within_ele) THEN!same element
                 !vel(GI) = (vel * shape_functions)/sigma
                 do iphase = 1, Mdims%nphase
