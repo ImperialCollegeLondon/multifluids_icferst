@@ -1974,7 +1974,7 @@ start =
                ##Factor that controls the strenght of the drag introduced in the dry areas;
                ## it has a simmilar effect as the artificial diffusion. Default value = 1e-1.
                element shallow_drag {
-               comment
+               real
             }?
          }?,
          ## numerical_methods options
