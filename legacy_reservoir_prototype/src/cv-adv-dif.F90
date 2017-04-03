@@ -2304,8 +2304,11 @@ contains
                 PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                 IF ( is_flooding ) then ! Should really use the manhole diameter here...
                    DO IPRES = 1, Mdims%npres
-!                      PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
-                      PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                      IF(Mmat%CV_pressure) THEN
+                         PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                      ELSE
+                         PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                      ENDIF
                    END DO
                    PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                    DEN_FOR_PIPE_PHASE(1)=DEN_FOR_PIPE_PHASE(3)
@@ -2395,6 +2398,7 @@ contains
 
                    R_PEACMAN = l_frac * R_PEACMAN
 !                   R_PEACMAN = R_PEACMAN*1.e+10
+!                   R_PEACMAN = R_PEACMAN*1.e+4
 !                   R_PEACMAN = R_PEACMAN*1.e+2
 !                   R_PEACMAN=0.0
                     
