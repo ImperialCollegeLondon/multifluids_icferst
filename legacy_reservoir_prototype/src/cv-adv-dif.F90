@@ -118,7 +118,7 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
-        Permeability_tensor_field, calculate_mass_delta)
+        Permeability_tensor_field, calculate_mass_delta, eles_with_pipe)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -290,6 +290,7 @@ contains
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
         ! Calculate_mass variable
         real, dimension(:,:), optional :: calculate_mass_delta
+        type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
 
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
@@ -2255,11 +2256,10 @@ contains
             END DO
             IF ( PIPES_1D ) THEN
                 allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
-                CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%ndim, Mdims%u_nloc, Mdims%cv_nloc, Mdims%x_nloc, Mspars%small_acv%fin, Mspars%small_acv%col, &
-                    Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,ndgln%suf_cv,ndgln%suf_u, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                    Mdims%cv_nonods, getcv_disc, getct, Mmat%petsc_ACV, Mdims%totele, ndgln%cv, ndgln%x, ndgln%u, ndgln%mat, Mmat%CT, Mmat%C, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, Mmat%CV_RHS, Mmat%CT_RHS, &
-                    Mspars%CMC%fin, Mspars%CMC%col, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                    SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef )
+
+                CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+                    getcv_disc, getct, Mmat, Mspars, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
+                    SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe )
 
                 if(is_flooding) then
                     DO CV_NODI = 1, Mdims%cv_nonods

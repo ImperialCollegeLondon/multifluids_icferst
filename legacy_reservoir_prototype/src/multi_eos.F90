@@ -779,7 +779,7 @@ contains
             implicit none
             type (multi_field) :: Flooding_absorp
             !Local variables
-            real, parameter :: hmin = max(flooding_hmin, 1d-8) * 1d1!The velocity solver is very sensitive to this parameter
+            real, parameter :: hmin = max(flooding_hmin, 1d-8) * 1.1!The velocity solver is very sensitive to this parameter
             real, parameter :: u_min = 1d-2 !increase it if having problems to converge
             real, parameter :: g = 9.80665!Set default value if not specified by the user
             integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i

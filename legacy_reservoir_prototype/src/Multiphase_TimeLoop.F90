@@ -72,6 +72,7 @@ module multiphase_time_loop
     use vtk_interfaces
     use multi_interpolation
     use multi_transport
+    use multi_pipes
     use momentum_diagnostic_fields, only: calculate_densities
 
 #ifdef HAVE_ZOLTAN
@@ -170,6 +171,8 @@ contains
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         type(scalar_field), pointer :: DensitySource
+        !Variables that are used to define the pipe pos
+        type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         !type(scalar_field), pointer :: bathymetry
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
@@ -422,6 +425,10 @@ contains
         ! Reading options for bad_element test
         call BadElementTest(Quality_list, 1)
 
+        !Retrieve the elements with pipes and the corresponding coordinates
+        if ((Mdims%npres > 1) .and. (after_adapt .or. first_time_step)) &
+                call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
+
 !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
@@ -567,7 +574,7 @@ call solve_transport()
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat,multi_absorp, upwnd,velocity_field, pressure_field, &
+                        Mmat,multi_absorp, upwnd, eles_with_pipe, velocity_field, pressure_field, &
                         dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
@@ -592,7 +599,7 @@ call solve_transport()
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat, multi_absorp, upwnd, dt, SUF_SIG_DIAGTEN_BC, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, mass_ele, &
                         its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &

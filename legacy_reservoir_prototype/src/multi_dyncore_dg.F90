@@ -329,7 +329,7 @@ contains
 
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
-         DT, SUF_SIG_DIAGTEN_BC, &
+         eles_with_pipe, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, &
          igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, IDs_ndgln,&
@@ -348,6 +348,7 @@ contains
              type (multi_matrices), intent(inout) :: Mmat
              type(multi_absorption), intent(inout) :: multi_absorp
              type (porous_adv_coefs), intent(inout) :: upwnd
+             type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
              INTEGER, intent( in ) :: igot_theta_flux
              INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
              integer, dimension(:), intent(in)  :: IDs2CV_ndgln
@@ -408,6 +409,7 @@ contains
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1, max_FPI = -1
              integer :: its_taken
+
 if (is_flooding) return!<== Temporary fix for flooding
 
             if(max_allowed_its < 0)  call get_option( &
@@ -500,6 +502,8 @@ if (is_flooding) return!<== Temporary fix for flooding
              velocity=>extract_tensor_field(packed_state,"PackedVelocity")
              density=>extract_tensor_field(packed_state,"PackedDensity")
              sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+
+
              !This logical is used to loop over the saturation equation until the functional
              !explained in function get_Convergence_Functional has been reduced enough
              satisfactory_convergence = .false.
@@ -536,7 +540,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp,IDs_ndgln, &          !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     Courant_number = Courant_number)
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe)
 
                  !Make the inf norm of the Courant number across cpus
                  if (IsParallel()) then
@@ -793,7 +797,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
-        Mmat, multi_absorp, upwnd, velocity, pressure, &
+        Mmat, multi_absorp, upwnd, eles_with_pipe, velocity, pressure, &
         DT, NLENMCY, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
@@ -814,6 +818,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         type (multi_matrices), intent(inout) :: Mmat
         type(multi_absorption), intent(inout) :: multi_absorp
         type (porous_adv_coefs), intent(inout) :: upwnd
+        type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY, non_its
@@ -1133,7 +1138,6 @@ end if
         ! solid pressure term - use the surface tension code
         if ( is_magma ) IPLIKE_GRAD_SOU = 2
 
-
         IF ( GLOBAL_SOLVE ) then
             !Prepare memory specific for this
             ALLOCATE( MCY_RHS( Mdims%ndim * Mdims%nphase * Mdims%u_nonods + Mdims%cv_nonods )) ; MCY_RHS=0.
@@ -1142,7 +1146,7 @@ end if
         end if
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
-             velocity, pressure, multi_absorp, &
+             velocity, pressure, multi_absorp, eles_with_pipe, &
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
@@ -1174,10 +1178,8 @@ end if
                 pressure_BCs, WIC_P_BC_ALL )
            SUF_P_BC_ALL => pressure_BCs%val
            !Introduce well modelling
-           CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mmat%U_RHS, Mdims, Mspars, associated(Mmat%PIVIT_MAT), &
-                                    Mmat%C, ndgln%cv, ndgln%u, ndgln%x, ndgln%mat, Mmat%PIVIT_MAT, &
-                                    ndgln%suf_p, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL2%VAL, &
-                                    U_SOURCE_ALL, U_SOURCE_CV_ALL*0.0 ) ! No sources in the wells for now...
+           CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe, associated(Mmat%PIVIT_MAT), &
+                WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL2%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL*0.0 ) ! No sources in the wells for now...
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -1204,7 +1206,6 @@ end if
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, symmetric_P )
 !call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-
         END IF
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
@@ -1266,7 +1267,7 @@ end if
                call deallocate(rhs)
                U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             END IF
-            if (isParallel()) then
+            if (isParallel()) then!sprint_to_do need to rethink these parallel communications
                 call zero_non_owned(U_ALL2)
                 call halo_update(U_ALL2)
             end if
@@ -1370,12 +1371,12 @@ END IF
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
             if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-            !Testing, commented out in the meantime as it seems unstable
-!            if (is_flooding) call Backtrack_pressure(P_all, deltap, non_its, deltaP_old)
 
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
-
-            call halo_update(p_all)
+            if (isParallel()) then!sprint_to_do need to rethink these parallel communications
+                call zero_non_owned(p_all)
+                call halo_update(p_all)
+            end if
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
@@ -1387,7 +1388,10 @@ END IF
                     Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
             END DO
             call deallocate(deltaP)
-            call halo_update(cdp_tensor)
+            if (isParallel()) then!sprint_to_do need to rethink these parallel communications
+                call zero_non_owned(cdp_tensor)
+                call halo_update(cdp_tensor)
+            end if
             ! Correct velocity...
             ! DU = BLOCK_MAT * CDP
             ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
@@ -1397,7 +1401,7 @@ END IF
 
             DEALLOCATE( DU_VEL )
             if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
-            if (isParallel()) then
+            if (isParallel()) then!sprint_to_do need to rethink these parallel communications
                 call zero_non_owned(U_ALL2)
                 call halo_update(U_ALL2)
             end if
@@ -1499,80 +1503,13 @@ END IF
 
 
 
-        subroutine Backtrack_pressure(p_all, deltap, non_its, deltaP_old)
-            !Method to stabilize the system by backtracking the pressure correction for flooding
-            implicit none
-            type( vector_field ), intent(inout) :: deltap
-            type( tensor_field ), pointer, intent(in) :: p_all
-            integer, intent(in) :: non_its
-            type( vector_field ), intent(inout) :: deltaP_old
-            !Local variables
-            real, save :: backtrack_par_factor = -1., anders_exp = -0.4, Previous_convergence = -1, convold = 1.0, res = 1.0
-            integer, save :: useful_pres
-            !Variables to stabilize the non-linear iteration solver
-            type(vector_field)  :: residual
-            real :: new_backtrack_par, aux, conv, resold
-            logical :: satisfactory_convergence
-            real, dimension(size(deltap%val,2)) :: flood_height
-            !Make sure that this is never used for Porous media, as it will clash with VolumeFraction_Assemble_Solve
-            if (is_porous_media) return
-
-            if (anders_exp < 0 ) then
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
-                 backtrack_par_factor, default = 1.0)
-                !Retrieve the shape of the function to use to weight the importance of previous saturations
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
-                    anders_exp, default = 0.4 )
-            end if
-            !#######Simple backtracking for the time being as adaptive backtracking performs worse#######
-            deltap%val = abs(backtrack_par_factor) * deltap%val
-            return
-
-!            if (backtrack_par_factor < 0 .and. non_its > 1) then
-!                call allocate(residual,Mdims%npres,pressure%mesh,"residual")
-!                !Calculate the actual residual using a previous backtrack_par
-!                call mult(residual, cmc_petsc, deltaP_old)
-!                !Calculate residual
-!                residual%val = rhs_p%val - residual%val
-!                resold = res; res = 0
-!                res = sqrt(dot_product(residual%val(1,:),residual%val(1,:)))/ dble(size(residual%val,2))
-!                !We use the highest residual across the domain
-!                if (IsParallel()) call allmax(res)
-!                call deallocate(residual)
-!            else
-!                res = 1.0; resold = 1.0
-!            end if
-!
-!            !Impose physical constraints
-!            call calculate_flooding_height(packed_state, flood_height, deltap%val(1,:), adjust_deltaP = .true.)
-!
-!            conv = backtrack_or_convergence
-!            Previous_convergence = backtrack_or_convergence
-!            !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-!            call FPI_backtracking(packed_state, p_all%val(1,:,:), p_all%val(1,:,:), backtrack_par_factor,&
-!                Previous_convergence, satisfactory_convergence, new_backtrack_par, min(non_its,2), non_its,&!min(non_its,2) this is because here we do not have an SFPI
-!                useful_pres,res, conv/convold, 0.0, Mdims%npres)!0.0 is to disable the internal checks for the SFPI
-!
-!            !Pass the backtracking parameter
-!            backtrack_or_convergence = new_backtrack_par
-!            !Store the convergence
-!            convold = conv
-!            !The new pressure correction is based on the Anderson acceleration if possible
-!            if (useful_pres < 2 .or. backtrack_par_factor > 0) then
-!                deltap%val = new_backtrack_par * deltap%val
-!            else!Only for automatic backtracking
-!                deltap%val = new_backtrack_par * deltap%val - (1. - new_backtrack_par)**(1.+anders_exp)*new_backtrack_par*(deltaP_old%val)
-!            end if
-
-
-        end subroutine Backtrack_pressure
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        velocity, pressure, multi_absorp, &
+        velocity, pressure, multi_absorp, eles_with_pipe, &
         X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
@@ -1605,6 +1542,7 @@ END IF
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
         type(multi_absorption), intent(inout) :: multi_absorp
+        type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
@@ -1737,7 +1675,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
-            calculate_mass_delta = calculate_mass_delta)
+            calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
@@ -2710,18 +2648,6 @@ end if
                     ! Switch on for solid fluid-coupling...
                     IF(RETRIEVE_SOLID_CTY) THEN
                         CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%mat_nloc + MAT_ILOC )
-                        if(.false.) then ! delete this...
-                            DO IDIM=1,Mdims%ndim
-                                DO IPHASE=1,Mdims%nphase
-                                    I=IDIM + (IPHASE-1)*Mdims%ndim
-                                    LOC_U_ABSORB( I, I, MAT_ILOC ) = LOC_U_ABSORB( I, I, MAT_ILOC ) + &
-                                        COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
-                                    ! not used...
-                                    LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) &
-                                        + COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
-                                END DO
-                            END DO
-                        endif
                         ! Add in the viscocity contribution...
                         IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN
                             ! Assume visc. is isotropic (can be variable)...
