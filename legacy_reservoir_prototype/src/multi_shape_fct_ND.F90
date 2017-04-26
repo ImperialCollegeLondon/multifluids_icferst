@@ -45,8 +45,7 @@ module shape_functions_Linear_Quadratic
   use multi_data_types
 
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
-  !    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
-  logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
+  logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
 
     interface DETNLXR
         module procedure DETNLXR1
