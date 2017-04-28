@@ -2146,8 +2146,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
-            ewrite(1,*) trim(output_message)
-
+            if (getprocno() == 1) then
+                ewrite(1,*) trim(output_message)
+            end if
             !Automatic non-linear iteration checking
             !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
             if (is_porous_media) then
@@ -2165,7 +2166,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call alland(ExitNonLinearLoop)
             !Tell the user the number of FPI and final convergence to help improving the parameters
-            if (ExitNonLinearLoop) then
+            if (ExitNonLinearLoop .and. getprocno() == 1) then
                 ewrite(show_FPI_conv,*) trim(output_message)
             end if
             !If time adapted based on the non-linear solver then
@@ -2177,7 +2178,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                   '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/ensure_solvers_convergence')) then
                     Repeat_time_step = .true.
                     solver_not_converged = .false.
-                    ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
+                    if (getprocno() == 1) then
+                        ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
+                    end if
                 end if
                 !If maximum number of FPI reached, then repeat time-step
                 if (its >= NonLinearIteration) Repeat_time_step = .true.
@@ -2196,7 +2199,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                             dt = min(dt * min(abs(auxR), 1.2*increaseFactor), max_ts)
                         end if
                         call set_option( '/timestepping/timestep', dt )
-                        ewrite(show_FPI_conv,*) "Time step changed to:", dt
+                        if (getprocno() == 1)then
+                            ewrite(show_FPI_conv,*) "Time step changed to:", dt
+                        end if
                         ExitNonLinearLoop = .true.
                         if (match_final_t .and. dt + acctim > finish_time) then
                             call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
@@ -2212,7 +2217,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call get_option( '/timestepping/timestep', dt )
                     dt = min(dt * increaseFactor, max_ts)
                     call set_option( '/timestepping/timestep', dt )
-                    ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                    if (getprocno() == 1) then
+                        ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                    end if
                     ExitNonLinearLoop = .true.
                     if (match_final_t .and. dt + acctim > finish_time) then
                         call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
@@ -2235,7 +2242,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ExitNonLinearLoop = .true.
                         deallocate(reference_field)
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts,") reached, advancing time."
+                        if (getprocno() == 1) then
+                            ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts,") reached, advancing time."
+                        end if
                         return
                     end if
                     !Decrease time step, reset the time and repeat!
@@ -2244,7 +2253,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call set_option( '/timestepping/current_time', acctim )
                     dt = max(dt / decreaseFactor,min_ts)
                     call set_option( '/timestepping/timestep', dt )
-                    ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
+                    if (getprocno() == 1) then
+                        ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
+                    end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
                 end if
@@ -3308,7 +3319,6 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
     real, dimension(:,:), allocatable :: loc_absorp_matrix
     real, dimension(:), allocatable :: sat_weight_velocity
     integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
-
     ! Initialisation
     darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
@@ -3345,7 +3355,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
             end do
         end do
     end do
-
+    call halo_update(darcy_velocity)
     ! Deallocation
     deallocate(loc_absorp_matrix)
     deallocate(sat_weight_velocity)

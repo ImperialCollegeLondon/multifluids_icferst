@@ -896,6 +896,10 @@ if (is_flooding) return!<== Temporary fix for flooding
         !Variables to control de performance of the solvers
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
+
+        real :: auxR
+
+
         if(max_allowed_P_its < 0)  then
             call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
              max_allowed_P_its, default = 100000)
@@ -1267,10 +1271,7 @@ end if
                call deallocate(rhs)
                U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             END IF
-            if (isParallel()) then!sprint_to_do need to rethink these parallel communications
-                call zero_non_owned(U_ALL2)
-                call halo_update(U_ALL2)
-            end if
+            if (isParallel()) call halo_update(U_ALL2)!<=works well, only fails after adapting the mesh!!
 
             deallocate( UP_VEL )
 IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
@@ -1345,7 +1346,7 @@ END IF
                   END DO
                END DO
             END DO
-            call zero_non_owned(rhs_p)
+
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
             'prognostic/reference_node', ndpset, default = 0 )
             if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
@@ -1366,8 +1367,7 @@ END IF
                 rhs_p%val = rhs_p%val / rescaleVal
                 !End of re-scaling
             end if
-            call zero(deltaP)
-
+            call zero(deltaP);call zero_non_owned(rhs_p)
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
             if (its_taken >= max_allowed_P_its) solver_not_converged = .true.

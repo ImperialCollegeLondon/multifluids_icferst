@@ -45,8 +45,8 @@ module shape_functions_Linear_Quadratic
   use multi_data_types
 
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
-  !    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
-  logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
+  logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.!With this true it does not work...we need to fix it
+
 
     interface DETNLXR
         module procedure DETNLXR1
@@ -6544,10 +6544,9 @@ contains
          DXDLX, DYDLX, DZDLX, &
          DXDLY, DYDLY, DZDLY )
 
-    RN = SQRT( NORMXN**2 + NORMYN**2 + NORMZN**2 )
+    RN = SQRT( NORMXN*NORMXN + NORMYN*NORMYN + NORMZN*NORMZN )
 
     SIRN = SIGN( 1.0 / RN, NORMXN * NORMX + NORMYN * NORMY + NORMZN * NORMZ )
-
     NORMXN = SIRN * NORMXN
     NORMYN = SIRN * NORMYN
     NORMZN = SIRN * NORMZN

@@ -1491,17 +1491,21 @@ subroutine BadElementTest(Quality_list, flag)
                             call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1 ,quality_table(i), Quality_list, bad_element, diagnostics(i))
                         end do
 
-                        if (after_adapt) then
-                            ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
-                        else
-                            ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
-                        end if
 
-                        ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
-                        do i=1, size(quality_table)
-                            ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
-                        end do
-                        ewrite(0, '(38("-"))')
+
+                        if (getprocno() == 1) then
+                            if (after_adapt) then
+                                ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
+                            else
+                                ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
+                            end if
+
+                            ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
+                            do i=1, size(quality_table)
+                                ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
+                            end do
+                            ewrite(0, '(38("-"))')
+                        end if
                     end if
 
                     if (.not. bad_element) then

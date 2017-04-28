@@ -1336,6 +1336,13 @@ contains
                             Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
                             Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
                             Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
+    !METHOD TO FIND NEIGHBOURS USING FLUIDITY'S SUBROUTINES
+!do count = 1, size(CV_funs%cvfem_on_face,1)
+!    if(.not.CV_funs%cvfem_on_face( count, GI )) exit
+!end do
+!CVPressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+!ele2 = max(ele_neigh(CVPressure%mesh, ele, count),0)!because we consider ==0 if not found, that could be changed easily
+
                         IF ( INTEGRAT_AT_GI ) THEN
                             CV_JLOC = CV_OTHER_LOC( CV_ILOC )
                             SELE = 0
@@ -1396,106 +1403,11 @@ contains
                             GLOBAL_FACE = GLOBAL_FACE + 1
                             JMID = Mspars%small_acv%mid(CV_NODJ)
                             ! Calculate the control volume normals at the Gauss pts.
-                            CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ))
-                            ! Pablo could store the outcomes of this:
-                            IF( GETCT ) THEN
-                                ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
-                                DO U_KLOC = 1, Mdims%u_nloc
-                                    U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-                                    JCOUNT = 0
-                                    DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
-                                        IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                                            JCOUNT = COUNT
-                                            EXIT
-                                        END IF
-                                    END DO
-                                    JCOUNT_KLOC( U_KLOC ) = JCOUNT
-                                    if(integrate_other_side) then
-                                        ! for integrating just on one side...
-                                        ICOUNT = 0
-                                        DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
-                                            IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                                                ICOUNT = COUNT
-                                                EXIT
-                                            END IF
-                                        END DO
-                                        ICOUNT_KLOC( U_KLOC ) = ICOUNT
-                                    endif
-                                END DO
-                                IF ( between_elements ) THEN
-                                    DO U_KLOC =  1, Mdims%u_nloc
-                                        U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
-                                        JCOUNT = 0
-                                        DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
-                                            IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                                                JCOUNT = COUNT
-                                                EXIT
-                                            END IF
-                                        END DO
-                                        JCOUNT_KLOC2( U_KLOC ) = JCOUNT
-                                        if(integrate_other_side) then
-                                            ! for integrating just on one side...
-                                            ICOUNT = 0
-                                            DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
-                                                IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
-                                                    ICOUNT = COUNT
-                                                    EXIT
-                                                END IF
-                                            END DO
-                                            ICOUNT_KLOC2( U_KLOC ) = ICOUNT
-                                        endif
-                                    END DO
-                                END IF ! endof IF ( between_elements ) THEN
-                                IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                                    ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
-                                    DO U_KLOC = 1, Mdims%u_nloc
-                                        U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-                                        JCOUNT = 0
-                                        DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
-                                            IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
-                                                JCOUNT = COUNT
-                                                EXIT
-                                            END IF
-                                        END DO
-                                        C_JCOUNT_KLOC( U_KLOC ) = JCOUNT
-                                        if(integrate_other_side) then
-                                            ! for integrating just on one side...
-                                            ICOUNT = 0
-                                            DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
-                                                IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
-                                                    ICOUNT = COUNT
-                                                    EXIT
-                                                END IF
-                                            END DO
-                                            C_ICOUNT_KLOC( U_KLOC ) = ICOUNT
-                                        endif
-                                    END DO
-                                    IF ( between_elements ) THEN
-                                        DO U_KLOC =  1, Mdims%u_nloc
-                                            U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
-                                            JCOUNT = 0
-                                            DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
-                                                IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
-                                                    JCOUNT = COUNT
-                                                    EXIT
-                                                END IF
-                                            END DO
-                                            C_JCOUNT_KLOC2( U_KLOC ) = JCOUNT
-                                            if(integrate_other_side) then
-                                                ! for integrating just on one side...
-                                                ICOUNT = 0
-                                                DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
-                                                    IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
-                                                        ICOUNT = COUNT
-                                                        EXIT
-                                                    END IF
-                                                END DO
-                                                C_ICOUNT_KLOC2( U_KLOC ) = ICOUNT
-                                            endif
-                                        END DO
-                                    END IF ! endof IF ( between_elements ) THEN
-                                ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                            END IF ! endof IF( GETCT ) THEN
+                            CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI)
+                            !Obtain the list of neighbouring nodes
+                            IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
+                                                            C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
+
                             ! Compute the distance HDC between the nodes either side of the CV face
                             ! (this is needed to compute the local courant number and the non-linear theta)
                             IF ( on_domain_boundary) THEN
@@ -3640,7 +3552,7 @@ contains
 
 
 
-        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, XGI_VAL)
+        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, XGI_VAL)
             !     --------------------------------------------------
             !
             !     - this subroutine calculates the control volume (CV)
@@ -3653,7 +3565,7 @@ contains
             !     - date last modified : 15/03/2003
             !     -------------------------------
             IMPLICIT NONE
-            INTEGER, intent( in ) :: ELE, GI
+            INTEGER, intent( in ) :: ELE, GI, X_NOD
             REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
             REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
             REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
@@ -3668,16 +3580,17 @@ contains
             REAL, PARAMETER :: PI = 3.14159265
             REAL :: POSVGIX, POSVGIY, POSVGIZ
             REAL :: RGI, RDUM
-
+            real, dimension(Mdims%ndim) :: ref_center
+            logical, save :: read_ops = .true., alt_normal_method = .false.
             !ewrite(3,*)' In SCVDETNX'
-
+            !TEMPORARY FIX:!We only read this ONCE ever!, however once we have tried this, we should remove the option
+            if (read_ops) alt_normal_method = have_option("/numerical_methods/alt_normal_method")
             Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
 
                 DXDLX = 0.0;DXDLY = 0.0
                 DYDLX = 0.0;DYDLY = 0.0
                 DZDLX = 0.0;DZDLY = 0.0
                 POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
-
                 do  JLOC = 1, Mdims%x_nloc
 
                     NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
@@ -3693,6 +3606,15 @@ contains
                     POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
                     POSVGIZ = POSVGIZ + CV_funs%scvfen(JLOC,GI)*X_ALL(3,NODJ)
                 end do
+                !TEMPORARY FIX: reference center to check the direction sligthly displaced towards
+                !the center of the CV to ensure it falls inside the CV. This makes parallel and serial consistent
+                !but still using integrate_other_side= .true. or false changes Ct
+                if (alt_normal_method) then
+                    ref_center = 0.7*X_ALL(:,X_NOD) +0.3*XC_ALL
+                else
+                    ref_center = XC_ALL
+                end if
+                ref_center =  (/POSVGIX, POSVGIY, POSVGIZ/) - ref_center!Create vector
 
                 !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the
                 !     - components of the Gauss pnt GI with the co-ordinate origin
@@ -3722,7 +3644,8 @@ contains
                 CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
                     DXDLX,       DYDLX,       DZDLX, &
                     DXDLY,       DYDLY,       DZDLY,&
-                    POSVGIX,     POSVGIY,     POSVGIZ )
+                    ref_center(1),     ref_center(2),     ref_center(3) )
+!                    POSVGIX,     POSVGIY,     POSVGIZ )
 
             ELSE IF(Mdims%ndim == 2) THEN
 
@@ -3757,6 +3680,15 @@ contains
                 !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
                 !     - current control volume NODI.
                 !
+                !TEMPORARY FIX: reference center to check the direction sligthly displaced towards
+                !the center of the CV to ensure it falls inside the CV. This makes parallel and serial consistent
+                !but still using integrate_other_side= .true. or false changes Ct
+                if (alt_normal_method) then
+                    ref_center = 0.7*X_ALL(:,X_NOD) +0.3*XC_ALL
+                else
+                    ref_center = XC_ALL
+                end if
+                ref_center =  (/POSVGIX, POSVGIY/) - ref_center!Create vector
 
                 POSVGIX = POSVGIX - XC_ALL(1)
                 POSVGIY = POSVGIY - XC_ALL(2)
@@ -3774,7 +3706,8 @@ contains
                 CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
                     DXDLX,       DYDLX,       DZDLX, &
                     DXDLY,       DYDLY,       DZDLY,&
-                    POSVGIX,     POSVGIY,     POSVGIZ )
+                    ref_center(1),     ref_center(2),     POSVGIZ )
+!                    POSVGIX,     POSVGIY,     POSVGIZ )
 
             ELSE
                 ! For 1D...
@@ -3815,7 +3748,110 @@ contains
             end if
         END SUBROUTINE SCVDETNX_new
 
-
+        subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
+                                        C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
+        implicit none
+            integer, dimension(:), intent(inout):: JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2
+            integer, dimension(:), intent(inout):: C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2
+            !Local variables
+            integer :: U_KLOC, U_NODK, JCOUNT, COUNT, ICOUNT
+          ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
+            DO U_KLOC = 1, Mdims%u_nloc
+                U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                JCOUNT = 0
+                DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
+                    IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
+                        JCOUNT = COUNT
+                        EXIT
+                    END IF
+                END DO
+                JCOUNT_KLOC( U_KLOC ) = JCOUNT
+                if(integrate_other_side) then
+                    ! for integrating just on one side...
+                    ICOUNT = 0
+                    DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
+                        IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
+                            ICOUNT = COUNT
+                            EXIT
+                        END IF
+                    END DO
+                    ICOUNT_KLOC( U_KLOC ) = ICOUNT
+                endif
+            END DO
+            IF ( between_elements ) THEN
+                DO U_KLOC =  1, Mdims%u_nloc
+                    U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
+                    JCOUNT = 0
+                    DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
+                        IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
+                            JCOUNT = COUNT
+                            EXIT
+                        END IF
+                    END DO
+                    JCOUNT_KLOC2( U_KLOC ) = JCOUNT
+                    if(integrate_other_side) then
+                        ! for integrating just on one side...
+                        ICOUNT = 0
+                        DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
+                            IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
+                                ICOUNT = COUNT
+                                EXIT
+                            END IF
+                        END DO
+                        ICOUNT_KLOC2( U_KLOC ) = ICOUNT
+                    endif
+                END DO
+            END IF ! endof IF ( between_elements ) THEN
+            IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
+                ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
+                DO U_KLOC = 1, Mdims%u_nloc
+                    U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                    JCOUNT = 0
+                    DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                        IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
+                            JCOUNT = COUNT
+                            EXIT
+                        END IF
+                    END DO
+                    C_JCOUNT_KLOC( U_KLOC ) = JCOUNT
+                    if(integrate_other_side) then
+                        ! for integrating just on one side...
+                        ICOUNT = 0
+                        DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                            IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
+                                ICOUNT = COUNT
+                                EXIT
+                            END IF
+                        END DO
+                        C_ICOUNT_KLOC( U_KLOC ) = ICOUNT
+                    endif
+                END DO
+                IF ( between_elements ) THEN
+                    DO U_KLOC =  1, Mdims%u_nloc
+                        U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
+                        JCOUNT = 0
+                        DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                            IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
+                                JCOUNT = COUNT
+                                EXIT
+                            END IF
+                        END DO
+                        C_JCOUNT_KLOC2( U_KLOC ) = JCOUNT
+                        if(integrate_other_side) then
+                            ! for integrating just on one side...
+                            ICOUNT = 0
+                            DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                                IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
+                                    ICOUNT = COUNT
+                                    EXIT
+                                END IF
+                            END DO
+                            C_ICOUNT_KLOC2( U_KLOC ) = ICOUNT
+                        endif
+                    END DO
+                END IF ! endof IF ( between_elements ) THEN
+            ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
+        end subroutine get_neigbouring_lists
     END SUBROUTINE CV_ASSEMB
 
 
