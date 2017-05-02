@@ -3552,7 +3552,7 @@ contains
 
 
 
-        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, XGI_VAL)
+        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD)
             !     --------------------------------------------------
             !
             !     - this subroutine calculates the control volume (CV)
@@ -3569,7 +3569,6 @@ contains
             REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
             REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
             REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-            REAL, DIMENSION( Mdims%ndim ), optional, intent( out ) ::   XGI_VAL!<=Retrieve the position of the GI coordinates
             !     - Local variables
             INTEGER :: NODJ,  JLOC
             REAL :: A, B, C
@@ -3578,19 +3577,15 @@ contains
             REAL :: DYDLY, DZDLX, DZDLY
             REAL :: TWOPI
             REAL, PARAMETER :: PI = 3.14159265
-            REAL :: POSVGIX, POSVGIY, POSVGIZ
             REAL :: RGI, RDUM
-            real, dimension(Mdims%ndim) :: ref_center
-            logical, save :: read_ops = .true., alt_normal_method = .false.
+            real, dimension(3) :: POSVGI
             !ewrite(3,*)' In SCVDETNX'
-            !TEMPORARY FIX:!We only read this ONCE ever!, however once we have tried this, we should remove the option
-            if (read_ops) alt_normal_method = have_option("/numerical_methods/alt_normal_method")
+            POSVGI = 0.0
             Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
 
                 DXDLX = 0.0;DXDLY = 0.0
                 DYDLX = 0.0;DYDLY = 0.0
                 DZDLX = 0.0;DZDLY = 0.0
-                POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
                 do  JLOC = 1, Mdims%x_nloc
 
                     NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
@@ -3602,27 +3597,20 @@ contains
                     DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
                     DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
 
-                    POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
-                    POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
-                    POSVGIZ = POSVGIZ + CV_funs%scvfen(JLOC,GI)*X_ALL(3,NODJ)
+                    POSVGI = POSVGI + CV_funs%scvfen(JLOC,GI)*X_ALL(:,NODJ)
                 end do
-                !TEMPORARY FIX: reference center to check the direction sligthly displaced towards
-                !the center of the CV to ensure it falls inside the CV. This makes parallel and serial consistent
-                !but still using integrate_other_side= .true. or false changes Ct
-                if (alt_normal_method) then
-                    ref_center = 0.7*X_ALL(:,X_NOD) +0.3*XC_ALL
-                else
-                    ref_center = XC_ALL
-                end if
-                ref_center =  (/POSVGIX, POSVGIY, POSVGIZ/) - ref_center!Create vector
 
-                !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the
-                !     - components of the Gauss pnt GI with the co-ordinate origin
-                !     - positioned at the current control volume NODI.
 
-                POSVGIX = POSVGIX - XC_ALL(1)
-                POSVGIY = POSVGIY - XC_ALL(2)
-                POSVGIZ = POSVGIZ - XC_ALL(3)
+                !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
+                !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
+                !to failures to obtain the sign (perpendicular vectors in a flat boundary)
+                POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
+
+                CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
+                    DXDLX,       DYDLX,       DZDLX, &
+                    DXDLY,       DYDLY,       DZDLY,&
+                    POSVGI(1),     POSVGI(2),     POSVGI(3) )
+
 
                 A = DYDLX*DZDLY - DYDLY*DZDLX
                 B = DXDLX*DZDLY - DXDLY*DZDLX
@@ -3641,11 +3629,8 @@ contains
                 !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
                 !     - Perform cross-product. N = T1 x T2
                 !
-                CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
-                    DXDLX,       DYDLX,       DZDLX, &
-                    DXDLY,       DYDLY,       DZDLY,&
-                    ref_center(1),     ref_center(2),     ref_center(3) )
-!                    POSVGIX,     POSVGIY,     POSVGIZ )
+
+
 
             ELSE IF(Mdims%ndim == 2) THEN
 
@@ -3660,8 +3645,6 @@ contains
                 !
                 DZDLY = 1.0
 
-                POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
-
                 do  JLOC = 1, Mdims%x_nloc! Was loop 300
 
                     NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
@@ -3669,29 +3652,13 @@ contains
                     DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
                     DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
 
-                    POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
-                    POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+                    POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) + CV_funs%scvfen(JLOC,GI)*X_ALL(1:Mdims%ndim,NODJ)
 
                     RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
 
                 end do ! Was loop 300
-                !
-                !     - Note that POSVGIX and POSVGIY can be considered as the components
-                !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-                !     - current control volume NODI.
-                !
-                !TEMPORARY FIX: reference center to check the direction sligthly displaced towards
-                !the center of the CV to ensure it falls inside the CV. This makes parallel and serial consistent
-                !but still using integrate_other_side= .true. or false changes Ct
-                if (alt_normal_method) then
-                    ref_center = 0.7*X_ALL(:,X_NOD) +0.3*XC_ALL
-                else
-                    ref_center = XC_ALL
-                end if
-                ref_center =  (/POSVGIX, POSVGIY/) - ref_center!Create vector
-
-                POSVGIX = POSVGIX - XC_ALL(1)
-                POSVGIY = POSVGIY - XC_ALL(2)
+                !To calculate the sign of the normal an average between the center of the COntinuous CV and the center of mass is used
+                POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
 
                 RGI = 1.0
 
@@ -3706,19 +3673,15 @@ contains
                 CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
                     DXDLX,       DYDLX,       DZDLX, &
                     DXDLY,       DYDLY,       DZDLY,&
-                    ref_center(1),     ref_center(2),     POSVGIZ )
-!                    POSVGIX,     POSVGIY,     POSVGIZ )
+                    POSVGI(1),     POSVGI(2),     POSVGI(3) )
 
             ELSE
                 ! For 1D...
-
-                POSVGIX = 0.0
-
                 do  JLOC = 1, Mdims%x_nloc! Was loop 300
 
                     NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
 
-                    POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+                    POSVGI(1) = POSVGI(1) + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
 
                 end do ! Was loop 300
                 !
@@ -3726,11 +3689,9 @@ contains
                 !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
                 !     - current control volume NODI.
                 !
-                !          EWRITE(3,*)'POSVGIX, XC,POSVGIX - XC:',POSVGIX, XC,POSVGIX - XC
-                POSVGIX = POSVGIX - XC_ALL(1)
+                POSVGI(1) = POSVGI(1) - XC_ALL(1)
                 ! SIGN(A,B) sign of B times A.
-                !       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
-                CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
+                CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGI(1) )
 
                 DETJ = 1.0
                 SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
@@ -3738,14 +3699,6 @@ contains
 
             ENDIF Conditional_Dimension
 
-            !Retrieve the position of the GI coordinates
-            if (present(XGI_VAL)) then
-                XGI_VAL(1) = POSVGIX
-                if (Mdims%ndim>1) XGI_VAL(2) = POSVGIY
-                if (Mdims%ndim>2) XGI_VAL(3) = POSVGIZ
-
-                XGI_VAL = XGI_VAL + XC_ALL
-            end if
         END SUBROUTINE SCVDETNX_new
 
         subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
