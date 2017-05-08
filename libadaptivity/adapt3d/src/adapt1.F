@@ -30,7 +30,8 @@ C USA
      :                   SZENLS, SZNELS, NNOD,   NELM,
      :                   NODX,   NODY,   NODZ,   ORGMTX,
      :                   SPLTED, CLPSED, ED2FC,  FC2ED,  SPLTEL, MVNODE,
-     :                   FLGSET, FLGCHK, ALWAYS, DOTOP,  MINCHG, CHANGE)
+     :                   FLGSET, FLGCHK, ALWAYS, DOTOP,  MINCHG, CHANGE,
+     :                   spledg_error)
 C-----------------------------------------------------------------------
 C
 C - This performs one adaptive sweep of the mesh performing the desired
@@ -95,7 +96,8 @@ C
      :        NEWED1, NEWED2, IWHAT, I, MYNXT, NXTID, NODS(4), LASTPT,
      :        FLGSET, FLGCHK, IREG, BSTREG, INTRNL, BSTINE, STDOUT,
      :        INELM, AWHAT, INELMA, cnd2vl, trace, iumnds, ednd1, ednd2,
-     :        gothere, numel1, numel2, numed1, numed2, trcnd
+     :        gothere, numel1, numel2, numed1, numed2, trcnd,
+     :        spledg_error
 C
       REAL BSTDIF, CURDIF, CURORG, BSTCUR, BSTORG, RATIO, BSTRAT,
      :     BSTX, BSTY, BSTZ, X, Y, Z, XA, YA, ZA,
@@ -1375,13 +1377,15 @@ c         print*,'   Edge: ',bstptr
 c         print*,'   Reduction: ',bstdif,bstcur,bstorg
 c         print*,' '
          end if
+            spledg_error = 1
             CALL SPLEDG( BIGLST, NODLST,
      :                   ENLBAS, ENLIST, NELBAS, NELIST, EELIST,
      :                   SZENLS, SZNELS, NNOD,   NELM,
      :                   NODX,   NODY,   NODZ,   ORGMTX,
      :                   BSTPTR, ELPTRS, EDPTRS, NDPTRS, NUMEDE,
      :                   BSTX, BSTY, BSTZ, BSTINE, SURFAC, INTRNL,
-     :                   NEWED1, NEWED2, NEWEL1, NEWEL2 )
+     :                   NEWED1, NEWED2, NEWEL1, NEWEL2, spledg_error )
+            if (spledg_error < 0 ) return
 c
          if( trace .gt. 0 ) then
           if( biglst(trcnd,trace) .ne. cnd2vl ) then

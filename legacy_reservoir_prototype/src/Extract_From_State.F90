@@ -3072,7 +3072,7 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     !Check if all the fields are constant whitin region ids, otherwise we cannot compact the data.
     !Despite this seems restrictive, it is unlikely to use non constant values for region ids
     !since it goes against the surface based modeling idea
-    all_fields_costant = .true.
+!    all_fields_costant = .true. !<= to disable this
     !Check capillary
     if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
@@ -3175,7 +3175,7 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
         end do
     end if
 
-
+all_fields_costant = .false.
     !If fake_IDs_ndgln, then we are not using compacted data and
     !IDs_ndgln and IDs2CV_ndgln will point to the same position
     if (present_and_true(fake_IDs_ndgln) .or. .not. all_fields_costant) then

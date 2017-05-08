@@ -873,7 +873,7 @@ contains
     SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe, GET_PIVIT_MAT, &
         &                         WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
         &                         U_SOURCE, U_SOURCE_CV )
-        ! This sub modifies either Mmat%CT or the advection-diffusion equation for 1D pipe modelling
+        ! This sub modifies Mmat%C for 1D pipe modelling
         IMPLICIT NONE
         TYPE(STATE_TYPE), DIMENSION( : ), INTENT( IN ) :: STATE
         TYPE(STATE_TYPE), INTENT( IN ) :: packed_STATE

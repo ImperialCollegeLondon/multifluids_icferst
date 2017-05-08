@@ -106,6 +106,9 @@ contains
     type(integer_set), intent(in), optional :: lock_faces
     logical, intent(in), optional :: allow_boundary_elements
     type(vector_field) :: expanded_positions
+    !variable to retry mesh adapt if there is an error
+    logical :: adapt_error
+    integer :: i
 
     assert(.not. mesh_periodic(old_positions))
 
@@ -133,8 +136,40 @@ contains
           call adapt_mesh_mba3d(stripped_positions, stripped_metric, new_positions, &
                              force_preserve_regions=force_preserve_regions)
         else
-          call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
-                             force_preserve_regions=force_preserve_regions, lock_faces=lock_faces)
+          adapt_error = .false.
+          !We try a maximum of two times, otherwise the old mesh is kept
+          do i = 1, 2
+              call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
+                  force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
+              !#####Section to ensure that mesh adaptivity does not stop the simulation#######
+              if (.not.adapt_error) then
+                exit!Life is good! We can continue!
+              else
+                  !First deallocate new mesh as it is useless
+                  call deallocate(new_positions)
+                  select case (i)
+                      case (1)!First time, we retry with more conservative settings
+                              !imposed in Adapt_Integration.F90
+                          !Restart to original mesh
+                          if(isparallel()) then
+                              ! generate stripped versions of the position and metric fields
+                              call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
+                          else
+                              stripped_positions = old_positions
+                              stripped_metric = metric
+                          end if
+                      case default!Second time, back to original mesh...
+                            call allocate(new_positions, old_positions%dim, old_positions%mesh, name = old_positions%name)
+                            new_positions = old_positions
+                            call incref(new_positions)
+                            !...deallocate everything and leave subroutine
+                            call deallocate(stripped_metric)
+                            call deallocate(stripped_positions)
+                            return
+                  end select
+              end if
+              !###############################################################################
+          end do
         end if
       case default
         FLAbort("Mesh adaptivity requires a 1D, 2D or 3D mesh")

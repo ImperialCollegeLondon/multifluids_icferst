@@ -31,7 +31,7 @@ C USA
      :                   NODX,   NODY,   NODZ,   ORGMTX,
      :                   IEDG,   ELPTRS, EDPTRS, NDPTRS, NUMEDE,
      :                   X, Y, Z, INELM,  SURFAC, INTRNL,
-     :                   NEWED1, NEWED2, NEWEL1, NEWEL2 )
+     :                   NEWED1, NEWED2, NEWEL1, NEWEL2, spledg_error )
 C-----------------------------------------------------------------------
 C
 C - This subroutine splits the edge supplied (IEDG) and also performs
@@ -59,7 +59,7 @@ C
 C
       INTEGER IEDG, NUMEDE, ELPTRS(3,NUMEDE), EDPTRS(3,NUMEDE+1),
      :        NDPTRS(NUMEDE+1), SURFAC, NEWED1, NEWED2, NEWEL1, NEWEL2,
-     :        INTRNL, INELM
+     :        INTRNL, INELM, spledg_error
 C
       REAL X, Y, Z
 C
@@ -320,7 +320,8 @@ C
             print*,gtndfl(BIGLST,NODLST,nods(2),2),
      :             gtndfl(BIGLST,NODLST,nods(2),3),
      :             gtndfl(BIGLST,NODLST,nods(2),4)
-            stop
+             spledg_error = -1; return
+!            stop
          end if
          KK = K
 C
@@ -432,7 +433,8 @@ C
             print*,gtndfl(BIGLST,NODLST,nods(2),2),
      :             gtndfl(BIGLST,NODLST,nods(2),3),
      :             gtndfl(BIGLST,NODLST,nods(2),4)
-            stop
+             spledg_error = -1; return
+!            stop
          end if
       KK = K
 C

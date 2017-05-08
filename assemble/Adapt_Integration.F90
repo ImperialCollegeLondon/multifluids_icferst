@@ -187,7 +187,7 @@ module adapt_integration
 contains
 
   subroutine adapt_mesh(input_positions, metric, output_positions, node_ownership, &
-      & force_preserve_regions, lock_faces)
+      & force_preserve_regions, lock_faces, adapt_error)
     !!< Adapt the supplied input mesh using libadaptivity. Return the new
     !!< adapted mesh in output_positions (which is allocated by this routine).
     
@@ -198,7 +198,7 @@ contains
     integer, dimension(:), pointer, optional :: node_ownership
     logical, intent(in), optional :: force_preserve_regions
     type(integer_set), intent(in), optional :: lock_faces
-    
+    logical, optional, intent(inout) :: adapt_error
     ! Linear tets only
     integer, parameter :: dim = 3, nloc = 4, snloc = 3
     
@@ -302,7 +302,7 @@ contains
     FLExit("Fluidity compiled without libadaptivity support")
 #endif
     ewrite(1, *) "Exited adaptmem"
-    
+
     ewrite(2, "(a,i0)") "Integer working memory size: ", intsiz
     ewrite(2, "(a,i0)") "Real working memory size: ", rlsiz
     if(intsiz < 0) then
@@ -509,7 +509,21 @@ contains
     
     ewrite(1, *) "Calling adptvy from adapt_mesh"
     call tic(TICTOC_ID_SERIAL_ADAPT)
+
+
+
 #ifdef HAVE_ADAPTIVITY
+    !If this is the second try because there was an error, try with different parameters
+    if (present_and_true(adapt_error)) then!If this is the second try because there was an error, try with different parameters
+        !edge_split can't be disabled, which is the one that tends to fail,
+        !therefore we increase the number of sweeps and relax the tolerance
+        nsweep = 50!Increase drastically the number of sweeps
+        !Relax tolerance
+        dotop = dotop * 2.
+        !Disable all techniques but the very basics
+        mshopt(2:4) = .false.
+    end if
+
     call adptvy(intarr, intsiz, rlarr,  rlsiz, &
       & geom3d, srfgmy, useq, &
       & nnod,   nelm,   nselm,  absolutemxnods, &
@@ -529,6 +543,11 @@ contains
       & dotop,  minchg, nsweep, mshopt, twostg, togthr, &
       & gather, scater, ngath,  nhalo,  pnod, &
       & atosen, atorec, nproc, debug_level, dbg, chcnsy)
+    if (present(adapt_error)) then
+        adapt_error = (nsweep < 0)
+        !Ensure consistenty between processors
+        call alland(adapt_error)
+    end if
 #else
     FLExit("Fluidity compiled without libadaptivity support")
 #endif
