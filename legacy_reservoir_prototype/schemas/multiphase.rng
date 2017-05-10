@@ -5938,7 +5938,6 @@ Defaults to -huge(0.0)*epsilon(0.0) if not set.</a:documentation>
           <ref name="ultimate_limiter"/>
           <ref name="extrema_limiter"/>
           <ref name="compressive_advection_limiter"/>
-          <ref name="ENO_advection"/>
         </choice>
       </element>
       <element name="do_not_limit_face_value">

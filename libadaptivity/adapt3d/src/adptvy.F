@@ -780,8 +780,8 @@ C
      :                   FLCHK6, FLCHK5, ALWAYS, DOTOP, MINCHG, CHANG2,
      :                   adapt_error )
             if (adapt_error < 0) then
-C               If there is an error we pass it back reusing nsweep
-C               otherwise, adding new variable seems tricky
+C               If there is an error we pass it back reusing nsweep,
+C               otherwise adding new variable seems tricky
                 NSWEEP = -1; return
             end if
             IF( I .LT. NSWPS/2 ) MINCHG = -MINCHG
