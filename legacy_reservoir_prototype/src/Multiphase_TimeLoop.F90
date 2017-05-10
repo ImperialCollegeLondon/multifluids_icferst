@@ -573,27 +573,15 @@ call solve_transport()
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-                    if (is_porous_media .and. Mmat%CV_pressure) then
-                        !For porous media with Mmat%CV_pressure a simpler version ca be used
-                        call porous_force_balance_assembly_solve( state, packed_state,  &
-                            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
-                            Mmat, multi_absorp, upwnd, eles_with_pipe, velocity_field, pressure_field, &
-                            DT, SUF_SIG_DIAGTEN_BC, &
-                            ScalarField_Source_Store, Porosity_field%val, &
-                            IGOT_THETA_FLUX, &
-                            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                            IDs_ndgln, calculate_mass_delta, its )
-                    else
-                        CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                            Mmat,multi_absorp, upwnd, eles_with_pipe, velocity_field, pressure_field, &
-                            dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
-                            SUF_SIG_DIAGTEN_BC, &
-                            ScalarField_Source_Store, Porosity_field%val, &
-                            igot_theta_flux, &
-                            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                            IDs_ndgln, calculate_mass_delta, its, deltaP_old )
-                    end if
+                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat,multi_absorp, upwnd, eles_with_pipe, velocity_field, pressure_field, &
+                        dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
+                        SUF_SIG_DIAGTEN_BC, &
+                        ScalarField_Source_Store, Porosity_field%val, &
+                        igot_theta_flux, &
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
+                        IDs_ndgln, calculate_mass_delta, its, deltaP_old )
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then

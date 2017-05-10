@@ -1983,10 +1983,6 @@ start =
             element use_reflect_method {
                empty
             }?,      
-            ## The method to calculate the flux between CV not sharing element is also used for fluxes within an element
-            element DG_advection {
-               empty
-            }?,  
             ## Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
             ## This is os by default for the CV pressure formulation 
             element simple_mass_matrix {

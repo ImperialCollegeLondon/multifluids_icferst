@@ -2683,12 +2683,6 @@ it has a simmilar effect as the artificial diffusion. Default value = 1e-1.</a:d
             </element>
           </optional>
           <optional>
-            <element name="DG_advection">
-              <a:documentation>The method to calculate the flux between CV not sharing element is also used for fluxes within an element</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
             <element name="simple_mass_matrix">
               <a:documentation>Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
 This is os by default for the CV pressure formulation </a:documentation>

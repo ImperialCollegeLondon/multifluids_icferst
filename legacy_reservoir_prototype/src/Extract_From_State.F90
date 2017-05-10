@@ -547,11 +547,7 @@ contains
         end do
         !!$ Options below are hardcoded and need to be added into the schema
         Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
-        if(is_porous_media) then
-            if ( have_option("/numerical_methods/DG_advection")) Mdisopt%v_dg_vel_int_opt = 10
-        else
-            Mdisopt%v_dg_vel_int_opt = 1
-        end if
+        if(.not.is_porous_media) Mdisopt%v_dg_vel_int_opt = 1
         Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
         Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
         Mdisopt%t_use_theta_flux = .false. ; Mdisopt%t_get_theta_flux = .false.

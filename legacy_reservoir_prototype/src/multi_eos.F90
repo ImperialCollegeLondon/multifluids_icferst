@@ -898,34 +898,6 @@ contains
             end if
         end if
 
-
-            ! adjust the kv/kh ratio of the bad elements - this should act to artificially stretch the element in the vertical direction -
-            ! giving a better element to calculate deltaP. We are decreasing the kv with respect to kh
-!            do ele = 1, Mdims%totele
-!                if (Quality_list(ele)%bad_ele > 0) then
-!!                    if (kv_kh_ratio_
-!!                       rotate trans_matrix
-!                        rot_trans_matrix = matmul(transpose(Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim)) , matmul(trans_matrix,Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim))  )
-!!                        write(*,'(A)') 'trans_matrix='
-!!                        do i=1,size(trans_matrix,1)
-!!                          write(*,'(20G12.4)') trans_matrix(i,:)
-!!                        end do
-!!
-!                        perm%val(:, :, ele) =  matmul(rot_trans_matrix, perm%val(:, :, ele))
-!                        write(*,'(A)') 'After perm%val(:,:,ele)='
-!                        do i=1,size(perm%val(:,:,ele),1)
-!                          write(*,'(20G12.4)') perm%val(i,:,ele)
-!                        end do
-!!                    else
-!!                        height = (Quality_list(ele)%base/2)/tan(Angle*pi/360)
-!!                        bad_element_perm_mult = height/(Quality_list(ele)%perp_height)
-!!                        inv_perm(Mdims%ndim, Mdims%ndim, ele) =  inv_perm(Mdims%ndim, Mdims%ndim, ele) * bad_element_perm_mult**2
-!!                    end if
-!                end if
-!            end do
-!        end if
-
-
        if (PorousMedia_absorp%memory_type<2) then!The permeability is isotropic
            inv_perm = 0.
            do i = 1, size(perm%val,3)
