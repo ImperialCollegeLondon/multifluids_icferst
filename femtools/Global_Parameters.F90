@@ -182,7 +182,9 @@ module global_parameters
   logical :: is_boiling = .false.
   !! Multiphase prototype, blasting simulator
   logical :: is_blasting = .false.
-
+  !! Checking if using the P0DG for velocity,
+  !! special because we need to avoid the use of PressureMesh_Continuous
+  logical :: is_P0DGP1CV = .false.
 
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence

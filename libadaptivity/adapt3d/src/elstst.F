@@ -272,7 +272,7 @@ C
          RETURN
       END IF
 C
-      FNCDIF = MAX( MAX( A, B ), C ) - FNCORG
+      FNCDIF = (MAX( MAX( A, B ), C ) - FNCORG)
       IF( FNCDIF .LT. 0.0 ) AVEDIF = ( A + B + C ) / 3 - AVEORG
 C
 c      if( ielm1 .eq. 38431 .and. ielm2 .eq. 34490 ) then

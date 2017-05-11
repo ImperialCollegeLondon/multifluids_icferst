@@ -261,11 +261,12 @@ contains
 
         !Prepare some specific modifications prior to populating state
         !If the extra mesh have not been created, create them here
-        if (.not. have_option("/geometry/mesh::VelocityMesh_Continuous")) then
-            call copy_option("/geometry/mesh::VelocityMesh", "/geometry/mesh::VelocityMesh_Continuous")
-            call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")
+        if (.not.is_P0DGP1CV) then!We don't need this field for P0DGP1
+            if (.not. have_option("/geometry/mesh::VelocityMesh_Continuous")) then
+                call copy_option("/geometry/mesh::VelocityMesh", "/geometry/mesh::VelocityMesh_Continuous")
+                call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")
+            end if
         end if
-
         if (.not. have_option("/geometry/mesh::PressureMesh_Continuous")) then
             call copy_option("/geometry/mesh::PressureMesh", "/geometry/mesh::PressureMesh_Continuous")
             call set_option("/geometry/mesh::PressureMesh_Continuous/from_mesh/mesh_continuity", "continuous")
@@ -401,6 +402,7 @@ contains
         !This subroutine selects the type of simulator to perform
         !and activates the flags from global_parameters accordingly
         implicit none
+        integer :: Vdegree, Pdegree
         !By default it is intertia dominated
         is_porous_media = have_option('/simulation_type/porous_media')
         is_magma = have_option('/simulation_type/magma')
@@ -411,6 +413,13 @@ contains
         is_boiling = have_option( '/simulation_type/boiling' )
         !Flag to set up blasting
         is_blasting = have_option( '/simulation_type/blasting' )
+        !Check if it is P0DGP1
+        call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', &
+            Vdegree )
+        call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
+            Pdegree )
+        is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
+                have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
 
     end subroutine get_simulation_type
 

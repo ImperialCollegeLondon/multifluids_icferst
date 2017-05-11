@@ -185,8 +185,6 @@ contains
         real :: t_adapt_threshold
         !Variables for FPI acceleration for flooding
         type( vector_field ) :: deltaP_old
-!       Variables used for calculating conservation of mass (entering/leaving and within the domain).
-
 !      calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
 

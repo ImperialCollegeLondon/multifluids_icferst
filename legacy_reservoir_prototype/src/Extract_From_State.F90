@@ -182,10 +182,11 @@ contains
         Mdims%u_nonods = node_count( velocity )
 
         !!$ Get the continuous space of the velocity field
-        velocity_cg_mesh => extract_mesh( state, 'VelocityMesh_Continuous' )
-        Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
-        Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
-
+        if (.not.is_P0DGP1CV) then
+            velocity_cg_mesh => extract_mesh( state, 'VelocityMesh_Continuous' )
+            Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
+            Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
+        end if
         if( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
             ph_mesh => extract_mesh( state( 1 ), 'ph', stat )
             if ( stat == 0 ) then
@@ -217,7 +218,7 @@ contains
         ndgln%p=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
         ndgln%mat=>get_ndglno(extract_mesh(state(1),"PressureMesh_Discontinuous"))
         ndgln%u=>get_ndglno(extract_mesh(state(1),"InternalVelocityMesh"))
-        ndgln%xu=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
+        if (.not.is_P0DGP1CV) ndgln%xu=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
         !!$ Pressure, control volume and material
         pressure => extract_scalar_field( state( 1 ), 'Pressure' )
         !!$ Velocities
@@ -930,25 +931,26 @@ contains
         ! pack continuous velocity mesh
         velocity=>extract_vector_field(state(1),"Velocity")
         call insert(packed_state,velocity%mesh,"VelocityMesh")
-        if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
-            nullify(ovmesh)
-            allocate(ovmesh)
-            ovmesh=make_mesh(position%mesh,&
-                shape=velocity%mesh%shape,&
-                continuity=0,name="VelocityMesh_Continuous")
-            call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
-            call insert(state(1),ovmesh,"VelocityMesh_Continuous")
-            call deallocate(ovmesh)
-            deallocate(ovmesh)
-        else
-            ovmesh=>extract_mesh(state(1),"VelocityMesh_Continuous")
-            call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+        if (.not.is_P0DGP1CV) then
+            if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
+                nullify(ovmesh)
+                allocate(ovmesh)
+                ovmesh=make_mesh(position%mesh,&
+                    shape=velocity%mesh%shape,&
+                    continuity=0,name="VelocityMesh_Continuous")
+                call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+                call insert(state(1),ovmesh,"VelocityMesh_Continuous")
+                call deallocate(ovmesh)
+                deallocate(ovmesh)
+            else
+                ovmesh=>extract_mesh(state(1),"VelocityMesh_Continuous")
+                call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+            end if
+            call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
+            call remap_field(position,u_position)
+            call insert(packed_state,u_position,"VelocityCoordinate")
+            call deallocate(u_position)
         end if
-
-        call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
-        call remap_field(position,u_position)
-        call insert(packed_state,u_position,"VelocityCoordinate")
-        call deallocate(u_position)
 
         if (.not.has_mesh(state(1),"PressureMesh_Continuous")) then
             nullify(ovmesh)

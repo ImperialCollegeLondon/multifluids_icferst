@@ -1352,6 +1352,16 @@ contains
 !end do
 !CVPressure => extract_tensor_field( packed_state, "PackedFEPressure" )
 !ele2 = max(ele_neigh(CVPressure%mesh, ele, count),0)!because we consider ==0 if not found, that could be changed easily
+!    !I need to be able to get rid of ndgln%xu to get P0DG working! It seems I can do directly
+!next step is to implement the P0DG shape functions!
+!if (sum(U_OTHER_LOC)/=0)print *, ELE, ELE2, U_OTHER_LOC!IS U_OTHER_LOC ALWAYS == 0????????
+!in other part of the code
+! IF( Mdims%xu_nloc == 1 ) THEN ! For constant vel basis functions...
+! U_ILOC_OTHER_SIDE( 1 ) = 1
+! U_OTHER_LOC( 1 )= 1
+! ELSE
+
+
                         IF ( INTEGRAT_AT_GI ) THEN
                             CV_JLOC = CV_OTHER_LOC( CV_ILOC )
                             SELE = 0
@@ -4110,6 +4120,7 @@ contains
             END DO
 
             U_OTHER_LOC = 0 ! Determine U_OTHER_LOC(U_KLOC)
+            if (.not.is_P0DGP1CV) then!XU_NDGLN not defined for P0DGP1
             ! Works for non constant and constant (XU_NLOC=1) vel basis functions...
             DO U_KLOC = 1, U_NLOC ! Find opposite local node
                 XU_NODK = XU_NDGLN( ( ELE - 1 ) * XU_NLOC + U_KLOC )
@@ -4119,7 +4130,7 @@ contains
                         U_OTHER_LOC( U_KLOC ) = U_KLOC2
                 END DO
             END DO
-
+            end if
             MAT_OTHER_LOC = CV_OTHER_LOC
         ELSE
             CV_OTHER_LOC = 0
