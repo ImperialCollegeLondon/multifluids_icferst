@@ -805,6 +805,6 @@
     </scalar_field>
   </porous_media>
   <numerical_methods>
-    <DG_advection/>
+    <local_upwinding/>
   </numerical_methods>
 </multiphase_options>

@@ -2683,6 +2683,13 @@ it has a simmilar effect as the artificial diffusion. Default value = 1e-1.</a:d
             </element>
           </optional>
           <optional>
+            <element name="local_upwinding">
+              <a:documentation>Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
+Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="simple_mass_matrix">
               <a:documentation>Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
 This is os by default for the CV pressure formulation </a:documentation>

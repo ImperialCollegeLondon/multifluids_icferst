@@ -481,7 +481,7 @@ contains
         integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
         REAL :: MM_GRAVTY
         !Variable to decide, for porous media, whether to consider, locally, using high order methods or not
-        logical :: use_porous_limiter = .false.
+        logical :: use_porous_limiter = .true., local_upwinding = .false.
         !Variables to calculate flux across boundaries
         logical :: calculate_flux
         real :: reservoir_P( Mdims%npres ) ! this is the background reservoir pressure
@@ -532,6 +532,10 @@ contains
         !   Calculate_mass_delta to store the change in mass calculated over the whole domain
         !#########################################
 
+        !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction
+        local_upwinding = have_option('/numerical_methods/local_upwinding')
+        !this is true if the user is asking for high order advection scheme
+        use_porous_limiter = (Mdisopt%in_ele_upwind /= 1)
 
         have_absorption=.false.
         if ( associated( absorbt_all ) ) have_absorption = .true.
@@ -1321,16 +1325,6 @@ contains
                 ! Generate some local F variables ***************
                 F_CV_NODI(:)= LOC_F(:, CV_ILOC)
                 ! Generate some local F variables ***************
-
-                !Decide whether to use high order advection or not, locally.
-                !If the saturation is equal to the minimum, then no need to high order
-                if (is_porous_media) then
-                    use_porous_limiter = (Mdisopt%in_ele_upwind /= 1)!this is true if the user is asking for high order
-                    do iphase = 1, Mdims%nphase - 1
-                        use_porous_limiter = use_porous_limiter &
-                            .and. abs(T_ALL(iphase, cv_inod) - Imble_frac(iphase, IDs_ndgln(ELE))) > 5e-3
-                    end do
-                end if
                 ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
                 Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
                     ! CV_funs%colgpts stores the local Gauss-point number in the ELE
@@ -1358,7 +1352,6 @@ contains
 !end do
 !CVPressure => extract_tensor_field( packed_state, "PackedFEPressure" )
 !ele2 = max(ele_neigh(CVPressure%mesh, ele, count),0)!because we consider ==0 if not found, that could be changed easily
-
                         IF ( INTEGRAT_AT_GI ) THEN
                             CV_JLOC = CV_OTHER_LOC( CV_ILOC )
                             SELE = 0
@@ -1378,6 +1371,16 @@ contains
                     Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
                         between_elements = (ELE2 /= 0) .AND. (ELE2 /= ELE)
                         on_domain_boundary = ( SELE /= 0 )
+                        !Decide whether to use high order advection or not, locally.
+                        !If the saturation is equal to the minimum, then no need to high order
+                        if (is_porous_media .and. local_upwinding) then
+                            use_porous_limiter = .true.
+                            do iphase = 1, Mdims%nphase - 1
+                                use_porous_limiter = use_porous_limiter &
+                                    .and. abs(T_ALL(iphase, cv_inod) - Imble_frac(iphase, IDs_ndgln(ELE))) > 1e-4
+                            end do
+                            use_porous_limiter = use_porous_limiter .or. on_domain_boundary
+                        end if
                         !Check as well if the CV is neigbouring another CV with a different permeability and if any of those is anisotropic
                         anisotropic_and_frontier = anisotropic_perm .and. between_elements
                         !Check if the permeabilities are different, this may fail in the unlikely case where the contraction of

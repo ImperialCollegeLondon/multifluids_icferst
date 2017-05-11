@@ -1982,7 +1982,12 @@ start =
             ## Use a method to avoid distortion due to boundaries
             element use_reflect_method {
                empty
-            }?,      
+            }?,     
+            ## Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
+            ## Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.
+            element local_upwinding {
+               empty
+            }?,     
             ## Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
             ## This is os by default for the CV pressure formulation 
             element simple_mass_matrix {

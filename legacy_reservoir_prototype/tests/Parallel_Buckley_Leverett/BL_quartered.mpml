@@ -162,7 +162,13 @@
       <real_value rank="0">1.0e-1</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">3</integer_value>
+      <integer_value rank="0">7</integer_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">5e-2</real_value>
+        <Backtracking_factor>
+          <real_value rank="0">-1</real_value>
+        </Backtracking_factor>
+      </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
   <projections/>

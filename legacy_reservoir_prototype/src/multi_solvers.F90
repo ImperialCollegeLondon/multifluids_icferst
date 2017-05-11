@@ -809,8 +809,8 @@ contains
                 sum_of_phases = sum(Normalized_sat(i_start:i_end))
                 correction = (1.0 - sum_of_phases)
                 !Spread the error to all the phases weighted by their moveable presence in that CV
-                !Increase the range to look for solutions by allowing oscillations below 0.1 percent
-                if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * (1.0 + correction/sum_of_phases))*&
+                !Increase the range to look for solutions by allowing oscillations below 0.01 percent
+                if (abs(correction) > 1d-4) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * (1.0 + correction/sum_of_phases))*&
                     moveable_sat + Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod))
                 !Make sure saturation is between bounds after the modification
                 do iphase = i_start, i_end
