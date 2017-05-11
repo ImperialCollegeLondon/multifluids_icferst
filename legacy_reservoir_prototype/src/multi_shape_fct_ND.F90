@@ -8015,6 +8015,9 @@ contains
 
     Conditional_NWICEL: Select Case( NWICEL )
     case( 0 )!For P0 elements (not tested at all)
+        if (.not. is_P0DGP1CV) then
+            ewrite(0,*) "WARNING: this element has not been tested. If it works remove this message from multi_shape_fc_ND.F90"
+        end if
         M = 1.0
         N = 1.0
         NLX = 0.;NLY = 0.;NLZ = 0.
