@@ -7091,10 +7091,10 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
         if (lump_vol_factor<-1d24) then
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )
             call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', pres_degree )
-            if (max(pres_degree,vel_degree)>1) then
-                factor_default = 0.
-            else
+            if (pres_degree == 1 .and. vel_degree == 1) then
                 factor_default = 1e4
+            else
+                factor_default = 0.
             end if
             !Obtain the value from diamond
             call get_option( '/numerical_methods/CV_press_homogenisation', factor, default = factor_default )
