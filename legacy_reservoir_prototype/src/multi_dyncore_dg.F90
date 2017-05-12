@@ -6503,14 +6503,6 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                  rtol = 1.0e-10, &
                  atol = 0.0, &
                  max_its = 10000 )
-            !call add_option( &
-            !     trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
-            !call set_option( &
-            !     trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
-            !call add_option( &
-            !     trim( path ) // "/solver/preconditioner[0]/factorization_package[0]/name", stat )
-            !call set_option( &
-            !     trim( path ) // "/solver/preconditioner[0]/factorization_package/name", "petsc" )
 
             if ( .not.got_free_surf ) call add_option( &
                     trim( path ) // "/solver/remove_null_space", stat )

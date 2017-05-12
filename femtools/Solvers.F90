@@ -1942,7 +1942,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
     PCType:: pctype, hypretype
     MatSolverPackage:: matsolverpackage
     PetscErrorCode:: ierr
-    
+
     call get_option(trim(option_path)//'/name', pctype)
 
     if (pctype==PCMG) then

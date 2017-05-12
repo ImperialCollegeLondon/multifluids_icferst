@@ -2384,7 +2384,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">
@@ -2399,7 +2399,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">
@@ -2419,7 +2419,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">
@@ -2434,7 +2434,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">

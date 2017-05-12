@@ -1,13 +1,13 @@
 include "spud_base.rnc"
 
-include "adaptivity_options.rnc"
+include "ICFERST_schemas/adaptivity_options_ICFERST.rnc"
 include "diagnostic_algorithms.rnc"
 include "input_output.rnc"
-include "solvers.rnc"
+include "ICFERST_schemas/solvers_ICFERST.rnc"
 include "stabilisation.rnc"
-include "mesh_options.rnc"
-include "physical_parameters.rnc"
-include "prognostic_field_options.rnc"
+include "ICFERST_schemas/mesh_options_ICFERST.rnc"
+include "ICFERST_schemas/physical_parameters_ICFERST.rnc"
+include "ICFERST_schemas/prognostic_field_options_ICFERST.rnc"
 include "prescribed_field_options.rnc"
 include "spatial_discretisation.rnc"
 include "temporal_discretisation.rnc"
@@ -24,20 +24,8 @@ start =
             anystring
          },
          ## Select the simulation type
-         element simulation_type {
-             (
-                ## Navier-stokes simulator
-                element intertia_dominated{comment}|
-                ## Darcy flow simulator
-                element porous_media{comment}|
-                ## Magma flow simulator
-                element magma{comment}|
-                ## Flooding simulator
-                element flooding{comment}
-             ),
-          element femdem_fracture{comment}?,
-          element blasting{comment}?,
-          element boiling{comment}?
+         element is_porous_media {
+             empty
          },
          geometry,
          ## Input/output options
@@ -92,48 +80,6 @@ start =
                 )   
                }
             ),
-            ## Disable dump at simulation start
-            element disable_dump_at_start {
-               comment
-            }?,
-            ## Disable dump at simulation end
-            element disable_dump_at_end {
-               comment
-            }?,
-            ## Number of dumps before we overwrite previous dumps.
-            element max_dump_file_count {
-               integer
-            }?,
-            (
-               ## The mesh on to which all the fields will be
-               ## interpolated for VTK output.
-               element output_mesh {
-                  attribute name { "VelocityMesh" }
-               }|
-               ## The mesh on to which all the fields will be
-               ## interpolated for VTK output.
-               element output_mesh {
-                  attribute name { "PressureMesh" }
-               }|
-               ## The mesh on to which all the fields will be
-               ## interpolated for VTK output.
-               element output_mesh {
-                  attribute name { "CoordinateMesh" }
-               }|
-               ## The mesh on to which all the fields will be
-               ## interpolated for VTK output.
-               element output_mesh {
-                  attribute name { xsd:string }
-               }
-            ),
-            ## Output FE representation of scalar fields instead of the CV one.
-            element output_scalars_fem {
-               empty
-            }?,
-            ## Output the Darcy velocity
-            element output_darcy_vel {
-               empty
-            }?,
             ## Surface to Integrate Over
             element dump_boundaryflux {
             empty,
@@ -141,11 +87,6 @@ start =
             element surface_ids {
             integer_vector
             }}?,
-	    ## Do not overwrite initial condition with boundary condition.
-	    ## Important for checkpointed runs! 
-            element initial_condition_overwrites_boundary {
-               empty
-            }?,
 	    ## Whether to enable dumping of checkpointing output.
             ##
             ## See http://amcg.ese.ic.ac.uk/index.php?title=Local:Checkpointing_from_new_options
@@ -167,210 +108,6 @@ start =
                   comment
                }?,
                comment
-            }?,
-            ## Diagnostic output (.stat file) options
-            element stat {
-               ## Enable to write diagnostic output at simulation start
-               element output_at_start {
-                  comment
-               }?,
-               ## Enable to write diagnostic output immediately before mesh adapts
-               element output_before_adapts {
-                  comment
-               }?,
-               ## Enable to write diagnostic output immediately after mesh adapts
-               element output_after_adapts {
-                  comment
-               }?,
-               comment
-            },
-
-            ## Specification of detectors. Note that when running in parallel the detector output is in binary format even if binary_output is not enabled. When running in serial, although the output is in principle still generated in ascii format if binary_output is not enabled, it is not certain that it is working well. Hence, it is recommended to enable binary_output and work with binary files. 
-            element detectors {
-               (
-                  ## A single static detector
-                  element static_detector {
-                     attribute name { xsd:string },
-                     (
-                        element location {
-                           real_dim_vector
-                     }|
-                        ## File containing the detectors positions in binary form
-                        element from_checkpoint_file {
-                           attribute file_name { xsd:string },
-                           ## The format of the input file containing field data.
-                           element format {
-                             element string_value {
-                                 "binary"
-                             }
-                           }
-                        }
-                     )
-                  }|
-                  ## A single lagrangian detector
-                  element lagrangian_detector {
-                     attribute name { xsd:string },
-                     (
-                     ## This is the initial location of a detector that moves with the fluid velocity.
-                        element location {
-                           real_dim_vector
-                     }|
-                        ## File containing the detectors positions in binary form
-                        element from_checkpoint_file {
-                           attribute file_name { xsd:string },
-                           ## The format of the input file containing field data.
-                           element format {
-                             element string_value {
-                                 "binary"
-                             }
-                           }
-                        }
-                     )
-                  }|
-                  ## Detectors with their locations specified via a python function or from a file. Allows detector arrays to be added.
-                  element detector_array {
-                     attribute name { xsd:string },
-                     ## The number of detectors prescribed by the python function.
-                     element number_of_detectors {
-                        integer
-                     },
-                     (
-                        ## Create fixed detectors.
-                        element static {
-                           empty
-                        }|
-                        ## Create detectors which move with the fluid velocity.
-                        element lagrangian {
-                           empty
-                        }
-                     ),
-                     (
-                        ## Python function prescribing dimensional vector input. Functions should be of the form:
-                        ##
-                        ##  def val(t):
-                        ##     # Function code
-                        ##     return # Return value
-                        ##
-                        ## The return value must have length number_of_detectors.
-                        ##
-                        ## *** IMPORTANT NOTE ***
-                        ##
-                        ## The t argument is for future use only - currently detector locations are only set at simulation start.
-                        element python {
-                          python_code
-                        }|
-                        ## File containing the detectors positions in binary form
-                        element from_file {
-                           attribute file_name { xsd:string },
-                           ## The format of the input file containing field data.
-                           element format {
-                             element string_value {
-                                 "binary"
-                             }
-                           }
-                        }|
-                        ## File containing the detectors positions in binary form
-                        element from_checkpoint_file {
-                           attribute file_name { xsd:string },
-                           ## The format of the input file containing field data.
-                           element format {
-                              element string_value {
-                                 "binary"
-                              }
-                           }
-                        }
-                     )
-                  }
-               )*,
-               ## Enable to write detector output in binary format
-               element binary_output {
-                  comment
-               }?,
-               element lagrangian_timestepping {
-                  (
-                     ## Use explicit runge kutta method with
-                     ## binary search
-                     element explicit_runge_kutta_guided_search {
-                        ## Number of subdivisions of the timestep
-                        ## increase this if you are not happy with your 
-                        ## detector trajectory accuracy, or if particles
-                        ## are jumping out of the domain a lot
-                        element subcycles {
-                           integer
-                        },
-                        ## Tolerance for deciding if detector is in a given
-                        ## element. Recommended value 1.0e-10.
-                        element search_tolerance {
-                           real
-                        },
-                        ## Number of RK stages
-                        ## For the RK4 method, it should be 4.
-                        element n_stages {
-                           integer
-                        },
-                        ## ERK stage array. This is an array
-                        ## containing the lower-triangular
-                        ## part of the Butcher weight matrix
-                        ## A that explains how to compute the
-                        ## RK stages.  See
-                        ## http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
-                        ## for notation.  The array is stored
-                        ## in the following order:
-                        ## [a_{21},a_{31},a_{32},...,a_{s1},a_{s2},a_{s(s-1)}]
-                        ## and so the array has size s(s-1)/2
-                        ## where s is the number of stages.
-                        ## For the RK4 method, it should be
-                        ## [0.5,0,0.5,0,0,1]
-                        element stage_weights {
-                           real_vector
-                        },
-                        ## ERK timestep weights. This is the
-                        ## b vector that explains how to
-                        ## compute the timestep from the RK
-                        ## stages.  See
-                        ## http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
-                        ## for notation.  It should have size
-                        ## s where s is the number of stages.
-                        ## For the RK4 method, it should be
-                        ## [1/6,1/3,1/3,1/6]
-                        element timestep_weights {
-                           real_vector
-                        }
-                     }|
-                     ## Use binary search algorithm
-                     element binary_search {
-                        empty
-                     }
-                  )
-               }?
-            }?, 
-            ## Options to create even more output in the logs:
-            ##
-            ## Note that the main option to control the log output is given on the command line:
-            ##
-            ## -v0  only output error and warnings
-            ##
-            ## -v1  also give "navigational information", to indicate where in the code we currently are
-            ##
-            ## -v2  also give any additional information (mins and maxes of fields, etc.)
-            ##
-            element log_output {
-               ## Log all allocates and deallocates done for meshes, fields, sparsities and matrices.
-               ##
-               ## NOTE: Requires -v2
-               element memory_diagnostics {
-                  empty
-               }?
-            }?,
-            ## If porous_media, printout the Courant number every time-step
-            element Courant_number {
-               comment
-            }?,
-            ## Printout the number of elements and percentage that contain an angle
-            ## equal or bigger than the ones specified here
-	    ## Note: This may slow down your simulation should be used as a diagnostic tool 
-            element Mesh_Diagnostics_Angles {
-               real_vector
             }?
          },
          ## Options dealing with time discretisation
@@ -389,21 +126,6 @@ start =
             element finish_time {
                real
             },
-            ## Timestep after which the simulation should end.
-            element final_timestep {
-               integer
-            }?,
-#            ## Maximum CPU time (in seconds) before the simulation terminates
-#            element cpu_time_limit {
-#               real
-#            }?,
-#            ## Maximum wall time (secs) taken up before
-#            ## simulation terminates writing results to disc.
-#            ## 
-#            ## This is usually disabled.
-#            element wall_time_limit {
-#               real
-#            }?,
             ## maximum number of non-linear iterations.
             ## 
             ## Manual suggests 2
@@ -436,41 +158,6 @@ start =
                     element Backtracking_factor{
                     real
                     }?
-                  ),
-                  (
-                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
-                    ##
-                    ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
-                    ## 
-                    ## 100 => Only the previous saturation is used (more conservative); 
-                    ## 0.4 => Recommended (default); 
-                    ## 0.3 => Older saturation is at some points as important as the old saturation;
-                    ## 0 => Older saturation is more important than old saturation
-                    ## 
-                    ## If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)
-                    element Acceleration_exp{
-                    real
-                    }?
-                  ),
-                  (
-                    ## Tolerance for the infinite norm of the variation in saturation
-                    ## between two FPI
-                    ## By default 0.03; Recommended between 0.05 and 0.005
-                    element Inifinite_norm_tol{
-                    real
-                    }?
-                  ),
-                  (
-                    ## Convergence criterion based on the 
-                    ## conservation of mass for the Fixed Point Iteration solver
-	            ## 
-		    ## By default the tolerance is 5e-3
-                    element Test_mass_consv{real}?
-                  ),
-                  (
-                    ## Prints the number of iterations and
-                    ## the final convergence achieved by the FPI solver
-                    element Show_Convergence{comment}?
                   ),
                   (
                     ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
@@ -572,980 +259,16 @@ start =
                }?
             }?
          },
-	 element projections {
-	    ## Options applicable to the projections used in
-	    ## the multiphase prototype code
-	    element control_volume_projections {
-	       element do_not_project {
-	          empty
-	       }?,
-	       (
-	       element test_function_space {
-	          attribute name {"FiniteElement"}
-	       }|
-	       element test_function_space {
-	          attribute name {"ControlVolume"}
-	       }
-               ),
-	       element solver {
-                    linear_solver_options_asym
-               }?	        
-	    }?
-	 }?,
          physical_parameter_options?,
          ## The material or phase options
          element material_phase {
             attribute name { xsd:string },
-            ## Flag to identify components in multiphase modelling
-            ## 
-            ## Pressure and velocity fields must be aliased
-            element is_multiphase_component {
-               (
-                  ## Specify the weighting for the component equation
-                  ## between 0 and 1. Test cases have 1.
-                  element alpha_beta { real },
-                  ## Enable this option to use sigmoid method for finding equilibrium
-                  element KComp_Sigmoid {
-                     (
-                        ## KComp value for this component
-                        element K_Comp { real }
-                     )
-                  }?,
-                  ## Enable this option to force component mass fractions
-                  ## to sum to 1 by adding constraint into compositional source term.
-                  element Comp_Sum2One { 
-                     (
-                        ## Relaxation coefficient to summation constraint [0,1]. 
-                        ## --> 0: under-relaxation ; --> 1: over-relaxation
-                        element Relaxation_Coefficient { real },
-                        ## Ensure that this constraint acts only as a positive absorption term
-                        element Ensure_Positive { empty }?,
-                        ## Explicitly enforce components to sum to one
-                        element Enforce_Comp_Sum2One { empty }?			
-                     )
-                  }?,
-                  ## Surface tension
-                  element surface_tension { 
-                     (
-                        ## Surface tension coefficient. 
-                        element coefficient { real },
-                        ## Contact angle. 
-                        element angle { real } ?,
-                        ##  Smoothing.
-                       element smooth { empty } ?
-                     )
-                  }?
-               )               
-            }?,
-            ## Scale the momentum equation by the volume fraction for when some problems are not well poised.
-            element scale_momentum_by_volume_fraction {empty}?,
-            ## linearise density
-            element linearise_density{ empty }?,
-            ## linearise viscosity
-            element linearise_viscosity{ empty }?,
-            ## linearise component for the bulk density calculation used in the momentum equation
-            element linearise_component{ empty }?,
-            ## The equation of state
-            equation_of_state?,
+            
+            ## Phase density
+            phase_density?,
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Subgridscale parameterisations
-            element subgridscale_parameterisations {
-               ## Lagrangian-averaged Navier-Stokes equations 
-               element LANS {
-                  (
-                     ## smoothing length specified as isotropic homogeneous
-                     element alpha_isotropic_homogeneous {
-                        real
-                     }|
-                     element alpha_anisotropic_homogeneous_cartesian {
-                        real_dim_symmetric_tensor
-                     }
-                  )
-                  #               (
-                  #                  element leray {
-                  #                     empty
-                  #                  }|
-                  #                  element LANS_momentum_form {
-                  #                     empty
-                  #                  }|
-                  #                  element LANS_stress_form {
-                  #                     empty
-                  #                  }
-                  #               )
-               }?,
-               ## This is the generic length scale (vertical turbulence mixed layer) model, 
-               ## based here on Warner et al 2005, Ocean Modelling 8:81-113,
-               ## which is itself based on the works of Umlauf and Burchard 2003.
-               ##
-               ## The GLS model encodes four individual turbulence closure models which can be chosen via 'option' below.
-               ##
-               ## You will need to make sure that DistanceToTop and DistanceToBottom fields (under geometry/ocean_boundaries) 
-               ## are switched on, as well as PerturbationDensity.
-               element GLS {
-                  ## The base GLS option:
-                  ## 1. k-kl which is a variant of Mellor-Yamada 2.5
-                  ## 2. k-epsilon
-                  ## 3. k-omega
-                  ## 4. 'gen' from Warner et al 2005
-                  ##
-                  ## k-epsilon is recommended.
-                  element option {
-                     element string_value {
-                     "k-kl"|"k-epsilon"|"k-omega"|"gen"
-                     }
-                  },
-                  ## The stability function choice:
-                  ## 1. KanthaClayson-94 which corresponds to Kantha and Clayson 1994
-                  ## 2. Galperin-88 which corresponds to Galperin et al 1988
-                  ## 3. Canuto-01-A which corresponds to choice A from Canuto et al 2001
-                  ## 4. Canuto-01-B which corresponds to choice B from Canuto et al 2001
-                  ##
-                  ## Canuto A or B are recommended.
-                  element stability_function {
-                     element string_value {
-                     "KanthaClayson-94"|"GibsonLaunder-78"|"Canuto-01-A"|"Canuto-01-B"
-                     }
-                  },                  
-                  ## The wall function choice:
-                  ## 1. None - pick this unless you're using k-kl
-                  ## 2. Mellor and Yamada (1980) - parabolic shape
-                  ## 3. Burchard (1998) - symmetric linear shape
-                  ## 4. Burchard (2001) - Used for infinitely deep basins
-                  ## 5. Blumberg et al (1992) - open channel flow
-                  ##
-                  ## See manual for equations.
-                  element wall_function {
-                     element string_value {
-                     "none"|"MellorYamda"|"Burchard98"|"Burchard01"|"Blumberg"
-                     }
-                  }?,
-                  ## Smooth buoyancy frequency before using it?
-                  element smooth_buoyancy{
-                    empty
-                  }?,
-                  ## Smooth velocity shear before using it?
-                  element smooth_shear{
-                    empty
-                  }?,
-                  ## Do you want the boundary conditions to be set automatically?
-                  ## Make sure the ocean geometry settings are enabled for this option
-                  element calculate_boundaries {
-                     element string_value {
-                     "neumann"|"dirichlet"
-                     },
-                     element top_surface_ids {
-                        integer_vector
-                     },
-                     element bottom_surface_ids {
-                        integer_vector
-                     }
-                  }?,
-                  ## Perform relaxation of the diffusivity and viscosity in the GLS model.
-                  ## Value should be >=0 and < 1. 0 is no relaxation (i.e. always use the
-                  ## most up-to-date value) and 0.9 would represent making the current value
-                  ## be 0.9*old_value + 0.1*new_value. Default is 0.0
-                  ## If being used with adaptivity, ensure you switch on interpolation of the 
-                  ## GLSVerticalDiffusivity and GLSVerticalViscosity fields. You will seg fault
-                  ## otherwise.
-                  element relax_diffusivity {
-                     real
-                  }?,
-                  ## Add extra parameterisation for internal wave breaking at base of MLD. This
-                  ## is based on the same parameterisation in NEMO and smooths the TKE down 
-                  ## the water column based on an exponential function
-                  ## Set the two parameters: % of TKE to smooth down and length scale to do this over
-                  element ocean_parameterisation {
-                     element lengthscale {
-                        real
-                     },
-                     element percentage {
-                        real
-                     }
-                  }?,
-                  ## Turbulent kinetic energy. Make sure that the Diffusivity tensor field in here is set to diagnostic/internal.
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSTurbulentKineticEnergy" },
-                     (
-                        element prognostic {
-                           velocity_mesh_choice,
-                           prognostic_scalar_field,
-                           ## Minimum value of TKE in m2s2. A typical value will be around 1e-6
-                           element minimum_value {
-                              real
-                           }
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  },
-                  ## Generic second equation used in GLS. 
-                  ## Make sure that the Diffusivity tensor field in here is set to diagnostic/internal.
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSGenericSecondQuantity" },
-                     (
-                        element prognostic {
-                           velocity_mesh_choice,
-                           prognostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                      )
-                  },
-                  ## Background viscosity
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "GLSBackgroundViscosity" },
-                     (
-                        element prescribed {
-                           mesh_choice,
-                           prescribed_tensor_field
-                        }|
-                        element diagnostic {
-                           mesh_choice,
-                           (
-                              sediment_concentration_dependent_viscosity_algorithm
-                           ),
-                           diagnostic_tensor_field
-                        }
-                     )
-                  },                  
-                  ## Background diffusivity
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "GLSBackgroundDiffusivity" },
-                     (
-                        element prescribed {
-                           mesh_choice,
-                           prescribed_tensor_field
-                        }
-                     )
-                  },
-                  ## Eddy viscosity K_M
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "GLSEddyViscosityKM" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  },
-                  ## Eddy diffusivity K_H
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "GLSEddyDiffusivityKH" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  },
-                  ## Length scale (a diagnostic with GLS)
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSLengthScale" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,                  
-                  ## Unedited TKE. The TKE filed has the upper and lower surfaces
-                  ## altered with Dirichlet conditions for ouput. This is the
-                  ## unedited surface.
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSTurbulentKineticEnergyOriginal" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Buoyancy frequency
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSBuoyancyFrequency" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Velocity shear
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSVelocityShear" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Shear production P
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSShearProduction" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Buoyancy production B
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSBuoyancyProduction" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Dissipation epsilon
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSDissipationEpsilon" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Stability function S_M
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSStabilityFunctionSM" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Stability function S_H
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSStabilityFunctionSH" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Source1 - TKE source term
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSSource1" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Source2 - Second Quantity source term
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSSource2" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Absorption1 - TKE absorption term
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSAbsorption1" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Absorption2 - Second Quantity absorption term
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSAbsorption2" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## GLS Wall function
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSWallFunction" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Vertical eddy viscosity
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSVerticalViscosity" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,                  
-                  ## Vertical eddy diffusivity
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "GLSVerticalDiffusivity" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?
-               }?,
-               element Mellor_Yamada {
-                  ## Kinetic Energy
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "KineticEnergy" },
-                     (
-                        element prognostic {
-                           velocity_mesh_choice,
-                           prognostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  },
-                  ## Turbulent Length Scale x Kinetic Energy
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "TurbulentLengthScalexKineticEnergy" },
-                     (
-                        element prognostic {
-                           velocity_mesh_choice,
-                           prognostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                      )
-                  },
-                  ## Vertical Viscosity
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "VerticalViscosity" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?,
-                  ## Vertical Diffusivity of Temperature
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "VerticalDiffusivity" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element aliased {
-                           generic_aliased_field
-                        }
-                     )
-                  }?
-               }?,
-               ## Trivial case in which the user supplies the diffusivity.
-               element prescribed_diffusivity {
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "PrescribedDiffusivity" },
-                     element prescribed {
-                        mesh_choice,
-                        prescribed_tensor_field_no_adapt
-                     }
-                  }
-               }?,
-               ## Standard k-epsilon turbulence model (see e.g. Ferziger and Peric(2002) p.295).
-               ## Solves 2 additional equations for TurbulentDissipation (epsilon) and TurbulentKineticEnergy (k),
-               ## in order to close momentum equations.
-               ## Generates an isotropic 'eddy viscosity', added to molecular viscosity field, that
-               ## carries the influence of turbulence onto the velocity field. See the manual for details.
-               element k-epsilon {
-                  ## Turbulent kinetic energy (k).
-                  ## 1. 'k_esilon'-type boundary conditions are recommended for this field.
-                  ## 2. Turn on diffusivity, source and absorption diagnostic fields.
-                  ## 3. Use the same mesh as Velocity.
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "TurbulentKineticEnergy" },
-                     (
-                        element prognostic {
-                           velocity_mesh_choice,
-                           prognostic_scalar_field
-                        }|
-                        element prescribed {
-                           velocity_mesh_choice,
-                           prescribed_scalar_field
-                        }
-                     )
-                  },
-                  ## TurbulentDissipation (epsilon).
-                  ## 1. 'k_epsilon'-type boundary conditions are recommended for this field.
-                  ## 2. Turn on diffusivity, source and absorption diagnostic fields.
-                  ## 3. Use the same mesh as Velocity.
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "TurbulentDissipation" },
-                     (
-                        element prognostic {
-                           velocity_mesh_choice,
-                           prognostic_scalar_field
-                        }|
-                        element prescribed {
-                           velocity_mesh_choice,
-                           prescribed_scalar_field
-                        }
-                     )
-                  },
-                  ## Set the value of the background (laminar) viscosity field here.
-                  ## Make it small to see the influence of the eddy viscosity.
-                  ## IMPORTANT: make velocity/viscosity diagnostic.
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "BackgroundViscosity" },
-                     (
-                        element prescribed {
-                           velocity_mesh_choice,
-                           prescribed_tensor_field
-                        }|
-                        element diagnostic {
-                           velocity_mesh_choice,
-                           (
-                              sediment_concentration_dependent_viscosity_algorithm
-                           ),
-                           diagnostic_tensor_field
-                        }
-                     )
-                  },
-                  ## Set the value of the background (laminar) diffusivity field here.
-                  ## This is used to calculate scalar field diffusivities.
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "BackgroundDiffusivity" },
-                     (
-                        element prescribed {
-                           velocity_mesh_choice,
-                           prescribed_tensor_field
-                        }
-                     )
-                  }?,
-                  ## Eddy viscosity (turbulent diffusion of velocity).
-                  ## This is a fictitious isotropic viscosity, added to normal viscosity field, that
-                  ## carries the influence of turbulence onto the velocity field.
-                  element tensor_field {
-                     attribute rank { "2" },
-                     attribute name { "EddyViscosity" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_tensor_field
-                        }
-                     )
-                  },
-                  ## Scalar component of the eddy viscosity tensor.
-                  ## This will appear in the stat file.
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "ScalarEddyViscosity" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }|
-                        element prescribed {
-                           velocity_mesh_choice,
-                           prescribed_scalar_field
-                        }
-                     )
-                  },
-                  ## Integral length scale of the turbulence (diagnostic).
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "LengthScale" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }
-                     )
-                  },
-                  ## f_1 damping coefficient for low_Re k-epsilon model
-                  ## Required for low_Re boundaries. If no low_Re boundaries are present
-                  ## this will be set to 1.0 throughout the domain and will not
-                  ## affect the result
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "f_1" },
-                     element diagnostic {
-                        internal_algorithm,
-                        velocity_mesh_choice,
-                        diagnostic_scalar_field                        
-                     }
-                  },
-                  ## f_2 damping coefficient for low_Re k-epsilon model
-                  ## Required for low_Re boundaries. If no low_Re boundaries are present
-                  ## this will be set to 1.0 throughout the domain and will not
-                  ## affect the result
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "f_2" },
-                     element diagnostic {
-                        internal_algorithm,
-                        velocity_mesh_choice,
-                        diagnostic_scalar_field                        
-                     }
-                  },
-                  ## f_mu damping coefficient for low_Re k-epsilon model
-                  ## Required for low_Re boundaries. If no low_Re boundaries are present
-                  ## this will be set to 1.0 throughout the domain and will not
-                  ## affect the result
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "f_mu" },
-                     element diagnostic {
-                        internal_algorithm,
-                        velocity_mesh_choice,
-                        diagnostic_scalar_field                        
-                     }
-                  },
-                  ## Limit the maximum value of damping function values. This helps stability when using low_Re number
-                  ## boundary conditions. If not using low_Re boundaries this will have no effect. 
-                  ## Recommended value (default): 10.0
-                  element max_damping_value {real},
-                  ## Describes distance to nearest solid wall.
-                  ## Required for low_Re boundaries.
-                  ## For simple geometries the simplest method of providing this information is to use a python function.
-                  ## For complex geometries where this is not possible precursive Eikonal equation or Poisson equation
-                  ## simulations must be run using Fluidity to determine the values for this field.
-                  ## Details of how this is done can be found in:
-                  ## Tucker, P 2011: "Hybrid Hamilton/Jacobi/Poisson wall distance function model"
-                  ## Elias et al 2007: "Simple finite element-based computation of distance functions in unstructured grids"
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "DistanceToWall" },
-                     element prescribed {
-                        velocity_mesh_choice,
-                        prescribed_scalar_field
-                     }
-                  }?,
-                  ## VLES Filter function (diagnostic).
-                  ## Run a VLES by switching this option on.
-                  ## If so then filtering is applied to the eddy viscosity.
-                  element scalar_field {
-                     attribute rank { "0" },
-                     attribute name { "VLESFilter" },
-                     (
-                        element diagnostic {
-                           internal_algorithm,
-                           velocity_mesh_choice,
-                           diagnostic_scalar_field
-                        }
-                     )
-                  }?,
-                  ## Eddy-viscosity coefficient: nu_T = density * C_mu * k**2 / epsilon.
-                  ## Recommended value (default): 0.09.
-                  element C_mu {real},
-                  ## TurbulentDissipation production coefficient.
-                  ## Recommended value (default): 1.44.
-                  element C_eps_1 {real},
-                  ## TurbulentDissipation destruction coefficient.
-                  ## Recommended value (default): 1.92.
-                  element C_eps_2 {real},
-                  ## Turbulent Schmidt number (eddy viscosity coefficient from k equation).
-                  ## This is also the ratio of eddy viscosity to eddy diffusivity for use in other scalar fields.
-                  ## Recommended value (default): 1.0.
-                  element sigma_k {real},
-                  ## Turbulent Schmidt number (eddy-viscosity coefficient from epsilon equation).
-                  ## Recommended value (default): 1.3.
-                  element sigma_eps {real},
-                  ## The Schmidt number (ratio of viscous diffusion rate to momentum diffusion rate) for 
-                  ## massive scalar fields, or Prandtl number (ratio of viscous diffusion rate to thermal diffusion rate) 
-                  ## for thermal fields. This is used to calculate the turbulent buoyancy term.
-                  ## Recommended value (default): 1.0.
-                  element sigma_p {real},
-                  ## Time discretisation of the source terms in the k and epsilon equations and also
-                  ## of the eddy viscosity
-                  element time_discretisation {  
-                     ## Implicit/explicit control (THETA) of source terms and eddy viscosity in
-                     ## the k-epsilon model
-                     ##  = 0.  -- explicit
-                     ##  = 0.5 -- Crank-Nicolson
-                     ##  = 1.  -- implicit
-                     element theta {real},
-                     ## Each term in the k and epsilon equations can be implemented as either a 
-                     ## source or as an absorbtion term. See the manual under 
-                     ## 'Parameterisations/Turbulent flow modelling and simulation/Reynolds Averaged Navier Stokes (RANS) Modelling/Standard k − ε Turbulence Model/Time Discretisation and Coupling' 
-                     ## for more information.
-                     element source_term_implementation { 
-                        element production_term { 'source'|'absorbtion' },
-                        element destruction_term { 'source'|'absorbtion' },
-                        element buoyancy_term { 'source'|'absorbtion' }
-                     }
-                  },
-                  ## The source terms in the k-epsilon model are calculated before the field is 
-                  ## solved. The process requires inversion of a mass matrix. This element contains
-                  ## options for defining how this is done. For P1 meshes mass lumping can be used,
-                  ## for other discretisations the mass matrix can not be easily inverted and so a 
-                  ## solve must be carried out, with solver options specified.
-                  element mass_terms {  
-                     (
-                        element lump_mass { empty }
-                        |
-                        element use_consistent_mass_matrix { 
-                           element solver {
-                              linear_solver_options_asym
-
-                           }
-                        }                     
-                     )
-                  },
-                  ## produce vtu output of individual kk and eps source terms and set prescribed 
-                  ## source terms for k and epsilon fields (for mms tests)
-                  element debugging_options{
-                     ## output fields for each of the source terms in the k-epsilon model
-                     element source_term_output_fields{
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentKineticEnergy_production_term" },
-                           element diagnostic {
-                              internal_algorithm,
-                              velocity_mesh_choice,
-                              diagnostic_scalar_field                        
-                           }
-                        }?,
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentKineticEnergy_destruction_term" },
-                           element diagnostic {
-                              internal_algorithm,
-                              velocity_mesh_choice,
-                              diagnostic_scalar_field                        
-                           }
-                        }?,
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentKineticEnergy_buoyancy_term" },
-                           element diagnostic {
-                              internal_algorithm,
-                              velocity_mesh_choice,
-                              diagnostic_scalar_field                        
-                           }
-                        }?,
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentDissipation_production_term" },
-                           element diagnostic {
-                              internal_algorithm,
-                              velocity_mesh_choice,
-                              diagnostic_scalar_field                        
-                           }
-                        }?,
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentDissipation_destruction_term" },
-                           element diagnostic {
-                              internal_algorithm,
-                              velocity_mesh_choice,
-                              diagnostic_scalar_field                        
-                           }
-                        }?,
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentDissipation_buoyancy_term" },
-                           element diagnostic {
-                              internal_algorithm,
-                              velocity_mesh_choice,
-                              diagnostic_scalar_field                        
-                           }
-                        }?
-                     },
-                     ## Enable to apply prescribed source terms into the k and epsilon equations.
-                     ## This is useful for MMS tests
-                     element prescribed_source_terms{
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentKineticEnergyPrescribedSource" },
-                           element prescribed {
-                              velocity_mesh_choice,
-                              prescribed_scalar_field                        
-                           }
-                        }?,
-                        element scalar_field {
-                           attribute rank { "0" },
-                           attribute name { "TurbulentDissipationPrescribedSource" },
-                           element prescribed {
-                              velocity_mesh_choice,
-                              prescribed_scalar_field                        
-                           }
-                        }?
-                     },
-                     ## enabling this option disables the production term in the k and epsilon equations
-                     element disable_production_term{ empty }?,
-                     ## enabling this option disables the destruction term in the k and epsilon equation
-                     element disable_destruction_term{ empty }?,
-                     ## enabling this option disables the bouyancy term in the k and epsilon equation
-                     element disable_buoyancy_term{ empty }?,
-                     ## enabling this option enables the low-Re number damping functions regardless of whether there is
-                     ## a low-Re boundary condition
-                     element enable_lowRe_damping{ empty }?,
-                     ## Enabling this option disables feedback from the k-epsilon model back into 
-                     ## the rest of the model. Reynolds stress tensor is set to zero by zeroing 
-                     ## EddyViscosity and the added source term, based on k, in the momentum equation.
-                     ## Hence, Viscosity will always stay as the BackgroundViscosity,
-                     ## diffusivities will remain at the relevant BackgroundDiffusivity, and the 
-                     ## momentum equation will be as if there were no turbulence model present. 
-                     ## 
-                     ## ScalarEddyViscosity is still calculated as normal.
-                     element zero_reynolds_stress_tensor{ empty }?
-                  }?
-               }?
-            }?,
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            ### ## Equation of State
+            ###equation_of_state?,
 
             ## Pressure
             element scalar_field {
@@ -1574,27 +297,6 @@ start =
                   element aliased {
                      attribute material_phase_name { xsd:string },
                      attribute field_name {"Pressure" }
-                  }
-               )
-            }?,
-            ## Density
-            element scalar_field {
-               attribute rank { "0" },
-               attribute name { "Density" },
-               ## Field type
-               (
-                  element diagnostic {
-                     internal_algorithm,
-                     velocity_mesh_choice,
-                     diagnostic_scalar_field
-                  }|
-                  element prognostic {
-                     pressure_mesh_choice,
-                     prognostic_density_field
-                  }|
-                  element aliased {
-                     attribute material_phase_name { xsd:string },
-                     attribute field_name {"Density" }
                   }
                )
             }?,
@@ -1663,100 +365,7 @@ start =
                         )
                      }
                 }?
-                }?,
-		## Mark phase as being the continuous phase in dispersed fluid-fluid flow
-		element continuous_phase {
-		     comment
-		}?,
-		(
-		   element drag {
-		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
-			 attribute name { "Linear" },
-			 element diameter {real},
-			 element coefficient{real},
-			 comment
-		   }|
-		    element drag {
-		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
-			 attribute name { "Bilinear" },
-			 element diameter {real},
-			 element coefficient{real},
-			 comment
-		   }|
-		   element drag {
-		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
-			 attribute name { "Quadratic" },
-			 element diameter {real},
-			 element coefficient{real},
-			 comment
-		   }|element drag {
-		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
-			 attribute name { "Wen&Yu" },
-			 element diameter {real},
-			 element specified_continuum_viscosity{
-			 ## Specify a value for the continuum_phase_viscosity to be used in calculating the drag term. If this is not set, the code defaaults to using the actual viscosity field specfied in the description continuum phase
-			 real
-			 }?,
-			 comment
-		   }|element drag {
-		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
-			 attribute name { "Gidaspow" },
-			 element diameter {real},
-			 element coefficient{real},
-			 comment
-			  }|element drag {
-		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
-			 attribute name { "SmoothedGidaspow" },
-			 element diameter {real},
-			 element specified_continuum_viscosity{
-			 ## Specify a value for the continuum_phase_viscosity to be used in calculating the drag term. If this is not set, the code defaaults to using the actual viscosity field specfied in the description continuum phase
-			 real
-			 }?,
-			 comment
-		   }|element drag {
-		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
-			 attribute name { "python_function" },
-			 element function {
-	 		 	  python_code
-		         },	  			  
-			element argument {
-			    attribute name { xsd:string },
-	    		(
-	    		element type {
-	      	   	    attribute name { "scalar_field"}
-	    		}|
-	    		element type {
-	      	   	    attribute name { "vector_field"}
-            		}|
-            		element type {	
-                   	    attribute name { "tensor_field"}
-	    		}),
-	    		element material_phase {
-		   	   attribute name {xsd:string}
-			}?
-	    		}+,
-			comment
-			}
-	       )?,
-	       ## apply fluidic drag to polydispersed phase interactions
-	       element polydispersive_drag {
-	       	  element lubrication_distace {real} ,
-		  comment
-	       }?,
-	       ## Apply additional solid-solid interactions in polydispersed solid-fluid flow
-	       element solid_solid_interactions {
-	            ## Turns on Syamlal (1987) closure 	 	  			 
-	            element closure {
-		        attribute name {"Syamlal"},
-		        element coefficient_of_friction {real},
-			element radial_distribution_function {
-			     attribute name {"Lebowitz"},
-			     comment
-			},	
-		    	comment}?,
-		    comment
-	       }?,
-	       element coarse_graining {integer}?,	      
+                }?,	      
                ## Option for capillary pressure				 
                element capillary_pressure {
             ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
@@ -1914,266 +523,10 @@ start =
                   element phase_exclude{ integer }
                }?
             }?
-         }?,
-        ## Fracking options
-         element femdem_fracture {
-         (
-            ## Specify FEMDEM input file
-            element femdem_file {
-               attribute name { xsd:string }
-            }?,
-	    element oneway_coupling_only {
-	       attribute rank {"0"},
-               ("1way"|"p2way")
-	    }?,
-            element include_pore_pressure {
-               empty
-	    }?
-         )
-         }?,
-         ## Blasting options
-         element blasting {
-            ## Specify FEMDEM input file
-            element femdem_input_file {
-               attribute name { xsd:string }
-            },
-            element Gidaspow_model {
-               attribute rank {"0"},
-               ("A"|"B")
-            },
-            ## =1 treats the solid-fluid coupling implicitly in continuity.
-            ## =0 assumes the continuity for the solid is already satified.
-            ## Recommended value: [0.5,1.0]. Default =1.
-            element theta_cty_solid {
-               real
-            }?,
-            element include_viscous_drag_force {
-               empty
-            }?
-         }?,
-         ## Flooding parameters
-            element flooding{
-             ## This is the term Nm of the manning formula:
-             ## b = Nm^2*g * |u|/h^1.33; 
-             ## Nm is the manning coefficent. Values between [0.01 and 0.025];
-             ## Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
-             ## For no friction set this to zero or do not activate it.
-                 element scalar_field {
-                    attribute name { "manning_coef" },
-                    (
-                       element prescribed {
-                          material_mesh_choice,
-                          prescribed_scalar_field
-              }
-                    )
-                 },
-               ##Perform the mean of the bathymetry when calculating the Manning formula;
-               element averaging {
-               comment
-            }?,
-               ##Factor that controls the strenght of the drag introduced in the dry areas;
-               ## it has a simmilar effect as the artificial diffusion. Default value = 1e-1.
-               element shallow_drag {
-               real
-            }?
-         }?,
-         ## numerical_methods options
-         element numerical_methods {
-            ## Use a method to avoid distortion due to boundaries
-            element use_reflect_method {
-               empty
-            }?,     
-            ## Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
-            ## Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.
-            element local_upwinding {
-               empty
-            }?,     
-            ## Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
-            ## This is os by default for the CV pressure formulation 
-            element simple_mass_matrix {
-               empty
-            }?,  
-            ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
-            ## the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
-            ## The default value for P1DGP1 => 1e4 and disabled for other element types.
-            ## To disable it manually, set it to negative values. 
-            element CV_press_homogenisation {
-               real
-            }?,
-            ## Look for bad elements to change its anisotropic permeability to improve their quality
-            element Bad_element_fix {
-          ## Select angle considered too large (degrees) 
-	  ## Default is 177
-          element Angle{real}?,
-          ## What Kv/Kh ratio to use to artifically stretch element
-          ## Default is 0.01
-          element KvKh_ratio{real}?
-	    }?,
-            ## Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method
-            element create_P_mat_fast {
-               empty
-            }?
          }?
       }
    )
 
-prognostic_density_field =
-   (
-      scalar_equation_choice?,
-      ## Spatial discretisation options
-      element spatial_discretisation {
-         (
-            ## Continuous Galerkin formulation.
-            element continuous_galerkin {
-               advection_stabilisation_options,
-               ## Discretisation options for the advection terms.
-               element advection_terms {
-                  ## Integrate the advection terms of the momentum equation by
-                  ## parts.
-                  element integrate_advection_by_parts {
-                     comment
-                  }?
-               },
-               ## Discretisation options for the mass terms.
-               element mass_terms {
-                  ## Lump the mass matrix
-                  element lump_mass_matrix {
-                     empty
-                  }?
-               },
-               comment
-            }|
-            ## Use a control volume discretisation.
-            element control_volumes {
-              spatial_control_volume_options
-            }
-         ),
-         ## Conservative discretisation of field advection equation
-         ##  TBETA=1. -- conservative (divergence form)
-         ##  TBETA=0. -- non-conservative
-         ##  0. < TBETA < 1.
-         element conservative_advection {
-           real
-         }
-      },
-      element temporal_discretisation {
-         ## Implicit/explicit control (TTHETA)
-         ##  =0.  -- explicit
-         ##  =0.5 -- Crank-Nicholson
-         ##  =1.  -- implicit
-         element theta {
-            real
-         },
-         temporal_control_volume_options?
-      },
-      (
-         ## Solver
-         element solver {
-            linear_solver_options_asym
-         }|
-         ## Assume this field is being solved explicitly and skip the solver.
-         ##
-         ## ONLY AVAILABLE FOR PURE CONTROL VOLUME SPATIAL DISCRETISATIONS.
-         ##
-         ## Assumes lhs matrix only has diagonal lumped mass (times
-         ## density if appropriate for equation)
-         ## and divides the rhs by this.
-         element explicit {
-            empty
-         }
-      )?,
-      (
-         ## Initial condition for WholeMesh
-         ##
-         ## Only specify one condition if not using mesh regions.
-         ## Otherwise select other initial_condition option, specify region_ids
-         ## and distinct names.  Then add extra intial conditions for other regions.
-         element initial_condition {
-            attribute name { "WholeMesh" },
-            input_choice_initial_condition_real
-         }|
-         ## Multiple initial_conditions are allowed if specifying
-         ## different values in different
-         ## regions of the mesh (defined by region_ids).  In this case
-         ## each initial_condition
-         ## requires a distinct name for the options dictionary.
-         element initial_condition {
-            attribute name { string },
-            region_ids?,
-            input_choice_initial_condition_real
-         }
-      )+,
-      ## Boundary conditions
-      element boundary_conditions {
-         attribute name { string },
-         ## Surface id:
-         element surface_ids {
-            integer_vector
-         },
-         ## Type
-         (
-            element type {
-               attribute name { "dirichlet" },
-               ## Apply the dirichlet bc weakly.  Available
-               ## automatically with discontinuous_galerkin,
-               ## and control_volume spatial_discretisations.
-               ## If not selected boundary conditions are applied strongly.
-               element apply_weakly {
-                  ## If the initial condition and boundary conditions
-                  ## differ, setting this option will cause the initial
-                  ## condition on the boundary to be overwritten with
-                  ## the boundary condition. Since you are applying the
-                  ## boundary condition weakly, you probably do *not*
-                  ## want this.
-                  element boundary_overwrites_initial_condition {
-                     empty
-                  }?
-               },
-               input_choice_real
-            }
-         )
-      }*,
-      ## source term
-      element scalar_field {
-         attribute name { "Source" },
-         attribute rank { "0" },
-         (
-            element prescribed {
-               prescribed_scalar_field_no_adapt,
-               recalculation_options?
-            }|
-            ## This only works for traffic modelling
-            element diagnostic {
-              internal_algorithm,
-              diagnostic_scalar_field_no_adapt
-            } 
-         )
-      }?,
-      ## Absorption term
-      element scalar_field {
-         attribute name { "Absorption" },
-         attribute rank { "0" },
-         element prescribed {
-            prescribed_scalar_field_no_adapt
-         }
-      }?,
-      prognostic_scalar_output_options,
-      prognostic_scalar_stat_options,
-      scalar_convergence_options,
-      prognostic_detector_options,
-      scalar_steady_state_options,
-      adaptivity_options_prognostic_scalar_field,
-      interpolation_algorithm_scalar,
-      discrete_properties_algorithm_scalar?,
-      ## Set the priority of this field
-      ## This determines the order in which scalar_fields are solved for:
-      ##  - higher numbers have the highest priority
-      ##  - lower numbers (including negative) have the lowest priority
-      ##  - default if not set is 0
-      element priority {
-         integer
-      }?
-   )
 
 geometry = 
    (
@@ -2192,64 +545,21 @@ geometry =
             attribute name { "CoordinateMesh" },
             mesh_info
          },
-         ## The velocity mesh
-         element mesh {
-            attribute name { "VelocityMesh" },
-            mesh_info
-         }?,
-         ## The pressure mesh
-         element mesh {
-            attribute name { "PressureMesh" },
-            mesh_info
-         }?,
-         element mesh {
-            attribute name { xsd:string },
-            mesh_info,
-            element exclude_from_mesh_adaptivity{empty}?
-         }*,
-         ## Quadrature
-         element quadrature {
-            ## Quadrature degree
-            ## 
-            ## note: this specifies the degree of quadrature,
-            ## not the number of gauss points
-            element degree {
-               integer
-            },
-#            ## Surface quadrature degree
-#            ## 
-#            ## note: this specifies the degree of surface
-#            ## quadrature not the number of surface gauss points
-#            element surface_degree {
-#               integer
-#            }?,
-#            ## Sets the degree of quadrature on each quadrilateral
-#            ## face of the control volume. 
-#            ##
-#            ## Defaults to 1 if
-#            ## unselected which is the same as pre-new options
-#            ## behaviour.
-#            element controlvolume_surface_degree {
-#               integer
-#            }?,
-#            ## Select which family of quadrature rules to use.
-#            ## The default is family_cools.
-#            ## family_wandzura allows for degree up to 30
-#            ## on triangular meshes.
-#            ## family_grundmann_moeller allows for degree up to
-#            ## 29 on simplicial meshes in arbitrary dimension.
-            element quadrature_family {
-               element string_value {
-                  ( "family_cools" | "family_grundmann_moeller" | "family_wandzura" ) 
-               }
-            }?
-         },
-        ## Use Fluidity to overwrite the input .msh file into a binary .msh file. 
-        ##
-        ## Useful to convert your ASCII msh files into binary to be able to decompose the mesh.
-        element create_binary_msh {
-           empty
-        }? 
+
+           ## Selects the quality configuration of the experiment
+           ##
+           ## Fast => Element pair = P0DGP1CV. Upwinding and implicit Euler; 
+           ##
+           ## Medium (recommended) => Element pair = P0DGP1CV. Local decision whether upwinding or high order advection scheme and adaptive theta; 
+           ##
+           ## Quality => Element pair = P1DGP2CV. High order advection scheme and adaptive theta
+           ##
+           ## discontinuous_pressure => P2DGP1DG. High order advection scheme and adaptive theta
+            element simulation_quality {
+              element string_value{
+                 "fast" | "medium" | "quality"|"discontinuous_pressure"
+              }
+            }
       }
    )
 
@@ -2257,7 +567,6 @@ geometry =
 # Default child of diagnostic scalar field
 diagnostic_scalar_field =
    (
-      diagnostic_output_options,
       diagnostic_scalar_stat_options,
       scalar_convergence_options,
       diagnostic_detector_options,
@@ -2270,7 +579,6 @@ diagnostic_scalar_field =
 # Default child of diagnostic scalar field without adaptivity options
 diagnostic_scalar_field_no_adapt =
    (
-      diagnostic_output_options,
       diagnostic_scalar_stat_options,
       diagnostic_detector_options
    )
@@ -2280,7 +588,6 @@ diagnostic_scalar_field_no_adapt =
 # options that are general to all diagnostic vector fields
 diagnostic_vector_field =
    (
-      diagnostic_output_options,
       diagnostic_vector_stat_options,
       vector_convergence_options,      
       diagnostic_detector_options,
@@ -2295,7 +602,6 @@ diagnostic_vector_field =
 # options that are general to all diagnostic tensor fields
 diagnostic_tensor_field =
    (
-      diagnostic_output_options,
       diagnostic_tensor_stat_options,
       adaptivity_options_tensor_field,
       interpolation_algorithm_vector?
@@ -2315,7 +621,6 @@ diagnostic_cv_gradient_vector_field =
       element normalise {
         empty
       }?,
-      diagnostic_output_options,
       diagnostic_vector_stat_options,
       vector_convergence_options,
       diagnostic_detector_options,
@@ -2329,7 +634,6 @@ diagnostic_gradient_vector_field =
       element solver {
          linear_solver_options_sym
       },
-      diagnostic_output_options,
       diagnostic_vector_stat_options,
       vector_convergence_options,
       diagnostic_detector_options,
@@ -2340,7 +644,6 @@ diagnostic_gradient_vector_field =
 diagnostic_cv_divergence_scalar_field =
    (
       # No solver options because it can be solved directly!
-      diagnostic_output_options,
       diagnostic_scalar_stat_options,
       scalar_convergence_options,
       diagnostic_detector_options,
@@ -2354,7 +657,6 @@ diagnostic_fe_divergence_scalar_field =
       element solver {
          linear_solver_options_sym
       },
-      diagnostic_output_options,
       diagnostic_scalar_stat_options,
       scalar_convergence_options,
       diagnostic_detector_options,
@@ -2696,127 +998,7 @@ velocity_boundary_conditions =
       )
    )
    
-# Output options for prognostic fields
-prognostic_scalar_output_options =
-   (
-      ## Specify what is written to vtu dump files.
-      element output {
-         ## Exclude this field from dump files.
-         element exclude_from_vtu {
-            empty
-         }?,
-         ## Select this option to also write the values of this field
-         ## on the previous timestep.
-         ## (included under the name: Old<field_name> )
-         element include_previous_time_step {
-            empty
-         }?,
-         ## Select this option to also write the values of this field
-         ## used in the nonlinear iteration.
-         ## (included under the name: Nonlinear<field_name> )
-         element include_nonlinear_field {
-            empty
-         }?,
-         ## Output a file details the convergence (or otherwise) of
-         ## this field with every advective nonlinear
-         ## iteration.
-         ## ONLY WORKS FOR PURE CONTROL VOLUME DISCRETISATIONS.
-         element convergence_file {
-            comment
-         }?
-      }
-   )
-
-# Output options for pressure (can't have a convergence file)
-pressure_output_options =
-   (
-      ## Specify what is written to vtu dump files.
-      element output {
-         ## Exclude this field from dump files.
-         element exclude_from_vtu {
-            empty
-         }?,
-         ## Select this option to also write the values of this field
-         ## on the previous timestep.
-         ## (included under the name: Old<field_name> )
-         element include_previous_time_step {
-            empty
-         }?,
-         ## Select this option to also write the values of this field
-         ## used in the nonlinear iteration.
-         ## (included under the name: Nonlinear<field_name> )
-         element include_nonlinear_field {
-            empty
-         }?,
-         ## Write out some extra debugging vtu files that can be used
-         ## to analyse what goes on in the pressure projection steps.
-         ## WARNING: this may create a huge amount of vtu files, as 
-         ## multiple files are written per nonlinear iteration.
-         element debugging_vtus {
-            empty
-         }?
-      }
-   )
-
-# Output options for prognostic fields
-prognostic_vector_output_options =
-   (
-      ## Specify what is written to dump files.
-      element output {
-         ## Exclude this field from dump files.
-         element exclude_from_vtu {
-            empty
-         }?,
-         ## Select this option to also write the values of this field
-         ## on the previous timestep.
-         ## (included under the name: Old<field_name> )
-         element include_previous_time_step {
-            empty
-         }?,
-         ## Select this option to also write the values of this field
-         ## used in the nonlinear iteration.
-         ## (included under the name: Nonlinear<field_name> )
-         element include_nonlinear_field {
-            empty
-         }?
-      }
-   )
    
-# Field output options for all other fields
-field_output_options =
-   (
-      ## Specify what is written to dump files.
-      element output {
-         ## Exclude this field from dump files.
-         element exclude_from_vtu {
-            comment
-         }?,
-         ## To be used with time-averaged diagnostic fields so that they can be checkpointed.
-         element checkpoint {
-            empty
-         }?
-      }
-   )
-field_output_options_disabled =
-   (
-      ## Specify what is written to vtu dump files.
-      element output {
-         (
-            ## Exclude this field from dump files.
-            element exclude_from_vtu {
-               comment
-            }|
-            ## Include this field in dump files.
-            element include_in_vtu {
-               comment
-            }
-         )
-      }
-   )
-   
-diagnostic_output_options = field_output_options
-prescribed_output_options = field_output_options
-
 # Options for inclusion/exclusion of standard field statistics from the .stat
 # file
 include_stat =
@@ -3163,16 +1345,16 @@ scalar_field_choice =
             ## Field type
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prognostic_scalar_field
                }|
                element prescribed {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prescribed_scalar_field
                }|
                element diagnostic {
                   scalar_diagnostic_algorithms,
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   diagnostic_scalar_field
                }|
                element aliased {
@@ -3189,58 +1371,11 @@ scalar_field_choice =
 # -- First is a list of fields that are primarily prognostic,
 #    but can be set to prescribed, or aliased...
 # -- The list is in order of most frequently used.
-
-         ## Salinity
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "Salinity" },
-            (
-               element prognostic {
-                  velocity_mesh_choice,
-                  prognostic_scalar_field
-               }|
-               element prescribed {
-                  velocity_mesh_choice,
-                  prescribed_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
+         
          ## Temperature
          element scalar_field {
             attribute rank { "0" },
             attribute name { "Temperature" },
-            (
-               element prognostic {
-                  velocity_mesh_choice,
-                  prognostic_scalar_field
-               }|
-               element prescribed {
-                  velocity_mesh_choice,
-                  prescribed_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Background Temperature
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "BackgroundTemperature" },
-            (
-               element prescribed {
-                  velocity_mesh_choice,
-                  prescribed_scalar_field
-               }
-            )
-         }|
-         ## Passive Tracer
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "Tracer" },
             (
                element prognostic {
                   velocity_mesh_choice,
@@ -3273,20 +1408,7 @@ scalar_field_choice =
                   prognostic_scalar_field
                }
             )
-         }|
-         ## Calculate the stream function of 2D incompressible flow. Note 
-         ## that this *only* makes sense for proper 2D (not pseudo-2D) simulations.
-         ## Requires a continuous mesh.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "StreamFunction" },
-            (
-               element prognostic {
-                  mesh_choice,
-                  prognostic_stream_function_field
-               }
-            )
-         }|
+         }|         
          ## PhaseVolumeFraction
          ## Required in porous_media and multiphase problem types
          element scalar_field {
@@ -3294,7 +1416,7 @@ scalar_field_choice =
             attribute name { "PhaseVolumeFraction" },
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -3325,8 +1447,9 @@ scalar_field_choice =
             attribute material_phase_name { xsd:string },
             (
                element prognostic {
-                  velocity_mesh_choice,
-                  equation_of_state,
+                  pressure_mesh_choice,
+                  ###equation_of_state,
+                  phase_density,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -3358,7 +1481,8 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  equation_of_state,
+                  ###equation_of_state,
+                  phase_density,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -3390,7 +1514,8 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  equation_of_state,
+                  ###equation_of_state,
+                  phase_density,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -3419,7 +1544,8 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  equation_of_state,
+                  ###equation_of_state,
+		  phase_density,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -4651,7 +2777,8 @@ limiter_options =
             sweby_limiter|
             ultimate_limiter|
 	    extrema_limiter|
-            compressive_advection_limiter
+            compressive_advection_limiter|
+            ENO_advection
           )
         }|
         ## Do not limit the face value
@@ -5035,159 +3162,15 @@ surface_integral_stats_vector.surface_integral &=
       attribute type { "normal" }
    )
 
-recalculation_options =
-   (
-      ## Prevent this field from being recalculated at every timestep.
-      ## This is cheaper especially if you are enforcing discrete properties on the field.
-      element do_not_recalculate {
-        empty
-      }
-   )
 
-discrete_properties_algorithm_scalar =
-   (
-      ## Select discrete properties to enforce on the field
-      ## either after being prescribed or interpolated
-      element enforce_discrete_properties {
-        ## Update this field using the lagrangian multiplier
-        ## calculated in the solenoidal projection of a
-        ## scalar field.
-        ##
-        ## Note this field must be specified as the update field
-        ## underneath that vector field too.
-        ##
-        ## Note also this only really makes sense for coupled
-        ## fields like velocity and pressure.
-        element solenoidal_lagrange_update {
-          empty
-        }?
-      }
-   )
-
-discrete_properties_algorithm_vector =
-   (
-      ## Select discrete properties to enforce on the field
-      ## either after being prescribed or interpolated
-      element enforce_discrete_properties {
-        solenoidal_options?
-      }
-   )
-
-solenoidal_options =
-    ## Constrained divergence-free projection.
-    ## This adds an additional constraint that ensures that the field
-    ## is solenoidal, i.e. divergence-free.
-    ## This is equivalent in cost to a pressure solve.
-    ## This is expensive, and thus best left until
-    ## needed.
-    ##
-    ## Note well: this only makes sense for nondivergent
-    ## vector fields, such as incompressible velocity!
-    element solenoidal {
-      ## Options for the mass matrix of the field being interpolated
-      element interpolated_field {
-        (
-          element continuous {
-            ## Lump the mass matrix for the assembly of the projection matrix
-            ## (not for the initial galerkin projection)
-            ##
-            ## Required when using interpolating continuous fields
-            element lump_mass_matrix {
-              ## Lump on the submesh.
-              ## This only works for simplex meshes and is only
-              ## strictly valid on 2d meshes.
-              element use_submesh {
-                empty
-              }?
-            }
-          }|
-          element discontinuous {
-            ## Lump the mass matrix for the assembly of the projection matrix
-            ## (not for the initial galerkin projection)
-            element lump_mass_matrix {
-              empty
-            }?
-          }
+phase_density = 
+	(
+## Specify the density of the current material phase (can also specify density for each component)
+        element Density {
+            real
+         }?
         )
-      },
-      ## Options for the lagrange multiplier
-      ##
-      ## Must be on a continuous mesh!
-      element lagrange_multiplier {
-        pressure_mesh_choice,
-        element spatial_discretisation {
-          (
-            element continuous_galerkin {
-              ## Remove the stabilisation term from the projection operator.
-              ##
-              ## Automatic when not using P1P1.
-              element remove_stabilisation_term {
-                empty
-              }?,
-              ## Integrate the divergence operator by parts.
-              ##
-              ## Automatic when projecting a discontinuous field
-              element integrate_divergence_by_parts {
-                empty
-              }?
-            }|
-            element control_volumes {
-              empty
-            }
-          )
-        },
-        element reference_node {
-          integer
-        }?,
-        ## **UNDER DEVELOPMENT**
-        ## This searches the CMC matrix diagonal looking for nodes that are less than the maximum value time epsilon(0.0) (i.e. nodes that are effectively zero).
-        ## It then zeros that row and column and places a one on the diagonal and a zero on the rhs.
-        ## At a debug level of 2 it also prints out the value and the sum of the row values.
-        ## This is useful as a debugging tool if PETSc complains about zeros on the diagonal (i.e. if you have a stiff node in your mesh) but doesn't necessary produce nice answers at the end.
-        element repair_stiff_nodes {
-           empty
-        }?,
-        (
-          ## Update a scalar field using the lagrange multiplier from
-          ## the divergence free projection of this field.  The selected
-          ## scalar field must have solenoidal selected in its interpolation
-          ## options too and it must be on the same mesh as used for the
-          ## solenoidal projection above.
-          ##
-          ## Note well: this only really makes sense for scalar fields linked to nondivergent
-          ## vector fields, such as pressure to incompressible velocity!                  
-          element update_scalar_field {
-            attribute name { "Pressure" },
-            empty
-          }|
-          ## Update a scalar field using the lagrange multiplier from
-          ## the divergence free projection of this field.  The selected
-          ## scalar field must have solenoidal selected in its interpolation
-          ## options too and it must be on the same mesh as used for the
-          ## solenoidal projection above.
-          ##
-          ## Note well: this only really makes sense for scalar fields linked to nondivergent
-          ## vector fields, such as pressure to incompressible velocity!                  
-          element update_scalar_field {
-            attribute name { string },
-            empty
-          }
-        )?,
-        ## Solver options for the linear solve.
-        ## This method requires the inversion of a projection matrix.
-        element solver {
-          linear_solver_options_sym
-        }
-      }
-    }
 
-represcribe_before_interpolation =
-    ## Represcribe the field before interpolation.
-    ##
-    ## This means the interpolation will not be conservative from the previous mesh so be careful what you're trying to achieve!
-    element represcribe_before_interpolation {
-      empty
-    } 
 
 equation_of_state =
                (
@@ -5198,236 +3181,18 @@ element equation_of_state{
                      ## Equations of state
                      element incompressible {
                         (
-                           ## Incompressible linear equation of state
-                           ## 
-                           ## (DEN = EOS_COEFS( 1 ) + EOS_COEFS( 2 ) * P + EOS_COEFS( 3 ) * T + EOS_COEFS( 4 ) * P * T
-                           ## + EOS_COEFS( 5 ) * ( P **2 )     + EOS_COEFS( 6 ) * ( T **2 ) + EOS_COEFS( 7 ) * ( P **2 ) * T 
-                           ## + EOS_COEFS( 8 ) * P * ( T **2 ) + EOS_COEFS( 9 ) * (( P * T ) **2 )
                            element linear {
                               (
                                  ## All eos_coefficients equal as in most of
                                  ## the test cases (=1)
                                  element all_equal {
                                     real
-                                 }|
-                                 ## Specify the coefficients separately
-                                 ## There should probably be at least 9
-                                 ## see multi_eos.F90 lines 132-140
-                                 element specify_all {
-                                       element number_of_ccefficients{ real },
-                                       element coefficients{ real_vector }
                                  }
-                              ),
-                              ## The reference or background density
-                              element reference_density {
-                                 real
-                              }?,
-                              ## Enable to add temperature dependency
-                              ## to the equation of state.
-                              element temperature_dependency {
-                                 ## The reference or background
-                                 ## temperature (actual temperature =
-                                 ## calculated temperature plus this
-                                 ## value).
-                                 element reference_temperature {
-                                    real
-                                 },
-                                 ## The thermal expansion coefficient
-                                 element thermal_expansion_coefficient {
-                                    real
-                                 }
-                              }?,
-                              ## Enable to add salinity dependency to
-                              ## the equation of state.
-                              element salinity_dependency {
-                                 ## The reference or background
-                                 ## salinity (actual salinity =
-                                 ## calculated salinity plus this
-                                 ## value).
-                                 element reference_salinity {
-                                    real
-                                 },
-                                 ## The haline contraction coefficient
-                                 element saline_contraction_coefficient {
-                                    real
-                                 }
-                              }?,
-                              ## Enable this option to subtract out
-                              ## the hydrostatic level
-                              element subtract_out_hydrostatic_level {
-                                 empty
-                              }?
+                              )
                            }
                         )
-                     }|
-                     ## Equations of state for compressible applications
-                     element compressible {
-                        ## Stiffened Gas EoS
-                        ##
-                        ## Used with compressible simulations
-                        ##
-                        ## DEN = ( P + EOS_COEFS( 1 )) * EOS_COEFS( 2 ) / T
-                        element stiffened_gas {
-                           element eos_option1 { real },
-                           element eos_option2 { real },
-                           ## reference uncompressed density
-                           ##
-                           ## if activated then either Liquid EoS or
-                           ## full Stiffened Gas EoS
-                           element reference_density {
-                              real
-                           }?,
-                           ## Ratio of specific heats at constant
-                           ## pressure to that at constant volume
-                           ##
-                           ## Requires an energy field.
-                           ## If activated then a full Stiffened Gas EoS 
-                           element ratio_specific_heats {
-                              real
-                           }?,
-                           ## bulk_sound_speed_squared = isothermal_bulk_modulus/reference_density
-                           ##
-                           ## if activated then either full or partial Liquid EoS or full
-                           ## Stiffened Gas EoS
-                           element bulk_sound_speed_squared {
-                              real
-                           }?
-                        }|
-
-                  
-                        ## Jones-Wilkins-Lee equation of state for explosives (JWL-equation)
-                        ##
-                        ## Used with compressible simulations
-                        ## 
-                        ## P=A*(1-w/(R1*V))*exp(-R1*V)+B*(1-w/(R2*V))*exp(-R2/V)+w*E0/V;
-                        ##
-                        ## The ratio V =roe/ro is defined by using roe = density of the explosive (solid part) and ro = density of the detonation products.
-
-                        element JWL_equation {
-                           element density_of_explosive_roe { real },
-                           element A { real },
-                           element B { real },
-                           element R1 { real },
-                           element R2 { real },
-                           element E0 { real },
-                           element w { real }
-                        }|
-
-
-                        ## Exponential EOS (SPE 102542)
-                        ##
-                        ## DEN = DEN_REF * EXP( COMPRES_FACTOR * ( P_oil * P_oil_ref ))
-                        ##
-                        element exponential_oil_gas {
-                           element compressibility { 
-                              real 
-                           }?,
-                           element reference_density {
-                              real
-                           }?
-                        }|
-                        ## Linear in Pressure EOS 
-                        ##
-                        ## DEN = A * P + B
-                        ##
-                        ## Use this option for flooding, being A = 1/gravity and B the bathymetry
-                        element linear_in_pressure {
-                           element coefficient_A { 
-                              real 
-                           },
-                           element coefficient_B {
-                            (
-                                 ## list of bin bounds
-                                 element constant { 
-                                     real
-                                 }|
-                                ## Python function prescribing real input. Functions should be of the form:
-                                ##    def val(X, t):
-                                ##    # Function code
-                                ##    return # Return value
-                                ##
-                                ##    where X is a tuple of length geometry dimension.
-                                 element python {
-                                     python_code
-                                   }
-                              )
-                           },
-                           ## If chosen: DEN = A * P / T + B
-                           element include_internal_energy {
-                              empty
-                           }?
-                        }|
-                        ## Exponential in Pressure EOS 
-                        ##
-                        ## DEN = A * P ^ B
-                        ##
-                        element exponential_in_pressure {
-                           element coefficient_A { 
-                              real 
-                           },
-                           element coefficient_B {
-                              real
-                           }
-                        }
-                     }|
-                     ## The "Dummy" diagnotic field on the pressure mesh is required for this option
-                     element python_state{
-                       scalar_python_diagnostic_algorithm
                      }
-}
-                  )
-               )
 
-rheology =
-   (
-      (
-         ## Specify rheologival model for this materal
-         element rheology{
-	    (
-	       ## Newtonian material with single coefficient of viscosity
-               element newtonian {
-		  element tensor_field {
-		     attribute name { "Viscosity" },
-		      element prescribed {
-		        velocity_mesh_choice,
-			prescribed_values_tensor_field,
-		        prescribed_output_options
-                     }
-                  }
-	       }  |
-	       	  ## Models including power law and Herschel-Bulkley	
-               element non_newtonian {
-    	          attribute name { "ShearDependent"},
-		  element yield_stress { real }?,
-		  element exponent { real },
-		  element consistency_index { real },
-		  element tolerance { real }?,
-		  element lower_bound { real }?,
-		  element upper_bound { real }?,
-		  element tensor_field {
-		     attribute name { "Viscosity" },
-		     element diagnostic {
-		        velocity_mesh_choice,
-		        prescribed_output_options
-                     }
-                  }
-	       } |
-               element non_newtonian {	
-    	          attribute name { "Carreau"},
-		  element viscosity_at_zero_shear { real },
-		  element viscosity_at_infinite_shear { real }?,
-		  element relaxation_time { real },	
-		  element exponent { real },
-		  element tensor_field {
-		     attribute name { "Viscosity" },
-		     element diagnostic {
-		        velocity_mesh_choice,
-		        prescribed_output_options
-                     }
-                  }
-
-               } 
-             )
          }
 )
 )
