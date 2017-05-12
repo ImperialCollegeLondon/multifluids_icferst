@@ -1104,12 +1104,17 @@ end if
 
         !Allocation of storable matrices
         if (.not.Mmat%Stored) then
-             if (Mmat%CV_pressure) then
+            if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
             else!allocate C
                 allocate(Mmat%C(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C = 0.
             end if
-            allocate( Mmat%PIVIT_MAT( Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0
+            if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix
+                    !sprint_to_do for this to work with wells we need to change the sparsity, but that still needs to be done!
+                allocate( Mmat%PIVIT_MAT( 1, 1, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0
+            else
+                allocate( Mmat%PIVIT_MAT( Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0
+            end if
         end if
 
         !If it is not porous media or there are more than one pressure, PIVIT_MAT needs to be recalculated, hence we set it to zero

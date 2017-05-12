@@ -1346,21 +1346,6 @@ contains
                             Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
                             Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
                             Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
-    !METHOD TO FIND NEIGHBOURS USING FLUIDITY'S SUBROUTINES
-!do count = 1, size(CV_funs%cvfem_on_face,1)
-!    if(.not.CV_funs%cvfem_on_face( count, GI )) exit
-!end do
-!CVPressure => extract_tensor_field( packed_state, "PackedFEPressure" )
-!ele2 = max(ele_neigh(CVPressure%mesh, ele, count),0)!because we consider ==0 if not found, that could be changed easily
-!    !I need to be able to get rid of ndgln%xu to get P0DG working! It seems I can do directly
-!next step is to implement the P0DG shape functions!
-!if (sum(U_OTHER_LOC)/=0)print *, ELE, ELE2, U_OTHER_LOC!IS U_OTHER_LOC ALWAYS == 0????????
-!in other part of the code
-! IF( Mdims%xu_nloc == 1 ) THEN ! For constant vel basis functions...
-! U_ILOC_OTHER_SIDE( 1 ) = 1
-! U_OTHER_LOC( 1 )= 1
-! ELSE
-
 
                         IF ( INTEGRAT_AT_GI ) THEN
                             CV_JLOC = CV_OTHER_LOC( CV_ILOC )

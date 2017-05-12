@@ -196,6 +196,7 @@ module multi_data_types
         logical :: NO_MATRIX_STORE !Flag to whether calculate and use DGM_PETSC or C
         logical :: CV_pressure     !Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
         logical :: stored = .false.!Flag to be true when the storable matrices have been stored
+        logical :: compact_PIVIT_MAT = .false. !Flag to know whether to use a compacted mass matrix or not
     end type multi_matrices
 
 
