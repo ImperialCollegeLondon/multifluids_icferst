@@ -372,6 +372,7 @@ contains
         integer, intent(in) :: nphase, npres
         !Local variables
         integer :: stat, i, simulation_quality = 10
+        real :: theta
         character( len = option_path_len ) :: option_path, quality_option
 
         !Add simulation type like in the normal fashion
@@ -438,6 +439,12 @@ contains
         end if
         call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
 
+        !Select the theta
+        theta = -1.
+        if (simulation_quality < 10) theta = 1.0
+        !If it is medium quality select local decision on theta
+        if (simulation_quality >= 10 .and. simulation_quality < 100) call add_option("/numerical_methods/local_upwinding", stat=stat)
+
             ! IO STAT OPTIONS
         option_path = "/io/output_mesh[0]/name"
         call add_option(trim(option_path), stat=stat)
@@ -488,6 +495,28 @@ contains
                 ! VECTOR_FIELD(VELOCITY) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic"
             if (have_option(trim(option_path))) then
+
+                !We don't need to repopulate much of this as the default values are good for porous media
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin"
+                call add_option(trim(option_path), stat=stat)
+
+                !Set this values just in case. We don't need them for porous media
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/temporal_discretisation/theta"
+                call add_option(trim(option_path), stat=stat)
+                call set_option(trim(option_path), theta)
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/temporal_discretisation/relaxation"
+                call add_option(trim(option_path), stat=stat)
+                call set_option(trim(option_path), 1.0)
+                            ! Stat, convergence, detectors, steady state settings
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/stat"
+                call add_option(trim(option_path), stat=stat)
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/convergence/include_in_convergence"
+                call add_option(trim(option_path), stat=stat)
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/detectors/exclude_from_detectors"
+                call add_option(trim(option_path), stat=stat)
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/steady_state/include_in_steady_state"
+                call add_option(trim(option_path), stat=stat)
+
                 ! Solver options - Iterative Method (we don't actually solve for velocity, so we copy the options from the pressure just in case)
                 call copy_option("/material_phase[0]/scalar_field::Pressure/prognostic/solver",trim(option_path)//"/solver" )
             end if
@@ -496,6 +525,38 @@ contains
                 ! SCALAR_FIELD(PHASE VOLUME FRACTION) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic"
             if (have_option(trim(option_path))) then
+
+                            ! Stat, convergence, detectors, steady state settings
+                !We have removd this from scalar_field however we are only populating with this PhaseVolumeFraction
+                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/stat"
+                call add_option(trim(option_path), stat=stat)
+                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/convergence/include_in_convergence"
+                call add_option(trim(option_path), stat=stat)
+                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/detectors/exclude_from_detectors"
+                call add_option(trim(option_path), stat=stat)
+                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/steady_state/include_in_steady_state"
+                call add_option(trim(option_path), stat=stat)
+
+                !Removed the selection of the equation as it was not even read by the code
+
+                !Spatial discretisation
+                if (simulation_quality < 10) then
+                    option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/spatial_discretisation/control_volumes/face_value"
+                    call add_option(trim(option_path)//"::FirstOrderUpwind", stat=stat)
+                else
+                    option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/spatial_discretisation/control_volumes"
+                    option_path = trim(option_path) //"/face_value::FiniteElement/limit_face_value/limiter"
+                    call add_option(trim(option_path)//"::Sweby", stat=stat)
+                end if
+                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/spatial_discretisation/conservative_advection"
+                call add_option(trim(option_path), stat=stat)
+                call set_option(trim(option_path), 1.)
+                !Temporal discretisation
+                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/temporal_discretisation/theta"
+                call add_option(trim(option_path), stat=stat)
+                call set_option(trim(option_path), theta)
+
+
                 ! Solver options - Iterative Method
                 option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/solver/iterative_method::gmres/restart"
                 call add_option(trim(option_path), stat = stat)
