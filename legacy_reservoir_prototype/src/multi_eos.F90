@@ -1438,22 +1438,22 @@ contains
         integer :: i
         logical :: Cap_Brooks, Cap_TOTAL
 
-	aux = ( 1.0 - sum(immobile_fraction(:)) )
+        aux = ( 1.0 - sum(immobile_fraction(:)) )
 
         ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless TOTAL Pc activated (important to allow overelax even when Pc is off).
         Cap_Brooks = .false.
         Cap_TOTAL = .false.
         do i = 1, nphase
-	    if(have_option("/material_phase["//int2str(i-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) then
-          	Cap_TOTAL = .true.
-            endif 
+        if(have_option("/material_phase["//int2str(i-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) then
+          Cap_TOTAL = .true.
+        endif
         enddo
 
         if(Cap_TOTAL) then
-        	Get_DevCapPressure = &
+            Get_DevCapPressure = &
                 -(a/(1.0 - sum(Immobile_fraction(:))))* Pe * (1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**(a-1)
         else
-        	Get_DevCapPressure = &
+            Get_DevCapPressure = &
                 -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
         endif
 
@@ -2582,7 +2582,7 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-		path2 = "/material_phase["//int2str(iphase-1)//&
+        path2 = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::C/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
@@ -2599,7 +2599,7 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-		path2 = "/material_phase["//int2str(iphase-1)//&
+        path2 = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::a/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
