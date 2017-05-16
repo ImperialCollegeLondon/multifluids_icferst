@@ -83,7 +83,8 @@ C
      :        NWNNOD, NWNELM, NWNSEL, NWSZEN, NWSZSN, NWSZNN, SZSNLS,
      :        NWENLB, NWENLS, NWSNLB, NWSNLS, NWSFID, NWELRG, NWSROW,
      :        NWNDLC, NWNODX, NWNODY, NWNODZ, NEWFLD, NEWMTX,
-     :        NGATH, NHALO, NPROC, PNOD, NSWEEP, NPRDND, debug_level
+     :        NGATH, NHALO, NPROC, PNOD, NSWEEP, NPRDND, debug_level,
+     :        adapt_error
 C
       INTEGER INTARR(INTSIZ), ENLBAS(NELM+1), ENLIST(SZENLS),
      :        SNLIST(SZSNLS), SNLBAS(NSELM+1), SURFID(NSELM),
@@ -642,7 +643,13 @@ C
      :                   NODX,   NODY,   NODZ,   ORGMTX,
      :                   EDSPLT, MSHOPT(2), MSHOPT(3), MSHOPT(4),
      :                   ELSPLT, TOGTHR .AND. MSHOPT(6),
-     :                   FLCHK3, FLCHK1, ALWAYS, DOTOP, MINCHG, CHANG1 )
+     :                   FLCHK3, FLCHK1, ALWAYS, DOTOP, MINCHG, CHANG1,
+     :                   adapt_error )
+            if (adapt_error < 0) then
+C               If there is an error we pass it back reusing nsweep
+C               otherwise, adding new variable seems tricky
+                NSWEEP = -1; return
+            end if
             IF( I .LT. NSWPS/2 ) MINCHG = -MINCHG
 C
             IF( IERR .NE. 0 ) THEN
@@ -675,7 +682,13 @@ C
      :                   NODX,   NODY,   NODZ,   ORGMTX,
      :                   .FALSE., .FALSE., .FALSE., .FALSE., .FALSE.,
      :                   .TRUE.,
-     :                   FLCHK5, FLCHK2, ALWAYS, DOTOP, MINCHG, CHANG2 )
+     :                   FLCHK5, FLCHK2, ALWAYS, DOTOP, MINCHG, CHANG2,
+     :                   adapt_error )
+            if (adapt_error < 0) then
+C               If there is an error we pass it back reusing nsweep
+C               otherwise, adding new variable seems tricky
+                NSWEEP = -1; return
+            end if
             IF( I .LT. NSWPS/2 ) MINCHG = -MINCHG
 C
             IF( IERR .NE. 0 ) THEN
@@ -727,7 +740,13 @@ C
      :                   NODX,   NODY,   NODZ,   ORGMTX,
      :                   EDSPLT, MSHOPT(2), MSHOPT(3), MSHOPT(4),
      :                   ELSPLT, TOGTHR .AND. MSHOPT(6),
-     :                   FLCHK4, FLCHK3, ALWAYS, DOTOP, MINCHG, CHANG1 )
+     :                   FLCHK4, FLCHK3, ALWAYS, DOTOP, MINCHG, CHANG1,
+     :                   adapt_error )
+            if (adapt_error < 0) then
+C               If there is an error we pass it back reusing nsweep
+C               otherwise, adding new variable seems tricky
+                NSWEEP = -1; return
+            end if
             IF( I .LT. NSWPS/2 ) MINCHG = -MINCHG
 C
             IF( IERR .NE. 0 ) THEN
@@ -758,7 +777,13 @@ C
      :                   NODX,   NODY,   NODZ,   ORGMTX,
      :                   .FALSE., .FALSE., .FALSE., .FALSE., .FALSE.,
      :                   .TRUE.,
-     :                   FLCHK6, FLCHK5, ALWAYS, DOTOP, MINCHG, CHANG2 )
+     :                   FLCHK6, FLCHK5, ALWAYS, DOTOP, MINCHG, CHANG2,
+     :                   adapt_error )
+            if (adapt_error < 0) then
+C               If there is an error we pass it back reusing nsweep,
+C               otherwise adding new variable seems tricky
+                NSWEEP = -1; return
+            end if
             IF( I .LT. NSWPS/2 ) MINCHG = -MINCHG
 C
             IF( IERR .NE. 0 ) THEN

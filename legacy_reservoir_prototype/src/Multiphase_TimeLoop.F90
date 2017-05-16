@@ -185,14 +185,12 @@ contains
         real :: t_adapt_threshold
         !Variables for FPI acceleration for flooding
         type( vector_field ) :: deltaP_old
-!       Variables used for calculating conservation of mass (entering/leaving and within the domain).
-
 !      calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
 
 !!-Variables related to the detection and correction of bad elements
         real, save :: Max_bad_angle = -1 ! set in timeloop from diamond input
-        integer :: i
+        integer :: i, k
         type(bad_elements), allocatable, dimension(:) :: Quality_list
         real, dimension(:,:), pointer:: X_ALL
         real, dimension(:), allocatable :: quality_table
@@ -212,6 +210,7 @@ contains
 
         ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
         call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold, default = 0.0 )
+
 
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
@@ -331,6 +330,14 @@ contains
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         if (.not. Mmat%CV_pressure .and. ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or. (Mdims%ndim==3 .and. Mdims%u_nloc == 5))) then
             ewrite(0, *) "WARNING: the only tested element pair using bubble shape functions is the P1DG(BL)P1DG(CV)"
+        end if
+        !Check if we want to use a compacted mass matrix
+        if ((Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')) &
+                    .and. is_porous_media .and. Mdims%npres == 1) then
+        !sprint_to_do for this to work with wells we need to change the sparsity, but that still needs to be done!
+            call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', i )
+            call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', k )
+            Mmat%compact_PIVIT_MAT = (i == (k - 1))
         end if
         !!$ Defining problem to be solved:
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
@@ -1491,17 +1498,21 @@ subroutine BadElementTest(Quality_list, flag)
                             call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1 ,quality_table(i), Quality_list, bad_element, diagnostics(i))
                         end do
 
-                        if (after_adapt) then
-                            ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
-                        else
-                            ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
-                        end if
 
-                        ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
-                        do i=1, size(quality_table)
-                            ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
-                        end do
-                        ewrite(0, '(38("-"))')
+
+                        if (getprocno() == 1) then
+                            if (after_adapt) then
+                                ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
+                            else
+                                ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
+                            end if
+
+                            ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
+                            do i=1, size(quality_table)
+                                ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
+                            end do
+                            ewrite(0, '(38("-"))')
+                        end if
                     end if
 
                     if (.not. bad_element) then

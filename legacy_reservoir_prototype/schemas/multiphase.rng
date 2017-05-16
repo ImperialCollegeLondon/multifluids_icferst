@@ -2384,7 +2384,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">
@@ -2399,7 +2399,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">
@@ -2419,7 +2419,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">
@@ -2434,7 +2434,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </attribute>
                         <choice>
                           <element name="prescribed">
-                            <ref name="velocity_mesh_choice"/>
+                            <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
                           <element name="aliased">
@@ -2683,8 +2683,9 @@ it has a simmilar effect as the artificial diffusion. Default value = 1e-1.</a:d
             </element>
           </optional>
           <optional>
-            <element name="DG_advection">
-              <a:documentation>The method to calculate the flux between CV not sharing element is also used for fluxes within an element</a:documentation>
+            <element name="local_upwinding">
+              <a:documentation>Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
+Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.</a:documentation>
               <empty/>
             </element>
           </optional>
@@ -5938,7 +5939,6 @@ Defaults to -huge(0.0)*epsilon(0.0) if not set.</a:documentation>
           <ref name="ultimate_limiter"/>
           <ref name="extrema_limiter"/>
           <ref name="compressive_advection_limiter"/>
-          <ref name="ENO_advection"/>
         </choice>
       </element>
       <element name="do_not_limit_face_value">

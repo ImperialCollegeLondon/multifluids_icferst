@@ -182,10 +182,11 @@ contains
         Mdims%u_nonods = node_count( velocity )
 
         !!$ Get the continuous space of the velocity field
-        velocity_cg_mesh => extract_mesh( state, 'VelocityMesh_Continuous' )
-        Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
-        Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
-
+        if (.not.is_P0DGP1CV) then
+            velocity_cg_mesh => extract_mesh( state, 'VelocityMesh_Continuous' )
+            Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
+            Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
+        end if
         if( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
             ph_mesh => extract_mesh( state( 1 ), 'ph', stat )
             if ( stat == 0 ) then
@@ -217,7 +218,7 @@ contains
         ndgln%p=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
         ndgln%mat=>get_ndglno(extract_mesh(state(1),"PressureMesh_Discontinuous"))
         ndgln%u=>get_ndglno(extract_mesh(state(1),"InternalVelocityMesh"))
-        ndgln%xu=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
+        if (.not.is_P0DGP1CV) ndgln%xu=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
         !!$ Pressure, control volume and material
         pressure => extract_scalar_field( state( 1 ), 'Pressure' )
         !!$ Velocities
@@ -531,6 +532,7 @@ contains
             if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) Mdisopt%v_disopt = 5
             if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) Mdisopt%v_disopt = 9
         end if Conditional_VDISOPT
+
         call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', Mdisopt%v_beta )
         call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', Mdisopt%v_theta )
         !!$ Solving Velocity Field
@@ -547,11 +549,7 @@ contains
         end do
         !!$ Options below are hardcoded and need to be added into the schema
         Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
-        if(is_porous_media) then
-            if ( have_option("/numerical_methods/DG_advection")) Mdisopt%v_dg_vel_int_opt = 10
-        else
-            Mdisopt%v_dg_vel_int_opt = 1
-        end if
+        if(.not.is_porous_media) Mdisopt%v_dg_vel_int_opt = 1
         Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
         Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
         Mdisopt%t_use_theta_flux = .false. ; Mdisopt%t_get_theta_flux = .false.
@@ -934,25 +932,26 @@ contains
         ! pack continuous velocity mesh
         velocity=>extract_vector_field(state(1),"Velocity")
         call insert(packed_state,velocity%mesh,"VelocityMesh")
-        if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
-            nullify(ovmesh)
-            allocate(ovmesh)
-            ovmesh=make_mesh(position%mesh,&
-                shape=velocity%mesh%shape,&
-                continuity=0,name="VelocityMesh_Continuous")
-            call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
-            call insert(state(1),ovmesh,"VelocityMesh_Continuous")
-            call deallocate(ovmesh)
-            deallocate(ovmesh)
-        else
-            ovmesh=>extract_mesh(state(1),"VelocityMesh_Continuous")
-            call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+        if (.not.is_P0DGP1CV) then
+            if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
+                nullify(ovmesh)
+                allocate(ovmesh)
+                ovmesh=make_mesh(position%mesh,&
+                    shape=velocity%mesh%shape,&
+                    continuity=0,name="VelocityMesh_Continuous")
+                call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+                call insert(state(1),ovmesh,"VelocityMesh_Continuous")
+                call deallocate(ovmesh)
+                deallocate(ovmesh)
+            else
+                ovmesh=>extract_mesh(state(1),"VelocityMesh_Continuous")
+                call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+            end if
+            call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
+            call remap_field(position,u_position)
+            call insert(packed_state,u_position,"VelocityCoordinate")
+            call deallocate(u_position)
         end if
-
-        call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
-        call remap_field(position,u_position)
-        call insert(packed_state,u_position,"VelocityCoordinate")
-        call deallocate(u_position)
 
         if (.not.has_mesh(state(1),"PressureMesh_Continuous")) then
             nullify(ovmesh)
@@ -2146,8 +2145,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
-            ewrite(1,*) trim(output_message)
-
+            if (getprocno() == 1) then
+                ewrite(1,*) trim(output_message)
+            end if
             !Automatic non-linear iteration checking
             !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
             if (is_porous_media) then
@@ -2165,7 +2165,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call alland(ExitNonLinearLoop)
             !Tell the user the number of FPI and final convergence to help improving the parameters
-            if (ExitNonLinearLoop) then
+            if (ExitNonLinearLoop .and. getprocno() == 1) then
                 ewrite(show_FPI_conv,*) trim(output_message)
             end if
             !If time adapted based on the non-linear solver then
@@ -2177,7 +2177,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                   '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/ensure_solvers_convergence')) then
                     Repeat_time_step = .true.
                     solver_not_converged = .false.
-                    ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
+                    if (getprocno() == 1) then
+                        ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
+                    end if
                 end if
                 !If maximum number of FPI reached, then repeat time-step
                 if (its >= NonLinearIteration) Repeat_time_step = .true.
@@ -2196,7 +2198,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                             dt = min(dt * min(abs(auxR), 1.2*increaseFactor), max_ts)
                         end if
                         call set_option( '/timestepping/timestep', dt )
-                        ewrite(show_FPI_conv,*) "Time step changed to:", dt
+                        if (getprocno() == 1)then
+                            ewrite(show_FPI_conv,*) "Time step changed to:", dt
+                        end if
                         ExitNonLinearLoop = .true.
                         if (match_final_t .and. dt + acctim > finish_time) then
                             call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
@@ -2212,7 +2216,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call get_option( '/timestepping/timestep', dt )
                     dt = min(dt * increaseFactor, max_ts)
                     call set_option( '/timestepping/timestep', dt )
-                    ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                    if (getprocno() == 1) then
+                        ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                    end if
                     ExitNonLinearLoop = .true.
                     if (match_final_t .and. dt + acctim > finish_time) then
                         call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
@@ -2235,7 +2241,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ExitNonLinearLoop = .true.
                         deallocate(reference_field)
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts,") reached, advancing time."
+                        if (getprocno() == 1) then
+                            ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts,") reached, advancing time."
+                        end if
                         return
                     end if
                     !Decrease time step, reset the time and repeat!
@@ -2244,7 +2252,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call set_option( '/timestepping/current_time', acctim )
                     dt = max(dt / decreaseFactor,min_ts)
                     call set_option( '/timestepping/timestep', dt )
-                    ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
+                    if (getprocno() == 1) then
+                        ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
+                    end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
                 end if
@@ -3061,7 +3071,7 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     !Check if all the fields are constant whitin region ids, otherwise we cannot compact the data.
     !Despite this seems restrictive, it is unlikely to use non constant values for region ids
     !since it goes against the surface based modeling idea
-    all_fields_costant = .true.
+!    all_fields_costant = .true. !<= to disable this
     !Check capillary
     if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
@@ -3164,7 +3174,7 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
         end do
     end if
 
-
+all_fields_costant = .false.
     !If fake_IDs_ndgln, then we are not using compacted data and
     !IDs_ndgln and IDs2CV_ndgln will point to the same position
     if (present_and_true(fake_IDs_ndgln) .or. .not. all_fields_costant) then
@@ -3308,7 +3318,6 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
     real, dimension(:,:), allocatable :: loc_absorp_matrix
     real, dimension(:), allocatable :: sat_weight_velocity
     integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
-
     ! Initialisation
     darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
@@ -3345,7 +3354,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
             end do
         end do
     end do
-
+    call halo_update(darcy_velocity)
     ! Deallocation
     deallocate(loc_absorp_matrix)
     deallocate(sat_weight_velocity)

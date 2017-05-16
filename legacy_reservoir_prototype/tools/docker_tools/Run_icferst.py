@@ -25,7 +25,7 @@ pwdpath = os.getcwd()
 run_command  = "docker run -v " + os.getcwd()+":/rundir" # run and tell docker which folder it can see
 run_command += " -w /rundir" #sets up the working directory
 run_command += " -a stdout -t icferst" #Connects the output of the program to this terminal and specify the docker enviroment
-run_command += " multiphase_prototype" #name of the executable (to be changed to icferst)
+run_command += " icferst" #name of the executable
 run_command += " /rundir/"+testname
 run_command = run_command.replace("./","")#Remove any potential "./" to access a file
 print run_command

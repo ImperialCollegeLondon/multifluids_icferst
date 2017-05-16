@@ -1476,7 +1476,22 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
   reasons(8)  = "KSP_DIVERGED_INDEFINITE_PC"
   reasons(9)  = "KSP_DIVERGED_NAN"
   reasons(10) = "KSP_DIVERGED_INDEFINITE_MAT"
-  
+
+  if (have_option(trim(solver_option_path)//'/ignore_all_solver_failures') &
+    .and. have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. reason == -3) then
+        !allow the linear solvers to not achieve convergence without complaining if we are in the non-linear solver
+        ! write reason+iterations to only if debugging verbosity is at least 1
+         ewrite(1,*) 'WARNING: Failed to converge.'
+         ewrite(1,*) "PETSc did not converge for matrix solve of: " // trim(name)
+         if((reason>=-10) .and. (reason<=-1)) then
+            ewrite(1,*) 'Reason for non-convergence: ', reasons(-reason)
+         else
+            ewrite(1,*) 'Reason for non-convergence is undefined: ', reason
+         endif
+         ewrite(1,*) 'Number of iterations: ', iterations
+        return
+  end if
+
   if (reason<=0) then
      if(present_and_true(nomatrixdump)) matrixdumped = .true.    
      if (present(checkconvergence)) then
@@ -1927,7 +1942,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
     PCType:: pctype, hypretype
     MatSolverPackage:: matsolverpackage
     PetscErrorCode:: ierr
-    
+
     call get_option(trim(option_path)//'/name', pctype)
 
     if (pctype==PCMG) then

@@ -52,7 +52,7 @@ module matrix_operations
     use halos
     use petsc_tools
     use petsc
-    use global_parameters, only : FIELD_NAME_LEN, is_porous_media
+    use global_parameters
     use boundary_conditions
     use multi_data_types
     use multi_tools
@@ -255,8 +255,9 @@ contains
         end if
 
         !COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
-        IF ( have_option("/numerical_methods/create_P_mat_fast") ) THEN
-            ! Fast but memory intensive...
+        !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
+        IF ( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1 ) THEN
+            ! Fast but memory intensive... (wells not yet implemented here)
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
@@ -708,12 +709,6 @@ contains
             CALL C_MULT_MANY( CDP_MANY, COLOR_VEC_MANY, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
                 Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
 
-            ! DU_LONG = Mmat%PIVIT_MAT * CDP
-!            ALLOCATE( DU_LONG_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
-!            CALL PHA_BLOCK_MAT_VEC_MANY( DU_LONG_MANY, Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
-!                Mdims%totele, Mdims%u_nloc, ndgln%u )
-!            deallocate(CDP_MANY)
-!
             CALL PHA_BLOCK_MAT_VEC_MANY_REUSING( Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
             DU_LONG_MANY(1:Mmat%NCOLOR, 1:Mdims%ndim, 1:Mdims%nphase, 1:Mdims%u_nonods) => CDP_MANY
@@ -737,7 +732,6 @@ contains
                         RINV_B_COLNS_ZEROED(:,:) = 0.0
                         RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres ) = INV_B(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres,  CV_NOD)
                         DO I = 1, Mmat%NCOLOR
-                            !                  CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
                             CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
                             DO IPRES = 1, Mdims%npres
                                 CMC_COLOR_VEC_PRES_MANY_SHORT(I,IPRES) = SUM( CMC_COLOR_VEC_MANY_PHASE_SHORT(1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres) )
@@ -858,7 +852,6 @@ contains
                             JPRES = IPRES ! Add contributions to the block diagonal only.
                             call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
                                 val = dot_product(CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
-                            !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                             IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
                                 sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                         END DO
@@ -873,7 +866,6 @@ contains
                             JPRES = IPRES ! Add contributions to the block diagonal only.
                             call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
                                 val = dot_product(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))!this looks like a bug, CMC_COLOR_VEC2_MANY is not defined for not IGOT_CMC_PRECON
-                            !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                             IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
                                 sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                         END DO
@@ -965,6 +957,13 @@ contains
         REAL, DIMENSION( :,: ), allocatable :: MAT
         REAL, DIMENSION( : ), allocatable :: B
 
+
+        if(size(PIVIT_MAT,1) == 1) then
+            !If it is compacted and diagonal the inverse is straightforward
+            PIVIT_MAT = 1./PIVIT_MAT
+            return
+        end if
+
         !First time only, check if the Mass matrix is lumped. If it is, the inverse can be done much quicker
         if (check_lumped_matrix) then
             aux = 0.; check_lumped_matrix = .false.
@@ -1024,8 +1023,6 @@ contains
         RETURN
     END SUBROUTINE PHA_BLOCK_INV
 
-
-
     SUBROUTINE PHA_BLOCK_MAT_VEC_old( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
@@ -1056,19 +1053,27 @@ contains
 
         N=U_NLOC * NDIM * NPHASE
 
-        Loop_Elements: DO ELE = 1, TOTELE
-
-            U_NOD => U_NDGLN( ( ELE - 1 ) * U_NLOC +1 : ELE * U_NLOC )
-
-            LCDP = RESHAPE( CDP( :, :, U_NOD ) , (/ N /) )
-            CALL DGEMV( 'N', N, N, 1.0d0, BLOCK_MAT( : , : , ELE ), N, LCDP, 1, 0.0d0, LU, 1 )
-
-            DO U_ILOC = 1, U_NLOC
-                U( 1+(U_NOD(U_ILOC)-1)*NDIM*NPHASE : U_NOD(U_ILOC)*NDIM*NPHASE ) = [LU(:,:,U_ILOC)]
+        if (size(BLOCK_MAT,1) == 1) then!BLOCK_MAT is diagonal and compacted
+            DO ELE = 1, TOTELE
+                U_NOD => U_NDGLN( ( ELE - 1 ) * U_NLOC +1 : ELE * U_NLOC )
+                LU = CDP( :, :, U_NOD ) * BLOCK_MAT(1,1,ELE)
+                DO U_ILOC = 1, U_NLOC
+                    U( 1+(U_NOD(U_ILOC)-1)*NDIM*NPHASE : U_NOD(U_ILOC)*NDIM*NPHASE ) = [LU(:,:,U_ILOC)]
+                END DO
             END DO
+        else
+            Loop_Elements: DO ELE = 1, TOTELE
 
-        END DO Loop_Elements
+                U_NOD => U_NDGLN( ( ELE - 1 ) * U_NLOC +1 : ELE * U_NLOC )
 
+                LCDP = RESHAPE( CDP( :, :, U_NOD ) , (/ N /) )
+                CALL DGEMV( 'N', N, N, 1.0d0, BLOCK_MAT( : , : , ELE ), N, LCDP, 1, 0.0d0, LU, 1 )
+                DO U_ILOC = 1, U_NLOC
+                    U( 1+(U_NOD(U_ILOC)-1)*NDIM*NPHASE : U_NOD(U_ILOC)*NDIM*NPHASE ) = [LU(:,:,U_ILOC)]
+                END DO
+
+            END DO Loop_Elements
+        end if
         RETURN
 
 
@@ -1108,27 +1113,41 @@ contains
 
         N=U_NLOC * NDIM * NPHASE
 
-        Loop_Elements: DO ELE = 1, TOTELE
+        if (size(BLOCK_MAT,1) == 1) then!BLOCK_MAT is diagonal and compacted
+            DO ELE = 1, TOTELE
+                U_NOD => U_NDGLN(( ELE - 1 ) * U_NLOC +1: ELE * U_NLOC)
+                DO JPHASE = 1, NPHASE
+                    DO JDIM = 1, NDIM
+                        J = JDIM + (JPHASE-1)*NDIM
+                        JJ = ( JDIM - 1 ) * U_NLOC + ( JPHASE - 1 ) * NDIM * U_NLOC
+                        lcdp([(J+(i-1)*ndim*nphase,i=1,u_NLOC)]) = CDP( JDIM, JPHASE, U_NOD )
+                        U_NODI([(J+(i-1)*ndim*nphase,i=1,u_NLOC)]) = U_NOD+(J-1)*U_NONODS
+                    end do
+                end do
+                U( U_NODI ) = lcdp * BLOCK_MAT( 1 , 1 , ele )
+            END DO
+        else
+            Loop_Elements: DO ELE = 1, TOTELE
 
-            U_NOD => U_NDGLN(( ELE - 1 ) * U_NLOC +1: ELE * U_NLOC)
+                U_NOD => U_NDGLN(( ELE - 1 ) * U_NLOC +1: ELE * U_NLOC)
 
 
-            Loop_PhasesJ: DO JPHASE = 1, NPHASE
-                Loop_DimensionsJ: DO JDIM = 1, NDIM
-                     
-                    J = JDIM + (JPHASE-1)*NDIM
-                    JJ = ( JDIM - 1 ) * U_NLOC + ( JPHASE - 1 ) * NDIM * U_NLOC
+                Loop_PhasesJ: DO JPHASE = 1, NPHASE
+                    Loop_DimensionsJ: DO JDIM = 1, NDIM
 
-                    lcdp([(J+(i-1)*ndim*nphase,i=1,u_NLOC)]) = CDP( JDIM, JPHASE, U_NOD )
-                    U_NODI([(J+(i-1)*ndim*nphase,i=1,u_NLOC)]) = U_NOD+(J-1)*U_NONODS
-                end do Loop_DimensionsJ
-            end do Loop_PhasesJ
+                        J = JDIM + (JPHASE-1)*NDIM
+                        JJ = ( JDIM - 1 ) * U_NLOC + ( JPHASE - 1 ) * NDIM * U_NLOC
 
-            call dgemv( 'N', N, N, 1.0d0, BLOCK_MAT( : , : , ele ), N, LCDP, 1, 0.0d0, LU, 1 )
-            U( U_NODI ) = LU
+                        lcdp([(J+(i-1)*ndim*nphase,i=1,u_NLOC)]) = CDP( JDIM, JPHASE, U_NOD )
+                        U_NODI([(J+(i-1)*ndim*nphase,i=1,u_NLOC)]) = U_NOD+(J-1)*U_NONODS
+                    end do Loop_DimensionsJ
+                end do Loop_PhasesJ
 
-        END DO Loop_Elements
+                call dgemv( 'N', N, N, 1.0d0, BLOCK_MAT( : , : , ele ), N, LCDP, 1, 0.0d0, LU, 1 )
+                U( U_NODI ) = LU
 
+            END DO Loop_Elements
+        end if
         RETURN
 
 
@@ -1161,14 +1180,22 @@ contains
         end interface
            
         N = U_NLOC * NDIM * NPHASE
-        Loop_Elements: DO ELE = 1, TOTELE
-            U_NOD = U_NDGLN( ( ELE - 1 ) * U_NLOC +1 : ELE * U_NLOC )
 
-            LCDP = RESHAPE( CDP( :, :, U_NOD ) , (/ N /) )
-            CALL DGEMV( 'N', N, N, 1.0d0, BLOCK_MAT( : , : , ELE ), N, LCDP, 1, 0.0d0, LU, 1 )
+        if (size(BLOCK_MAT,1) == 1) then
+            DO ELE = 1, TOTELE
+                U_NOD = U_NDGLN( ( ELE - 1 ) * U_NLOC +1 : ELE * U_NLOC )
+                U( :, :, U_NOD ) = CDP( :, :, U_NOD ) * BLOCK_MAT( 1 , 1 , ELE )
+            END DO
+        else
+            Loop_Elements: DO ELE = 1, TOTELE
+                U_NOD = U_NDGLN( ( ELE - 1 ) * U_NLOC +1 : ELE * U_NLOC )
 
-            U( :, :, U_NOD ) = RESHAPE( LU, (/ NDIM, NPHASE, U_NLOC/) )
-        END DO Loop_Elements
+                LCDP = RESHAPE( CDP( :, :, U_NOD ) , (/ N /) )
+                CALL DGEMV( 'N', N, N, 1.0d0, BLOCK_MAT( : , : , ELE ), N, LCDP, 1, 0.0d0, LU, 1 )
+                U( :, :, U_NOD ) = RESHAPE( LU, (/ NDIM, NPHASE, U_NLOC/) )
+
+            END DO Loop_Elements
+        end if
 
         RETURN
 
@@ -1310,14 +1337,21 @@ contains
 
 
         N=ndim*nphase*u_nloc
-        allocate(lu(size(CDP,1), size(CDP,2), size(CDP,3),U_NLOC))
-        Loop_Elements: DO ELE = 1, TOTELE
-            lu = 0.!Initialize memory
-            lcdp=>cdp(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
-            call dgemm('N','T',NBLOCK,N,N,1.0,LCDP,NBLOCK,Block_mat(:,:,ele),N,1.0,LU,NBLOCK)
-            lcdp = lu!copy to original array
-        END DO Loop_Elements
-        deallocate(lu)
+        if (size(BLOCK_MAT,1) == 1) then
+            DO ELE = 1, TOTELE
+                lcdp=>cdp(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
+                lcdp = lcdp * Block_mat(1,1,ele)
+            END DO
+        else
+            allocate(lu(size(CDP,1), size(CDP,2), size(CDP,3),U_NLOC))
+            Loop_Elements: DO ELE = 1, TOTELE
+                lu = 0.!Initialize memory
+                lcdp=>cdp(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
+                call dgemm('N','T',NBLOCK,N,N,1.0,LCDP,NBLOCK,Block_mat(:,:,ele),N,1.0,LU,NBLOCK)
+                lcdp = lu!copy to original array
+            END DO Loop_Elements
+            deallocate(lu)
+        end if
         RETURN
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY_REUSING

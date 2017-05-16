@@ -45,8 +45,8 @@ module shape_functions_Linear_Quadratic
   use multi_data_types
 
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
-  !    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
-  logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
+  logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.!With this true it does not work...we need to fix it
+
 
     interface DETNLXR
         module procedure DETNLXR1
@@ -8014,6 +8014,21 @@ contains
     INTEGER :: IPOLY, IQADRA, gi, gj, ggi, i, j, ii
 
     Conditional_NWICEL: Select Case( NWICEL )
+    case( 0 )!For P0 elements (not tested at all)
+        if (.not. is_P0DGP1CV) then
+            ewrite(0,*) "WARNING: this element has not been tested. If it works remove this message from multi_shape_fc_ND.F90"
+        end if
+        M = 1.0
+        N = 1.0
+        NLX = 0.;NLY = 0.;NLZ = 0.
+        MLX = 0.;MLY = 0.; MLZ = 0.
+        IF(.NOT.D3) THEN
+            WEIGHT = 0.5
+            SWEIGH = 2.0
+        else
+            WEIGHT = 1./6.
+            SWEIGH = 0.5
+        end if
     case( 1 )
        IF(.NOT.D3) THEN
           CALL RE2DN4(LOWQUA,NGI,0,NLOC,MLOC, &
@@ -8074,7 +8089,6 @@ contains
        FLAbort("Option not found")
 !!$
     end Select Conditional_NWICEL
-
     return
   END SUBROUTINE SHAPE
 
@@ -9962,6 +9976,8 @@ contains
 
     Conditional_Dimensionality: if( d3 ) then
        Select Case ( nloc )
+       case (1)     ! Constant tets
+          nwicel = 0
        case( 4, 5 ) ! Linear tets
           nwicel = 4
        case( 8 ) ! Linear hex
@@ -9978,6 +9994,8 @@ contains
 !!$
     else
        Select Case ( nloc )
+       case (1)  ! Constant triangle
+          nwicel = 0
        case( 3 ) ! Linear triangle
           nwicel = 4
        case( 4 ) ! Linear quad
