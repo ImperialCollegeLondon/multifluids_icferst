@@ -41,10 +41,11 @@ module multiphase_EOS
     use Copy_Outof_State
     use multi_tools !!!!! WHY is the bad_elements type not being picked up by Copy_Outof_State??????
 
+    use global_parameters, only: domain_bbox
     use shape_functions_Linear_Quadratic
     use sparse_tools
     use Multiphase_module
-    use sparsity_patterns_meshes, only : get_csr_sparsity_firstorder
+    use sparsity_patterns_meshes, only: get_csr_sparsity_firstorder
     use arbitrary_function
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
@@ -1872,7 +1873,7 @@ contains
         integer, intent( in ) :: cv_nonods, mat_nonods, nphase, ndim
         real, dimension( :, :, : ), intent( inout ) :: velocity_absorption, temperature_absorption
 
-        type( tensor_field ), pointer :: temperature, temperature_source, PhaseVolumeFractionSource
+        type( tensor_field ), pointer :: temperature, temperature_source, PhaseVolumeFractionSource, volume_fraction
         real, dimension( :, : ), allocatable :: A
         real, dimension( : ), allocatable :: S_lg_l, S_lg_g, S_ls_l, S_gs_g, &
             T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, &
@@ -1965,7 +1966,7 @@ contains
         iphase=2 ; jphase=1
         temperature_absorption( iphase, jphase, : ) = -St_gl
         iphase=2 ; jphase=2
-        temperature_absorption( iphase, jphase, : ) =  St_gl + St_sg + Svap_g + Cp_g*Gamma_g + 1.0e+6
+        temperature_absorption( iphase, jphase, : ) =  St_gl + St_sg + Svap_g + Cp_g*Gamma_g + 1.0e+6 * 1.0
         iphase=2 ; jphase=3
         temperature_absorption( iphase, jphase, : ) = -St_sg
 
@@ -1982,11 +1983,13 @@ contains
         temperature => extract_tensor_field( packed_state, "PackedTemperature" )
         temperature_source => extract_tensor_field( packed_state, "PackedTemperatureSource" )
 
+        volume_fraction => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+
         iphase=1
-        temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0 + HeatSource
+        temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0 + HeatSource*volume_fraction%val(1,1,:)
 
         iphase=2
-        temperature_source%val( 1, iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val( 1, iphase, : )
+        temperature_source%val( 1, iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val( 1, iphase, : ) * 1.0
 
 
         ! Mass source
@@ -2025,16 +2028,17 @@ contains
         integer, dimension( : ), pointer :: mat_ndgln, cv_ndgln, u_ndgln
 
         real :: rho_l, rho_g, u_l, u_g, u_s, u_gs, u_ls, u_gl, a_l, a_g, a_s, &
-            a_sg, a_gs, a_sl, a_ls, a_lg, a_gl, d_b, Re_gl, Re_lg, CD
+            a_sg, a_gs, a_sl, a_ls, a_lg, a_gl, d_b, Re_gl, Re_lg, CD, &
+            CD_u, CD_d, A_I, aa_g, D, w, A_I1, A_I2
 
         real, dimension( : ), allocatable :: ul, ug, us
 
         integer :: ele, totele, mat_iloc, mat_nloc, u_nloc, mat_inod, cv_inod, &
-            u_inod, u_inod1, u_inod2, ndim
+            u_inod, u_inod1, u_inod2, ndim, i
 
         real, parameter :: &
             mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.001 ! 0.005
+            d_p = 0.01 !0.001 ! 0.005
 
         pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
         density => extract_tensor_field( packed_state, "PackedDensity" )
@@ -2050,6 +2054,12 @@ contains
         mat_nloc = ele_loc( pressure, 1 )
         u_nloc = ele_loc( velocity, 1 )
         ndim = size(velocity%val,1)
+
+        ! characteristic length scale
+        D = huge(0.0)
+        do i = 1, ndim
+           D = min( D, domain_bbox(i,2)-domain_bbox(i,1) )
+        end do
 
         S_lg_l=0.0 ; S_lg_g=0.0 ; S_ls_l=0.0 ; S_gs_g=0.0 ; A=0.0
 
@@ -2131,27 +2141,96 @@ contains
                 !d_b = 1.0*d_p
 
                 Re_gl = max(rho_l*u_gl*d_b/mu_l,1.0e-5) ; Re_lg=Re_gl
-                if(a_lg*Re_lg<1.0e3)then
-                    CD=(24.0/(max(a_lg,1.0e-5)*Re_lg))*(1.0+0.15*(a_lg*Re_lg)**0.687)
+
+                if ( .false. ) then
+
+                   if(a_lg*Re_lg<1.0e3)then
+                      CD=(24.0/(max(a_lg,1.0e-5)*Re_lg))*(1.0+0.15*(a_lg*Re_lg)**0.687)
+                   else
+                      CD=0.44
+                   end if
+
+                   !S_gs_g(mat_inod) = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
+                   !S_ls_l(mat_inod) = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))  ! BUG HERE
+
+                   ! for boiling test: two phases-gas and liquid
+                   S_gs_g(mat_inod) = 0.0
+                   S_ls_l(mat_inod) = 0.0
+
+                   S_lg_l(mat_inod) = 0.75 * CD * ( (a_gl*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) !* max(a_lg,1.0e-5)**(-2.65)
+                   S_lg_g(mat_inod) = 0.75 * CD * ( (a_lg*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) !* max(a_lg,1.0e-5)**(-2.65)
+
                 else
-                    CD=0.44
+
+                   ! New code for separated flows - CD from Pain et al., 2001
+
+                   S_gs_g(mat_inod) = 0.0
+                   S_ls_l(mat_inod) = 0.0
+
+                   if(a_gl<=0.25)then
+                      CD_d = 1.73205 / (1.0-a_gl)**0.5
+                      if (Re_gl<2.0e+5)then
+                         CD_u = 24.0 * (1.0+0.1*Re_gl**0.75) / Re_gl
+                      else if(Re_gl<5.0e+5)then ! linear interpolation between 2.0e+5 and 5.0e+5
+                         w = (Re_gl-2.0e+5)/3.0e+5
+                         CD_u = (1-w)*0.11361 + w*0.45078
+                      else
+                         CD_u = 0.45078
+                      end if
+
+                      CD = (1.0-4.0*a_gl)*CD_u + 4.0*a_gl*CD_d
+
+                      !A_I = 6.0*a_gl/d_b
+                      !Sigma = 0.125 * CD * A_I * rho_l * u_gl
+
+                      S_lg_l(mat_inod) = 0.125 * CD * (6.0*a_gl/d_b)/a_l * rho_l * u_gl 
+                      S_lg_g(mat_inod) = 0.125 * CD * (6.0/d_b)/(a_g+a_l) * rho_l * u_gl 
+
+                   else if(a_gl>0.6)then
+
+                      aa_g = 0.3929 - 0.5714*a_gl
+                      A_I = 4.5/(0.95*D)*(a_gl-0.05) + ((6.0-0.05*aa_g)/d_b)*a_lg/0.95
+
+                      !CD = (16.0/15.0)*a_lg
+                      !Sigma = 0.125 * CD * A_I * rho_l * u_gl
+
+                      S_lg_l(mat_inod) = 0.125 * (16.0/15.0)/(a_l+a_g) * A_I * rho_l * u_gl 
+                      S_lg_g(mat_inod) = 0.125 * (16.0/15.0)*a_lg/a_g * A_I * rho_l * u_gl 
+
+                   else
+
+                      if(a_gl>0.55)then
+                         ! linear interpolation for A_I between 0.55 and 0.6 a_gl
+
+                         !A_I for 0.25<a_gl<0.6
+                         !A_I1 = 4.5/D*(a_gl-aa_g)/(1.0-aa_g) + (6.0*aa_g/d_b)*a_lg/(1.0-aa_g)
+                         aa_g = 0.3929 - 0.5714*0.55 ! aa_g for a_gl=0.55
+                         A_I1 = 4.5/D*(0.55-aa_g)/(1.0-aa_g) + (6.0*aa_g/d_b)*0.45/(1.0-aa_g)
+
+                         !A_I for 0.6<a_gl
+                         !A_I2 = 4.5/(0.95*D)*(a_gl-0.05) + ((6.0-0.05*aa_g)/d_b)*a_lg/0.95
+                         aa_g = 0.3929 - 0.5714*0.6 ! aa_g for a_gl=0.6
+                         A_I2 = 4.5/(0.95*D)*(0.6-0.05) + ((6.0-0.05*aa_g)/d_b)*0.4/0.95
+
+                         w = (a_gl-0.55)/0.05
+                         A_I = (1-w)*A_I1 + w*A_I2
+                      else
+                         aa_g = 0.3929 - 0.5714*a_gl
+                         A_I = 4.5/D*(a_gl-aa_g)/(1.0-aa_g) + (6.0*aa_g/d_b)*a_lg/(1.0-aa_g)
+                      end if
+
+                      CD = (8.0/3.0)*(1.0-a_gl)**2
+
+                      S_lg_l(mat_inod) = 0.125 * CD * A_I * rho_l * u_gl / a_lg
+                      S_lg_g(mat_inod) = 0.125 * CD * A_I * rho_l * u_gl / a_gl
+
+                   end if
+
                 end if
 
-                !S_gs_g(mat_inod) = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
-                !S_ls_l(mat_inod) = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
+             end do
 
-                ! for boiling test: two phases-gas and liquid
-                S_gs_g(mat_inod) = 0.0 !150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
-                S_ls_l(mat_inod) = 0.0 !150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
-
-
-                S_lg_l(mat_inod) = 0.75 * CD * ( (a_gl*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
-                S_lg_g(mat_inod) = 0.75 * CD * ( (a_lg*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
-
-            end do
-
-        end do
-
+          end do
 
         !dummy => extract_scalar_field( states(1), "S_gs", stat )
         !if (stat==0) dummy%val = S_gs
@@ -2206,7 +2285,7 @@ contains
             k_l = 0.58, k_g = 0.016, k_s = 16.2, &
             Cp_l = 4200.0, Cp_g = 1996.0, Cp_s = 500.0, &
             mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.001, & !0.005, &
+            d_p = 0.01, & !0.001, & !0.005, &
             Le0 = 2375.7e3, Csf = 0.006, g = 9.81
 
         pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
@@ -2348,7 +2427,8 @@ contains
                 St_sl(cv_inod) = (k_l/d_p)*(2.0+0.6*Re_sl**0.5*Pr_l**0.3333)
                 St_sg(cv_inod) = (k_g/d_p)*(2.0+0.6*Re_sg**0.5*Pr_g**0.3333)
 
-                dtr = 1.0e-2 ; rho_v = 1.0 * rho_g
+                !dtr = 1.0e-2 ; rho_v = 1.0 * rho_g
+                dtr = 1.0e-3 ; rho_v = 10.0 * rho_g
                 if (Tsat<t_l) then
                     Svap_l_max = ((min(rho_v,a_l*rho_l)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_l))
                 else
