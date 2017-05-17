@@ -45,7 +45,7 @@ module multiphase_time_loop
     use signal_vars
     use populate_state_module
     use vector_tools
-    use global_parameters
+    !use global_parameters ! repeated?
     use memory_diagnostics
     !!$ Modules required by adaptivity
     use qmesh_module

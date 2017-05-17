@@ -180,7 +180,7 @@ contains
                    denold_all = denold_all * aold%val(1,:,:)
                end if
                IGOT_T2_loc = 1
-           else if ( lcomp > 0 ) then
+            else if ( lcomp > 0 ) then
                p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
