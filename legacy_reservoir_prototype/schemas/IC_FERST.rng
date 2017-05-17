@@ -80,6 +80,26 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
           </element>
         </choice>
         <optional>
+          <element name="output_darcy_vel">
+            <a:documentation>Output the Darcy velocity</a:documentation>
+            <empty/>
+          </element>
+        </optional>
+        <optional>
+          <element name="Courant_number">
+            <a:documentation>If porous_media, printout the Courant number every time-step</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="Mesh_Diagnostics_Angles">
+            <a:documentation>Printout the number of elements and percentage that contain an angle
+equal or bigger than the ones specified here
+Note: This may slow down your simulation should be used as a diagnostic tool </a:documentation>
+            <ref name="real_vector"/>
+          </element>
+        </optional>
+        <optional>
           <element name="dump_boundaryflux">
             <a:documentation>Surface to Integrate Over</a:documentation>
             <empty/>
@@ -156,17 +176,10 @@ of saturation is tested
 Recommended value: 5e-2</a:documentation>
                 <ref name="real"/>
                 <optional>
-                  <element name="Backtracking_factor">
-                    <a:documentation>Recommended settings: Non-linear iterations &gt;= 30
-Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
-
-The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
-
-Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
-Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
-
-The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
-                    <ref name="real"/>
+                  <element name="Show_Convergence">
+                    <a:documentation>Prints the number of iterations and
+the final convergence achieved by the FPI solver</a:documentation>
+                    <ref name="comment"/>
                   </element>
                 </optional>
                 <optional>
@@ -308,11 +321,9 @@ at the first timestep or not.</a:documentation>
           <attribute name="name">
             <data type="string"/>
           </attribute>
-          <optional>
-            <ref name="phase_density">
-              <a:documentation>Phase density</a:documentation>
-            </ref>
-          </optional>
+          <ref name="phase_density">
+            <a:documentation>Phase density</a:documentation>
+          </ref>
           <optional>
             <element name="scalar_field">
               <a:documentation>## Equation of State
@@ -691,20 +702,28 @@ This will over-write the field specified in Sigma1.</a:documentation>
 
 Fast =&gt; Element pair = P0DGP1CV. Upwinding and implicit Euler; 
 
-Medium (recommended) =&gt; Element pair = P0DGP1CV. Local decision whether upwinding or high order advection scheme and adaptive theta; 
+Balanced (recommended) =&gt; Element pair = P0DGP1CV. Local decision whether upwinding or high order advection scheme and adaptive theta; 
 
-Quality =&gt; Element pair = P1DGP2CV. High order advection scheme and adaptive theta
+Precision =&gt; Element pair = P1DGP2CV. High order advection scheme and adaptive theta
 
 discontinuous_pressure =&gt; P2DGP1DG. High order advection scheme and adaptive theta</a:documentation>
         <element name="string_value">
           <choice>
             <value>fast</value>
-            <value>medium</value>
-            <value>quality</value>
+            <value>balanced</value>
+            <value>precision</value>
             <value>discontinuous_pressure</value>
           </choice>
         </element>
       </element>
+      <optional>
+        <element name="create_binary_msh">
+          <a:documentation>Use Fluidity to overwrite the input .msh file into a binary .msh file. 
+
+Useful to convert your ASCII msh files into binary to be able to decompose the mesh.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
     </element>
   </define>
   <!-- Default child of diagnostic scalar field -->
@@ -1696,9 +1715,6 @@ Required in porous_media and multiphase problem types</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
           <element name="prescribed">
             <ref name="velocity_mesh_choice"/>
@@ -1708,182 +1724,6 @@ Required in porous_media and multiphase problem types</a:documentation>
             <ref name="velocity_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>ComponentMassFractionPhase1
-Optional in multiphase problem types
-
-attribute material_phase_name associates this
-mass fraction with a particular phase
-
-Do not forget to set boundary conditions for the PhaseVolumeFraction
-even if the problem is one-phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionPhase1</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <choice>
-          <element name="prognostic">
-            <ref name="pressure_mesh_choice"/>
-            <ref name="phase_density">
-              <a:documentation>equation_of_state,</a:documentation>
-            </ref>
-            <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-          <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="prescribed_scalar_field"/>
-          </element>
-          <element name="diagnostic">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="internal_algorithm"/>
-            <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>ComponentMassFractionPhase2
-Optional in multiphase problem types
-
-attribute material_phase_name associates this
-mass fraction with a particular phase
-
-Do not forget to set boundary conditions for the PhaseVolumeFraction
-even if the problem is one-phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionPhase2</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <choice>
-          <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="phase_density">
-              <a:documentation>equation_of_state,</a:documentation>
-            </ref>
-            <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-          <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="prescribed_scalar_field"/>
-          </element>
-          <element name="diagnostic">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="internal_algorithm"/>
-            <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>ComponentMassFractionPhase3
-Optional in multiphase problem types
-
-attribute material_phase_name associates this
-mass fraction with a particular phase
-
-Do not forget to set boundary conditions for the PhaseVolumeFraction
-even if the problem is one-phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionPhase3</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <choice>
-          <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="phase_density">
-              <a:documentation>equation_of_state,</a:documentation>
-            </ref>
-            <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-          <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="prescribed_scalar_field"/>
-          </element>
-          <element name="diagnostic">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="internal_algorithm"/>
-            <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>ComponentMassFractionPhase4
-Optional in multiphase problem types
-
-attribute material_phase_name associates this
-mass fraction with a particular phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionPhase4</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <choice>
-          <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="phase_density">
-              <a:documentation>equation_of_state,</a:documentation>
-            </ref>
-            <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
-          </element>
-          <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="prescribed_scalar_field"/>
-          </element>
-          <element name="diagnostic">
-            <ref name="velocity_mesh_choice"/>
-            <ref name="internal_algorithm"/>
-            <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
         </choice>
       </element>
@@ -1911,12 +1751,11 @@ mass fraction with a particular phase</a:documentation>
         - - Second is a list of fields that are primarily prescribed,
            but can be aliased. An example is wind velocity.
         - - The list is in order of most frequently used.
-      -->
-      <element name="___Prescribed_fields_below___">
-        <a:documentation>Prescribed scalar fields below this</a:documentation>
-        <empty/>
-      </element>
-      <!--
+        
+                ## Prescribed scalar fields below this
+                element ___Prescribed_fields_below___ {
+                   empty
+                }|
         
         Insert new prescribed scalar fields here using the template:
                element scalar_field {
@@ -1941,520 +1780,6 @@ mass fraction with a particular phase</a:documentation>
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic scalar fields below this</a:documentation>
         <empty/>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the PhaseVolumeFraction (which could be saturation).</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>PhaseVolumeFractionFEInterpolation</value>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the Density of this phase.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>DensityFEInterpolation</value>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the Temperature of this phase.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>TemperatureFEInterpolation</value>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the component mass fraction.
-
-attribute material_phase_name associates this
-mass fraction with a particular phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionFEInterpolationPhase1</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the component mass fraction.
-
-attribute material_phase_name associates this
-mass fraction with a particular phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionFEInterpolationPhase2</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the component mass fraction.
-
-attribute material_phase_name associates this
-mass fraction with a particular phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionFEInterpolationPhase3</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the component mass fraction.
-
-attribute material_phase_name associates this
-mass fraction with a particular phase</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentMassFractionFEInterpolationPhase4</value>
-        </attribute>
-        <attribute name="material_phase_name">
-          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
-          <data type="string"/>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Finite element interpolation of CV solution
-of the component sum concentration.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ComponentSumConcentrationFEInterpolation</value>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_scalar_field"/>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>ControlVolumeDivergence:
-
-div field
-
-Divergence of the velocity field where
-the divergence operator is defined using
-the control volume C^T matrix.
-This assumes that the test space is discontinuous
-control volumes.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ControlVolumeDivergence</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <attribute name="field_name">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_cv_divergence_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>FiniteElementDivergence:
-
-div field
-
-Divergence of the velocity field where
-the divergence operator is defined using
-the finite element C^T matrix.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>FiniteElementDivergence</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="legacy_internal_algorithm"/>
-            <attribute name="field_name">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="velocity_mesh_choice"/>
-            <optional>
-              <element name="integrate_divergence_by_parts">
-                <empty/>
-              </element>
-            </optional>
-            <ref name="diagnostic_fe_divergence_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>CFLNumber
-
-See http://amcg.ese.ic.ac.uk/index.php?title=Local:Diagnostics#CFL_Number
-
-Adapting to this field is not recommended</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>CFLNumber</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>ControlVolumeCFLNumber
-
-Courant Number as defined on a control volume mesh
-
-Adapting to this field is not recommended</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ControlVolumeCFLNumber</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>DG_CourantNumber
-
-Courant Number as defined on a DG mesh
-
-Adapting to this field is not recommended</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>DG_CourantNumber</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Grid Reynolds number</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>GridReynoldsNumber</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>GridPecletNumber
-
-Peclet Number Pe = U*dx/2*diffusivity
-
-Also see the test case 'grid_peclet_number'
-if you wish to see the effect of changing the 
-diffusivity on a 1D, cg-discretised tracer-field
-
-Adapting to this field is not recommended</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>GridPecletNumber</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice">
-              <a:documentation>Mesh on which to calculate dx</a:documentation>
-            </ref>
-            <element name="field_name">
-              <a:documentation>This is the name of the scalar field
-to calculate the Peclet number for
-Note this field needs to have a diffusivity</a:documentation>
-              <data type="string" datatypeLibrary=""/>
-            </element>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Horizontal velocity divergence:
-
-div_H velocity
-
-Uses the gravity field direction to determine the horizontal plane.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>HorizontalVelocityDivergence</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Velocity divergence:
-
-div velocity
-</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>VelocityDivergence</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Vorticity for a 2D field:
-
- du   dv
- -- - --
- dy   dx</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>Vorticity2D</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="vorticity_2d_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Gravitational potential energy density:
-
--rho*(g dot (r - r_0))
-
-where rho is the Density scalar field
-r_0 is the potential energy zero point
-and g is the gravity vector
-
-BE AWARE OF WHAT IS IN THE DENSITY SCALAR FIELD
-
-Limitations:
- - Requires a constant gravity direction.
- - The Density and GravitationalPotentialEnergyDensity fields must be on the same mesh.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>GravitationalPotentialEnergyDensity</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-            <element name="zero_point">
-              <a:documentation>Coordinate of a point with a potential energy of zero.</a:documentation>
-              <ref name="real_dim_vector"/>
-            </element>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Local average mesh edge lengths</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>MeshEdgeLengths</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="scalar_edge_lengths_algorithm"/>
-            <element name="mesh">
-              <attribute name="name">
-                <value>CoordinateMesh</value>
-              </attribute>
-            </element>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Calculate the horizontal stream function psi where:
-  \partial_x \psi = -v
-  \partial_y \psi = u
-where u and v are perpendicular to the gravity direction. Applies a
-strong Dirichlet boundary condition of 0 on all boundaries.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>HorizontalStreamFunction</value>
-        </attribute>
-        <attribute name="depends">
-          <value>Velocity</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <element name="solver">
-              <a:documentation>Solver</a:documentation>
-              <ref name="linear_solver_options_sym"/>
-            </element>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Speed:
-
- |u|
-
-Limitations:
- - The Speed and Velocity fields must be on the same mesh.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>Speed</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
       </element>
       <element name="scalar_field">
         <a:documentation>Absolute Difference between two scalar fields.
@@ -2574,130 +1899,11 @@ less accurate but faster and might give smoother result.                  </a:do
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>Output the processors which own the nodes of the mesh on which this field is based.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>NodeOwner</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="legacy_internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>An estimate of the edge wieghts whilst adapting using Zoltan
-Note: you *must* turn on inteprolation otherwise this field
-will be emptied by an adapt.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>MaxEdgeWeightOnNodes</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>SumVelocityDivergence
-
-Diagnostic field used in multiphase simulations.
-Sums up the divergence of each phase's bulk velocity, i.e. \sum{ div(vfrac*u) }</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>SumVelocityDivergence</value>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="velocity_mesh_choice"/>
-          <ref name="internal_algorithm"/>
-          <optional>
-            <element name="integrate_divergence_by_parts">
-              <empty/>
-            </element>
-          </optional>
-          <ref name="diagnostic_scalar_field_no_adapt"/>
-          <element name="solver">
-            <ref name="linear_solver_options_sym"/>
-          </element>
-        </element>
-      </element>
-      <element name="scalar_field">
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>SolidConcentration</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
         <attribute name="rank">
           <value>0</value>
         </attribute>
         <attribute name="name">
           <value>Dummy</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>TotalFlux</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>DummyT</value>
         </attribute>
         <choice>
           <element name="diagnostic">
@@ -2767,22 +1973,21 @@ Sums up the divergence of each phase's bulk velocity, i.e. \sum{ div(vfrac*u) }<
            but can be aliased.
         - - The list is in order of most frequently used.
         
+                ## Prescribed vector fields below this
+                element ___Prognostic_fields_below___ {
+                   empty
+                }|
       -->
-      <element name="___Prognostic_fields_below___">
-        <a:documentation>Prescribed vector fields below this</a:documentation>
-        <empty/>
-      </element>
       <!--
-        
         - - List of fields that are primarily prescribed,
            but can be aliased.
         - - The list is in order of most frequently used.
         
+                ## Prescribed vector fields below this
+                element ___Prescribed_fields_below___ {
+                   empty
+                }|
       -->
-      <element name="___Prescribed_fields_below___">
-        <a:documentation>Prescribed vector fields below this</a:documentation>
-        <empty/>
-      </element>
       <!--
         
         Insert new prescribed vector fields here using the template:
@@ -2808,171 +2013,6 @@ Sums up the divergence of each phase's bulk velocity, i.e. \sum{ div(vfrac*u) }<
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic vector fields below this</a:documentation>
         <empty/>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Projection of the Velocity vector field of this material_phase 
-that uses an overlapping formulation to a conventional DG function space. </a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>VelocityOverlappingProjectedToDG</value>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_vector_field"/>
-        </element>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Gradient of a scalar field evaluated using the C gradient
-matrix constructed using finite elements.
-Field must be in this material_phase.</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>FiniteElementGradient</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <attribute name="field_name">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="mesh_choice"/>
-            <optional>
-              <element name="integrate_gradient_by_parts">
-                <empty/>
-              </element>
-            </optional>
-            <ref name="diagnostic_gradient_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Gradient of a scalar field evaluated using the transpose
-of the C^T divergence matrix constructed using finite
-elements.
-Field must be in this material_phase.</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>FiniteElementDivergenceTransposed</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="legacy_internal_algorithm"/>
-            <attribute name="field_name">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="mesh_choice"/>
-            <optional>
-              <element name="integrate_divergence_by_parts">
-                <empty/>
-              </element>
-            </optional>
-            <ref name="diagnostic_gradient_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Gradient of a scalar field evaluated using the transpose
-of the C^T matrix constructed using control volumes.
-Field must be in this material_phase.</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>ControlVolumeDivergenceTransposed</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <attribute name="field_name">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_cv_gradient_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>LinearMomentum field.
- p = \rho*u 
-(where p is the linear momentum, \rho the density and u the velocity)</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>LinearMomentum</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Calculate the control volume auxiliary gradient for a particular field.
-The related field must be a scalar field in this material_phase.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ControlVolumeAuxiliaryGradient</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <attribute name="gradient_of_field">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Calculate the dg (Bassi Rebay) auxiliary gradient for a particular field.
-The related field must be a scalar field in this material_phase.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>DGAuxiliaryGradient</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <attribute name="gradient_of_field">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
       </element>
       <element name="vector_field">
         <a:documentation>Absolute Difference between two vector fields.
@@ -3043,44 +2083,6 @@ Assumes both fields are on the same mesh as the AbsoluteDifference field.</a:doc
         </choice>
       </element>
       <element name="vector_field">
-        <a:documentation>Coordinate field remapped to the mesh of your choice.</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>DiagnosticCoordinate</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Coordinate field remapped to the mesh of your choice.</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>DiagnosticCoordinate2</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
         <a:documentation>Galerkin projection of one field onto another mesh.
 
 The field must be in this material_phase.
@@ -3112,78 +2114,6 @@ less accurate but faster and might give smoother result.                  </a:do
                 <ref name="linear_solver_options_sym"/>
               </element>
             </optional>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>delta_U</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>solid_U</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>Darcy_Velocity</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>f_x</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
             <ref name="diagnostic_vector_field"/>
           </element>
           <element name="aliased">
@@ -3279,67 +2209,6 @@ less accurate but faster and might give smoother result.                  </a:do
         <a:documentation>Diagnostic tensor fields below this</a:documentation>
         <empty/>
       </element>
-      <element name="tensor_field">
-        <attribute name="name">
-          <value>Dummy</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_tensor_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="tensor_field">
-        <attribute name="name">
-          <value>a_xx</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_tensor_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="tensor_field">
-        <a:documentation>This is the gradient of the velocity field - calculated in the dynamic core.</a:documentation>
-        <attribute name="name">
-          <value>grad_U</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_tensor_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="tensor_field">
-        <attribute name="name">
-          <value>Viscosity</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_tensor_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
     </choice>
     <!--
       Insert new diagnostic tensor field here using the template:
@@ -3357,28 +2226,6 @@ less accurate but faster and might give smoother result.                  </a:do
                  )
              }
     -->
-  </define>
-  <define name="cap_option">
-    <element name="cap_values">
-      <a:documentation>Cap the min and max values of this field when using
-it as a volume fraction to work out bulk material
-properties.
-No capping used if not selected.</a:documentation>
-      <optional>
-        <element name="upper_cap">
-          <a:documentation>Set the upper bound on the field.
-Defaults to huge(0.0)*epsilon(0.0) if not set.</a:documentation>
-          <ref name="real"/>
-        </element>
-      </optional>
-      <optional>
-        <element name="lower_cap">
-          <a:documentation>Set the lower bound on the field.
-Defaults to -huge(0.0)*epsilon(0.0) if not set.</a:documentation>
-          <ref name="real"/>
-        </element>
-      </optional>
-    </element>
   </define>
   <define name="limiter_options">
     <choice>
@@ -3833,12 +2680,10 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
     </attribute>
   </define>
   <define name="phase_density">
-    <optional>
-      <element name="Density">
-        <a:documentation>Specify the density of the current material phase (can also specify density for each component)</a:documentation>
-        <ref name="real"/>
-      </element>
-    </optional>
+    <element name="Density">
+      <a:documentation>Specify the density of the current material phase (can also specify density for each component)</a:documentation>
+      <ref name="real"/>
+    </element>
   </define>
   <define name="equation_of_state">
     <element name="equation_of_state">

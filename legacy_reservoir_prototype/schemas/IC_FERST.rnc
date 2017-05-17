@@ -80,6 +80,20 @@ start =
                 )   
                }
             ),
+            ## Output the Darcy velocity
+            element output_darcy_vel {
+               empty
+            }?,
+            ## If porous_media, printout the Courant number every time-step
+            element Courant_number {
+               comment
+            }?,
+            ## Printout the number of elements and percentage that contain an angle
+            ## equal or bigger than the ones specified here
+	        ## Note: This may slow down your simulation should be used as a diagnostic tool 
+            element Mesh_Diagnostics_Angles {
+               real_vector
+            }?,
             ## Surface to Integrate Over
             element dump_boundaryflux {
             empty,
@@ -146,18 +160,9 @@ start =
                element Fixed_Point_Iteration{
                   real,
                   (
-                    ## Recommended settings: Non-linear iterations >= 30
-                    ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
-                    ##
-                    ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
-                    ##
-                    ## Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
-                    ## Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
-                    ##
-                    ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
-                    element Backtracking_factor{
-                    real
-                    }?
+                    ## Prints the number of iterations and
+                    ## the final convergence achieved by the FPI solver
+                    element Show_Convergence{comment}?
                   ),
                   (
                     ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
@@ -265,7 +270,7 @@ start =
             attribute name { xsd:string },
             
             ## Phase density
-            phase_density?,
+            phase_density,
 
             ### ## Equation of State
             ###equation_of_state?,
@@ -550,16 +555,22 @@ geometry =
            ##
            ## Fast => Element pair = P0DGP1CV. Upwinding and implicit Euler; 
            ##
-           ## Medium (recommended) => Element pair = P0DGP1CV. Local decision whether upwinding or high order advection scheme and adaptive theta; 
+           ## Balanced (recommended) => Element pair = P0DGP1CV. Local decision whether upwinding or high order advection scheme and adaptive theta; 
            ##
-           ## Quality => Element pair = P1DGP2CV. High order advection scheme and adaptive theta
+           ## Precision => Element pair = P1DGP2CV. High order advection scheme and adaptive theta
            ##
            ## discontinuous_pressure => P2DGP1DG. High order advection scheme and adaptive theta
             element simulation_quality {
               element string_value{
-                 "fast" | "medium" | "quality"|"discontinuous_pressure"
+                 "fast" | "balanced" | "precision"|"discontinuous_pressure"
               }
-            }
+            },
+        ## Use Fluidity to overwrite the input .msh file into a binary .msh file. 
+        ##
+        ## Useful to convert your ASCII msh files into binary to be able to decompose the mesh.
+        element create_binary_msh {
+           empty
+        }? 
       }
    )
 
@@ -1417,8 +1428,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                  prognostic_scalar_field,
-                  cap_option?
+                  prognostic_scalar_field
                }|
                element prescribed {
                   velocity_mesh_choice,
@@ -1427,137 +1437,7 @@ scalar_field_choice =
                element diagnostic {
                   velocity_mesh_choice,
                   internal_algorithm,
-                  diagnostic_scalar_field_no_adapt,
-                  cap_option?
-               }
-            )
-         }|
-         ## ComponentMassFractionPhase1
-         ## Optional in multiphase problem types
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         ##
-         ## Do not forget to set boundary conditions for the PhaseVolumeFraction
-         ## even if the problem is one-phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionPhase1" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            (
-               element prognostic {
-                  pressure_mesh_choice,
-                  ###equation_of_state,
-                  phase_density,
-                  prognostic_scalar_field,
-                  cap_option?
-               }|
-               element prescribed {
-                  velocity_mesh_choice,
-                  prescribed_scalar_field
-               }|
-               element diagnostic {
-                  velocity_mesh_choice,
-                  internal_algorithm,
-                  diagnostic_scalar_field_no_adapt,
-                  cap_option?
-               }
-            )
-         }|
-         ## ComponentMassFractionPhase2
-         ## Optional in multiphase problem types
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         ##
-         ## Do not forget to set boundary conditions for the PhaseVolumeFraction
-         ## even if the problem is one-phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionPhase2" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            (
-               element prognostic {
-                  velocity_mesh_choice,
-                  ###equation_of_state,
-                  phase_density,
-                  prognostic_scalar_field,
-                  cap_option?
-               }|
-               element prescribed {
-                  velocity_mesh_choice,
-                  prescribed_scalar_field
-               }|
-               element diagnostic {
-                  velocity_mesh_choice,
-                  internal_algorithm,
-                  diagnostic_scalar_field_no_adapt,
-                  cap_option?
-               }
-            )
-         }|
-         ## ComponentMassFractionPhase3
-         ## Optional in multiphase problem types
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         ##
-         ## Do not forget to set boundary conditions for the PhaseVolumeFraction
-         ## even if the problem is one-phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionPhase3" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            (
-               element prognostic {
-                  velocity_mesh_choice,
-                  ###equation_of_state,
-                  phase_density,
-                  prognostic_scalar_field,
-                  cap_option?
-               }|
-               element prescribed {
-                  velocity_mesh_choice,
-                  prescribed_scalar_field
-               }|
-               element diagnostic {
-                  velocity_mesh_choice,
-                  internal_algorithm,
-                  diagnostic_scalar_field_no_adapt,
-                  cap_option?
-               }
-            )
-         }|
-         ## ComponentMassFractionPhase4
-         ## Optional in multiphase problem types
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionPhase4" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            (
-               element prognostic {
-                  velocity_mesh_choice,
-                  ###equation_of_state,
-		  phase_density,
-                  prognostic_scalar_field,
-                  cap_option?
-               }|
-               element prescribed {
-                  velocity_mesh_choice,
-                  prescribed_scalar_field
-               }|
-               element diagnostic {
-                  velocity_mesh_choice,
-                  internal_algorithm,
-                  diagnostic_scalar_field_no_adapt,
-                  cap_option?
+                  diagnostic_scalar_field_no_adapt
                }
             )
          }|
@@ -1583,11 +1463,11 @@ scalar_field_choice =
 # -- Second is a list of fields that are primarily prescribed,
 #    but can be aliased. An example is wind velocity.
 # -- The list is in order of most frequently used.
-
-         ## Prescribed scalar fields below this
-         element ___Prescribed_fields_below___ {
-            empty
-         }|
+#
+#         ## Prescribed scalar fields below this
+#         element ___Prescribed_fields_below___ {
+#            empty
+#         }|
 #
 # Insert new prescribed scalar fields here using the template:
 #        element scalar_field {
@@ -1612,413 +1492,6 @@ scalar_field_choice =
          element ___Diagnostic_Fields_Below___ {
             empty
          }|
-
-         ## Finite element interpolation of CV solution
-         ## of the PhaseVolumeFraction (which could be saturation).
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "PhaseVolumeFractionFEInterpolation" },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice, 
-               diagnostic_scalar_field
-            }
-         }|
-         ## Finite element interpolation of CV solution
-         ## of the Density of this phase.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "DensityFEInterpolation" },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice,
-               diagnostic_scalar_field
-            }
-         }|
-         ## Finite element interpolation of CV solution
-         ## of the Temperature of this phase.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "TemperatureFEInterpolation" },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice,
-               diagnostic_scalar_field
-            }
-         }|
-         ## Finite element interpolation of CV solution
-         ## of the component mass fraction.
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionFEInterpolationPhase1" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice,
-               diagnostic_scalar_field
-            }
-         }|
-         ## Finite element interpolation of CV solution
-         ## of the component mass fraction.
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionFEInterpolationPhase2" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice,
-               diagnostic_scalar_field
-            }
-         }|
-         ## Finite element interpolation of CV solution
-         ## of the component mass fraction.
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionFEInterpolationPhase3" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice,
-               diagnostic_scalar_field
-            }
-         }|
-         ## Finite element interpolation of CV solution
-         ## of the component mass fraction.
-         ##
-         ## attribute material_phase_name associates this
-         ## mass fraction with a particular phase
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentMassFractionFEInterpolationPhase4" },
-            ## Specify the phase to which this component fraction relates
-            attribute material_phase_name { xsd:string },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice,
-               diagnostic_scalar_field
-            }
-         }|
-         ## Finite element interpolation of CV solution
-         ## of the component sum concentration.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ComponentSumConcentrationFEInterpolation" },
-            element diagnostic {
-               internal_algorithm,
-               mesh_choice,
-               diagnostic_scalar_field
-            }
-         }|
-         ## ControlVolumeDivergence:
-         ##
-         ## div field
-         ##
-         ## Divergence of the velocity field where
-         ## the divergence operator is defined using
-         ## the control volume C^T matrix.
-         ## This assumes that the test space is discontinuous
-         ## control volumes.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ControlVolumeDivergence" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  attribute field_name { string },
-                  velocity_mesh_choice,
-                  diagnostic_cv_divergence_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-
-         ## FiniteElementDivergence:
-         ##
-         ## div field
-         ##
-         ## Divergence of the velocity field where
-         ## the divergence operator is defined using
-         ## the finite element C^T matrix.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "FiniteElementDivergence" },
-            (
-               element diagnostic {
-                  legacy_internal_algorithm,
-                  attribute field_name { string },
-                  velocity_mesh_choice,
-                  element integrate_divergence_by_parts {
-                     empty
-                  }?,
-                  diagnostic_fe_divergence_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## CFLNumber
-         ##
-         ## See http://amcg.ese.ic.ac.uk/index.php?title=Local:Diagnostics#CFL_Number
-         ##
-         ## Adapting to this field is not recommended
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "CFLNumber" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## ControlVolumeCFLNumber
-         ##
-         ## Courant Number as defined on a control volume mesh
-         ##
-         ## Adapting to this field is not recommended
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "ControlVolumeCFLNumber" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## DG_CourantNumber
-         ##
-         ## Courant Number as defined on a DG mesh
-         ##
-         ## Adapting to this field is not recommended
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "DG_CourantNumber" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Grid Reynolds number
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "GridReynoldsNumber" },
-            (element diagnostic {
-               internal_algorithm,
-               velocity_mesh_choice,
-               diagnostic_scalar_field
-            }
-            | element aliased { generic_aliased_field })
-         }|
-         ## GridPecletNumber
-         ##
-         ## Peclet Number Pe = U*dx/2*diffusivity
-         ##
-         ## Also see the test case 'grid_peclet_number'
-         ## if you wish to see the effect of changing the 
-         ## diffusivity on a 1D, cg-discretised tracer-field
-         ##
-         ## Adapting to this field is not recommended
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "GridPecletNumber" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  ## Mesh on which to calculate dx
-                  mesh_choice,
-                  ## This is the name of the scalar field
-                  ## to calculate the Peclet number for
-                  ## Note this field needs to have a diffusivity
-                  element field_name { string },
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Horizontal velocity divergence:
-         ##
-         ## div_H velocity
-         ##
-         ## Uses the gravity field direction to determine the horizontal plane.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "HorizontalVelocityDivergence" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-
-         ## Velocity divergence:
-         ##
-         ## div velocity
-         ##
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "VelocityDivergence" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-
-         ## Vorticity for a 2D field:
-         ##
-         ##  du   dv
-         ##  -- - --
-         ##  dy   dx
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "Vorticity2D" },
-            (
-               element diagnostic {
-                  vorticity_2d_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         
-         ## Gravitational potential energy density:
-         ##
-         ## -rho*(g dot (r - r_0))
-         ##
-         ## where rho is the Density scalar field
-         ## r_0 is the potential energy zero point
-         ## and g is the gravity vector
-         ##
-         ## BE AWARE OF WHAT IS IN THE DENSITY SCALAR FIELD
-         ##
-         ## Limitations:
-         ##  - Requires a constant gravity direction.
-         ##  - The Density and GravitationalPotentialEnergyDensity fields must be on the same mesh.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "GravitationalPotentialEnergyDensity" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field,
-                  ## Coordinate of a point with a potential energy of zero.
-                  element zero_point {
-                     real_dim_vector
-                  }
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Local average mesh edge lengths
-         element scalar_field {
-          attribute rank { "0" },
-            attribute name { "MeshEdgeLengths" },
-            (
-              element diagnostic {
-                  scalar_edge_lengths_algorithm,
-                  element mesh {
-                     attribute name { "CoordinateMesh" }
-                  },
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Calculate the horizontal stream function psi where:
-         ##   \partial_x \psi = -v
-         ##   \partial_y \psi = u
-         ## where u and v are perpendicular to the gravity direction. Applies a
-         ## strong Dirichlet boundary condition of 0 on all boundaries.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "HorizontalStreamFunction" },
-            attribute depends { "Velocity" },
-            (
-              element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  ## Solver
-                  element solver {
-                     linear_solver_options_sym
-                  },
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Speed:
-         ##
-         ##  |u|
-         ##
-         ## Limitations:
-         ##  - The Speed and Velocity fields must be on the same mesh.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "Speed" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-
          ## Absolute Difference between two scalar fields.
          ##
          ## Both fields must be in this material_phase.
@@ -2105,105 +1578,9 @@ scalar_field_choice =
                }
             )
          }|
-         ## Output the processors which own the nodes of the mesh on which this field is based.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "NodeOwner" },
-            (
-               element diagnostic {
-                  legacy_internal_algorithm,
-                  mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## An estimate of the edge wieghts whilst adapting using Zoltan
-         ## Note: you *must* turn on inteprolation otherwise this field
-         ## will be emptied by an adapt.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "MaxEdgeWeightOnNodes" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-
-         ## SumVelocityDivergence
-         ##
-         ## Diagnostic field used in multiphase simulations.
-         ## Sums up the divergence of each phase's bulk velocity, i.e. \sum{ div(vfrac*u) }
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "SumVelocityDivergence" },
-            (
-               element diagnostic {
-                  velocity_mesh_choice,
-                  internal_algorithm,
-                  element integrate_divergence_by_parts {
-                     empty
-                  }?,
-                  diagnostic_scalar_field_no_adapt,
-                  element solver {
-                     linear_solver_options_sym
-                  }
-               }
-            )
-         }|
-         element scalar_field {
-             attribute rank { "0" },
-             attribute name { "SolidConcentration" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   velocity_mesh_choice,
-                   diagnostic_scalar_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
          element scalar_field {
              attribute rank { "0" },
              attribute name { "Dummy" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   velocity_mesh_choice,
-                   diagnostic_scalar_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-         element scalar_field {
-             attribute rank { "0" },
-             attribute name { "TotalFlux" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   velocity_mesh_choice,
-                   diagnostic_scalar_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-         element scalar_field {
-             attribute rank { "0" },
-             attribute name { "DummyT" },
              (
                 element diagnostic {
                    internal_algorithm,
@@ -2265,19 +1642,19 @@ vector_field_choice =
 #    but can be aliased.
 # -- The list is in order of most frequently used.
 #
-         ## Prescribed vector fields below this
-         element ___Prognostic_fields_below___ {
-            empty
-         }|
-#
+#         ## Prescribed vector fields below this
+#         element ___Prognostic_fields_below___ {
+#            empty
+#         }|
+
 # -- List of fields that are primarily prescribed,
 #    but can be aliased.
 # -- The list is in order of most frequently used.
 #
-         ## Prescribed vector fields below this
-         element ___Prescribed_fields_below___ {
-            empty
-         }|
+#         ## Prescribed vector fields below this
+#         element ___Prescribed_fields_below___ {
+#            empty
+#         }|
 
 #
 # Insert new prescribed vector fields here using the template:
@@ -2302,133 +1679,6 @@ vector_field_choice =
          ## Diagnostic vector fields below this
          element ___Diagnostic_Fields_Below___ {
             empty
-         }|
-
-         ## Projection of the Velocity vector field of this material_phase 
-         ## that uses an overlapping formulation to a conventional DG function space. 
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "VelocityOverlappingProjectedToDG" },
-             
-             element diagnostic {
-                internal_algorithm,
-                mesh_choice,
-                diagnostic_vector_field
-             }
-         }|
-         ## Gradient of a scalar field evaluated using the C gradient
-         ## matrix constructed using finite elements.
-         ## Field must be in this material_phase.
-         element vector_field {
-            attribute rank { "1" },
-            attribute name { "FiniteElementGradient" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  attribute field_name { string },
-                  mesh_choice,
-                  element integrate_gradient_by_parts {
-                     empty
-                  }?,
-                  diagnostic_gradient_vector_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-
-         ## Gradient of a scalar field evaluated using the transpose
-         ## of the C^T divergence matrix constructed using finite
-         ## elements.
-         ## Field must be in this material_phase.
-         element vector_field {
-            attribute rank { "1" },
-            attribute name { "FiniteElementDivergenceTransposed" },
-            (
-               element diagnostic {
-                  legacy_internal_algorithm,
-                  attribute field_name { string },
-                  mesh_choice,
-                  element integrate_divergence_by_parts {
-                     empty
-                  }?,
-                  diagnostic_gradient_vector_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-
-         ## Gradient of a scalar field evaluated using the transpose
-         ## of the C^T matrix constructed using control volumes.
-         ## Field must be in this material_phase.
-         element vector_field {
-            attribute rank { "1" },
-            attribute name { "ControlVolumeDivergenceTransposed" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  attribute field_name { string },
-                  velocity_mesh_choice,
-                  diagnostic_cv_gradient_vector_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## LinearMomentum field.
-         ##  p = \rho*u 
-         ## (where p is the linear momentum, \rho the density and u the velocity)
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "LinearMomentum" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   velocity_mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-         ## Calculate the control volume auxiliary gradient for a particular field.
-         ## The related field must be a scalar field in this material_phase.
-         element vector_field {
-            attribute rank { "0" },
-            attribute name { "ControlVolumeAuxiliaryGradient" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  attribute gradient_of_field { string },
-                  diagnostic_vector_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Calculate the dg (Bassi Rebay) auxiliary gradient for a particular field.
-         ## The related field must be a scalar field in this material_phase.
-         element vector_field {
-            attribute rank { "0" },
-            attribute name { "DGAuxiliaryGradient" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  attribute gradient_of_field { string },
-                  diagnostic_vector_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
          }|
 
          ## Absolute Difference between two vector fields.
@@ -2481,38 +1731,6 @@ vector_field_choice =
             )
          }|
 
-         ## Coordinate field remapped to the mesh of your choice.
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "DiagnosticCoordinate" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-
-         ## Coordinate field remapped to the mesh of your choice.
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "DiagnosticCoordinate2" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-
          ## Galerkin projection of one field onto another mesh.
          ##
          ## The field must be in this material_phase.
@@ -2541,63 +1759,9 @@ vector_field_choice =
                   generic_aliased_field
                }
             )
-         }|
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "delta_U" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "solid_U" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-             element vector_field {
-             attribute rank { "1" },
-             attribute name { "Darcy_Velocity" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
-         }|
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "f_x" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
          }
+
+
 # Insert new diagnostic vector field here using the template:
 #        element vector_field {
 #            attribute rank { "1" },
@@ -2676,60 +1840,7 @@ tensor_field_choice =
          ## Diagnostic tensor fields below this
          element ___Diagnostic_Fields_Below___ {
             empty
-         }|
-        element tensor_field {
-            attribute name { "Dummy" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  mesh_choice,
-                  diagnostic_tensor_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-        }|
-        element tensor_field {
-            attribute name { "a_xx" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  mesh_choice,
-                  diagnostic_tensor_field
-               }|
-               element aliased {
-                  generic_aliased_field
-        }
-            )
-        }|
-        ## This is the gradient of the velocity field - calculated in the dynamic core.
-        element tensor_field {
-            attribute name { "grad_U" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  mesh_choice,
-                  diagnostic_tensor_field
-               }|
-               element aliased {
-                  generic_aliased_field
-        }
-            )
-        }|
-        element tensor_field {
-            attribute name { "Viscosity" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  mesh_choice,
-                  diagnostic_tensor_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-        }     
+         }
 
 # Insert new diagnostic tensor field here using the template:
 #        element tensor_field {
@@ -2746,26 +1857,6 @@ tensor_field_choice =
 #            )
 #        }
       )
-   )
-
-cap_option =
-   (
-      ## Cap the min and max values of this field when using
-      ## it as a volume fraction to work out bulk material
-      ## properties.
-      ## No capping used if not selected.
-      element cap_values {
-         ## Set the upper bound on the field.
-         ## Defaults to huge(0.0)*epsilon(0.0) if not set.
-         element upper_cap {
-            real
-         }?,
-         ## Set the lower bound on the field.
-         ## Defaults to -huge(0.0)*epsilon(0.0) if not set.
-         element lower_cap {
-            real
-         }?
-      }
    )
 
 limiter_options =
@@ -3168,7 +2259,7 @@ phase_density =
 ## Specify the density of the current material phase (can also specify density for each component)
         element Density {
             real
-         }?
+         }
         )
 
 

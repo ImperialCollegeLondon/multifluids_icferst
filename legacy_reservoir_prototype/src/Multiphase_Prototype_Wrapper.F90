@@ -372,7 +372,7 @@ contains
         integer, intent(in) :: nphase, npres
         !Local variables
         integer :: stat, i, simulation_quality = 10
-        real :: theta
+        real :: theta, aux
         character( len = option_path_len ) :: option_path, quality_option
 
         !Add simulation type like in the normal fashion
@@ -389,11 +389,11 @@ contains
         call get_option(trim(option_path), quality_option, stat=stat)
         if (trim(quality_option) == "fast") then
             simulation_quality = 1
-        else if (trim(quality_option) == "quality") then
+        else if (trim(quality_option) == "precision") then
             simulation_quality = 100
         else if (trim(quality_option) == "discontinuous_pressure") then
             simulation_quality = 1000
-        else !medium, the recommended one
+        else !balanced, the recommended one
             simulation_quality = 10
         end if
 
@@ -442,13 +442,19 @@ contains
         !Select the theta
         theta = -1.
         if (simulation_quality < 10) theta = 1.0
-        !If it is medium quality select local decision on theta
+        !If it is balanced quality select local decision on theta
         if (simulation_quality >= 10 .and. simulation_quality < 100) call add_option("/numerical_methods/local_upwinding", stat=stat)
 
             ! IO STAT OPTIONS
         option_path = "/io/output_mesh[0]/name"
         call add_option(trim(option_path), stat=stat)
         call set_option(trim(option_path),"PressureMesh")
+
+        !Set up the non-linear solver to use an automatic backtracking method
+        option_path = "/timestepping/nonlinear_iterations/Fixed_Point_iteration/Bactracking_factor"
+        call add_option(trim(option_path), stat=stat)
+        call set_option(trim(option_path),-10.)
+
 
         do i = 1, nphase
 
@@ -507,7 +513,25 @@ contains
                 option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/temporal_discretisation/relaxation"
                 call add_option(trim(option_path), stat=stat)
                 call set_option(trim(option_path), 1.0)
-                            ! Stat, convergence, detectors, steady state settings
+
+                !Create viscosity from simplified version and create memory for the absoprtion
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/tensor_field::Viscosity/prescribed"
+                call add_option(trim(option_path)//"/mesh::PressureMesh", stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/isotropic/constant", stat=stat)!<= set up mesh
+                call get_option("/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/viscosity",  aux)
+                call set_option(trim(option_path)//"/value::WholeMesh/isotropic/constant", aux)!<= introduce value from the user
+
+                !Create memory for the absoprtion
+                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/vector_field::Absorption/diagnostic"
+                call add_option(trim(option_path)//"/mesh::PressureMesh_Discontinuous", stat=stat)!<= set up mesh
+                call add_option(trim(option_path)//"/algorithm::Internal", stat=stat)!<= set up algorithm type
+                    ! Stat, convergence, detectors, steady state settings
+                    call add_option(trim(option_path)//"/stat", stat=stat)
+                    call add_option(trim(option_path)//"/convergence/include_in_convergence", stat=stat)
+                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors", stat=stat)
+                    call add_option(trim(option_path)//"/steady_state/include_in_steady_state", stat=stat)
+
+                ! Stat, convergence, detectors, steady state settings
                 option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/stat"
                 call add_option(trim(option_path), stat=stat)
                 option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/convergence/include_in_convergence"
@@ -620,7 +644,7 @@ contains
         integer :: Vdegree, Pdegree
         character( len = option_path_len ) :: quality_option
         !By default it is intertia dominated
-        is_porous_media = have_option('/simulation_type/porous_media')
+        is_porous_media = have_option('/simulation_type/porous_media') .or. have_option('/is_porous_media')
         is_magma = have_option('/simulation_type/magma')
         is_flooding = have_option('/simulation_type/flooding')
         !Flag to set up the coupling with femdem
@@ -641,7 +665,7 @@ contains
             is_P0DGP1CV = .false.
             !If using IC_FERST schema then this depends on the quality selected
             call get_option("/geometry/simulation_quality", quality_option)
-            if ((trim(quality_option) == "fast") .or. (trim(quality_option) == "medium")) is_P0DGP1CV = .true.
+            if ((trim(quality_option) == "fast") .or. (trim(quality_option) == "balanced")) is_P0DGP1CV = .true.
         end if
     end subroutine get_simulation_type
 

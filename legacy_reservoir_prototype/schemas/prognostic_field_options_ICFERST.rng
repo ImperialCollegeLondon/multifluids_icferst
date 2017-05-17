@@ -267,160 +267,82 @@ requires a distinct name for the options dictionary.</a:documentation>
         <ref name="velocity_boundary_conditions"/>
       </element>
     </zeroOrMore>
-    <optional>
-      <element name="tensor_field">
-        <a:documentation>For a Newtonian fluid this is the shear viscosity.
-
-For continuous_galerkin see stress_terms to see how the
-viscosity tensor is dealt with in the momentum equation.</a:documentation>
-        <attribute name="name">
-          <value>Viscosity</value>
-        </attribute>
-        <attribute name="rank">
-          <value>2</value>
-        </attribute>
-        <element name="nphase">
-          <a:documentation>TO BE DELETED</a:documentation>
-          <ref name="integer"/>
-        </element>
-        <element name="type">
-          <a:documentation>Selects the memory type based on the coupling of the system.
-If unsure, select Anisotropic_coupled (very high memory consumption).</a:documentation>
-          <element name="dimensions">
-            <ref name="integer"/>
-          </element>
-          <choice>
-            <element name="Anisotropic_coupled">
-              <empty/>
-            </element>
-            <element name="Anisotropic">
-              <empty/>
-            </element>
-            <element name="Isotropic_coupled">
-              <empty/>
-            </element>
-            <element name="Isotropic">
-              <empty/>
-            </element>
-          </choice>
-        </element>
-        <choice>
-          <element name="prescribed">
-            <optional>
-              <ref name="mesh_choice"/>
-            </optional>
-            <ref name="prescribed_tensor_field_no_adapt"/>
-          </element>
-          <element name="diagnostic">
-            <optional>
-              <ref name="mesh_choice"/>
-            </optional>
-            <choice>
-              <ref name="internal_algorithm"/>
-              <ref name="bulk_viscosity_algorithm"/>
-              <ref name="tensor_python_diagnostic_algorithm"/>
-            </choice>
-            <ref name="diagnostic_tensor_field"/>
-          </element>
-        </choice>
-      </element>
-    </optional>
-    <optional>
-      <element name="vector_field">
-        <a:documentation>Source</a:documentation>
-        <attribute name="name">
-          <value>Source</value>
-        </attribute>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <choice>
-          <element name="prescribed">
-            <optional>
-              <ref name="mesh_choice"/>
-            </optional>
-            <ref name="prescribed_vector_field_no_adapt"/>
-          </element>
-          <element name="diagnostic">
-            <optional>
-              <ref name="mesh_choice"/>
-            </optional>
-            <choice>
-              <ref name="vector_python_diagnostic_algorithm"/>
-              <ref name="imposed_material_velocity_source_algorithm"/>
-              <ref name="internal_velocity_source_algorithm"/>
-            </choice>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-        </choice>
-        <optional>
-          <element name="lump_source">
-            <empty/>
-          </element>
-        </optional>
-      </element>
-    </optional>
-    <optional>
-      <element name="vector_field">
-        <a:documentation>Absorption
-
-Note: When in spherical geometry the absorption is now automatically rotated.
-The input values below correspond to setting the diagonal of the absorption matrix
-in the rotated frame of reference. The columns correspond to phi, theta and r 
-respectively.</a:documentation>
-        <attribute name="name">
-          <value>Absorption</value>
-        </attribute>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <choice>
-          <element name="prescribed">
-            <optional>
-              <ref name="mesh_choice"/>
-            </optional>
-            <ref name="prescribed_vector_field_no_adapt"/>
-          </element>
-          <element name="diagnostic">
-            <optional>
-              <ref name="mesh_choice"/>
-            </optional>
-            <choice>
-              <ref name="vector_python_diagnostic_algorithm"/>
-              <ref name="imposed_material_velocity_absorption_algorithm"/>
-              <ref name="internal_velocity_absorption_algorithm"/>
-            </choice>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-        </choice>
-        <choice>
-          <element name="default_absorption">
-            <a:documentation>Default absorption: no lumping, is fully evaluated before the
-the pressure correction.</a:documentation>
-            <empty/>
-          </element>
-          <element name="lump_absorption">
-            <a:documentation>Lump the inclusion of absorbtion terms.</a:documentation>
-            <optional>
-              <element name="use_submesh">
-                <a:documentation>Lump on the submesh.
-This only works for simplex meshes and is only
-strictly valid on 2d meshes.</a:documentation>
-                <empty/>
-              </element>
-            </optional>
-          </element>
-          <element name="include_pressure_correction">
-            <a:documentation>Includes the pressure correction to the velocity in the
-absorption term (for theta&gt;0). This makes the absorption
-term more implicit. The absorption term is lumped if and
-only if the mass matrix is lumped (lump_mass_matrix).</a:documentation>
-            <empty/>
-          </element>
-        </choice>
-      </element>
-    </optional>
+    <element name="viscosity">
+      <a:documentation>For a Newtonian fluid this is the shear viscosity.</a:documentation>
+      <ref name="real"/>
+    </element>
     <!--
+           ## Source
+           element vector_field {
+              attribute name { "Source" },
+              attribute rank { "1" },
+              (
+                 element prescribed {
+                    mesh_choice?,
+                    prescribed_vector_field_no_adapt
+                 }|
+                 element diagnostic {
+                    mesh_choice?,
+                    (
+                       vector_python_diagnostic_algorithm |
+                       imposed_material_velocity_source_algorithm |
+                       internal_velocity_source_algorithm
+                    ),
+                    diagnostic_vector_field
+                 }
+              ),
+              element lump_source {
+                 empty
+              }?
+           }?,
+           ## Absorption
+           ##
+           ## Note: When in spherical geometry the absorption is now automatically rotated.
+           ## The input values below correspond to setting the diagonal of the absorption matrix
+           ## in the rotated frame of reference. The columns correspond to phi, theta and r 
+           ## respectively.
+          element vector_field {
+              attribute name { "Absorption" },
+              attribute rank { "1" },
+              (
+                 element prescribed {
+                    mesh_choice?,
+                    prescribed_vector_field_no_adapt
+                 }|
+                 element diagnostic { 
+                    mesh_choice?,
+                    (
+                       vector_python_diagnostic_algorithm |
+                      imposed_material_velocity_absorption_algorithm |
+                       internal_velocity_absorption_algorithm
+                    ),
+                    diagnostic_vector_field
+                 }
+              ),
+              (
+                ## Default absorption: no lumping, is fully evaluated before the
+                ## the pressure correction.
+                element default_absorption {
+                   empty
+                }|
+                ## Lump the inclusion of absorbtion terms.
+                element lump_absorption {
+                   ## Lump on the submesh.
+                   ## This only works for simplex meshes and is only
+                   ## strictly valid on 2d meshes.
+                   element use_submesh {
+                     empty
+                   }?
+               }|
+                ## Includes the pressure correction to the velocity in the
+                ## absorption term (for theta>0). This makes the absorption
+                ## term more implicit. The absorption term is lumped if and
+                ## only if the mass matrix is lumped (lump_mass_matrix).
+                element include_pressure_correction {
+                   empty
+                }
+              )
+           }?,
            ## Vertical stabilization options
            ##
            ## Note: Switching on one of these options will result in all
