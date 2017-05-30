@@ -171,8 +171,10 @@ prognostic_scalar_field =
          attribute name { "Viscosity" },
          attribute rank { "2" },
          ##TO BE DELETED
+	 ##THIS OPTION IS USED TO SET TENSOR DIMENSIONS
          element nphase { integer },
-         ## Selects the memory type based on the coupling of the system.
+         ## NOT USED
+	 ## Selects the memory type based on the coupling of the system.
          ## If unsure, select Anisotropic_coupled (very high memory consumption).
          element type {
          element dimensions { integer },
@@ -182,7 +184,7 @@ prognostic_scalar_field =
             element Isotropic_coupled { empty }|
             element Isotropic { empty }
             )
-         },
+         }?,
          (
             element prescribed {
                 mesh_choice?,
@@ -257,8 +259,10 @@ prognostic_scalar_field =
          attribute name { "Absorption" },
          attribute rank { "0" },
          ##TO BE DELETED
+         ##THIS OPTION IS USED TO SET TENSOR DIMENSIONS
          element nphase { integer },
-         ## Selects the memory type based on the coupling of the system.
+         ## NOT USED
+	 ## Selects the memory type based on the coupling of the system.
          ## If unsure, select Anisotropic_coupled (very high memory consumption).
          element type {
          element dimensions { integer },
@@ -268,7 +272,7 @@ prognostic_scalar_field =
             element Isotropic_coupled { empty }|
             element Isotropic { empty }
             )
-         },
+         }?,
          (
             element diagnostic {
                (
@@ -1065,8 +1069,10 @@ prognostic_velocity_field =
          attribute name { "Viscosity" },
          attribute rank { "2" },
          ##TO BE DELETED
+         ##THIS OPTION IS USED TO SET TENSOR DIMENSIONS
          element nphase { integer },
-         ## Selects the memory type based on the coupling of the system.
+         ## NOT USED
+	 ## Selects the memory type based on the coupling of the system.
          ## If unsure, select Anisotropic_coupled (very high memory consumption).
          element type {
          element dimensions { integer },
@@ -1076,7 +1082,7 @@ prognostic_velocity_field =
             element Isotropic_coupled { empty }|
             element Isotropic { empty }
             )
-         },
+         }?,
          (
             element prescribed {
                mesh_choice?,

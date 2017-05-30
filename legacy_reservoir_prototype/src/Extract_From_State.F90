@@ -1556,6 +1556,7 @@ contains
             else
                 lfree=.true.
             end if
+            lfree=.false.
 
             if ( trim(name)=="Pressure" ) then
                 mfield=>extract_tensor_field(mstate,"PackedFE"//name)
@@ -1581,10 +1582,11 @@ contains
 #endif
                     deallocate(nfield%val)
                 end if
-                nfield%val=>mfield%val(icomp,iphase,:)
-                nfield%val_stride=ncomp*nphase
-                nfield%wrapped=.true.
-            end if
+
+                !nfield%val=>mfield%val(icomp,iphase,:)
+                !nfield%val_stride=ncomp*nphase
+                !nfield%wrapped=.true.
+             end if
 
         end subroutine unpack_sfield
 

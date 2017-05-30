@@ -388,7 +388,7 @@ contains
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
              type(tensor_field), pointer :: tracer, velocity, density, deriv
-             type(scalar_field), pointer :: gamma
+             type(scalar_field), pointer :: gamma, A
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
              !Variables for global convergence method
@@ -407,7 +407,7 @@ contains
              integer :: its, useful_sats
              type (tensor_field), pointer :: sat_field
              !Variables to control the PETCs solver
-             integer, save :: max_allowed_its = -1, max_FPI = -1
+             integer, save :: max_allowed_its = -1
              integer :: its_taken
 
 if (is_flooding) return!<== Temporary fix for flooding
@@ -668,6 +668,13 @@ if (is_flooding) return!<== Temporary fix for flooding
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
+
+             ! Copy back memory
+             do iphase=1,Mdims%nphase
+                A=>extract_scalar_field(state(iphase),"PhaseVolumeFraction")
+                A%val=tracer%val(1,iphase,:)
+             end do
+
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
@@ -804,7 +811,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IDs_ndgln, calculate_mass_delta, non_its, deltaP_old )
+        IDs_ndgln, calculate_mass_delta )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -821,7 +828,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
-        INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY, non_its
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
@@ -830,7 +837,6 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        type( vector_field ), intent(inout) :: deltaP_old
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
@@ -869,10 +875,10 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL, UDEN3
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
+        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3!, test12
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv
-        type( vector_field ), pointer :: x_all2
-        type( scalar_field ), pointer ::  sf, soldf, gamma
+        type( vector_field ), pointer :: x_all2, U
+        type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
@@ -883,7 +889,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
-        integer :: IGOT_THERM_VIS, ierr
+        integer :: IGOT_THERM_VIS
         real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
         real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
@@ -897,8 +903,13 @@ if (is_flooding) return!<== Temporary fix for flooding
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
 
-        real :: auxR
-
+        !test12 => extract_tensor_field( state(1), "UAbsorB" )
+        !print *,'l1=',minval(test12%val(1,1,:)),maxval(test12%val(1,1,:)),'::',minval(test12%val(1,2,:)),maxval(test12%val(1,2,:)) 
+        !print *,'l2=',minval(test12%val(2,1,:)),maxval(test12%val(2,1,:)),'::',minval(test12%val(2,2,:)),maxval(test12%val(2,2,:)) 
+        !print *,'l3=',minval(test12%val(3,1,:)),maxval(test12%val(3,1,:)),'::',minval(test12%val(3,2,:)),maxval(test12%val(3,2,:)) 
+        !print *,'l4=',minval(test12%val(4,1,:)),maxval(test12%val(4,1,:)),'::',minval(test12%val(4,2,:)),maxval(test12%val(4,2,:)) 
+        !call print_state(state(1))
+        !stop 677
 
         if(max_allowed_P_its < 0)  then
             call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
@@ -1426,15 +1437,27 @@ END IF
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
+
+        ! Copy back memory
+        do iphase=1,Mdims%nphase
+           U=>extract_vector_field(state(iphase),"U",stat)
+           if(stat==0)then
+              do idim=1,Mdims%ndim
+                 U%val(idim,:)=U_ALL2%val(idim,iphase,:)
+              end do
+           end if
+        end do
+
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
-
 
     contains
 
         subroutine calc_CVPres_from_FEPres()
             !This is for FE pressure
             implicit none
+            integer stat_cvp
+
             if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV... (for some reason this does not work for flooding...)
                 CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
                 !...inside the wells it is still FE pressure
@@ -1503,7 +1526,8 @@ END IF
             end if
             call halo_update(CVP_all)
 
-
+            cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
+            if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
 
         end subroutine calc_CVPres_from_FEPres
 
@@ -1751,7 +1775,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         real, dimension(:,:,:), intent(in) :: U_SOURCE_CV_ALL
         type( tensor_field ), intent(in) :: pressure
         ! Local Variables
-        integer :: CV_ILOC, CV_JLOC, GI, ELE, U_ILOC, U_JLOC, U_INOD, CV_INOD
+        integer :: CV_ILOC, CV_JLOC, GI, ELE, U_ILOC, U_INOD, CV_INOD
         real, dimension(FE_GIdims%cv_ngi, Mdims%u_nloc) :: UFEN_REVERSED
         real, dimension(FE_GIdims%cv_ngi, Mdims%cv_nloc) :: CVN_REVERSED
         !Variables for capillary pressure
@@ -1821,7 +1845,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 !Assemble lumped mass matrix (only necessary at the beggining and after adapt)
                 !this has to go, the mass matrix should not be assembled at all as it can be done on-the-fly so long
                 !we have the mass of each element
-                if (.not.Mmat%Stored) call get_porous_Mass_matrix(ELE, Mdims, FE_funs, FE_GIdims, DevFuns, Mmat)
+                if (.not.Mmat%Stored) call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
                 !Introduce gravity right-hand-side
                 do U_ILOC = 1, Mdims%u_nloc
                     U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
@@ -2774,7 +2798,7 @@ end if
             end if
             !Default mass matrix for porous media
             if (use_simple_lumped_homogenenous_mass_matrix) then
-                call get_porous_Mass_matrix(ELE, Mdims, FE_funs, FE_GIdims, DevFuns, Mmat)
+                call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
             end if
 
             ! *********subroutine Determine local vectors...
@@ -7028,20 +7052,18 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
     END SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
-    subroutine get_porous_Mass_matrix(ELE, Mdims, FE_funs, FE_GIdims, DevFuns, Mmat)
+    subroutine get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
         implicit none
         integer, intent(in) :: ELE
         type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: FE_GIdims
-        type(multi_shape_funs), intent(in) :: FE_funs
         type(multi_dev_shape_funs), intent(in) :: Devfuns
         type (multi_matrices), intent(inout) :: Mmat
         !Local variables
         integer:: I, J, vel_degree, pres_degree,&
-                U_JLOC, U_ILOC, JPHASE, JDIM, JPHA_JDIM, IPHASE, IPHA_IDIM, idim
+                U_JLOC, U_ILOC, JPHASE, JDIM, IPHASE, idim
         !Weight parameter, controls the strenght of the homogenization of the velocity nodes per element
         !the bigger the more P0DG it tends to be
-        real :: factor, factor_default, bc_factor
+        real :: factor, factor_default
         real, save :: lump_vol_factor =-1d25
         real, save :: scaling_vel_nodes = -1
         !Weights for lumping taken from Zienkiewicz vol 1 page 475

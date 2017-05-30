@@ -284,17 +284,8 @@ contains
     type(vector_field), pointer :: v_field
     
     ewrite(1, *) "In calculate_diagnostic_variables MP"
-
-
-
+    
     ewrite(1,*) 'Exiting calculate_momentum_diagnostics'
-
-
-
-
-
-
-
     
     do i = 1, size(states)
       do j = 1, scalar_field_count(states(i))
@@ -362,7 +353,7 @@ contains
       call deallocate(calculated_states(i))
     end do
     
-    ewrite(1, *) "Exiting calculate_diagnostic_variables"
+    ewrite(1, *) "Exiting calculate_diagnostic_variables MP"
     
   end subroutine calculate_diagnostic_variables
   

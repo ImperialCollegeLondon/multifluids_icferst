@@ -170,7 +170,7 @@ contains
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
-        type(scalar_field), pointer :: DensitySource
+        type(scalar_field), pointer :: DensitySource, T
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         !type(scalar_field), pointer :: bathymetry
@@ -184,8 +184,7 @@ contains
         integer, save :: numberfields = -1
         real :: t_adapt_threshold
         !Variables for FPI acceleration for flooding
-        type( vector_field ) :: deltaP_old
-!      calculate_mass_delta to store the change in mass calculated over the whole domain
+        ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
 
 !!-Variables related to the detection and correction of bad elements
@@ -550,6 +549,13 @@ contains
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field)
+
+                    ! Copy back memory
+                    do iphase=1,Mdims%nphase
+                       T=>extract_scalar_field(state(iphase),"Temperature")
+                       T%val=tracer_field%val(1,iphase,:)
+                    end do
+
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
 
@@ -587,7 +593,7 @@ call solve_transport()
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta, its, deltaP_old )
+                        IDs_ndgln, calculate_mass_delta )
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then

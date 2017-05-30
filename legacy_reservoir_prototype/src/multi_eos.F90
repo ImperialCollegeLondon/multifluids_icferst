@@ -72,7 +72,7 @@ contains
         character( len = option_path_len ), dimension( : ), allocatable :: eos_option_path
         type( tensor_field ), pointer :: PackedDRhoDPressure ! (nphase, cv_nonods)
         type( tensor_field ), pointer :: field1, field2, field3, field4
-        type( scalar_field ), pointer :: Cp_s
+        type( scalar_field ), pointer :: Cp_s, Density
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
         logical :: boussinesq
         logical, parameter :: harmonic_average=.false.
@@ -251,6 +251,11 @@ contains
         deallocate( Rho, dRhodP, Cp, Component_l)
         deallocate( Density_Component, Density_Bulk, DensityCp_Bulk )
         deallocate( eos_option_path )
+
+        do iphase = 1, nphase
+           Density => extract_scalar_field( state( iphase ), "Density" )
+           Density % val = field1 % val( 1, iphase, : )
+        end do
 
     end subroutine Calculate_All_Rhos
 
