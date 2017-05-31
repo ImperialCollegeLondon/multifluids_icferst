@@ -871,7 +871,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, :, : ), allocatable :: DU_VEL, U_RHS_CDP2
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, LINEARISE_DENSITY, diag, SUF_INT_MASS_MATRIX
-        INTEGER :: stat
+        INTEGER :: stat, python_stat
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
         !CMC using petsc format
@@ -882,7 +882,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3!, test12
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv
+        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, python_tfield
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
@@ -1098,6 +1098,20 @@ if (is_flooding) return!<== Temporary fix for flooding
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
                 velocity_absorption, temperature_absorption )
            deallocate( temperature_absorption )
+        end if
+
+        ! Check for a python-set absorption field
+        ! Assumes that python blocks are (nphase x nphase) and isotropic
+        python_tfield => extract_tensor_field( state(1), "UAbsorB", python_stat )
+        if (python_stat==0) then
+           do iphase = 1, Mdims%nphase
+              do jphase = 1, Mdims%nphase
+                 do idim = 1, Mdims%ndim
+                    idx1 = idim+(iphase-1)*Mdims%ndim ; idx2 = idim+(jphase-1)*Mdims%ndim
+                    velocity_absorption( idx1, idx2, : ) = python_tfield%val( iphase, jphase, : )
+                 end do
+              end do
+           end do
         end if
 
         ! update velocity source
