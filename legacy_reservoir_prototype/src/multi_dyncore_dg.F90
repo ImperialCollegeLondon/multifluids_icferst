@@ -125,7 +125,7 @@ contains
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV
-           integer :: lcomp, Field_selector, IGOT_T2_loc
+           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
@@ -135,16 +135,16 @@ contains
            real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-           type( tensor_field ), pointer :: perm
+           type( tensor_field ), pointer :: perm, python_field
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield
 
-            if (present(Permeability_tensor_field)) then
-                perm => Permeability_tensor_field
-            else
-                perm=>extract_tensor_field(packed_state,"Permeability")
-            end if
+           if (present(Permeability_tensor_field)) then
+              perm => Permeability_tensor_field
+           else
+              perm=>extract_tensor_field(packed_state,"Permeability")
+           end if
            IGOT_THERM_VIS = 0
            ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
            ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -256,13 +256,15 @@ contains
               deallocate ( Velocity_Absorption )
            end if
 
-           if ( is_magma) then
-
+           if (is_magma) then
               ! set the absorption for magma sims here
               sfield => extract_scalar_field( state(1), "TemperatureAbsorption")
               T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => sfield%val ! only phase 1
            end if
 
+           ! Check for a python-set absorption field when solving for temperature/internal energy
+           python_field => extract_tensor_field( state(1), "TAbsorB", python_stat )
+           if (python_stat==0 .and. Field_selector==1) T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => python_field%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
