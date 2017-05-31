@@ -124,7 +124,7 @@ contains
            REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
-           type( vector_field ), pointer  :: MeanPoreCV
+           type( vector_field ), pointer  :: MeanPoreCV, python_vfield
            integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
@@ -135,7 +135,7 @@ contains
            real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-           type( tensor_field ), pointer :: perm, python_field
+           type( tensor_field ), pointer :: perm, python_tfield
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield
@@ -263,8 +263,12 @@ contains
            end if
 
            ! Check for a python-set absorption field when solving for temperature/internal energy
-           python_field => extract_tensor_field( state(1), "TAbsorB", python_stat )
-           if (python_stat==0 .and. Field_selector==1) T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => python_field%val
+           python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
+           if (python_stat==0 .and. Field_selector==1) T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => python_tfield%val
+
+           ! Check for a python-set source field when solving for temperature/internal energy
+           python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
+           if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
