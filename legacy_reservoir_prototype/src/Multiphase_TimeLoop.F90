@@ -143,7 +143,7 @@ contains
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
@@ -169,7 +169,7 @@ contains
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
-        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
+        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
         type(scalar_field), pointer :: DensitySource, T
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
@@ -575,6 +575,10 @@ call solve_transport()
                 end if
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
+
+                PythonPhaseVolumeFractionSource => extract_vector_field(state(1),"VSource", python_stat)
+                if ( python_stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PythonPhaseVolumeFractionSource%val(:,:)
+
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
 
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
