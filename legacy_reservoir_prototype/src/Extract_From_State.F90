@@ -1558,8 +1558,9 @@ contains
             end if
             lfree=.false.
 
-            if ( trim(name)=="Pressure" ) then
+            if (trim(name)=="Pressure") then
                 mfield=>extract_tensor_field(mstate,"PackedFE"//name)
+                lfree=.true.
             else
                 mfield=>extract_tensor_field(mstate,"Packed"//name)
             end if
@@ -1575,7 +1576,7 @@ contains
                 if (icomp==1 .and. iphase == 1) then
                     mfield%option_path=nfield%option_path
                 end if
-                if(lfree .and. associated(nfield%val)) then
+                if (lfree .and. associated(nfield%val)) then
 #ifdef HAVE_MEMORY_STATS
                     call register_deallocation("scalar_field", "real", &
                         size(nfield%val), nfield%name)
@@ -1583,10 +1584,13 @@ contains
                     deallocate(nfield%val)
                 end if
 
-                !nfield%val=>mfield%val(icomp,iphase,:)
-                !nfield%val_stride=ncomp*nphase
-                !nfield%wrapped=.true.
-             end if
+                if (trim(name)=="Pressure") then
+                    nfield%val=>mfield%val(icomp,iphase,:)
+                    nfield%val_stride=ncomp*nphase
+                    nfield%wrapped=.true.
+                end if
+
+            end if
 
         end subroutine unpack_sfield
 
