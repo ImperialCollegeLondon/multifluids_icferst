@@ -4684,7 +4684,8 @@ limiter_options =
             sweby_limiter|
             ultimate_limiter|
 	    extrema_limiter|
-            compressive_advection_limiter
+            compressive_advection_limiter|
+            ENO_advection
           )
         }|
         ## Do not limit the face value
