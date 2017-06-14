@@ -573,6 +573,7 @@ call solve_transport()
                         if ( stat == 0 ) ScalarField_Source_Store(iphase,:) = ScalarField_Source_Store(iphase,:) + DensitySource%val
                     end do
                 end if
+
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
 

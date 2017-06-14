@@ -1752,7 +1752,6 @@ contains
                             IF(APPLY_ENO) THEN
                                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
                                 call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
-
                                 ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
                                 ! Put the results in LIMF.
                                 CALL APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
@@ -2844,7 +2843,7 @@ contains
         PARAMETER(ngi_one=1)
         ! If ENO_ALL_THREE use all 3 to find TGI ENO value...
         ! else use the upwind value and current element value.
-        LOGICAL, PARAMETER :: ENO_ALL_THREE = .TRUE.
+        LOGICAL, PARAMETER :: ENO_ALL_THREE =  .false.   !.TRUE.
         ! If FOR_DG_ONLY_BETWEEN_ELE use fem INSIDE element for DG
         LOGICAL, PARAMETER :: FOR_DG_ONLY_BETWEEN_ELE = .TRUE.
         ! Use ENO only where there is an oscillation as it can be a bit dissipative.
@@ -2880,7 +2879,7 @@ contains
         REAL :: TGI_ELE_B(NPHASE*2), TGI_ELE_C(NPHASE*2)
         REAL :: ENO_ELE_MATWEI_IN(CV_NLOC),ENO_ELE_MATWEI_OUT(CV_NLOC),ENO_ELE_MATWEI(CV_NLOC,2)
         REAL :: RUP_WIN,MIN_TGI,MAX_TGI,dx, min_val, max_val
-        LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_I,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD, GOT_AN_OSC
+        LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_I,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD!, GOT_AN_OSC
         INTEGER :: ENO_ELE_NEI(2),LOCNODS(NDIM+1)
         INTEGER :: ELE2,SELE2,ELEWIC,ENO_ELE_NEI_IN,ENO_ELE_NEI_OUT,IPHASE2,CV_KLOC,IUP_DOWN
         INTEGER :: IFACE,NPHASE2,IPT, cv_nodk, cv_nodk_IN, cv_nodk_OUT, X_KNOD, I_OLD_NEW, IPHASE
@@ -2893,7 +2892,7 @@ contains
         DISTCONTINUOUS_METHOD=( CV_NONODS == TOTELE * CV_NLOC )
 
 
-        if ( .false. ) then
+        if ( .true. ) then
 
             TGI_ELE=0.0
             do cv_kloc=1,cv_nloc
@@ -2986,17 +2985,16 @@ contains
         end if
 
 
-
         TUP(1:NPHASE)=(1.0-INCOME(1:NPHASE))*T_ALL(1:NPHASE,CV_NODI) + INCOME(1:NPHASE)*T_ALL(1:NPHASE,CV_NODJ)
         TUP(1+NPHASE:2*NPHASE)=(1.0-INCOMEOLD(1:NPHASE))*TOLD_ALL(1:NPHASE,CV_NODI) + INCOMEOLD(1:NPHASE)*TOLD_ALL(1:NPHASE,CV_NODJ)
 
-        !TUP(1:NPHASE)=(1.0-INCOME(1:NPHASE))*femT_ALL(1:NPHASE,CV_NODI) + INCOME(1:NPHASE)*femT_ALL(1:NPHASE,CV_NODJ)
-        !TUP(1+NPHASE:2*NPHASE)=(1.0-INCOMEOLD(1:NPHASE))*femTOLD_ALL(1:NPHASE,CV_NODI) + INCOMEOLD(1:NPHASE)*femTOLD_ALL(1:NPHASE,CV_NODJ)
+        !TUP(1:NPHASE)=(1.0-INCOME(1:NPHASE))*femT_ALL(1:NPHASE,CV_NODI) + INCOME(1:NPHASE)*FEMT_ALL(1:NPHASE,CV_NODJ)
+        !TUP(1+NPHASE:2*NPHASE)=(1.0-INCOMEOLD(1:NPHASE))*femTOLD_ALL(1:NPHASE,CV_NODI) + INCOMEOLD(1:NPHASE)*FEMTOLD_ALL(1:NPHASE,CV_NODJ)
 
         W = 0.0 ! =0 means always apply ENO.
         IF(ENO_ONLY_WHERE_OSCILLATE) THEN
             ! Use ENO only where there is an oscillation as it can be a bit dissipative.
-            GOT_AN_OSC=.FALSE.
+            !GOT_AN_OSC=.FALSE.
             IPT=1
             DO I_OLD_NEW=1,2
                 DO IPHASE=1,NPHASE
@@ -3005,7 +3003,7 @@ contains
                         W(IPHASE2)=(TUP(IPHASE2)-LIMF(IPT))/TOLFUN(TUP(IPHASE2)-TGI_ELE(IPHASE2))
                         W(IPHASE2)=MAX(0.0,MIN(1.0,W(IPHASE2) ))
                         ! W=0.0(full upwind);  W=1.0(high order no limiting)
-                        IF(W(IPHASE2)<0.9999) GOT_AN_OSC=.TRUE.
+                        !IF(W(IPHASE2)<0.9999) GOT_AN_OSC=.TRUE.
                         IPT=IPT+1
                     ENDIF
                 END DO ! ENDOF DO IPHASE=1,NPHASE
@@ -3034,11 +3032,11 @@ contains
                     ! Is CV_JLOC a corner node...
                     IS_CORNER_NOD_I = (CV_ILOC==1).OR.(CV_ILOC==3).OR.(CV_ILOC==6).OR.(CV_ILOC==10)
                     IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
-                    !               IF(IS_CORNER_NOD_J) XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+                    !IF(IS_CORNER_NOD_J) XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
                     IF(IS_CORNER_NOD_I) XVEC(:)= + 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
                 ELSE ! linear element..
                     XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
-                ENDIF
+                 ENDIF
             endif
 
             DO IUP_DOWN=1,2 ! Consider both directions...
@@ -3075,8 +3073,8 @@ contains
                         ENDIF
 
                         CALL TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
-                                     !     The 3 corners of the tri...
-                            X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
+                             ! The 3 corners of the tri...
+                             X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
 
                         MINCOR=MINVAL( LOCCORDS(:) )
 
@@ -3093,7 +3091,7 @@ contains
                 IF(ELEWIC==0) ELEWIC=ELE
                 ELE2=ELEWIC
 
-                ! nEIGHBOURING element ELE2...
+                ! NEIGHBOURING element ELE2...
 
                 IF(QUADRATIC_ELEMENT) THEN
                     LOCNODS(1)=X_NDGLN((ELE2-1)*CV_NLOC+1)
@@ -3105,8 +3103,8 @@ contains
                 ENDIF
 
                 CALL TRI_tet_LOCCORDS(Xpt_GI, LOCCORDS,&
-                                   !     The 3 corners of the tri...
-                    X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
+                     ! The 3 corners of the tri...
+                     X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
 
                 L1(1) = LOCCORDS(1)
                 L2(1) = LOCCORDS(2)
@@ -3135,7 +3133,7 @@ contains
 
             TGI_IN=0.0 ; TGI_OUT=0.0
 
-            if (.true.) then ! this is what we should use...
+            if (.true.) then
 
                 do cv_kloc=1,cv_nloc
                     cv_nodk_IN  = CV_NDGLN((ENO_ELE_NEI_IN -1)*CV_NLOC + cv_kloc)
@@ -3144,8 +3142,8 @@ contains
                     TGI_IN(1:NPHASE)=TGI_IN(1:NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*FEMT_ALL(:,cv_nodk_IN)
                     TGI_OUT(1:NPHASE)=TGI_OUT(1:NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*FEMT_ALL(:,cv_nodk_OUT)
 
-                    TGI_IN(1+NPHASE:2*NPHASE)=TGI_IN(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*femTOLD_ALL(:,cv_nodk_IN)
-                    TGI_OUT(1+NPHASE:2*NPHASE)=TGI_OUT(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*femTOLD_ALL(:,cv_nodk_OUT)
+                    TGI_IN(1+NPHASE:2*NPHASE)=TGI_IN(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*FEMTOLD_ALL(:,cv_nodk_IN)
+                    TGI_OUT(1+NPHASE:2*NPHASE)=TGI_OUT(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*FEMTOLD_ALL(:,cv_nodk_OUT)
                 end do
 
             else
@@ -3161,18 +3159,20 @@ contains
                 end do
             end if
 
-            INCOME_BOTH(1:NPHASE)         =INCOME(1:NPHASE)
-            INCOME_BOTH(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)
-
 
             IF(ENO_ALL_THREE) THEN ! Use all 3 to find TGI ENO value...
-                IF( IS_CORNER_NOD_I .or. IS_CORNER_NOD_J ) THEN
-                    IF(IS_CORNER_NOD_I) THEN
+
+               IF( IS_CORNER_NOD_I .or. IS_CORNER_NOD_J ) THEN
+
+                  INCOME_BOTH(1:NPHASE)         =INCOME(1:NPHASE)
+                  INCOME_BOTH(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)
+
+                  IF(IS_CORNER_NOD_I) THEN
                         TGI_NEI =INCOME_BOTH       * TGI_ELE + (1.0-INCOME_BOTH) * TGI_IN
                         TGI_NEI2=(1.0-INCOME_BOTH) * TGI_ELE + INCOME_BOTH       * TGI_IN
                     ELSE
-                        TGI_NEI =INCOME_BOTH      *TGI_IN + (1.0-INCOME_BOTH)*TGI_ELE
-                        TGI_NEI2=(1.0-INCOME_BOTH)*TGI_IN + INCOME_BOTH      *TGI_ELE
+                        TGI_NEI =INCOME_BOTH       * TGI_IN + (1.0-INCOME_BOTH) * TGI_ELE
+                        TGI_NEI2=(1.0-INCOME_BOTH) * TGI_IN + INCOME_BOTH       * TGI_ELE
                     ENDIF
                     !
                     TGI_IN=TGI_NEI
@@ -3209,7 +3209,10 @@ contains
                 TGI_NEI(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TGI_IN(1+NPHASE:2*NPHASE) + (1.0-INCOMEOLD(1:NPHASE))*TGI_OUT(1+NPHASE:2*NPHASE)
                 ! Choose TGI that is closest to TUP...
                 DO IPHASE2=1,NPHASE2
-                    IF(  (TUP(IPHASE2)-TGI_ELE(IPHASE2))*(TUP(IPHASE2)-TGI_NEI(IPHASE2))  >0 ) THEN
+
+if (.true.) then
+
+                    IF(  (TUP(IPHASE2)-TGI_ELE(IPHASE2))*(TUP(IPHASE2)-TGI_NEI(IPHASE2)) >0 ) THEN
                         TGI(IPHASE2)=TUP(IPHASE2)
                     ELSE ! Choose the closest
                         IF( ABS(TUP(IPHASE2)-TGI_ELE(IPHASE2)) < ABS(TUP(IPHASE2)-TGI_NEI(IPHASE2))  ) THEN
@@ -3218,6 +3221,10 @@ contains
                             TGI(IPHASE2)=TGI_NEI(IPHASE2)
                         ENDIF
                     ENDIF
+else
+                   TGI(IPHASE2) = min( TUP(IPHASE2), TGI_NEI(IPHASE2) )
+end if
+
                 END DO
             ENDIF
 
@@ -4380,7 +4387,7 @@ contains
         LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK, IGOT_T_CONST
         REAL, DIMENSION(NPHASE), intent( inout ) :: T_ALL
         REAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_CONST_VALUE
-        REAL, DIMENSION(:), intent( inout ) :: LOC_F
+        REAL, DIMENSION(:), intent( in ) :: LOC_F
         ! local variables...
         INTEGER :: IPHASE
 

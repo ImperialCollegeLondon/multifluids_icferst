@@ -1104,11 +1104,15 @@ if (is_flooding) return!<== Temporary fix for flooding
         ! Assumes that python blocks are (nphase x nphase) and isotropic
         python_tfield => extract_tensor_field( state(1), "UAbsorB", python_stat )
         if (python_stat==0) then
+           ewrite(3,*)"Python UAbsorB"
+           velocity_absorption = 0.0
            do iphase = 1, Mdims%nphase
               do jphase = 1, Mdims%nphase
                  do idim = 1, Mdims%ndim
                     idx1 = idim+(iphase-1)*Mdims%ndim ; idx2 = idim+(jphase-1)*Mdims%ndim
                     velocity_absorption( idx1, idx2, : ) = python_tfield%val( iphase, jphase, : )
+                    ewrite(3,*) idx1, idx2, minval( velocity_absorption( idx1, idx2, : ) ), &
+                         maxval( velocity_absorption( idx1, idx2, : ) )
                  end do
               end do
            end do
@@ -1275,7 +1279,7 @@ end if
                   allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
                   call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
                   call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
-                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdims%nphase, U_ABSORBIN )
+                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdims%nphase, U_ABSORBIN*0.0 )
                   deallocate(U_ABSORBIN)
                end if
             end if
@@ -2255,7 +2259,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! open the boiling test for two phases-gas and liquid
         if (is_boiling) then
             GOT_VIRTUAL_MASS=.true.
-        end if
+         end if
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
         position=>extract_vector_field(packed_state,"PressureCoordinate")
         !Check capillary options
@@ -6184,7 +6188,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                 ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
       integer, dimension( : ), pointer :: x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list, mat_ndgln
       logical :: quad_over_whole_ele, d1, d3, dcyl
-      type( vector_field ), pointer :: x
+      type( vector_field ), pointer :: x, x2
       type( mesh_type ), pointer :: phmesh
 
       real, dimension( :, :, : ), allocatable, target :: tmp_cvfenx_all
@@ -6201,7 +6205,8 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
       real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, ph
 
       real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
-      real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi, sigma_gi
+      real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi
+      real, dimension( :, : ), allocatable :: sigma_gi, volfra_gi
 
       real, dimension( : ), pointer :: tmp_cv_weight
       real, dimension( :, : ), pointer :: tmp_cvfen
@@ -6210,7 +6215,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
       real, dimension( :, : ), pointer :: other_fen
       real, dimension( :, :, : ), pointer :: other_fenlx_all
 
-      real :: nxnx, gravity_magnitude, dt
+      real :: nxnx, gravity_magnitude, dt, zmax
 
       type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
@@ -6218,11 +6223,11 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
       character( len = OPTION_PATH_LEN ) :: path = "/tmp", bc_type
 
-      type( tensor_field ), pointer :: rho, pfield
+      type( tensor_field ), pointer :: rho, volfra, pfield
       type( scalar_field ), pointer :: printf
       type( vector_field ), pointer :: printu, gravity_direction
 
-      logical :: boussinesq, got_free_surf
+      logical :: boussinesq, got_free_surf, same_mesh
       integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
       integer, dimension( : ), pointer :: findph, colph
 
@@ -6336,7 +6341,8 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
            &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
            &    coef_alpha_gi( ph_ngi, nphase ) )
 
-      allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ), sigma_gi( ph_ngi, nphase ) )
+      allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ), &
+                sigma_gi( ph_ngi, nphase ), volfra_gi( ph_ngi, nphase ) )
 
       ! initialise memory
       u_ph_source_vel = 0.0 ; alpha_cv = 0.0 ; coef_alpha_cv = 0.0
@@ -6349,16 +6355,17 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
       else
          rho => extract_tensor_field( packed_state, "PackedDensity" )
       end if
-
+      volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
       gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
 
-      do idim = 1, ndim
-         u_ph_source_cv( idim, 1, : ) = rho % val( 1, 1, : ) * &
-                    gravity_magnitude * gravity_direction % val( idim, 1 )
+      do iphase = 1, nphase
+         do idim = 1, ndim
+            u_ph_source_cv( idim, iphase, : ) = rho % val( 1, iphase, : ) * &
+                 gravity_magnitude * gravity_direction % val( idim, 1 )
+         end do
       end do
-
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
@@ -6396,7 +6403,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
             end if
 
             u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
-            dx_ph_gi = 0.0 ; den_gi = 0.0 ; sigma_gi = 0.0
+            dx_ph_gi = 0.0 ; den_gi = 0.0 ; sigma_gi = 0.0 ; volfra_gi = 0.0
 
             do u_iloc = 1, u_nloc
                u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
@@ -6407,6 +6414,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                   end do
                end do
             end do
+
 
             do cv_iloc = 1, cv_nloc
                cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
@@ -6432,12 +6440,13 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                   sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
                         tmp_cvfen( cv_iloc, : ) * u_absorbin(  1, iphase, mat_inod )
 
+                  volfra_gi( :, iphase ) = volfra_gi( :, iphase ) + &
+                        tmp_cvfen( cv_iloc, : ) * volfra % val( 1, iphase, cv_inod )
                end do
             end do
 
-            !inv_den_gi = 1.0 / ( den_gi + dt * sigma_gi )
-            inv_den_gi = 1.0 / den_gi
-
+            !inv_den_gi = volfra_gi / ( den_gi + dt * sigma_gi )
+            inv_den_gi = volfra_gi / den_gi
 
             do ph_iloc = 1, ph_nloc
                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
@@ -6462,9 +6471,11 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                   do ph_jloc = 1, ph_nloc
                      ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
                      nxnx = 0.0
-                     do idim = 1, ndim
-                        nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * &
-                             phfenx_all( idim, ph_jloc, : ) * detwei * inv_den_gi( :, 1 ) )
+                     do iphase = 1, nphase
+                        do idim = 1, ndim
+                           nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * &
+                                phfenx_all( idim, ph_jloc, : ) * detwei * inv_den_gi( :, iphase ) )
+                        end do
                      end do
                      call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
                   end do
@@ -6499,7 +6510,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
          if ( iloop == 1 ) then
 
-            got_free_surf = .false.
+            got_free_surf = .false. ; same_mesh = (cv_nloc==ph_nloc)
             pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
             do i = 1, get_boundary_condition_count( pfield )
                call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
@@ -6511,7 +6522,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
             ! if free surface apply a boundary condition
             ! else don't forget to remove the null space
-            if ( got_free_surf ) then
+            if ( got_free_surf .and. same_mesh ) then
                findph => sparsity % findrm
                colph => sparsity % colm
                do inod = 1, size( surface_node_list )
@@ -6536,20 +6547,54 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                end do
             end if
 
+            if ( got_free_surf .and. .not.same_mesh ) then
+               findph => sparsity % findrm
+               colph => sparsity % colm
+               x2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
+               zmax = maxval( x2%val(ndim,:) )
+               do inod = 1, ph_nonods
+                  if ( abs( x2%val(ndim,inod)-zmax )<1.0e-6 ) then
+                     ph_inod = inod
+                     rhs % val( ph_inod ) = 0.0
+                     do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                        ph_jnod = colph( count )
+                        if ( ph_jnod /= ph_inod ) then
+                           i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                           j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                           do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                              ph_jnod2 = colph( count2 )
+                              if ( ph_jnod2 == ph_inod ) then
+                                 i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                                 j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                              end if
+                           end do
+                        end if
+                     end do
+                  end if
+               end do
+            end if
+
             ! solver for pressure ph
             call set_solver_options( path, &
                  !ksptype = "cg", &
-                 !pctype = "hypre", &
+                 pctype = "hypre", &
                  ksptype = "gmres", &
-                 pctype = "sor", &
+                 !pctype = "sor", &
                  !ksptype = "preonly", &
                  !pctype = "lu", &
                  rtol = 1.0e-10, &
                  atol = 0.0, &
                  max_its = 10000 )
 
+            call add_option( &
+                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
+            call set_option( &
+                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
+
             if ( .not.got_free_surf ) call add_option( &
-                    trim( path ) // "/solver/remove_null_space", stat )
+                 trim( path ) // "/solver/remove_null_space", stat )
             ph_sol % option_path = path
 
             call petsc_solve( ph_sol, matrix, rhs )
@@ -6565,17 +6610,17 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
       end do
 
-
       ! deallocate
       call deallocate_multi_shape_funs( ph_funs )
       call deallocate( rhs )
       call deallocate( ph_sol )
       call deallocate( matrix )
       deallocate( u_ph_source_vel, u_ph_source_cv, alpha_cv, &
-                 coef_alpha_cv, u_ph_source_ph, alpha_ph, &
-                 ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
-                 dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, sigma_gi, &
-                 tmp_cvfenx_all, other_fenx_all, detwei, ra )
+                  coef_alpha_cv, u_ph_source_ph, alpha_ph, &
+                  ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
+                  dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, &
+                  sigma_gi, volfra_gi, &
+                  tmp_cvfenx_all, other_fenx_all, detwei, ra )
       ewrite(3,*) "leaving high_order_pressure_solve"
 
       return

@@ -1456,7 +1456,7 @@ contains
                 call zero(mfield)
                 call insert(mstate,mfield,"Packed"//trim(name)//"Source")
                 call deallocate(mfield)
-            end if
+             end if
 
             if (ladd_absorption) then
                 call allocate(mfield,lmesh,"Packed"//trim(name)//"Absorption",&

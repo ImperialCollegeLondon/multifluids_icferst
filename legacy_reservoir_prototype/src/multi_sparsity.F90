@@ -1259,7 +1259,7 @@ contains
 
         mx_ncolacv = 3 * mx_nface_p1 * cv_nonods * nphase + cv_nonods * ( nphase - 1 ) * nphase
 
-        mx_ncolph = mxnele * ph_nloc * ph_nloc
+        mx_ncolph = mxnele * 4  * 6 + ph_nloc
 
         return
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
@@ -1282,7 +1282,6 @@ contains
         logical :: presym
         type(csr_sparsity), pointer :: sparsity
         type(mesh_type), pointer :: element_mesh, ph_mesh
-        integer, dimension( : ), allocatable :: ph_mid
         ewrite(3,*)'In Get_Sparsity_Patterns'
         !Check if sparsities have been associated (allocated), if not, allocate
 
@@ -1454,17 +1453,15 @@ contains
             Mdims%ph_nonods = node_count( ph_mesh )
             Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
             ph_ndgln => get_ndglno( ph_mesh )
-            allocate( ph_mid( Mdims%ph_nonods ) )
-            Mspars%ph%fin = 0 ; Mspars%ph%col = 0 ; ph_mid = 0
+            Mspars%ph%fin = 0 ; Mspars%ph%col = 0
             if ( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh   ! BUG HERE!!!
-                call pousinmc2( Mdims%totele, Mdims%ph_nloc, Mdims%ph_nonods, Mdims%ph_nloc, &
-                    mx_ncolph, ph_ndgln, ph_ndgln, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col, ph_mid )
+               call pousinmc2( Mdims%totele, Mdims%ph_nloc, Mdims%ph_nonods, Mdims%ph_nloc, &
+                    mx_ncolph, ph_ndgln, ph_ndgln, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid )
             else ! a DG pressure field mesh
                 call CT_DG_Sparsity( mx_nface_p1, Mdims%totele, Mdims%ph_nloc, Mdims%ph_nloc, &
                     Mdims%ph_nonods, ph_ndgln, ph_ndgln, Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
                     mx_ncolph, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col )
             end if
-            deallocate( ph_mid )            
             call resize( Mspars%ph%col, Mspars%ph%ncol )
         end if
         !-
