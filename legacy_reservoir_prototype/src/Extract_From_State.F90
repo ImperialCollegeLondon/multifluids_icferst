@@ -1584,11 +1584,13 @@ contains
                     deallocate(nfield%val)
                 end if
 
-                if (trim(name)=="Pressure") then
+
+                !sprint to_do: This flag makes the python scripting to work but breakes mesh adaptivity
+!                if (trim(name)=="Pressure") then
                     nfield%val=>mfield%val(icomp,iphase,:)
                     nfield%val_stride=ncomp*nphase
                     nfield%wrapped=.true.
-                end if
+!                end if
 
             end if
 
