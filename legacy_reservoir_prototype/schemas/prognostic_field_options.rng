@@ -191,7 +191,9 @@ requires a distinct name for the options dictionary.</a:documentation>
       </zeroOrMore>
       <optional>
         <element name="tensor_field">
-          <a:documentation>Diffusivity for field</a:documentation>
+          <a:documentation>Diffusivity for field.
+
+Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin =&gt; W/(m·K) ).</a:documentation>
           <attribute name="name">
             <value>Diffusivity</value>
           </attribute>

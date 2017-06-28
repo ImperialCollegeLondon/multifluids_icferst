@@ -404,13 +404,18 @@ start =
 #            element wall_time_limit {
 #               real
 #            }?,
-            ## maximum number of non-linear iterations.
+            ## Maximum number of non-linear iterations for the Fixed-Point iteration solver.
             ## 
-            ## Manual suggests 2
+            ## Manual suggests 2 for problems that are not very non-linear
+            ##
+            ## If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
             ## 
-            ## If using Fixed_Point_Iteration the recommendation is 25
+            ## If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of 
+            ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
 			element nonlinear_iterations {
                integer,
+               ##NOTE: For multiphase porous media only. Otherwise this value is ignored.  
+               ##
                ## This is the convergence criterion for the Fixed Point Iteration solver.
                ## The functional to compare is: 
                ##
@@ -424,7 +429,30 @@ start =
                element Fixed_Point_Iteration{
                   real,
                   (
-                    ## Recommended settings: Non-linear iterations >= 30
+                    ## Tolerance for the infinite norm of the variation of the normalized selected field
+                    ## between two consecutive non-linear iterations.
+                    ##
+                    ## This can be used to control the number of non-linear interations dynamically.
+                    ##
+                    ## By default 0.03; Recommended between 0.05 and 0.005
+                    element Infinite_norm_tol{
+                    real,
+                      (
+                        ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
+                        ##
+                        ## A Variable to check has to be chosen:
+                        ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+                        ##
+                        ## The field selected in "adaptive_timestep_nonlinear" has preference over this
+                        element adaptive_non_linear_iterations{
+                        integer
+                        }?
+                      )
+                    }?
+                  ),
+                  (
+                    ##
+                    ## Recommended settings: Non-linear iterations ~ 20
                     ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
                     ##
                     ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
@@ -453,14 +481,6 @@ start =
                     }?
                   ),
                   (
-                    ## Tolerance for the infinite norm of the variation in saturation
-                    ## between two FPI
-                    ## By default 0.03; Recommended between 0.05 and 0.005
-                    element Inifinite_norm_tol{
-                    real
-                    }?
-                  ),
-                  (
                     ## Convergence criterion based on the 
                     ## conservation of mass for the Fixed Point Iteration solver
 	            ## 
@@ -476,7 +496,7 @@ start =
                     ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
                     ##
                     ## A Variable to check has to be chosen:
-                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (Default)
+                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
                     element adaptive_timestep_nonlinear{
                         integer,
                       (

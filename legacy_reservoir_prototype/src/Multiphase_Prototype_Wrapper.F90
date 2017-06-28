@@ -661,6 +661,11 @@ contains
                 Pdegree )
             is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
                     have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
+
+            if ((Vdegree == 0) .and. (Pdegree == 1) .and. .not. is_P0DGP1CV) then
+                ewrite(0, *) "P0DGP1 only works for porous media and the DCVFEM formulation."
+                stop
+            end if
         else
             is_P0DGP1CV = .false.
             !If using IC_FERST schema then this depends on the quality selected

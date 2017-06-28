@@ -147,7 +147,9 @@ prognostic_scalar_field =
       )+,
       scalar_boundary_conditions*,
 
-      ## Diffusivity for field
+      ## Diffusivity for field.
+      ##
+      ## Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
       element tensor_field {
          attribute name { "Diffusivity" },
          attribute rank { "2" },

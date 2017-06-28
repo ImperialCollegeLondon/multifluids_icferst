@@ -469,7 +469,7 @@ contains
         real, dimension(History_order) :: Coefficients
         logical, save :: allow_undo = .true.
         real, save :: convergence_tol
-        real, save :: Inifinite_norm_tol
+        real, save :: Infinite_norm_tol
         type (tensor_field), pointer :: sat_field
         !Initialize variables
         new_backtrack_par = 1.0
@@ -499,8 +499,8 @@ contains
                     convergence_tol, default = 0. )
                 convergence_tol =  convergence_tol
                 !Tolerance for the infinite norm
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',&
-                    Inifinite_norm_tol, default = 0.03 )
+                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',&
+                    Infinite_norm_tol, default = 0.03 )
                 backtrack_pars(1) = max(min(abs(backtrack_par_from_schema), 1.0), min_backtrack)
                 !Retrieve the shape of the function to use to weight the importance of previous saturations
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
@@ -526,7 +526,7 @@ contains
                 !####Check convergence of the method####
                 satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
                     .or. (get_Convergence_Functional(Satura, Sat_bak, backtrack_pars(2)) < convergence_tol .and.&
-                    maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Inifinite_norm_tol)!<= exit if final convergence is achieved
+                    maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
                 if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then

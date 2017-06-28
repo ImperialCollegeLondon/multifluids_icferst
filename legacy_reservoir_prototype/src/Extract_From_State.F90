@@ -142,9 +142,12 @@ contains
                     warning_displayed = .true.
                 end if
             end if
-            !Donn't use for single phase porous media flows
+            !Don't use for single phase porous media flows
             if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres < 2) then
-                ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
+                !Unless we are using dynamic control of the non-linear iterations in which case it does not matter
+                if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
+                    ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
+                end if
             end if
         end if
         is_multifracture = have_option( '/femdem_fracture' ) .or. is_multifracture
@@ -2000,14 +2003,14 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
-    real, dimension(:,:), pointer :: phasevolumefraction
+    real, dimension(:,:), pointer :: phasevolumefraction, temperature
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
     logical, save :: match_final_t = .true.
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
-        Inifinite_norm_tol, calculate_mass_tol
+        Infinite_norm_tol, calculate_mass_tol
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
     !! local variable, holds the maximum mass error
@@ -2022,16 +2025,18 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
     if (tolerance_between_non_linear<0) return
     !Tolerance for the infinite norm
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',&
-        Inifinite_norm_tol, default = 0.03 )
+    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',&
+        Infinite_norm_tol, default = 0.03 )
     !retrieve number of Fixed Point Iterations
     call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
-    !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
-    if (is_porous_media)  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
-        variable_selection, default = 3)
-    if (is_flooding)  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
-        variable_selection, default = 1)
+    !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation), 4 (Temperature)
+    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations', &
+        variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
+    if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
+        call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
+            variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
+    end if
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
         increaseFactor, default = 1.1 )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
@@ -2067,17 +2072,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 phasevolumefraction = phasevolumefraction)
 
             select case (variable_selection)
-                case (1)
-                    if (allocated(reference_field)) then
-                        if (size(reference_field,3) /= size(pressure,3) ) then
-                            deallocate(reference_field)
-                            allocate (reference_field(1,1,size(pressure,3) ))
-                        end if
-                    else
-                        allocate (reference_field(1,1,size(pressure,3) ))
-                    end if
-                    reference_field(1,1,:) = pressure(1,1,:)
-                case (2)
+                case (2)!Velocity
                     if (allocated(reference_field)) then
                         if (size(reference_field,1) /= size(velocity,1) .or. &
                             size(reference_field,2) /= size(velocity,2) .or. &
@@ -2089,7 +2084,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         allocate (reference_field(size(velocity,1),size(velocity,2),size(velocity,3) ))
                     end if
                     reference_field(:,:,:) = velocity
-                case default
+                case (3)!Phase volume fraction
 
                     if (allocated(reference_field)) then
                         if (size(reference_field,2) /= size(phasevolumefraction,1) .or. &
@@ -2101,6 +2096,29 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                     end if
                     reference_field(1,:,:) = phasevolumefraction
+                case (4)!Temperature
+                    call get_var_from_packed_state(packed_state, temperature = temperature)
+                    if (allocated(reference_field)) then
+                        if (size(reference_field,2) /= size(temperature,1) .or. &
+                            size(reference_field,3) /= size(temperature,2) ) then
+                            deallocate(reference_field)
+                            allocate (reference_field(1,size(temperature,1),size(temperature,2) ))
+                        end if
+                    else
+                        allocate (reference_field(1,size(temperature,1),size(temperature,2) ))
+                    end if
+                    reference_field(1,:,:) = temperature
+
+                case default !Default as pressure is always defined and changes more smoothly than velocity
+                    if (allocated(reference_field)) then
+                        if (size(reference_field,3) /= size(pressure,3) ) then
+                            deallocate(reference_field)
+                            allocate (reference_field(1,1,size(pressure,3) ))
+                        end if
+                    else
+                        allocate (reference_field(1,1,size(pressure,3) ))
+                    end if
+                    reference_field(1,1,:) = pressure(1,1,:)
             end select
 
         case default!Check how is the process going on and decide
@@ -2111,25 +2129,35 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 phasevolumefraction = phasevolumefraction)
 
             select case (variable_selection)
-                case (1)
-                    !Calculate normalized infinite norm of the difference
-                    auxR = max(maxval(reference_field(1,1,:)), maxval(pressure(1,1,:)))
 
-                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
-!                    inf_norm_val = inf_norm_val/backtrack_or_convergence
-                    ts_ref_val = inf_norm_val!Use the infinite norm for the time being
-                    tolerance_between_non_linear = 1d9!Only infinite norm for the time being
-                case (2)
+                case (2)!Velocity
                     inf_norm_val = maxval(abs(reference_field-velocity))
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
-                case default
+                case (3)!Phase volume fraction
                     !Calculate infinite norm
                     inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
 
                     !Calculate value of the functional
                     ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
                     backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
+
+                case (4)!Temperature
+                    call get_var_from_packed_state(packed_state, temperature = temperature)
+                    !Calculate normalized infinite norm of the difference
+                    auxR = max(maxval(reference_field(1,:,:)), maxval(temperature(:,:)))
+
+                    inf_norm_val = maxval(abs((reference_field(1,:,:)-temperature(:,:))/auxR))
+                    ts_ref_val = inf_norm_val!Use the infinite norm for the time being
+                    tolerance_between_non_linear = 1d9!Only infinite norm for the time being
+
+                case default!Pressure
+                    !Calculate normalized infinite norm of the difference
+                    auxR = max(maxval(reference_field(1,1,:)), maxval(pressure(1,1,:)))
+
+                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
+                    ts_ref_val = inf_norm_val!Use the infinite norm for the time being
+                    tolerance_between_non_linear = 1d9!Only infinite norm for the time being
             end select
             ! find the maximum mass error to compare with the tolerance below
             !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
@@ -2143,7 +2171,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 call allmax(inf_norm_val)
             end if
 
-            if (is_porous_media) then
+            if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
@@ -2160,11 +2188,11 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             if (is_porous_media) then
                 !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                 !So if the infinity norm is way better than the tolerance we consider that the convergence have been achieved
-                if (first_time_step .or. inf_norm_val * 1e2 < Inifinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
-                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol &
+                if (first_time_step .or. inf_norm_val * 1e2 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
+                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
             else
-                ExitNonLinearLoop = (inf_norm_val < Inifinite_norm_tol) .or. its >= NonLinearIteration
+                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol) .or. its >= NonLinearIteration
             end if
             !At least two non-linear iterations
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
@@ -2293,7 +2321,7 @@ contains
             aux = aux + 1.0
         end if
         !Compare with infinitum norm
-        Cn(2) = inf_norm_val/Inifinite_norm_tol
+        Cn(2) = inf_norm_val/Infinite_norm_tol
         aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
         if (Aim_num_FPI > 0) then

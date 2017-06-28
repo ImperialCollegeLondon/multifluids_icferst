@@ -2592,6 +2592,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         GOT_DIFFUS = ( R2NORM( UDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0.0 )  &
             .OR. ( UDIFFUSION_VOL%have_field ) .OR. BETWEEN_ELE_STAB
         IF(LES_DISOPT.NE.0) GOT_DIFFUS=.TRUE.
+
+        !For geothermal no diffusion is introduced in the momentum equation
+        if (is_porous_media) GOT_DIFFUS = .false.
+
         IF(GOT_DIFFUS.AND.LINEAR_HIGHORDER_DIFFUSION) THEN
             ALLOCATE( STRESS_IJ_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
             ALLOCATE( S_INV_NNX_MAT12(Mdims%ndim, Mdims%u_snloc, 2*Mdims%u_nloc) )

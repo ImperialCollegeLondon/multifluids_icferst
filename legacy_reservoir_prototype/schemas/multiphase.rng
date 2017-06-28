@@ -493,15 +493,20 @@ then this is the initial time step size.</a:documentation>
                        }?,
           -->
           <element name="nonlinear_iterations">
-            <a:documentation>maximum number of non-linear iterations.
+            <a:documentation>Maximum number of non-linear iterations for the Fixed-Point iteration solver.
 
-Manual suggests 2
+Manual suggests 2 for problems that are not very non-linear
 
-If using Fixed_Point_Iteration the recommendation is 25</a:documentation>
+If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
+
+If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of 
+non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.</a:documentation>
             <ref name="integer"/>
             <optional>
               <element name="Fixed_Point_Iteration">
-                <a:documentation>This is the convergence criterion for the Fixed Point Iteration solver.
+                <a:documentation>NOTE: For multiphase porous media only. Otherwise this value is ignored.  
+
+This is the convergence criterion for the Fixed Point Iteration solver.
 The functional to compare is: 
 
 f = L2norm(S*-So)/L2norm(S1-So)
@@ -513,8 +518,31 @@ of saturation is tested
 Recommended value: 5e-2</a:documentation>
                 <ref name="real"/>
                 <optional>
+                  <element name="Infinite_norm_tol">
+                    <a:documentation>Tolerance for the infinite norm of the variation of the normalized selected field
+between two consecutive non-linear iterations.
+
+This can be used to control the number of non-linear interations dynamically.
+
+By default 0.03; Recommended between 0.05 and 0.005</a:documentation>
+                    <ref name="real"/>
+                    <optional>
+                      <element name="adaptive_non_linear_iterations">
+                        <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
+
+A Variable to check has to be chosen:
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+
+The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
+                        <ref name="integer"/>
+                      </element>
+                    </optional>
+                  </element>
+                </optional>
+                <optional>
                   <element name="Backtracking_factor">
-                    <a:documentation>Recommended settings: Non-linear iterations &gt;= 30
+                    <a:documentation>
+Recommended settings: Non-linear iterations ~ 20
 Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
 
 The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
@@ -542,14 +570,6 @@ If having problems converging the recomendation is to try different parameters f
                   </element>
                 </optional>
                 <optional>
-                  <element name="Inifinite_norm_tol">
-                    <a:documentation>Tolerance for the infinite norm of the variation in saturation
-between two FPI
-By default 0.03; Recommended between 0.05 and 0.005</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-                <optional>
                   <element name="Test_mass_consv">
                     <a:documentation>Convergence criterion based on the 
 conservation of mass for the Fixed Point Iteration solver
@@ -570,7 +590,7 @@ the final convergence achieved by the FPI solver</a:documentation>
                     <a:documentation>Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (Default)</a:documentation>
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature </a:documentation>
                     <ref name="integer"/>
                     <group>
                       <optional>

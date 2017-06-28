@@ -1548,7 +1548,7 @@ contains
       else
 
         diffusivity => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat )
-
+        !Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
         if ( stat == 0 ) then
             do iphase = 1, Mdims%nphase
                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
