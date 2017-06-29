@@ -79,7 +79,7 @@ module cv_advection
 
     public ::  totout, mat1, mat2, porevolume
 
-    real, allocatable, dimension(:,:) :: totout
+    real, allocatable, dimension(:,:,:) :: totout!(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
     real :: porevolume ! for outfluxes.csv to calculate the pore volume injected
 
     ! Variables needed for the mesh to mesh interpolation calculations
@@ -516,7 +516,7 @@ contains
         ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements
         ! the outgoing flux through a specified boundary.
         ! Ioutlet counts the number of boundaries that are integrated over for the 'totoutflux calculation'.
-        real, dimension(Mdims%nphase, size(outlet_id)) :: totoutflux
+        real, dimension(size(totout, 1),Mdims%nphase, size(outlet_id)) :: totoutflux
         integer :: ioutlet, ISWITCH
         type(tensor_field), pointer :: CVPressure
         type(tensor_field), pointer :: tenfield1, tenfield2
@@ -525,6 +525,8 @@ contains
         real, dimension( : , : ), allocatable :: Dens
         real, dimension(:), pointer :: Por
         real, dimension( : , : ), pointer ::Imble_frac
+        real, dimension(:,:), pointer :: temp_for_outflux => null()
+        real, dimension(Mdims%nphase) :: tempi
         ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'calculate_mass_boundary'
         ! and the internal changes in mass will be captured by 'calculate_mass_internal'
         real, allocatable, dimension(:,:) :: calculate_mass_boundary
@@ -648,8 +650,15 @@ contains
         !##################END OF SET VARIABLES##################
         ! Totoutflux stores the integral of n.q across a specified boundary and is calculated through the subroutine calculate_outflux(). It's initialised to zero in the line below
         if (calculate_flux) then
+            !If we have temperature we want to include it in the output .csv file
+            if (has_temperature) call get_var_from_packed_state(packed_state, Temperature = temp_for_outflux)
             do ioutlet = 1, size(outlet_id)
-                totoutflux(:,ioutlet) = 0
+                totoutflux(1, :,ioutlet) = 0
+            enddo
+            !For temperature, as we will output the maximum temperature we set an unphysical value to
+            !ensure we use a calculated value
+            do ioutlet = 1, size(outlet_id)
+                totoutflux(2, :,ioutlet) = -1000
             enddo
         end if
 
@@ -1910,22 +1919,22 @@ contains
                             ENDIF Conditional_GETCT2
                             !########################################################################################
                             ! 27/01/2016
-                            if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
-                                if ( is_porous_media .and. GETCT .and. calculate_flux ) then
-                                    do ioutlet = 1, size(outlet_id)
-                                        !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
-                                        call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
-                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL, tenfield1)
-                                    enddo
-                                endif
-
-
-!                               Calculate mass flux across the boundary
+                            if(on_domain_boundary) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
                                 if ( is_porous_media .and. GETCT ) then
-                                        !Subroutine call to calculate the mass across this element if the element is part of the boundary. Adds value to calculate_mass_boundary
-                                        ! same rountine as one used for calculating outlet fluxes through specified boundaries. Surface ID set to -1 here as this is not needed
-                                        call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, (/-1/) , calculate_mass_boundary(:,1) , ele , sele, &
-                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL, tenfield1)
+                                    if (has_temperature) tempi = temp_for_outflux(:, CV_NODI)
+                                    if (calculate_flux ) then
+                                        do ioutlet = 1, size(outlet_id)
+                                            !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+                                            call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(1, :,ioutlet), ele , sele, &
+                                                ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL, tenfield1,&
+                                                totoutflux(size(totoutflux,1), :,ioutlet), tempi)!-totoutflux(size(totoutflux,1)- only works so long temperature is in the last position
+                                        end do
+                                    end if
+                                    !Calculate mass flux across the boundary to check total mass conservation
+                                    !Subroutine call to calculate the mass across this element if the element is part of the boundary. Adds value to calculate_mass_boundary
+                                    ! same rountine as one used for calculating outlet fluxes through specified boundaries. Surface ID set to -1 here as this is not needed
+                                    call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, (/-1/) , calculate_mass_boundary(:,1) , ele , sele, &
+                                        ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL, tenfield1)
                                 endif
 
                             endif
@@ -2755,11 +2764,10 @@ contains
         END IF
         if(GETCT .and. calculate_flux) then
             ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-
             do ioutlet = 1,size(outlet_id)
-                totout(:, ioutlet) = totoutflux(:, ioutlet)
+                totout(:, :, ioutlet) = totoutflux(:, :, ioutlet)
                 ! Ensure all processors have the correct value of totout for parallel runs
-                call allsum(totout(:,ioutlet))
+                call allsum(totout(1, :,ioutlet))
             enddo
         endif
 

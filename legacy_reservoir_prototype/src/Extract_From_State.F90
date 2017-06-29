@@ -2851,7 +2851,7 @@ function GetFEMName(tfield) result(fem_name)
 end function GetFEMName
 
 subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
-    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL, Ele_owned_field)
+    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL, Ele_owned_field, totouttemp, tempi)
 
     implicit none
 
@@ -2883,7 +2883,8 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     real, dimension( : ), intent(in) :: detwei
 
     real, dimension( :,:, : ), intent( in ) :: SUF_T_BC_ALL
-
+    real, dimension(:), optional, intent(in) :: tempi !Temperature at same position as saturation
+    real, dimension(:), optional, intent(inout) :: totouttemp !Temperature at same position as saturation
     ! Local variables
 
     real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
@@ -2935,23 +2936,27 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     if (element_owned(Ele_owned_field, ele)) then ! Check if the element number read into the subroutine is owned by the processor that has entered this loop at run-time (so that we don't overcount).
 
         if(test) then ! Check if we're on a domain boundary (we only want to include contributions there)
+                ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
+                ! Need to pass down an array with the saturation boundary conditions to deal with these cases
+                ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
 
-            ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
-            ! Need to pass down an array with the saturation boundary conditions to deal with these cases
-            ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
+            do i = 1, size(ndotqnew)
+                surf = (sele - 1 ) * cv_snloc + cv_siloc
+                if(ndotqnew(i) < 0 ) then
+                    ! Inlet boundary - so use boundary phase volume fraction
+                    totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
 
-        do i = 1, size(ndotqnew)
-            surf = (sele - 1 ) * cv_snloc + cv_siloc
-            if(ndotqnew(i) < 0 ) then
-                ! Inlet boundary - so use boundary phase volume fraction
-                totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
-
-            else
-                ! Outlet boundary - so use internal (to the domain) phase volume fraction
-                totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
-            endif
-        enddo
-
+                else
+                    ! Outlet boundary - so use internal (to the domain) phase volume fraction
+                    totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
+                endif
+            enddo
+            !Store temperature as well
+            if (present(tempi).and.has_temperature) then
+                do i = 1, size(tempi)
+                    totouttemp(i) = max(tempi(i), totouttemp(i))
+                end do
+            end if
         endif
 
     endif
@@ -3449,7 +3454,8 @@ end subroutine get_DarcyVelocity
         real,intent(in) :: current_time
         real, intent(in) :: porevolume
         integer, intent(in) :: itime
-        real, dimension(:,:), intent(inout) :: outflux, intflux
+        real, dimension(:,:), intent(inout) :: intflux
+        real, dimension(:,:,:), intent(inout) :: outflux
         integer :: ioutlet
         integer :: counter
         type(stat_type), target :: default_stat
@@ -3457,8 +3463,9 @@ end subroutine get_DarcyVelocity
         character (len=1000000) :: numbers
         integer :: iphase
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
-        character (len = 1000000), dimension(size(outflux,1)) :: fluxstring
-        character (len = 1000000), dimension(size(outflux,1)) :: intfluxstring
+        character (len = 1000000), dimension(size(intflux,1)) :: fluxstring
+        character (len = 1000000), dimension(size(intflux,1)) :: intfluxstring
+        character (len = 1000000), dimension(size(intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
 
         call get_option('/simulation_name', simulation_name)
@@ -3475,15 +3482,21 @@ end subroutine get_DarcyVelocity
         if(itime.eq.1) then
             write(whole_line,*) "Current Time (s)" // "," // "Current Time (days)" // "," // "Pore Volume"
             whole_line = trim(whole_line)
-            do ioutlet =1, size(outflux,2)
-                do iphase = 1, size(outflux,1)
+            do ioutlet =1, size(intflux,2)
+                do iphase = 1, size(intflux,1)
                     write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outlet_id(ioutlet), " flux"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
-                do iphase = 1, size(outflux,1)
+                do iphase = 1, size(intflux,1)
                     write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " time integrated flux"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
+                if (has_temperature) then
+                    do iphase = 1, size(intflux,1)
+                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " maximum temperature"
+                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
+                    enddo
+                end if
             end do
              ! Write out the line
             write(default_stat%conv_unit,*), trim(whole_line)
@@ -3491,15 +3504,21 @@ end subroutine get_DarcyVelocity
             ! Write the actual numbers to the file now
             write(numbers,'(f15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(24*60*60) , ",",  porevolume
             whole_line =  trim(numbers)
-            do ioutlet =1, size(outflux,2)
-                do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),'(f15.5)') outflux(iphase,ioutlet)
+            do ioutlet =1, size(intflux,2)
+                do iphase = 1, size(intflux,1)
+                    write(fluxstring(iphase),'(f15.5)') outflux(1, iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
-                do iphase = 1, size(outflux,1)
+                do iphase = 1, size(intflux,1)
                     write(intfluxstring(iphase),'(g15.5)') intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
+                if (has_temperature) then
+                    do iphase = 1, size(intflux,1)
+                        write(tempstring(iphase),'(f15.5)') outflux(2, iphase,ioutlet)
+                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
+                    enddo
+                end if
             end do
             ! Write out the line
             write(default_stat%conv_unit,*), trim(whole_line)

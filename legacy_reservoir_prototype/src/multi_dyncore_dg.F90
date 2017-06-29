@@ -1486,8 +1486,8 @@ END IF
                 CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
                 !...inside the wells it is still FE pressure
                 IF(Mdims%npres>1.AND.PIPES_1D) THEN
-                    CVP_ALL%VAL(1,Mdims%n_in_pres+1:Mdims%nphase,:) = 0.
                     IPRES = Mdims%npres
+                    CVP_ALL%VAL(1,ipres,:) = 0.
                     DO CV_NOD = 1, Mdims%cv_nonods
                         if (node_owned(CVP_all,CV_NOD)) then
                             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1

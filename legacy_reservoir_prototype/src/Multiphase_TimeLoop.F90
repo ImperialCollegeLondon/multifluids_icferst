@@ -416,10 +416,14 @@ contains
         ! If calculating boundary fluxes, initialise to zero time integrated fluxes (intflux) and the quantity (totout) used to calculate them.
         if(calculate_flux) then
             allocate(intflux(Mdims%nphase,size(outlet_id)))
-            allocate(totout(Mdims%nphase, size(outlet_id)))
+            k = 1
+            if (has_temperature) k = k +1
+            !(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
+            allocate(totout(k, Mdims%nphase, size(outlet_id)))
+
             do ioutlet = 1, size(outlet_id)
                 intflux(:, ioutlet) = 0.
-                totout(:, ioutlet) = 0.
+                totout(1, :, ioutlet) = 0.
             enddo
         endif
 !       Allocate memory and initialise calculate_mass_global if calculate_mass_flag is switched on to store the total mass change in the domain
@@ -659,19 +663,17 @@ call solve_transport()
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
-            ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
-            if(calculate_flux) then
-                ! We will output totout normalised as f1/(f1+f2). 29/01/2016 - corrected the normalisation (was incorrect for n_outlets > 1)
-                do ioutlet = 1, size(outlet_id)
-                    intflux(:, ioutlet) = intflux(:, ioutlet) + totout(:, ioutlet)*dt
-                    totout(:, ioutlet) = totout(:, ioutlet)/sum(totout(:, ioutlet))
-                enddo
-            endif
             ! If calculating boundary fluxes, dump them to outfluxes.txt
             if(calculate_flux) then
-                if(getprocno() == 1) then
-                    call dump_outflux(acctim,porevolume,itime,totout,intflux)
-                endif
+            ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
+                where (totout /= totout)
+                    totout = 0.!If nan then make it zero
+                end where
+                do ioutlet = 1, size(outlet_id)
+                    intflux(:, ioutlet) = intflux(:, ioutlet) + totout(1, :, ioutlet)*dt
+                    totout(1, :, ioutlet) = totout(1, :, ioutlet)/sum(totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
+                enddo
+                if(getprocno() == 1) call dump_outflux(acctim,porevolume,itime,totout,intflux)
             endif
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values

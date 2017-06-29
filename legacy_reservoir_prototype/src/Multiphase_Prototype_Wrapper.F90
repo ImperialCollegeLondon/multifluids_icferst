@@ -653,6 +653,8 @@ contains
         is_boiling = have_option( '/simulation_type/boiling' )
         !Flag to set up blasting
         is_blasting = have_option( '/simulation_type/blasting' )
+        !Has temperature
+        has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         !Check if it is P0DGP1
         if (.not. have_option("/is_porous_media")) then
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', &
