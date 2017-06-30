@@ -2184,11 +2184,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 ewrite(1,*) trim(output_message)
             end if
             !Automatic non-linear iteration checking
-            !There is a bug with calculating ts_ref_val the first time-step, so we use for the time-being only the infinitum norm check
             if (is_porous_media) then
                 !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                 !So if the infinity norm is way better than the tolerance we consider that the convergence have been achieved
-                if (first_time_step .or. inf_norm_val * 1e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
+                if (inf_norm_val * 5e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                 ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
             else
@@ -2406,6 +2405,9 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
         if (its == 1) then
             First_potential = get_Convergence_Functional
         else
+            !It could happen that the first potential is effectively zero if using pressure boundary conditions and/or small ts
+            !if that is the case we allow to update the first potential up to two times more
+            if (First_potential * 1d10 < get_Convergence_Functional .and. its <= 3) First_potential = 2.0*get_Convergence_Functional
             get_Convergence_Functional = get_Convergence_Functional/First_potential
         end if
     end if

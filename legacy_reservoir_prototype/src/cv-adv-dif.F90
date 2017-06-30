@@ -650,16 +650,18 @@ contains
         !##################END OF SET VARIABLES##################
         ! Totoutflux stores the integral of n.q across a specified boundary and is calculated through the subroutine calculate_outflux(). It's initialised to zero in the line below
         if (calculate_flux) then
-            !If we have temperature we want to include it in the output .csv file
-            if (has_temperature) call get_var_from_packed_state(packed_state, Temperature = temp_for_outflux)
             do ioutlet = 1, size(outlet_id)
                 totoutflux(1, :,ioutlet) = 0
             enddo
             !For temperature, as we will output the maximum temperature we set an unphysical value to
             !ensure we use a calculated value
-            do ioutlet = 1, size(outlet_id)
-                totoutflux(2, :,ioutlet) = -1000
-            enddo
+            !If we have temperature we want to include it in the output .csv file
+            if (has_temperature) then
+                call get_var_from_packed_state(packed_state, Temperature = temp_for_outflux)
+                do ioutlet = 1, size(outlet_id)
+                    totoutflux(2, :,ioutlet) = -1000
+                enddo
+            end if
         end if
 
         ! Initialise the calculate_mass variables
