@@ -1921,8 +1921,8 @@ contains
                             ! 27/01/2016
                             if(on_domain_boundary) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
                                 if ( is_porous_media .and. GETCT ) then
-                                    if (has_temperature) tempi = temp_for_outflux(:, CV_NODI)
                                     if (calculate_flux ) then
+                                        if (has_temperature) tempi = temp_for_outflux(:, CV_NODI)
                                         do ioutlet = 1, size(outlet_id)
                                             !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
                                             call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(1, :,ioutlet), ele , sele, &
