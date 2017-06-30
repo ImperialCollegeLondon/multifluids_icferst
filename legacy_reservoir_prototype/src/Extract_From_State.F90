@@ -2188,7 +2188,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             if (is_porous_media) then
                 !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                 !So if the infinity norm is way better than the tolerance we consider that the convergence have been achieved
-                if (first_time_step .or. inf_norm_val * 1e2 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
+!                if (first_time_step .or. inf_norm_val * 1e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                 ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
             else
@@ -2228,9 +2228,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         call get_option( '/timestepping/timestep', dt )
                         auxR = PID_time_controller()
                         if (auxR < 1.0 )then!Reduce Ts
-                            dt = max(dt * max(abs(auxR), 1./(1.2*decreaseFactor)), min_ts)
+                            dt = max(dt * max(abs(auxR), 1./(1.5*decreaseFactor)), min_ts)
                         else
-                            dt = min(dt * min(abs(auxR), 1.2*increaseFactor), max_ts)
+                            dt = min(dt * min(abs(auxR), 1.5*increaseFactor), max_ts)
                         end if
                         call set_option( '/timestepping/timestep', dt )
                         if (getprocno() == 1)then
@@ -2265,8 +2265,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
                     call get_option( '/timestepping/timestep', dt )
-                    !If PID_controller then update the status
-                    if (PID_controller) auxR = PID_time_controller(reset=.true.)
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
@@ -2279,13 +2277,23 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         if (getprocno() == 1) then
                             ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts,") reached, advancing time."
                         end if
+                        !If PID_controller then update the status
+                        if (PID_controller) auxR = PID_time_controller(reset=.true.)
                         return
                     end if
                     !Decrease time step, reset the time and repeat!
                     call get_option( '/timestepping/current_time', acctim )
                     acctim = acctim - dt
                     call set_option( '/timestepping/current_time', acctim )
-                    dt = max(dt / decreaseFactor,min_ts)
+                    if (PID_controller) then
+                        auxR = PID_time_controller()
+                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
+                        dt = max(min(dt / decreaseFactor, max( auxR, 0.5*dt / decreaseFactor)), min_ts)
+                        !If PID_controller then update the status
+                        auxR = PID_time_controller(reset=.true.)
+                    else
+                        dt = max(dt / decreaseFactor,min_ts)
+                    end if
                     call set_option( '/timestepping/timestep', dt )
                     if (getprocno() == 1) then
                         ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
@@ -2324,10 +2332,10 @@ contains
         Cn(2) = inf_norm_val/Infinite_norm_tol
         aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
-        if (Aim_num_FPI > 0) then
-            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.5
-            aux = aux + 1.0
-        end if
+        if (Aim_num_FPI > 0) then                     !Options for the exponent:
+            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.6! 2.0 => too strongly enforce the number of iterations, ignores other criteria
+            aux = aux + 1.0                           ! 1.0 => default value, forces the number of iterations, almost ignore other criteria
+        end if                                        ! 0.6 => soft constrain, it will try but not very much, considers other criteria
         if (max_criteria) then
             Cn(1) = maxval(Cn)
         else
