@@ -2188,7 +2188,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             if (is_porous_media) then
                 !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                 !So if the infinity norm is way better than the tolerance we consider that the convergence have been achieved
-!                if (first_time_step .or. inf_norm_val * 1e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
+                if (first_time_step .or. inf_norm_val * 1e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                 ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                     .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
             else
