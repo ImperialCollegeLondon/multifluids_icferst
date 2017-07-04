@@ -57,7 +57,7 @@ module multi_pipes
 
     private
 
-    public  :: MOD_1D_CT_AND_ADV, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords
+    public  :: MOD_1D_CT_AND_ADV, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
 
     !Parameters for boundary conditions copied from cv_adv-diff.F90
     INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
@@ -1650,5 +1650,38 @@ contains
 
     end subroutine retrieve_pipes_coords
 
+    subroutine initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+        implicit none
+        type(state_type), dimension(:), intent(in) :: state
+        type (multi_pipe_package), intent(inout) :: pipes_aux
+        type (multi_dimensions), intent(in)  ::Mdims
+        type (multi_sparsities), intent(in) :: Mspars
+         !Local variables
+        type( scalar_field ), pointer :: sfield
+        !Variables to initialize pipes_aux
+        integer :: ipres, iphase, jpres, jphase, iphase_real, jphase_real
+        !Initialize memory, despite we call it, if it is already allocated no memory is re-allocated
+        call allocate_multi_pipe_package(pipes_aux, Mdims, Mspars)
+
+        !Initialize gamma
+        sfield=>extract_scalar_field(state(1),"Gamma1",ipres)
+        pipes_aux%GAMMA_PRES_ABS = 0.0
+        do ipres = 1, Mdims%npres
+           do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
+              do jpres = 1, Mdims%npres
+                 if ( ipres /= jpres ) then
+                    do jphase = 1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
+                       iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
+                       jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
+                       if ( iphase_real == jphase_real ) then
+                          call assign_val(pipes_aux%GAMMA_PRES_ABS(IPHASE,JPHASE,:),sfield%val)
+                       end if
+                    end do
+                 end if
+              end do
+           end do
+        end do
+        pipes_aux%GAMMA_PRES_ABS_NANO = pipes_aux%GAMMA_PRES_ABS
+    end subroutine initialize_pipes_package_and_gamma
 
 end module multi_pipes

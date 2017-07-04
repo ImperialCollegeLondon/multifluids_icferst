@@ -240,6 +240,15 @@ module multi_data_types
         type (multi_field) :: absorption!Absorption of this field
     end type
 
+    type multi_pipe_package
+        !Contains all the information required to model pipes.
+        real, dimension( :, :, : ), pointer  :: gamma_pres_abs=> null()
+        real, dimension( :, :, : ), pointer  :: gamma_pres_abs_nano=> null()
+        real, dimension( : ), pointer        :: mass_pipe=> null()
+        real, dimension( : ), pointer        :: mass_cvfem2pipe=> null()
+        real, dimension( : ), pointer        :: mass_pipe2cvfem=> null()
+        real, dimension( : ), pointer        :: mass_cvfem2pipe_true=> null()
+    end type
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
          allocate_multi_field1, allocate_multi_field2
@@ -1251,9 +1260,52 @@ contains
     end subroutine deallocate_porous_adv_coefs
 
 
+    subroutine allocate_multi_pipe_package(pipes, Mdims, Mspars)
+        type (multi_pipe_package), intent(inout) :: pipes
+        type (multi_dimensions), intent(in)  ::Mdims
+        type (multi_sparsities), intent(in) :: Mspars
+
+        if (Mdims%npres > 1) then
+            if (.not.associated(pipes%gamma_pres_abs))        allocate( pipes%gamma_pres_abs( mdims%nphase,mdims%nphase,mdims%cv_nonods ))
+            if (.not.associated(pipes%gamma_pres_abs_nano))   allocate( pipes%gamma_pres_abs_nano( mdims%nphase,mdims%nphase,mdims%cv_nonods ))
+            if (.not.associated(pipes%mass_pipe))             allocate( pipes%mass_pipe( mdims%cv_nonods ))
+            if (.not.associated(pipes%mass_cvfem2pipe))       allocate(pipes%mass_cvfem2pipe( mspars%cmc%ncol ))
+            if (.not.associated(pipes%mass_pipe2cvfem))       allocate( pipes%mass_pipe2cvfem( mspars%cmc%ncol ))
+            if (.not.associated(pipes%mass_cvfem2pipe_true))  allocate( pipes%mass_cvfem2pipe_true( mspars%cmc%ncol ))
+        else
+!            if (.not.associated(pipes%gamma_pres_abs))        allocate( pipes%gamma_pres_abs( 0,0,0 ))
+!            if (.not.associated(pipes%gamma_pres_abs_nano))   allocate( pipes%gamma_pres_abs_nano( 0,0,0 ))
+!            if (.not.associated(pipes%mass_pipe))             allocate( pipes%mass_pipe( 0 ))
+!            if (.not.associated(pipes%mass_cvfem2pipe))       allocate(pipes%mass_cvfem2pipe( 0 ))
+!            if (.not.associated(pipes%mass_pipe2cvfem))       allocate( pipes%mass_pipe2cvfem( 0 ))
+!            if (.not.associated(pipes%mass_cvfem2pipe_true))  allocate( pipes%mass_cvfem2pipe_true( 0 ))
+        end if
+    end subroutine allocate_multi_pipe_package
+
+    subroutine deallocate_multi_pipe_package(pipes)
+        type (multi_pipe_package), intent(inout) :: pipes
 
 
+        if (associated(pipes%gamma_pres_abs)) then
+            deallocate( pipes%gamma_pres_abs); nullify(pipes%gamma_pres_abs)
+        end if
+        if (associated(pipes%gamma_pres_abs_nano)) then
+            deallocate( pipes%gamma_pres_abs_nano); nullify(pipes%gamma_pres_abs_nano)
+        end if
+        if (associated(pipes%mass_pipe)) then
+            deallocate(pipes%mass_pipe); nullify(pipes%mass_pipe)
+        end if
+        if (associated(pipes%mass_cvfem2pipe)) then
+            deallocate(pipes%mass_cvfem2pipe); nullify(pipes%mass_cvfem2pipe)
+        end if
+        if (associated(pipes%mass_pipe2cvfem)) then
+            deallocate(pipes%mass_pipe2cvfem); nullify(pipes%mass_pipe2cvfem)
+        end if
+        if (associated(pipes%mass_cvfem2pipe_true)) then
+            deallocate(pipes%mass_cvfem2pipe_true); nullify(pipes%mass_cvfem2pipe_true)
+        end if
 
+    end subroutine deallocate_multi_pipe_package
 
 
 end module multi_data_types

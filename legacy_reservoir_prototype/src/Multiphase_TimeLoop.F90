@@ -173,6 +173,7 @@ contains
         type(scalar_field), pointer :: DensitySource, T
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
+        type (multi_pipe_package) :: pipes_aux
         !type(scalar_field), pointer :: bathymetry
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
@@ -435,9 +436,6 @@ contains
         ! Reading options for bad_element test
         call BadElementTest(Quality_list, 1)
 
-        !Retrieve the elements with pipes and the corresponding coordinates
-        if ((Mdims%npres > 1) .and. (after_adapt .or. first_time_step)) &
-                call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
 
 !!$ Time loop
         Loop_Time: do
@@ -448,6 +446,12 @@ contains
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
+            !Prepapre the pipes
+            if (Mdims%npres > 1) then
+               !Retrieve the elements with pipes and the corresponding coordinates
+               if (after_adapt .or. first_time_step) call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
+               call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+            end if
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
             if (adapt_mesh_in_FPI) call get_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI', Courant_tol, default = -1.)
@@ -549,7 +553,7 @@ contains
                         !!$
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, &
+                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field)
@@ -596,7 +600,7 @@ call solve_transport()
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat,multi_absorp, upwnd, eles_with_pipe, velocity_field, pressure_field, &
+                        Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
@@ -621,7 +625,7 @@ call solve_transport()
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                        Mmat, multi_absorp, upwnd, eles_with_pipe, dt, SUF_SIG_DIAGTEN_BC, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, mass_ele, &
                         its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
@@ -822,6 +826,7 @@ call solve_transport()
         call destroy_multi_matrices(Mmat)
         call deallocate_porous_adv_coefs(upwnd)
         call deallocate_multi_absorption(multi_absorp, .true.)
+        call deallocate_multi_pipe_package(pipes_aux)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields > 0) then
@@ -1298,7 +1303,7 @@ end if
                     SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                     igot_t2, igot_theta_flux, &
                     Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &
-                    theta_gdiff, IDs_ndgln, &
+                    theta_gdiff, IDs_ndgln, eles_with_pipe, pipes_aux,&
                     thermal = .false.,& ! the false means that we don't add an extra source term
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                     icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)

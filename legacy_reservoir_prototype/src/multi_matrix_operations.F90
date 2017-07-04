@@ -218,8 +218,7 @@ contains
     SUBROUTINE COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-        MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-        got_free_surf,  MASS_SUF, &
+        pipes_aux, got_free_surf,  MASS_SUF, &
         symmetric_P )
         !use multiphase_1D_engine
         !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
@@ -238,7 +237,7 @@ contains
         REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
         REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
-        REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE
+        type (multi_pipe_package), intent(in) :: pipes_aux
         ! Local variables
         REAL, PARAMETER :: INFINY = 1.0E+10
         INTEGER, DIMENSION( : ), allocatable :: ndpset
@@ -261,14 +260,14 @@ contains
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-                MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
+                pipes_aux%MASS_PIPE, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, ndpset, symmetric_P )
         ELSE
             ! Slow but memory efficient...
             CALL COLOR_GET_CMC_PHA_SLOW( Mdims,Mspars, ndgln, Mmat,&
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-                MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
+                pipes_aux%MASS_PIPE, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, ndpset, symmetric_P )
         END IF
         !Re-assemble just in case

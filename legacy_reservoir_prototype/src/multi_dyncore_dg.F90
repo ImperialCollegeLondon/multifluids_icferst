@@ -73,7 +73,7 @@ contains
        tracer, velocity, density, multi_absorp, DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
-       THETA_GDIFF, IDs_ndgln, &
+       THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -107,6 +107,8 @@ contains
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
            integer, optional :: icomp
+           type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+           type (multi_pipe_package), intent(in) :: pipes_aux
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -158,11 +160,8 @@ contains
            call zero( Mmat%petsc_ACV )
 
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
-           allocate( DIAG_SCALE_PRES(0,0) )
-           allocate( DIAG_SCALE_PRES_COUP(0,0,0),GAMMA_PRES_ABS(0,0,0),GAMMA_PRES_ABS_NANO(0,0,0),INV_B(0,0,0) )
-           allocate( MASS_PIPE(0), MASS_CVFEM2PIPE(0), MASS_PIPE2CVFEM(0), MASS_CVFEM2PIPE_TRUE(0) )
-           allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0
 
+           allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0
            IGOT_T2_loc = 0
 
             if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
@@ -273,12 +272,13 @@ contains
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+!sprint_to_do maybe this loop can be optimised by only performing the required amount of non-linear iterations
+
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
-                   DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
-                   INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
+                   DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
                    TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, SECOND_THETA, cv_beta, &
@@ -292,7 +292,7 @@ contains
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, IDs_ndgln, &
-                   saturation=saturation, Permeability_tensor_field = perm)
+                   saturation=saturation, Permeability_tensor_field = perm, eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux)
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -327,6 +327,7 @@ contains
 
            call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
@@ -335,7 +336,7 @@ contains
 
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
-         eles_with_pipe, DT, SUF_SIG_DIAGTEN_BC, &
+         eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, &
          igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, IDs_ndgln,&
@@ -355,6 +356,7 @@ contains
              type(multi_absorption), intent(inout) :: multi_absorp
              type (porous_adv_coefs), intent(inout) :: upwnd
              type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+             type (multi_pipe_package), intent(in) :: pipes_aux
              INTEGER, intent( in ) :: igot_theta_flux
              INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
              integer, dimension(:), intent(in)  :: IDs2CV_ndgln
@@ -373,8 +375,7 @@ contains
              integer :: igot_t2
              REAL, DIMENSION( : ), allocatable :: mass_mn_pres
              REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-             REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-             REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
+             REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
              REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
              REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
              REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
@@ -453,29 +454,10 @@ if (is_flooding) return!<== Temporary fix for flooding
              ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
              ALLOCATE( Mmat%CT( 0,0,0 ) )
              ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
-             ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( Mdims%nphase,Mdims%nphase,Mdims%cv_nonods ), GAMMA_PRES_ABS_NANO( Mdims%nphase,Mdims%nphase,Mdims%cv_nonods ), INV_B( 0,0,0 ) )
+             ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), INV_B( 0,0,0 ) )
              ALLOCATE( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION = 0.
              ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
-             !Shouldn't these allocate bellow be only for NPRES > 1?
-             allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE(Mspars%CMC%ncol), MASS_PIPE2CVFEM(Mspars%CMC%ncol), MASS_CVFEM2PIPE_TRUE(Mspars%CMC%ncol))
-             gamma=>extract_scalar_field(state(1),"Gamma1",stat)
-             GAMMA_PRES_ABS = 0.0
-             do ipres = 1, Mdims%npres
-                 do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
-                     do jpres = 1, Mdims%npres
-                         if ( ipres /= jpres ) then
-                             do jphase = 1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
-                                 iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
-                                 jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
-                                 if ( iphase_real == jphase_real ) then
-                                    call assign_val(GAMMA_PRES_ABS(IPHASE,JPHASE,:),gamma%val)
-                                 end if
-                             end do
-                         end if
-                     end do
-                 end do
-             end do
-             GAMMA_PRES_ABS_NANO = GAMMA_PRES_ABS
+
              IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
                  ! use DEN=1 because the density is already in the theta variables
                  ALLOCATE( DEN_ALL( Mdims%nphase, Mdims%cv_nonods )); DEN_ALL = 1.
@@ -530,8 +512,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                  call CV_ASSEMB( state, packed_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                      tracer, velocity, density, multi_absorp, &
-                     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
-                     INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
+                     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
                      TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                      Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, SECOND_THETA, Mdisopt%v_beta, &
@@ -546,7 +527,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp,IDs_ndgln, &          !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe)
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux)
 
                  !Make the inf norm of the Courant number across cpus
                  if (IsParallel()) then
@@ -660,7 +641,7 @@ if (is_flooding) return!<== Temporary fix for flooding
              end if
              DEALLOCATE( mass_mn_pres )
              DEALLOCATE( Mmat%CT )
-             DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO )
+             DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP)
              DEALLOCATE( TDIFFUSION )
              IF ( IGOT_T2 == 1 ) THEN
                  DEALLOCATE( T2 )
@@ -810,7 +791,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
-        Mmat, multi_absorp, upwnd, eles_with_pipe, velocity, pressure, &
+        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, NLENMCY, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
@@ -832,6 +813,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         type(multi_absorption), intent(inout) :: multi_absorp
         type (porous_adv_coefs), intent(inout) :: upwnd
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+        type (multi_pipe_package), intent(in) :: pipes_aux
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
@@ -866,8 +848,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
         type( multi_field ) :: UDIFFUSION_ALL2
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
-        REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
-        REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
+        REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B, CMC_PRECON
         REAL, DIMENSION( :, :, : ), allocatable :: DU_VEL, U_RHS_CDP2
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, LINEARISE_DENSITY, diag, SUF_INT_MASS_MATRIX
@@ -909,14 +890,6 @@ if (is_flooding) return!<== Temporary fix for flooding
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
 
-        !test12 => extract_tensor_field( state(1), "UAbsorB" )
-        !print *,'l1=',minval(test12%val(1,1,:)),maxval(test12%val(1,1,:)),'::',minval(test12%val(1,2,:)),maxval(test12%val(1,2,:)) 
-        !print *,'l2=',minval(test12%val(2,1,:)),maxval(test12%val(2,1,:)),'::',minval(test12%val(2,2,:)),maxval(test12%val(2,2,:)) 
-        !print *,'l3=',minval(test12%val(3,1,:)),maxval(test12%val(3,1,:)),'::',minval(test12%val(3,2,:)),maxval(test12%val(3,2,:)) 
-        !print *,'l4=',minval(test12%val(4,1,:)),maxval(test12%val(4,1,:)),'::',minval(test12%val(4,2,:)),maxval(test12%val(4,2,:)) 
-        !call print_state(state(1))
-        !stop 677
-
         if(max_allowed_P_its < 0)  then
             call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
              max_allowed_P_its, default = 100000)
@@ -952,31 +925,10 @@ if (is_flooding) return!<== Temporary fix for flooding
         call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
         ALLOCATE( Mmat%U_RHS( Mdims%ndim, Mdims%nphase, Mdims%u_nonods )) ; Mmat%U_RHS=0.
         ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
-        ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),GAMMA_PRES_ABS(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods), &
-            GAMMA_PRES_ABS_NANO(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods),INV_B(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods))
-        allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE(Mspars%CMC%ncol), MASS_PIPE2CVFEM(Mspars%CMC%ncol), MASS_CVFEM2PIPE_TRUE(Mspars%CMC%ncol))
+        ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),INV_B(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods))
         ALLOCATE( CMC_PRECON( Mdims%npres, Mdims%npres, Mspars%CMC%ncol*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
         ALLOCATE( MASS_MN_PRES( Mspars%CMC%ncol )) ; MASS_MN_PRES=0.
         ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
-        gamma=>extract_scalar_field(state(1),"Gamma1",stat)
-        GAMMA_PRES_ABS = 0.0
-        do ipres = 1, Mdims%npres
-           do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
-              do jpres = 1, Mdims%npres
-                 if ( ipres /= jpres ) then
-                    do jphase = 1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
-                       iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
-                       jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
-                       if ( iphase_real == jphase_real ) then
-                          call assign_val(GAMMA_PRES_ABS(IPHASE,JPHASE,:),gamma%val)
-                       end if
-                    end do
-                 end if
-              end do
-           end do
-        end do
-        GAMMA_PRES_ABS_NANO = GAMMA_PRES_ABS
-        ! this can be optimised in the future...
 
         U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
         UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
@@ -1190,7 +1142,7 @@ end if
         end if
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
-             velocity, pressure, multi_absorp, eles_with_pipe, &
+             velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux,&
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
@@ -1199,7 +1151,7 @@ end if
             got_free_surf,  MASS_SUF, &
             SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
-            MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
+            MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, GLOBAL_SOLVE, &
             MCY, JUST_BL_DIAG_MAT, &
             UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             IGOT_THETA_FLUX, &
@@ -1208,7 +1160,7 @@ end if
             IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
 
-        deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
+        deallocate(UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
@@ -1248,8 +1200,7 @@ end if
             CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-            MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-            got_free_surf,  MASS_SUF, symmetric_P )
+            pipes_aux, got_free_surf,  MASS_SUF, symmetric_P )
 !call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
         END IF
 
@@ -1363,7 +1314,7 @@ END IF
                            -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
                         ELSE
                            rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
                         ENDIF
                      ELSE
                         rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
@@ -1377,7 +1328,7 @@ END IF
                         DO JPRES = 1, Mdims%npres
                            IF(PIPES_1D) THEN
                               rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
+                                -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
                            ELSE
                               rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                                 -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
@@ -1453,7 +1404,6 @@ END IF
 !
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
-        DEALLOCATE( MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE )
         DEALLOCATE( Mmat%U_RHS )
         DEALLOCATE( MASS_MN_PRES )
         call deallocate(Mmat%CT_RHS)
@@ -1491,8 +1441,8 @@ END IF
                     DO CV_NOD = 1, Mdims%cv_nonods
                         if (node_owned(CVP_all,CV_NOD)) then
                             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
-                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT )
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
                             END DO
                             MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
                         else
@@ -1522,8 +1472,8 @@ END IF
                     DO CV_NOD = 1, Mdims%cv_nonods
                         if (node_owned(CVP_all,CV_NOD)) then
                             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
-                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT )
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
                             END DO
                             MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
                         else
@@ -1563,7 +1513,7 @@ END IF
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        velocity, pressure, multi_absorp, eles_with_pipe, &
+        velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux, &
         X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
@@ -1572,7 +1522,7 @@ END IF
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
-        MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
+        MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,GLOBAL_SOLVE, &
         MCY, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
@@ -1597,6 +1547,7 @@ END IF
         type( tensor_field ), intent(in) :: pressure
         type(multi_absorption), intent(inout) :: multi_absorp
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+        type (multi_pipe_package), intent(in) :: pipes_aux
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
@@ -1617,8 +1568,7 @@ END IF
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
+        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
         REAL, DIMENSION( : ), intent( inout ) :: MCY
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN_ALL, UDENOLD_ALL
@@ -1717,8 +1667,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
             tracer, velocity, density, multi_absorp, &
-            DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
-            INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
+            DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
             TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, SECOND_THETA, v_beta, &
@@ -1732,7 +1681,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
-            calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe)
+            calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
