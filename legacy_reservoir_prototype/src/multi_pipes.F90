@@ -81,7 +81,7 @@ contains
 
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe )
+                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
         type(state_type), intent(in) :: packed_state
         type(state_type), dimension(:), intent(in) :: state
@@ -95,7 +95,7 @@ contains
         real, dimension(:,:),intent( inout ) :: INV_SIGMA, INV_SIGMA_NANO
         real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
         real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
-        logical, intent( in ) :: getcv_disc, getct
+        logical, intent( in ) :: getcv_disc, getct, thermal
         !Variables that are used to define the pipe pos.
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
 
@@ -142,7 +142,7 @@ contains
         IGNORE_DIAGONAL_PIPES = .TRUE.
         SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior.
-        CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
+        CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
         NCORNER = Mdims%ndim + 1
         allocate( xi_limit(Mdims%nphase), &
             CV_LOC_CORNER(NCORNER), CV_MID_SIDE(NCORNER, NCORNER), &
@@ -281,11 +281,19 @@ contains
         allocate( tmax_all(Mdims%nphase, Mdims%cv_nonods), tmin_all(Mdims%nphase, Mdims%cv_nonods), &
             denmax_all(Mdims%nphase, Mdims%cv_nonods), denmin_all(Mdims%nphase, Mdims%cv_nonods) )
         T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-        DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
+
+if (thermal) then
+!                   p => extract_tensor_field( packed_state, "PackedCVPressure" )
+    DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+!               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+else
+    DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
+end if
+
         U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
-        PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
+        PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe" )
         X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
-        sigma1_pipes => extract_scalar_field( state(1), "Sigma1" )
+        sigma1_pipes => extract_scalar_field( state(1), "Sigma" )
         TMAX_ALL=-INFINY; TMIN_ALL=+INFINY; DENMAX_ALL=-INFINY; DENMIN_ALL = +INFINY
         DO CV_NODI = 1, Mdims%cv_nonods
             IF ( PIPE_DIAMETER%VAL(CV_NODI) /= 0.0 ) THEN
@@ -926,11 +934,11 @@ contains
         PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
         IGNORE_DIAGONAL_PIPES=.TRUE.
         SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
-        CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe")
+        CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
         DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
-        call get_option("/porous_media/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
+        call get_option("/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
-        SWITCH_PIPES_ON_AND_OFF= have_option("/porous_media/well_options/switch_wells_on_and_off")
+        SWITCH_PIPES_ON_AND_OFF= have_option("/wells_and_pipes/well_options/switch_wells_on_and_off")
         if ( CALC_SIGMA_PIPE ) then
             allocate( well_density(Mdims%nphase), well_viscosity(Mdims%nphase) )
             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -942,7 +950,7 @@ contains
         end if
         if ( SWITCH_PIPES_ON_AND_OFF ) then
             ! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-            call get_option( "/porous_media/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
+            call get_option( "/wells_and_pipes/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
             phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
             phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
             sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
@@ -981,7 +989,7 @@ contains
         else
             u_lnloc = 2
         end if
-        PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe1")
+        PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe")
         X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         allocate( PIPE_DIAM_GI(scvngi) )
         allocate( SIGMA_GI(Mdims%nphase,scvngi), SIGMA_ON_OFF_GI(Mdims%nphase,scvngi) )
@@ -1441,7 +1449,7 @@ contains
         !Initialise
         AUX_eles_with_pipe%ele = -1
         k = 1; NCORNER = Mdims%ndim + 1
-        PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
+        PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe" )
         X => EXTRACT_VECTOR_FIELD( packed_state, "PressureCoordinate" )
         !Create list of corners
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
@@ -1664,7 +1672,7 @@ contains
         call allocate_multi_pipe_package(pipes_aux, Mdims, Mspars)
 
         !Initialize gamma
-        sfield=>extract_scalar_field(state(1),"Gamma1",ipres)
+        sfield=>extract_scalar_field(state(1),"Gamma",ipres)
         pipes_aux%GAMMA_PRES_ABS = 0.0
         do ipres = 1, Mdims%npres
            do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres

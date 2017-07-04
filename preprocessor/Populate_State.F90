@@ -1298,6 +1298,21 @@ contains
        end do
     end if
 
+    if (have_option("/wells_and_pipes")) then
+       do i=1, nstates
+          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Pipe', &
+             states(i), field_name='Pipe')
+          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Gamma', &
+             states(i), field_name='Gamma')
+          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Sigma', &
+             states(i), field_name='Sigma')
+          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::DiameterPipe', &
+             states(i), field_name='DiameterPipe')
+       end do
+    end if
+
+
+
     ! insert electrical property fields
     do i=1,nstates
       tmp = '/material_phase['//int2str(i-1)//']/electrical_properties/coupling_coefficients/'

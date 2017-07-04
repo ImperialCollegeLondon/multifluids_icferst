@@ -2565,6 +2565,79 @@ Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.</a:documentati
               </element>
             </element>
           </choice>
+        </element>
+      </optional>
+      <optional>
+        <element name="wells_and_pipes">
+          <a:documentation>Options to specify the wells/pipes</a:documentation>
+          <element name="scalar_field">
+            <a:documentation>Option to define laterals from diamond
+if in doubt set it to 1.</a:documentation>
+            <attribute name="name">
+              <value>Pipe</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="material_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
+          <element name="scalar_field">
+            <a:documentation>Specify where and how much the well/pipes are opened
+It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
+            <attribute name="name">
+              <value>Gamma</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
+          <element name="scalar_field">
+            <a:documentation>Absorption in the pipes.
+If none, set it to 1.
+
+Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+/wells_and_pipes/well_options/calculate_sigma_pipe </a:documentation>
+            <attribute name="name">
+              <value>Sigma</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="subcv_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
+          <element name="scalar_field">
+            <a:documentation>Specify the diameter of the pipe.
+This effectively defines where and where not there is a pipe.
+If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
+            <attribute name="name">
+              <value>DiameterPipe</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
           <optional>
             <element name="well_options">
               <a:documentation>Specify well-related options</a:documentation>

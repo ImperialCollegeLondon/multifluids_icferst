@@ -1917,7 +1917,71 @@ start =
                   attribute name { xsd:string },
                   element background_permeability { real }
                }
-            ),
+            )
+         }?,
+         ## Options to specify the wells/pipes
+         element wells_and_pipes {
+            ## Option to define laterals from diamond
+            ## if in doubt set it to 1.
+            element scalar_field {
+               attribute name { "Pipe" },
+               (
+                  element prescribed {
+                     material_mesh_choice,
+                     prescribed_scalar_field
+                  }|
+                  element aliased {
+                     generic_aliased_field
+                  }
+               )
+            },
+            ## Specify where and how much the well/pipes are opened
+            ## It goes from 0 to 1. If completely opened, set it to 1.
+            element scalar_field {
+               attribute name { "Gamma" },
+               (
+                  element prescribed {
+                     pressure_mesh_choice,
+                     prescribed_scalar_field
+                  }|
+                  element aliased {
+                     generic_aliased_field
+                  }
+               )
+            },
+            ## Absorption in the pipes.
+            ## If none, set it to 1.
+            ##
+            ## Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+            ## /wells_and_pipes/well_options/calculate_sigma_pipe 
+
+            element scalar_field {
+               attribute name { "Sigma" },
+               (
+                  element prescribed {
+                     subcv_mesh_choice,
+                     prescribed_scalar_field
+                  }|
+                  element aliased {
+                     generic_aliased_field
+                  }
+               )
+            },
+            ## Specify the diameter of the pipe.
+            ## This effectively defines where and where not there is a pipe.
+            ## If the diameter is <=0 no pipe, else there is pipe.
+            element scalar_field {
+               attribute name { "DiameterPipe" },
+               (
+                  element prescribed {
+                     pressure_mesh_choice,
+                     prescribed_scalar_field
+                  }|
+                  element aliased {
+                     generic_aliased_field
+                  }
+               )
+            },
             ## Specify well-related options
             element well_options {
                ## Calculate the well \sigma field internally

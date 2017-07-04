@@ -305,3 +305,13 @@ material_mesh_choice =
          attribute name { string }
       }
    )
+# Same choices, but with P0DG offered first
+subcv_mesh_choice =
+   (
+      element mesh {
+         attribute name { "PressureMesh_Discontinuous" }
+      }|
+      element mesh {
+         attribute name { string }
+      }
+   )

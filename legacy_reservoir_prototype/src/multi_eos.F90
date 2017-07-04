@@ -772,7 +772,7 @@ contains
 
         !The following part is the absorption for the pipes
         if (Mdims%npres > 1) then
-            Spipe => extract_scalar_field( state(1), "Sigma1" )
+            Spipe => extract_scalar_field( state(1), "Sigma" )
             do iphase = Mdims%n_in_pres + 1, Mdims%nphase
                 ! set \sigma for the pipes here
                 call assign_val(Flooding_absorp%val( 1,1, iphase, : ),Spipe%val)
@@ -995,7 +995,7 @@ contains
                    PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
 
                do ipres = 2, Mdims%npres
-                   Spipe => extract_scalar_field( state(1), "Sigma1" )
+                   Spipe => extract_scalar_field( state(1), "Sigma" )
                    do iphase = Mdims%n_in_pres+1, Mdims%nphase
                        do idim = 1, Mdims%ndim
                            ! set \sigma for the pipes here

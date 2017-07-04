@@ -83,7 +83,7 @@ contains
     !Section to add the nodes locked by the wells
     do iphase = 1, option_count('/material_phase')
         do iscalars = 1, option_count('/material_phase/scalar_field')
-            well_path ='/material_phase['// int2str( iphase -1 ) //']/scalar_field::DiameterPipe'// int2str(iscalars) //'/prescribed/value/python'
+            well_path ='wells_and_pipes/scalar_field::DiameterPipe'// int2str(iscalars) //'/prescribed/value/python'
             if (have_option(well_path)) then
                 call get_option(well_path, func)
 

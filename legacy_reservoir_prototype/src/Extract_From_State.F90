@@ -1042,7 +1042,7 @@ contains
         ! hack to define a lateral from diamond
         if(npres>1) then
             vfield=>extract_vector_field(packed_state,"Porosity")
-            sfield=>extract_scalar_field(state(1),"Pipe1")
+            sfield=>extract_scalar_field(state(1),"Pipe")
             call assign_val(vfield%val(2,:),sfield%val)
         end if
 

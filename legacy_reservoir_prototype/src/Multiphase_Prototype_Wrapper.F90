@@ -251,6 +251,10 @@ contains
         integer :: i, nphase, npres
         character( len = option_path_len ) :: option_path
         integer :: stat
+        type (scalar_field), target :: targ_Store
+        type (scalar_field), pointer :: sfield1, sfield2
+        type (vector_field), pointer :: position
+
 
         nphase = option_count("/material_phase")
         npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
