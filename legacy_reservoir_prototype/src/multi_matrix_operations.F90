@@ -255,7 +255,7 @@ contains
 
         !COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
         !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
-        IF ( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1 ) THEN
+        IF ( Mdims%npres==1 .and.( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1 )) THEN
             ! Fast but memory intensive... (wells not yet implemented here)
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -556,17 +556,19 @@ contains
                     END DO
                 END IF
             END DO
-            DO CV_NOD = 1, Mdims%cv_nonods
-                if ( mass_pipe(cv_nod) == 0.0 ) then
-                    CV_JNOD = CV_NOD
-                    DO IPRES = 2, Mdims%npres
-                        JPRES = IPRES
-                        i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-                        j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
-                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
-                    END DO
-                end if
-            END DO
+            if (Mdims%npres > 1) then
+                DO CV_NOD = 1, Mdims%cv_nonods
+                    if ( mass_pipe(cv_nod) == 0.0 ) then
+                        CV_JNOD = CV_NOD
+                        DO IPRES = 2, Mdims%npres
+                            JPRES = IPRES
+                            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                            j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
+                            call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
+                        END DO
+                    end if
+                END DO
+            end if
 !            if ( .false. ) then
 !                cv_nod = 226
 !                IPRES = 2
