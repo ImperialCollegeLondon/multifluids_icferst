@@ -1551,7 +1551,8 @@ contains
             logical, optional :: free
 
             type(scalar_field), pointer :: nfield
-            type(tensor_field), pointer :: mfield
+            type(tensor_field), pointer :: mfield, python_tfield
+            integer python_stat
             logical lfree
 
             if (present(free)) then
@@ -1587,17 +1588,22 @@ contains
                     deallocate(nfield%val)
                 end if
 
-
                 !sprint to_do: This flag makes the python scripting to work but breakes mesh adaptivity
-!                if (trim(name)=="Pressure") then
-                    nfield%val=>mfield%val(icomp,iphase,:)
-                    nfield%val_stride=ncomp*nphase
-                    nfield%wrapped=.true.
-!                end if
-
+                python_tfield => extract_tensor_field( state(1), "UAbsorB", python_stat )
+                if (python_stat==0) then
+                   if (trim(name)=="Pressure") then
+                      nfield%val=>mfield%val(icomp,iphase,:)
+                      nfield%val_stride=ncomp*nphase
+                      nfield%wrapped=.true.
+                   end if
+                else
+                   nfield%val=>mfield%val(icomp,iphase,:)
+                   nfield%val_stride=ncomp*nphase
+                   nfield%wrapped=.true.
+                end if
             end if
 
-        end subroutine unpack_sfield
+          end subroutine unpack_sfield
 
         subroutine unpack_vfield(nstate,mstate,name,iphase,free)
             type(state_type), intent(inout) :: nstate, mstate
