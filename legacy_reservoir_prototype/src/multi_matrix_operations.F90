@@ -556,6 +556,7 @@ contains
                     END DO
                 END IF
             END DO
+
             if (Mdims%npres > 1) then
                 DO CV_NOD = 1, Mdims%cv_nonods
                     if ( mass_pipe(cv_nod) == 0.0 ) then
