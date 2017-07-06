@@ -1594,7 +1594,7 @@ contains
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc, ndim1, ndim2, idim, jdim
-
+      real :: multiplier
 
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
@@ -1604,6 +1604,11 @@ contains
       else
          momentum_diffusion=0.0
          t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
+
+         !Multiplier to control the index for the viscosity when the viscosity is constant
+         multiplier = 1.
+         if (size(t_field%val,3) == 1)  multiplier = 0.
+
          if ( stat == 0 ) then
             linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
             allocate( component_tmp( Mdims%cv_nloc ), mu_tmp( t_field%dim(1), t_field%dim(2), Mdims%cv_nloc ) )
@@ -1633,6 +1638,7 @@ contains
                         end if
                         do iloc = 1, Mdims%cv_nloc
                            cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
+                           cv_nod = cv_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                            momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( 1, 1, iloc ) ! isotropic only - to be deleted...
                            t_field%val( :, :, cv_nod ) = t_field%val( :, :, cv_nod ) + mu_tmp( :, :, iloc )/dble(Mdims%cv_nloc)
@@ -1657,10 +1663,9 @@ contains
                      end if
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
+                        mat_nod = mat_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        !!-PY: changed it for the index problem
-                        !!t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
-                        t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
+                        t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
                      end do
                   end do
                end do
