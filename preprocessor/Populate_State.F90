@@ -1308,6 +1308,10 @@ contains
              states(i), field_name='Sigma')
           call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::DiameterPipe', &
              states(i), field_name='DiameterPipe')
+          if (have_option('/wells_and_pipes/scalar_field::Conductivity'))then
+             call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Conductivity', &
+                states(i), field_name='Conductivity')
+          end if
        end do
     end if
 

@@ -4,6 +4,7 @@
 #modified by:
 #Carl Jacquemyn
 #Pablo Salinas
+#This code has LGPL license
 import vtk
 import sys
 

@@ -171,6 +171,10 @@ contains
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
+               den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
+               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+               den_all    = den_all*den_all2 % val ( 1, :, : )
+               denold_all = denold_all * denold_all2 % val ( 1, :, : )
                ! open the boiling test for two phases-gas and liquid
                if (is_boiling) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )

@@ -1594,7 +1594,7 @@ contains
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc, ndim1, ndim2, idim, jdim
-      real :: multiplier
+      integer :: multiplier
 
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
@@ -1606,8 +1606,8 @@ contains
          t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
 
          !Multiplier to control the index for the viscosity when the viscosity is constant
-         multiplier = 1.
-         if (size(t_field%val,3) == 1)  multiplier = 0.
+         multiplier = 1
+         if (size(t_field%val,3) == 1)  multiplier = 0
 
          if ( stat == 0 ) then
             linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )

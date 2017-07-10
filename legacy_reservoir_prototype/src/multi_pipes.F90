@@ -80,7 +80,7 @@ contains
 
 
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                    getcv_disc, getct, Mmat, Mspars, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
+                    getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                     INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
         type(state_type), intent(in) :: packed_state
@@ -96,6 +96,7 @@ contains
         real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
         real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
         logical, intent( in ) :: getcv_disc, getct, thermal
+        real, intent(in) :: DT
         !Variables that are used to define the pipe pos.
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
 
@@ -130,9 +131,12 @@ contains
             icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
             U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
-        type(tensor_field), pointer :: t_all, den_all, u_all
-        type(scalar_field), pointer :: pipe_diameter, sigma1_pipes
+        type(tensor_field), pointer :: t_all, told_all, den_all, u_all, aux_tensor_pointer
+        type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, conductivity_pipes => null()
         type(vector_field), pointer :: X
+        type(tensor_field), target :: tensor_target
+        logical, save :: has_conductivity_pipes = .false.
+        real :: add_time_dep
 
         integrate_other_side_and_not_boundary = .FALSE.
         UPWIND_PIPES=.FALSE. ! Used for testing...
@@ -282,19 +286,36 @@ contains
             denmax_all(Mdims%nphase, Mdims%cv_nonods), denmin_all(Mdims%nphase, Mdims%cv_nonods) )
         T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
-if (thermal) then
-!                   p => extract_tensor_field( packed_state, "PackedCVPressure" )
-    DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-!               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
-else
-    DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
-end if
 
         U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
         PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe" )
         X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         sigma1_pipes => extract_scalar_field( state(1), "Sigma" )
         TMAX_ALL=-INFINY; TMIN_ALL=+INFINY; DENMAX_ALL=-INFINY; DENMIN_ALL = +INFINY
+
+        add_time_dep = 0.
+        if (thermal) then
+            T_ALL => extract_tensor_field( packed_state, "PackedTemperature" )
+            told_all => extract_tensor_field( packed_state, "PackedOldTemperature" )
+            aux_tensor_pointer => extract_tensor_field( packed_state, "PackedDensity" )
+            call allocate(tensor_target, aux_tensor_pointer%mesh, dim=(/size(aux_tensor_pointer%val,1), size(aux_tensor_pointer%val,2)/))
+            DEN_ALL => tensor_target
+            DEN_ALL%val = aux_tensor_pointer%val
+            aux_tensor_pointer => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+            DEN_ALL%val = DEN_ALL%val * aux_tensor_pointer%val!rho*Cp
+            if (first_time_step) has_conductivity_pipes = have_option('/wells_and_pipes/scalar_field::Conductivity')
+            if (has_conductivity_pipes) then
+                conductivity_pipes => extract_scalar_field( state(1), "Conductivity" )
+                sigma1_pipes => extract_scalar_field( state(1), "Conductivity" )
+            end if
+            add_time_dep = 1.0
+
+        else
+            DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
+            told_all => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
+            add_time_dep = 0.0!For saturation we are not integrating in time
+        end if
+
         DO CV_NODI = 1, Mdims%cv_nonods
             IF ( PIPE_DIAMETER%VAL(CV_NODI) /= 0.0 ) THEN
                 do count = Mspars%small_acv%fin(cv_nodi), Mspars%small_acv%fin(cv_nodi+1)-1
@@ -680,15 +701,18 @@ end if
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
                                 LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                                       ! subtract 1st order adv. soln.
-                                    + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
-                                    - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                                    + suf_DETWEI( bGI ) * +NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
+                                    - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) +&
+                                    add_time_dep*told_all%val( 1, IPHASE, cv_nodi)*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT ! hi order adv
                             end do
                             ! Put into matrix...
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
                                 call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodi, &
-                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) )
+                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) +&
+                                    add_time_dep*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT )
                                 call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodj, &
-                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * INCOME(iphase) * LIMD(iphase) )
+                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * INCOME(iphase) * LIMD(iphase)+&
+                                    add_time_dep*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT )
                             end do
                             call addto( Mmat%CV_RHS, CV_NODI, LOC_CV_RHS_I )
                         END IF
@@ -788,13 +812,15 @@ end if
                         do iphase = Mdims%n_in_pres+1, Mdims%nphase
                             LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                                 ! subtract 1st order adv. soln.
-                                + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
-                                - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                                + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
+                                - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) +&
+                                    add_time_dep*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT  ! hi order adv
                         end do
                         ! Put into matrix...
                         do iphase = Mdims%n_in_pres+1, Mdims%nphase
                             call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                                + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) )
+                                + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) +&
+                                    add_time_dep*told_all%val( 1, IPHASE, cv_nodi)*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT )
                         end do
                         call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                     ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
@@ -819,7 +845,8 @@ end if
                 end do
             end do
          end if
-        RETURN
+
+    if (thermal) call deallocate(tensor_target)
     CONTAINS
         PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
             TDLIM, TDCEN, INCOME, &

@@ -2151,7 +2151,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 case (4)!Temperature
                     call get_var_from_packed_state(packed_state, temperature = temperature)
                     !Calculate normalized infinite norm of the difference
-                    auxR = max(maxval(reference_field(1,:,:)), maxval(temperature(:,:)))
+                    auxR = maxval(reference_field(1,:,:))
 
                     inf_norm_val = maxval(abs((reference_field(1,:,:)-temperature(:,:))/auxR))
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
@@ -2159,7 +2159,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
-                    auxR = max(maxval(reference_field(1,1,:)), maxval(pressure(1,1,:)))
+                    auxR = maxval(reference_field(1,1,:))
 
                     inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
