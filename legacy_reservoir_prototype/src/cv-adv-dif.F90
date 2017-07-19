@@ -720,6 +720,7 @@ contains
         IF(IGOT_THERM_VIS==1) GOT_VIS = ( R2NORM( THERM_U_DIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 ) &
             .OR. ( R2NORM( THERM_U_DIFFUSION_VOL, Mdims%mat_nonods * Mdims%nphase ) /= 0 )
         GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 )
+
         call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
         ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS:', &
             CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS
@@ -2409,17 +2410,10 @@ contains
                     END DO
                     PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                     DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
-                    if(thermal) then
+!                    if(thermal) then
                         !FOR HEAT the formula is: Q=(Ti-TO)*2*PI*K*L/ln(Ro/Ri)
-                        cc = 1.0!h*PI
-                        Skin = 0.
-                        rp = 0.5*pipe_Diameter%val( cv_nodi ) + 0.01!Let's say thickness of 1 cm hard coded for the time being
-                        rp_nano = rp
-                        SAT_FOR_PIPE = T2_ALL( :, CV_NODI )!T2_ALL contains the saturation when thermal
-                        DEN_FOR_PIPE_PHASE(:) = 1.0
-!                        SIGMA_INV_APPROX = 10.
-                        !for thermal pipes_aux%GAMMA_PRES_ABS has to be always 1.0, as heat is always exchanged!
-                    end if
+                        ! but this formula should be for when GAMMA_PRES_ABS = 0 and only diffusion is happening
+!                    end if
                     IF ( .not. is_flooding ) then
                         DO IPHASE = 1, Mdims%nphase
                             DO JPHASE = 1, Mdims%nphase
@@ -2427,7 +2421,6 @@ contains
                                 JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
                                 IF ( IPRES /= JPRES ) THEN
                                     DeltaP = PRES_FOR_PIPE_PHASE(IPHASE) - PRES_FOR_PIPE_PHASE(JPHASE)
-                                    if (thermal) DeltaP = 1.0!T_ALL(jphase, cv_nodi) - T_ALL(iphase, cv_nodi)
                                     !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                                     ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                                     ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
