@@ -171,10 +171,10 @@ contains
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-               den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
-               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-               den_all    = den_all*den_all2 % val ( 1, :, : )
-               denold_all = denold_all * denold_all2 % val ( 1, :, : )
+!               den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
+!               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+!               den_all    = den_all*den_all2 % val ( 1, :, : )
+!               denold_all = denold_all * denold_all2 % val ( 1, :, : )
                ! open the boiling test for two phases-gas and liquid
                if (is_boiling) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -563,7 +563,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
                  end if
-
                  call zero(vtracer)
                  call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)

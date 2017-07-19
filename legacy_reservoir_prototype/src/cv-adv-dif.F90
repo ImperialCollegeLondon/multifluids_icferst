@@ -398,7 +398,7 @@ contains
         real, dimension(:,:), allocatable :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
             DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
         INTEGER :: IDUM(1)
-        INTEGER :: I, IDIM, U_ILOC, ELE3
+        INTEGER :: I, IDIM, U_ILOC, ELE3, k
         INTEGER :: NFIELD, CV_KLOC, CV_NODK
         INTEGER :: IFI
         INTEGER :: COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC
@@ -2171,6 +2171,8 @@ contains
         IF ( Mdims%npres > 1 ) THEN
             OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
             DO ELE = 1, Mdims%totele
+!            DO k = 1, size(eles_with_pipe)
+!                ELE = eles_with_pipe(k)%ele!Element with pipe
                 DO CV_ILOC = 1, Mdims%cv_nloc
                     CV_NODI = ndgln%cv( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
                     MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
@@ -2238,12 +2240,12 @@ contains
                 rp = 0.14 * h
                 rp_nano = 0.14 * h_nano
                 Skin = 0.0
-
                 SAT_FOR_PIPE(:) = MIN( MAX( 0.0, T_ALL( :, CV_NODI ) ), 1.0 )
+
                 DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
-                    DO IPRES = 1, Mdims%npres
-                       PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
-                    END DO
+                DO IPRES = 1, Mdims%npres
+                   PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                END DO
                 PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                 IF ( is_flooding ) then ! Should really use the manhole diameter here...
                    DO IPRES = 1, Mdims%npres
@@ -2261,14 +2263,14 @@ contains
                    SIGMA_INV_APPROX( 2, CV_NODI )=SIGMA_INV_APPROX( 4, CV_NODI )
                    SAT_FOR_PIPE(2) = max(pipe_Diameter%val( cv_nodi )-2.*fs_height,0.0)/max( pipe_Diameter%val( cv_nodi ), 1.0e-10 )
                    SAT_FOR_PIPE(1) = 1.-SAT_FOR_PIPE(2)
-                   K_PIPES = MIN(K_TOP*SAT_FOR_PIPE(1),1.0) 
+                   K_PIPES = MIN(K_TOP*SAT_FOR_PIPE(1),1.0)
                    PRES_FOR_PIPE_PHASE_FULL(1) =  gravity_flooding * DEN_FOR_PIPE_PHASE(Mdims%n_in_pres + 1) *( fs_height + depth_of_drain%val( cv_nodi ))
                    PRES_FOR_PIPE_PHASE(1)      =  gravity_flooding * DEN_FOR_PIPE_PHASE(Mdims%n_in_pres + 1) *( fs_height + K_PIPES*depth_of_drain%val( cv_nodi ))
 
                    Q_PIPES = PRES_FOR_PIPE_PHASE(3) - gravity_flooding * DEN_FOR_PIPE_PHASE(Mdims%n_in_pres + 1) *( DEN_FOR_PIPE_PHASE(1) + depth_of_drain%val( cv_nodi ))
                    CV_PIPE_LENGTH = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
                 end if
-                    
+
                 DO IPHASE = 1, Mdims%nphase
                     IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
                     DO JPHASE = 1, Mdims%nphase
@@ -2277,7 +2279,6 @@ contains
                         ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                         IF ( IPRES /= JPRES ) THEN
                             !Peaceman correction
-
                             IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
                                 GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                                     cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
@@ -2334,17 +2335,17 @@ contains
                                     / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                             END IF
                    END DO
-                   
+
 
                    L_surface_pipe = 0.25*pipe_Diameter%val( CV_NODI )
-                   l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
+                   l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH)
 
                    R_PEACMAN = l_frac * R_PEACMAN
 !                   R_PEACMAN = R_PEACMAN*1.e+10
 !                   R_PEACMAN = R_PEACMAN*1.e+4
 !                   R_PEACMAN = R_PEACMAN*1.e+2
 !                   R_PEACMAN=0.0
-                    
+
 
                    A_GAMMA_PRES_ABS( 1, 1, CV_NODI ) = R_PEACMAN( 1 ) * L_surface_pipe
                    A_GAMMA_PRES_ABS( 1, 2, CV_NODI ) = 0.0
@@ -2379,32 +2380,7 @@ contains
                    DO IPRES = 1, Mdims%npres
                         call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
                    END DO
-
-! Nodes 68 and 92 should be non-zero...
-!                       if(abs(R_PEACMAN( 1 )).gt.1.e-10) then !pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
-
-                       if(.false.) then !pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
-!                       if(abs(pipes_aux%GAMMA_PRES_ABS( 1, 3, CV_NODI )).gt.1.e-10) then !pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
-                             print *,'cv_nodi,R_PEACMAN:',cv_nodi,R_PEACMAN
-                             do iphase=1,Mdims%nphase
-                                print *,'A_GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, A_GAMMA_PRES_ABS( iphase, :, CV_NODI )
-                             end do
-                           !  do iphase=1,Mdims%nphase
-                           !     print *,'pipes_aux%GAMMA_PRES_ABS( iphase, :, CV_NODI ):',iphase, pipes_aux%GAMMA_PRES_ABS( iphase, :, CV_NODI )
-                           !  end do
-                           !  print *,'pipes_aux%GAMMA_PRES_ABS( 1, 1, CV_NODI ),pipes_aux%GAMMA_PRES_ABS( 1, 3, CV_NODI ):',pipes_aux%GAMMA_PRES_ABS( 1, 1, CV_NODI ),pipes_aux%GAMMA_PRES_ABS( 1, 3, CV_NODI )
-                             print *,'SAT_FOR_PIPE:',SAT_FOR_PIPE
-                             print *,'l_frac,h,rp,K_PIPES,d,fs_height:',l_frac,h,rp,K_PIPES,depth_of_drain%val( CV_NODI ),fs_height
-                             print *,'PRES_FOR_PIPE_PHASE_FULL(:):',PRES_FOR_PIPE_PHASE_FULL(:)
-                             print *,'DEN_ALL_DIVID(:, CV_NODI):',DEN_ALL_DIVID(:, CV_NODI)
-                             print *,'SIGMA_INV_APPROX( :, CV_NODI ):',SIGMA_INV_APPROX( :, CV_NODI )
-                             print *,'multi_absorp%Flooding%val( 1, 1, :, cv_nodi ):',multi_absorp%Flooding%val( 1, 1, :, cv_nodi )
-                             print *,' '
-                       endif
-
-
                endif
-!
             END DO  ! DO CV_NODI = 1, Mdims%cv_nonods
 
 
@@ -2433,7 +2409,17 @@ contains
                     END DO
                     PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                     DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
-
+                    if(thermal) then
+                        !FOR HEAT the formula is: Q=(Ti-TO)*2*PI*K*L/ln(Ro/Ri)
+                        cc = 1.0!h*PI
+                        Skin = 0.
+                        rp = 0.5*pipe_Diameter%val( cv_nodi ) + 0.01!Let's say thickness of 1 cm hard coded for the time being
+                        rp_nano = rp
+                        SAT_FOR_PIPE = T2_ALL( :, CV_NODI )!T2_ALL contains the saturation when thermal
+                        DEN_FOR_PIPE_PHASE(:) = 1.0
+!                        SIGMA_INV_APPROX = 10.
+                        !for thermal pipes_aux%GAMMA_PRES_ABS has to be always 1.0, as heat is always exchanged!
+                    end if
                     IF ( .not. is_flooding ) then
                         DO IPHASE = 1, Mdims%nphase
                             DO JPHASE = 1, Mdims%nphase
@@ -2441,6 +2427,7 @@ contains
                                 JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
                                 IF ( IPRES /= JPRES ) THEN
                                     DeltaP = PRES_FOR_PIPE_PHASE(IPHASE) - PRES_FOR_PIPE_PHASE(JPHASE)
+                                    if (thermal) DeltaP = 1.0!T_ALL(jphase, cv_nodi) - T_ALL(iphase, cv_nodi)
                                     !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                                     ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                                     ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
@@ -2448,7 +2435,7 @@ contains
                                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
                                             DeltaP * pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
                                             cc * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-                                            / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                                            / (log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin)
                                         IF ( GOT_NANO ) THEN
                                             PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                                                 DeltaP * pipes_aux%GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
@@ -2470,6 +2457,7 @@ contains
                                 END IF
                             END DO
                         END DO
+
                     else ! flooding
                         ! Should really use the manhole diameter here...
                         DO IPRES = 1, Mdims%npres
@@ -2539,7 +2527,7 @@ contains
 
                         PIPE_ABS( :, :, CV_NODI ) = 0.0
                         L_surface_pipe = 0.25*pipe_Diameter%val( CV_NODI )
-                        l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH) 
+                        l_frac = L_surface_pipe/max(1.0e-10, CV_PIPE_LENGTH)
                         if(implicit_fs) then
                            RDUM = CONT_PIPE_ABS( 1, 3 ) * L_surface_pipe * gravity_flooding
                            PIPE_ABS( 1, 1, CV_NODI ) = RDUM
@@ -2558,16 +2546,16 @@ contains
                             RDUM2 = CONT_PIPE_ABS( 1, 3 ) * DeltaP * L_surface_pipe /DEN_FOR_PIPE_PHASE( 3 )
                             if(implicit_fs) then
                                 RDUM = CONT_PIPE_ABS( 1, 3 ) * gravity_flooding * DEN_FOR_PIPE_PHASE( 3 ) * l_frac ! add and subtract this term to make more implicit
-                                PIPE_ABS( 3, 1, CV_NODI ) = PIPE_ABS( 3, 1, CV_NODI ) + RDUM 
-                                LOC_CV_RHS_I(3) = LOC_CV_RHS_I(3) + RDUM * fs_height 
-                                PIPE_ABS( 1, 3, CV_NODI ) = PIPE_ABS( 1, 3, CV_NODI ) + RDUM2 
+                                PIPE_ABS( 3, 1, CV_NODI ) = PIPE_ABS( 3, 1, CV_NODI ) + RDUM
+                                LOC_CV_RHS_I(3) = LOC_CV_RHS_I(3) + RDUM * fs_height
+                                PIPE_ABS( 1, 3, CV_NODI ) = PIPE_ABS( 1, 3, CV_NODI ) + RDUM2
                             else
                                 LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) - RDUM2 * SAT_FOR_PIPE(3)
                             endif
                             PIPE_ABS( 3, 3, CV_NODI ) = PIPE_ABS( 3, 3, CV_NODI ) + CONT_PIPE_ABS( 1, 3 ) * DeltaP * l_frac
                         ELSE
                             LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + (CONT_PIPE_ABS( 1, 3 ) * DeltaP * L_surface_pipe /DEN_FOR_PIPE_PHASE( 3 )) * SAT_FOR_PIPE(1)
-                            LOC_CV_RHS_I(3) = LOC_CV_RHS_I(3) - (CONT_PIPE_ABS( 1, 3 ) * DeltaP ) * l_frac * SAT_FOR_PIPE(1) 
+                            LOC_CV_RHS_I(3) = LOC_CV_RHS_I(3) - (CONT_PIPE_ABS( 1, 3 ) * DeltaP ) * l_frac * SAT_FOR_PIPE(1)
                         ENDIF
 
 
@@ -2577,7 +2565,7 @@ contains
 
 
                     end if ! IF ( .not. is_flooding ) then else
-   
+
                 END DO ! DO CV_NODI = 1, Mdims%cv_nonods
             endif ! if(GETCV_DISC) then
 
@@ -2611,6 +2599,7 @@ contains
                 END IF
             ENDIF ! ENDOF IF ( GETCT ) THEN
         END IF ! IF ( Mdims%npres > 1 ) THEN
+
         Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
             Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
                 LOC_CV_RHS_I=0.0
@@ -2669,6 +2658,7 @@ contains
                             - pipes_aux%MASS_PIPE( CV_NODI ) * A_GAMMA_PRES_ABS(:,JPHASE,CV_NODI )*CV_P_PHASE_NODI(JPHASE )
                     END DO
                 END IF
+
                 Conditional_GETMAT2: IF ( GETMAT ) THEN
                     do jphase = 1, Mdims%nphase
                         do iphase=1,Mdims%nphase
@@ -2731,7 +2721,7 @@ contains
                    END DO
                 END IF
                 ! scaling coefficient...
-                IF ( Mdims%npres > 1 .AND. explicit_pipes2 ) THEN
+                IF ( Mdims%npres > 1 .AND. explicit_pipes2) THEN
                     DO IPRES=1,Mdims%npres
                         DO JPRES=1,Mdims%npres
                             DO jphase=1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres

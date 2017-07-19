@@ -83,7 +83,7 @@ contains
                     getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                     INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
-        type(state_type), intent(in) :: packed_state
+        type(state_type), intent(inout) :: packed_state
         type(state_type), dimension(:), intent(in) :: state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
@@ -132,11 +132,9 @@ contains
             U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
         type(tensor_field), pointer :: t_all, told_all, den_all, u_all, aux_tensor_pointer
-        type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, conductivity_pipes => null()
+        type(scalar_field), pointer :: pipe_diameter, sigma1_pipes
         type(vector_field), pointer :: X
-        type(tensor_field), target :: tensor_target
         logical, save :: has_conductivity_pipes = .false.
-        real :: add_time_dep
 
         integrate_other_side_and_not_boundary = .FALSE.
         UPWIND_PIPES=.FALSE. ! Used for testing...
@@ -285,6 +283,8 @@ contains
         allocate( tmax_all(Mdims%nphase, Mdims%cv_nonods), tmin_all(Mdims%nphase, Mdims%cv_nonods), &
             denmax_all(Mdims%nphase, Mdims%cv_nonods), denmin_all(Mdims%nphase, Mdims%cv_nonods) )
         T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
+        told_all => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
 
 
         U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
@@ -293,27 +293,17 @@ contains
         sigma1_pipes => extract_scalar_field( state(1), "Sigma" )
         TMAX_ALL=-INFINY; TMIN_ALL=+INFINY; DENMAX_ALL=-INFINY; DENMIN_ALL = +INFINY
 
-        add_time_dep = 0.
         if (thermal) then
+            !Change pointers
+            nullify(T_ALL); nullify(told_all);nullify(DEN_ALL);
             T_ALL => extract_tensor_field( packed_state, "PackedTemperature" )
             told_all => extract_tensor_field( packed_state, "PackedOldTemperature" )
-            aux_tensor_pointer => extract_tensor_field( packed_state, "PackedDensity" )
-            call allocate(tensor_target, aux_tensor_pointer%mesh, dim=(/size(aux_tensor_pointer%val,1), size(aux_tensor_pointer%val,2)/))
-            DEN_ALL => tensor_target
-            DEN_ALL%val = aux_tensor_pointer%val
-            aux_tensor_pointer => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-            DEN_ALL%val = DEN_ALL%val * aux_tensor_pointer%val!rho*Cp
+            DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!doing Cp * Rho introduce problems, probably it is inconsistent
             if (first_time_step) has_conductivity_pipes = have_option('/wells_and_pipes/scalar_field::Conductivity')
             if (has_conductivity_pipes) then
-                conductivity_pipes => extract_scalar_field( state(1), "Conductivity" )
+                nullify(sigma1_pipes)
                 sigma1_pipes => extract_scalar_field( state(1), "Conductivity" )
             end if
-            add_time_dep = 1.0
-
-        else
-            DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
-            told_all => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-            add_time_dep = 0.0!For saturation we are not integrating in time
         end if
 
         DO CV_NODI = 1, Mdims%cv_nonods
@@ -702,17 +692,15 @@ contains
                                 LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                                       ! subtract 1st order adv. soln.
                                     + suf_DETWEI( bGI ) * +NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
-                                    - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) +&
-                                    add_time_dep*told_all%val( 1, IPHASE, cv_nodi)*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT ! hi order adv
+                                    - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                             end do
+
                             ! Put into matrix...
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
                                 call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodi, &
-                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) +&
-                                    add_time_dep*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT )
+                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
                                 call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodj, &
-                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * INCOME(iphase) * LIMD(iphase)+&
-                                    add_time_dep*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT )
+                                    +suf_DETWEI( bGI ) * NDOTQ(iphase) * INCOME(iphase) * LIMD(iphase))
                             end do
                             call addto( Mmat%CV_RHS, CV_NODI, LOC_CV_RHS_I )
                         END IF
@@ -813,14 +801,12 @@ contains
                             LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                                 ! subtract 1st order adv. soln.
                                 + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
-                                - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) +&
-                                    add_time_dep*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT  ! hi order adv
+                                - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                         end do
                         ! Put into matrix...
                         do iphase = Mdims%n_in_pres+1, Mdims%nphase
                             call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                                + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) +&
-                                    add_time_dep*told_all%val( 1, IPHASE, cv_nodi)*DEN_ALL%val( 1, IPHASE, cv_nodi)/DT )
+                                + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
                         end do
                         call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                     ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
@@ -846,7 +832,6 @@ contains
             end do
          end if
 
-    if (thermal) call deallocate(tensor_target)
     CONTAINS
         PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
             TDLIM, TDCEN, INCOME, &
