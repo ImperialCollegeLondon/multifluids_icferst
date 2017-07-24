@@ -2581,6 +2581,10 @@ if in doubt set it to 1.</a:documentation>
                 <ref name="material_mesh_choice"/>
                 <ref name="prescribed_scalar_field"/>
               </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
+              </element>
               <element name="aliased">
                 <ref name="generic_aliased_field"/>
               </element>
@@ -2596,6 +2600,10 @@ It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
               <element name="prescribed">
                 <ref name="pressure_mesh_choice"/>
                 <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
               </element>
               <element name="aliased">
                 <ref name="generic_aliased_field"/>
@@ -2616,6 +2624,10 @@ Recommended. set to 1 and/or use the internal method based on the Moody diagram 
                 <ref name="subcv_mesh_choice"/>
                 <ref name="prescribed_scalar_field"/>
               </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
+              </element>
               <element name="aliased">
                 <ref name="generic_aliased_field"/>
               </element>
@@ -2632,6 +2644,10 @@ If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
               <element name="prescribed">
                 <ref name="pressure_mesh_choice"/>
                 <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
               </element>
               <element name="aliased">
                 <ref name="generic_aliased_field"/>
@@ -2651,6 +2667,10 @@ This is only required for heat transport</a:documentation>
                 <element name="prescribed">
                   <ref name="pressure_mesh_choice"/>
                   <ref name="prescribed_scalar_field"/>
+                </element>
+                <element name="diagnostic">
+                  <ref name="vector_python_diagnostic_algorithm"/>
+                  <ref name="diagnostic_scalar_field_no_adapt"/>
                 </element>
                 <element name="aliased">
                   <ref name="generic_aliased_field"/>

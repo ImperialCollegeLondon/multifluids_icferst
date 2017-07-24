@@ -1930,6 +1930,10 @@ start =
                      material_mesh_choice,
                      prescribed_scalar_field
                   }|
+                element diagnostic {
+                  vector_python_diagnostic_algorithm,
+                  diagnostic_scalar_field_no_adapt
+                }| 
                   element aliased {
                      generic_aliased_field
                   }
@@ -1944,6 +1948,10 @@ start =
                      pressure_mesh_choice,
                      prescribed_scalar_field
                   }|
+                element diagnostic {
+                  vector_python_diagnostic_algorithm,
+                  diagnostic_scalar_field_no_adapt
+                }| 
                   element aliased {
                      generic_aliased_field
                   }
@@ -1962,6 +1970,10 @@ start =
                      subcv_mesh_choice,
                      prescribed_scalar_field
                   }|
+                element diagnostic {
+                  vector_python_diagnostic_algorithm,
+                  diagnostic_scalar_field_no_adapt
+                }| 
                   element aliased {
                      generic_aliased_field
                   }
@@ -1977,6 +1989,10 @@ start =
                      pressure_mesh_choice,
                      prescribed_scalar_field
                   }|
+                element diagnostic {
+                  vector_python_diagnostic_algorithm,
+                  diagnostic_scalar_field_no_adapt
+                }| 
                   element aliased {
                      generic_aliased_field
                   }
@@ -1993,6 +2009,10 @@ start =
                      pressure_mesh_choice,
                      prescribed_scalar_field
                   }|
+                element diagnostic {
+                  vector_python_diagnostic_algorithm,
+                  diagnostic_scalar_field_no_adapt
+                }| 
                   element aliased {
                      generic_aliased_field
                   }
