@@ -317,6 +317,8 @@ contains
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+!call MatView(Mmat%petsc_ACV%M, PETSC_VIEWER_STDOUT_SELF, its_taken)
+
                        do iphase = 1, Mdims%nphase
                            ewrite(2,*) 'T phase min_max:', iphase, &
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
@@ -566,6 +568,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                  call zero(vtracer)
                  call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
                  call deallocate(Mmat%petsc_ACV)
@@ -1074,7 +1077,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         end if
 
         ! update velocity source
-        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, u_source_all )
+        call update_velocity_source( state, Mdims, u_source_all )
 
 !Temporary conversion
 if (associated(multi_absorp%PorousMedia%val))then

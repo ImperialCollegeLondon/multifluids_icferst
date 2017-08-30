@@ -131,7 +131,7 @@ contains
             icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
             U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
-        type(tensor_field), pointer :: t_all, told_all, den_all, u_all, aux_tensor_pointer
+        type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes
         type(vector_field), pointer :: X
         logical, save :: has_conductivity_pipes = .false.
@@ -284,7 +284,6 @@ contains
             denmax_all(Mdims%nphase, Mdims%cv_nonods), denmin_all(Mdims%nphase, Mdims%cv_nonods) )
         T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
-        told_all => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
 
 
         U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
@@ -295,10 +294,10 @@ contains
 
         if (thermal) then
             !Change pointers
-            nullify(T_ALL); nullify(told_all);nullify(DEN_ALL);
+            nullify(T_ALL); nullify(DEN_ALL);
             T_ALL => extract_tensor_field( packed_state, "PackedTemperature" )
-            told_all => extract_tensor_field( packed_state, "PackedOldTemperature" )
             DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!doing Cp * Rho introduce problems, probably it is inconsistent
+            U_ALL => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )!for consistency with cv_assemb
             if (first_time_step) has_conductivity_pipes = have_option('/wells_and_pipes/scalar_field::Conductivity')
             if (has_conductivity_pipes) then
                 nullify(sigma1_pipes)
@@ -728,10 +727,10 @@ contains
                     PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
                     NDOTQ = 0.0
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                        IF ( SOLVE_ACTUAL_VEL ) THEN
-                            NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) )
+                        IF ( SOLVE_ACTUAL_VEL) THEN
+                            NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) )
                         ELSE
-                            NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
+                            NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
                         END IF
                     END DO
                     INCOME(:) = 0.5 * ( 1. + SIGN( 1.0, -NDOTQ(:) ) )

@@ -702,10 +702,7 @@ contains
             SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
             SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
         end if
-
          if (tracer%name == "PackedTemperature" )  then
-
-
             allocate( suf_t_bc( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
                 suf_t_bc_rob2( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
             call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, Mdims%nphase, &
@@ -2411,6 +2408,7 @@ contains
                     PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                     DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
 !                    if(thermal) then
+                        !IT WORKS FOR FE_PRESSURE FOR DCVFEM WAS GIVING PROBLEMS...
                         !FOR HEAT the formula is: Q=(Ti-TO)*2*PI*K*L/ln(Ro/Ri)
                         ! but this formula should be for when GAMMA_PRES_ABS = 0 and only diffusion is happening
 !                    end if

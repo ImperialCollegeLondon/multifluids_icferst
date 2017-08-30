@@ -1804,18 +1804,18 @@ contains
 
 
 
-    subroutine update_velocity_source( states, ndim, nphase, u_source )
+    subroutine update_velocity_source( states, Mdims, u_source )
 
         implicit none
 
-        integer, intent( in ) :: ndim, nphase
+        type( multi_dimensions ), intent( in ) :: Mdims
         type( state_type ), dimension( : ), intent( in ) :: states
         !real, dimension( :, :, : ), intent( inout ) :: u_source
         type ( multi_field ), intent( inout ) :: u_source
 
         type( vector_field ), pointer :: source
-        integer :: iphase, idim, u_nonods
-        logical :: have_source
+        integer :: iphase, idim
+        logical, dimension(Mdims%nphase) :: have_source
         character( len = option_path_len ) :: option_path
 
         ! Needs to be cleaned up !! SPRINT TO DO..
@@ -1825,18 +1825,28 @@ contains
 
         !u_source = 0.
 
-        do iphase = 1, nphase
-            have_source = .false.
+        have_source = .false.
+        do iphase = 1, Mdims%nphase
             option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/vector_field::Velocity' // &
                 '/prognostic/vector_field::Source'
-            have_source = have_option( trim(option_path) )
-            if ( have_source ) then
-                source => extract_vector_field( states( iphase ), 'VelocitySource' )
+            have_source(iphase) =  have_option( trim(option_path) )
+        end do
 
-                u_nonods = node_count( source )
-                do idim = 1, ndim
-                    u_source%val( idim:idim, iphase:iphase, 1:1, 1:u_nonods ) => source % val( idim, : )
-                end do
+        if (any(have_source)) then
+            u_source%have_field = .true.
+            if (after_adapt) deallocate(u_source%val)
+!            if (.not.associated(u_source%val)) deallocate(u_source%val)!<= this is failing maybe need to do this if mesh changes and that is
+            allocate(u_source%val(Mdims%ndim, Mdims%nphase, 1, Mdims%u_nonods))
+        end if
+
+        do iphase = 1, Mdims%nphase
+            if ( have_source(iphase) ) then
+                    source => extract_vector_field( states( iphase ), 'VelocitySource' )
+                    do idim = 1, Mdims%ndim
+                        call assign_val(u_source%val( idim, iphase, 1, : ), source % val( idim, : ))
+!print*, size(source % val, 2)
+!                        u_source%val( idim:idim, iphase:iphase, 1:1, 1:Mdims%u_nonods ) => source % val( idim, : )
+                    end do
 
             end if
         end do
