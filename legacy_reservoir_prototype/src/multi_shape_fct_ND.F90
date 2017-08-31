@@ -7948,6 +7948,10 @@ contains
     ewrite(3,*)'just inside SHAPE_one_ele'
     !      stop 7299
 
+    !For P0DG elements there is only 1 node, we initialize here to 1 to avoid some problems later
+    !where not all the elements of U_SLOCLIST may not be assign to 1 in this case
+    if (size(U_SLOCLIST, 1) > 2) U_SLOCLIST( :, 1 ) = 1.0
+
     LOWQUA = .false. ; MLOC = 1 ; SMLOC = 1
     ALLOCATE( M( MLOC, CV_NGI ) )
     ALLOCATE( MLX( MLOC, CV_NGI ) )
@@ -7977,7 +7981,6 @@ contains
     IF( U_SNLOC == 1 ) THEN
        U_SLOCLIST( 1, 1 ) = 1
        U_SLOCLIST( 2, 1 ) = U_NLOC
-       if (size(U_SLOCLIST, 1) > 2) U_SLOCLIST( :, 1 ) = 1.0!For P0DG elements there is only 1. node
     ELSE
        CALL DETERMIN_SLOCLIST( U_SLOCLIST, U_NLOC, U_SNLOC, NFACE, &
             NDIM, CV_ELE_TYPE )
