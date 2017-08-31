@@ -7977,6 +7977,7 @@ contains
     IF( U_SNLOC == 1 ) THEN
        U_SLOCLIST( 1, 1 ) = 1
        U_SLOCLIST( 2, 1 ) = U_NLOC
+       if (size(U_SLOCLIST, 1) > 2) U_SLOCLIST( :, 1 ) = 1.0!For P0DG elements there is only 1. node
     ELSE
        CALL DETERMIN_SLOCLIST( U_SLOCLIST, U_NLOC, U_SNLOC, NFACE, &
             NDIM, CV_ELE_TYPE )
