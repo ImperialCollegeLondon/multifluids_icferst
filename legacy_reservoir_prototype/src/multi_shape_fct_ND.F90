@@ -8029,6 +8029,8 @@ contains
             WEIGHT = 1./6.
             SWEIGH = 0.5
         end if
+        SN = 1.0; SNLX= 0.; SNLY= 0.
+        SM = 1.0; SMLX= 0.; SMLY= 0.
     case( 1 )
        IF(.NOT.D3) THEN
           CALL RE2DN4(LOWQUA,NGI,0,NLOC,MLOC, &
@@ -9593,9 +9595,9 @@ contains
              CV_SLOCLIST(1,2)=2
              CV_SLOCLIST(1,3)=3
 
-             !                CV_SLOCLIST(2,1)=1
-             !                CV_SLOCLIST(2,2)=4
-             !                CV_SLOCLIST(2,3)=2
+!                CV_SLOCLIST(2,1)=1
+!                CV_SLOCLIST(2,2)=4
+!                CV_SLOCLIST(2,3)=2
 
              CV_SLOCLIST(2,1)=2
              CV_SLOCLIST(2,2)=1

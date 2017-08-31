@@ -647,7 +647,7 @@ contains
         implicit none
         integer :: Vdegree, Pdegree
         character( len = option_path_len ) :: quality_option
-        !By default it is intertia dominated
+        !By default it is inertia dominated
         is_porous_media = have_option('/simulation_type/porous_media') .or. have_option('/is_porous_media')
         is_magma = have_option('/simulation_type/magma')
         is_flooding = have_option('/simulation_type/flooding')
@@ -660,16 +660,16 @@ contains
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         !Check if it is P0DGP1
-        if (.not. have_option("/is_porous_media")) then
+        if (.not. have_option("/is_porous_media")) then!This is to check if the input file is mpml or else, i.e. frst
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', &
                 Vdegree )
             call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
                 Pdegree )
             is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
                     have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
-
-            if ((Vdegree == 0) .and. (Pdegree == 1) .and. .not. is_P0DGP1CV) then
-                ewrite(0, *) "P0DGP1 only works for porous media and the DCVFEM formulation."
+            if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
+                            .or. have_option('/simulation_type/inertia_dominated'))) then
+                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method, use the P1DGP2CV formulation instead."
                 stop
             end if
         else

@@ -27,7 +27,7 @@ start =
          element simulation_type {
              (
                 ## Navier-stokes simulator
-                element intertia_dominated{comment}|
+                element inertia_dominated{comment}|
                 ## Darcy flow simulator
                 element porous_media{comment}|
                 ## Magma flow simulator

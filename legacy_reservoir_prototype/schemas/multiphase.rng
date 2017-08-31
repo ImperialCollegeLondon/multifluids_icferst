@@ -25,7 +25,7 @@ characters in the simulation name should be avoided.</a:documentation>
       <element name="simulation_type">
         <a:documentation>Select the simulation type</a:documentation>
         <choice>
-          <element name="intertia_dominated">
+          <element name="inertia_dominated">
             <a:documentation>Navier-stokes simulator</a:documentation>
             <ref name="comment"/>
           </element>
