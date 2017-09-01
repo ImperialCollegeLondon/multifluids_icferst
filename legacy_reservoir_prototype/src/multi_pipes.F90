@@ -705,7 +705,7 @@ contains
                         END IF
                     END DO ! DO ILOOP = 1, 2
                 END DO ! DO BGI = 1, CV_BNGI
-                ! Add velocity and saturation b.Mmat%C.'s to matrix and rhs...
+                ! Add velocity and saturation b.c's to matrix and rhs...
                 JCV_NOD1 = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_LOC_CORNER( ICORNER1 ) )
                 JCV_NOD2 = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_LOC_CORNER( ICORNER2 ) )
                 JCV_NOD=0
@@ -714,14 +714,13 @@ contains
                     JCV_NOD = JCV_NOD1
                     U_LILOC = 1
                     JU_NOD = U_GL_GL( U_LILOC )
-                    direction_norm = - direction ! for the b.Mmat%C it must be -ve at the bottom of element
-                END IF
-                IF ( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
+                    direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
+                else IF ( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
                     CV_LILOC = CV_LNLOC
                     JCV_NOD = JCV_NOD2
                     U_LILOC = U_LNLOC
                     JU_NOD = U_GL_GL( U_LILOC )
-                    direction_norm = + direction ! for the b.Mmat%C it must be +ve at the top of element
+                    direction_norm = + direction ! for the b.c it must be +ve at the top of element
                 END IF
                 IF ( JCV_NOD /= 0 ) THEN
                     PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )

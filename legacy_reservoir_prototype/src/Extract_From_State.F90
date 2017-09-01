@@ -133,7 +133,7 @@ contains
         !!$ Get the vel element type.
         if (is_porous_media) then!Check that the FPI method is on
             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
-                ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
+                ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow."
             else!Check that the user is allowing the linear solver to fail
                 if (.not. have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/'//&
                 'solver/ignore_all_solver_failures') .and. .not.warning_displayed) then
@@ -143,10 +143,10 @@ contains
                 end if
             end if
             !Don't use for single phase porous media flows
-            if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres < 2) then
+            if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%nphase < 2) then
                 !Unless we are using dynamic control of the non-linear iterations in which case it does not matter
                 if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
-                    ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
+                    ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows without wells."
                 end if
             end if
         end if

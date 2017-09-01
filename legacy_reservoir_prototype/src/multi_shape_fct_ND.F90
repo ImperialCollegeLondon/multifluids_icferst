@@ -7949,8 +7949,8 @@ contains
     !      stop 7299
 
     !For P0DG elements there is only 1 node, we initialize here to 1 to avoid some problems later
-    !where not all the elements of U_SLOCLIST may not be assign to 1 in this case
-    if (size(U_SLOCLIST, 1) > 2) U_SLOCLIST( :, 1 ) = 1.0
+    !where all the elements of U_SLOCLIST may not be assigned to 1 in this case
+    if (U_SNLOC == 1 .and. size(U_SLOCLIST, 1) > 2) U_SLOCLIST( :, 1 ) = 1.0
 
     LOWQUA = .false. ; MLOC = 1 ; SMLOC = 1
     ALLOCATE( M( MLOC, CV_NGI ) )

@@ -89,7 +89,13 @@
       <real_value rank="0">86400</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">2</integer_value>
+      <integer_value rank="0">15</integer_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">5e-2</real_value>
+        <Backtracking_factor>
+          <real_value rank="0">-1</real_value>
+        </Backtracking_factor>
+      </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
   <material_phase name="phase1">
@@ -180,7 +186,7 @@
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0</real_value>
+            <real_value rank="0">1.</real_value>
           </constant>
         </initial_condition>
         <output/>
@@ -527,7 +533,7 @@
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0</real_value>
+            <real_value rank="0">1.</real_value>
           </constant>
         </initial_condition>
         <output/>
