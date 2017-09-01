@@ -4,7 +4,7 @@
     <string_value lines="1">boil_h</string_value>
   </simulation_name>
   <simulation_type>
-    <intertia_dominated/>
+    <inertia_dominated/>
     <boiling/>
   </simulation_type>
   <geometry>

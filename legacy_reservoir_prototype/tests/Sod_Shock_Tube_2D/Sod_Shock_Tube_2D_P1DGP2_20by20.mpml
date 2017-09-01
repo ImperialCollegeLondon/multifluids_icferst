@@ -4,7 +4,7 @@
     <string_value lines="1">SodShockTube_P1DGP2_20by20</string_value>
   </simulation_name>
   <simulation_type>
-    <intertia_dominated/>
+    <inertia_dominated/>
   </simulation_type>
   <geometry>
     <dimension>

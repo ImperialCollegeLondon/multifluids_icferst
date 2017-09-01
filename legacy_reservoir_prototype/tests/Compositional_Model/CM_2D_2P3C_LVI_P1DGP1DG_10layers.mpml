@@ -4,7 +4,7 @@
     <string_value lines="1">CM_2D_2P3C_LVI_P1DGP1DG_10layers</string_value>
   </simulation_name>
   <simulation_type>
-    <intertia_dominated/>
+    <inertia_dominated/>
   </simulation_type>
   <geometry>
     <dimension>
