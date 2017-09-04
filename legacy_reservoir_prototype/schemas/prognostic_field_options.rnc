@@ -680,6 +680,10 @@ prognostic_velocity_field =
                   ## Remove the mass terms from the equation.
                   element exclude_mass_terms {
                      empty
+                  }?,
+                  ## Introduce in the pivit matrix the temporal terms
+                  element get_all_in_mass_matrix {
+                     empty
                   }?
                }?,
                element viscosity_scheme {

@@ -4864,6 +4864,8 @@ end if
             CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
                 Mmat%DGM_petsc, &
                 Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
+                IF(have_option("/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix/get_all_in_mass_matrix"))  &
+                    call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS) !This subroutine introduces in the pivit matrix the temporal terms
             DEALLOCATE( DIAG_BIGM_CON )
             DEALLOCATE( BIGM_CON)
         ENDIF
@@ -4946,6 +4948,47 @@ end if
         call deallocate_multi_dev_shape_funs(Devfuns)
         ewrite(3,*)'Leaving assemb_force_cty'
         RETURN
+    contains
+
+    subroutine get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_PIVIT_ON_ALL)
+        !This subroutine introduces in the pivit matrix the temporal terms
+        !****this is under testing****
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_matrices), intent(inout) :: Mmat
+        REAL, DIMENSION ( :, :, :,   :, :, :,   : ), intent(in) :: DIAG_BIGM_CON
+        logical, intent(in) :: LUMP_PIVIT_ON_ALL
+        !Local variables
+        integer :: ele, u_jloc, u_iloc, iphase, jphase, idim, jdim, i, j
+
+
+        Mmat%PIVIT_MAT=0.0
+        DO ELE=1,Mdims%totele
+            DO U_JLOC = 1, Mdims%u_nloc
+                DO U_ILOC = 1, Mdims%u_nloc
+                    DO IPHASE = 1, Mdims%nphase
+                        DO JPHASE = 1, Mdims%nphase
+                            DO IDIM = 1, Mdims%ndim
+                                DO JDIM = 1, Mdims%ndim
+                                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                    IF(LUMP_PIVIT_ON_ALL) THEN
+                                        ! lumping of stabilization worth trying...
+                                        Mmat%PIVIT_MAT( I,I, ELE )  = Mmat%PIVIT_MAT( I,I, ELE ) +abs(DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) )
+                                    ELSE
+                                        Mmat%PIVIT_MAT( I,J, ELE )  = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )
+                                    ENDIF
+                                END DO
+                            END DO ! ENDOF DO IDIM = 1, Mdims%ndim
+                        END DO
+                    END DO ! ENDOF DO IPHASE = 1, Mdims%nphase
+                END DO
+            END DO ! ENDOF DO U_JLOC = 1, Mdims%u_nloc
+        END DO ! ENDOF DO ELE=1,TOTELE
+    end subroutine get_all_in_mass_matrix
+
+
+
 
     END SUBROUTINE ASSEMB_FORCE_CTY
 

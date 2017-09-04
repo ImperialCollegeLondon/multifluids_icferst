@@ -801,6 +801,12 @@ Recommended: For CG pressure =&gt; 100; For DG pressure =&gt; 15           </a:d
                 <empty/>
               </element>
             </optional>
+            <optional>
+              <element name="get_all_in_mass_matrix">
+                <a:documentation>Introduce in the pivit matrix the temporal terms</a:documentation>
+                <empty/>
+              </element>
+            </optional>
           </element>
         </optional>
         <element name="viscosity_scheme">
