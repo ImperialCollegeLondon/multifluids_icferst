@@ -1834,8 +1834,7 @@ contains
 
         if (any(have_source)) then
             u_source%have_field = .true.
-            if (after_adapt) deallocate(u_source%val)
-!            if (.not.associated(u_source%val)) deallocate(u_source%val)!<= this is failing maybe need to do this if mesh changes and that is
+            if (after_adapt .and. .not. first_time_step) deallocate(u_source%val)
             allocate(u_source%val(Mdims%ndim, Mdims%nphase, 1, Mdims%u_nonods))
         end if
 
@@ -1844,10 +1843,7 @@ contains
                     source => extract_vector_field( states( iphase ), 'VelocitySource' )
                     do idim = 1, Mdims%ndim
                         call assign_val(u_source%val( idim, iphase, 1, : ), source % val( idim, : ))
-!print*, size(source % val, 2)
-!                        u_source%val( idim:idim, iphase:iphase, 1:1, 1:Mdims%u_nonods ) => source % val( idim, : )
                     end do
-
             end if
         end do
 

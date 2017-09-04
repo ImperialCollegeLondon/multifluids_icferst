@@ -2131,7 +2131,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL    :: MASSE, MASSE2
         ! Nonlinear Petrov-Galerkin stuff...
         INTEGER :: RESID_BASED_STAB_DIF
-        logical, parameter :: RESID_BASED_STAB_NO_TIME_TERM = .true.  ! If true dont include the time term in the Petrov-Galerkin stabilization.
+        logical, parameter :: RESID_BASED_STAB_NO_TIME_TERM = .false.  ! If true dont include the time term in the Petrov-Galerkin stabilization.
         REAL :: U_NONLIN_SHOCK_COEF,RNO_P_IN_A_DOT
         REAL :: JTT_INV
         REAL :: VLKNN, zero_or_two_thirds
