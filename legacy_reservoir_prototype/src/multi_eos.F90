@@ -587,15 +587,19 @@ contains
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ) )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_E/', eos_coefs( 5 ), default = 0. )
 
-
-            Rho = eos_coefs(1)/(1+eos_coefs(4)*(temperature_local-eos_coefs(2)))/(1-(pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5)
+            !!$ den = den0/(1+Beta(T1-T0))
+            !We use RHo as auxiliar variable here as the we do not perturbate the temperature
+            Rho = eos_coefs(1)/(1+eos_coefs(4)*(temperature_local-eos_coefs(2)))
 
             perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
-            RhoPlus = eos_coefs(1)/(1+eos_coefs( 4 )*(temperature_local-eos_coefs(2)))/(1-(perturbation_pressure + pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5)
-            RhoMinus = eos_coefs(1)/(1+eos_coefs( 4 )*(temperature_local-eos_coefs(2)))/(1-(perturbation_pressure - pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5)
+            !we add the pressure part =>(1-(P1-P0))/E
+            RhoPlus = Rho/((1-(perturbation_pressure + pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5))
+            RhoMinus = Rho/((1-(perturbation_pressure - pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5))
 
             dRhodP =  0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-
+            !we add the pressure part =>(1-(P1-P0))/E
+            Rho = Rho /((1-(pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5))
+            deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
 #ifdef HAVE_NUMPY
