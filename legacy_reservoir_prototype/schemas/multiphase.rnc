@@ -5522,6 +5522,39 @@ element equation_of_state{
                            element coefficient_B {
                               real
                            }
+                        }|
+                        ## Temperature-Pressure correlation 
+                        ##
+                        ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0))/E
+                        ##
+                        ## where rho0 is the reference density at temperature T0 and pressure P0;
+                        ##
+                        ## Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
+                        ##                        
+                        ## E is the liquid elasticity bulk modulus (N/m^2)
+                        ##
+                        ## NOTE: if temperature is not defined the temperature is defined as zero.
+                        element Temperature_Pressure_correlation {
+                           ## Reference density
+                           element rho0 { 
+                              real 
+                           },
+                           ## Reference temperature
+                           element T0 { 
+                              real 
+                           },
+                           ## Reference Pressure
+                           element P0 { 
+                              real 
+                           },
+                           ## volumetric expansion coefficient (m^3/m^3 Celsius)
+                           element coefficient_Beta { 
+                              real 
+                           },
+                           ## liquid elasticity bulk modulus (N/m^2)
+                           element coefficient_E {
+                              real
+                           }
                         }
                      }|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option

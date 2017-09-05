@@ -6943,6 +6943,39 @@ DEN = A * P ^ B
                 <ref name="real"/>
               </element>
             </element>
+            <element name="Temperature_Pressure_correlation">
+              <a:documentation>Temperature-Pressure correlation 
+
+rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0))/E
+
+where rho0 is the reference density at temperature T0 and pressure P0;
+
+Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
+                       
+E is the liquid elasticity bulk modulus (N/m^2)
+
+NOTE: if temperature is not defined the temperature is defined as zero.</a:documentation>
+              <element name="rho0">
+                <a:documentation>Reference density</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="T0">
+                <a:documentation>Reference temperature</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="P0">
+                <a:documentation>Reference Pressure</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="coefficient_Beta">
+                <a:documentation>volumetric expansion coefficient (m^3/m^3 Celsius)</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="coefficient_E">
+                <a:documentation>liquid elasticity bulk modulus (N/m^2)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </element>
           </choice>
         </element>
         <element name="python_state">

@@ -575,6 +575,26 @@ contains
                 RhoMinus )
             dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( temperature_local, eos_coefs )
+        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
+            !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0))/E
+            allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
+            if ( have_temperature_field ) temperature_local = temperature % val
+
+            allocate( eos_coefs( 5 ) ) ; eos_coefs = 0.
+            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', eos_coefs( 1 ) )
+            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/T0/', eos_coefs( 2 ), default = 0. )
+            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/P0/', eos_coefs( 3 ) )
+            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ) )
+            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_E/', eos_coefs( 5 ), default = 0. )
+
+
+            Rho = eos_coefs(1)/(1+eos_coefs(4)*(temperature_local-eos_coefs(2)))/(1-(pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5)
+
+            perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
+            RhoPlus = eos_coefs(1)/(1+eos_coefs( 4 )*(temperature_local-eos_coefs(2)))/(1-(perturbation_pressure + pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5)
+            RhoMinus = eos_coefs(1)/(1+eos_coefs( 4 )*(temperature_local-eos_coefs(2)))/(1-(perturbation_pressure - pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5)
+
+            dRhodP =  0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
 
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
@@ -723,6 +743,9 @@ contains
 
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
+
+            elseif( have_option( trim( eos_option_path_out ) // '/Temperature_Pressure_correlation' ) ) then
+                eos_option_path_out = trim( eos_option_path_out ) // '/Temperature_Pressure_correlation'
 
             else
                 FLAbort( 'No option given for choice of EOS - compressible fluid' )
