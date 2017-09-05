@@ -824,8 +824,8 @@ contains
                         !Since Flooding_absorp is of memory_type 1 we can populate it directly
                         do i = 1, Mdims%n_in_pres!Only for the phases not in the pipes
                             Flooding_absorp%val(1,1,i, mat_nod) = Flooding_absorp%val(1,1,i, mat_nod) + Nm_aux(cv_iloc)**2. * g *&
-                                max(u_min,sqrt(dot_product(velocity%val(:,iphase,u_nod),velocity%val(:,iphase,u_nod))))&
-                                /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average
+                                max(u_min,sqrt(dot_product(velocity%val(1:2,iphase,u_nod),velocity%val(1:2,iphase,u_nod))))&!We are using only two dimensions of the velocity because
+                                /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average         !<= this is a 2D model if used in 3D, the third dimension is time!
                         end do
                     end do
                 end do
