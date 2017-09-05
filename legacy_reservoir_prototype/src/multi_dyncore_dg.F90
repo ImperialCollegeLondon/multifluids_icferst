@@ -2134,7 +2134,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL    :: MASSE, MASSE2
         ! Nonlinear Petrov-Galerkin stuff...
         INTEGER :: RESID_BASED_STAB_DIF
-        logical, parameter :: RESID_BASED_STAB_NO_TIME_TERM = .false.  ! If true dont include the time term in the Petrov-Galerkin stabilization.
         REAL :: U_NONLIN_SHOCK_COEF,RNO_P_IN_A_DOT
         REAL :: JTT_INV
         REAL :: VLKNN, zero_or_two_thirds
@@ -3489,7 +3488,7 @@ end if
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-            IF ( (.NOT.first_nonlinear_time_step .or. RESID_BASED_STAB_NO_TIME_TERM) &
+            IF ( .NOT.first_nonlinear_time_step &
                         .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
@@ -3531,11 +3530,7 @@ end if
                         END DO
                     END DO
                 END DO
-                IF(RESID_BASED_STAB_NO_TIME_TERM) THEN
-                   U_DT = 0.0
-                ELSE
-                   U_DT = ( UD - UDOLD ) / DT
-                ENDIF
+                U_DT = ( UD - UDOLD ) / DT
                 RESID_U = 0.0
                 DO GI = 1, FE_GIdims%cv_ngi
                     DO IPHASE = 1, Mdims%nphase
