@@ -1076,10 +1076,12 @@ if (is_flooding) return!<== Temporary fix for flooding
               end do
            end do
         end if
-
         ! update velocity source
-        call update_velocity_source( state, Mdims, u_source_all )
-
+        if (have_option_for_any_phase('vector_field::Velocity' // &
+          '/prognostic/vector_field::Source', Mdims%n_in_pres)) then
+          call allocate_multi_field( Mdims, u_source_all, Mdims%u_nonods, "SourceTerm")
+          call update_velocity_source( state, Mdims, u_source_all )
+        end if
 !Temporary conversion
 if (associated(multi_absorp%PorousMedia%val))then
     do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)
@@ -1188,6 +1190,7 @@ end if
            DEALLOCATE( SIGMA )
         end if
         deallocate(velocity_absorption, U_SOURCE_CV_ALL)
+        if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             if (.not.Mmat%Stored .or. .not.is_porous_media) then

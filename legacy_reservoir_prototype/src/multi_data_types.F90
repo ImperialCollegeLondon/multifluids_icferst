@@ -358,6 +358,11 @@ contains
                 nonods = Mdims%cv_nonods
                 mfield%is_constant = .false.
             end if
+            if (trim(field_name)=="SourceTerm") then
+                mfield%memory_type = 5
+                nonods = nonods_in
+                mfield%is_constant = .false.
+            end if
         end if
         select case ( mfield%memory_type )
             case( 0, 1 ) ! Isotropic ( full and diagonal )
@@ -368,6 +373,8 @@ contains
                 mfield%ndim1 = 1    ; mfield%ndim2 = nphase      ; mfield%ndim3 = nphase
             case( 4 )    ! Anisotropic coupled
                 mfield%ndim1 = 1    ; mfield%ndim2 = ndim*nphase ; mfield%ndim3 = ndim*nphase
+            case ( 5 )   !Source term
+                mfield%ndim1 = ndim    ; mfield%ndim2 = nphase ; mfield%ndim3 = 1
             case default
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select

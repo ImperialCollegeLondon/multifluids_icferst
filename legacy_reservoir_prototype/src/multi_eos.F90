@@ -1832,18 +1832,21 @@ contains
             have_source(iphase) =  have_option( trim(option_path) )
         end do
 
-        if (any(have_source)) then
-            u_source%have_field = .true.
-            if (after_adapt .and. .not. first_time_step) deallocate(u_source%val)
-            allocate(u_source%val(Mdims%ndim, Mdims%nphase, 1, Mdims%u_nonods))
-        end if
+!        if (any(have_source)) then
+!            u_source%have_field = .true.
+!            if (associated(u_source%val))then
+!                nullify(u_source%val)
+!                deallocate(u_source%val)
+!            end if
+!            allocate(u_source%val(Mdims%ndim, Mdims%nphase, 1, Mdims%u_nonods))
+!        end if
 
         do iphase = 1, Mdims%nphase
             if ( have_source(iphase) ) then
-                    source => extract_vector_field( states( iphase ), 'VelocitySource' )
-                    do idim = 1, Mdims%ndim
-                        call assign_val(u_source%val( idim, iphase, 1, : ), source % val( idim, : ))
-                    end do
+                source => extract_vector_field( states( iphase ), 'VelocitySource' )
+                do idim = 1, Mdims%ndim
+                    call assign_val(u_source%val( idim, iphase, 1, : ), source % val( idim, : ))
+                end do
             end if
         end do
 
