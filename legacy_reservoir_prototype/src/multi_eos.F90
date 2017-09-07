@@ -576,7 +576,7 @@ contains
             dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
-            !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0))/E
+            !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
             allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
             if ( have_temperature_field ) temperature_local = temperature % val
 
@@ -589,16 +589,18 @@ contains
 
             !!$ den = den0/(1+Beta(T1-T0))
             !We use RHo as auxiliar variable here as the we do not perturbate the temperature
-            Rho = eos_coefs(1)/(1+eos_coefs(4)*(temperature_local-eos_coefs(2)))
+
+            Rho = eos_coefs(1)/(1 + eos_coefs(4)*(temperature_local-eos_coefs(2) )  )
 
             perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
-            !we add the pressure part =>(1-(P1-P0))/E
-            RhoPlus = Rho/((1-(perturbation_pressure + pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5))
-            RhoMinus = Rho/((1-(perturbation_pressure - pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5))
+            !we add the pressure part =>1-(P1-P0)/E
+            RhoPlus = Rho /(1-((perturbation_pressure-eos_coefs(3))/eos_coefs(5)))
+            RhoMinus = Rho /(1-((perturbation_pressure-eos_coefs(3))/eos_coefs(5)))
 
             dRhodP =  0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-            !we add the pressure part =>(1-(P1-P0))/E
-            Rho = Rho /((1-(pressure%val(1,1,:)-eos_coefs(3)))/eos_coefs(5))
+            !we add the pressure part =>1-(P1-P0)/E
+            Rho = abs(Rho /(1-((pressure%val(1,1,:)-eos_coefs(3))/eos_coefs(5))))!ensure a positive density
+                                                                                 !
             deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 

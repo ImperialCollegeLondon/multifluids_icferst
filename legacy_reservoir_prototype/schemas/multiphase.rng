@@ -526,17 +526,28 @@ This can be used to control the number of non-linear interations dynamically.
 
 By default 0.03; Recommended between 0.05 and 0.005</a:documentation>
                     <ref name="real"/>
-                    <optional>
-                      <element name="adaptive_non_linear_iterations">
-                        <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
+                    <group>
+                      <optional>
+                        <element name="adaptive_non_linear_iterations">
+                          <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
 
 A Variable to check has to be chosen:
 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
 
 The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
-                        <ref name="integer"/>
-                      </element>
-                    </optional>
+                          <ref name="integer"/>
+                        </element>
+                      </optional>
+                      <optional>
+                        <element name="Temperature_solver_tol">
+                          <a:documentation>Sets the infinite tolerance for the internal loop of the temperature transport equation.
+This is an internal solver, so a higher tolerance should be used.
+                   
+Default = 0.05</a:documentation>
+                          <ref name="real"/>
+                        </element>
+                      </optional>
+                    </group>
                   </element>
                 </optional>
                 <optional>
@@ -6946,7 +6957,7 @@ DEN = A * P ^ B
             <element name="Temperature_Pressure_correlation">
               <a:documentation>Temperature-Pressure correlation 
 
-rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0))/E
+rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
 
 where rho0 is the reference density at temperature T0 and pressure P0;
 

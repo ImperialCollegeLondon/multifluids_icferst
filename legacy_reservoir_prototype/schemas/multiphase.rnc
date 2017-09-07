@@ -446,6 +446,13 @@ start =
                         ## The field selected in "adaptive_timestep_nonlinear" has preference over this
                         element adaptive_non_linear_iterations{
                         integer
+                        }?,
+                        ## Sets the infinite tolerance for the internal loop of the temperature transport equation.
+                        ## This is an internal solver, so a higher tolerance should be used.
+                        ##                    
+                        ## Default = 0.05
+                        element Temperature_solver_tol{
+                        real
                         }?
                       )
                     }?
@@ -5525,7 +5532,7 @@ element equation_of_state{
                         }|
                         ## Temperature-Pressure correlation 
                         ##
-                        ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0))/E
+                        ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
                         ##
                         ## where rho0 is the reference density at temperature T0 and pressure P0;
                         ##

@@ -141,6 +141,11 @@ contains
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield
+           !Variables for controlling the number of iterations
+           real, dimension(:,:,:), allocatable :: reference_temp
+           real :: aux
+           real, save :: inf_tolerance = -1
+
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -171,10 +176,7 @@ contains
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-!               den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
-!               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-!               den_all    = den_all*den_all2 % val ( 1, :, : )
-!               denold_all = denold_all * denold_all2 % val ( 1, :, : )
+
                ! open the boiling test for two phases-gas and liquid
                if (is_boiling) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -202,9 +204,18 @@ contains
                    Field_selector = 1
                    Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
                    T_source( :, : ) = Q % val( 1, :, : )
-
                end if
-
+               if (thermal) then
+                   !We control with the infinite norm of the difference the non-linear iterations done in this sub-cycle
+                   !therefore the minimum/default value of nits_flux_lim is set to 9
+                   nits_flux_lim = max(nits_flux_lim, 9)
+                   allocate(reference_temp(1, Mdims%nphase, Mdims%cv_nonods))
+                   if (inf_tolerance<0) then
+                       !Tolerance for the infinite norm
+                       call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/Temperature_solver_tol',&
+                           inf_tolerance, default = 0.05 )
+                   end if
+               end if
                cv_disopt = Mdisopt%t_disopt
                cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
                cv_theta = Mdisopt%t_theta
@@ -297,6 +308,7 @@ contains
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, IDs_ndgln, &
                    saturation=saturation, Permeability_tensor_field = perm, eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux)
+
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -327,13 +339,25 @@ contains
                    !Checking solver not fully implemented
                    !if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping
+
+                !Control how it is converging and decide
+               if(thermal) then
+                   if (ITS_FLUX_LIM == 1) then
+                       reference_temp = tracer%val
+                   else
+                       !Check if the tolerance is good or not
+                       aux = maxval(abs((tracer%val-reference_temp)/reference_temp))
+                       if ( aux < inf_tolerance) exit
+                   end if
+               end if
+
            END DO Loop_NonLinearFlux
 
            if (is_boiling) deallocate(T_absorb)
 
            call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-
+            if (allocated(reference_temp)) deallocate(reference_temp)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
