@@ -1456,6 +1456,14 @@ contains
         type(scalar_field), pointer :: pipe_diameter
         integer, dimension(Mdims%ndim + 1) :: CV_LOC_CORNER!NCORNER
         logical, dimension(Mdims%ndim + 1) :: PIPE_INDEX_LOGICAL!NCORNER
+        !Variables to read from input files
+        integer :: number_well_files, edge
+        real :: diam
+        character( len = option_path_len ):: file_path
+        real, dimension(:,:), allocatable :: nodes
+        integer, dimension(:,:), allocatable :: edges
+        type( tensor_field ), pointer:: tfield
+
         !Initialise
         AUX_eles_with_pipe%ele = -1
         k = 1; NCORNER = Mdims%ndim + 1
@@ -1463,28 +1471,46 @@ contains
         X => EXTRACT_VECTOR_FIELD( packed_state, "PressureCoordinate" )
         !Create list of corners
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
+        !Retrieve, ir there are any number of input .bdf files
+        number_well_files = option_count("/wells_and_pipes/well_from_file")
 
-        do ele = 1, Mdims%totele
-            ! Look for pipe indicator in element:
-            PIPE_INDEX_LOGICAL=.FALSE.
-            PIPE_NOD_COUNT=0
-            DO ICORNER = 1, NCORNER ! Number of corner nodes in element
-                CV_ILOC = CV_LOC_CORNER( ICORNER )
-                CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                IF ( PIPE_diameter%val( CV_NODI ) > 0.0 ) THEN
-                    PIPE_NOD_COUNT = PIPE_NOD_COUNT + 1
-                    PIPE_INDEX_LOGICAL(ICORNER) = .TRUE.
-                END IF
-            END DO
-            !If it has pipe, then store the element
-            if (PIPE_NOD_COUNT-1 >= 1) then
-                AUX_eles_with_pipe(k)%ele = ele
-                AUX_eles_with_pipe(k)%npipes = PIPE_NOD_COUNT - 1
-                allocate(AUX_eles_with_pipe(k)%pipe_index(NCORNER))
-                AUX_eles_with_pipe(k)%pipe_index = PIPE_INDEX_LOGICAL
-                k = k + 1
-            end if
-        end do
+        if (number_well_files > 0) then
+            !Need the mesh to get neighbouring elements
+            tfield => extract_tensor_field( packed_state, "PackedCVPressure" )
+
+            !for the time being we re-use from diamond
+            diam = maxval(PIPE_DIAMETER%val)
+            do k = 1, number_well_files
+                !First identify the well trajectory
+                call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
+                call read_nastran_file(file_path, nodes, edges)
+                call find_nodes_of_well(X%val, nodes, edges, 1e-6, eles_with_pipe)
+
+                deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
+            end do
+        else
+            do ele = 1, Mdims%totele
+                ! Look for pipe indicator in element:
+                PIPE_INDEX_LOGICAL=.FALSE.
+                PIPE_NOD_COUNT=0
+                DO ICORNER = 1, NCORNER ! Number of corner nodes in element
+                    CV_ILOC = CV_LOC_CORNER( ICORNER )
+                    CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                    IF ( PIPE_diameter%val( CV_NODI ) > 0.0 ) THEN
+                        PIPE_NOD_COUNT = PIPE_NOD_COUNT + 1
+                        PIPE_INDEX_LOGICAL(ICORNER) = .TRUE.
+                    END IF
+                END DO
+                !If it has pipe, then store the element
+                if (PIPE_NOD_COUNT-1 >= 1) then
+                    AUX_eles_with_pipe(k)%ele = ele
+                    AUX_eles_with_pipe(k)%npipes = PIPE_NOD_COUNT - 1
+                    allocate(AUX_eles_with_pipe(k)%pipe_index(NCORNER))
+                    AUX_eles_with_pipe(k)%pipe_index = PIPE_INDEX_LOGICAL
+                    k = k + 1
+                end if
+            end do
+        end if
 
         !Store only the required elements
         if(allocated(eles_with_pipe)) deallocate(eles_with_pipe)!re-adjust if required
@@ -1505,6 +1531,126 @@ contains
 
 
     contains
+
+        logical function is_within_pipe(P, v1, v2, diameter)
+            implicit none
+            real, dimension(:), intent(in) :: P, v1, v2
+            real, intent(in) :: diameter
+            !local variables
+            real, dimension(Mdims%ndim) :: vec1, vec2, Vaux
+            real :: c1, c2, distance, Saux1, Saux2
+            !Initialiase variables
+            is_within_pipe = .false.
+            vec1 = v2(1:Mdims%ndim) - v1(1:Mdims%ndim)
+            vec2 = P(1:Mdims%ndim) - v1(1:Mdims%ndim)
+
+            c1 = dot_product(Vec2,Vec1)
+            c2 = dot_product(Vec1,Vec1)
+            !First we check that the point is between the two vertexes
+            if (c1 <= 0.)then!Before v1
+                distance = sqrt(dot_product(Vec2,Vec2))
+            else if ( c2 <= c1)then!after v2
+                Vec2 = P(1:Mdims%ndim)-v2(1:Mdims%ndim)
+                distance = sqrt(dot_product(Vec2,Vec2))
+            else !Calculate distance to a line
+                Vaux = abs(cross_product(P(1:Mdims%ndim)-v1(1:Mdims%ndim),P(1:Mdims%ndim)-v2(1:Mdims%ndim)))
+                Saux1 = sqrt(dot_product(Vaux,Vaux))
+
+                Vaux = abs(v2(1:Mdims%ndim)-v1(1:Mdims%ndim))
+                Saux2 = sqrt(dot_product(Vaux,Vaux))
+                if (Saux2>1e-10) distance = Saux1/Saux2
+           end if
+
+           is_within_pipe = (distance <= diameter)
+
+        end function is_within_pipe
+
+
+        subroutine find_nodes_of_well(X, nodes, edges, tolerance, eles_with_pipe)
+            implicit none
+            real, dimension(:,:), intent(in) :: X
+            real, dimension(:,:), allocatable, intent(in) :: nodes
+            integer, dimension(:,:), allocatable, intent(in) :: edges
+            type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
+            real, intent(in) :: tolerance
+            !Local variables
+            integer :: starting_node, starting_ele, edge, neig
+            integer :: ele, ele2, inode, k, i, j, cv_iloc, cv_inod, ipipe, first_node
+            real :: aux
+            real, dimension(Mdims%ndim) :: Vaux
+            logical :: found, touching_well
+            !First find the starting node of the well
+            !I consider that the first node in nodes is the starting position
+            starting_node = 1
+            elements_loop: do ele = 1, Mdims%totele
+                DO cv_iloc = 1, Mdims%cv_nloc
+                    cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                    Vaux = nodes(:,1) - X(:,cv_inod)
+                    aux = sqrt(dot_product(Vaux,Vaux))!<= distance of current well node to the mesh node
+                    Vaux = nodes(:,1) - X(:,starting_node)!<= distance of the current well node to the so far starting well node
+                    if ( aux < sqrt(dot_product(Vaux,Vaux)) ) then
+                        starting_node = cv_inod
+                        starting_ele = ele
+                        if (aux < tolerance) exit elements_loop !In theory the starting node is preserved by the mesh
+                                            !therefore a node that is touching that means that that is the starting node
+                    end if
+                end do
+            end do elements_loop
+
+
+            !Once we have the starting node we use that to go through the neighbouring nodes to build up the well and the connections
+            k = 1; ele2 = ele
+            ele_loop: do while (ele>0)
+               neig = 1
+               neig_loop: do while (neig < Mdims%ndim + 1)!A tet/triangle element can have one neighbour more than dimensions it has
+
+                    found = .false.; touching_well = .false.
+                    do ipipe = 1, 1!npipes
+                        do cv_iloc = 1, Mdims%cv_nloc
+                            cv_inod = ndgln%cv( ( ele2 - 1 ) * Mdims%cv_nloc + cv_iloc )
+                            i = 1
+                            do edge = 1, size(edges)-1!<= this can be optimised if we know that there is one well only defined per edges array
+                                if (is_within_pipe(X(:,cv_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
+                                    select case (i)
+                                        case (1)!First true
+                                            first_node = cv_inod
+                                            touching_well = .true.
+                                            j = 1
+                                        case (2)!Second true, we got a well in the element!
+                                            eles_with_pipe(k)%ele = ele
+                                            eles_with_pipe(k)%pipe_index(first_node) = .true.!Don't know if necessary now...
+                                            eles_with_pipe(k)%pipe_corner_nds1(ipipe) = first_node
+                                            eles_with_pipe(k)%pipe_index(cv_inod) = .true.!Don't know if necessary now...
+                                            eles_with_pipe(k)%pipe_corner_nds2(ipipe) = cv_inod
+                                            k = k + 1
+                                            found = .true.
+                                            ele = ele2
+                                            exit neig_loop!Change reference to this element
+                                    end select
+                                end if
+                            end do
+                        end do
+                        !Move to next element
+                        if (touching_well) then
+                            ele2 = max(ele_neigh(tfield%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
+                            do j = 1, size(eles_with_pipe)!Do not go back
+                                if (eles_with_pipe(j)%ele == ele2) then
+                                    neig = neig + 1!go to next element
+                                    exit
+                                else if (eles_with_pipe(j)%ele < 0) then
+                                    exit!The array is bigger than necessary but initially full of -1
+                                endif
+                            end do
+                            if (neig > Mdims%ndim + 1) exit ele_loop!Can't continue searching so well finished
+                        else
+                            neig = neig + 1
+                        end if
+                    end do
+                end do neig_loop
+
+            end do ele_loop
+
+        end subroutine find_nodes_of_well
 
         SUBROUTINE CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
             pipe_corner_nds1, pipe_corner_nds2, npipes )

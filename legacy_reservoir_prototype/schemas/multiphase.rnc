@@ -2040,7 +2040,14 @@ start =
                element switch_wells_on_and_off{
                   element phase_exclude{ integer }
                }?
-            }?
+            }?,
+             ## Introduce here the relative path to the file defining a 1D well
+             ##
+             ## Note that the only accepted file format is NASTRAN, i.e. .bdf
+             element well_from_file {
+             attribute name { string },
+             attribute file_path { string }                  
+            }*
          }?,
         ## Fracking options
          element femdem_fracture {

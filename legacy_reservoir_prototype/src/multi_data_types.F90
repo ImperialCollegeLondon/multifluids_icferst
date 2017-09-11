@@ -1292,7 +1292,6 @@ contains
     subroutine deallocate_multi_pipe_package(pipes)
         type (multi_pipe_package), intent(inout) :: pipes
 
-
         if (associated(pipes%gamma_pres_abs)) then
             deallocate( pipes%gamma_pres_abs); nullify(pipes%gamma_pres_abs)
         end if

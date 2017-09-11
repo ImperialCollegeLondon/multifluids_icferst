@@ -813,6 +813,7 @@ call solve_transport()
         if(.not. have_option("/io/disable_dump_at_end")) then
             call write_state(dump_no, state)
         end if
+
         call tag_references()
         call deallocate(packed_state)
         call deallocate(multiphase_state)
@@ -1146,6 +1147,8 @@ end if
                     call get_regionIDs2nodes(state, packed_state, ndgln%cv, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
+                    !Clean the pipes memory if required
+                    if (Mdims%npres > 1) call deallocate_multi_pipe_package(pipes_aux)
                 end if
 
                 call put_CSR_spars_into_packed_state()

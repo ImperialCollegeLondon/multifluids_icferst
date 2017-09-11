@@ -836,6 +836,73 @@ subroutine RotationMatrix(a,R)
 
 END subroutine RotationMatrix
 
+
+    subroutine read_nastran_file(filepath, node, edges)
+        !This subroutine reads a nastran file that contains the information defining the 1D path of a well
+        !the input relative filepath should include the file format, for example: well.bdf
+        implicit none
+        character( len = * ), intent(in) :: filepath
+        real, dimension(:,:), allocatable, intent(inout) :: node
+        integer, dimension(:,:), allocatable, intent(inout) :: edges
+        !Local variables
+        integer :: i, ierr
+        character( len = option_path_len ):: cadena
+        integer :: Nnodes, Nedges
+        real, dimension(4) :: edge_line
+
+        !First we need to get the number of nodes and the number of edges to correctly allocate node and edges
+        call get_nodes_edges(Nnodes); Nedges = Nnodes - 1!In 1d there is always one edge less than nodes
+        allocate(node(3, Nnodes), edges(2, Nedges))
+        !Open file
+        open(unit= 89, file=trim(filepath)//".bdf", status='old', action='read')
+        cadena = "--"
+        !skip header until reaching the nodes
+        do while (cadena(1:5)/="GRID")
+            read(89,'(A)') cadena
+        end do
+        i = 1!Read nodes
+        do while (cadena(1:5)=="GRID")
+            !Nastran files from trellis seem to have a bug, not leaving a space between coordinate 1 and 2
+            !we extract numbers by position as these are defined
+            read(cadena(25:32),*) node(1,i)
+            read(cadena(33:40),*) node(2,i)
+            read(cadena(41:49),*) node(3,i)
+            read(89,'(A)') cadena; i = i + 1!read line and advance the counter
+        end do
+        !skip until reaching the edges
+        do while (cadena(1:5)/="CROD")
+            read(89,'(A)') cadena
+        end do
+        i = 1!Read edges
+        do while (cadena(1:5)=="CROD")
+            read(cadena(6:len(cadena)),*) edge_line
+            edges(:,i) = edge_line(3:4)!Only the last two columns contains the connection between nodes
+            read(89,'(A)') cadena; i = i + 1!read line and advance the counter
+        end do
+        close(89)
+
+        !Before leaving we normalize the edges list, making it to go from 1 to last edge instead of the numeration used
+        edges = edges - (minval(edges)+1)
+
+    contains
+        subroutine get_nodes_edges(Nnodes)
+            implicit none
+            integer, intent(inout)::Nnodes
+
+            Nnodes = 0; Nedges = 0
+            !Open file
+            open(unit= 89, file=trim(filepath)//".bdf", status='old', action='read')
+            cadena = "--"
+            do while (cadena(1:5)/="CROD")
+                read(89,'(A)') cadena
+                if (cadena(1:5)=="GRID")Nnodes = Nnodes + 1
+            end do
+            close(89)
+
+        end subroutine get_nodes_edges
+    end subroutine read_nastran_file
+
+
 end module multi_tools
 
 

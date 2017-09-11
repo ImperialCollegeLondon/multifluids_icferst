@@ -2721,6 +2721,19 @@ This will over-write the field specified in Sigma1.</a:documentation>
               </optional>
             </element>
           </optional>
+          <zeroOrMore>
+            <element name="well_from_file">
+              <a:documentation>Introduce here the relative path to the file defining a 1D well
+
+Note that the only accepted file format is NASTRAN, i.e. .bdf</a:documentation>
+              <attribute name="name">
+                <data type="string" datatypeLibrary=""/>
+              </attribute>
+              <attribute name="file_path">
+                <data type="string" datatypeLibrary=""/>
+              </attribute>
+            </element>
+          </zeroOrMore>
         </element>
       </optional>
       <optional>
