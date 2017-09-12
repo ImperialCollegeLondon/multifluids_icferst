@@ -751,7 +751,8 @@ contains
                             LIMD(IPHASE)=DEN_ALL%val(1,IPHASE,JCV_NOD)
                         END IF
                     END DO
-                    LIMDT(:) = LIMD(:) * LIMT(:)
+                    LIMDT = LIMD * LIMT
+
                     ! Add in Mmat%C matrix contribution: (DG velocities)
                     ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                     ! over the element of the pressure like source term.
@@ -795,12 +796,22 @@ contains
                     IF ( GETCV_DISC ) THEN ! this is on the boundary...
                         ! Put results into the RHS vector
                         LOC_CV_RHS_I = 0.0
-                        do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                            LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                ! subtract 1st order adv. soln.
-                                + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
-                                - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
-                        end do
+                        if (thermal) then
+                            do iphase = Mdims%n_in_pres+1, Mdims%nphase
+                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
+                                    ! subtract 1st order adv. soln.
+!                                    + suf_area  * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &!<= this makes the pipes to work with thermal
+                                    - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv   !but it does not make sense...
+                            end do                                                              !the problem with the well connected at the boundary persists
+                        else
+                            do iphase = Mdims%n_in_pres+1, Mdims%nphase
+                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
+                                    ! subtract 1st order adv. soln.
+                                    + suf_area  * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
+                                    - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                            end do
+
+                        end if
                         ! Put into matrix...
                         do iphase = Mdims%n_in_pres+1, Mdims%nphase
                             call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
