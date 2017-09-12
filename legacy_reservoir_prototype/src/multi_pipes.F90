@@ -1471,7 +1471,7 @@ contains
         X => EXTRACT_VECTOR_FIELD( packed_state, "PressureCoordinate" )
         !Create list of corners
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
-        !Retrieve, ir there are any number of input .bdf files
+        !Retrieve, if there are any number of input .bdf files
         number_well_files = option_count("/wells_and_pipes/well_from_file")
 
         if (number_well_files > 0) then
