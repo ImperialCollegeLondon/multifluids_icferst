@@ -845,14 +845,15 @@ END subroutine RotationMatrix
         real, dimension(:,:), allocatable, intent(inout) :: node
         integer, dimension(:,:), allocatable, intent(inout) :: edges
         !Local variables
-        integer :: i, ierr
+        integer, dimension(:), allocatable:: conversor
+        integer :: i, k, j, ierr
         character( len = option_path_len ):: cadena
         integer :: Nnodes, Nedges
         real, dimension(4) :: edge_line
 
         !First we need to get the number of nodes and the number of edges to correctly allocate node and edges
         call get_nodes_edges(Nnodes); Nedges = Nnodes - 1!In 1d there is always one edge less than nodes
-        allocate(node(3, Nnodes), edges(2, Nedges))
+        allocate(node(3, Nnodes), edges(2, Nedges), conversor(Nnodes))
         !Open file
         open(unit= 89, file=trim(filepath)//".bdf", status='old', action='read')
         cadena = "--"
@@ -867,6 +868,8 @@ END subroutine RotationMatrix
             read(cadena(25:32),*) node(1,i)
             read(cadena(33:40),*) node(2,i)
             read(cadena(41:49),*) node(3,i)
+            !Extract as well the number of the node
+            read(cadena(9:12),*) conversor(i)
             read(89,'(A)') cadena; i = i + 1!read line and advance the counter
         end do
         !skip until reaching the edges
@@ -882,8 +885,26 @@ END subroutine RotationMatrix
         close(89)
 
         !Before leaving we normalize the edges list, making it to go from 1 to last edge instead of the numeration used
-        edges = edges - (minval(edges)+1)
-
+         do j = 1, size(edges,1)
+             do i = 1, size(edges,2)
+                do k = 1, size(conversor)
+                    if (edges(j,i) == conversor(k)) then
+                        edges(j,i) = k
+                        exit
+                    end if
+                end do
+             end do
+         end do
+        deallocate(conversor)
+    !Print well to gnuplot format
+!print*, "WELL IN GNUPLOT"
+!do j = 1, size(edges,1)
+!do i = 1, size(edges,2)
+!print *, node(:,edges(j,i))
+!end do
+!end do
+!print *, "-----------------------"
+!read*
     contains
         subroutine get_nodes_edges(Nnodes)
             implicit none

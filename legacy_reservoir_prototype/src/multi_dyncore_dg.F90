@@ -334,6 +334,7 @@ contains
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+
                    !Checking solver not fully implemented
                    !if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping

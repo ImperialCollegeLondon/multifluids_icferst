@@ -141,7 +141,7 @@ contains
         PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
         WIC_B_BC_DIRICHLET = 1
         INFINY=1.0E+20
-        IGNORE_DIAGONAL_PIPES = .TRUE.
+        IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
@@ -796,22 +796,13 @@ contains
                     IF ( GETCV_DISC ) THEN ! this is on the boundary...
                         ! Put results into the RHS vector
                         LOC_CV_RHS_I = 0.0
-                        if (thermal) then
-                            do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                    ! subtract 1st order adv. soln.
-!                                    + suf_area  * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &!<= this makes the pipes to work with thermal
-                                    - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv   !but it does not make sense...
-                            end do                                                              !the problem with the well connected at the boundary persists
-                        else
-                            do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                    ! subtract 1st order adv. soln.
-                                    + suf_area  * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
-                                    - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
-                            end do
+                        do iphase = Mdims%n_in_pres+1, Mdims%nphase
+                            LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
+                                ! subtract 1st order adv. soln.
+                                + suf_area  * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
+                                - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                        end do
 
-                        end if
                         ! Put into matrix...
                         do iphase = Mdims%n_in_pres+1, Mdims%nphase
                             call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
@@ -953,7 +944,7 @@ contains
 
         ncorner = Mdims%ndim + 1
         PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
-        IGNORE_DIAGONAL_PIPES=.TRUE.
+        IGNORE_DIAGONAL_PIPES=option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
         DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
@@ -1473,6 +1464,7 @@ contains
         character( len = option_path_len ):: file_path
         real, dimension(:,:), allocatable :: nodes
         integer, dimension(:,:), allocatable :: edges
+        integer, dimension(:), allocatable :: pipe_ends
         type( tensor_field ), pointer:: tfield
 
         !Initialise
@@ -1495,9 +1487,10 @@ contains
                 !First identify the well trajectory
                 call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
-                call find_nodes_of_well(X%val, nodes, edges, 1e-6, eles_with_pipe)
-
+                call find_pipe_ends(edges, pipe_ends)
+                call find_nodes_of_well(X%val, nodes, edges, pipe_ends,  1e-6, eles_with_pipe)
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
+                deallocate(pipe_ends)
             end do
         else
             do ele = 1, Mdims%totele
@@ -1521,24 +1514,24 @@ contains
                     k = k + 1
                 end if
             end do
-        end if
+            !Store only the required elements
+            if(allocated(eles_with_pipe)) deallocate(eles_with_pipe)!re-adjust if required
+            allocate(eles_with_pipe(k-1))
 
-        !Store only the required elements
-        if(allocated(eles_with_pipe)) deallocate(eles_with_pipe)!re-adjust if required
-        allocate(eles_with_pipe(k-1))
-        do k = 1, size(eles_with_pipe)
-            allocate(eles_with_pipe(k)%pipe_index(NCORNER))
-            eles_with_pipe(k) = AUX_eles_with_pipe(k)
-            allocate(eles_with_pipe(k)%pipe_corner_nds1(eles_with_pipe(k)%npipes))
-            allocate(eles_with_pipe(k)%pipe_corner_nds2(eles_with_pipe(k)%npipes))
-            ! Calculate the pipes within an element...
-            ! we return the pipe corner nodes for each pipe in
-            ! If we have more than one pipe then choose the 2 edges with the shortest sides
-            ! and have a maximum of 2 pipes per element...
-            call CALC_PIPES_IN_ELE( x%val(:, ndgln%x( ( eles_with_pipe(k)%ele - 1 ) * Mdims%cv_nloc + CV_LOC_CORNER(1:NCORNER)) ),&
-                                eles_with_pipe(k)%pipe_index, Mdims%ndim, eles_with_pipe(k)%pipe_corner_nds1,   &
-                                eles_with_pipe(k)%pipe_corner_nds2, eles_with_pipe(k)%npipes )
-        end do
+            do k = 1, size(eles_with_pipe)
+                allocate(eles_with_pipe(k)%pipe_index(NCORNER))
+                eles_with_pipe(k) = AUX_eles_with_pipe(k)
+                allocate(eles_with_pipe(k)%pipe_corner_nds1(eles_with_pipe(k)%npipes))
+                allocate(eles_with_pipe(k)%pipe_corner_nds2(eles_with_pipe(k)%npipes))
+                ! Calculate the pipes within an element...
+                ! we return the pipe corner nodes for each pipe in
+                ! If we have more than one pipe then choose the 2 edges with the shortest sides
+                ! and have a maximum of 2 pipes per element...
+                call CALC_PIPES_IN_ELE( x%val(:, ndgln%x( ( eles_with_pipe(k)%ele - 1 ) * Mdims%cv_nloc + CV_LOC_CORNER(1:NCORNER)) ),&
+                                    eles_with_pipe(k)%pipe_index, Mdims%ndim, eles_with_pipe(k)%pipe_corner_nds1,   &
+                                    eles_with_pipe(k)%pipe_corner_nds2, eles_with_pipe(k)%npipes )
+            end do
+        end if
 
 
     contains
@@ -1573,95 +1566,264 @@ contains
            end if
 
            is_within_pipe = (distance <= diameter)
-
         end function is_within_pipe
 
 
-        subroutine find_nodes_of_well(X, nodes, edges, tolerance, eles_with_pipe)
+        subroutine find_pipe_ends(edges, pipe_ends)
+            implicit none
+            integer, dimension(:,:), allocatable, intent(in) :: edges
+            integer, dimension(:), allocatable, intent(inout) :: pipe_ends
+            !Local variables
+            integer :: i, j, k, m, l, count
+            real, dimension(size(edges,2)) :: aux_pipe_ends
+            aux_pipe_ends = -1
+            !All the edges that only appear once are ends of pipes, excepting the initial node which is the starting node
+            l = 1
+            do i = 1, size(edges,1)
+                do j = 1, size(edges,2)
+                    count = 0
+                    do k = 1, size(edges,1)
+                        do m = 1, size(edges,2)
+                            if (edges(i,j) == edges(k,m)) then
+                                count = count + 1
+                            end if
+                        end do
+                    end do
+                    if (count == 1) then!End of a pipe found
+                        aux_pipe_ends(l) = edges(i,j)
+                        l = l + 1
+                    end if
+                end do
+            end do
+            allocate(pipe_ends(l-1))
+            pipe_ends = aux_pipe_ends(1:l-1)
+
+        end subroutine find_pipe_ends
+
+        subroutine find_nodes_of_well(X, nodes, edges, pipe_ends, tolerance, eles_with_pipe)
             implicit none
             real, dimension(:,:), intent(in) :: X
             real, dimension(:,:), allocatable, intent(in) :: nodes
             integer, dimension(:,:), allocatable, intent(in) :: edges
+            integer, dimension(:), intent(in) :: pipe_ends
             type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
             real, intent(in) :: tolerance
             !Local variables
-            integer :: starting_node, starting_ele, edge, neig
-            integer :: ele, ele2, inode, k, i, j, cv_iloc, cv_inod, ipipe, first_node
+            integer, dimension(2, Mdims%totele) :: visited_eles!Number of element visited and neigbours used
+            integer :: starting_node, starting_ele, edge, neig, ele_bak, neig_bak, visit_counter
+            integer :: ele, ele2, inode, k, i, j, x_iloc, x_inod, ipipe, first_node, first_loc, neighbours_left
             real :: aux
             real, dimension(Mdims%ndim) :: Vaux
-            logical :: found, touching_well
-            !First find the starting node of the well
-            !I consider that the first node in nodes is the starting position
-            starting_node = 1
-            elements_loop: do ele = 1, Mdims%totele
-                DO cv_iloc = 1, Mdims%cv_nloc
-                    cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-                    Vaux = nodes(:,1) - X(:,cv_inod)
-                    aux = sqrt(dot_product(Vaux,Vaux))!<= distance of current well node to the mesh node
-                    Vaux = nodes(:,1) - X(:,starting_node)!<= distance of the current well node to the so far starting well node
-                    if ( aux < sqrt(dot_product(Vaux,Vaux)) ) then
-                        starting_node = cv_inod
-                        starting_ele = ele
-                        if (aux < tolerance) exit elements_loop !In theory the starting node is preserved by the mesh
-                                            !therefore a node that is touching that means that that is the starting node
-                    end if
-                end do
-            end do elements_loop
+            logical :: got_new_ele, touching_well, continue_looking, found
+            type(pipe_coords), dimension(Mdims%totele):: AUX_eles_with_pipe
+
+            !Initialise AUX_eles_with_pipe
+            AUX_eles_with_pipe%ele = -1
+            do j = 1, Mdims%totele!We can study this, but it is VERY unlikely that this goes beyond a 10%
+                allocate(AUX_eles_with_pipe(j)%pipe_index(Mdims%ndim + 1))
+                allocate(AUX_eles_with_pipe(j)%pipe_corner_nds1(2))!Lets consider a maximum of 2 pipes per element
+                allocate(AUX_eles_with_pipe(j)%pipe_corner_nds2(2))!Lets consider a maximum of 2 pipes per element
+            end do
+
+            !First end elements of the well
+            do i = 1, 1!size(pipe_ends)-1!-1 because we have one extra as one is the starting point
+                starting_node = pipe_ends(i)
+                elements_loop: do ele = 1, Mdims%totele
+                    do x_iloc = 1, Mdims%x_nloc
+                        x_inod = ndgln%x( ( ele - 1 ) * Mdims%x_nloc + x_iloc )
+                        Vaux = nodes(:,1) - X(:,x_inod)
+                        aux = sqrt(dot_product(Vaux,Vaux))!<= distance of current well node to the mesh node
+                        Vaux = nodes(:,1) - X(:,starting_node)!<= distance of the current well node to the so far starting well node
+                        if ( aux < sqrt(dot_product(Vaux,Vaux)) ) then
+                            starting_node = x_inod
+                            starting_ele = ele
+                            if (aux < tolerance) exit elements_loop !In theory the starting node is preserved by the mesh
+                                                !therefore a node that is touching that one node should be the starting position
+                        end if
+                    end do
+                end do elements_loop
+            end do
 
 
+            ele = starting_ele
+            visited_eles(1,:) = -1; visited_eles(2,:) = 0
+            visited_eles(1,1) = ele; visited_eles(2,1) = 1
             !Once we have the starting node we use that to go through the neighbouring nodes to build up the well and the connections
             k = 1; ele2 = ele
-            ele_loop: do while (ele>0)
-               neig = 1
+            ele_loop: do while (.true.)
+                neig = 0
                neig_loop: do while (neig < Mdims%ndim + 1)!A tet/triangle element can have one neighbour more than dimensions it has
-
-                    found = .false.; touching_well = .false.
-                    do ipipe = 1, 1!npipes
-                        do cv_iloc = 1, Mdims%cv_nloc
-                            cv_inod = ndgln%cv( ( ele2 - 1 ) * Mdims%cv_nloc + cv_iloc )
-                            i = 1
+                    neig = neig + 1
+                    touching_well = .false.
+                    do ipipe = 1, 1!npipes; for the time being one pipe per file
+                        i = 1
+                        loc_loop: do x_iloc = 1, Mdims%x_nloc
+                            x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
                             do edge = 1, size(edges)-1!<= this can be optimised if we know that there is one well only defined per edges array
-                                if (is_within_pipe(X(:,cv_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
+                                if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), 9d-3)) then!tol has to be 9e-3 because that is the precision of the nastran input file
                                     select case (i)
                                         case (1)!First true
-                                            first_node = cv_inod
+                                            first_node = x_inod
+                                            first_loc = x_iloc
                                             touching_well = .true.
-                                            j = 1
+                                            i = i + 1
+                                            !backup just in case this element is not an in between element
+                                            ele_bak = ele; neig_bak = neig!<= has to be BEFORE updating ele
+                                            !Update position
+                                            ele = ele2; neig = max(1, visited_eles(2,get_pos(ele2, visited_eles)))
+                                            !And visited list
+                                            visit_counter = get_pos(ele, visited_eles)
+                                            visited_eles(1, visit_counter) = ele
+                                            visited_eles(2, visit_counter) = max(visited_eles(2,visit_counter),neig)
+                                            exit!to ensure that we are not in a joint and X(:,x_inod) is not considered twice
                                         case (2)!Second true, we got a well in the element!
-                                            eles_with_pipe(k)%ele = ele
-                                            eles_with_pipe(k)%pipe_index(first_node) = .true.!Don't know if necessary now...
-                                            eles_with_pipe(k)%pipe_corner_nds1(ipipe) = first_node
-                                            eles_with_pipe(k)%pipe_index(cv_inod) = .true.!Don't know if necessary now...
-                                            eles_with_pipe(k)%pipe_corner_nds2(ipipe) = cv_inod
-                                            k = k + 1
-                                            found = .true.
-                                            ele = ele2
-                                            exit neig_loop!Change reference to this element
+                                            !Need to test if the nodes are already stored
+                                            found = .false.
+                                            j = 1
+                                            do while (AUX_eles_with_pipe(j)%ele > 0)
+                                                if ((first_node == AUX_eles_with_pipe(j)%pipe_corner_nds1(1) .or.&!We consider one pipe
+                                                first_node == AUX_eles_with_pipe(j)%pipe_corner_nds2(1)) .and. &  !for the time being!!
+                                                (x_inod == AUX_eles_with_pipe(j)%pipe_corner_nds1(1) .or.&
+                                                x_inod == AUX_eles_with_pipe(j)%pipe_corner_nds2(1))) then
+                                                    found = .true.
+                                                    touching_well = .false.
+                                                    !Do not move to this new element to pivot around it
+                                                    ele = ele_bak; neig = neig_bak
+                                                    !Don't consider it again
+                                                    visit_counter = get_pos(ele2, visited_eles)
+                                                    visited_eles(1, visit_counter) = ele2
+                                                    visited_eles(2, visit_counter) = 100
+                                                    exit loc_loop
+                                                end if
+                                                j = j + 1
+                                            end do
+                                            if (.not.found) then
+                                                AUX_eles_with_pipe(k)%ele = ele2
+                                                AUX_eles_with_pipe(k)%pipe_index(first_loc) = .true.!Don't know if necessary now...
+                                                AUX_eles_with_pipe(k)%pipe_corner_nds1(ipipe) = first_node
+                                                AUX_eles_with_pipe(k)%pipe_index(x_iloc) = .true.!Don't know if necessary now...
+                                                AUX_eles_with_pipe(k)%pipe_corner_nds2(ipipe) = x_inod
+                                                k = k + 1
+                                                exit loc_loop!Change reference to this element
+                                            end if
                                     end select
                                 end if
                             end do
-                        end do
-                        !Move to next element
-                        if (touching_well) then
-                            ele2 = max(ele_neigh(tfield%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
-                            do j = 1, size(eles_with_pipe)!Do not go back
-                                if (eles_with_pipe(j)%ele == ele2) then
-                                    neig = neig + 1!go to next element
-                                    exit
-                                else if (eles_with_pipe(j)%ele < 0) then
-                                    exit!The array is bigger than necessary but initially full of -1
-                                endif
+                        end do loc_loop
+                        if (.not.touching_well) then
+                            !Don't consider it again
+                            visit_counter = get_pos(ele2, visited_eles)
+                            visited_eles(1, visit_counter) = ele2
+                            visited_eles(2, visit_counter) = 100
+                        end if
+                        !Look for new proposed element
+                            do while (.true. .and. neig <= Mdims%ndim + 1)
+                                ele2 = max(ele_neigh(tfield%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
+                                !Update neighbour used in the list
+                                i = get_pos(ele, visited_eles)
+                                visited_eles(2,i) = max(visited_eles(2,i),neig+1)
+                                got_new_ele = .true.
+                                !Store element about to be inspected
+                                i = get_pos(ele2, visited_eles)
+                                visited_eles(1,i) = ele2
+
+                                !If proposed element does not have available elements to study then find another
+                                if (visited_eles(2,i) > Mdims%ndim + 1 .or. ele2 == 0) then!Ignore boundary
+                                    got_new_ele = .false.
+                                    !Advance to the next possible neighbour
+                                    neig = neig + 1
+                                    if (neig > Mdims%ndim + 1) then!If not more to look at then
+                                        !Start to go back along the elements that still have neigbours to look at
+                                        j = 1
+                                        do while (visited_eles(2,j) > Mdims%ndim + 1)
+                                            if (visited_eles(1,j) <= 0) then
+                                                !Impossible to continue the search
+                            print *, "Exit due to visited_list full"
+                                                exit ele_loop
+                                            end if
+                                            j = j + 1
+                                        end do
+                                        visit_counter = max(j,1)
+                                        if (visited_eles(1,j) > 0) then
+                                            ele = visited_eles(1,j)
+                                            neig = max(1, visited_eles(2,j))
+                                        end if
+                                    end if
+                                !if proposed element already visited (and was touching a well)
+                                !then we can know if it was touching the well,
+                                !in which case we move to it and continue the search
+                                else if (visited_eles(2,i) >= 1 .and. visited_eles(2,i) <= Mdims%ndim + 1) then
+                                    !element already studied for wells, now we just want to find a neighbour
+                                    !Update position
+                                    ele = ele2
+                                    neig = visited_eles(2,get_pos(ele, visited_eles))
+                                    got_new_ele = .false.
+                                end if
+                                if (got_new_ele) exit
+
+
                             end do
-                            if (neig > Mdims%ndim + 1) exit ele_loop!Can't continue searching so well finished
-                        else
-                            neig = neig + 1
+                        if (neig > Mdims%ndim + 1) then
+                            exit ele_loop!Can't continue searching so well finished
                         end if
                     end do
                 end do neig_loop
 
             end do ele_loop
 
+            !Count values
+            j = 0
+            do while (AUX_eles_with_pipe(j+1)%ele > 0)
+                j = j + 1
+            end do
+            allocate(eles_with_pipe(j))
+            !Copy values
+            do k = 1, j
+                allocate(eles_with_pipe(k)%pipe_index(Mdims%ndim + 1))
+                allocate(eles_with_pipe(k)%pipe_corner_nds1(2))
+                allocate(eles_with_pipe(k)%pipe_corner_nds2(2))
+                eles_with_pipe(k)%ele = Aux_eles_with_pipe(k)%ele
+                eles_with_pipe(k)%npipes = Aux_eles_with_pipe(k)%npipes
+                eles_with_pipe(k)%pipe_index(1:size(eles_with_pipe(k)%pipe_index)) =&
+                     Aux_eles_with_pipe(k)%pipe_index(1:size(eles_with_pipe(k)%pipe_index))
+                eles_with_pipe(k)%pipe_corner_nds1(1:size(eles_with_pipe(k)%pipe_corner_nds1)) =&
+                     Aux_eles_with_pipe(k)%pipe_corner_nds1(1:size(eles_with_pipe(k)%pipe_corner_nds1))
+                eles_with_pipe(k)%pipe_corner_nds2(1:size(eles_with_pipe(k)%pipe_corner_nds2)) = &
+                    Aux_eles_with_pipe(k)%pipe_corner_nds2(1:size(eles_with_pipe(k)%pipe_corner_nds2))
+                    deallocate(Aux_eles_with_pipe(k)%pipe_index)
+                deallocate(Aux_eles_with_pipe(k)%pipe_corner_nds1, Aux_eles_with_pipe(k)%pipe_corner_nds2)
+            end do
+
+
+            !For visualisation purposes only
+            if (size(PIPE_DIAMETER%val) > 1) then
+                aux = maxval(PIPE_DIAMETER)
+                PIPE_DIAMETER%val = 0.
+                do j = 1, size(eles_with_pipe)
+                    do x_iloc = 1, Mdims%x_nloc
+                        x_inod = ndgln%cv( ( eles_with_pipe(j)%ele - 1 ) * Mdims%cv_nloc + x_iloc )
+                        PIPE_DIAMETER%val(x_inod)  = aux
+                    end do
+                end do
+            !For visualisation purposes only
+            end if
         end subroutine find_nodes_of_well
+
+        integer function get_pos(ele, visited_eles)
+            !This either gives the position in the list where element is,
+            ! or the new position to store the information in
+            integer, intent(in) :: ele
+            integer, dimension(2, Mdims%totele), intent(in) :: visited_eles
+            !Local variables
+            integer :: i
+            do i = 1, size(visited_eles,2)
+                if (visited_eles(1,i)==ele .or. visited_eles(1,i) <=0) then
+                    get_pos = i
+                    return
+                end if
+            end do
+        end function get_pos
+
 
         SUBROUTINE CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
             pipe_corner_nds1, pipe_corner_nds2, npipes )
