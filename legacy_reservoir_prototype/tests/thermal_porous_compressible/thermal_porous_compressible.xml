@@ -11,7 +11,6 @@
 max_temp = stat("themal_porous.stat")["phase1"]["Temperature"]["max"][-1]</variable>
     <variable name="min_temp" language="python">from fluidity_tools import stat_parser as stat
 min_temp = stat("themal_porous.stat")["phase1"]["Temperature"]["min"][-1]</variable>
-
     <variable name="max_rho" language="python">from fluidity_tools import stat_parser as stat
 max_rho = stat("themal_porous.stat")["phase1"]["Density"]["max"][-1]</variable>
     <variable name="min_rho" language="python">from fluidity_tools import stat_parser as stat

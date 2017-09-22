@@ -167,13 +167,15 @@ interpolated for VTK output.</a:documentation>
         </optional>
         <optional>
           <element name="output_darcy_vel">
-            <a:documentation>Output the Darcy velocity</a:documentation>
+            <a:documentation>Calculates the Darcy velocity and is outputed in the vtu files.</a:documentation>
             <empty/>
           </element>
         </optional>
         <optional>
           <element name="dump_boundaryflux">
-            <a:documentation>Surface to Integrate Over</a:documentation>
+            <a:documentation>This option is used to calculate the amount of mass flux across a boundary id.
+The output is a .csv file containing this information. use this if you want to 
+calculate the production.</a:documentation>
             <empty/>
             <element name="surface_ids">
               <a:documentation>Surface id:</a:documentation>
@@ -2725,7 +2727,8 @@ This will over-write the field specified in Sigma1.</a:documentation>
             <element name="well_from_file">
               <a:documentation>Introduce here the relative path to the file defining a 1D well
 
-Note that the only accepted file format is NASTRAN, i.e. .bdf</a:documentation>
+Note that the only accepted file format is NASTRAN, i.e. .bdf.
+Each file has to describe a continuous well touching an external boundary.</a:documentation>
               <attribute name="name">
                 <data type="string" datatypeLibrary=""/>
               </attribute>
@@ -5969,29 +5972,6 @@ less accurate but faster and might give smoother result.                  </a:do
         <attribute name="name">
           <data type="string"/>
         </attribute>
-        <optional>
-          <element name="nphase">
-            <a:documentation>TO BE DELETED
-
-THIS OPTION IS USED TO SET TENSOR DIMENSIONS</a:documentation>
-            <ref name="integer"/>
-          </element>
-        </optional>
-        <choice>
-          <a:documentation>Field type</a:documentation>
-          <element name="prescribed">
-            <ref name="mesh_choice"/>
-            <ref name="prescribed_tensor_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-          <element name="diagnostic">
-            <ref name="tensor_diagnostic_algorithms"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_tensor_field"/>
-          </element>
-        </choice>
       </element>
       <!--
         

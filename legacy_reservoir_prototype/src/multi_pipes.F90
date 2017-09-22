@@ -1644,7 +1644,6 @@ contains
                 end do elements_loop
             end do
 
-
             ele = starting_ele
             visited_eles(1,:) = -1; visited_eles(2,:) = 0
             visited_eles(1,1) = ele; visited_eles(2,1) = 1
@@ -1738,7 +1737,7 @@ contains
                                         do while (visited_eles(2,j) > Mdims%ndim + 1)
                                             if (visited_eles(1,j) <= 0) then
                                                 !Impossible to continue the search
-                            print *, "Exit due to visited_list full"
+                                                print *, "WARNING: Exit due to visited_list full"
                                                 exit ele_loop
                                             end if
                                             j = j + 1

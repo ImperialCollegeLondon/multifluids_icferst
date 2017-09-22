@@ -339,15 +339,6 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
-          <nphase>
-            <integer_value rank="0">1</integer_value>
-          </nphase>
-          <type>
-            <dimensions>
-              <integer_value rank="0">2</integer_value>
-            </dimensions>
-            <Anisotropic_coupled/>
-          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -639,15 +630,6 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
-          <nphase>
-            <integer_value rank="0">2</integer_value>
-          </nphase>
-          <type>
-            <dimensions>
-              <integer_value rank="0">2</integer_value>
-            </dimensions>
-            <Anisotropic_coupled/>
-          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">

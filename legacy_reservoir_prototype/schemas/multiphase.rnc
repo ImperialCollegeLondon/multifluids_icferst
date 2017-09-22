@@ -130,11 +130,13 @@ start =
             element output_scalars_fem {
                empty
             }?,
-            ## Output the Darcy velocity
+            ## Calculates the Darcy velocity and is outputed in the vtu files.
             element output_darcy_vel {
                empty
             }?,
-            ## Surface to Integrate Over
+            ## This option is used to calculate the amount of mass flux across a boundary id.
+            ## The output is a .csv file containing this information. use this if you want to 
+            ## calculate the production.
             element dump_boundaryflux {
             empty,
             ## Surface id:
@@ -2043,7 +2045,8 @@ start =
             }?,
              ## Introduce here the relative path to the file defining a 1D well
              ##
-             ## Note that the only accepted file format is NASTRAN, i.e. .bdf
+             ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
+             ## Each file has to describe a continuous well touching an external boundary.
              element well_from_file {
              attribute name { string },
              attribute file_path { string }                  
@@ -4663,26 +4666,8 @@ tensor_field_choice =
          ## Generic field variable (tensor)
          element tensor_field {
             attribute rank { "2" },
-            attribute name { xsd:string },
-            ##TO BE DELETED
-            ##
-	    ##THIS OPTION IS USED TO SET TENSOR DIMENSIONS
-            element nphase { integer }?,
-            ## Field type
-            (
-               element prescribed {
-                  mesh_choice,
-                  prescribed_tensor_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }|
-               element diagnostic {
-                  tensor_diagnostic_algorithms,
-                  velocity_mesh_choice,
-                  diagnostic_tensor_field
-               }
-            )
+            attribute name { xsd:string }
+
          }|
 #
 # -- Second is a list of tensor fields that are primarily prescribed,
