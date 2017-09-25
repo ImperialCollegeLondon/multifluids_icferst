@@ -2240,7 +2240,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! open the boiling test for two phases-gas and liquid
         if (is_boiling) then
             GOT_VIRTUAL_MASS=.true.
-         end if
+        end if
+
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
         position=>extract_vector_field(packed_state,"PressureCoordinate")
         !Check capillary options
