@@ -227,35 +227,6 @@ Note that for the temperature field this is actually the thermal conductivity (i
           <attribute name="rank">
             <value>2</value>
           </attribute>
-          <element name="nphase">
-            <a:documentation>TO BE DELETED
-THIS OPTION IS USED TO SET TENSOR DIMENSIONS</a:documentation>
-            <ref name="integer"/>
-          </element>
-          <optional>
-            <element name="type">
-              <a:documentation>NOT USED
-Selects the memory type based on the coupling of the system.
-If unsure, select Anisotropic_coupled (very high memory consumption).</a:documentation>
-              <element name="dimensions">
-                <ref name="integer"/>
-              </element>
-              <choice>
-                <element name="Anisotropic_coupled">
-                  <empty/>
-                </element>
-                <element name="Anisotropic">
-                  <empty/>
-                </element>
-                <element name="Isotropic_coupled">
-                  <empty/>
-                </element>
-                <element name="Isotropic">
-                  <empty/>
-                </element>
-              </choice>
-            </element>
-          </optional>
           <choice>
             <element name="prescribed">
               <optional>
@@ -355,35 +326,6 @@ If unsure, select Anisotropic_coupled (very high memory consumption).</a:documen
           <attribute name="rank">
             <value>0</value>
           </attribute>
-          <element name="nphase">
-            <a:documentation>TO BE DELETED
-THIS OPTION IS USED TO SET TENSOR DIMENSIONS</a:documentation>
-            <ref name="integer"/>
-          </element>
-          <optional>
-            <element name="type">
-              <a:documentation>NOT USED
-Selects the memory type based on the coupling of the system.
-If unsure, select Anisotropic_coupled (very high memory consumption).</a:documentation>
-              <element name="dimensions">
-                <ref name="integer"/>
-              </element>
-              <choice>
-                <element name="Anisotropic_coupled">
-                  <empty/>
-                </element>
-                <element name="Anisotropic">
-                  <empty/>
-                </element>
-                <element name="Isotropic_coupled">
-                  <empty/>
-                </element>
-                <element name="Isotropic">
-                  <empty/>
-                </element>
-              </choice>
-            </element>
-          </optional>
           <element name="diagnostic">
             <ref name="tensor_python_diagnostic_algorithm"/>
             <ref name="diagnostic_tensor_field_no_adapt"/>
@@ -1262,35 +1204,6 @@ viscosity tensor is dealt with in the momentum equation.</a:documentation>
         <attribute name="rank">
           <value>2</value>
         </attribute>
-        <element name="nphase">
-          <a:documentation>TO BE DELETED
-THIS OPTION IS USED TO SET TENSOR DIMENSIONS</a:documentation>
-          <ref name="integer"/>
-        </element>
-        <optional>
-          <element name="type">
-            <a:documentation>NOT USED
-Selects the memory type based on the coupling of the system.
-If unsure, select Anisotropic_coupled (very high memory consumption).</a:documentation>
-            <element name="dimensions">
-              <ref name="integer"/>
-            </element>
-            <choice>
-              <element name="Anisotropic_coupled">
-                <empty/>
-              </element>
-              <element name="Anisotropic">
-                <empty/>
-              </element>
-              <element name="Isotropic_coupled">
-                <empty/>
-              </element>
-              <element name="Isotropic">
-                <empty/>
-              </element>
-            </choice>
-          </element>
-        </optional>
         <choice>
           <element name="prescribed">
             <optional>

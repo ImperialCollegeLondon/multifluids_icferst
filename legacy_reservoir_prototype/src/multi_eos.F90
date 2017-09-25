@@ -2702,7 +2702,7 @@ contains
         Auxmesh = fl_mesh
         call allocate (targ_Store, Auxmesh, "Temporary_Bathymetry")
         !Retrieve Bathymetry coefficent
-        path = "/material_phase::phase1/scalar_field::Bathymetry/prescribed/value"
+        path = "/material_phase[0]/scalar_field::Bathymetry/prescribed/value"
         if (have_option(trim(path))) then
             t_field=>extract_tensor_field(packed_state,"PackedBathymetry")
             call initialise_field_over_regions(targ_Store, trim(path) , position)

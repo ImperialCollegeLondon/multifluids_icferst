@@ -518,15 +518,6 @@ for i in range( t.node_count ):
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
-          <nphase>
-            <integer_value rank="0">3</integer_value>
-          </nphase>
-          <type>
-            <dimensions>
-              <integer_value rank="0">2</integer_value>
-            </dimensions>
-            <Anisotropic_coupled/>
-          </type>
           <prescribed>
             <value name="WholeMesh">
               <anisotropic_asymmetric>
@@ -1016,15 +1007,6 @@ for i in range( t.node_count ):
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
-          <nphase>
-            <integer_value rank="0">3</integer_value>
-          </nphase>
-          <type>
-            <dimensions>
-              <integer_value rank="0">3</integer_value>
-            </dimensions>
-            <Anisotropic_coupled/>
-          </type>
           <prescribed>
             <value name="WholeMesh">
               <anisotropic_asymmetric>
@@ -1509,15 +1491,6 @@ for i in range( t.node_count ):
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
-          <nphase>
-            <integer_value rank="0">3</integer_value>
-          </nphase>
-          <type>
-            <dimensions>
-              <integer_value rank="0">3</integer_value>
-            </dimensions>
-            <Anisotropic_coupled/>
-          </type>
           <prescribed>
             <value name="WholeMesh">
               <anisotropic_asymmetric>

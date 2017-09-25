@@ -2,7 +2,7 @@
 <testproblem>
   <name>boiling_test_2phases</name>
   <owner userid="pan.yang"/>
-  <tags>mpml boiling tbc</tags>
+  <tags> boiling tbc</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst boil_h.mpml</command_line>
   </problem_definition>
