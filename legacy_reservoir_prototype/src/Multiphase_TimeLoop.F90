@@ -1015,6 +1015,8 @@ call solve_transport()
         subroutine adapt_mesh_mp()
             !local variables
             type( scalar_field ), pointer ::  s_field, s_field2, s_field3
+            type( vector_field ), pointer ::  U_x1, U_x2
+            integer :: U_x1_stat, idim
 
 
 
@@ -1062,6 +1064,16 @@ call solve_transport()
                             itime, not_to_move_det_yet = .true. )
                         call run_diagnostics( state )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
+                        ! Copy U memory
+                        do iphase=1,Mdims%nphase
+                           U_x1=>extract_vector_field(state(iphase),"U",U_x1_stat)
+                           U_x2=>extract_vector_field(state(iphase),"Velocity")
+                           if(U_x1_stat==0)then
+                              do idim=1,Mdims%ndim
+                                 U_x1%val(idim,:)=U_x2%val(idim,:)
+                              end do
+                           end if
+                        end do
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
