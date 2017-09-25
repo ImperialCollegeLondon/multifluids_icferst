@@ -1638,15 +1638,14 @@ contains
             !First retrieve the first seed of the well
             seeds_loop: do seed = 1, size(pipe_seeds)
                 starting_node = pipe_seeds(seed)
-                elements_loop: do ele = 1, Mdims%totele
+                do ele = 1, Mdims%totele
                     do x_iloc = 1, Mdims%x_nloc
                         x_inod = ndgln%x( ( ele - 1 ) * Mdims%x_nloc + x_iloc )
                         if (x_inod == pipe_seeds(seed)) then!element found
                             starting_ele = ele
                         end if
                     end do
-                end do elements_loop
-
+                end do
                 ele = starting_ele
                 visited_eles(1,:) = -1; visited_eles(2,:) = 0
                 visited_eles(1,1) = ele; visited_eles(2,1) = 1
@@ -1797,25 +1796,19 @@ contains
                 deallocate(Aux_eles_with_pipe(k)%pipe_corner_nds1, Aux_eles_with_pipe(k)%pipe_corner_nds2)
             end do
 
-
-!    !To test the results gnuplot and the run spl'test' w linesp
-!do j = 1, size(eles_with_pipe)
-!print *, X(:,eles_with_pipe(j)%pipe_corner_nds1(1))
-!print *, X(:,eles_with_pipe(j)%pipe_corner_nds2(1))
-!end do
-!read*
-
-            !For visualisation purposes only
+            !Now, introduce the value of the diameter only in the correct regions
+            !This should be temporary until it is being read from the well file as well.
             if (size(PIPE_DIAMETER%val) > 1) then
                 aux = maxval(PIPE_DIAMETER)
                 PIPE_DIAMETER%val = 0.
-                do j = 1, size(eles_with_pipe)
-                    do x_iloc = 1, Mdims%x_nloc
-                        x_inod = ndgln%cv( ( eles_with_pipe(j)%ele - 1 ) * Mdims%cv_nloc + x_iloc )
-                        PIPE_DIAMETER%val(x_inod)  = aux
+                do ele = 1, size(eles_with_pipe)
+                    do ipipe = 1, eles_with_pipe(ele)%npipes
+                        x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(ipipe)
+                        PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = aux
+                        x_iloc = eles_with_pipe(ele)%pipe_corner_nds2(ipipe)
+                        PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = aux
                     end do
                 end do
-            !For visualisation purposes only
             end if
         end subroutine find_nodes_of_well
 

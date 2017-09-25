@@ -14,7 +14,7 @@ min_P = stat("normal_fault.stat")["phase1"]["Pressure"]["min"][-1]</variable>
   </variables>
   <pass_tests>
     <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 275464.644)/275464.644 &lt; 0.01)</test>
-    <test name="Assert outlet pressure boundary condition" language="python">assert(abs(min_P -164096.304)/164096.304 &lt; 0.01)</test>
+    <test name="Assert outlet pressure boundary condition" language="python">assert(abs(min_P - 163504.)/163504. &lt; 0.03)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

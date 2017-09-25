@@ -396,6 +396,8 @@ contains
                 fake_IDs_ndgln = .not. is_porous_media)! .or. is_multifracture )
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
+            !Ensure that the initial condition for the saturation sum to 1.
+            call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, Mdims%npres)
         end if
 
         !!$ Starting Time Loop
