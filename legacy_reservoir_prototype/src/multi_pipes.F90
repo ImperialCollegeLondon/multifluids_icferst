@@ -1617,6 +1617,7 @@ contains
             integer, dimension(:), intent(in) :: pipe_seeds
             type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
             !Local variables
+            logical, save :: first_time = .true.
             real, parameter:: tolerance = 9e-3!tol has to be 9e-3 because that is the precision of the nastran input file
             integer, dimension(2, Mdims%totele) :: visited_eles!Number of element visited and neigbours used
             integer :: starting_node, starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
@@ -1778,6 +1779,8 @@ contains
             do while (AUX_eles_with_pipe(j+1)%ele > 0)
                 j = j + 1
             end do
+            !Store only the required elements
+            if(allocated(eles_with_pipe)) deallocate(eles_with_pipe)!re-adjust if required
             allocate(eles_with_pipe(j))
             !Copy values
             do k = 1, j
@@ -1795,7 +1798,8 @@ contains
                     deallocate(Aux_eles_with_pipe(k)%pipe_index)
                 deallocate(Aux_eles_with_pipe(k)%pipe_corner_nds1, Aux_eles_with_pipe(k)%pipe_corner_nds2)
             end do
-
+            !#######################################################################
+            !####THIS NEEDS TO BE REVISITED ONCE THE MEMORY IS CORRECTLY CREATED####
             !Now, introduce the value of the diameter only in the correct regions
             !This should be temporary until it is being read from the well file as well.
             if (size(PIPE_DIAMETER%val) > 1) then
@@ -1810,6 +1814,14 @@ contains
                     end do
                 end do
             end if
+            !We have to ensure that the python prescribed field is not recalculated
+            !this needs to be removed once the memory is properly allocated
+            if (first_time) then
+                first_time = .false.
+                if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
+                    call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
+            end if
+            !#######################################################################
         end subroutine find_nodes_of_well
 
         integer function get_pos(ele, visited_eles)

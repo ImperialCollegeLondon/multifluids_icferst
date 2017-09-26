@@ -83,7 +83,8 @@ contains
     !Section to add the nodes locked by the wells
     do iphase = 1, option_count('/material_phase')
         well_path ='/wells_and_pipes/scalar_field::DiameterPipe/prescribed/value/python'
-        if (have_option(well_path) ) then
+        !Only lock nodes if wells are defined only using pu
+        if (have_option(well_path) .and. option_count('/wells_and_pipes/well_from_file') == 0) then
             call get_option(well_path, func)
 
             allocate(is_node_locked_scalar(node_count(positions)));is_node_locked_scalar = 0.0

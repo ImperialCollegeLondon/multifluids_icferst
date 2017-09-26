@@ -551,7 +551,7 @@ contains
             reservoir_P = 0.0
         end if
         dt_pipe_factor = 1.0
-        if ( Mdims%npres > 1 .and. .true. ) then
+        if ( Mdims%npres > 1 ) then
             ! Edge approach - pipe location and radius field
             ! this should really be (Mdims%npres, Mdims%cv_nonods)
             ! we assume one extra pressure for now
