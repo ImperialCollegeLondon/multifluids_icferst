@@ -59,7 +59,7 @@ module solvers_module
 
     private
 
-    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one
+    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one, Ensure_initial_Saturation_to_sum_one
 
     interface multi_solver
         module procedure solve_via_copy_to_petsc_csr_matrix
@@ -825,6 +825,64 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
+    subroutine Ensure_initial_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
+        !This subroutines eliminates the oscillations in the saturation that are bigger than a
+        !certain tolerance and also sets the saturation to be between bounds
+        Implicit none
+        !Global variables
+        type( state_type ), intent(inout) :: packed_state
+        integer, dimension(:), intent(in) :: IDs2CV_ndgln
+        integer, intent(in) :: npres
+        !Local variables
+        integer :: iphase, nphase, cv_nod, i_start, i_end, ipres, scapegoat_phase
+        real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
+        real, dimension(:), allocatable :: Normalized_sat
+        real, dimension(:,:), pointer :: satura
+        real, dimension(:, :), pointer :: Immobile_fraction
+
+        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+        !Get Immobile_fractions
+        call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
+        nphase = size(satura,1)
+
+        !Allocate
+        allocate(Normalized_sat(nphase))
+        !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
+        do ipres = 1, npres
+            i_start = 1 + (ipres-1) * nphase/npres
+            i_end = ipres * nphase/npres
+            !First find a phase with values lower than -0.5 if that is so. This is a perturbation from opal and that needs to be considered
+            !otherwise the last phase will be used to normalized
+            scapegoat_phase = i_end
+            do iphase = i_start, i_end
+                if (maxval(satura(iphase,:))<-0.5) then
+                    scapegoat_phase = iphase
+                    exit
+                end if
+            end do
+            !Once the saturation is found then ensure that the saturations are between bounds
+            !Set saturation to be between bounds
+            do cv_nod = 1, size(satura,2 )!to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
+                moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
+                !Work in normalize saturation here
+                Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
+                    Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))/moveable_sat
+                sum_of_phases = sum(Normalized_sat(i_start:i_end))
+                !Ensure that the phases sum to 1.
+                satura(scapegoat_phase, cv_nod) = ((1.0 - sum_of_phases) + Normalized_sat(scapegoat_phase))*&
+                            moveable_sat + Immobile_fraction(scapegoat_phase, IDs2CV_ndgln(cv_nod))
+                !Make sure saturation is between bounds after the modification
+                do iphase = i_start, i_end
+                    minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
+                    maxsat = moveable_sat + minsat
+                    satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+                end do
+            end do
+        end do
+        !Deallocate
+        deallocate(Normalized_sat)
+
+    end subroutine Ensure_initial_Saturation_to_sum_one
 
 end module solvers_module
 
