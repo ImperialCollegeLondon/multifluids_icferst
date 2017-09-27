@@ -590,7 +590,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                  end if
                  call zero(vtracer)
                  call zero_non_owned(Mmat%CV_RHS)
-
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
                  !Set to zero the fields
@@ -613,7 +612,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
+                         call FPI_backtracking(state,packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res, Mdims%npres, IDs2CV_ndgln = IDs2CV_ndgln)
                          !Store the accumulated updated done

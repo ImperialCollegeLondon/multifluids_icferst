@@ -1466,7 +1466,6 @@ contains
         integer, dimension(:,:), allocatable :: edges
         integer, dimension(:), allocatable :: pipe_seeds
         type( tensor_field ), pointer:: tfield
-
         !Initialise
         AUX_eles_with_pipe%ele = -1
         k = 1; NCORNER = Mdims%ndim + 1
@@ -1476,10 +1475,9 @@ contains
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
         !Retrieve, if there are any number of input .bdf files
         number_well_files = option_count("/wells_and_pipes/well_from_file")
-
         if (number_well_files > 0) then
             !Need the mesh to get neighbouring elements
-            tfield => extract_tensor_field( packed_state, "PackedCVPressure" )
+            tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
 
             !for the time being we re-use from diamond
             diam = maxval(PIPE_DIAMETER%val)
@@ -1564,7 +1562,6 @@ contains
                 Saux2 = sqrt(dot_product(Vaux,Vaux))
                 if (Saux2>1e-10) distance = Saux1/Saux2
            end if
-
            is_within_pipe = (distance <= diameter)
         end function is_within_pipe
 
@@ -1579,34 +1576,34 @@ contains
             logical :: found
             integer :: i, j, l, count
             integer :: sele, siloc, sinod
-            real, dimension(size(edges,2)) :: aux_pipe_seeds
+            real, dimension(size(nodes,2)) :: aux_pipe_seeds
             aux_pipe_seeds = -1
 
 
             !Use brute force through the surface of the domain. This should work in parallel and in serial
             !as long as the well reaches a boundary of one of the domains. The cost is minimised by looping over the boundary of
             !the domain only
-            l = 1; aux_pipe_seeds = -1
+            l = 0; aux_pipe_seeds = -1
             do sele = 1, Mdims%stotel
                 do siloc = 1, Mdims%p_snloc
                     sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(edges)-1
+                    do edge = 1, size(edges,2)-1
                         if (is_within_pipe(X(:,sinod), nodes(:,edge), nodes(:,edge+1), 9d-3)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
                                 if (aux_pipe_seeds(j)==sinod) found = .true.
                                 if (aux_pipe_seeds(j) < 0 .or. found) exit
                             end do
-                            if (.not. found) then
-                                aux_pipe_seeds(l) = sinod!Store the global node number
+                            if (.not.found) then
                                 l = l + 1
+                                aux_pipe_seeds(l) = sinod!Store the global node number
                             end if
                         end if
                     end do
                 end do
             end do
-            allocate(pipe_seeds(l-1))
-            pipe_seeds = aux_pipe_seeds(1:l-1)
+            allocate(pipe_seeds(l))
+            if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
         end subroutine find_pipe_seeds
 
         subroutine find_nodes_of_well(X, nodes, edges, pipe_seeds, eles_with_pipe)
@@ -1627,15 +1624,15 @@ contains
             logical :: got_new_ele, touching_well, continue_looking, found
             type(pipe_coords), dimension(Mdims%totele):: AUX_eles_with_pipe
 
+
             !Initialise AUX_eles_with_pipe
             AUX_eles_with_pipe%ele = -1
             do j = 1, Mdims%totele!We can study this, but it is VERY unlikely that this goes beyond a 10%
                 AUX_eles_with_pipe(j)%npipes = 0
                 allocate(AUX_eles_with_pipe(j)%pipe_index(Mdims%ndim + 1))
-                allocate(AUX_eles_with_pipe(j)%pipe_corner_nds1(3))!Lets consider a maximum of 2 pipes per element
-                allocate(AUX_eles_with_pipe(j)%pipe_corner_nds2(3))!Lets consider a maximum of 2 pipes per element
+                allocate(AUX_eles_with_pipe(j)%pipe_corner_nds1(Mdims%ndim))!Maximum of number of dimension pipes per element
+                allocate(AUX_eles_with_pipe(j)%pipe_corner_nds2(Mdims%ndim))
             end do
-
             !First retrieve the first seed of the well
             seeds_loop: do seed = 1, size(pipe_seeds)
                 starting_node = pipe_seeds(seed)
@@ -1661,7 +1658,7 @@ contains
                             i = 1
                             loc_loop: do x_iloc = 1, Mdims%x_nloc
                                 x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
-                                do edge = 1, size(edges)-1!<= this can be optimised if we know that there is one well only defined per edges array
+                                do edge = 1, size(edges,2)-1!<= this can be optimised if we know that there is one well only defined per edges array
                                     if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
                                         select case (i)
                                             case (1)!First true

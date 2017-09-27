@@ -436,7 +436,7 @@ contains
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
-    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
+    subroutine FPI_backtracking(state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
         Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res, npres, IDs2CV_ndgln)
         !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
@@ -444,6 +444,7 @@ contains
         !The method ensures convergence "independent" of the time step.
         implicit none
         !Global variables
+        type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent(inout) :: packed_state
         real, dimension(:, :), intent(in) :: sat_bak, backtrack_sat
         real, intent(in) :: backtrack_par_from_schema, res, res_ratio, first_res
@@ -476,7 +477,7 @@ contains
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
         if (is_porous_media) then
-            if (present(IDs2CV_ndgln)) call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
+            if (present(IDs2CV_ndgln)) call Set_Saturation_to_sum_one(state, packed_state, IDs2CV_ndgln, npres)
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             Satura =>  sat_field%val(1,:,:)
             !Stablish minimum backtracking parameter
@@ -774,15 +775,17 @@ contains
 
     end subroutine FPI_backtracking
 
-    subroutine Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
+    subroutine Set_Saturation_to_sum_one(state, packed_state, IDs2CV_ndgln, npres)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
+        type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent(inout) :: packed_state
         integer, dimension(:), intent(in) :: IDs2CV_ndgln
         integer, intent(in) :: npres
         !Local variables
+        type(scalar_field), pointer :: pipe_diameter
         integer :: iphase, nphase, cv_nod, i_start, i_end, ipres
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
@@ -793,7 +796,7 @@ contains
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
         nphase = size(satura,1)
-
+        if (npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" )
         !Allocate
         allocate(Normalized_sat(nphase))
         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
@@ -802,6 +805,7 @@ contains
             i_end = ipres * nphase/npres
             !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
             do cv_nod = 1, size(satura,2 )!to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
+                if (npres>1 .and. pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
                 moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
                 !Work in normalize saturation here
                 Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
