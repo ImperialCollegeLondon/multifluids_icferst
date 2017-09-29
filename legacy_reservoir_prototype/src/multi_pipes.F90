@@ -1656,32 +1656,32 @@ contains
                     neig_loop: do while (neig < Mdims%ndim + 1)!A tet/triangle element can have one neighbour more than dimensions it has
                         neig = neig + 1
                         touching_well = .false.
-                        do ipipe = 1, 1!npipes; for the time being one pipe per file
-                            i = 1
-                            loc_loop: do x_iloc = 1, Mdims%x_nloc
-                                x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
-                                do edge = 1, size(edges,2)-1!<= this can be optimised if we know that there is one well only defined per edges array
-                                    if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
-                                        select case (i)
-                                            case (1)!First true
-                                                first_node = x_inod
-                                                first_loc = x_iloc
-                                                touching_well = .true.
-                                                i = i + 1
-                                                !backup just in case this element is not an in between element
-                                                ele_bak = ele; neig_bak = neig!<= has to be BEFORE updating ele
-                                                !Update position
-                                                ele = ele2; neig = max(1, visited_eles(2,get_pos(ele2, visited_eles)))
-                                                !And visited list
-                                                visit_counter = get_pos(ele, visited_eles)
-                                                visited_eles(1, visit_counter) = ele
-                                                visited_eles(2, visit_counter) = max(visited_eles(2,visit_counter),neig)
-                                                exit!to ensure that we are not in a joint and X(:,x_inod) is not considered twice
-                                            case (2)!Second true, we got a well in the element!
-                                                !Need to test if the nodes are already stored
-                                                found = .false.
-                                                j = 1
-                                                do while (AUX_eles_with_pipe(j)%ele > 0)
+                        i = 1
+                        loc_loop: do x_iloc = 1, Mdims%x_nloc
+                            x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
+                            do edge = 1, size(edges,2)-1!<= this can be optimised if we know that there is one well only defined per edges array
+                                if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
+                                    select case (i)
+                                        case (1)!First true
+                                            first_node = x_inod
+                                            first_loc = x_iloc
+                                            touching_well = .true.
+                                            i = i + 1
+                                            !backup just in case this element is not an in between element
+                                            ele_bak = ele; neig_bak = neig!<= has to be BEFORE updating ele
+                                            !Update position
+                                            ele = ele2; neig = max(1, visited_eles(2,get_pos(ele2, visited_eles)))
+                                            !And visited list
+                                            visit_counter = get_pos(ele, visited_eles)
+                                            visited_eles(1, visit_counter) = ele
+                                            visited_eles(2, visit_counter) = max(visited_eles(2,visit_counter),neig)
+                                            exit!to ensure that we are not in a joint and X(:,x_inod) is not considered twice
+                                        case (2)!Second true, we got a well in the element!
+                                            !Need to test if the nodes are already stored
+                                            found = .false.
+                                            j = 1
+                                            do while (AUX_eles_with_pipe(j)%ele > 0)
+                                                do ipipe = 1, AUX_eles_with_pipe(j)%npipes!Test all the available pipes
                                                     if ((first_node == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&!We consider one pipe
                                                         first_node == AUX_eles_with_pipe(j)%pipe_corner_nds2(ipipe)) .and. &  !for the time being!!
                                                         (x_inod == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&
@@ -1698,77 +1698,78 @@ contains
                                                     end if
                                                     j = j + 1
                                                 end do
-                                                if (.not.found) then
-                                                    AUX_eles_with_pipe(j)%npipes = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
-                                                    AUX_eles_with_pipe(k)%ele = ele2
-                                                    AUX_eles_with_pipe(k)%pipe_index(first_loc) = .true.!Don't know if necessary now...
-                                                    AUX_eles_with_pipe(k)%pipe_corner_nds1(ipipe) = first_loc!first_node
-                                                    AUX_eles_with_pipe(k)%pipe_index(x_iloc) = .true.!Don't know if necessary now...
-                                                    AUX_eles_with_pipe(k)%pipe_corner_nds2(ipipe) = x_iloc!x_inod
-                                                    k = k + 1
-                                                    exit loc_loop!Change reference to this element
-                                                end if
-                                        end select
-                                    end if
-                                end do
-                            end do loc_loop
-                            if (.not.touching_well) then
-                                !Don't consider it again
-                                visit_counter = get_pos(ele2, visited_eles)
-                                visited_eles(1, visit_counter) = ele2
-                                visited_eles(2, visit_counter) = 100
-                            end if
-                            !Look for new proposed element
-                            do while (.true. .and. neig <= Mdims%ndim + 1)
-                                ele2 = max(ele_neigh(tfield%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
-                                !Update neighbour used in the list
-                                i = get_pos(ele, visited_eles)
-                                visited_eles(2,i) = max(visited_eles(2,i),neig+1)
-                                got_new_ele = .true.
-                                !Store element about to be inspected
-                                i = get_pos(ele2, visited_eles)
-                                visited_eles(1,i) = ele2
-
-                                !If proposed element does not have available elements to study then find another
-                                if (visited_eles(2,i) > Mdims%ndim + 1 .or. ele2 == 0) then!Ignore boundary
-                                    got_new_ele = .false.
-                                    !Advance to the next possible neighbour
-                                    neig = neig + 1
-                                    if (neig > Mdims%ndim + 1) then!If not more to look at then
-                                        !Start to go back along the elements that still have neigbours to look at
-                                        j = 1
-                                        do while (visited_eles(2,j) > Mdims%ndim + 1)
-                                            if (visited_eles(1,j) <= 0) then
-                                                !Impossible to continue the search
-                                                print *, "WARNING: Exit due to visited_list full"
-                                                exit ele_loop
+                                            end do
+                                            if (.not.found) then
+                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
+                                                AUX_eles_with_pipe(j)%npipes = ipipe
+                                                AUX_eles_with_pipe(k)%ele = ele2
+                                                AUX_eles_with_pipe(k)%pipe_index(first_loc) = .true.!Don't know if necessary now...
+                                                AUX_eles_with_pipe(k)%pipe_corner_nds1(ipipe) = first_loc!first_node
+                                                AUX_eles_with_pipe(k)%pipe_index(x_iloc) = .true.!Don't know if necessary now...
+                                                AUX_eles_with_pipe(k)%pipe_corner_nds2(ipipe) = x_iloc!x_inod
+                                                k = k + 1
+                                                exit loc_loop!Change reference to this element
                                             end if
-                                            j = j + 1
-                                        end do
-                                        visit_counter = max(j,1)
-                                        if (visited_eles(1,j) > 0) then
-                                            ele = visited_eles(1,j)
-                                            neig = max(1, visited_eles(2,j))
-                                        end if
-                                    end if
-                                !if proposed element already visited (and was touching a well)
-                                !then we can know if it was touching the well,
-                                !in which case we move to it and continue the search
-                                else if (visited_eles(2,i) >= 1 .and. visited_eles(2,i) <= Mdims%ndim + 1) then
-                                    !element already studied for wells, now we just want to find a neighbour
-                                    !Update position
-                                    ele = ele2
-                                    neig = visited_eles(2,get_pos(ele, visited_eles))
-                                    got_new_ele = .false.
+                                    end select
                                 end if
-                                if (got_new_ele) exit
-
-
                             end do
-                            if (neig > Mdims%ndim + 1) then
-                                exit ele_loop!Can't continue searching so well finished
+                        end do loc_loop
+                        if (.not.touching_well) then
+                            !Don't consider it again
+                            visit_counter = get_pos(ele2, visited_eles)
+                            visited_eles(1, visit_counter) = ele2
+                            visited_eles(2, visit_counter) = 100
+                        end if
+                        !Look for new proposed element
+                        do while (.true. .and. neig <= Mdims%ndim + 1)
+                            ele2 = max(ele_neigh(tfield%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
+                            !Update neighbour used in the list
+                            i = get_pos(ele, visited_eles)
+                            visited_eles(2,i) = max(visited_eles(2,i),neig+1)
+                            got_new_ele = .true.
+                            !Store element about to be inspected
+                            i = get_pos(ele2, visited_eles)
+                            visited_eles(1,i) = ele2
+
+                            !If proposed element does not have available elements to study then find another
+                            if (visited_eles(2,i) > Mdims%ndim + 1 .or. ele2 == 0) then!Ignore boundary
+                                got_new_ele = .false.
+                                !Advance to the next possible neighbour
+                                neig = neig + 1
+                                if (neig > Mdims%ndim + 1) then!If not more to look at then
+                                    !Start to go back along the elements that still have neigbours to look at
+                                    j = 1
+                                    do while (visited_eles(2,j) > Mdims%ndim + 1)
+                                        if (visited_eles(1,j) <= 0) then
+                                            !Impossible to continue the search
+                                            print *, "WARNING: Exit due to visited_list full"
+                                            exit ele_loop
+                                        end if
+                                        j = j + 1
+                                    end do
+                                    visit_counter = max(j,1)
+                                    if (visited_eles(1,j) > 0) then
+                                        ele = visited_eles(1,j)
+                                        neig = max(1, visited_eles(2,j))
+                                    end if
+                                end if
+                            !if proposed element already visited (and was touching a well)
+                            !then we can know if it was touching the well,
+                            !in which case we move to it and continue the search
+                            else if (visited_eles(2,i) >= 1 .and. visited_eles(2,i) <= Mdims%ndim + 1) then
+                                !element already studied for wells, now we just want to find a neighbour
+                                !Update position
+                                ele = ele2
+                                neig = visited_eles(2,get_pos(ele, visited_eles))
+                                got_new_ele = .false.
                             end if
+                            if (got_new_ele) exit
+
+
                         end do
+                        if (neig > Mdims%ndim + 1) then
+                            exit ele_loop!Can't continue searching so well finished
+                        end if
                     end do neig_loop
 
                 end do ele_loop
