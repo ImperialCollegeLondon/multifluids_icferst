@@ -690,7 +690,7 @@ contains
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
                                 LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                                       ! subtract 1st order adv. soln.
-                                    + suf_DETWEI( bGI ) * +NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
+                                    + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
                                     - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                             end do
 
@@ -1481,6 +1481,8 @@ contains
 
             !for the time being we re-use from diamond
             diam = maxval(PIPE_DIAMETER%val)
+            !Clean eles_with_pipes before reading the files
+            if (allocated(eles_with_pipe)) deallocate(eles_with_pipe)
             do k = 1, number_well_files
                 !First identify the well trajectory
                 call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
@@ -1621,11 +1623,11 @@ contains
             integer :: ele, ele2, inode, k, i, j, x_iloc, x_inod, ipipe, first_node, first_loc, neighbours_left
             real :: aux
             real, dimension(Mdims%ndim) :: Vaux
-            logical :: got_new_ele, touching_well, continue_looking, found
-            type(pipe_coords), dimension(Mdims%totele):: AUX_eles_with_pipe
-
+            logical :: got_new_ele, touching_well, continue_looking, found, resize
+            type(pipe_coords), dimension(:), allocatable :: AUX_eles_with_pipe, BAK_eles_with_pipe
 
             !Initialise AUX_eles_with_pipe
+            allocate(AUX_eles_with_pipe(Mdims%totele))
             AUX_eles_with_pipe%ele = -1
             do j = 1, Mdims%totele!We can study this, but it is VERY unlikely that this goes beyond a 10%
                 AUX_eles_with_pipe(j)%npipes = 0
@@ -1771,30 +1773,23 @@ contains
 
                 end do ele_loop
             end do seeds_loop
-            !Count values
+            !Count useful values
             j = 0
             do while (AUX_eles_with_pipe(j+1)%ele > 0)
                 j = j + 1
             end do
-            !Store only the required elements
-            if(allocated(eles_with_pipe)) deallocate(eles_with_pipe)!re-adjust if required
-            allocate(eles_with_pipe(j))
-            !Copy values
-            do k = 1, j
-                allocate(eles_with_pipe(k)%pipe_index(Mdims%ndim + 1))
-                allocate(eles_with_pipe(k)%pipe_corner_nds1(2))
-                allocate(eles_with_pipe(k)%pipe_corner_nds2(2))
-                eles_with_pipe(k)%ele = Aux_eles_with_pipe(k)%ele
-                eles_with_pipe(k)%npipes = Aux_eles_with_pipe(k)%npipes
-                eles_with_pipe(k)%pipe_index(1:size(eles_with_pipe(k)%pipe_index)) =&
-                     Aux_eles_with_pipe(k)%pipe_index(1:size(eles_with_pipe(k)%pipe_index))
-                eles_with_pipe(k)%pipe_corner_nds1(1:size(eles_with_pipe(k)%pipe_corner_nds1)) =&
-                     Aux_eles_with_pipe(k)%pipe_corner_nds1(1:size(eles_with_pipe(k)%pipe_corner_nds1))
-                eles_with_pipe(k)%pipe_corner_nds2(1:size(eles_with_pipe(k)%pipe_corner_nds2)) = &
-                    Aux_eles_with_pipe(k)%pipe_corner_nds2(1:size(eles_with_pipe(k)%pipe_corner_nds2))
-                    deallocate(Aux_eles_with_pipe(k)%pipe_index)
-                deallocate(Aux_eles_with_pipe(k)%pipe_corner_nds1, Aux_eles_with_pipe(k)%pipe_corner_nds2)
-            end do
+            if (j==0) return
+            !Create copy if required of the original list
+            resize = allocated(eles_with_pipe)
+            k = 0
+            if (resize) then
+                k = size(eles_with_pipe)
+                call copy_from_pipe_coords(eles_with_pipe, BAK_eles_with_pipe, 1, k, siz = k)
+            end if
+            !Now copy the new elements into the beginning of eles_with_pipes
+            call copy_from_pipe_coords(Aux_eles_with_pipe, eles_with_pipe, 1, j, siz = k + j)
+            !Finally if required, copy bak_eles back into eles_with_pipes
+            if (resize) call copy_from_pipe_coords(BAK_eles_with_pipe, eles_with_pipe, j+1, k + j)
             !#######################################################################
             !####THIS NEEDS TO BE REVISITED ONCE THE MEMORY IS CORRECTLY CREATED####
             !Now, introduce the value of the diameter only in the correct regions
@@ -1815,11 +1810,46 @@ contains
             !this needs to be removed once the memory is properly allocated
             if (first_time) then
                 first_time = .false.
-                if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
-                    call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
+                if (getprocno() == 1) then
+                    if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
+                        call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
+                end if
             end if
             !#######################################################################
         end subroutine find_nodes_of_well
+
+        subroutine copy_from_pipe_coords(original, copy, start, end, siz)
+            !This subroutine copies from an input pipe_coords structure into another
+            !from an starting point to a final point, allocating all the internal
+            !variables and deallocating the original
+            !siz is the size of the copy file if it is required ot allocate the file
+            Implicit none
+            integer, intent(in) :: start, end
+            type(pipe_coords), dimension(:), allocatable, intent(inout) :: original, copy
+            integer, optional, intent(in) :: siz
+            !Local variables
+            integer :: k, k_orig
+            if (present(siz)) allocate(copy(siz))
+            k_orig = 1
+            do k = start, end
+                allocate(copy(k)%pipe_index(Mdims%ndim + 1))
+                allocate(copy(k)%pipe_corner_nds1(Mdims%ndim))
+                allocate(copy(k)%pipe_corner_nds2(Mdims%ndim))
+                copy(k)%ele = original(k_orig)%ele
+                copy(k)%npipes = original(k_orig)%npipes
+                copy(k)%pipe_index(1:size(copy(k)%pipe_index)) =&
+                     original(k_orig)%pipe_index(1:size(copy(k)%pipe_index))
+                copy(k)%pipe_corner_nds1(1:size(copy(k)%pipe_corner_nds1)) =&
+                     original(k_orig)%pipe_corner_nds1(1:size(copy(k)%pipe_corner_nds1))
+                copy(k)%pipe_corner_nds2(1:size(copy(k)%pipe_corner_nds2)) = &
+                    original(k_orig)%pipe_corner_nds2(1:size(copy(k)%pipe_corner_nds2))
+                deallocate(original(k_orig)%pipe_index)
+                deallocate(original(k_orig)%pipe_corner_nds1, original(k_orig)%pipe_corner_nds2)
+                k_orig = k_orig + 1
+            end do
+            deallocate(original)
+        end subroutine copy_from_pipe_coords
+
 
         integer function get_pos(ele, visited_eles)
             !This either gives the position in the list where element is,
