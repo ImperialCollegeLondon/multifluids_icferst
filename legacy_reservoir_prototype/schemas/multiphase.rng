@@ -5972,6 +5972,30 @@ less accurate but faster and might give smoother result.                  </a:do
         <attribute name="name">
           <data type="string"/>
         </attribute>
+        <optional>
+          <element name="nphase">
+            <a:documentation>
+TO BE DELETED
+		
+THIS OPTION IS USED TO SET TENSOR DIMENSIONS		</a:documentation>
+            <ref name="integer"/>
+          </element>
+        </optional>
+        <choice>
+          <a:documentation>Field type		</a:documentation>
+          <element name="prescribed">
+            <ref name="mesh_choice"/>
+            <ref name="prescribed_tensor_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+          <element name="diagnostic">
+            <ref name="tensor_diagnostic_algorithms"/>
+            <ref name="velocity_mesh_choice"/>
+            <ref name="diagnostic_tensor_field"/>
+          </element>
+        </choice>
       </element>
       <!--
         

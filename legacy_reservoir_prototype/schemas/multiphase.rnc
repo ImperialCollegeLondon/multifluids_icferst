@@ -4666,8 +4666,27 @@ tensor_field_choice =
          ## Generic field variable (tensor)
          element tensor_field {
             attribute rank { "2" },
-            attribute name { xsd:string }
-
+            attribute name { xsd:string },
+            ##
+            ##TO BE DELETED
+            ##		
+ 	    ##THIS OPTION IS USED TO SET TENSOR DIMENSIONS		
+            element nphase { integer }?,		
+            ## Field type		
+            (		
+               element prescribed {		
+                  mesh_choice,		
+                  prescribed_tensor_field		
+               }|		
+               element aliased {		
+                  generic_aliased_field		
+               }|		
+               element diagnostic {		
+                  tensor_diagnostic_algorithms,		
+                  velocity_mesh_choice,		
+                  diagnostic_tensor_field		
+               }		
+            )
          }|
 #
 # -- Second is a list of tensor fields that are primarily prescribed,
