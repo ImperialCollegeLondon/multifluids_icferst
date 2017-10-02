@@ -805,7 +805,9 @@ contains
             i_end = ipres * nphase/npres
             !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
             do cv_nod = 1, size(satura,2 )!to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
-                if (ipres>1 .and. pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
+                if (ipres>1) then
+                    if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
+                end if
                 moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
                 !Work in normalize saturation here
                 Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
