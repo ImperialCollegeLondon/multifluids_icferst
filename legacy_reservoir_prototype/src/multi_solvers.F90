@@ -786,7 +786,7 @@ contains
         integer, intent(in) :: npres
         !Local variables
         type(scalar_field), pointer :: pipe_diameter
-        integer :: iphase, nphase, cv_nod, i_start, i_end, ipres
+        integer :: iphase, nphase, cv_nod, i_start, i_end, ipres, stat
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
@@ -796,7 +796,7 @@ contains
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
         nphase = size(satura,1)
-        if (npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" )
+        if (npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" , stat = stat)
         !Allocate
         allocate(Normalized_sat(nphase))
         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
@@ -805,7 +805,7 @@ contains
             i_end = ipres * nphase/npres
             !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
             do cv_nod = 1, size(satura,2 )!to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
-                if (ipres>1) then
+                if (ipres>1 .and. stat == 0) then
                     if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
                 end if
                 moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
