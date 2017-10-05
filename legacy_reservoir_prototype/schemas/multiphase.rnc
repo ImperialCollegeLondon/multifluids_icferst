@@ -1926,7 +1926,44 @@ start =
                   attribute name { xsd:string },
                   element background_permeability { real }
                }
-            )
+            ),
+            ## Parameters for thermal porous media simulations
+            element thermal_porous{
+                ## Specify scalar field density of the porous media
+                element scalar_field {
+                   attribute name { "porous_density" },
+                   (
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify scalar field heat capacity of the porous media
+                element scalar_field {
+                   attribute name { "porous_heat_capacity" },
+                   (
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify field Thermal conductivity of the porous media
+               element tensor_field {
+                  attribute name { "porous_thermal_conductivity" },
+                  element prescribed { 
+                     material_mesh_choice,
+                     prescribed_tensor_field
+                  }
+               }
+             }?
          }?,
          ## Options to specify the wells/pipes
          element wells_and_pipes {

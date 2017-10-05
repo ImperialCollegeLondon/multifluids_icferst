@@ -588,20 +588,63 @@
         </detectors>
       </prescribed>
     </scalar_field>
-    <scalar_field name="Permeability">
+    <tensor_field name="Permeability">
       <prescribed>
         <mesh name="P0DG"/>
         <value name="WholeMesh">
-          <constant>
-            <real_value rank="0">1e-13</real_value>
-          </constant>
+          <isotropic>
+            <constant>
+              <real_value rank="0">1e-13</real_value>
+            </constant>
+          </isotropic>
         </value>
         <output/>
-        <stat/>
-        <detectors>
-          <exclude_from_detectors/>
-        </detectors>
       </prescribed>
-    </scalar_field>
+    </tensor_field>
+    <thermal_porous>
+      <scalar_field name="porous_density">
+        <prescribed>
+          <mesh name="P0DG"/>
+          <value name="WholeMesh">
+            <constant>
+              <real_value rank="0">1600</real_value>
+            </constant>
+          </value>
+          <output/>
+          <stat/>
+          <detectors>
+            <exclude_from_detectors/>
+          </detectors>
+        </prescribed>
+      </scalar_field>
+      <scalar_field name="porous_heat_capacity">
+        <prescribed>
+          <mesh name="P0DG"/>
+          <value name="WholeMesh">
+            <constant>
+              <real_value rank="0">830</real_value>
+            </constant>
+          </value>
+          <output/>
+          <stat/>
+          <detectors>
+            <exclude_from_detectors/>
+          </detectors>
+        </prescribed>
+      </scalar_field>
+      <tensor_field name="porous_thermal_conductivity">
+        <prescribed>
+          <mesh name="P0DG"/>
+          <value name="WholeMesh">
+            <isotropic>
+              <constant>
+                <real_value rank="0">0.15</real_value>
+              </constant>
+            </isotropic>
+          </value>
+          <output/>
+        </prescribed>
+      </tensor_field>
+    </thermal_porous>
   </porous_media>
 </multiphase_options>

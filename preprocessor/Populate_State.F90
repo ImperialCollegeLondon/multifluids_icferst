@@ -1296,6 +1296,19 @@ contains
                states(i))
           end if
        end do
+       !Insert if required thermal porous media fields
+        if (have_option('/porous_media/thermal_porous/')) then
+           do i=1, nstates
+              call allocate_and_insert_scalar_field('/porous_media/thermal_porous/scalar_field::porous_density', &
+                 states(i), field_name='porous_density')
+              call allocate_and_insert_scalar_field('/porous_media/thermal_porous/scalar_field::porous_heat_capacity', &
+                 states(i), field_name='porous_heat_capacity')
+              if (have_option("/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity")) then
+                 call allocate_and_insert_tensor_field('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity', &
+                   states(i))
+              end if
+           end do
+        end if
     end if
 
     if (have_option("/wells_and_pipes")) then

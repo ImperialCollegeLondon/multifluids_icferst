@@ -2578,6 +2578,51 @@ Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.</a:documentati
               </element>
             </element>
           </choice>
+          <optional>
+            <element name="thermal_porous">
+              <a:documentation>Parameters for thermal porous media simulations</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field density of the porous media</a:documentation>
+                <attribute name="name">
+                  <value>porous_density</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field heat capacity of the porous media</a:documentation>
+                <attribute name="name">
+                  <value>porous_heat_capacity</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="tensor_field">
+                <a:documentation>Specify field Thermal conductivity of the porous media</a:documentation>
+                <attribute name="name">
+                  <value>porous_thermal_conductivity</value>
+                </attribute>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_tensor_field"/>
+                </element>
+              </element>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>

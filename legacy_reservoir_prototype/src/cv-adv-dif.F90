@@ -118,7 +118,8 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
-        Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux)
+        Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux,&
+        adv_heat_coef, adv_heat_coefOLD)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -291,7 +292,7 @@ contains
         real, dimension(:,:), optional :: calculate_mass_delta
         type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
-
+        real, dimension(:,:), optional :: adv_heat_coef, adv_heat_coefOLD
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -1689,6 +1690,19 @@ contains
                                         LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
                                 end if
                             ENDIF
+                            if (present(adv_heat_coef)) then
+                                if (is_porous_media .and. thermal) then
+                                    !The advection term needs to be adjusted since at present it is multiplied by the convolution
+                                    !of rho Cp and porosity of the porous media and the fluid so we have to change that to ensure that it is
+                                    !controlled only by the fluid properties
+                                    !We perform normal average
+                                    NDOTQNEW = NDOTQNEW*((INCOME*adv_heat_coef(:, CV_NODI) +&
+                                         (1.0 - INCOME)*adv_heat_coef(:, CV_NODJ))/DEN_ALL(:, CV_NODI))
+                                    NDOTQOLD = NDOTQOLD*(INCOMEOLD*adv_heat_coefOLD(:, CV_NODI) +&
+                                         (1.0 - INCOMEOLD)*adv_heat_coefOLD(:, CV_NODJ))/DENOLD_ALL(:, CV_NODI)
+
+                                end if
+                            end if
                             !Obtain income for cv_nodj
                             !When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
                             WHERE ( NDOTQ <= 0. )

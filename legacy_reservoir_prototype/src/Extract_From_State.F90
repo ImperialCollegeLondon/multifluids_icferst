@@ -712,9 +712,9 @@ contains
         type(scalar_field), pointer :: pressure, sfield
         type(vector_field), pointer :: velocity, position, vfield
         type(tensor_field), pointer :: tfield, p2, d2, drhodp
-        type(vector_field) :: porosity, vec_field
+        type(vector_field) :: porosity, vec_field, porous_density, porous_heat_capacity
         type(vector_field) :: p_position, u_position, m_position
-        type(tensor_field) :: permeability, ten_field
+        type(tensor_field) :: permeability, ten_field, porous_thermal_conductivity
         type(mesh_type), pointer :: ovmesh, element_mesh
         type(element_type) :: element_shape
         integer, dimension( : ), pointer :: element_nodes
