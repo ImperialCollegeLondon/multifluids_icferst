@@ -392,7 +392,7 @@ contains
           implicit none
         REAL, DIMENSION( : , : ), intent(inout) :: den_all, denold_all, adv_heat_coef, adv_heat_coefOLD
         !Local variables
-        type( tensor_field ), pointer :: den_all2, denold_all2, Cp_fluids,  Cpold_fluids
+        type( tensor_field ), pointer :: Cp_den_fluids,  Cpold_den_fluids
         type( scalar_field ), pointer :: porosity, density_porous, Cp_porous
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
         real, dimension(Mdims%nphase, Mdims%cv_nonods) :: cv_counter
@@ -400,10 +400,8 @@ contains
         density_porous => extract_scalar_field( state(1), "porous_density" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
         porosity=>extract_scalar_field(state(1),"Porosity")
-        den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
-        denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-        Cp_fluids => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-        Cpold_fluids => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+        Cp_den_fluids => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+        Cpold_den_fluids => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
         den_all = 0.; denold_all = 0.
         adv_heat_coef = 0.; adv_heat_coefOLD = 0.
         cv_counter = 0
@@ -416,9 +414,9 @@ contains
                 do iphase = 1, Mdims%nphase
                     cv_counter( iphase,cv_inod ) = cv_counter( iphase,cv_inod ) + 1.0
                     adv_heat_coef( iphase,cv_inod ) = adv_heat_coef( iphase,cv_inod ) + &
-                        porosity%val(ele_nod) * den_all2%val( 1,iphase,cv_inod ) * Cp_fluids%val( 1,iphase,cv_inod )
+                        porosity%val(ele_nod) * Cp_den_fluids%val( 1,iphase,cv_inod )
                     adv_heat_coefOLD( iphase,cv_inod ) = adv_heat_coefOLD( iphase,cv_inod ) + &
-                        porosity%val(ele_nod) * denold_all2%val( 1,iphase,cv_inod ) * Cpold_fluids%val( 1,iphase,cv_inod )
+                        porosity%val(ele_nod) * Cpold_den_fluids%val( 1,iphase,cv_inod )
                     den_all( iphase,cv_inod ) = den_all( iphase,cv_inod ) + &
                         (1.0-porosity%val(ele_nod))*density_porous%val(p_den ) * Cp_porous%val( h_cap )
                     denold_all( iphase,cv_inod ) = denold_all( iphase,cv_inod )+ &

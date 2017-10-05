@@ -131,8 +131,8 @@ contains
             icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
             U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
-        type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer
-        type(scalar_field), pointer :: pipe_diameter, sigma1_pipes
+        type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2
+        type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
         type(vector_field), pointer :: X
         logical, save :: has_conductivity_pipes = .false.
 
@@ -294,9 +294,10 @@ contains
 
         if (thermal) then
             !Change pointers
-            nullify(T_ALL); nullify(DEN_ALL);
+            nullify(T_ALL); nullify(DEN_ALL); nullify(U_ALL);
             T_ALL => extract_tensor_field( packed_state, "PackedTemperature" )
-            DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!doing Cp * Rho introduce problems, probably it is inconsistent
+            !this is rho * Cp. This is to make it consistent with the advection term in cv-adv-diff
+            DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!this is Cp * Rho.
             U_ALL => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )!for consistency with cv_assemb
             if (first_time_step) has_conductivity_pipes = have_option('/wells_and_pipes/scalar_field::Conductivity')
             if (has_conductivity_pipes) then
@@ -831,7 +832,6 @@ contains
                 end do
             end do
          end if
-
     CONTAINS
         PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
             TDLIM, TDCEN, INCOME, &
