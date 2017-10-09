@@ -118,8 +118,8 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
-        Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux,&
-        adv_heat_coef, adv_heat_coefOLD)
+        Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
+        combined_heat_coef, combined_heat_coefOLD)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -184,7 +184,7 @@ contains
         !       =4      Finite elements in space    Theta=specified    UNIVERSAL
         !       =5      Finite elements in space    Theta=non-linear   UNIVERSAL
         !       =6      Finite elements in space    Theta=specified    NONE
-        !       =7      Finite elements in space    Theta=non-linear   NONE
+        !       =7      Finite elements in space    =non-linear   NONE
         !       =8      Finite elements in space    Theta=specified    DOWNWIND+
         !       =9      Finite elements in space    Theta=non-linear   DOWNWIND+
         !
@@ -292,7 +292,7 @@ contains
         real, dimension(:,:), optional :: calculate_mass_delta
         type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
-        real, dimension(:,:), optional :: adv_heat_coef, adv_heat_coefOLD
+        REAL, DIMENSION( : , : ), optional, intent(in) :: combined_heat_coef, combined_heat_coefOLD
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -317,8 +317,8 @@ contains
         ! GRAVTY is used in the free surface method only...
         REAL :: GRAVTY
         !
-        logical, PARAMETER :: EXPLICIT_PIPES= .false.
-        logical, PARAMETER :: EXPLICIT_PIPES2= .true.
+        logical, parameter :: EXPLICIT_PIPES= .false.
+        logical, parameter :: EXPLICIT_PIPES2= .true.
         logical, PARAMETER :: MULTB_BY_POROSITY= .false.
         ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
         ! if RECAL_C_CV_RHS, calculate the RHS forr the Mmat%C_CV matrix
@@ -1690,19 +1690,6 @@ contains
                                         LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
                                 end if
                             ENDIF
-                            if (present(adv_heat_coef)) then
-                                if (is_porous_media .and. thermal) then
-                                    !The advection term needs to be adjusted since at present it is multiplied by the convolution
-                                    !of rho Cp and porosity of the porous media and the fluid so we have to change that to ensure that it is
-                                    !controlled only by the fluid properties
-                                    !We perform normal average
-                                    NDOTQNEW = NDOTQNEW*((INCOME*adv_heat_coef(:, CV_NODI) +&
-                                         (1.0 - INCOME)*adv_heat_coef(:, CV_NODJ))/DEN_ALL(:, CV_NODI))
-                                    NDOTQOLD = NDOTQOLD*(INCOMEOLD*adv_heat_coefOLD(:, CV_NODI) +&
-                                         (1.0 - INCOMEOLD)*adv_heat_coefOLD(:, CV_NODJ))/DENOLD_ALL(:, CV_NODI)
-
-                                end if
-                            end if
                             !Obtain income for cv_nodj
                             !When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
                             WHERE ( NDOTQ <= 0. )
@@ -2253,7 +2240,6 @@ contains
                 rp_nano = 0.14 * h_nano
                 Skin = 0.0
                 SAT_FOR_PIPE(:) = MIN( MAX( 0.0, T_ALL( :, CV_NODI ) ), 1.0 )
-
                 DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
                 DO IPRES = 1, Mdims%npres
                    PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
@@ -2313,8 +2299,6 @@ contains
                         END IF ! IF ( IPRES /= JPRES ) THEN
                     END DO
                 END DO
-!
-
                DO IPHASE = 1, Mdims%nphase
                    DO JPHASE = 1, Mdims%nphase
                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
@@ -2421,11 +2405,6 @@ contains
                     END DO
                     PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
                     DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
-!                    if(thermal) then
-                        !IT WORKS FOR FE_PRESSURE FOR DCVFEM WAS GIVING PROBLEMS...
-                        !FOR HEAT the formula is: Q=(Ti-TO)*2*PI*K*L/ln(Ro/Ri)
-                        ! but this formula should be for when GAMMA_PRES_ABS = 0 and only diffusion is happening
-!                    end if
                     IF ( .not. is_flooding ) then
                         DO IPHASE = 1, Mdims%nphase
                             DO JPHASE = 1, Mdims%nphase
@@ -2633,16 +2612,32 @@ contains
                 IF ( GOT_T2 ) THEN
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                         + MASS_CV(CV_NODI) * SOURCT_ALL( :, CV_NODI )
-                    DO IPHASE = 1,Mdims%nphase
-                        call addto(Mmat%petsc_ACV,iphase,iphase,&
-                            cv_nodi, cv_nodi,&
-                            + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                            * R_PHASE(IPHASE))
-                    END DO
-                    LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                        + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
-                        + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
-                        * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
+                    if (thermal .and. is_porous_media) then
+                        !In this case for the time-integration term the effective rho Cp is a combination of the porous media
+                        ! and the fluids
+                        DO IPHASE = 1,Mdims%nphase
+                            call addto(Mmat%petsc_ACV,iphase,iphase,&
+                                cv_nodi, cv_nodi,&
+                                + combined_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
+                                * R_PHASE(IPHASE))
+                        END DO
+                        LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
+                            + (CV_BETA * combined_heat_coefOLD( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
+                            + (ONE_M_CV_BETA) * combined_heat_coef( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
+                            * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
+
+                    else
+                        DO IPHASE = 1,Mdims%nphase
+                            call addto(Mmat%petsc_ACV,iphase,iphase,&
+                                cv_nodi, cv_nodi,&
+                                + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
+                                * R_PHASE(IPHASE))
+                        END DO
+                        LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
+                            + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
+                            + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
+                            * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
+                   end if
                 ELSE
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                         + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI )

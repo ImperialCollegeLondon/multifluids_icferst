@@ -286,7 +286,7 @@
             </les_model>
           </discontinuous_galerkin>
           <conservative_advection>
-            <real_value rank="0">0.0</real_value>
+            <real_value rank="0">1.0</real_value>
           </conservative_advection>
         </spatial_discretisation>
         <temporal_discretisation>
@@ -466,7 +466,7 @@
             <diffusion_scheme name="ElementGradient"/>
           </control_volumes>
           <conservative_advection>
-            <real_value rank="0">0.0</real_value>
+            <real_value rank="0">1.0</real_value>
           </conservative_advection>
         </spatial_discretisation>
         <temporal_discretisation>

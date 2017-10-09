@@ -141,7 +141,7 @@ contains
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field
-           REAL, DIMENSION(: , : ), allocatable :: adv_heat_coef, adv_heat_coefOLD
+           REAL, DIMENSION(: , : ), allocatable :: combined_heat_coef, combined_heat_coefOLD
            !Variables for controlling the number of iterations
            real, dimension(:,:,:), allocatable :: reference_temp
            real :: aux
@@ -180,19 +180,17 @@ contains
                         .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
                         FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                     end if
-
-
+                    if (Mdisopt%t_beta == 0) then
+                        FLAbort("For thermal porous media flows the non-consistent form has not been tested properly.")
+                    end if
                     !need to perform average of the effective heat capacity times density for the diffusion and time terms
-                    allocate(adv_heat_coef(Mdims%nphase,Mdims%cv_nonods),adv_heat_coefOLD(Mdims%nphase,Mdims%cv_nonods))
-                    call effective_Cp_density(den_all, denold_all, adv_heat_coef, adv_heat_coefOLD)
-
-
-               else
-                   den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-                   denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
-                   den_all    = den_all2 % val ( 1, :, : )
-                   denold_all = denold_all2 % val ( 1, :, : )
-               end if
+                    allocate(combined_heat_coef(Mdims%nphase,Mdims%cv_nonods),combined_heat_coefOLD(Mdims%nphase,Mdims%cv_nonods))
+                    call effective_Cp_density(combined_heat_coef, combined_heat_coefOLD)
+                end if
+               den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+               den_all    = den_all2 % val ( 1, :, : )
+               denold_all = denold_all2 % val ( 1, :, : )
                ! open the boiling test for two phases-gas and liquid
                if (is_boiling) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -326,7 +324,7 @@ contains
                    mass_ele_transp, IDs_ndgln, &
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   adv_heat_coef = adv_heat_coef, adv_heat_coefOLD = adv_heat_coefOLD)
+                   combined_heat_coef = combined_heat_coef, combined_heat_coefOLD = combined_heat_coefOLD)
 
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
@@ -376,21 +374,21 @@ contains
            call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
-           if (allocated(adv_heat_coef)) then
-                deallocate(adv_heat_coef, adv_heat_coefOLD)
+           if (allocated(combined_heat_coef)) then
+                deallocate(combined_heat_coef, combined_heat_coefOLD)
            end if
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
 
       contains
 
-      subroutine effective_Cp_density(den_all, denold_all, adv_heat_coef, adv_heat_coefOLD)
+      subroutine effective_Cp_density(combined_heat_coef, combined_heat_coefOLD)
         ! Calculation of the averaged heat capacity and density
         ! average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
         ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
         ! as it is stored cv-wise
           implicit none
-        REAL, DIMENSION( : , : ), intent(inout) :: den_all, denold_all, adv_heat_coef, adv_heat_coefOLD
+        REAL, DIMENSION( : , : ), intent(inout) :: combined_heat_coef, combined_heat_coefOLD
         !Local variables
         type( tensor_field ), pointer :: Cp_den_fluids,  Cpold_den_fluids
         type( scalar_field ), pointer :: porosity, density_porous, Cp_porous
@@ -402,8 +400,7 @@ contains
         porosity=>extract_scalar_field(state(1),"Porosity")
         Cp_den_fluids => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
         Cpold_den_fluids => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
-        den_all = 0.; denold_all = 0.
-        adv_heat_coef = 0.; adv_heat_coefOLD = 0.
+        combined_heat_coef = 0.; combined_heat_coefOLD = 0.
         cv_counter = 0
         do ele = 1, Mdims%totele
             p_den = min(size(density_porous%val), ele)
@@ -413,23 +410,19 @@ contains
                 cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                 do iphase = 1, Mdims%nphase
                     cv_counter( iphase,cv_inod ) = cv_counter( iphase,cv_inod ) + 1.0
-                    adv_heat_coef( iphase,cv_inod ) = adv_heat_coef( iphase,cv_inod ) + &
-                        porosity%val(ele_nod) * Cp_den_fluids%val( 1,iphase,cv_inod )
-                    adv_heat_coefOLD( iphase,cv_inod ) = adv_heat_coefOLD( iphase,cv_inod ) + &
-                        porosity%val(ele_nod) * Cpold_den_fluids%val( 1,iphase,cv_inod )
-                    den_all( iphase,cv_inod ) = den_all( iphase,cv_inod ) + &
+                    combined_heat_coef( iphase,cv_inod ) = combined_heat_coef( iphase,cv_inod ) + &
+                        porosity%val(ele_nod) * Cp_den_fluids%val( 1,iphase,cv_inod ) + &
                         (1.0-porosity%val(ele_nod))*density_porous%val(p_den ) * Cp_porous%val( h_cap )
-                    denold_all( iphase,cv_inod ) = denold_all( iphase,cv_inod )+ &
+                    combined_heat_coefOLD( iphase,cv_inod ) = combined_heat_coefOLD( iphase,cv_inod )+ &
+                        porosity%val(ele_nod) * Cpold_den_fluids%val( 1,iphase,cv_inod )+ &
                         (1.0-porosity%val(ele_nod))*density_porous%val(p_den ) * Cp_porous%val( h_cap )
                 end do
             end do
         end do
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
-        adv_heat_coef = adv_heat_coef/cv_counter
-        adv_heat_coefOLD = adv_heat_coefOLD/cv_counter
-        den_all = den_all/cv_counter + adv_heat_coef!<= includes an average of porous and fluid properties
-        denold_all = denold_all/cv_counter + adv_heat_coefOLD!<= includes an average of porous and fluid properties
+        combined_heat_coef = combined_heat_coef/cv_counter!<= includes an average of porous and fluid properties
+        combined_heat_coefOLD = combined_heat_coefOLD/cv_counter!<= includes an average of porous and fluid properties
       end subroutine effective_Cp_density
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
