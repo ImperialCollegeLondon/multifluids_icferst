@@ -119,7 +119,7 @@ contains
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-        porous_heat_coef, porous_heat_coefOLD, porous_Diffusion)
+        porous_heat_coef, porous_heat_coefOLD)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -293,7 +293,6 @@ contains
         type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
         REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef, porous_heat_coefOLD
-        REAL, DIMENSION( :, :, :, : ), optional, intent( in ) :: porous_Diffusion
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -541,7 +540,7 @@ contains
         !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction
         local_upwinding = have_option('/numerical_methods/local_upwinding')
         !this is true if the user is asking for high order advection scheme
-        use_porous_limiter = (Mdisopt%in_ele_upwind /= 1)
+        use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
 
         have_absorption=.false.
         if ( associated( absorbt_all ) ) have_absorption = .true.
@@ -1620,19 +1619,6 @@ contains
                                     DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
                                     LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
                                     on_domain_boundary, between_elements )
-                                if (thermal .and. is_porous_media) then
-                                    CALL DIFFUS_CAL_COEFF( Porous_diff_coef_divdx, Porous_diff_coefold_divdx,  &
-                                        Mdims%cv_nloc, Mdims%mat_nloc, Mdims%nphase, ndgln%mat, &
-                                        CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, porous_Diffusion, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
-                                        HDC, &
-                                        T_ALL_J( : ), T_ALL(:, CV_NODI), &
-                                        TOLD_ALL_J( : ), TOLD_ALL(:, CV_NODI), &
-                                        ELE, ELE2, CVNORMX_ALL( :, GI ), &
-                                        DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
-                                        LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
-                                        on_domain_boundary, between_elements )
-
-                                end if
                             ELSE
                                 DIFF_COEF_DIVDX = 0.0
                                 DIFF_COEFOLD_DIVDX = 0.0
@@ -2104,8 +2090,10 @@ contains
                                     endif
                                 END IF
                                 ! this is for the internal energy equation source term..
-                                IF ( THERMAL ) THEN
-                                    THERM_FTHETA = 1.
+                                ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
+                                !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
+                                IF ( THERMAL .and. Mdims%npres == 1) THEN
+                                    THERM_FTHETA = 1.0
                                     IF( RETRIEVE_SOLID_CTY ) THEN
                                         VOL_FRA_FLUID_I = VOL_FRA_FLUID(CV_NODI)
                                         VOL_FRA_FLUID_J = VOL_FRA_FLUID(CV_NODJ)
@@ -2117,10 +2105,10 @@ contains
                                         CV_P_PHASE_NODI(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=CV_P( 1, IPRES, CV_NODI )
                                         CV_P_PHASE_NODJ(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=CV_P( 1, IPRES, CV_NODJ )
                                     END DO
-                                    LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-                                        - CV_P_PHASE_NODI( : ) * SdevFuns%DETWEI( GI ) * ( &
-                                        THERM_FTHETA * NDOTQNEW( : ) * LIMT2( : ) &
-                                        + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD( : ) )*VOL_FRA_FLUID_I
+                                    LOC_CV_RHS_I = LOC_CV_RHS_I&
+                                        - CV_P_PHASE_NODI * SdevFuns%DETWEI( GI ) * ( &
+                                        THERM_FTHETA * NDOTQNEW * LIMT2 &
+                                        + ( 1. - THERM_FTHETA ) * NDOTQOLD * LIMT2OLD )*VOL_FRA_FLUID_I
                                     if ( integrate_other_side_and_not_boundary ) then
                                         LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
                                             + CV_P_PHASE_NODJ( : ) * SdevFuns%DETWEI( GI ) * ( &
@@ -2486,7 +2474,6 @@ contains
                                 END DO
                             END DO
                         end if
-
                     else ! flooding
                         ! Should really use the manhole diameter here...
                         DO IPRES = 1, Mdims%npres

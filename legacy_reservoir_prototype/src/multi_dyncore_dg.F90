@@ -115,7 +115,7 @@ contains
            logical :: lump_eqns
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-           REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION, porous_Diffusion
+           REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -183,7 +183,6 @@ contains
                     !need to perform average of the effective heat capacity times density for the diffusion and time terms
                     allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods),porous_heat_coefOLD(Mdims%nphase,Mdims%cv_nonods))
                     call effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
-                    allocate( porous_Diffusion( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
                 end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
@@ -254,12 +253,8 @@ contains
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
 
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
-              if (allocated(porous_Diffusion)) then
                 !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-                  call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer , porous_Diffusion= porous_Diffusion)
-              else
                 call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer)
-              end if
            end if
 
            ! get diffusivity for compositional
@@ -325,8 +320,7 @@ contains
                    mass_ele_transp, IDs_ndgln, &
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, porous_heat_coefOLD = porous_heat_coefOLD,&
-                   porous_Diffusion=porous_Diffusion)
+                   porous_heat_coef = porous_heat_coef, porous_heat_coefOLD = porous_heat_coefOLD)
 
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
@@ -377,7 +371,6 @@ contains
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef, porous_heat_coefOLD)
-           if (allocated(porous_Diffusion)) deallocate(porous_Diffusion)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
 

@@ -558,6 +558,10 @@ contains
         !!$ IN/Mdisopt%dg_ele_upwind are options for optimisation of upwinding across faces in the compact_overlapping
         !!$ formulation. The data structure and options for this formulation need to be added later.
         Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
+        if (is_porous_media) Mdisopt%in_ele_upwind = Mdisopt%v_disopt
+
+
+
         return
     end subroutine Get_Discretisation_Options
 
