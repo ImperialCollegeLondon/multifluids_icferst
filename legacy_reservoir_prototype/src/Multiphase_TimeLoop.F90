@@ -408,7 +408,23 @@ contains
              current_time < finish_time &! unless explicitly disabled
              .and. .not. have_option("/io/disable_dump_at_start") &
              ) then
-            call write_state(dump_no, state)
+            
+!-------------------------------------------------------------------------------
+! to allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
+             if (do_checkpoint_simulation(dump_no)) then
+                  checkpoint_number=0
+                  CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                  FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                  pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
+                  call set(pressure_field,FE_Pressure)
+                  call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                                               protect_simulation_name=.true.,file_type='.mpml')
+                  call set(pressure_field,CV_Pressure)
+             end if
+             !not_to_move_det_yet = .false. ;
+!-------------------------------------------------------------------------------
+              call write_state(dump_no, state)
+
         end if
         if(have_option("/io/stat/output_at_start")) then
             call write_diagnostics(state, current_time, dt,&
