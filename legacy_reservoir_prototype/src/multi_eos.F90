@@ -1528,11 +1528,12 @@ contains
 
     end subroutine calculate_u_source_cv
 
-    subroutine calculate_diffusivity(state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer)
+    subroutine calculate_diffusivity(state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer, porous_Diffusion)
       type(state_type), dimension(:), intent(in) :: state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
+      real, dimension(:, :, :, :), optional, intent(inout) :: porous_Diffusion
       !Local variables
       type(scalar_field), pointer :: component, sfield
       type(tensor_field), pointer :: diffusivity, tfield
@@ -1578,10 +1579,16 @@ contains
         !Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
         if ( stat == 0 ) then
 
-            if (is_porous_media) then
+            do iphase = 1, Mdims%nphase
+                diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+                do idim = 1, Mdims%ndim
+                    ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
+                end do
+            end do
+            if (present(porous_Diffusion)) then
                 sfield=>extract_scalar_field(state(1),"Porosity")
                 tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
-                ScalarAdvectionField_Diffusion = 0.
+                porous_Diffusion = 0.
                 ! Calculation of the averaged thermal diffusivity as
                 ! lambda = porosity * lambda_f + (1-porosity) * lambda_p
                 ! Since lambda_p is defined element-wise and lambda_f CV-wise we perform an average
@@ -1594,20 +1601,10 @@ contains
                             mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                             cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                             do idim = 1, Mdims%ndim
-                                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                                    (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, ele_nod))
+                                porous_Diffusion( mat_inod, idim, idim, iphase ) = porous_Diffusion( mat_inod, idim, idim, iphase )&
+                                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, ele_nod)
                             end do
                         end do
-                    end do
-                end do
-
-            else
-                do iphase = 1, Mdims%nphase
-                    diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-                    do idim = 1, Mdims%ndim
-                        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
                     end do
                 end do
             end if
