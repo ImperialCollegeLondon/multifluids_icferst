@@ -2850,7 +2850,7 @@ contains
         !      if ( Field_selector == 1 ) then ! Temperature
 
          if (tracer%name == "PackedTemperature" )  then
-            deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
+            deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
         end if
         if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
         ewrite(3,*) 'Leaving CV_ASSEMB'

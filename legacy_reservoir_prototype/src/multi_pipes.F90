@@ -743,7 +743,7 @@ contains
                         ELSE
                             LIMT(IPHASE)=T_ALL%val(1,IPHASE,JCV_NOD)
                         END IF
-                        FVT(IPHASE) = LIMT(IPHASE)
+                        if (.not. thermal) FVT(IPHASE) = LIMT(IPHASE)!FVT seems to be something related to saturation only...
                     END DO
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                         IF ( WIC_D_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_D_BC_DIRICHLET ) THEN
