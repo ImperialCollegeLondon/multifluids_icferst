@@ -94,6 +94,9 @@
             <integer_value rank="0">4</integer_value>
           </adaptive_non_linear_iterations>
         </Infinite_norm_tol>
+        <Backtracking_factor>
+          <real_value rank="0">-10</real_value>
+        </Backtracking_factor>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -466,7 +469,7 @@
             <diffusion_scheme name="ElementGradient"/>
           </control_volumes>
           <conservative_advection>
-            <real_value rank="0">1.0</real_value>
+            <real_value rank="0">0.0</real_value>
           </conservative_advection>
         </spatial_discretisation>
         <temporal_discretisation>

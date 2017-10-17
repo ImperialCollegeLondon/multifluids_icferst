@@ -888,7 +888,7 @@ contains
         DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
         IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
         IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
-            IF(THERMAL) THEN
+            IF(THERMAL .and. Mdims%npres == 1) THEN
                 IF( RETRIEVE_SOLID_CTY ) THEN
                     ALLOCATE(VOL_FRA_FLUID(Mdims%cv_nonods))
                     Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
@@ -2450,7 +2450,7 @@ contains
                                 END IF
                             END DO
                         END DO
-                        if (CV_BETA == 0) then!add extra terms for the non-conservative formulation
+                        if (.not. conservative_advection) then!add extra terms for the non-conservative formulation
                             DO IPHASE = 1, Mdims%nphase
                                 DO JPHASE = 1, Mdims%nphase
                                     IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
@@ -2623,7 +2623,7 @@ contains
                     R_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV_PLUS( IPRES, CV_NODI ) / DT
                     CV_P_PHASE_NODI(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
                 END DO
-                IF ( THERMAL ) THEN
+                IF ( THERMAL .and. Mdims%npres == 1) THEN
                     IF ( GOT_VIS ) THEN
                         IF( RETRIEVE_SOLID_CTY ) THEN
                             DO IPHASE = 1, Mdims%nphase

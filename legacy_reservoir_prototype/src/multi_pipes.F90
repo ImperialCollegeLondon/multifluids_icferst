@@ -119,31 +119,32 @@ contains
         real, dimension(:,:), allocatable:: SUF_T_BC_ALL_NODS, SUF_D_BC_ALL_NODS, RVEC_SUM_T, RVEC_SUM_D, RVEC_SUM_U, MEAN_U
         real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
         real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
-        logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, ELE_HAS_PIPE, integrate_other_side_and_not_boundary
-        logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, LUMP_COUPLING_RES_PIPES, CALC_SIGMA_PIPE, get_c_pipes
+        logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, ELE_HAS_PIPE
+        logical :: IGNORE_DIAGONAL_PIPES, CALC_SIGMA_PIPE, get_c_pipes
         real :: LOC_CV_RHS_I(Mdims%nphase)
         real :: T1(Mdims%ndim), T2(Mdims%ndim), TT1(Mdims%ndim), TT2(Mdims%ndim), NN1(Mdims%ndim), T1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND
-        real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY, MIN_DIAM
+        real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, MIN_DIAM
         real :: MIN_INV_SIG, R1(1), R2(1), RZ(1)
         real :: TMAX(Mdims%nphase), TMIN(Mdims%nphase), DENMAX(Mdims%nphase), DENMIN(Mdims%nphase)
         integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
             u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
-            icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
+            icorner1, icorner2, icorner3, icorner4, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
             U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
         type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
         type(vector_field), pointer :: X
         logical, save :: has_conductivity_pipes = .false.
+        !Parameters of the simulation
+        logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
+        logical, parameter :: integrate_other_side_and_not_boundary = .FALSE.
+        logical, parameter :: PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
+        logical, parameter :: SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
+        logical, parameter :: LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior.
+        real, parameter :: INFINY=1.0E+20
+        integer, parameter :: WIC_B_BC_DIRICHLET = 1
 
-        integrate_other_side_and_not_boundary = .FALSE.
-        UPWIND_PIPES=.FALSE. ! Used for testing...
-        PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
-        WIC_B_BC_DIRICHLET = 1
-        INFINY=1.0E+20
         IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
-        SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
-        LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
         NCORNER = Mdims%ndim + 1
         allocate( xi_limit(Mdims%nphase), &
@@ -213,6 +214,7 @@ contains
             CVN_VOL_ADJ(2)=0.5
             CVN_VOL_ADJ(3)=0.25
         ENDIF
+
         ! SET UP THE SURFACE B.Mmat%C'S
         allocate(WIC_B_BC_ALL_NODS(Mdims%cv_nonods))
         allocate(WIC_T_BC_ALL_NODS(Mdims%nphase,Mdims%cv_nonods))
@@ -694,7 +696,6 @@ contains
                                     + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
                                     - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                             end do
-
                             ! Put into matrix...
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
                                 call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodi, &
