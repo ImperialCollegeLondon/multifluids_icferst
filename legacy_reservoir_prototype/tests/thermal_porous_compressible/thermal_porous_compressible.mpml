@@ -509,7 +509,7 @@
           <type name="dirichlet">
             <apply_weakly/>
             <constant>
-              <real_value rank="0">25</real_value>
+              <real_value rank="0">50</real_value>
             </constant>
           </type>
         </boundary_conditions>
@@ -540,20 +540,6 @@
             <value name="WholeMesh">
               <constant>
                 <real_value rank="0">4185.5</real_value>
-              </constant>
-            </value>
-            <output/>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-        <scalar_field name="Source" rank="0">
-          <prescribed>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">1e2</real_value>
               </constant>
             </value>
             <output/>
