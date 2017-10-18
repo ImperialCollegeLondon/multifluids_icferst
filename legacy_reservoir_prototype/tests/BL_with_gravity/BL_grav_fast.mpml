@@ -23,7 +23,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -42,14 +42,14 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
+            <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
         </mesh_shape>
         <mesh_continuity>
-          <string_value>discontinuous</string_value>
+          <string_value>continuous</string_value>
         </mesh_continuity>
         <stat>
           <exclude_from_stat/>
@@ -82,14 +82,17 @@
       <real_value rank="0">1e-2</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">0.19</real_value>
+      <real_value rank="0">0.20</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">30</integer_value>
+      <integer_value rank="0">15</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">1e-2</real_value>
+        <Infinite_norm_tol>
+          <real_value rank="0">0.01</real_value>
+        </Infinite_norm_tol>
         <Backtracking_factor>
-          <real_value rank="0">-0.5</real_value>
+          <real_value rank="0">-10</real_value>
         </Backtracking_factor>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
@@ -134,6 +137,7 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
+        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>
@@ -482,7 +486,7 @@
         </scalar_field>
       </immobile_fraction>
       <Sat_overRelax>
-        <real_value rank="0">1e-3</real_value>
+        <real_value rank="0">-1e2</real_value>
       </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
