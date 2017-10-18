@@ -6683,7 +6683,12 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                  trim( path ) // "/solver/remove_null_space", stat )
             ph_sol % option_path = path
 
+
+            call zero(ph_sol) ; call zero_non_owned(rhs)
+
             call petsc_solve( ph_sol, matrix, rhs )
+
+            if (IsParallel()) call halo_update(ph_sol)
 
             printf => extract_scalar_field( state( 1 ), "Ph", stat )
             if ( stat == 0 ) printf%val = ph_sol%val

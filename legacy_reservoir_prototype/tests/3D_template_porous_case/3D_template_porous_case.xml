@@ -2,7 +2,7 @@
 <testproblem>
   <name>3D_template_porous_case</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml CV_P 3d_temp</tags>
+  <tags>porous mpml DCVFEM 3d_temp meow</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst normal_fault.mpml</command_line>
   </problem_definition>

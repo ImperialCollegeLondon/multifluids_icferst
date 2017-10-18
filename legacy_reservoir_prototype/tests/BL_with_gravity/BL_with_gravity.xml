@@ -2,7 +2,7 @@
 <testproblem>
   <name>Check_BL_with_gravity</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous gravity mpml CV_P</tags>
+  <tags>porous gravity mpml DCVFEM</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python ./Check_BL_with_gravity.py &gt; log</command_line>
   </problem_definition>

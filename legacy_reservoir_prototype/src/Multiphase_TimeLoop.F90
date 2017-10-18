@@ -863,18 +863,24 @@ call solve_transport()
             use sparse_tools
             type(csr_sparsity), pointer :: sparsity
             type(tensor_field), pointer :: tfield
+            type(scalar_field), pointer :: sfield
             integer ic, stat
             type(halo_type), pointer :: halo
             type(mesh_type), pointer :: ph_mesh
+            ! This creates sparsity for the Hydrostatic Pressure Solver
+            ! It should work now in parallel
             ph_mesh => extract_mesh( state( 1 ), "ph", stat )
-            if ( stat == 0 ) then
+            sfield => extract_scalar_field(state(1),"Ph")
                 allocate( sparsity )
+            if (associated( sfield%mesh%halos)) then
+                sparsity=wrap( Mspars%ph%fin, colm = Mspars%ph%col, name = "phsparsity",&
+                    row_halo=sfield%mesh%halos(2),&
+                    column_halo=sfield%mesh%halos(2))
+            else
                 sparsity = wrap( Mspars%ph%fin, colm = Mspars%ph%col, name = "phsparsity" )
+            end if
                 call insert( packed_state, sparsity, "phsparsity" )
                 call deallocate( sparsity )
-                deallocate ( sparsity )
-            end if
-            allocate(sparsity)
             sparsity=wrap(Mspars%ACV%fin,Mspars%ACV%mid,colm=Mspars%ACV%col,name='PackedAdvectionSparsity')
             call insert(packed_state,sparsity,'PackedAdvectionSparsity')
             call deallocate(sparsity)
