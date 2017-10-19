@@ -301,9 +301,11 @@ contains
         if( Mdims%ncomp /= 0 )then
             igot_t2 = 1 ; igot_theta_flux = 1
         end if
+
         !Calculate the gauss integer numbers
         call retrieve_ngi( CV_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
         call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%u_ele_type, quad_over_whole_ele = .true. )
+
         !! Compute reference shape functions
         call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
         call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
@@ -871,8 +873,8 @@ call solve_transport()
             ! It should work now in parallel
             ph_mesh => extract_mesh( state( 1 ), "ph", stat )
             if (stat == 0) then
-                sfield => extract_scalar_field(state(1),"Ph")
                 allocate( sparsity )
+                sfield => extract_scalar_field(state(1),"Ph")
                 if (associated( sfield%mesh%halos)) then
                     sparsity=wrap( Mspars%ph%fin, colm = Mspars%ph%col, name = "phsparsity",&
                         row_halo=sfield%mesh%halos(2),&
@@ -883,6 +885,7 @@ call solve_transport()
                 call insert( packed_state, sparsity, "phsparsity" )
                 call deallocate( sparsity )
             end if
+            allocate(sparsity)
             sparsity=wrap(Mspars%ACV%fin,Mspars%ACV%mid,colm=Mspars%ACV%col,name='PackedAdvectionSparsity')
             call insert(packed_state,sparsity,'PackedAdvectionSparsity')
             call deallocate(sparsity)
