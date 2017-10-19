@@ -119,7 +119,7 @@ contains
         real, dimension(:,:), allocatable:: SUF_T_BC_ALL_NODS, SUF_D_BC_ALL_NODS, RVEC_SUM_T, RVEC_SUM_D, RVEC_SUM_U, MEAN_U
         real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
         real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
-        logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, ELE_HAS_PIPE
+        logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, ELE_HAS_PIPE, U_P0DG
         logical :: IGNORE_DIAGONAL_PIPES, CALC_SIGMA_PIPE, get_c_pipes
         real :: LOC_CV_RHS_I(Mdims%nphase)
         real :: T1(Mdims%ndim), T2(Mdims%ndim), TT1(Mdims%ndim), TT2(Mdims%ndim), NN1(Mdims%ndim), T1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND
@@ -153,6 +153,7 @@ contains
         XI_LIMIT(:) = 2.0 ; ndiff=.false. ; diff=.true.
         CV_QUADRATIC = (Mdims%cv_nloc==6.AND.Mdims%ndim==2) .OR. (Mdims%cv_nloc==10.AND.Mdims%ndim==3)
         U_QUADRATIC = (Mdims%u_nloc==6.AND.Mdims%ndim==2) .OR. (Mdims%u_nloc==10.AND.Mdims%ndim==3)
+        U_P0DG = Mdims%u_nloc == 1
         ! Calculate the local corner nodes...
         CALL CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%ndim, Mdims%cv_nloc, CV_QUADRATIC, CV_MID_SIDE )
         CALL CALC_CORNER_NODS( U_LOC_CORNER, Mdims%ndim, Mdims%u_nloc, U_QUADRATIC, U_MID_SIDE )
@@ -169,7 +170,10 @@ contains
             u_lnloc = 3
         else
             u_lnloc = 2
+            !For P0DG only one node exists
+            if (U_P0DG) u_lnloc = 1
         end if
+
         u_lngi = cv_lngi
         allocate( cvweigh(cv_lngi), cvn(cv_lnloc, cv_lngi), n(cv_lnloc, cv_lngi), &
             nlx(cv_lnloc, cv_lngi), un(u_lnloc, u_lngi), unlx(u_lnloc, u_lngi), &
@@ -385,15 +389,19 @@ contains
                     MAT_GL_GL( CV_LILOC ) = ndgln%mat( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
                 END DO
                 ! DEFINE U_LILOC:
-                U_LILOC = 1
-                ICORNER = eles_with_pipe(k)%pipe_corner_nds1( IPIPE )
-                U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( U_LILOC ) = U_ILOC
-                U_LILOC = U_LNLOC
-                ICORNER = eles_with_pipe(k)%pipe_corner_nds2( IPIPE )
-                U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( U_LILOC ) = U_ILOC
-                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
+                if (U_P0DG) then
+                    U_GL_LOC = 1
+                else
+                    U_LILOC = 1
+                    ICORNER = eles_with_pipe(k)%pipe_corner_nds1( IPIPE )
+                    U_ILOC = U_LOC_CORNER( ICORNER )
+                    U_GL_LOC( U_LILOC ) = U_ILOC
+                    U_LILOC = U_LNLOC
+                    ICORNER = eles_with_pipe(k)%pipe_corner_nds2( IPIPE )
+                    U_ILOC = U_LOC_CORNER( ICORNER )
+                    U_GL_LOC( U_LILOC ) = U_ILOC
+                    IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
+                end if
                 DO U_LILOC = 1, U_LNLOC
                     U_ILOC = U_GL_LOC( U_LILOC )
                     U_GL_GL( U_LILOC ) = ndgln%u( (ELE-1)*Mdims%u_nloc + U_ILOC )
@@ -907,7 +915,7 @@ contains
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
 
         !Local variables
-        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL
+        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, U_P0DG
         LOGICAL :: CALC_SIGMA_PIPE, DEFAULT_SIGMA_PIPE_OPTIONS, SWITCH_PIPES_ON_AND_OFF
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
@@ -982,6 +990,7 @@ contains
         END IF
         CV_QUADRATIC = (Mdims%cv_nloc==6.AND.Mdims%ndim==2) .OR. (Mdims%cv_nloc==10.AND.Mdims%ndim==3)
         U_QUADRATIC = (Mdims%u_nloc==6.AND.Mdims%ndim==2) .OR. (Mdims%u_nloc==10.AND.Mdims%ndim==3)
+        U_P0DG = Mdims%u_nloc == 1
         ! The following is for 1d integration...
         scvngi = 2
         if ( CV_QUADRATIC ) then
@@ -995,7 +1004,9 @@ contains
             scvngi = 3
         else
             u_lnloc = 2
+            if (U_P0DG) u_lnloc = 1
         end if
+
         PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe")
         X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         allocate( PIPE_DIAM_GI(scvngi) )
@@ -1021,16 +1032,7 @@ contains
         ! Calculate the local corner nodes...
         CALL CALC_CORNER_NODS(CV_LOC_CORNER, Mdims%ndim, Mdims%cv_nloc, CV_QUADRATIC, CV_MID_SIDE)
         CALL CALC_CORNER_NODS(U_LOC_CORNER, Mdims%ndim, Mdims%u_nloc, U_QUADRATIC, U_MID_SIDE)
-        IF ( U_QUADRATIC ) THEN
-            U_LNLOC = 3
-        ELSE
-            U_LNLOC = 2
-        END IF
-        IF ( CV_QUADRATIC ) THEN
-            CV_LNLOC = 3
-        ELSE
-            CV_LNLOC = 2
-        END IF
+
         allocate( CV_GL_LOC(cv_lnloc), CV_GL_GL(cv_lnloc), X_GL_GL(cv_lnloc), MAT_GL_GL(cv_lnloc) )
         allocate( U_GL_LOC(U_lnloc), U_GL_GL(U_lnloc) )
         ! set up the surface B.Mmat%C.'s
@@ -1076,16 +1078,24 @@ contains
                 CV_GL_GL( : ) = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_GL_LOC(:) )
                 MAT_GL_GL( : ) = ndgln%mat( (ELE-1)*Mdims%cv_nloc + CV_GL_LOC(:) )
                 ! DEFINE U_LILOC:
-                U_LILOC = 1
-                ICORNER = eles_with_pipe(k)%pipe_corner_nds1(IPIPE)
-                U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( U_LILOC ) = U_ILOC
-                U_LILOC = U_LNLOC
-                ICORNER = eles_with_pipe(k)%pipe_corner_nds2(IPIPE)
-                U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( U_LILOC ) = U_ILOC
-                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
-                U_GL_GL(:) = ndgln%u( (ELE-1)*Mdims%u_nloc + U_GL_LOC( : ) )
+                if (U_P0DG) then
+                    U_GL_LOC = 1
+                else
+                    U_LILOC = 1
+                    ICORNER = eles_with_pipe(k)%pipe_corner_nds1( IPIPE )
+                    U_ILOC = U_LOC_CORNER( ICORNER )
+                    U_GL_LOC( U_LILOC ) = U_ILOC
+                    U_LILOC = U_LNLOC
+                    ICORNER = eles_with_pipe(k)%pipe_corner_nds2( IPIPE )
+                    U_ILOC = U_LOC_CORNER( ICORNER )
+                    U_GL_LOC( U_LILOC ) = U_ILOC
+                    IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
+                end if
+                DO U_LILOC = 1, U_LNLOC
+                    U_ILOC = U_GL_LOC( U_LILOC )
+                    U_GL_GL( U_LILOC ) = ndgln%u( (ELE-1)*Mdims%u_nloc + U_ILOC )
+                END DO
+
                 ! Calculate element angle sweeped out by element and pipe
                 IF ( Mdims%ndim == 2 ) THEN
                     ELE_ANGLE = PI
@@ -1171,6 +1181,7 @@ contains
                         L_CVFENX_ALL_REVERSED( IDIM, :, CV_LILOC ) = L_CVFENX_ALL( CV_LILOC, : ) * DIRECTION( IDIM )
                     END DO
                 END DO
+
                 DO U_LILOC = 1, U_LNLOC
                     L_UFEN_REVERSED( :, U_LILOC ) = SUFEN( U_LILOC, : )
                 END DO
@@ -1359,8 +1370,10 @@ contains
         INTEGER :: CV_ILOC, ICORN, JCORN, CV_NCORNER
 
         CV_NCORNER = NDIM + 1
-
-        IF( ((CV_NLOC==3).AND.(NDIM==2)) .OR. ((CV_NLOC==4).AND.(NDIM==3)) ) THEN ! assume linear...
+        if ( CV_NLOC==1) then!For P0DG the simplest case
+            if (present(CV_QUADRATIC) ) CV_QUADRATIC=.FALSE.
+            CV_LOC_CORNER(1)=1
+        else IF( ((CV_NLOC==3).AND.(NDIM==2)) .OR. ((CV_NLOC==4).AND.(NDIM==3))) THEN ! assume linear...
             if (present(CV_QUADRATIC) ) CV_QUADRATIC=.FALSE.
             DO CV_ILOC=1,CV_NLOC
                 CV_LOC_CORNER(CV_ILOC)=CV_ILOC
