@@ -134,7 +134,6 @@ contains
         type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
         type(vector_field), pointer :: X
-        logical, save :: has_conductivity_pipes = .false.
         !Parameters of the simulation
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
         logical, parameter :: integrate_other_side_and_not_boundary = .FALSE.
@@ -301,15 +300,10 @@ contains
             !this is rho * Cp. This is to make it consistent with the advection term in cv-adv-diff
             DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!this is Cp * Rho.
             U_ALL => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )!for consistency with cv_assemb
-            if (first_time_step) has_conductivity_pipes = have_option('/wells_and_pipes/scalar_field::Conductivity')
-            if (has_conductivity_pipes) then
-                nullify(sigma1_pipes)
-                sigma1_pipes => extract_scalar_field( state(1), "Conductivity" )
-            end if
         end if
 
         DO CV_NODI = 1, Mdims%cv_nonods
-            IF ( PIPE_DIAMETER%VAL(CV_NODI) /= 0.0 ) THEN
+            IF ( PIPE_DIAMETER%VAL(CV_NODI) > 1e-8 ) THEN
                 do count = Mspars%small_acv%fin(cv_nodi), Mspars%small_acv%fin(cv_nodi+1)-1
                     cv_nodj = Mspars%small_acv%col(count)
                     IF ( PIPE_DIAMETER%VAL(CV_NODJ) /= 0.0 ) THEN

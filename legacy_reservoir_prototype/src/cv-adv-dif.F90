@@ -472,7 +472,8 @@ contains
         logical :: GOT_T2, use_volume_frac_T2
         logical :: symmetric_P
         ! pipe diamter for reservior modelling
-        type( scalar_field ), pointer :: pipe_Diameter, pipe_Diameter_nano, pipe_Length_nano
+        type( scalar_field ), pointer :: pipe_Diameter, pipe_Diameter_nano, pipe_Length_nano, conductivity_pipes
+        logical :: has_conductivity_pipes
         !Permeability
         type( tensor_field ), pointer :: perm
         !Variables for Capillary pressure
@@ -564,6 +565,14 @@ contains
             end if
             ! factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
             call get_option( "/porous_media/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
+
+
+        end if
+        !For thermal retrieve, if present, the conductivity of the pipes to calculate the heat loss
+        has_conductivity_pipes = .false.
+        if (thermal .and. is_porous_media) then
+            has_conductivity_pipes = have_option('/wells_and_pipes/scalar_field::Conductivity')
+            if (has_conductivity_pipes) conductivity_pipes => extract_scalar_field( state(1), "Conductivity" )
         end if
         !Check pressure matrix based on Control Volumes
         !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
@@ -2227,6 +2236,10 @@ contains
                 allocate(R_PEACMAN( Mdims%nphase ) )
             endif 
             DO CV_NODI = 1, Mdims%cv_nonods
+
+                !Only go through the nodes that have a well
+                if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+
                 ! variables used in the edge approach
                 IF ( PIPES_1D ) THEN
                     h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi), 1.0e-10))**2 )
@@ -2390,6 +2403,9 @@ contains
             if(GETCV_DISC) then
                 PIPE_ABS = 0.0
                 DO CV_NODI = 1, Mdims%cv_nonods
+                    !Only go through the nodes that have a well
+                    if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+
                     IF ( PIPES_1D ) THEN
                         h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
                     ELSE
@@ -2469,6 +2485,49 @@ contains
                                                     DeltaP * pipes_aux%GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
                                                     cc * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
                                                     / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin ) )
+                                        END IF
+                                    END IF
+                                END DO
+                            END DO
+                        end if
+
+                        !add the heat loss contribution due to diffusion to the nodes with pipes defined, even if it is closed
+                        !this might be true only for thermal and porous media
+                        if (has_conductivity_pipes) then
+                            IF ( PIPES_1D ) THEN
+                                h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
+                            ELSE
+                                h = mass_cv( cv_nodi )**(1.0/Mdims%ndim)
+                            END IF
+                            h = max( h, 1.0e-10 )
+                            h_nano = h
+                            count = min(1,cv_nodi)
+                            rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) * 0.9!For testing purposes add a 10% of the diameter as thickness
+                            rp_NANO = rp!0.14 * h_NANO
+                            DO IPHASE = 1, Mdims%nphase
+                                DO JPHASE = 1, Mdims%nphase
+                                    IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                                    JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                                    IF ( IPRES /= JPRES ) THEN
+                                        !we apply Q = (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
+                                        IF ( T_ALL(IPHASE, CV_NODI) >= T_ALL(JPHASE, CV_NODI) ) THEN
+                                            PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
+                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
+                                                 conductivity_pipes%val(count) * 2.0 * PI * h &
+                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
+                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
+                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
+                                                 conductivity_pipes%val(count) * 2.0 * PI * h_nano &
+                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
+                                        ELSE
+                                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
+                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
+                                                 conductivity_pipes%val(count) * 2.0 * PI * h  &
+                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
+                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
+                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
+                                                conductivity_pipes%val(count) * 2.0 * PI * h_nano &
+                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
                                         END IF
                                     END IF
                                 END DO
