@@ -689,12 +689,12 @@ if (is_flooding) return!<== Temporary fix for flooding
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
                              !Also recalculate the Over-relaxation parameter
                             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
-                            if (nonlinear_iteration > 2) then
-                                OvRelax_param = OvRelax_param / dble(its)!**0.5
-                                !For last SFPI iteration we reduce the over-relaxation drastically,
-                                !because otherwise it may introduce mass conservation errors
-                                if (its == Max_sat_its - 1 ) OvRelax_param = OvRelax_param * 1d-2
-                            end if
+!                            if (nonlinear_iteration > 2) then
+!                                OvRelax_param = OvRelax_param / dble(its)**0.5
+!                                !For last SFPI iteration we reduce the over-relaxation drastically,
+!                                !because otherwise it may introduce mass conservation errors
+!                                if (its == Max_sat_its - 1 ) OvRelax_param = OvRelax_param * 1d-2
+!                            end if
 
                          else
                              exit Loop_NonLinearFlux
@@ -1681,7 +1681,6 @@ END IF
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
-
         real, dimension(:,:) :: calculate_mass_delta
 
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'

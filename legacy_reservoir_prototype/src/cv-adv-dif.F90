@@ -1734,16 +1734,25 @@ contains
                                         CAP_DIFF_COEF_DIVDX( : ) = (CAP_DIFFUSION( :, MAT_NODI )&
                                             * rsum_nodi(:)*(1.-INCOME(:))  +&
                                             CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) * INCOME(:)) /HDC
+
                                     ELSE ! Central difference...
-                                        CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
-                                            * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
+                                        CAP_DIFF_COEF_DIVDX( : ) =  -OvRelax_param(CV_NODI) * (0.5*(T_ALL( :, CV_NODI )&
+                                            * rsum_nodi(:) + T_ALL( :, CV_NODJ ) * rsum_nodj(:) ) /HDC)
+!                                        CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
+!                                            * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
                                     ENDIF
                                 ELSE
                                     CAP_DIFF_COEF_DIVDX( : ) = 0.0
                                 ENDIF
+                                !Distribute the capillary coefficient over the phases to ensure mass conservation
+                                !This is very important as it allows to use the over-relaxation parameter safely
+                                !and reduce the cost of using capillary pressure in several orders of magnitude
+                                CAP_DIFF_COEF_DIVDX(1:Mdims%n_in_pres) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
                             ELSE
                                 CAP_DIFF_COEF_DIVDX( : ) = 0.0
                             END IF If_GOT_CAPDIFFUS
+
+
                             ! Pack ndotq information:
                             IPT=1
                             CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) ) ! t
@@ -1910,6 +1919,7 @@ contains
                                     END IF
                                 END IF
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
+
                                 CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                     Mdims, CV_funs, ndgln, Mmat, GI,  &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
@@ -6598,9 +6608,6 @@ end if
         !Local variables for CV pressure bcs
         integer :: KPHASE, CV_SNODK, CV_SNODK_IPHA, CV_SKLOC
         real, dimension(:,:), allocatable :: SUF_SIG_DIAGTEN_BC_pha_GI
-
-
-
 
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (Mmat%CV_pressure) call introduce_C_CV_boundary_conditions(Bound_ele_correct)

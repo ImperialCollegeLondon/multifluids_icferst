@@ -624,7 +624,7 @@ call solve_transport()
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta )
+                        IDs_ndgln, calculate_mass_delta)
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then

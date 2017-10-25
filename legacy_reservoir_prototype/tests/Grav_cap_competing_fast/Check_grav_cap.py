@@ -25,8 +25,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.15
-Tolerance_L2_NORM = 0.0051
+Tolerance_L1_NORM = 0.12
+Tolerance_L2_NORM = 0.005
 
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE

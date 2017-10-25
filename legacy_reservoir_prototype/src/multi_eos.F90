@@ -1384,7 +1384,8 @@ contains
             integer, intent(in) :: totele, cv_nloc
             ! Local Variables
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
-            logical :: Cap_Brooks, Cap_TOTAL
+            logical, save :: Cap_Brooks = .true., Cap_TOTAL = .false.
+            logical, save :: first_time = .true.
             !Working pointers
             real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
             real, dimension(:), allocatable :: Cont_correction
@@ -1397,17 +1398,14 @@ contains
             allocate(Cont_correction(size(satura,2)))
 
             CapPressure = 0.
-
-            ! Logical switches that determine which capillary pressure function to use
-            Cap_Brooks = .false.
-            Cap_TOTAL = .false.
+            ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless TOTAL Pc activated (important to allow overelax even when Pc is off).
+            if (first_time) then
+                Cap_TOTAL = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_TOTALCapillary", nphase)
+                Cap_Brooks = .not. Cap_TOTAL
+                first_time = .false.
+            end if
 
             DO IPHASE = 1, NPHASE
-
-                ! Determine which capillary pressure formulation we are using
-
-                Cap_Brooks = have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brooks_Corey")
-                Cap_TOTAL = have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary")
 
                 if ( (Cap_Brooks) .or. (Cap_TOTAL) ) then
 
@@ -1444,17 +1442,14 @@ contains
                 !Local
                 real, parameter :: eps = 1d-3 !Small values requires smaller time steps
 
-                if(Cap_Brooks) then
-                    Get_capPressure = &
-                        Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - sum(Immobile_fraction(:)) ), 1.0) ** (-a)
-                endif
-
                 if(Cap_TOTAL) then
                     ! Function is CMC * sqrt(phi/K) * (1-S_norm) ^ a  ! Absorb the sqrt(phi/K) into the constant CMC (User has to specify it !!!)
                     ! Note also this model only really makes physical sense with a > 0
-
                     Get_capPressure = &
                         Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**a
+                else
+                    Get_capPressure = &
+                        Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - sum(Immobile_fraction(:)) ), 1.0) ** (-a)
                 endif
 
             end function Get_capPressure
@@ -1470,18 +1465,16 @@ contains
         real, parameter :: eps = 1d-3
         real :: aux
         integer :: i
-        logical :: Cap_Brooks, Cap_TOTAL
+        logical, save :: Cap_Brooks = .true., Cap_TOTAL = .false.
+        logical, save :: first_time = .true.
 
         aux = ( 1.0 - sum(immobile_fraction(:)) )
-
         ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless TOTAL Pc activated (important to allow overelax even when Pc is off).
-        Cap_Brooks = .false.
-        Cap_TOTAL = .false.
-        do i = 1, nphase
-        if(have_option("/material_phase["//int2str(i-1)//"]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) then
-          Cap_TOTAL = .true.
-        endif
-        enddo
+        if (first_time) then
+            Cap_TOTAL = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_TOTALCapillary", nphase)
+            Cap_Brooks = .not. Cap_TOTAL
+            first_time = .false.
+        end if
 
         if(Cap_TOTAL) then
             Get_DevCapPressure = &

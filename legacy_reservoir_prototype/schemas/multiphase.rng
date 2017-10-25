@@ -2496,8 +2496,8 @@ You should specify this ONLY for the wetting phase</a:documentation>
               </optional>
               <optional>
                 <element name="Sat_overRelax">
-                  <a:documentation>Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
-This helps to increase the convergence rate of the FPI solver.
+                  <a:documentation>Introduce over-relaxation in the saturation equation. 
+This severely HELPS to reduce the number of FPI.
 You MUST specify this ONLY for the wetting phase.
 
 If positive, the input value is the entry pressure.

@@ -449,8 +449,8 @@ start =
                        )
                     }
                }?,
-               ## Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
-               ## This helps to increase the convergence rate of the FPI solver.
+               ## Introduce over-relaxation in the saturation equation. 
+               ## This severely HELPS to increase the convergence rate of the FPI solver.
                ## You MUST specify this ONLY for the wetting phase.
                ##
                ## If positive, the input value is the entry pressure.
