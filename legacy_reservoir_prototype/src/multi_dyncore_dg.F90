@@ -840,7 +840,7 @@ if (is_flooding) return!<== Temporary fix for flooding
             if (black_oil .and. nonlinear_iteration <= 2) physics_adjustment = physics_adjustment * 2.
 
             !Positive effects on the convergence !Need to check for shock fronts...
-            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.7
+            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.5
             if (one_phase) physics_adjustment = physics_adjustment * 0.5
 
             !For the time being, it is based on this simple table
