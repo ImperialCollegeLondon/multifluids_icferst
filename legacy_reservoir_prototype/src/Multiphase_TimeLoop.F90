@@ -662,7 +662,7 @@ call solve_transport()
                     exit Loop_NonLinearIteration
                 end if
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, calculate_mass_delta)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, adapt_mesh_in_FPI, calculate_mass_delta)
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI

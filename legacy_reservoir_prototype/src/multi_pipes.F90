@@ -1625,6 +1625,7 @@ contains
                     end do
                 end do
             end do
+
             allocate(pipe_seeds(l))
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
         end subroutine find_pipe_seeds
@@ -1638,7 +1639,7 @@ contains
             type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
             !Local variables
             logical, save :: first_time = .true.
-            real, parameter:: tolerance = 9e-3!tol has to be 9e-3 because that is the precision of the nastran input file
+            real, parameter:: tolerance = 1e-2!tol has to be 1e-2 because that is the precision of the nastran input file
             integer, dimension(2, Mdims%totele) :: visited_eles!Number of element visited and neigbours used
             integer :: starting_node, starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
             integer :: ele, ele2, inode, k, i, j, x_iloc, x_inod, ipipe, first_node, first_loc, neighbours_left
@@ -1670,6 +1671,8 @@ contains
                 ele = starting_ele
                 visited_eles(1,:) = -1; visited_eles(2,:) = 0
                 visited_eles(1,1) = ele; visited_eles(2,1) = 1
+
+
                 !Once we have the starting node we use that to go through the neighbouring nodes to build up the well and the connections
                 k = 1; ele2 = ele
                 ele_loop: do while (.true.)
@@ -1816,6 +1819,7 @@ contains
             !####THIS NEEDS TO BE REVISITED ONCE THE MEMORY IS CORRECTLY CREATED####
             !Now, introduce the value of the diameter only in the correct regions
             !This should be temporary until it is being read from the well file as well.
+
             if (size(PIPE_DIAMETER%val) > 1) then
                 aux = maxval(PIPE_DIAMETER)
                 PIPE_DIAMETER%val = 0.

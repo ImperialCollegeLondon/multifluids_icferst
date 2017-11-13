@@ -451,7 +451,30 @@
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <CVgalerkin_interpolation/>
+        <galerkin_projection>
+          <continuous>
+            <solver>
+              <iterative_method name="gmres">
+                <restart>
+                  <integer_value rank="0">30</integer_value>
+                </restart>
+              </iterative_method>
+              <preconditioner name="hypre">
+                <hypre_type name="boomeramg"/>
+              </preconditioner>
+              <relative_error>
+                <real_value rank="0">1e-10</real_value>
+              </relative_error>
+              <max_iterations>
+                <integer_value rank="0">300</integer_value>
+              </max_iterations>
+              <ignore_all_solver_failures/>
+              <diagnostics>
+                <monitors/>
+              </diagnostics>
+            </solver>
+          </continuous>
+        </galerkin_projection>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
@@ -752,7 +775,30 @@
         <detectors>
           <include_in_detectors/>
         </detectors>
-        <CVgalerkin_interpolation/>
+        <galerkin_projection>
+          <continuous>
+            <solver>
+              <iterative_method name="gmres">
+                <restart>
+                  <integer_value rank="0">30</integer_value>
+                </restart>
+              </iterative_method>
+              <preconditioner name="hypre">
+                <hypre_type name="boomeramg"/>
+              </preconditioner>
+              <relative_error>
+                <real_value rank="0">1e-10</real_value>
+              </relative_error>
+              <max_iterations>
+                <integer_value rank="0">300</integer_value>
+              </max_iterations>
+              <ignore_all_solver_failures/>
+              <diagnostics>
+                <monitors/>
+              </diagnostics>
+            </solver>
+          </continuous>
+        </galerkin_projection>
       </prognostic>
     </scalar_field>
     <multiphase_properties>

@@ -1996,7 +1996,7 @@ end subroutine finalise_multistate
 
 
 subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
-    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order, calculate_mass_delta)
+    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order, adapt_mesh_in_FPI, calculate_mass_delta)
     !This subroutine either store variables before the nonlinear timeloop starts, or checks
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
@@ -2006,6 +2006,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
     logical, intent(in) :: nonLinearAdaptTs
     integer, intent(in) :: its, order
+    logical, optional, intent(in) :: adapt_mesh_in_FPI
+    !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
+    real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
     real :: dt, auxR
     integer :: Aim_num_FPI, auxI, incr_threshold
@@ -2021,8 +2024,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
         Infinite_norm_tol, calculate_mass_tol
-    !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
-    real, dimension(:,:), optional :: calculate_mass_delta
     !! local variable, holds the maximum mass error
     real :: max_calculate_mass_delta
     !Variables for PID time-step size controller
@@ -2213,8 +2214,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 ewrite(show_FPI_conv,*) trim(output_message)
             end if
             !If time adapted based on the non-linear solver then
-            if (nonLinearAdaptTs) then
-
+            if (nonLinearAdaptTs .and. .not. adapt_mesh_in_FPI) then!Do not adapt time if we are adapting the mesh within the FPI and
+                                                                    !this is the first guess
                 !If any solver fails to converge (and the user care), we may want to repeat the time-level
                 !without waiting for the last non-linear iteration
                 if (solver_not_converged .and.have_option(&
