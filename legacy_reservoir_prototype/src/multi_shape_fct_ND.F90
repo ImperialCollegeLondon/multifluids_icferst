@@ -1229,10 +1229,9 @@ contains
                 GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
              end Select
 !!$
-             if( u_nloc == 6 .or. u_nloc == 4) then!Quadratic or bubble velocity element!For bubble and normal mass matrix it should
-                                                    !use the cubic method
+             if( u_nloc == 6 ) then
                 GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             elseif( u_nloc == 10 ) then
+             elseif( u_nloc == 10 .or. u_nloc == 4) then!Quintic for bubble velocity element or P3
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
              end if
           else
@@ -1407,9 +1406,14 @@ contains
              case( 3 )
                 GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end Select
-!!$          ! Use a quadratic interpolation pt set for quad tets and bubble tets
-             if( u_nloc == 10 .or. u_nloc == 5) &
+!!$          ! Use a quadratic interpolation pt set for quad tets
+             if( u_nloc == 10 .or. u_nloc == 5) then
                   GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+             end if
+             ! Use quintic interpolation set for bubble tets
+             if( u_nloc == 5) then
+                GIdims%cv_ngi = 15 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+             end if
           else
              Select Case( volume_order )
              case( 1 )
@@ -8663,9 +8667,29 @@ contains
           L2(11)=BETA
           ! ENDOF IF(NGI.EQ.11) THEN...
        ENDIF
+
+        if (NGI == 15) then!Sixth order quadrature
+          ! Degree of precision is 6
+         L1=(/0.2500000000000000, 0.0000000000000000, 0.3333333333333333, 0.3333333333333333, 0.3333333333333333, &
+             0.7272727272727273, 0.0909090909090909, 0.0909090909090909, 0.0909090909090909, 0.4334498464263357, &
+             0.0665501535736643, 0.0665501535736643, 0.0665501535736643, 0.4334498464263357, 0.4334498464263357/)
+         L2=(/0.2500000000000000, 0.3333333333333333, 0.3333333333333333, 0.3333333333333333, 0.0000000000000000, &
+             0.0909090909090909, 0.0909090909090909, 0.0909090909090909, 0.7272727272727273, 0.0665501535736643, &
+             0.4334498464263357, 0.0665501535736643, 0.4334498464263357, 0.0665501535736643, 0.4334498464263357/)
+         L3=(/0.2500000000000000, 0.3333333333333333, 0.3333333333333333, 0.0000000000000000, 0.3333333333333333, &
+             0.0909090909090909, 0.0909090909090909, 0.7272727272727273, 0.0909090909090909, 0.0665501535736643, &
+             0.0665501535736643, 0.4334498464263357, 0.4334498464263357, 0.4334498464263357, 0.0665501535736643/)
+         !We divide the weights later by 6
+         WEIGHT=(/0.1817020685825351, 0.0361607142857143, 0.0361607142857143, 0.0361607142857143, 0.0361607142857143, &
+             0.0698714945161738, 0.0698714945161738, 0.0698714945161738, 0.0698714945161738, 0.0656948493683187, &
+             0.0656948493683187, 0.0656948493683187, 0.0656948493683187, 0.0656948493683187, 0.0656948493683187/)
+       end if
+
+
        DO I=1,NGI
           L4(I)=1.0-L1(I)-L2(I)-L3(I)
        END DO
+
        ! Now multiply by 1/6. to get weigts correct...
        DO I=1,NGI
           WEIGHT(I)=WEIGHT(I)/6.
