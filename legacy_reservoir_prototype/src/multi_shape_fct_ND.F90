@@ -1231,7 +1231,7 @@ contains
 !!$
              if( u_nloc == 6 ) then
                 GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             elseif( u_nloc == 10 .or. u_nloc == 4) then!Quintic for bubble velocity element or P3
+             elseif( u_nloc == 10 .or. u_nloc == 4) then!Sixth order quadrature for bubble velocity element or P3
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
              end if
           else
@@ -1410,7 +1410,7 @@ contains
              if( u_nloc == 10 .or. u_nloc == 5) then
                   GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end if
-             ! Use quintic interpolation set for bubble tets
+             ! Use sixth order quadrature interpolation set for bubble tets
              if( u_nloc == 5) then
                 GIdims%cv_ngi = 15 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end if
@@ -8668,7 +8668,7 @@ contains
           ! ENDOF IF(NGI.EQ.11) THEN...
        ENDIF
 
-        if (NGI == 15) then!Sixth order quadrature
+        if (NGI == 15) then!Sixth order quadrature, for bubble shape functions or P3
           ! Degree of precision is 6
          L1=(/0.2500000000000000, 0.0000000000000000, 0.3333333333333333, 0.3333333333333333, 0.3333333333333333, &
              0.7272727272727273, 0.0909090909090909, 0.0909090909090909, 0.0909090909090909, 0.4334498464263357, &
