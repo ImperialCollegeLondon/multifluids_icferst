@@ -2530,11 +2530,11 @@ contains
                                                  conductivity_pipes%val(count) * 2.0 * PI * h_nano &
                                                 / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
                                         ELSE
-                                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
+                                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &!PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
                                                 (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
                                                  conductivity_pipes%val(count) * 2.0 * PI * h  &
                                                 / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
+                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &!PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
                                                 (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
                                                 conductivity_pipes%val(count) * 2.0 * PI * h_nano &
                                                 / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )

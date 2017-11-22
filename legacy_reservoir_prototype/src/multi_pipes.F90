@@ -140,7 +140,7 @@ contains
         logical, parameter :: integrate_other_side_and_not_boundary = .FALSE.
         logical, parameter :: PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
         logical, parameter :: SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
-        logical, parameter :: LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior.
+        logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         real, parameter :: INFINY=1.0E+20
         integer, parameter :: WIC_B_BC_DIRICHLET = 1
 

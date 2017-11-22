@@ -163,8 +163,6 @@ contains
 
            call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-           call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV",.false.,.false.)
-           call zero( Mmat%petsc_ACV )
 
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
@@ -300,7 +298,9 @@ contains
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-
+                !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
+                !it works, but it complains...
+                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -364,11 +364,11 @@ contains
                    end if
                end if
 
+                call deallocate(Mmat%petsc_ACV)
            END DO Loop_NonLinearFlux
 
            if (is_boiling) deallocate(T_absorb)
 
-           call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef, porous_heat_coefOLD)
