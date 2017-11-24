@@ -298,9 +298,9 @@ contains
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-                !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
-                !it works, but it complains...
-                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
+               !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
+               !it works, but it complains...
+               call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -352,6 +352,7 @@ contains
                    !Checking solver not fully implemented
                    !if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping
+               call deallocate(Mmat%petsc_ACV)
 
                 !Control how it is converging and decide
                if(thermal) then
@@ -364,7 +365,6 @@ contains
                    end if
                end if
 
-                call deallocate(Mmat%petsc_ACV)
            END DO Loop_NonLinearFlux
 
            if (is_boiling) deallocate(T_absorb)

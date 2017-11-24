@@ -2044,25 +2044,48 @@ start =
                   }
                )
             },
-            ## Specify the conductivity of the well/pipe material.
-            ## If there are several layers this has to be the equivalent conductivity from inside the well/pipe to
-            ## the reservoir.
-            ## This is only required for heat transport
-            element scalar_field {
-               attribute name { "Conductivity" },
-               (
-                  element prescribed {
-                     pressure_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                element diagnostic {
-                  vector_python_diagnostic_algorithm,
-                  diagnostic_scalar_field_no_adapt
-                }| 
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
+            ## Specify thermal well-related options
+            element thermal_well_properties {
+                ## Specify the conductivity of the well/pipe material.
+                ## If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
+                ## the reservoir.
+                ## This is only required for heat transport
+                element scalar_field {
+                   attribute name { "Conductivity" },
+                   (
+                      element prescribed {
+                         pressure_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify the thickness of the well/pipe.
+                ## If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
+                ## the reservoir.
+                ## This is only required for heat transport
+                element scalar_field {
+                   attribute name { "well_thickness" },
+                   (
+                      element prescribed {
+                         pressure_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                }
             }?,
             ## Specify well-related options
             element well_options {

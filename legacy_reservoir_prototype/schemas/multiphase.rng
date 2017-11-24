@@ -2713,27 +2713,52 @@ If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
             </choice>
           </element>
           <optional>
-            <element name="scalar_field">
-              <a:documentation>Specify the conductivity of the well/pipe material.
-If there are several layers this has to be the equivalent conductivity from inside the well/pipe to
+            <element name="thermal_well_properties">
+              <a:documentation>Specify thermal well-related options</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify the conductivity of the well/pipe material.
+If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
 the reservoir.
 This is only required for heat transport</a:documentation>
-              <attribute name="name">
-                <value>Conductivity</value>
-              </attribute>
-              <choice>
-                <element name="prescribed">
-                  <ref name="pressure_mesh_choice"/>
-                  <ref name="prescribed_scalar_field"/>
-                </element>
-                <element name="diagnostic">
-                  <ref name="vector_python_diagnostic_algorithm"/>
-                  <ref name="diagnostic_scalar_field_no_adapt"/>
-                </element>
-                <element name="aliased">
-                  <ref name="generic_aliased_field"/>
-                </element>
-              </choice>
+                <attribute name="name">
+                  <value>Conductivity</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify the thickness of the well/pipe.
+If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
+the reservoir.
+This is only required for heat transport</a:documentation>
+                <attribute name="name">
+                  <value>well_thickness</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
             </element>
           </optional>
           <optional>
