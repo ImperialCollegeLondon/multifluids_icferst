@@ -1557,10 +1557,11 @@ contains
 
     contains
 
-        logical function is_within_pipe(P, v1, v2, diameter)
+        logical function is_within_pipe(P, v1, v2, diameter, printme)
             implicit none
             real, dimension(:), intent(in) :: P, v1, v2
             real, intent(in) :: diameter
+            logical, optional, intent(in) :: printme
             !local variables
             real, dimension(Mdims%ndim) :: vec1, vec2, Vaux
             real :: c1, c2, distance, Saux1, Saux2
@@ -1586,6 +1587,10 @@ contains
                 if (Saux2>1e-10) distance = Saux1/Saux2
            end if
            is_within_pipe = (distance <= diameter)
+
+           if (present_and_true(printme)) then
+            print *, P, v1, v2, is_within_pipe
+           end if
         end function is_within_pipe
 
 
@@ -1641,7 +1646,7 @@ contains
             logical, save :: first_time = .true.
             real, parameter:: tolerance = 1e-2!tol has to be 1e-2 because that is the precision of the nastran input file
             integer, dimension(2, Mdims%totele) :: visited_eles!Number of element visited and neigbours used
-            integer :: starting_node, starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
+            integer :: starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
             integer :: ele, ele2, inode, k, i, j, x_iloc, x_inod, ipipe, first_node, first_loc, neighbours_left
             real :: aux
             real, dimension(Mdims%ndim) :: Vaux
@@ -1659,7 +1664,6 @@ contains
             end do
             !First retrieve the first seed of the well
             seeds_loop: do seed = 1, size(pipe_seeds)
-                starting_node = pipe_seeds(seed)
                 do ele = 1, Mdims%totele
                     do x_iloc = 1, Mdims%x_nloc
                         x_inod = ndgln%x( ( ele - 1 ) * Mdims%x_nloc + x_iloc )
@@ -1671,8 +1675,6 @@ contains
                 ele = starting_ele
                 visited_eles(1,:) = -1; visited_eles(2,:) = 0
                 visited_eles(1,1) = ele; visited_eles(2,1) = 1
-
-
                 !Once we have the starting node we use that to go through the neighbouring nodes to build up the well and the connections
                 k = 1; ele2 = ele
                 ele_loop: do while (.true.)
@@ -1683,7 +1685,7 @@ contains
                         i = 1
                         loc_loop: do x_iloc = 1, Mdims%x_nloc
                             x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
-                            do edge = 1, size(edges,2)-1!<= this can be optimised if we know that there is one well only defined per edges array
+                            do edge = 1, size(edges,2)!<= this can be optimised if we know that there is one well only defined per edges array
                                 if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
                                     select case (i)
                                         case (1)!First true
@@ -1691,7 +1693,7 @@ contains
                                             first_loc = x_iloc
                                             touching_well = .true.
                                             i = i + 1
-                                            !backup just in case this element is not an in between element
+                                            !backup just in case this element is not an in-between-element
                                             ele_bak = ele; neig_bak = neig!<= has to be BEFORE updating ele
                                             !Update position
                                             ele = ele2; neig = max(1, visited_eles(2,get_pos(ele2, visited_eles)))
@@ -1706,8 +1708,8 @@ contains
                                             j = 1
                                             do while (AUX_eles_with_pipe(j)%ele > 0)
                                                 do ipipe = 1, AUX_eles_with_pipe(j)%npipes!Test all the available pipes
-                                                    if ((first_node == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&!We consider one pipe
-                                                        first_node == AUX_eles_with_pipe(j)%pipe_corner_nds2(ipipe)) .and. &  !for the time being!!
+                                                    if ((first_node == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&
+                                                        first_node == AUX_eles_with_pipe(j)%pipe_corner_nds2(ipipe)) .and. &
                                                         (x_inod == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&
                                                         x_inod == AUX_eles_with_pipe(j)%pipe_corner_nds2(ipipe))) then
                                                         found = .true.
@@ -1724,7 +1726,8 @@ contains
                                                 end do
                                             end do
                                             if (.not.found) then
-                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
+!                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
+                                                ipipe = 1 !One pipe per element for the time being
                                                 AUX_eles_with_pipe(j)%npipes = ipipe
                                                 AUX_eles_with_pipe(k)%ele = ele2
                                                 AUX_eles_with_pipe(k)%pipe_index(first_loc) = .true.!Don't know if necessary now...
@@ -1745,7 +1748,7 @@ contains
                             visited_eles(2, visit_counter) = 100
                         end if
                         !Look for new proposed element
-                        do while (.true. .and. neig <= Mdims%ndim + 1)
+                        do while (neig <= Mdims%ndim + 1)
                             ele2 = max(ele_neigh(tfield%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
                             !Update neighbour used in the list
                             i = get_pos(ele, visited_eles)
@@ -1754,7 +1757,6 @@ contains
                             !Store element about to be inspected
                             i = get_pos(ele2, visited_eles)
                             visited_eles(1,i) = ele2
-
                             !If proposed element does not have available elements to study then find another
                             if (visited_eles(2,i) > Mdims%ndim + 1 .or. ele2 == 0) then!Ignore boundary
                                 got_new_ele = .false.
@@ -1798,6 +1800,27 @@ contains
 
                 end do ele_loop
             end do seeds_loop
+
+
+!print *, "ELEMENT COORDINATES"
+!j = 1
+!do while (visited_eles(1,j) > 0)
+!ele = visited_eles(1,j)
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+!j = j + 1
+!end do
+!read*
             !Count useful values
             j = 0
             do while (AUX_eles_with_pipe(j+1)%ele > 0)
@@ -1842,6 +1865,14 @@ contains
                 end if
             end if
             !#######################################################################
+
+!    !To test the results gnuplot and the run spl'test' w linesp
+!to compare with well plotted from multi_tools: spl'test'  using 1:2:3 with lines palette title "Eles", 'well_coords' with lines
+!do j = 1, size(eles_with_pipe)
+!print *, X(:,eles_with_pipe(j)%pipe_corner_nds1(1))
+!print *, X(:,eles_with_pipe(j)%pipe_corner_nds2(1))
+!end do
+!read*
         end subroutine find_nodes_of_well
 
         subroutine copy_from_pipe_coords(original, copy, start, end, siz)

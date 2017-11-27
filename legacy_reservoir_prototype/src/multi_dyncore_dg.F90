@@ -78,7 +78,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -107,9 +107,10 @@ contains
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
-           integer, optional :: icomp
+           integer, optional :: icomp, nonlinear_iteration
            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
            type (multi_pipe_package), intent(in) :: pipes_aux
+           real, optional, dimension(:), intent(inout) :: Courant_number
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -129,7 +130,7 @@ contains
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
            integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
-           type(vector_field)  :: vtracer
+           type(vector_field)  :: vtracer, residual
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
@@ -143,7 +144,17 @@ contains
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field
            REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef, porous_heat_coefOLD
+           !Variables to stabilize the non-linear iteration solver
+           real :: backtrack_par_factor
+           real, allocatable, dimension(:,:) :: temp_bak, backtrack_temp
+           real :: Previous_convergence, updating, new_backtrack_par, resold, first_res
+           real, save :: res = -1
+           logical :: satisfactory_convergence
+           integer :: its, useful_temps
+           type (tensor_field), pointer :: sat_field
+           real, dimension(2) :: totally_min_max
            !Variables for controlling the number of iterations
+           real, allocatable, dimension(:,:) :: bak_temp
            real, dimension(:,:,:), allocatable :: reference_temp
            real :: aux
            real, save :: inf_tolerance = -1
@@ -182,6 +193,9 @@ contains
                     !need to perform average of the effective heat capacity times density for the diffusion and time terms
                     allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods),porous_heat_coefOLD(Mdims%nphase,Mdims%cv_nonods))
                     call effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
+                    allocate(bak_temp(Mdims%nphase, Mdims%cv_nonods))
+                    !Start with the process of backtracking if necessary
+                    call apply_backtracking(1)
                 end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
@@ -301,6 +315,7 @@ contains
                !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
                !it works, but it complains...
                call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
+               if (is_porous_media) bak_temp = tracer%val(1,:,:)
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -323,6 +338,7 @@ contains
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, porous_heat_coefOLD = porous_heat_coefOLD)
 
+
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -332,14 +348,15 @@ contains
                            + Mmat%CV_RHS%val(iphase,:)
                    END DO
                ELSE
+                   vtracer=as_vector(tracer,dim=2)
+                   !Continue with backtracking if required
+                   call apply_backtracking(2)
                    IF ( IGOT_T2 == 1) THEN
-                       vtracer=as_vector(tracer,dim=2)
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
                         '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
                    ELSE
-                       vtracer=as_vector(tracer,dim=2)
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
@@ -356,6 +373,9 @@ contains
 
                 !Control how it is converging and decide
                if(thermal) then
+                   !Perform some backtracking
+                   call apply_backtracking(3)
+
                    if (ITS_FLUX_LIM == 1) then
                        reference_temp = tracer%val
                    else
@@ -374,8 +394,104 @@ contains
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef, porous_heat_coefOLD)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
-
+          call apply_backtracking(4)
       contains
+
+      subroutine apply_backtracking(entrance)
+        integer, intent(in) :: entrance
+        !Local variables
+        logical, save :: no_backtracking = .false., first_time = .true., Auto_max_backtrack = .false.
+        integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
+        type(tensor_field) :: tracer_BCs
+        logical, save :: apply_minmax_principle = .true.!Need to add the check for sources
+        !Check if we do something or not
+        if (no_backtracking) return
+
+        select case (entrance)
+            case (1)
+                !Get variable for global convergence method
+                if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
+                    backtrack_par_factor = 1.1
+                else !Get value with the default value of 1.
+                    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
+                        backtrack_par_factor, default = 1.0)
+                end if
+                if (first_time) then
+                    no_backtracking = backtrack_par_factor > 1.0
+                    first_time = .false.
+                    if (.not. thermal .and..not.is_porous_media) no_backtracking = .true.
+                    !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
+                    Auto_max_backtrack = (backtrack_par_factor == -10)
+                end if
+                if (.not.no_backtracking) then
+                    allocate(temp_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_temp(Mdims%nphase, Mdims%cv_nonods))
+                    if (apply_minmax_principle) then
+                        allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
+                        call get_entire_boundary_condition(tracer,&
+                            ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
+
+                        !Use boundaries for min/max
+                        totally_min_max(1)=minval(tracer_BCs%val)!use stored temperature
+                        totally_min_max(2)=maxval(tracer_BCs%val)!use stored temperature
+                        !Check also domain?
+                        totally_min_max(1)=min(totally_min_max(1), minval(tracer%val))!use stored temperature
+                        totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored temperature
+                        !For parallel
+                        call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+                        deallocate(WIC_T_BC_ALL)
+                    end if
+
+                end if
+            case (2)
+                !If using FPI with backtracking
+                 if (backtrack_par_factor < 1.01) then
+                     call allocate(residual,Mdims%nphase,tracer%mesh,"residual")
+                     !Backup of the temperature field, to adjust the solution
+                     temp_bak = tracer%val(1,:,:)
+                     !If using ADAPTIVE FPI with backtracking
+                     if (backtrack_par_factor < 0) then
+                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                           call auto_backtracking(mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration, .true.)
+                         end if
+
+                         !Calculate the actual residual using a previous backtrack_par
+                         call mult(residual, Mmat%petsc_ACV, vtracer)
+                         !Calculate residual
+                         residual%val = Mmat%CV_RHS%val - residual%val
+                         resold = res; res = 0
+                         do iphase = 1, Mdims%nphase
+                             aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
+                             if (aux > res) res = aux
+                         end do
+                         !We use the highest residual across the domain
+                         if (IsParallel()) call allmax(res)
+                         if (its==1) first_res = res!Variable to check total convergence of the SFPI method
+                     end if
+                 end if
+            case (3)
+                !Correct the solution obtained to make sure we are on track towards the final solution
+                if (backtrack_par_factor < 1.01) then
+                    !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
+                    call FPI_backtracking_for_temperature(state,packed_state, temp_bak, backtrack_temp, backtrack_par_factor,&
+                        Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration,&
+                        useful_temps,res, res/resold, first_res, Mdims%npres, totally_min_max)
+                    !Store the accumulated updated done
+                    updating = updating + new_backtrack_par
+                    !This have to be consistent between processors
+                    if (IsParallel())  call alland(satisfactory_convergence)
+                    !If looping again, recalculate
+                    if (.not. satisfactory_convergence) then
+                        !Store old saturation to fully undo an iteration if it is very divergent
+                        backtrack_temp = temp_bak
+                    end if
+                end if
+            case (4)
+            call deallocate(residual)
+            deallocate(temp_bak, backtrack_temp)
+        end select
+
+      end subroutine apply_backtracking
+
 
       subroutine effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
         ! Calculation of the averaged heat capacity and density
@@ -628,7 +744,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
                          if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                           call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                           call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                          end if
 
                          !Calculate the actual residual using a previous backtrack_par
@@ -788,92 +904,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
         end subroutine non_porous_ensure_sum_to_one
 
-
-
-         subroutine auto_backtracking(backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration)
-            !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
-            implicit none
-            real, intent(inout) :: backtrack_par_factor
-            real, dimension(:), intent(inout) :: courant_number_in
-            logical, intent(in) :: first_time_step
-            integer, intent(in) :: nonlinear_iteration
-            !Local variables
-            real, save :: backup_shockfront_Courant = 0.
-            real :: physics_adjustment, courant_number
-            logical, save :: Readed_options = .false.
-            logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
-
-            !Sometimes the shock-front courant number is not well calculated, then use previous value
-            if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
-            !Combination of the overall and the shock-front Courant number
-            courant_number = 0.4 * courant_number_in(1) + 0.6 * courant_number_in(2)
-            backup_shockfront_Courant = courant_number_in(2)
-
-            if (.not.readed_options) then
-                !We read the options just once, and then they are stored as logicals
-                gravity = have_option("/physical_parameters/gravity")
-                if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) then
-                    cap_pressure = .true.
-                else
-                    cap_pressure = .false.
-                end if
-                compositional = Mdims%ncomp > 0
-                many_phases = Mdims%n_in_pres > 2
-                black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
-                !Positive effects on the convergence !Need to check for shock fronts...
-                if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) then
-                    ov_relaxation = .true.
-                else
-                    ov_relaxation = .false.
-                end if
-                one_phase = (Mdims%n_in_pres == 1)
-                readed_options = .true.
-            end if
-
-            !Depending on the active physics, the problem is more complex and requires more relaxation
-            physics_adjustment = 1.
-            !Negative effects on the convergence
-            if (gravity) physics_adjustment = physics_adjustment * 5.0
-            if (cap_pressure) physics_adjustment = physics_adjustment * 5.0
-            if (compositional) physics_adjustment = physics_adjustment * 1.5
-            if (many_phases) physics_adjustment = physics_adjustment * 1.5
-            !For the first two non-linear iterations, it has to re-adjust, as the gas and oil are again mixed
-            if (black_oil .and. nonlinear_iteration <= 2) physics_adjustment = physics_adjustment * 2.
-
-            !Positive effects on the convergence !Need to check for shock fronts...
-            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.05!huge benefits when using ov_relaxation...
-            if (one_phase) physics_adjustment = physics_adjustment * 0.5
-
-            !For the time being, it is based on this simple table
-            if (Courant_number * physics_adjustment > 50.) then
-                backtrack_par_factor = -0.1
-            else if (Courant_number * physics_adjustment > 25.) then
-                backtrack_par_factor = -0.15
-            else if (Courant_number * physics_adjustment > 15.) then
-                backtrack_par_factor = -0.2
-            else if (Courant_number * physics_adjustment > 8.) then
-                backtrack_par_factor = -0.33
-            else if (Courant_number * physics_adjustment > 5.) then
-                backtrack_par_factor = -0.5
-            else if (Courant_number * physics_adjustment > 1) then
-                backtrack_par_factor = -0.8
-            else
-                backtrack_par_factor = -1.
-            end if
-            !For the first calculation, the Courant number is usually zero, hence we force a safe value here
-            if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
-            !Use the most restrictive value across all the processors
-            if (IsParallel()) call allmin(backtrack_par_factor)
-
-
-
-
-         end subroutine auto_backtracking
-
-
-
     end subroutine VolumeFraction_Assemble_Solve
-
 
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
