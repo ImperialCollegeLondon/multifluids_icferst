@@ -2113,13 +2113,14 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         if (size(reference_field,2) /= size(temperature,1) .or. &
                             size(reference_field,3) /= size(temperature,2) ) then
                             deallocate(reference_field)
-                            allocate (reference_field(1,size(temperature,1),size(temperature,2) ))
+                            !If temperature, also keep and eye on saturation with the other convergence criterion
+                            allocate (reference_field(2,size(temperature,1),size(temperature,2) ))
                         end if
                     else
-                        allocate (reference_field(1,size(temperature,1),size(temperature,2) ))
+                        allocate (reference_field(2,size(temperature,1),size(temperature,2) ))
                     end if
                     reference_field(1,:,:) = temperature
-
+                    reference_field(2,:,:) = phasevolumefraction
                 case default !Default as pressure is always defined and changes more smoothly than velocity
                     if (allocated(reference_field)) then
                         if (size(reference_field,3) /= size(pressure,3) ) then
@@ -2159,8 +2160,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     auxR = maxval(reference_field(1,:,:))
 
                     inf_norm_val = maxval(abs((reference_field(1,:,:)-temperature(:,:))/auxR))
-                    ts_ref_val = inf_norm_val!Use the infinite norm for the time being
-                    tolerance_between_non_linear = 1d9!Only infinite norm for the time being
+                    !Calculate value of the functional for the saturation
+                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(2,:,:), backtrack_or_convergence, its)
+                    backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(2,:,:), backtrack_or_convergence)
 
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
@@ -2182,7 +2184,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 call allmax(inf_norm_val)
             end if
 
-            if (is_porous_media .and. variable_selection == 3) then
+            if (is_porous_media .and. variable_selection >= 3) then
+                if (variable_selection == 4) then
+                    write(output_message, * ) "Checking both: saturation (FPI convergence) and temperature (L_inf)"
+                end if
                 write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its

@@ -439,8 +439,8 @@ contains
                         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                         deallocate(WIC_T_BC_ALL)
                     end if
-
                 end if
+                useful_temps = 1
             case (2)
                 !If using FPI with backtracking
                  if (backtrack_par_factor < 1.01) then
@@ -477,6 +477,7 @@ contains
                         useful_temps,res, res/resold, first_res, Mdims%npres, totally_min_max)
                     !Store the accumulated updated done
                     updating = updating + new_backtrack_par
+                    useful_temps = useful_temps + 1
                     !This have to be consistent between processors
                     if (IsParallel())  call alland(satisfactory_convergence)
                     !If looping again, recalculate

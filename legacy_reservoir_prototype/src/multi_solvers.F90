@@ -978,8 +978,7 @@ contains
                 if (new_FPI) Previous_convergence = Convergences(1)
                 !####Check convergence of the method####
                 satisfactory_convergence = (first_res / res > Conv_to_achiv) &
-                    .or. (get_Convergence_Functional(temperature, temp_bak, backtrack_pars(2)) < convergence_tol .and.&
-                    maxval(abs(temp_bak-temperature))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
+                    .or. (maxval(abs(temp_bak-temperature))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
                 if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
@@ -1034,7 +1033,7 @@ contains
         end if
         !***Calculate new temperature***
         !Obtain new temperature using the backtracking method
-        if (useful_temps < 2 .or. satisfactory_convergence) then
+        if (useful_temps < 2 .or. satisfactory_convergence ) then
             !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
             temperature = temp_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * temperature
         else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY saturated FLOW"
