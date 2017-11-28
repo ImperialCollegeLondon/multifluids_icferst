@@ -1530,7 +1530,7 @@ contains
       type(scalar_field), pointer :: component, sfield
       type(tensor_field), pointer :: diffusivity, tfield
       integer :: icomp, iphase, idim, stat, ele
-      integer :: iloc, mat_inod, cv_inod, ele_nod
+      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
       type(tensor_field), intent(inout) :: tracer
 
@@ -1584,6 +1584,7 @@ contains
                     diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
                     do ele = 1, Mdims%totele
                         ele_nod = min(size(sfield%val), ele)
+                        t_ele_nod = min(size(tfield%val, 3), ele)
                          do iloc = 1, Mdims%mat_nloc
                             mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                             cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
@@ -1591,7 +1592,7 @@ contains
                                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
                                     (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, ele_nod))
+                                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
                             end do
                         end do
                     end do
