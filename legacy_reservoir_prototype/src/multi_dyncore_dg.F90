@@ -429,12 +429,11 @@ contains
                         allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
                         call get_entire_boundary_condition(tracer,&
                             ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
-
                         !Use boundaries for min/max
-                        totally_min_max(1)=minval(tracer_BCs%val)!use stored temperature
+                        totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > 1e-16)!use stored temperature
                         totally_min_max(2)=maxval(tracer_BCs%val)!use stored temperature
-                        !Check also domain?
-                        totally_min_max(1)=min(totally_min_max(1), minval(tracer%val))!use stored temperature
+                        !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
+                        totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > 1e-16))!use stored temperature
                         totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored temperature
                         !For parallel
                         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
@@ -471,6 +470,7 @@ contains
             case (3)
                 !Correct the solution obtained to make sure we are on track towards the final solution
                 if (backtrack_par_factor < 1.01) then
+
                     !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
                     call FPI_backtracking_for_temperature(state,packed_state, temp_bak, backtrack_temp, backtrack_par_factor,&
                         Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration,&

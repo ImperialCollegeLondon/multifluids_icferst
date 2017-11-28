@@ -937,10 +937,10 @@ contains
         temperature =>  temp_field%val(1,:,:)
         !Stablish minimum backtracking parameter
         min_backtrack = 0.1
-        !Ensure that temperature fulfils the min?max principle if there are not sources
+        !Ensure that temperature fulfils the min?max principle if there are no sources
 
         if (apply_minmax_principle)  then
-            temperature = max(min(temperature,totally_min_max(2)),totally_min_max(1))
+            temperature = max(min(temperature,totally_min_max(2)), totally_min_max(1))
         end if
         !Automatic method based on the history of convergence
         if (backtrack_par_from_schema < 0.0) then
@@ -1283,7 +1283,8 @@ contains
         if (one_phase) physics_adjustment = physics_adjustment * 0.5
         if (present_and_true(I_am_temperature)) then
             !Much simpler for temperature?
-            if (.not.ov_relaxation) physics_adjustment = physics_adjustment * 0.05
+            if (.not.ov_relaxation) physics_adjustment = physics_adjustment * 0.01
+!            if (Mdims%npres>1) physics_adjustment = physics_adjustment * 5.0
         end if
         !For the time being, it is based on this simple table
         if (Courant_number * physics_adjustment > 50.) then

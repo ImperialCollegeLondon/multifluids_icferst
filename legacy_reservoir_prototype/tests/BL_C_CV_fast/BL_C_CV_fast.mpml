@@ -464,7 +464,7 @@
         </scalar_field>
       </immobile_fraction>
       <Sat_overRelax>
-        <real_value rank="0">-10</real_value>
+        <real_value rank="0">-1e2</real_value>
       </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
