@@ -404,6 +404,7 @@ contains
         integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
         type(tensor_field) :: tracer_BCs
         logical, save :: apply_minmax_principle = .true.!Need to add the check for sources
+
         !Check if we do something or not
         if (no_backtracking) return
 

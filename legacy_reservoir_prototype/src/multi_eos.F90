@@ -1290,19 +1290,17 @@ contains
         !Local variables
         real, parameter :: epsilon = 1d-10!This value should in theory never be used, the real lower limit
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
-
+        real :: relperm
 
         select case (nphase)
             case (1)
                 material_absorption = INV_PERM* visc(iphase) * min(1.0,max(eps,sat(iphase)))
                 if (present(inv_mat_absorp).and.present(PERM)) &
                         inv_mat_absorp = PERM /(visc(iphase) * min(1.0,max(eps,sat(iphase))))
-            case (2)
-                call relperm_corey_epsilon(material_absorption)
             case (3)
                 call relperm_stone(material_absorption)
-            case default!One phase
-                FLAbort("No relative permeability function implemented for more than 3 phases")
+            case default
+                call relperm_corey_epsilon(material_absorption)
         end select
 
         contains
