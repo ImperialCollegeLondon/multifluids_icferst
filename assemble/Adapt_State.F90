@@ -151,6 +151,7 @@ contains
                       case (1)!First time, we retry with more conservative settings
                               !imposed in Adapt_Integration.F90
                           !Restart to original mesh
+                          ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
                           if(isparallel()) then
                               ! generate stripped versions of the position and metric fields
                               call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
@@ -159,13 +160,14 @@ contains
                               stripped_metric = metric
                           end if
                       case default!Second time, back to original mesh...
-                            call allocate(new_positions, old_positions%dim, old_positions%mesh, name = old_positions%name)
-                            new_positions = old_positions
-                            call incref(new_positions)
-                            !...deallocate everything and leave subroutine
-                            call deallocate(stripped_metric)
-                            call deallocate(stripped_positions)
-                            return
+                          write(0,*) "WARNING: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used."
+                          call allocate(new_positions, old_positions%dim, old_positions%mesh, name = old_positions%name)
+                          new_positions = old_positions
+                          call incref(new_positions)
+                          !...deallocate everything and leave subroutine
+                          call deallocate(stripped_metric)
+                          call deallocate(stripped_positions)
+                          return
                   end select
               end if
               !###############################################################################

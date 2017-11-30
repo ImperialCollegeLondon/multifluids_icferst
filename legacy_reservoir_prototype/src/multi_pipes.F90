@@ -1615,7 +1615,7 @@ contains
             do sele = 1, Mdims%stotel
                 do siloc = 1, Mdims%p_snloc
                     sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(edges,2)-1
+                    do edge = 1, size(nodes,2)-1
                         if (is_within_pipe(X(:,sinod), nodes(:,edge), nodes(:,edge+1), 9d-3)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
@@ -1662,6 +1662,7 @@ contains
                 allocate(AUX_eles_with_pipe(j)%pipe_corner_nds1(Mdims%ndim))!Maximum of number of dimension pipes per element
                 allocate(AUX_eles_with_pipe(j)%pipe_corner_nds2(Mdims%ndim))
             end do
+
             !First retrieve the first seed of the well
             seeds_loop: do seed = 1, size(pipe_seeds)
                 do ele = 1, Mdims%totele
@@ -1675,6 +1676,7 @@ contains
                 ele = starting_ele
                 visited_eles(1,:) = -1; visited_eles(2,:) = 0
                 visited_eles(1,1) = ele; visited_eles(2,1) = 1
+
                 !Once we have the starting node we use that to go through the neighbouring nodes to build up the well and the connections
                 k = 1; ele2 = ele
                 ele_loop: do while (.true.)

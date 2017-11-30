@@ -2,7 +2,7 @@
 <testproblem>
   <name>Compositional_Model_2D</name>
   <owner userid="dimitrios.pavlidis"/>
-  <tags>mpml</tags>
+  <tags>mpml compositional</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cp  CM_2D_2P3C_P1DGP1_10layers.mpml CM_2D_2P3C_P1DGP1_20layers.mpml
 sed -i 's/_10layers/_20layers/' CM_2D_2P3C_P1DGP1_20layers.mpml

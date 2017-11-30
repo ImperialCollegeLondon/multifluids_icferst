@@ -680,20 +680,21 @@ call solve_transport()
                         exit Loop_NonLinearIteration
                     end if
                 end if
+
                 after_adapt=.false.
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
             ! If calculating boundary fluxes, dump them to outfluxes.txt
-            if(calculate_flux) then
+            if(calculate_flux .and..not.Repeat_time_step) then
             ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
                 where (totout /= totout)
                     totout = 0.!If nan then make it zero
                 end where
                 do ioutlet = 1, size(outlet_id)
                     intflux(:, ioutlet) = intflux(:, ioutlet) + totout(1, :, ioutlet)*dt
-                    totout(1, :, ioutlet) = totout(1, :, ioutlet)/sum(totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
+                    totout(1, :, ioutlet) = totout(1, :, ioutlet)!/sum(totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
                 enddo
                 if(getprocno() == 1) call dump_outflux(acctim,porevolume,itime,totout,intflux)
             endif
