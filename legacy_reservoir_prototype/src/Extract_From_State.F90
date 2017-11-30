@@ -2160,10 +2160,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     auxR = maxval(reference_field(1,:,:))
 
                     inf_norm_val = maxval(abs((reference_field(1,:,:)-temperature(:,:))/auxR))
-                    !Calculate value of the functional for the saturation
-                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(2,:,:), backtrack_or_convergence, its)
-                    backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(2,:,:), backtrack_or_convergence)
-
+                    !Calculate value of the l infinitum for the saturation as well
+                    ts_ref_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
                     auxR = maxval(reference_field(1,1,:))
@@ -2184,8 +2182,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 call allmax(inf_norm_val)
             end if
 
-            if (is_porous_media .and. variable_selection >= 3) then
+            if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+            else if (is_porous_media .and. variable_selection == 4) then
+                write(output_message, * )"Saturation (L_inf): ",ts_ref_val,"; Temperature (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
             end if
@@ -2200,9 +2200,15 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             if (is_porous_media) then
                 !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                 !So if the infinity norm is way better than the tolerance we consider that the convergence have been achieved
-                if (inf_norm_val * 5e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
-                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
-                    .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                select case (variable_selection)
+                    case (4)!For temperature only infinite norms for saturation and temperature
+                        ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
+                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                    case default
+                        if (inf_norm_val * 5e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
+                        ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
+                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                end select
             else
                 ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol) .or. its >= NonLinearIteration
             end if
@@ -2213,9 +2219,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             if (IsParallel()) call alland(ExitNonLinearLoop)
             !Tell the user the number of FPI and final convergence to help improving the parameters
             if (ExitNonLinearLoop .and. getprocno() == 1) then
-                if (variable_selection == 4) then
-                    ewrite(0, * ) "Checking both: saturation (FPI convergence) and temperature (L_inf)"
-                end if
                 ewrite(show_FPI_conv,*) trim(output_message)
             end if
             !If time adapted based on the non-linear solver then
