@@ -2185,9 +2185,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             end if
 
             if (is_porous_media .and. variable_selection >= 3) then
-                if (variable_selection == 4) then
-                    write(output_message, * ) "Checking both: saturation (FPI convergence) and temperature (L_inf)"
-                end if
                 write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
@@ -2216,6 +2213,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             if (IsParallel()) call alland(ExitNonLinearLoop)
             !Tell the user the number of FPI and final convergence to help improving the parameters
             if (ExitNonLinearLoop .and. getprocno() == 1) then
+                if (variable_selection == 4) then
+                    ewrite(0, * ) "Checking both: saturation (FPI convergence) and temperature (L_inf)"
+                end if
                 ewrite(show_FPI_conv,*) trim(output_message)
             end if
             !If time adapted based on the non-linear solver then

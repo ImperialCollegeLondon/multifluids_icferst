@@ -405,6 +405,9 @@ contains
         type(tensor_field) :: tracer_BCs
         logical, save :: apply_minmax_principle = .true.!Need to add the check for sources
 
+!THIS DOES NOT SEEM TO HELP AT ALL!! REMOVE ME, AND ALSO FPI_backtracking_for_temperature IF IT IS NOT BEING USED IN 6 MONTHS! 30/11/2017
+RETURN
+
         !Check if we do something or not
         if (no_backtracking) return
 

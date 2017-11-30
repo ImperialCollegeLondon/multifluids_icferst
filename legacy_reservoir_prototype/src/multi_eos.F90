@@ -1290,7 +1290,6 @@ contains
         !Local variables
         real, parameter :: epsilon = 1d-10!This value should in theory never be used, the real lower limit
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
-        real :: relperm
 
         select case (nphase)
             case (1)
