@@ -158,7 +158,13 @@ contains
            real, dimension(:,:,:), allocatable :: reference_temp
            real :: aux
            real, save :: inf_tolerance = -1
+           !Variables to control the PETCs solver
+           integer, save :: max_allowed_its = -1
 
+
+           if(max_allowed_its < 0)  call get_option( &
+               '/material_phase[0]/scalar_field::Temperature/prognostic/solver/max_iterations',&
+               max_allowed_its, default = 100000)
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -367,7 +373,7 @@ contains
                    END IF
 
                    !Checking solver not fully implemented
-                   !if (its_taken >= max_allowed_its) solver_not_converged = .true.
+                   if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping
                call deallocate(Mmat%petsc_ACV)
 
