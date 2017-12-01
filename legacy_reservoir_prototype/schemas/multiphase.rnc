@@ -15,6 +15,7 @@ include "temporal_discretisation.rnc"
 start =
    (
       ## The root node of the options dictionary.
+      ## S.I. units are RECOMMENDED to obtain consistent results.
       element multiphase_options {
          comment,
          ## Model output files are named according to the simulation
@@ -488,6 +489,13 @@ start =
                     element Acceleration_exp{
                     real
                     }?
+                  ),
+                  (
+                    ## For TEMPERATURE ONLY, if there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+	                ## 
+		            ## This imposes that the temperature has to be between bounds.
+                    element Impose_min_max{empty}?
                   ),
                   (
                     ## Convergence criterion based on the 

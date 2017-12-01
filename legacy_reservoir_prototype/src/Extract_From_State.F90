@@ -2026,6 +2026,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         Infinite_norm_tol, calculate_mass_tol
     !! local variable, holds the maximum mass error
     real :: max_calculate_mass_delta
+    real, dimension(2) :: totally_min_max
     !Variables for PID time-step size controller
     logical :: PID_controller
     !Variables for adaptive time stepping based on non-linear iterations
@@ -2157,16 +2158,28 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 case (4)!Temperature
                     call get_var_from_packed_state(packed_state, temperature = temperature)
                     !Calculate normalized infinite norm of the difference
-                    auxR = maxval(reference_field(1,:,:))
+                    totally_min_max(1)=minval(reference_field, MASK = reference_field > 1e-16)!use stored temperature
+                    totally_min_max(2)=maxval(reference_field)!use stored temperature
+                    !For parallel
+                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
 
-                    inf_norm_val = maxval(abs((reference_field(1,:,:)-temperature(:,:))/auxR))
+                    !Analyse the difference
+                    ts_ref_val = inf_norm_scalar_normalised(temperature, reference_field(1,:,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
-                    ts_ref_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+                    inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
-                    auxR = maxval(reference_field(1,1,:))
+!                    auxR = maxval(reference_field(1,1,:))
+!                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
 
-                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
+                    !Calculate normalized infinite norm of the difference
+                    totally_min_max(1)=minval(reference_field)!use stored pressure
+                    totally_min_max(2)=maxval(reference_field)!use stored pressure
+                    !For parallel
+                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+                    !Analyse the difference
+                    inf_norm_val = inf_norm_scalar_normalised(pressure(1,:,:), reference_field(1,:,:), 1.0, totally_min_max)
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
             end select
@@ -2181,15 +2194,23 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 call allmax(max_calculate_mass_delta)
                 call allmax(inf_norm_val)
             end if
-
-            if (is_porous_media .and. variable_selection == 3) then
-                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection == 4) then
-                write(output_message, * )"Saturation (L_inf): ",ts_ref_val,"; Temperature (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+            if (size(pressure,2) > 1) then!==Mdims%npres > 1!This should be removed once we can check mass conservation with wells
+                if (is_porous_media .and. variable_selection == 3) then
+                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its
+                else if (is_porous_media .and. variable_selection == 4) then
+                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its
+                else
+                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+                end if
             else
-                write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+                if (is_porous_media .and. variable_selection == 3) then
+                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+                else if (is_porous_media .and. variable_selection == 4) then
+                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+                else
+                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+                end if
             end if
-
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
@@ -2324,6 +2345,44 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
 contains
 
+    real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
+    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
+    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
+    !f = (NewTracer-OldTracer)/Number of nodes; this is the typical approach for algebraic non linear systems
+    !
+    !The convergence is independent of the dumping parameter
+    !and measures how the previous iteration (i.e. using the previous dumping parameter) performed
+    implicit none
+    real, dimension(:,:), intent(in) :: tracer, reference_tracer
+    real, intent(in) :: dumping
+    real, dimension(2), intent(in) :: totally_min_max
+    !Local variables
+    integer :: cv_inod, iphase
+
+    inf_norm_scalar_normalised = 0.
+    !L_inf norm of all the elements
+    do cv_inod = 1, size(tracer,2)
+        do iphase = 1, size(tracer,1)
+            inf_norm_scalar_normalised = max(inf_norm_scalar_normalised, &
+                abs(normsVal(reference_tracer(iphase,cv_inod)) - normsVal(tracer(iphase,cv_inod))))
+        end do
+    end do
+
+    call allmax(inf_norm_scalar_normalised)
+    !rescale with accumulated dumping, if no dumping just pass down a 1.0
+    inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
+
+    end function
+
+    real function normsVal(val)
+    !Given an input value, it is normalised based on the totally_min_max parameters
+    implicit none
+    real, intent(in) :: val
+
+    normsVal = (val - totally_min_max(1))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
+
+    end function normsVal
+
     real function PID_time_controller(reset)
         !This functions calculates the multiplier to get a new time-step size based on a
         !Proportional-Integral-Derivative (PID) concept. See: SPE-182601-MS
@@ -2432,6 +2491,56 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     end if
 
 end function get_Convergence_Functional
+
+
+real function get_Convergence_Functional_scalar(tracer, reference_tracer, dumping, its)
+    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
+    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
+    !f = (NewTracer-OldTracer)/Number of nodes; this is the typical approach for algebraic non linear systems
+    !
+    !The convergence is independent of the dumping parameter
+    !and measures how the previous iteration (i.e. using the previous dumping parameter) performed
+    implicit none
+    real, dimension(:,:), intent(in) :: tracer, reference_tracer
+    real, intent(in) :: dumping
+    integer, optional, intent(in) :: its
+    !Local variables
+    real, save :: First_potential
+    integer :: cv_inod, modified_vals, iphase
+    real :: aux
+    real, parameter :: tol = 1d-5
+    real :: tmp ! Variable used for parallel consistency
+
+    modified_vals = 0
+    get_Convergence_Functional_scalar = 0.0
+
+    !(L2)**2 norm of all the elements
+    do iphase = 1, size(tracer,1)
+
+        tmp = sum((abs(reference_tracer(iphase,:)-tracer(iphase,:))/size(tracer,2))**2.0)
+        call allsum(tmp)
+
+        get_Convergence_Functional_scalar = max(tmp, get_Convergence_Functional_scalar)
+    end do
+
+    !Rescale using the dumping in saturation to get a more efficient number to compare with
+    !if the backtrack_or_convergence was 10-2 then ts_ref_val will always be small
+    !To make consistent the dumping parameter with the Potential, we have to raise it to 2.0
+    get_Convergence_Functional_scalar = get_Convergence_Functional_scalar / dumping**2.0
+
+    if (present(its)) then
+        if (its == 1) then
+            First_potential = get_Convergence_Functional_scalar
+        else
+            !It could happen that the first potential is effectively zero if using pressure boundary conditions and/or small ts
+            !if that is the case we allow to update the first potential up to two times more
+            if (First_potential * 1d10 < get_Convergence_Functional_scalar .and. its <= 3) First_potential = 2.0*get_Convergence_Functional_scalar
+            get_Convergence_Functional_scalar = get_Convergence_Functional_scalar/First_potential
+        end if
+    end if
+
+end function get_Convergence_Functional_scalar
+
 
 subroutine copy_packed_new_to_iterated(packed_state, viceversa)
     !Values from packed_state are stored in iterated unless viceversa is true, in that case

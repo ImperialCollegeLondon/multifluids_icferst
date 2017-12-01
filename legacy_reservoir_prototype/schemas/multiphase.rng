@@ -583,6 +583,15 @@ If having problems converging the recomendation is to try different parameters f
                   </element>
                 </optional>
                 <optional>
+                  <element name="Impose_min_max">
+                    <a:documentation>For TEMPERATURE ONLY, if there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+
+This imposes that the temperature has to be between bounds.</a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
+                <optional>
                   <element name="Test_mass_consv">
                     <a:documentation>Convergence criterion based on the 
 conservation of mass for the Fixed Point Iteration solver

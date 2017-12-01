@@ -145,16 +145,8 @@ contains
            type( scalar_field ), pointer :: sfield, porous_field
            REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef, porous_heat_coefOLD
            !Variables to stabilize the non-linear iteration solver
-           real :: backtrack_par_factor
-           real, allocatable, dimension(:,:) :: temp_bak, backtrack_temp
-           real :: Previous_convergence, updating, new_backtrack_par, resold, first_res
-           real, save :: res = -1
-           logical :: satisfactory_convergence
-           integer :: its, useful_temps
-           type (tensor_field), pointer :: sat_field
            real, dimension(2) :: totally_min_max
            !Variables for controlling the number of iterations
-           real, allocatable, dimension(:,:) :: bak_temp
            real, dimension(:,:,:), allocatable :: reference_temp
            real :: aux
            real, save :: inf_tolerance = -1
@@ -180,7 +172,7 @@ contains
 
            call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-
+           call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0
@@ -199,9 +191,8 @@ contains
                     !need to perform average of the effective heat capacity times density for the diffusion and time terms
                     allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods),porous_heat_coefOLD(Mdims%nphase,Mdims%cv_nonods))
                     call effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
-                    allocate(bak_temp(Mdims%nphase, Mdims%cv_nonods))
-                    !Start with the process of backtracking if necessary
-                    call apply_backtracking(1)
+                    !Start with the process to apply the min max principle
+                    call force_min_max_principle(1)
                 end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
@@ -318,10 +309,7 @@ contains
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-               !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
-               !it works, but it complains...
-               call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
-               if (is_porous_media) bak_temp = tracer%val(1,:,:)
+
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -355,8 +343,6 @@ contains
                    END DO
                ELSE
                    vtracer=as_vector(tracer,dim=2)
-                   !Continue with backtracking if required
-                   call apply_backtracking(2)
                    IF ( IGOT_T2 == 1) THEN
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
@@ -375,12 +361,10 @@ contains
                    !Checking solver not fully implemented
                    if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping
-               call deallocate(Mmat%petsc_ACV)
-
                 !Control how it is converging and decide
                if(thermal) then
-                   !Perform some backtracking
-                   call apply_backtracking(3)
+                   !Apply, if required the min_max_principle
+                   call force_min_max_principle(2)
 
                    if (ITS_FLUX_LIM == 1) then
                        reference_temp = tracer%val
@@ -393,116 +377,54 @@ contains
 
            END DO Loop_NonLinearFlux
 
+           call deallocate(Mmat%petsc_ACV)
            if (is_boiling) deallocate(T_absorb)
-
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef, porous_heat_coefOLD)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
-          call apply_backtracking(4)
       contains
 
-      subroutine apply_backtracking(entrance)
+
+      subroutine force_min_max_principle(entrance)
         integer, intent(in) :: entrance
         !Local variables
-        logical, save :: no_backtracking = .false., first_time = .true., Auto_max_backtrack = .false.
+        logical, save :: first_time = .true., apply_minmax_principle
         integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
         type(tensor_field) :: tracer_BCs
-        logical, save :: apply_minmax_principle = .true.!Need to add the check for sources
-
-!THIS DOES NOT SEEM TO HELP AT ALL!! REMOVE ME, AND ALSO FPI_backtracking_for_temperature IF IT IS NOT BEING USED IN 6 MONTHS! 30/11/2017
-RETURN
-
+        real, parameter :: tol = 1e-8
         !Check if we do something or not
-        if (no_backtracking) return
+        if (.not.apply_minmax_principle) return
 
         select case (entrance)
             case (1)
                 !Get variable for global convergence method
-                if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
-                    backtrack_par_factor = 1.1
-                else !Get value with the default value of 1.
-                    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
-                        backtrack_par_factor, default = 1.0)
-                end if
                 if (first_time) then
-                    no_backtracking = backtrack_par_factor > 1.0
                     first_time = .false.
-                    if (.not. thermal .and..not.is_porous_media) no_backtracking = .true.
-                    !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
-                    Auto_max_backtrack = (backtrack_par_factor == -10)
+                    !Check diamond
+                    apply_minmax_principle = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Impose_min_max')
                 end if
-                if (.not.no_backtracking) then
-                    allocate(temp_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_temp(Mdims%nphase, Mdims%cv_nonods))
-                    if (apply_minmax_principle) then
-                        allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
-                        call get_entire_boundary_condition(tracer,&
-                            ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
-                        !Use boundaries for min/max
-                        totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > 1e-16)!use stored temperature
-                        totally_min_max(2)=maxval(tracer_BCs%val)!use stored temperature
-                        !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
-                        totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > 1e-16))!use stored temperature
-                        totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored temperature
-                        !For parallel
-                        call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                        deallocate(WIC_T_BC_ALL)
-                    end if
+                if (apply_minmax_principle) then
+                    allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
+                    call get_entire_boundary_condition(tracer,&
+                        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
+                    !Use boundaries for min/max
+                    totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored temperature
+                    totally_min_max(2)=maxval(tracer_BCs%val)!use stored temperature
+                    !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
+                    totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored temperature
+                    totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored temperature
+                    !For parallel
+                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+                    deallocate(WIC_T_BC_ALL)
                 end if
-                useful_temps = 1
             case (2)
-                !If using FPI with backtracking
-                 if (backtrack_par_factor < 1.01) then
-                     call allocate(residual,Mdims%nphase,tracer%mesh,"residual")
-                     !Backup of the temperature field, to adjust the solution
-                     temp_bak = tracer%val(1,:,:)
-                     !If using ADAPTIVE FPI with backtracking
-                     if (backtrack_par_factor < 0) then
-                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
-                           call auto_backtracking(mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration, .true.)
-                         end if
-
-                         !Calculate the actual residual using a previous backtrack_par
-                         call mult(residual, Mmat%petsc_ACV, vtracer)
-                         !Calculate residual
-                         residual%val = Mmat%CV_RHS%val - residual%val
-                         resold = res; res = 0
-                         do iphase = 1, Mdims%nphase
-                             aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
-                             if (aux > res) res = aux
-                         end do
-                         !We use the highest residual across the domain
-                         if (IsParallel()) call allmax(res)
-                         if (its==1) first_res = res!Variable to check total convergence of the SFPI method
-                     end if
-                 end if
-            case (3)
-                !Correct the solution obtained to make sure we are on track towards the final solution
-                if (backtrack_par_factor < 1.01) then
-
-                    !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-                    call FPI_backtracking_for_temperature(state,packed_state, temp_bak, backtrack_temp, backtrack_par_factor,&
-                        Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration,&
-                        useful_temps,res, res/resold, first_res, Mdims%npres, totally_min_max)
-                    !Store the accumulated updated done
-                    updating = updating + new_backtrack_par
-                    useful_temps = useful_temps + 1
-                    !This have to be consistent between processors
-                    if (IsParallel())  call alland(satisfactory_convergence)
-                    !If looping again, recalculate
-                    if (.not. satisfactory_convergence) then
-                        !Store old saturation to fully undo an iteration if it is very divergent
-                        backtrack_temp = temp_bak
-                    end if
-                end if
-            case (4)
-            call deallocate(residual)
-            deallocate(temp_bak, backtrack_temp)
+                if (apply_minmax_principle) &
+                    tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
         end select
 
-      end subroutine apply_backtracking
-
+      end subroutine
 
       subroutine effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
         ! Calculation of the averaged heat capacity and density
