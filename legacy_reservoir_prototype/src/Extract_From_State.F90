@@ -2492,56 +2492,6 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
 
 end function get_Convergence_Functional
 
-
-real function get_Convergence_Functional_scalar(tracer, reference_tracer, dumping, its)
-    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
-    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
-    !f = (NewTracer-OldTracer)/Number of nodes; this is the typical approach for algebraic non linear systems
-    !
-    !The convergence is independent of the dumping parameter
-    !and measures how the previous iteration (i.e. using the previous dumping parameter) performed
-    implicit none
-    real, dimension(:,:), intent(in) :: tracer, reference_tracer
-    real, intent(in) :: dumping
-    integer, optional, intent(in) :: its
-    !Local variables
-    real, save :: First_potential
-    integer :: cv_inod, modified_vals, iphase
-    real :: aux
-    real, parameter :: tol = 1d-5
-    real :: tmp ! Variable used for parallel consistency
-
-    modified_vals = 0
-    get_Convergence_Functional_scalar = 0.0
-
-    !(L2)**2 norm of all the elements
-    do iphase = 1, size(tracer,1)
-
-        tmp = sum((abs(reference_tracer(iphase,:)-tracer(iphase,:))/size(tracer,2))**2.0)
-        call allsum(tmp)
-
-        get_Convergence_Functional_scalar = max(tmp, get_Convergence_Functional_scalar)
-    end do
-
-    !Rescale using the dumping in saturation to get a more efficient number to compare with
-    !if the backtrack_or_convergence was 10-2 then ts_ref_val will always be small
-    !To make consistent the dumping parameter with the Potential, we have to raise it to 2.0
-    get_Convergence_Functional_scalar = get_Convergence_Functional_scalar / dumping**2.0
-
-    if (present(its)) then
-        if (its == 1) then
-            First_potential = get_Convergence_Functional_scalar
-        else
-            !It could happen that the first potential is effectively zero if using pressure boundary conditions and/or small ts
-            !if that is the case we allow to update the first potential up to two times more
-            if (First_potential * 1d10 < get_Convergence_Functional_scalar .and. its <= 3) First_potential = 2.0*get_Convergence_Functional_scalar
-            get_Convergence_Functional_scalar = get_Convergence_Functional_scalar/First_potential
-        end if
-    end if
-
-end function get_Convergence_Functional_scalar
-
-
 subroutine copy_packed_new_to_iterated(packed_state, viceversa)
     !Values from packed_state are stored in iterated unless viceversa is true, in that case
     !the iterated values are moved to the new values

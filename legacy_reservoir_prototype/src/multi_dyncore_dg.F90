@@ -145,7 +145,7 @@ contains
            type( scalar_field ), pointer :: sfield, porous_field
            REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef, porous_heat_coefOLD
            !Variables to stabilize the non-linear iteration solver
-           real, dimension(2) :: totally_min_max
+           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
            !Variables for controlling the number of iterations
            real, dimension(:,:,:), allocatable :: reference_temp
            real :: aux
@@ -172,7 +172,6 @@ contains
 
            call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-           call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0
@@ -310,6 +309,9 @@ contains
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
+               !Solves a PETSC warning saying that we are storing information out of range
+               call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
+               call zero(Mmat%petsc_ACV)
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -357,6 +359,8 @@ contains
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+                   !Just after the solvers
+                   call deallocate(Mmat%petsc_ACV, iphase)
 
                    !Checking solver not fully implemented
                    if (its_taken >= max_allowed_its) solver_not_converged = .true.
@@ -375,9 +379,10 @@ contains
                    end if
                end if
 
+
+
            END DO Loop_NonLinearFlux
 
-           call deallocate(Mmat%petsc_ACV)
            if (is_boiling) deallocate(T_absorb)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
@@ -394,8 +399,6 @@ contains
         integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
         type(tensor_field) :: tracer_BCs
         real, parameter :: tol = 1e-8
-        !Check if we do something or not
-        if (.not.apply_minmax_principle) return
 
         select case (entrance)
             case (1)
@@ -405,7 +408,7 @@ contains
                     !Check diamond
                     apply_minmax_principle = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Impose_min_max')
                 end if
-                if (apply_minmax_principle) then
+                if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
                     allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
                     call get_entire_boundary_condition(tracer,&
                         ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
@@ -417,7 +420,7 @@ contains
                     totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                    deallocate(WIC_T_BC_ALL)
+                    deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
                 end if
             case (2)
                 if (apply_minmax_principle) &
@@ -1416,12 +1419,15 @@ END IF
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
             if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+            if (isParallel()) call halo_update(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
 
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
-            if (isParallel()) then!sprint_to_do need to rethink these parallel communications
-                call zero_non_owned(p_all)
-                call halo_update(p_all)
+
+            if (isParallel())then!sprint_to_do need to rethink these parallel communications
+                call zero_non_owned(P_all)
+                call halo_update(P_all)
             end if
+
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
