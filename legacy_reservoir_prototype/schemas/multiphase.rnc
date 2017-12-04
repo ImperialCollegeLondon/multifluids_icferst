@@ -2109,7 +2109,14 @@ start =
                ## Switches wells on and off to optimise production
                element switch_wells_on_and_off{
                   element phase_exclude{ integer }
-               }?
+               }?,
+                ## If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+                ## .bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+                ## the other way round for values below 100.
+                ## The default value is 1e-2.
+                element wells_bdf_tolerance {
+                  real
+                 }?
             }?,
 
             ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
@@ -2117,7 +2124,6 @@ start =
             element well_volume_ids {
               integer_vector
              }?,
-
              ## Introduce here the relative path to the file defining a 1D well
              ##
              ## Note that the only accepted file format is NASTRAN, i.e. .bdf.

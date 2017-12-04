@@ -69,6 +69,8 @@ module multi_pipes
         WIC_P_BC_DIRICHLET = 1, &
         WIC_P_BC_FREE = 2
 
+    real:: tolerancePipe = 1d-2!tolerancePipe has to be around 1e-2 because that is the precision of the nastran input file
+
      type pipe_coords
             integer :: ele, npipes                               !Element containing pipes, pipes per element
             logical, allocatable, dimension(:) :: pipe_index     !nodes with pipes
@@ -1561,11 +1563,11 @@ contains
 
     contains
 
-        logical function is_within_pipe(P, v1, v2, diameter, printme)
+        logical function is_within_pipe(P, v1, v2, diameter, tol)
             implicit none
             real, dimension(:), intent(in) :: P, v1, v2
             real, intent(in) :: diameter
-            logical, optional, intent(in) :: printme
+            real, intent(in) :: tol
             !local variables
             real, dimension(Mdims%ndim) :: vec1, vec2, Vaux
             real :: c1, c2, distance, Saux1, Saux2
@@ -1574,27 +1576,26 @@ contains
             vec1 = v2(1:Mdims%ndim) - v1(1:Mdims%ndim)
             vec2 = P(1:Mdims%ndim) - v1(1:Mdims%ndim)
 
+
+
             c1 = dot_product(Vec2,Vec1)
             c2 = dot_product(Vec1,Vec1)
             !First we check that the point is between the two vertexes
-            if (c1 <= 0.)then!Before v1
+            if (c1 <= tol)then!Before v1
                 distance = sqrt(dot_product(Vec2,Vec2))
-            else if ( c2 <= c1)then!after v2
+            else if ( c2 - c1 <= tol )then!after v2
                 Vec2 = P(1:Mdims%ndim)-v2(1:Mdims%ndim)
                 distance = sqrt(dot_product(Vec2,Vec2))
             else !Calculate distance to a line
                 Vaux = abs(cross_product(P(1:Mdims%ndim)-v1(1:Mdims%ndim),P(1:Mdims%ndim)-v2(1:Mdims%ndim)))
-                Saux1 = sqrt(dot_product(Vaux,Vaux))
+                Saux1 = sqrt((dot_product(Vaux,Vaux)))
 
                 Vaux = abs(v2(1:Mdims%ndim)-v1(1:Mdims%ndim))
-                Saux2 = sqrt(dot_product(Vaux,Vaux))
-                if (Saux2>1e-10) distance = Saux1/Saux2
+                Saux2 = sqrt((dot_product(Vaux,Vaux)))
+                distance = Saux1/max(Saux2,1d-16)
            end if
            is_within_pipe = (distance <= diameter)
 
-           if (present_and_true(printme)) then
-            print *, P, v1, v2, is_within_pipe
-           end if
         end function is_within_pipe
 
 
@@ -1605,13 +1606,19 @@ contains
             integer, dimension(:,:), allocatable, intent(in) :: edges
             integer, dimension(:), allocatable, intent(inout) :: pipe_seeds
             !Local variables
+            logical, save :: first_time =.true.
             logical :: found
             integer :: i, j, l, count
             integer :: sele, siloc, sinod
             real, dimension(size(nodes,2)) :: aux_pipe_seeds
             aux_pipe_seeds = -1
-
-
+            !Initialise tolerancePipe just once per simulation
+            if (first_time) then
+                first_time = .false.
+                if (have_option('/wells_and_pipes/well_options/wells_bdf_tolerance')) then
+                    call get_option('/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
+                end if
+            end if
             !Use brute force through the surface of the domain. This should work in parallel and in serial
             !as long as the well reaches a boundary of one of the domains. The cost is minimised by looping over the boundary of
             !the domain only
@@ -1619,8 +1626,8 @@ contains
             do sele = 1, Mdims%stotel
                 do siloc = 1, Mdims%p_snloc
                     sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(nodes,2)-1
-                        if (is_within_pipe(X(:,sinod), nodes(:,edge), nodes(:,edge+1), 9d-3)) then
+                    do edge = 1, size(nodes,2)-1                                       !diameter should be at least one order bigger than tolerance
+                        if (is_within_pipe(X(:,sinod), nodes(:,edge), nodes(:,edge+1), tolerancePipe*10., tolerancePipe)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
                                 if (aux_pipe_seeds(j)==sinod) found = .true.
@@ -1648,7 +1655,6 @@ contains
             type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
             !Local variables
             logical, save :: first_time = .true.
-            real, parameter:: tolerance = 1e-2!tol has to be 1e-2 because that is the precision of the nastran input file
             integer, dimension(2, Mdims%totele) :: visited_eles!Number of element visited and neigbours used
             integer :: starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
             integer :: ele, ele2, inode, k, i, j, x_iloc, x_inod, ipipe, first_node, first_loc, neighbours_left
@@ -1692,7 +1698,8 @@ contains
                         loc_loop: do x_iloc = 1, Mdims%x_nloc
                             x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
                             do edge = 1, size(edges,2)!<= this can be optimised if we know that there is one well only defined per edges array
-                                if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
+                                                                                   !diameter should be at least one order bigger than tolerance
+                                if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerancePipe*10., tolerancePipe)) then
                                     select case (i)
                                         case (1)!First true
                                             first_node = x_inod

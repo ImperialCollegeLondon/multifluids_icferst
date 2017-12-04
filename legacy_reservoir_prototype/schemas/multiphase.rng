@@ -2801,13 +2801,24 @@ This will over-write the field specified in Sigma1.</a:documentation>
                   </element>
                 </element>
               </optional>
+              <optional>
+                <element name="wells_bdf_tolerance">
+                  <a:documentation>If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+.bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+the other way round for values below 100.
+The default value is 1e-2.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
           </optional>
-          <element name="well_volume_ids">
-            <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+          <optional>
+            <element name="well_volume_ids">
+              <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.</a:documentation>
-            <ref name="integer_vector"/>
-          </element>
+              <ref name="integer_vector"/>
+            </element>
+          </optional>
           <zeroOrMore>
             <element name="well_from_file">
               <a:documentation>Introduce here the relative path to the file defining a 1D well
