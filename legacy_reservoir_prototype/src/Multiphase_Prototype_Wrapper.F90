@@ -248,13 +248,14 @@ contains
         implicit none
         type(state_type), dimension(:), pointer, intent(inout) :: state
         !Local variables
-        integer :: i, nphase, npres
+        integer :: i, nphase, npres, aux
+        integer, dimension(2) :: shape
         character( len = option_path_len ) :: option_path
         integer :: stat
         type (scalar_field), target :: targ_Store
         type (scalar_field), pointer :: sfield1, sfield2
         type (vector_field), pointer :: position
-
+        integer, dimension(:), allocatable :: well_ids
 
         nphase = option_count("/material_phase")
         npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
@@ -362,6 +363,39 @@ contains
             end do
         end if
 
+        !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
+        if (npres>1 .and. have_option('/mesh_adaptivity/hr_adaptivity') ) then
+            if (have_option('/wells_and_pipes/well_volume_ids')) then
+                !Introduce some dummy regions to ensure that mesh adaptivity keeps the wells in place
+                shape = option_shape('/wells_and_pipes/well_volume_ids')
+                assert(shape(1) >= 0)
+                allocate(well_ids(shape(1)))
+                !allocate(outlet_id(1))
+                call get_option( '/wells_and_pipes/well_volume_ids', well_ids)
+                !Create field by adding the fields manually
+                option_path = "/wells_and_pipes/scalar_field::Well_domains"
+                call add_option(trim(option_path),  stat=stat)
+                call add_option(trim(option_path)//"/prescribed",  stat=stat)
+                call add_option(trim(option_path)//"/prescribed/mesh::P0DG",  stat=stat)
+
+                !Add dummy values only for the regions with wells, the others are set to zero by default which is fine
+                do i = 1, size(well_ids,1)
+                    call add_option(trim(option_path)//"/prescribed/value::"//"Well_domain_"//int2str(well_ids(i)),  stat=stat)
+                    call add_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/region_ids",  stat=stat)
+                    call set_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/region_ids", (/well_ids(i)/),  stat=stat)
+                    call add_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/constant",  stat=stat)
+                    call set_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/constant", real(well_ids(i)), stat=stat)
+                end do
+                deallocate(well_ids)
+                call add_option(trim(option_path)//"/prescribed/do_not_recalculate",  stat=stat)
+                call copy_option("/simulation_type/porous_media",&
+                 trim(option_path)//"/prescribed/output/exclude_from_vtu")
+             else if (have_option('/wells_and_pipes/well_from_file[0]')) then
+                ewrite(0, *) "WARNING: well trajectories may not be preserved after mesh adaptivity. It is recommended to use /wells_and_pipes/well_volume_ids"
+             end if
+        end if
+!print all the options in the diamond file and added here to the terminal
+!call print_options()
         !Call fluidity to populate state
         call populate_state(state)
 

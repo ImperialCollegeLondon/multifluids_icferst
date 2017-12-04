@@ -1327,6 +1327,10 @@ contains
              call allocate_and_insert_scalar_field('/wells_and_pipes/thermal_well_properties/scalar_field::well_thickness', &
                 states(i), field_name='well_thickness')
           end if
+          if (have_option('/wells_and_pipes/well_volume_ids')) then
+              call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Well_domains', &
+                 states(i), field_name='Well_domains')
+        end if
        end do
     end if
 

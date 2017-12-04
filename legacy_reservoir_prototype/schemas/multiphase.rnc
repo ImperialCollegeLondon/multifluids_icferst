@@ -2111,6 +2111,13 @@ start =
                   element phase_exclude{ integer }
                }?
             }?,
+
+            ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+            ## that the well trajectories are preserved.
+            element well_volume_ids {
+              integer_vector
+             }?,
+
              ## Introduce here the relative path to the file defining a 1D well
              ##
              ## Note that the only accepted file format is NASTRAN, i.e. .bdf.

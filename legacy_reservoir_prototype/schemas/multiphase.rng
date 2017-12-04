@@ -14,7 +14,8 @@
   <include href="temporal_discretisation.rng"/>
   <start>
     <element name="multiphase_options">
-      <a:documentation>The root node of the options dictionary.</a:documentation>
+      <a:documentation>The root node of the options dictionary.
+S.I. units are RECOMMENDED to obtain consistent results.</a:documentation>
       <ref name="comment"/>
       <element name="simulation_name">
         <a:documentation>Model output files are named according to the simulation
@@ -2802,6 +2803,11 @@ This will over-write the field specified in Sigma1.</a:documentation>
               </optional>
             </element>
           </optional>
+          <element name="well_volume_ids">
+            <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+that the well trajectories are preserved.</a:documentation>
+            <ref name="integer_vector"/>
+          </element>
           <zeroOrMore>
             <element name="well_from_file">
               <a:documentation>Introduce here the relative path to the file defining a 1D well
