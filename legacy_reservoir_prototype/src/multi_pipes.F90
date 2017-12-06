@@ -1625,7 +1625,7 @@ contains
                 do siloc = 1, Mdims%p_snloc
                     sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
                     do edge = 1, size(edges,2)                                       !diameter should be at least one order bigger than tolerance
-                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe, tolerancePipe)) then
+                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe*10., tolerancePipe)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
                                 if (aux_pipe_seeds(j)==sinod) found = .true.
@@ -1697,7 +1697,7 @@ contains
                             x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
                             do edge = 1, size(edges,2)!<= this can be optimised if we know that there is one well only defined per edges array
                                                                                    !diameter should be at least one order bigger than tolerance
-                                if (is_within_pipe(X(:,x_inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe, tolerancePipe)) then
+                                if (is_within_pipe(X(:,x_inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe*.10, tolerancePipe)) then
                                     select case (i)
                                         case (1)!First true
                                             first_node = x_inod
