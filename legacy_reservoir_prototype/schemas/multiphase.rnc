@@ -2122,7 +2122,11 @@ start =
             ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
             ## that the well trajectories are preserved.
             element well_volume_ids {
-              integer_vector
+              integer_vector,
+                  (
+                    ## Output the ids of the wells
+                    element Show_well_volumes_ids{comment}?
+                  )
              }?,
              ## Introduce here the relative path to the file defining a 1D well
              ##

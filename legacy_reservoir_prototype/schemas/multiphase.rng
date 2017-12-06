@@ -2817,6 +2817,12 @@ The default value is 1e-2.</a:documentation>
               <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.</a:documentation>
               <ref name="integer_vector"/>
+              <optional>
+                <element name="Show_well_volumes_ids">
+                  <a:documentation>Output the ids of the wells</a:documentation>
+                  <ref name="comment"/>
+                </element>
+              </optional>
             </element>
           </optional>
           <zeroOrMore>
