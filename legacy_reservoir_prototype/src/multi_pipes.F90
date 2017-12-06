@@ -1575,9 +1575,6 @@ contains
             is_within_pipe = .false.
             vec1 = v2(1:Mdims%ndim) - v1(1:Mdims%ndim)
             vec2 = P(1:Mdims%ndim) - v1(1:Mdims%ndim)
-
-
-
             c1 = dot_product(Vec2,Vec1)
             c2 = dot_product(Vec1,Vec1)
             !First we check that the point is between the two vertexes
@@ -1593,9 +1590,10 @@ contains
                 Vaux = abs(v2(1:Mdims%ndim)-v1(1:Mdims%ndim))
                 Saux2 = sqrt((dot_product(Vaux,Vaux)))
                 distance = Saux1/max(Saux2,1d-16)
-           end if
-           is_within_pipe = (distance <= diameter)
 
+           end if
+
+           is_within_pipe = (distance <= diameter)
         end function is_within_pipe
 
 
@@ -1626,8 +1624,8 @@ contains
             do sele = 1, Mdims%stotel
                 do siloc = 1, Mdims%p_snloc
                     sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(nodes,2)-1                                       !diameter should be at least one order bigger than tolerance
-                        if (is_within_pipe(X(:,sinod), nodes(:,edge), nodes(:,edge+1), tolerancePipe*10., tolerancePipe)) then
+                    do edge = 1, size(edges,2)                                       !diameter should be at least one order bigger than tolerance
+                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe, tolerancePipe)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
                                 if (aux_pipe_seeds(j)==sinod) found = .true.
@@ -1699,7 +1697,7 @@ contains
                             x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
                             do edge = 1, size(edges,2)!<= this can be optimised if we know that there is one well only defined per edges array
                                                                                    !diameter should be at least one order bigger than tolerance
-                                if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerancePipe*10., tolerancePipe)) then
+                                if (is_within_pipe(X(:,x_inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe, tolerancePipe)) then
                                     select case (i)
                                         case (1)!First true
                                             first_node = x_inod

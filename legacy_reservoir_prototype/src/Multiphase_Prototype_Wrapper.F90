@@ -387,7 +387,7 @@ contains
                     call set_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/constant", real(well_ids(i)), stat=stat)
                 end do
                 deallocate(well_ids)
-                if (.not. have_option('/wells_and_pipes/well_volume_ids/Show_well_volumes_ids'))&
+                if (have_option('/wells_and_pipes/well_volume_ids/Show_well_volumes_ids'))&
                     call add_option(trim(option_path)//"/prescribed/do_not_recalculate",  stat=stat)
                 call copy_option("/simulation_type/porous_media",&
                  trim(option_path)//"/prescribed/output/exclude_from_vtu")
