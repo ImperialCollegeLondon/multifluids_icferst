@@ -1563,21 +1563,21 @@ contains
 
     contains
 
-        logical function is_within_pipe(P, v1, v2, diameter, tol)
+        logical function is_within_pipe(P, v1, v2, tol)
             implicit none
             real, dimension(:), intent(in) :: P, v1, v2
-            real, intent(in) :: diameter
             real, intent(in) :: tol
             !local variables
             real, dimension(Mdims%ndim) :: vec1, vec2, Vaux
-            real :: c1, c2, distance, Saux1, Saux2
+            real :: c1, c2, distance, Saux1, Saux2, diam
             !Initialiase variables
             is_within_pipe = .false.
             vec1 = v2(1:Mdims%ndim) - v1(1:Mdims%ndim)
             vec2 = P(1:Mdims%ndim) - v1(1:Mdims%ndim)
 
+
             c1 = dot_product(Vec2,Vec1)
-            c2 = dot_product(Vec1,Vec1)
+            c2 = dot_product(Vec1,Vec1)!<=lenght of the section**2
             !First we check that the point is between the two vertexes
             if (c1 <= tol)then!Before v1
                 distance = sqrt(dot_product(Vec2,Vec2))
@@ -1586,14 +1586,18 @@ contains
                 distance = sqrt(dot_product(Vec2,Vec2))
             else !Calculate distance to a line
                 Vaux = abs(cross_product(P(1:Mdims%ndim)-v1(1:Mdims%ndim),P(1:Mdims%ndim)-v2(1:Mdims%ndim)))
-                Saux1 = sqrt((dot_product(Vaux,Vaux)))
+                Saux1 = sqrt(dot_product(Vaux,Vaux))
 
                 Vaux = abs(v2(1:Mdims%ndim)-v1(1:Mdims%ndim))
-                Saux2 = sqrt((dot_product(Vaux,Vaux)))
+                Saux2 = sqrt(dot_product(Vaux,Vaux))
                 distance = Saux1/max(Saux2,1d-16)
 
            end if
-           is_within_pipe = (distance <= diameter)
+
+!           is_within_pipe = (distance <= diameter)
+            !Use a relative tolerance to the lenght of the section, as mesh adaptivity allows a bit of movement
+            diam = max(0.005 * sqrt(c2), tol)
+           is_within_pipe = (distance <= diam)
         end function is_within_pipe
 
 
@@ -1624,10 +1628,9 @@ contains
             do sele = 1, Mdims%stotel
                 do siloc = 1, Mdims%p_snloc
                     sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(edges,2)                                       !diameter should be here of the same tolerance as tolerancePipe
-                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe, tolerancePipe)) then
+                    do edge = 1, size(edges,2)
+                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
 
-!                        if (is_within_pipe(X(:,sinod), nodes(:,edge), nodes(:,edge+1), tolerancePipe*10., tolerancePipe)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
                                 if (aux_pipe_seeds(j)==sinod) found = .true.
@@ -1698,9 +1701,7 @@ contains
                         loc_loop: do x_iloc = 1, Mdims%x_nloc
                             x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
                             do edge = 1, size(edges,2)!<= this can be optimised if we know that there is one well only defined per edges array
-                                                                                   !diameter should be at least one order bigger than tolerance
-                                if (is_within_pipe(X(:,x_inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe*10, tolerancePipe)) then
-!                                if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerancePipe*10., tolerancePipe)) then
+                                if (is_within_pipe(X(:,x_inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)),  tolerancePipe)) then
                                     select case (i)
                                         case (1)!First true
                                             first_node = x_inod
@@ -1740,8 +1741,8 @@ contains
                                                 end do
                                             end do
                                             if (.not.found) then
-!                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
-                                                ipipe = 1 !One pipe per element for the time being
+                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
+!                                                ipipe = 1 !One pipe per element for the time being
                                                 AUX_eles_with_pipe(j)%npipes = ipipe
                                                 AUX_eles_with_pipe(k)%ele = ele2
                                                 AUX_eles_with_pipe(k)%pipe_index(first_loc) = .true.!Don't know if necessary now...
@@ -1852,6 +1853,10 @@ contains
             call copy_from_pipe_coords(Aux_eles_with_pipe, eles_with_pipe, 1, j, siz = k + j)
             !Finally if required, copy bak_eles back into eles_with_pipes
             if (resize) call copy_from_pipe_coords(BAK_eles_with_pipe, eles_with_pipe, j+1, k + j)
+
+
+
+
             !#######################################################################
             !####THIS NEEDS TO BE REVISITED ONCE THE MEMORY IS CORRECTLY CREATED####
             !Now, introduce the value of the diameter only in the correct regions
@@ -1901,6 +1906,7 @@ contains
             !Local variables
             integer :: k, k_orig
             if (present(siz)) allocate(copy(siz))
+
             k_orig = 1
             do k = start, end
                 allocate(copy(k)%pipe_index(Mdims%ndim + 1))
