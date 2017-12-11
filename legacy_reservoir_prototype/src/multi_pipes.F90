@@ -83,7 +83,7 @@ contains
 
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal )
+                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
         type(state_type), intent(inout) :: packed_state
         type(state_type), dimension(:), intent(in) :: state
@@ -98,7 +98,7 @@ contains
         real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
         real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
         logical, intent( in ) :: getcv_disc, getct, thermal
-        real, intent(in) :: DT
+        real, intent(in) :: DT, CV_BETA
         !Variables that are used to define the pipe pos.
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
 
@@ -136,6 +136,8 @@ contains
         type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
         type(vector_field), pointer :: X
+        !Logical to check if we using a conservative method or not, to save cpu time
+        logical :: conservative_advection
         !Parameters of the simulation
         logical, parameter :: GET_C_PIPES = .FALSE.
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
@@ -145,6 +147,8 @@ contains
         logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         real, parameter :: INFINY=1.0E+20
         integer, parameter :: WIC_B_BC_DIRICHLET = 1
+
+        conservative_advection = abs(cv_beta) > 0.99
 
         IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
@@ -701,6 +705,7 @@ contains
                             END DO
                         END IF
                         IF ( GETCV_DISC ) THEN
+
                             FVT(:) = T_CV_NODI(:)*(1.0-INCOME(:)) + T_CV_NODJ(:)*INCOME(:)
                             ! Put results into the RHS vector
                             LOC_CV_RHS_I = 0.0
@@ -709,6 +714,9 @@ contains
                                       ! subtract 1st order adv. soln.
                                     + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
                                     - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                                if (.not.conservative_advection)  LOC_CV_RHS_I( IPHASE ) = LOC_CV_RHS_I( IPHASE ) &
+                                    - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * T_CV_NODI(IPHASE) &
+                                    + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * T_CV_NODI(IPHASE)
                             end do
                             ! Put into matrix...
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -716,6 +724,9 @@ contains
                                     +suf_DETWEI( bGI ) * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
                                 call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodj, &
                                     +suf_DETWEI( bGI ) * NDOTQ(iphase) * INCOME(iphase) * LIMD(iphase))
+                                if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodi, &
+                                    -suf_DETWEI( bGI ) * NDOTQ(iphase) * LIMD(iphase))
+
                             end do
                             call addto( Mmat%CV_RHS, CV_NODI, LOC_CV_RHS_I )
                         END IF
@@ -819,12 +830,16 @@ contains
                                 ! subtract 1st order adv. soln.
                                 + suf_area  * NDOTQ(IPHASE) * ( 1. - INCOME(iphase) ) * LIMD(IPHASE) * FVT(IPHASE)  &
                                 - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                              if (.not.conservative_advection)  LOC_CV_RHS_I( IPHASE ) = LOC_CV_RHS_I( IPHASE ) &
+                                    - suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * T_ALL%val(1,IPHASE,JCV_NOD) &
+                                    + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * T_ALL%val(1,IPHASE,JCV_NOD)
                         end do
-
                         ! Put into matrix...
                         do iphase = Mdims%n_in_pres+1, Mdims%nphase
                             call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
                                 + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
+                            if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
+                                -suf_area * NDOTQ(iphase) * LIMD(iphase))
                         end do
                         call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                     ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
@@ -1596,7 +1611,7 @@ contains
 
 !           is_within_pipe = (distance <= diameter)
             !Use a relative tolerance to the lenght of the section, as mesh adaptivity allows a bit of movement
-            diam = max(0.005 * sqrt(c2), tol)
+            diam = max(0.01 * sqrt(c2), tol)
            is_within_pipe = (distance <= diam)
         end function is_within_pipe
 
@@ -1741,7 +1756,7 @@ contains
                                                 end do
                                             end do
                                             if (.not.found) then
-                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
+                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1 !Add one pipe
 !                                                ipipe = 1 !One pipe per element for the time being
                                                 AUX_eles_with_pipe(j)%npipes = ipipe
                                                 AUX_eles_with_pipe(k)%ele = ele2

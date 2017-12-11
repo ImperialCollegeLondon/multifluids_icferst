@@ -2228,7 +2228,7 @@ contains
 
                 CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-                    SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe, thermal = THERMAL )
+                    SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta )
 
                 if(is_flooding) then
                     DO CV_NODI = 1, Mdims%cv_nonods
@@ -2332,6 +2332,7 @@ contains
                         END IF ! IF ( IPRES /= JPRES ) THEN
                     END DO
                 END DO
+
                DO IPHASE = 1, Mdims%nphase
                    DO JPHASE = 1, Mdims%nphase
                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
@@ -2443,6 +2444,7 @@ contains
                     DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
                     !If got_t2 (mainly for thermal) the equations are also multiplied by the saturation. To keep the code "tidy" we do it here
                     if (GOT_T2)  DEN_FOR_PIPE_PHASE(:) = DEN_FOR_PIPE_PHASE(:) * T2_ALL(:, CV_NODI)
+
                     IF ( .not. is_flooding ) then
                         DO IPHASE = 1, Mdims%nphase
                             DO JPHASE = 1, Mdims%nphase
@@ -2453,7 +2455,7 @@ contains
                                     !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                                     ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                                     ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
-                                    IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) - PRES_FOR_PIPE_PHASE_FULL(JPHASE) >= 0.0 ) THEN
+                                    IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) >= PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
                                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
                                             DeltaP * pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
                                             cc * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
@@ -2465,7 +2467,7 @@ contains
                                                 / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin ) )
                                         END IF
                                     ELSE
-                                        PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
+                                        PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) +&
                                             DeltaP * pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( JPHASE ) * &
                                             cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                                             / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
@@ -2489,7 +2491,7 @@ contains
                                         !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                                         ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                                         ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
-                                        IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) - PRES_FOR_PIPE_PHASE_FULL(JPHASE) >= 0.0 ) THEN!mass is leaving
+                                        IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) >= PRES_FOR_PIPE_PHASE_FULL(JPHASE)  ) THEN!mass is leaving
                                             PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) - &!notice the negative sign
                                                 DeltaP * pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
                                                 cc * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
@@ -2498,12 +2500,20 @@ contains
                                                     DeltaP * pipes_aux%GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
                                                     cc * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
                                                     / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin ) )
+                                        ELSE
+                                           PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) - &!notice the negative sign
+                                               DeltaP * pipes_aux%GAMMA_PRES_ABS( JPHASE, IPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( JPHASE ) * &
+                                               cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                                               / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                                           IF ( GOT_NANO )  PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) - &
+                                                DeltaP * pipes_aux%GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( JPHASE ) * &
+                                                cc * 2.0 * PI * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                                    / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin ) )
                                         END IF
                                     END IF
                                 END DO
                             END DO
                         end if
-
                         !add the heat loss contribution due to diffusion to the nodes with pipes defined, even if it is closed
                         !this might be true only for thermal and porous media
                         if (has_conductivity_pipes) then
@@ -2534,11 +2544,11 @@ contains
                                                  conductivity_pipes%val(count) * 2.0 * PI * h_nano &
                                                 / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
                                         ELSE
-                                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &!PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
+                                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
                                                 (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
                                                  conductivity_pipes%val(count) * 2.0 * PI * h  &
                                                 / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &!PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
+                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
                                                 (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
                                                 conductivity_pipes%val(count) * 2.0 * PI * h_nano &
                                                 / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
@@ -2824,7 +2834,7 @@ contains
                    END DO
                 END IF
                 ! scaling coefficient...
-                IF ( Mdims%npres > 1 .AND. explicit_pipes2) THEN
+                IF ( Mdims%npres > 1 .AND. explicit_pipes2 ) THEN
                     DO IPRES=1,Mdims%npres
                         DO JPRES=1,Mdims%npres
                             DO jphase=1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
