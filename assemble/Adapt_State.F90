@@ -141,6 +141,7 @@ contains
           do i = 1, 2
               call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
                   force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
+              call allor(adapt_error)
               !#####Section to ensure that mesh adaptivity does not stop the simulation#######
               if (.not.adapt_error) then
                 exit!Life is good! We can continue!
@@ -151,7 +152,9 @@ contains
                       case (1)!First time, we retry with more conservative settings
                               !imposed in Adapt_Integration.F90
                           !Restart to original mesh
-                          ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
+                          if (getprocno() == 1) then
+                            ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
+                          end if
                           if(isparallel()) then
                               ! generate stripped versions of the position and metric fields
                               call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
@@ -160,9 +163,11 @@ contains
                               stripped_metric = metric
                           end if
                       case default!Second time, back to original mesh...
-                          write(0,*) "WARNING: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used."
-                          call allocate(new_positions, old_positions%dim, old_positions%mesh, name = old_positions%name)
-                          new_positions = old_positions
+                          if (getprocno() == 1) then
+                            write(0,*) "WARNING: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
+                          end if
+                          call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
+                          call set(new_positions,old_positions)
                           call incref(new_positions)
                           !...deallocate everything and leave subroutine
                           call deallocate(stripped_metric)

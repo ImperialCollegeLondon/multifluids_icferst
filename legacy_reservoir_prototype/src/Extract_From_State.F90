@@ -2004,8 +2004,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     type(state_type), intent(inout) :: packed_state
     real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
+    integer, intent(inout) :: its!not to be modified unless VERY sure
     logical, intent(in) :: nonLinearAdaptTs
-    integer, intent(in) :: its, order
+    integer, intent(in) :: order
     logical, optional, intent(in) :: adapt_mesh_in_FPI
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
@@ -2016,7 +2017,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
-    real, dimension(:,:), pointer :: phasevolumefraction, temperature
+    real, dimension(:,:), pointer :: phasevolumefraction, temperature, OldTemperature
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
     logical, save :: match_final_t = .true.
@@ -2225,6 +2226,18 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     case (4)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                        !Sometimes the temperature fails to converge and returns T = 0 two times consecutively making it think that it works
+                        if (nonLinearAdaptTs .and. ts_ref_val < 1d-8)  then!can this be a problem if the temperature becomes homogenenous in the domain?
+                            call get_var_from_packed_state(packed_state, OldTemperature = OldTemperature)
+                            auxR = maxval(OldTemperature); call allmax(auxR)
+                            !If the min/max temperature is the same and the max temperature has varied more than 1% then repeat
+                            !when this convergence error occurs the tempereture becomes the min temperature (if min/max impriple is imposed) or zero
+                            if (abs(totally_min_max(1)-totally_min_max(2)) < 1d-8 .and. abs(auxR-totally_min_max(2)/auxR) > 0.01) then
+                                ewrite(show_FPI_conv,*) "WARNING: Energy not conserved, repeating time-step."
+                                ExitNonLinearLoop = .true.!Ensure that it does not converge
+                                its = NonLinearIteration + 1!modifies its because if this fails in its == 1  it NEEDS to repeat the time-step anyway
+                            end if
+                        end if
                     case default
                         if (inf_norm_val * 5e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
