@@ -359,11 +359,11 @@ contains
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+                   !Checking solver not fully implemented
+                   if (its_taken >= max_allowed_its .or. its_taken == 0 ) solver_not_converged = .true.
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV, iphase)
 
-                   !Checking solver not fully implemented
-                   if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping
                 !Control how it is converging and decide
                if(thermal) then
@@ -769,7 +769,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
              !If the final saturation solve of the final non-linear FPI fails, then we ensure that the result is not accepted
              !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
-             if (its_taken >= max_allowed_its) solver_not_converged = .true.
+             if (its_taken >= max_allowed_its  .or. its_taken == 0 ) solver_not_converged = .true.
 
              if (IsParallel()) then
                 !Make sure the parameter is consistent between cpus

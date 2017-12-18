@@ -2517,45 +2517,45 @@ contains
                         !add the heat loss contribution due to diffusion to the nodes with pipes defined, even if it is closed
                         !this might be true only for thermal and porous media
                         if (has_conductivity_pipes) then
-                            IF ( PIPES_1D ) THEN
-                                h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
-                            ELSE
-                                h = mass_cv( cv_nodi )**(1.0/Mdims%ndim)
-                            END IF
-                            h = max( h, 1.0e-10 )
-                            h_nano = h
-                            count = min(1,cv_nodi)
-                            !Rp is the internal radius of the well
-                            rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
-                            rp_NANO = rp!0.14 * h_NANO
-                            DO IPHASE = 1, Mdims%nphase
-                                DO JPHASE = 1, Mdims%nphase
-                                    IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                                    JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                                    IF ( IPRES /= JPRES ) THEN
-                                        !we apply Q = (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
-                                        IF ( T_ALL(IPHASE, CV_NODI) >= T_ALL(JPHASE, CV_NODI) ) THEN
-                                            PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
-                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
-                                                 conductivity_pipes%val(count) * 2.0 * PI * h &
-                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
-                                                 conductivity_pipes%val(count) * 2.0 * PI * h_nano &
-                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
-                                        ELSE
-                                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
-                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
-                                                 conductivity_pipes%val(count) * 2.0 * PI * h  &
-                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                            IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
-                                                (T_ALL(IPHASE, CV_NODI) - T_ALL(JPHASE, CV_NODI)) *  &
-                                                conductivity_pipes%val(count) * 2.0 * PI * h_nano &
-                                                / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
+                            !Apply onle where wells are closed  !don't like the maxval here...
+                            if (maxval(pipes_aux%GAMMA_PRES_ABS( :, :, CV_NODI ))<1d-8) then!REMOVE THIS IF LATER ON IT SHOULD DO NOT HARM...
+                                IF ( PIPES_1D ) THEN
+                                    h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
+                                ELSE
+                                    h = mass_cv( cv_nodi )**(1.0/Mdims%ndim)
+                                END IF
+                                h = max( h, 1.0e-10 )
+                                h_nano = h
+                                count = min(1,cv_nodi)
+                                !Rp is the internal radius of the well
+                                rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
+                                rp_NANO = rp!0.14 * h_NANO
+                                DO IPHASE = 1, Mdims%nphase
+                                    DO JPHASE = 1, Mdims%nphase
+                                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                                        JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                                        IF ( IPRES /= JPRES ) THEN
+                                            !we apply Q = (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
+                                            IF ( T_ALL(IPHASE, CV_NODI) >= T_ALL(JPHASE, CV_NODI) ) THEN
+!                                            IF (IPRES < JPRES) THEN
+                                                PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
+                                                    conductivity_pipes%val(count) * 2.0 * PI * h &
+                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
+                                                IF ( GOT_NANO ) PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
+                                                     conductivity_pipes%val(count) * 2.0 * PI * h_nano &
+                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
+                                            ELSE
+                                                PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - &
+                                                    conductivity_pipes%val(count) * 2.0 * PI * h &
+                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
+                                                IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - &
+                                                    conductivity_pipes%val(count) * 2.0 * PI * h_nano &
+                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
+                                            END IF
                                         END IF
-                                    END IF
+                                    END DO
                                 END DO
-                            END DO
+                            end if
                         end if
                     else ! flooding
                         ! Should really use the manhole diameter here...

@@ -2359,12 +2359,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 contains
 
     real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
-    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
-    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
-    !f = (NewTracer-OldTracer)/Number of nodes; this is the typical approach for algebraic non linear systems
-    !
-    !The convergence is independent of the dumping parameter
-    !and measures how the previous iteration (i.e. using the previous dumping parameter) performed
+    !Calculate the inf norm of the normalised field, so the field goes from 0 to 1
     implicit none
     real, dimension(:,:), intent(in) :: tracer, reference_tracer
     real, intent(in) :: dumping
