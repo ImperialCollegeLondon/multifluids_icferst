@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast_PID_adapt_ts</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml adaptive_time</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./BL_fast_PID_adapt_ts.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="BL_fast_adapt_ts" language="python">BL_fast_PID_adapt_ts = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: BL_fast_PID_adapt_ts = True
+
+assert(BL_fast_PID_adapt_ts)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

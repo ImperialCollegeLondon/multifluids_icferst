@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!-- test zoltan output to ensure it's comparable to Sams -->
+<testproblem>
+  <name>Two-dimensional backward facing step.</name>
+  <owner userid="jhill1"/>
+  <tags>flml zoltan parallel 2dadapt</tags>
+  <problem_definition length="medium" nprocs="2">
+    <command_line>mpiexec ../../bin/flredecomp -i 1 -o 2 -v -l backward_facing_step_2d backward_facing_step_2d_flredecomp ;  mpiexec ../../bin/fluidity backward_facing_step_2d_flredecomp.flml </command_line>
+  </problem_definition>
+  <variables>
+    <variable name="solvers_converged" language="python">
+import os
+files = os.listdir("./")
+solvers_converged = not "matrixdump" in files and not "matrixdump.info" in files
+    </variable>
+    <variable name="FinalTime" language="python">
+import fluidity_tools
+FinalTime = fluidity_tools.stat_parser("backward_facing_step_2d.stat")['ElapsedTime']['value'][-1]
+    </variable>
+    <variable name="FinalTimeSam" language="python">
+import fluidity_tools
+FinalTimeSam = fluidity_tools.stat_parser("backward_facing_step_2d_sam.stat")['ElapsedTime']['value'][-1]
+    </variable>
+    <variable name="MaximumVelocity" language="python">
+import fluidity_tools
+MaximumVelocity = fluidity_tools.stat_parser("backward_facing_step_2d.stat")['Fluid']['Velocity%magnitude']['max'][-1]
+    </variable>    
+    <variable name="MaximumVelocitySam" language="python">
+import fluidity_tools
+MaximumVelocitySam = fluidity_tools.stat_parser("backward_facing_step_2d_sam.stat")['Fluid']['Velocity%magnitude']['max'][-1]
+    </variable>
+    <variable name="FinalNodeCount" language="python">
+import fluidity_tools
+FinalNodeCount = fluidity_tools.stat_parser("backward_facing_step_2d.stat")['CoordinateMesh']['nodes'][-1]
+    </variable>    
+    <variable name="FinalNodeCountSam" language="python">
+import fluidity_tools
+FinalNodeCountSam = fluidity_tools.stat_parser("backward_facing_step_2d_sam.stat")['CoordinateMesh']['nodes'][-1]
+    </variable>
+
+  </variables>
+  <pass_tests>
+    <test name="Solvers converged" language="python">
+      assert(solvers_converged)
+    </test>
+<!-- 
+     On the same machine the first two tests should be nearly exact. Because buildbot is not the machine
+     where the Sam tests were run, the output might well be a bit different. Therefore using % error even on the
+     time check. We don't want a red buildbot, do we?
+
+     BIG NOTE: I have loosened these tolerences a lot as Precise and Natty give different behaviour. Once
+     we drop Natty support, they can be tigthened back to 2%, 5% and 5% respectively
+-->
+      <test name="Final time within 10.0%" language="python">
+Err = (abs(FinalTime-FinalTimeSam) / FinalTimeSam) *100
+print Err
+assert (Err &lt; 10.0)
+    </test>    
+    <test name="Max velocity within 10%" language="python">
+Err = (abs(MaximumVelocity-MaximumVelocitySam) / MaximumVelocitySam) *100
+print Err
+assert (Err &lt; 10.)
+    </test>
+    <test name="Node count within 12%" language="python">
+nodeCountErr = (abs(FinalNodeCount-FinalNodeCountSam) / FinalNodeCountSam) *100
+print nodeCountErr, FinalNodeCount, FinalNodeCountSam
+assert ( nodeCountErr &lt; 12)
+    </test>
+
+  </pass_tests>
+  <warn_tests>
+  </warn_tests>
+</testproblem>

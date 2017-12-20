@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>water collapse example<comment>Runs a 2d, low resolution (for speed) simulation of the water collapse simulation performed by Zhou, Z. Q., Kat, J. O. De, &amp; Buchner, B. 1999. A nonlinear 3-D approach to simulate green water dynamics on deck. In: Report No. 82000-NSH, vol. 7. (see also Park, I. R., Kim, K. S., Kim, J., &amp; Van, S. H. 2009. A volume-of-fluid method for incompressible free surface flows. International Journal for Numerical Methods in Fluids.)
+</comment></name>
+  <owner userid="cwilson"/>
+  <tags>flml 2dadapt<comment>- uses flml
+- uses 2d adaptivity</comment></tags>
+  <problem_definition length="long" nprocs="1">
+    <command_line>mpiexec fluidity -v2 -l water_collapse.flml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="finishtime" language="python">from fluidity_tools import stat_parser as stat
+finishtime= stat("water_collapse.stat")["ElapsedTime"]["value"][-1]</variable>
+    <variable name="mindivergence" language="python">from fluidity_tools import stat_parser as stat
+mindivergence= max(abs(stat("water_collapse.stat")["Water"]["ControlVolumeDivergence"]["min"]))</variable>
+    <variable name="minvfrac" language="python">from fluidity_tools import stat_parser as stat
+minvfrac= max(stat("water_collapse.stat")["Water"]["MaterialVolumeFraction"]["min"])</variable>
+    <variable name="maxdivergence" language="python">from fluidity_tools import stat_parser as stat
+maxdivergence= max(stat("water_collapse.stat")["Water"]["ControlVolumeDivergence"]["max"])</variable>
+    <variable name="maxvfrac" language="python">from fluidity_tools import stat_parser as stat
+maxvfrac = max(stat("water_collapse.stat")["Water"]["MaterialVolumeFraction"]["max"])</variable>
+    <variable name="vfracintstart" language="python">from fluidity_tools import stat_parser as stat
+vfracintstart= stat("water_collapse.stat")["Water"]["MaterialVolumeFraction"]["integral"][0]</variable>
+    <variable name="vfracintend" language="python">from fluidity_tools import stat_parser as stat
+vfracintend= stat("water_collapse.stat")["Water"]["MaterialVolumeFraction"]["integral"][-1]</variable>
+    <variable name="nodesstart" language="python">from fluidity_tools import stat_parser as stat
+nodesstart= stat("water_collapse.stat")["CoordinateMesh"]["nodes"][0]</variable>
+    <variable name="nodesend" language="python">from fluidity_tools import stat_parser as stat
+nodesend= stat("water_collapse.stat")["CoordinateMesh"]["nodes"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="finish_time" language="python">assert finishtime &gt; 2.4</test>
+    <test name="water_conservation" language="python">print 'mass loss = ', abs(vfracintend-vfracintstart)/vfracintstart
+assert abs(vfracintend-vfracintstart)/vfracintstart &lt; 1.e-5</test>
+    <test name="divergence" language="python">print 'divergence = ', max(maxdivergence, mindivergence)
+assert max(maxdivergence, mindivergence) &lt; 1.E-5</test>
+    <test name="max_volume_fraction_bound" language="python">assert abs(maxvfrac-1.0) &lt; 1.E-10</test>
+    <test name="min_volume_fraction_bound" language="python">assert abs(minvfrac) &lt; 1.E-10</test>
+    <test name="no_nodes" language="python">assert nodesend &gt; nodesstart</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

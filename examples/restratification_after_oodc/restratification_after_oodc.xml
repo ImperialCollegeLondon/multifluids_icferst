@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE testproblem SYSTEM "regressiontest.dtd">
+
+<testproblem>
+  <name>restratification<comment> 3d fixed layered mesh simulation of the restratification following open ocean deep convection.
+</comment></name>
+  <owner userid="fpm08"/>
+  <tags>flml </tags>
+    <problem_definition length="vlong" nprocs="64">
+    <command_line>mpiexec flredecomp -i 1 -o 64 -v -l restratification_after_oodc restratification_after_oodc_flredecomp &amp;&amp;
+mpiexec fluidity -v2 -l restratification_after_oodc_flredecomp.flml </command_line>
+  </problem_definition>  
+   <variables>
+    <variable name="final_time" language="python">
+from fluidity_tools import stat_parser
+s = stat_parser("restratification_after_oodc.stat")
+final_time = s["ElapsedTime"]["value"][-1]
+    </variable>
+  </variables>
+  <pass_tests>
+    <test name="assert no crash" language="python">
+assert abs(final_time-8.64e6) &lt; 1e5
+    </test>
+  </pass_tests>
+  <warn_tests>
+  </warn_tests>
+</testproblem>

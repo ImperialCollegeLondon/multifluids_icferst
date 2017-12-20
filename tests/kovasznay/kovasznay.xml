@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<testproblem>
+  <name>kovasznay</name>
+  <owner userid="cjc1"/>
+  <tags>flml</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>fluidity -v2 -l kovasznay.flml </command_line>
+    <!-- Two dimensional Navier-Stokes exact solution -->
+  </problem_definition>
+  <variables>
+    <variable name="solvers_converged" language="python">
+import os
+files = os.listdir("./")
+solvers_converged = not "matrixdump" in files and not "matrixdump.info" in files
+    </variable>
+    <variable name="max_u_error" language="python">
+from fluidity_tools import stat_parser
+s = stat_parser("kovasznay.stat")
+emax = s["Water"]["VelocityError%magnitude"]["max"][-1]
+emin = s["Water"]["VelocityError%magnitude"]["min"][-1]
+max_u_error = max(emax,-emin)
+    </variable>
+  </variables>
+  <pass_tests>
+    <test name="Solvers converged" language="python">
+      assert(solvers_converged)
+    </test>
+    <test name="u error less than 0.03" language="python">
+assert max_u_error &lt; 0.03
+    </test>
+  </pass_tests>
+  <warn_tests>
+  </warn_tests>
+</testproblem>

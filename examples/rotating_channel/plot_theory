@@ -1,0 +1,7 @@
+#!/usr/bin/env python
+import pylab
+import channel_tools
+
+channel_tools.plot_theory()
+
+pylab.show()

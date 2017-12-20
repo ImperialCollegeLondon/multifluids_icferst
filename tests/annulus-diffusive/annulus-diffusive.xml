@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Pure diffusion annulus test</name>
+  <owner userid="dham"/>
+  <tags>flml</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>make clean-run-debug; fluidity -v2 -l annulus.flml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="timesteps" language="python">import fluidity_tools
+s = fluidity_tools.stat_parser("annulus.stat")
+timesteps = len(s["ElapsedTime"]["value"])</variable>
+    <variable name="solversConverged" language="python">import os
+files = os.listdir("./")
+solversConverged = not "matrixdump" in files and not "matrixdump.info" in files</variable>
+    <variable name="innerWallNus" language="python">import math
+import fluidity_tools
+
+s = fluidity_tools.stat_parser("annulus.stat")
+innerWallNus = [h  * math.log(8.0 / 2.5) / (2.0 * math.pi * 14.0 * math.log(math.e)) for h in s["Water"]["Temperature"]["surface_integral%InnerH"]]</variable>
+    <variable name="outerWallNus" language="python">import math
+import fluidity_tools
+
+s = fluidity_tools.stat_parser("annulus.stat")
+outerWallNus = [h  * math.log(8.0 / 2.5) / (2.0 * math.pi * 14.0 * math.log(math.e)) for h in s["Water"]["Temperature"]["surface_integral%OuterH"]]</variable>
+  </variables>
+  <pass_tests>
+    <test name="SolversConverged" language="python">assert(solversConverged)</test>
+    <test name="FinalInnerWallNu" language="python">import fluidity_tools
+
+nu = innerWallNus[-1]
+print nu
+assert(nu &lt; 0.0)
+fluidity_tools.compare_variable(abs(nu), 1.0, 1.0e-2)</test>
+    <test name="FinalOuterWallNu" language="python">import fluidity_tools
+
+nu = outerWallNus[-1]
+print nu
+assert(nu &gt; 0.0)
+fluidity_tools.compare_variable(abs(nu), 1.0, 1.0e-2)</test>
+    <test name="Steady" language="python">import fluidity_tools
+
+s = fluidity_tools.stat_parser("annulus.steady_state")
+
+maxchange = s["MaxChange"]["value"][-1]
+print maxchange
+assert(maxchange &lt; 1.0e-7)
+
+maxchange = s["Water"]["Temperature"]["error"][-1]
+print maxchange
+assert(maxchange &lt; 1.0e-7)</test>
+  </pass_tests>
+</testproblem>

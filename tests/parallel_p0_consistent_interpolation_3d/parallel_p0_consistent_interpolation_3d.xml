@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>parallel_p0_consistent_interpolation_3d</name>
+  <owner userid="cwilson"/>
+  <tags>flml zoltan parallel</tags>
+  <problem_definition length="short" nprocs="3">
+    <command_line>make clean-run; mpiexec ../../bin/flredecomp -i 1 -o 3 -v -l parallel_p0_consistent_interpolation parallel_p0_consistent_interpolation_flredecomp; mpiexec ../../bin/fluidity -v2 -l parallel_p0_consistent_interpolation_flredecomp.flml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="solvers_converged" language="python">
+import os
+files = os.listdir("./")
+solvers_converged = not "matrixdump" in files and not "matrixdump.info" in files
+    </variable>
+    <variable name="stat" language="python">import fluidity_tools
+
+stat = fluidity_tools.stat_parser("parallel_p0_consistent_interpolation.stat")</variable>
+    <variable name="interpolatedpvtu" language="python">import vtktools
+import fluidity.diagnostics.vtutools as vtutools
+
+interpolatedpvtu = vtktools.vtu("parallel_p0_consistent_interpolation_1.pvtu")</variable>
+    <variable name="initialpvtu" language="python">import vtktools
+import fluidity.diagnostics.vtutools as vtutools
+
+initialpvtu = vtktools.vtu("parallel_p0_consistent_interpolation_0.pvtu")</variable>
+    <variable name="interpolatedVtu" language="python">import vtktools
+import fluidity.diagnostics.vtutools as vtutools
+
+interpolatedVtu = vtutools.PvtuToVtu(vtktools.vtu("parallel_p0_consistent_interpolation_1.pvtu"))</variable>
+    <variable name="initialVtu" language="python">import vtktools
+import fluidity.diagnostics.vtutools as vtutools
+
+initialVtu = vtutools.PvtuToVtu(vtktools.vtu("parallel_p0_consistent_interpolation_0.pvtu"))</variable>
+  </variables>
+  <pass_tests>
+    <test name="Solvers converged" language="python">
+      assert(solvers_converged)
+    </test>
+    <test name="SimulationCompleted" language="python">print "Timesteps: ", len(stat["ElapsedTime"])
+
+assert(len(stat["ElapsedTime"]) == 1)</test>
+    <test name="Interpolation" language="python">import fluidity_tools
+
+coords = interpolatedpvtu.GetVectorField("DiagnosticCoordinate")
+x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
+
+vel = interpolatedpvtu.GetVectorField("Velocity")
+u, v, w = vel[:, 0], vel[:, 1], vel[:, 2]
+
+fluidity_tools.compare_variables(u, x, 1.0e-10)
+fluidity_tools.compare_variables(v, y, 1.0e-10)
+fluidity_tools.compare_variables(w, z, 1.0e-10)</test>
+    <test name="DummyAdaptivity" language="python">import vtktools
+
+assert(vtktools.VtuMatchLocationsArbitrary(initialVtu, interpolatedVtu))</test>
+  </pass_tests>
+</testproblem>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<testproblem>
+  <name>test-advection_stratification_DG</name>
+  <owner userid="colin"/>
+  <tags>flml</tags>
+  <problem_definition length="medium" nprocs="1">
+    <command_line>fluidity slice_unstructured_exponential.flml; fluidity slice_unstructured_linear.flml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="solvers_converged" language="python">
+import os
+files = os.listdir("./")
+solvers_converged = not "matrixdump" in files and not "matrixdump.info" in files
+    </variable>
+    <variable name="DeltaT_exp" language="python">
+import vtktools
+start_exp = vtktools.vtu("slice_unstructured_exponential_0.vtu")
+end_exp = vtktools.vtu("slice_unstructured_exponential_1.vtu")
+T_exp = end_exp.GetScalarField("Temperature")
+DeltaT_exp = max(start_exp.GetScalarField("Temperature")-end_exp.GetScalarField("Temperature"))
+    </variable>
+    <variable name="DeltaT_lin" language="python">
+import vtktools
+start_lin = vtktools.vtu("slice_unstructured_linear_0.vtu")
+end_lin = vtktools.vtu("slice_unstructured_linear_1.vtu")
+DeltaT_lin = max(start_lin.GetScalarField("Temperature")-end_lin.GetScalarField("Temperature"))
+    </variable>
+  </variables>
+  <pass_tests>
+    <test name="Solvers converged" language="python">
+      assert(solvers_converged)
+    </test>
+    <test name="Delta_T_exp" language="python">
+assert abs(DeltaT_exp) &lt; 0.035
+    </test>
+    <test name="Delta_T_lin" language="python">
+assert abs(DeltaT_lin) &lt; 1.0e-12
+    </test>
+  </pass_tests>
+  <warn_tests>
+  </warn_tests>
+</testproblem>

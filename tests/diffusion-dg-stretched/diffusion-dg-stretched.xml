@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>diffusion-dg-stretched</name>
+  <owner userid="colin"/>
+  <problem_definition length="medium" nprocs="1">
+    <command_line>./generate_mesh 5 1000; fluidity diffusion-dg-stretched.flml; cp diffusion-dg-stretched.stat stretched-5.stat; cp diffusion-dg-stretched_1.vtu stretched-5.vtu; ./generate_mesh 10 1000; fluidity diffusion-dg-stretched.flml; cp diffusion-dg-stretched.stat stretched-10.stat; cp diffusion-dg-stretched_1.vtu stretched-10.vtu; ./generate_mesh 20 1000; fluidity diffusion-dg-stretched.flml; cp diffusion-dg-stretched.stat stretched-20.stat; cp diffusion-dg-stretched_1.vtu stretched-20.vtu; ./generate_mesh 30 1000; fluidity diffusion-dg-stretched.flml; cp diffusion-dg-stretched.stat stretched-30.stat; cp diffusion-dg-stretched_1.vtu stretched-30.vtu</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="solvers_converged" language="python">
+import os
+files = os.listdir("./")
+solvers_converged = not "matrixdump" in files and not "matrixdump.info" in files
+    </variable>
+    <variable name="convergenceBR" language="python">import numpy
+from fluidity_tools import stat_parser
+layers = numpy.array([5,10,20,30])
+dxs=1.0/layers
+errorBR=[]
+for layer in layers:
+        s=stat_parser("stretched-"+`layer`+".stat")
+        errorBR.append((s["MyState"]['BR_error']['l2norm'][-1]))
+
+errorBR=numpy.array(errorBR)
+convergenceBR=numpy.log(errorBR[:-1]/errorBR[1:])/numpy.log((1.0*layers[1:])/(1.0*layers[:-1]))
+print errorBR
+    </variable>
+    <variable name="convergenceCDG" language="python">import numpy
+from fluidity_tools import stat_parser
+layers = numpy.array([5,10,20,30])
+dxs=1.0/layers
+errorCDG=[]
+for layer in layers:
+        s=stat_parser("stretched-"+`layer`+".stat")
+        errorCDG.append((s["MyState"]['CDG_error']['l2norm'][-1]))
+
+errorCDG=numpy.array(errorCDG)
+convergenceCDG=numpy.log(errorCDG[:-1]/errorCDG[1:])/numpy.log((1.0*layers[1:])/(1.0*layers[:-1]))
+print errorCDG
+    </variable>
+  </variables>
+  <pass_tests>
+    <test name="Solvers converged" language="python">
+      assert(solvers_converged)
+    </test>
+    <test name="CDGConvergesToSecondOrder" language="python">
+import numpy
+assert(numpy.all(convergenceCDG &gt;1.9))
+    </test>
+    <test name="BRConvergesToSecondOrder" language="python">
+import numpy
+assert(numpy.all(convergenceBR &gt;1.9))
+    </test>
+  </pass_tests>
+</testproblem>

@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Thin wedge</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml P_CV</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst thin_wedge.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
+max_sat1 = stat("Thin_wedge.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="min_P" language="python">from fluidity_tools import stat_parser as stat
+min_P = stat("Thin_wedge.stat")["phase1"]["Pressure"]["min"][-1]</variable>
+    <variable name="max_P" language="python">from fluidity_tools import stat_parser as stat
+max_P = stat("Thin_wedge.stat")["phase1"]["Pressure"]["max"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.245) &lt; 0.01)</test>
+    <test name="Assert outlet pressure boundary condition" language="python">assert(abs(min_P - 0.) &lt; 0.1)</test>
+    <test name="Assert inlet pressure boundary condition" language="python">assert(abs(max_P - 1.0) &lt; 0.1)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

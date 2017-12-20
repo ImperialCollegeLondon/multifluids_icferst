@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Collapsing_Water_Column</name>
+  <owner userid="pablo.salinas"/>
+  <tags>components mpml tbc</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./Check_CWC.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="Collapsing_Water_Column" language="python">Collapsing_Water_Column = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: Collapsing_Water_Column = True
+
+assert(Collapsing_Water_Column)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

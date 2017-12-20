@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>thiem_well_injector</name>
+  <owner userid="dimitrios.pavlidis"/>
+  <tags>mpml wells</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst thiem_well_injector.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="phase1_pressure_max" language="python">from fluidity_tools import stat_parser as stat
+phase1_pressure_max = stat("twm.stat")["phase1"]["Pressure"]["max"][-1]</variable>
+    <variable name="phase1_pressure_min" language="python">from fluidity_tools import stat_parser as stat
+phase1_pressure_min = stat("twm.stat")["phase1"]["Pressure"]["min"][-1]</variable>
+    <variable name="phase1_pressure_max_ref" language="python">phase1_pressure_max_ref = 1e8</variable>
+    <variable name="phase1_pressure_min_ref" language="python">phase1_pressure_min_ref = 1e5</variable>
+    <variable name="tolerance" language="python">tolerance = 0.1</variable>
+    <variable name="tolerance2" language="python">tolerance2 = 0.201</variable>
+    <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
+max_sat1 = stat("twm.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="max_sat2" language="python">from fluidity_tools import stat_parser as stat
+max_sat2 = stat("twm.stat")["phase2"]["PhaseVolumeFraction"]["max"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="phase 1 max pressure check" language="python">assert( abs(phase1_pressure_max-phase1_pressure_max_ref)/phase1_pressure_max_ref &lt; tolerance )</test>
+    <test name="phase 1 min pressure check" language="python">assert( abs(phase1_pressure_min-phase1_pressure_min_ref)/phase1_pressure_min_ref &lt; tolerance2 )</test>
+    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 1.0) &lt; 0.01)</test>
+    <test name="Assert final max sat 2" language="python">assert(abs(max_sat2 - 1.0) &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

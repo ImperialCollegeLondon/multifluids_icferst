@@ -1,0 +1,677 @@
+\chapter{Getting started}\label{chap:gettingstarted}
+
+\section{Introduction} This first chapter gives a brief guide to setting-up,
+running and visualising simulations. It is assumed that you have access to a
+system running Linux or UNIX with all the \fluidity\ supporting libraries
+installed. If not, you may wish to reference appendix \ref{chap:external} which
+contains detailed information for your systems administrator to help setting up
+a Linux workstation. 
+
+\section{Obtaining \fluidity}
+\label{sec:obtaining_fluidity}
+
+\subsection{Overview}
+\label{sec:obtaining_fluidity_overview}
+
+\fluidity\ is available both as precompiled binaries for a number of major,
+recent Linux distributions and as source code available via git or as gzipped
+tarballs. Which method you use to obtain \fluidity\ depends primarily on
+whether you use a recent Linux distribution and whether you wish to modify the
+\fluidity\ source code.
+
+\fluidity\ attempts to support as many major Linux platforms based on recent
+compilers as possible. This currently includes Ubuntu versions 12.04, 12.10,
+13.10, and 14.04, Red Hat Enterprise Linux version 6 and its derivatives
+(including CentOS and Scientific Linux), Fedora 19, and OpenSuSE 12.3. Fedora
+20 and OpenSuSE 13.1 are not yet supported, but are intended to be supported
+soon.
+
+\subsection{\fluidity\ binary packages for Ubuntu Linux}
+
+\fluidity\ is distributed for all centrally-supported Ubuntu desktop systems
+via the \lstinline[language=Bash]+fluidity-core+ launchpad package archive. If
+you have administrative privileges on your computer, you can add the package
+archive to your system by typing:
+
+\begin{lstlisting}[language=Bash]
+sudo apt-add-repository -y ppa:fluidity-core/ppa
+\end{lstlisting}
+
+Type your password if prompted. Once the repository has been added, update your
+system and install \fluidity\ along with the required supporting software by
+typing:
+
+\begin{lstlisting}[language=Bash]
+sudo apt-get update
+sudo apt-get -y install fluidity
+\end{lstlisting}
+
+You now have \fluidity\ installed on your computer. Examples, as referred to in
+chapter \ref{chap:examples}, are available as a compressed tarball and can be
+expanded into a writeable directory with:
+
+\begin{lstlisting}[language=Bash]
+tar -zxvf /usr/share/doc/fluidity/examples.tar.gz
+\end{lstlisting}
+
+\subsection{\fluidity\ binary packages for Red Hat Enterprise Linux}
+
+\fluidity\ is distributed for all systems based on Red Hat Enterprise 6 via a
+package repository which can be installed by users who have administrative
+privileges on their computer by typing the following, all on one line:
+
+\begin{lstlisting}[language=Bash]
+sudo yum-config-manager --add-repo
+                http://fluidityproject.github.com/yum/fluidity-rhel6.repo
+\end{lstlisting}
+
+Type your password if prompted. \fluidity\ can then be installed with:
+
+\begin{lstlisting}[language=Bash]
+sudo yum install fluidity
+\end{lstlisting}
+
+You now have \fluidity\ installed on your computer. Examples, as referred to in
+chapter \ref{chap:examples}, are available as a compressed tarball and can be
+expanded into a writeable directory with:
+
+\begin{lstlisting}[language=Bash]
+tar -zxvf /usr/share/doc/fluidity/examples.tar.gz
+\end{lstlisting}
+
+\subsection{\fluidity\ binary packages for Fedora}
+
+\fluidity\ is distributed for Fedora 19 (but not yet for Fedora 20 due to VTK6
+incompatibility) via a package repository which can be installed by all users
+who have administrative privileges on their computer by typing the following 
+all on one line:
+
+\begin{lstlisting}[language=Bash]
+sudo yum-config-manager --add-repo
+             http://fluidityproject.github.com/yum/fluidity-fedora19.repo
+\end{lstlisting}
+
+Type your password if prompted. \fluidity\ can then be installed with:
+
+\begin{lstlisting}[language=Bash]
+sudo yum install fluidity
+\end{lstlisting}
+
+You now have \fluidity\ installed on your computer. Examples, as referred to in
+chapter \ref{chap:examples}, are available as a compressed tarball and can be
+expanded into a writeable directory with:
+
+\begin{lstlisting}[language=Bash]
+tar -zxvf /usr/share/doc/fluidity/examples.tar.gz
+\end{lstlisting}
+
+\subsection{\fluidity\ binary packages for OpenSuSE}
+
+\fluidity\ is distributed for OpenSuSE 12.3 (but not yet for OpenSuSE 13.1 due to VTK6
+incompatibility) via a package repository which can be installed by all users
+who have administrative privileges on their computer by typing the following
+all on one line:i
+
+\begin{lstlisting}[language=Bash]
+sudo zypper ar -f
+   https://raw.githubusercontent.com/FluidityProject/yast-opensuse12.3/master/
+\end{lstlisting}
+
+Type your password if prompted. \fluidity\ can then be installed with:
+
+\begin{lstlisting}[language=Bash]
+sudo zypper install fluidity
+\end{lstlisting}
+
+You now have \fluidity\ installed on your computer. Examples, as referred to in
+chapter \ref{chap:examples}, are available as a compressed tarball and can be
+expanded into a writeable directory with:
+
+\begin{lstlisting}[language=Bash]
+tar -zxvf /usr/share/doc/fluidity/examples.tar.gz
+\end{lstlisting}
+
+\subsection{\fluidity\ source packages}
+
+\fluidity\ is released as compressed source archives which can be downloaded
+from the \fluidity\ project page on Launchpad,
+\href{https://launchpad.net/fluidity}{https://launchpad.net/fluidity} .
+
+You can download just the source, or you can additionally download a tests
+archive containing the \fluidity\ short and medium test suite.
+
+To uncompress the \fluidity\ 4.1.11 source from an archive file in Linux,
+run:
+
+\begin{lstlisting}[language=Bash]
+tar -zxvf fluidity-4.1.11.tar.gz
+\end{lstlisting}
+
+This should create a directory, \lstinline[language=Bash]+fluidity-4.1.11/+,
+containing your copy of the source code. To add the standard tests (sufficient
+to run 'make mediumtest'), download the additional fluidity-tests-4.1.11
+archive into the \lstinline[language=Bash]+fluidity-4.1.11/+ directory, and in
+that directory run:
+
+\begin{lstlisting}[language=Bash]
+tar -zxvf fluidity-tests-4.1.11.tar.gz
+\end{lstlisting}
+
+The files will appear in a \lstinline[language=Bash]+tests/+ directory.
+
+\subsection{git}
+\label{sec:bazaar}\index{git|primary}
+
+The \fluidity\ source code is hosted on GitHub, with its repository page at
+\lstinline[language=Bash]+https://github.com/FluidityProject/fluidity+. The
+'master' branch on GitHub represents a the most recent generally available
+state of the codebase, neither as stable nor reliably tested as release
+packages and tarballs but expected, in general, to be correct and useable,
+and suitable for most users capable of compiling from source.
+
+As a \fluidity\ user you need only be aware of two modes of operation in git.
+The first is cloning the source code from the central repository, the second is
+updating your copy of the code to reflect changes that have been made to the
+central repository. Think of the repository as a central archive of source code
+held on GitHub.
+
+Details of how to commit changes to \fluidity\ back into the central repository
+are outside the scope of this user manual; if you are transitioning to become a
+developer who commits changes back into \fluidity\ please contact an existing
+\fluidity\ developer to find out how to get commit privileges.
+
+\subsubsection{Checking out a copy of \fluidity}
+\index{git}
+\label{sec:git_checkout}
+
+To clone a copy of \fluidity\ you can use the following command: which is given
+
+\begin{lstlisting}[language=Bash]
+git clone https://github.com/FluidityProject/fluidity.git
+\end{lstlisting}
+
+This will clone the GitHub repository into a local 'fluidity' directory on your
+system, and uses around 300MB space.
+
+\subsubsection{Updating your copy of \fluidity}
+\index{git}
+\label{sec:git_updating}
+
+If you are interested in keeping up to date with the latest developments in
+\fluidity\ you will probably want to update your local copy of the \fluidity\
+code to reflect changes made to the central source code repository. To do this,
+change directory so that you are in the directory which you checked out
+\fluidity\ to (in the above case, a directory called
+\lstinline[language=Bash]+fluidity/+) and then run git's update command:
+
+\begin{lstlisting}[language=Bash]
+git update
+\end{lstlisting}
+
+This manual assumes that you are not modifying any of the files in your copy of
+\fluidity. If you do so, and your changes clash with changes from the central
+repository, you may end up with git reporting conflicts when you update. This
+is worth being aware of, but brings you into the realms of \fluidity\
+development, outside the scope of this manual.
+
+\section{Building \fluidity}
+\label{sec:building_fluidity}
+
+The build process for \fluidity\ comprises a configuration stage and a compile
+stage. In the simplest form, this can be completed with two commands, run in
+the directory containing your local source code check out, which is denoted
+by \fluiditysourcepath\ in this manual:
+
+\begin{lstlisting}[language=Bash]
+cd `\fluiditysourcepath' 
+./configure
+make
+\end{lstlisting}
+
+You may often only wish to perform this basic build, but frequently you will
+want more fine-grained control over the configuration procedure or you will
+want to perform non-default compilation steps. The following section describes
+these procedures.
+
+Note that at this point configuration refers to the build-time configuration
+options which define how the \fluidity\ program will be compiled, and do not
+refer to configuration of the options that you will run \fluidity\ with once it 
+has built. However, presence or lack of features configured at the build stage
+may change what is available to you at run time.
+
+It is assumed throughout this section that you are in the top-level directory
+of your local copy of the \fluidity\ code for the purposes of describing
+configuration and compilation commands.
+
+\subsection{Setting up the build environment}
+
+Depending on the computer you are building \fluidity\ on, you may need to set
+up the build environment before configuring \fluidity. On Ubuntu Linux with the
+fluidity-dev package installed you do not need to perform any additional
+configuration, but on Red Hat based systems with fluidity-dev you will need to
+initialise the build environment by running:
+
+\begin{lstlisting}[language=Bash]
+module load fluidity-dev
+\end{lstlisting}
+
+The build environment is discussed in more detail in sections
+\ref{sec:configure_locate_supporting_libs} and
+\ref{sec:configure_environment_vars} which may be useful references for those
+on systems not set up with the standard fluidity-dev package.
+
+\subsection{Configuring the build process}
+\label{sec:configuring_the_build_process}
+
+For a full list of the build-time configuration options available in fluidity,
+run:
+
+\begin{lstlisting}[language=Bash]
+./configure --help
+\end{lstlisting}
+
+Key configuration options are described here, but you are advised to check
+output from the above command for any changed or new options which may have
+been introduced since the last update of this manual.
+
+Where you wish to specify multiple configuration options at once, supply them
+all on the same configuration command line, separated by spaces. For example:
+
+\begin{lstlisting}[language=Bash]
+./configure --prefix=/data/fluidity --enable-debugging
+\end{lstlisting}
+
+Note that there is one key option NOT enabled by default which users running
+the \fluidity\ examples will need to enable to make all examples work. This is 
+\lstinline[language=Bash]+--enable-2d-adaptivity+ , which cannot be turned on
+as a default as it makes use of external code that is not license-compatible
+with all other \fluidity\ codes. Hence, it is a reasonable default state for
+you to run:
+
+\begin{lstlisting}[language=Bash]
+./configure --enable-2d-adaptivity
+\end{lstlisting}
+
+One additional consideration is worth making at this point; do you want to put
+any components of the \fluidity build outside the build directory for later
+use?  An automatic installation for \fluidity (and also for diamond) is
+available, and defaults to using a directory which can (normally) only be
+written to with superuser privileges. However, you can tell the install process
+to put files elsewhere with the use of the 'prefix' flag to configure. A
+typical use of this might be to tell the install process to put files in your
+home directory, using the 'HOME' environment variable which should be set by
+the system automatically. To do this in addition to enabling 2D adaptivity, you
+would type:
+
+\begin{lstlisting}[language=Bash]
+./configure --enable-2d-adaptivity --prefix=$HOME
+\end{lstlisting}
+
+We'll go on now to discussing enabling and disabling features.
+
+\subsubsection{Enabling and disabling features}
+\label{sec:configure_enable_disable_features}
+
+\fluidity\ has a number of optional features which may be enabled or disabled at
+build time. For a list of all these features see the output of configuring with
+the \lstinline[language=Bash]+--help+ argument. This list should indicate which
+options are enabled by default by appending
+\lstinline[language=Bash]+(default)+ to the option description. An example of
+enabling \fluidity's debugging feature at build time would be:
+
+\begin{lstlisting}[language=Bash]
+./configure --enable-debugging
+\end{lstlisting}
+
+Whilst a number of options have the facility to be enabled and disabled, doing
+so may be prejudicial to the expected normal running of \fluidity\ so unless you
+are fully aware of the consequences of enabling or disabling features it is
+recommended that you do not do so.
+
+\subsubsection{Specifying locations of supporting libraries}
+\label{sec:configure_locate_supporting_libs}
+
+\fluidity\ requires many supporting libraries, which can either be provided via
+environment variables (see later discussion for how to do this) or, in specific
+cases, provided via options during configuration. This uses the
+\lstinline[language=Bash]+--with+ option, for example specifying the directory
+containing BLAS using:
+
+\begin{lstlisting}[language=Bash]
+./configure --with-blas-dir=/data/libraries/netlib/BLAS
+\end{lstlisting}
+
+Whilst there is also the option to supply \lstinline[language=Bash]+--without+
+arguments, this is likely to be highly prejudicial to the normal running of
+\fluidity\ or, in many cases, be incompatible with building \fluidity\ such that
+the configuration exits with an error.
+
+\subsubsection{Environment variables set for configuration}
+\label{sec:configure_environment_vars}
+
+A description of environment variables is outside the scope of this manual, and
+\fluidity\ users are encouraged to find an experienced UNIX user who can explain
+the rudiments of environment variables to them if they are not already familiar
+with how to set and use them. Influential environment variables are listed
+towards the end of the help output from \fluidity's configuration. Particularly
+notable are:
+
+\lstinline[language=Bash]+LIBS+, which allows passing a series of linker
+arguments such as \lstinline[language=Bash]+"-L/data/software/libs"+ describing
+how to access libraries at link-time. This will often be set or appended to by
+loading modules on modern UNIX systems.
+
+\lstinline[language=Bash]+FCFLAGS+ and \lstinline[language=Bash]+FFLAGS+ which
+describe flags passed to the Fortran and Fortran77 compilers respectively and
+allow you broad control of the overall the build process. This will also often
+be set or appended to by loading modules on modern UNIX systems.
+
+\lstinline[language=Bash]+PETSC_DIR+ defines the base directory into which your
+PETSc install has been placed. This will often be autodetected by configure, or
+set by loading an environment module specific to your system, but if you have a
+local build of PETSc you may need to set this variable yourself. Note that for
+most \fluidity\ users, having PETSc to provide solver functionality is
+unavoidable so setting this variable by some means is necessary in almost all
+cases. The standard \fluidity\ workstation allows you to do this by running
+\lstinline[language=Bash]+module load petsc-gcc4+ .
+
+\lstinline[language=Bash]+VTK_INCLUDE+ and \lstinline[language=Bash]+VTK_LIBS+
+may be important to set if VTK is not installed at a system level. VTK is
+critical to \fluidity\ for writing output files, and many UNIX systems lack some
+VTK components so it frequently ends up installed in a nonstandard location.
+
+\subsection{Compiling \fluidity}
+\label{sec:compiling_fluidity}
+
+Once you have successfully configured \fluidity, you need to compile the source
+code into binary files including programs and libraries. In the simplest form
+you can do this by running:
+
+\begin{lstlisting}[language=Bash]
+make
+\end{lstlisting}
+
+which will generate \fluidity\ and Diamond programs in the
+\lstinline[language=Bash]+bin/+ directory and a set of libraries in the
+\lstinline[language=Bash]+lib/+ directory. 
+
+If you have a modern, powerful computer then you can speed this process up
+significantly by parallelising the make, running:
+
+\begin{lstlisting}[language=Bash]
+make -jN
+\end{lstlisting}
+where \lstinline[language=Bash]+N+ is the number of CPU cores of your system.
+
+Note that this is very resource-intensive and whilst most modern workstations
+should be equal to the task it should not be run on shared machines (ie, login
+nodes of compute clusters) or systems with smaller quantities of memory.
+
+If you want to build the extended set of \fluidity\ tools which supplement the
+main \fluidity\ program, section \ref{sec:fltools}, run:
+
+\begin{lstlisting}[language=Bash]
+make fltools
+\end{lstlisting}
+
+If this is the first time you have run \fluidity\ on your computer and you want
+to check that it has built correctly, you can run the included suite of test
+problems at three levels. The shortest tests test individual units of code for
+correctness and can be run with:
+
+\begin{lstlisting}[language=Bash]
+make unittest
+\end{lstlisting}
+
+To run the suite of short test cases which more extensively test the
+functionality of your \fluidity\ build, run:
+
+\begin{lstlisting}[language=Bash]
+make test
+\end{lstlisting}
+
+For the most comprehensive set of tests included in your checked out copy of
+\fluidity, run:
+
+\begin{lstlisting}[language=Bash]
+make mediumtest
+\end{lstlisting}
+
+If you have obtained \fluidity\ through source archives rather than through
+subversion you will need to have also downloaded and unpacked the standard
+tests archive to be able to run \lstinline[language=Bash]+make test+ and
+\lstinline[language=Bash]+make mediumtest+ .
+
+Note that even on the most modern systems
+\lstinline[language=Bash]+make mediumtest+ may take on the order of an hour and
+on slower systems may take on the order of many hours to complete.
+
+\subsection{Installing \fluidity and diamond}
+\label{sec:installing_fluidity}
+
+It is perfectly possible to run \fluidity and diamond from inside the build
+tree, and many users do just that with appropriate setting of variables.
+However, you may want to install at least diamond if not the rest of the
+\fluidity package into the directory you had the option of specifying during
+the configure stage.
+
+There are three key commands to be aware of here.
+
+The first is:
+
+\begin{lstlisting}[language=Bash]
+make install
+\end{lstlisting}
+
+This will install \fluidity and a full set of \fluidity tools into the
+directory you specified with 'prefix' during configuration. If you didn't
+specify a directory there, it will try to install into the
+\lstinline[language=Bash]+/usr+ directory, which generally needs superuser
+privileges. If you get a lot of 'permission denied' messages, you probably
+forgot to specify a prefix (or specified an invalid prefix) at configure time,
+and the install is trying to write to a superuser-only or nonexistant
+directory. 
+
+Assuming you specified a prefix of \lstinline[language=Bash]+\$HOME+, \fluidity
+will install into directories such as \lstinline[language=Bash]+bin/+,
+\lstinline[language=Bash]+lib/+, and \lstinline[language=Bash]+share/+ in your
+home directory.
+
+\fluidity does not by default install diamond, the graphical configuration tool
+used to set up \fluidity. If you do not already have a central installation of
+diamond on your computer, you may want to install a copy of it into the
+directory you specified with 'prefix' at configure time. To do this, run:
+
+\begin{lstlisting}[language=Bash]
+make install-diamond
+\end{lstlisting}
+
+which will install diamond into a \lstinline[language=Bash]+bin/+ directory
+inside your 'prefix' directory. In the case we've been working through, this
+would be your home directory. It will also install supporting python files into
+a subdirectory of \lstinline[language=Bash]+lib/+.
+
+To set up your environment for automatic running of diamond, you probably need
+to do three things. For this process, we will assume you specified a prefix of
+\lstinline[language=Bash]+\$HOME+ to configure.
+
+First, set your path to automatically find the diamond program:
+
+\begin{lstlisting}[language=Bash]
+export PATH=$PATH:$HOME/bin
+\end{lstlisting}
+
+Next, run:
+
+\begin{lstlisting}[language=Bash]
+ls -d $HOME/lib/python*/site-packages/diamond
+\end{lstlisting}
+
+This should return something like:
+
+\begin{lstlisting}[language=Bash]
+/home/fred/lib/python2.6/site-packages/diamond
+\end{lstlisting}
+
+Copy all of the above apart from the trailing
+\lstinline[language=Bash]+/diamond+ into the following command, so that you
+type (for the above example):
+
+\begin{lstlisting}[language=Bash]
+export PYTHONPATH=$PYTHONPATH:/home/fred/lib/python2.6/site-packages
+\end{lstlisting}
+
+Finally, you should register \fluidity with diamond for your account by
+telling it where to find the \fluidity schema, by typing:
+
+\begin{lstlisting}[language=Bash]
+make install-user-schemata
+\end{lstlisting}
+
+Note that this points to the current build tree that you are in; if you change
+the name of this build tree, or move it, you will need to ŕun the above command
+again to register the new location.
+
+\section{Running \fluidity}
+\label{sec:running_fluidity}
+
+
+\subsection{Running \fluidity\ in serial}
+\label{sec:running_fluidity_in_serial}
+
+To run \fluidity\ in serial use the following command:
+
+\begin{lstlisting}[language=bash]
+`\fluiditysourcepath'/bin/fluidity foo.flml
+\end{lstlisting}
+
+Here, \lstinline[language=Bash]+foo.flml+ is a \fluidity\ configuration file
+which defines the options for the model. These files are covered in detail in 
+Chapter \ref{chap:configuration} and are set up using a simple Graphical User
+Interface, Diamond. See section \ref{sec:running_diamond} for more information 
+on how to run Diamond.
+
+There are other options that can be passed to the \fluidity\ executable. A full
+list can be obtained by running:
+
+\begin{lstlisting}[language=bash]
+`\fluiditysourcepath'/bin/fluidity
+\end{lstlisting}
+
+This will produce the following output:
+
+\begin{lstlisting}[language=Bash]
+Revision: 3575 lawrence.mitchell@ed.ac.uk-20110907125710-d44hcr4no0ev8icc
+Compile date: Sep  7 2011 13:59:34
+OpenMP Support			no
+Adaptivity support		yes
+2D adaptivity support		yes
+3D MBA support			no
+CGAL support			no
+MPI support			yes
+Double precision		yes
+NetCDF support			yes
+Signal handling support		yes
+Stream I/O support		yes
+PETSc support			yes
+Hypre support			yes
+ARPACK support			yes
+Python support			yes
+Numpy support			yes
+VTK support			yes
+Zoltan support			yes
+Memory diagnostics		no
+FEMDEM support			no
+Hyperlight support		no
+
+
+Usage: fluidity [options ...] [simulation-file]
+
+Options:
+ -h, --help
+    Help! Prints this message.
+ -l, --log
+    Create log file for each process (useful for non-interactive testing).
+    Sets default value for -v to 2.
+ -v <level>, --verbose
+    Verbose output to stdout, default level 0
+ -p, --profile
+    Print profiling data at end of run
+    This provides aggregated elapsed time for coarse-level computation
+    (Turned on automatically if verbosity is at level 2 or above)
+ -V, --version
+    Version
+\end{lstlisting}
+
+Note that this also gives information on which version is being used, the
+build-time configuration options used and a list of command-line options for
+\fluidity. 
+
+Running \fluidity\ will produce several output files. See Chapter \ref{chap:visualisation_and_diagnostics}
+for more information.
+
+\subsection{Running \fluidity\ in parallel}
+\label{sec:running_fluidity_in_parallel}
+\index{parallel}
+
+\fluidity\ is a fully-parallel program, capable of running on thousands of
+processors.  It uses the Message Passing Interface (MPI) library to communicate
+information between processors. Running \fluidity\ in parallel requires that
+MPI is available on your system and is properly configured. The terminology for
+parallel processing can sometime be confusing.  Here, we use the term
+\emph{processor} to mean one physical CPU core and \emph{process} is one part
+of a parallel instance of \fluidity. Normally, the number of processors used
+matches the number of processes, i.e. if \fluidity\ is split into 256 parts, it
+is run on 256 processors.
+
+To run in parallel one must first decompose the mesh. See section
+\ref{decomp_meshes_parallel} for more information on how to do this. \fluidity\
+must then be run within the mpirun or mpiexec framework. Simply prepend the
+normal command line with mpiexec:
+\begin{lstlisting}[language=bash]
+mpiexec -n [PROCESSES] `\fluiditysourcepath'/bin/fluidity foo.flml
+\end{lstlisting}
+
+\section{Running diamond}
+\label{sec:running_diamond}
+\index{Diamond}
+
+Diamond is the Graphical User Interface (GUI) by which a \fluidity\ simulation
+is configured. The flml file that \fluidity\ uses is an XML file, which defines
+the meshes, fields and options for \fluidity. Chapter \ref{chap:configuration}
+covers the options that are currently available. In addition, Diamond will
+display inline help on options where available.
+
+If the \lstinline[language=Bash]+make+ command successfully completed, there
+will be an executable program \lstinline[language=Bash]+diamond+ in the
+\lstinline[language=Bash]+bin/+ directory. Running diamond is now as simple as
+typing:
+
+\begin{lstlisting}[language=Bash]
+`\fluiditysourcepath'/bin/diamond
+\end{lstlisting}
+
+If the \lstinline[language=Bash]+make install+ command completed and a directory
+which executable programs were installed into to the
+\lstinline[language=Bash]+PATH+ environment variable, one may also be able to run
+diamond simply by typing \lstinline[language=Bash]+diamond+ at the command line
+from any directory on your system. This may also be possible if the
+Diamond package for Ubuntu or Debian is installed by running:
+
+\begin{lstlisting}[language=Bash]
+sudo apt-get install diamond
+\end{lstlisting}
+
+Note that installing Diamond on a system-wide basis will require superuser privileges on the system.
+
+\section{Working with the output}
+\label{sec:working_with_output}
+
+Once \fluidity\ has been built and run, result files will be generated, that
+will need visualising and post-processing. These data are stored in VTK files,
+one per output dump.  How these files can be visualised and post-processed is
+covered in detail in chapter \ref{chap:visualisation_and_diagnostics}.
+
+As well as visualisation, another important output resource is the stat file,
+described in detail in section \ref{sec:diagnostics_stat_file}, which contains
+data from the model collected at run time.

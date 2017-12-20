@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Porous_media_general</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml adaptivity adaptivity_within_FPI</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst Mid_discontinuous.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
+max_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat
+int_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.68) &lt; 0.02)</test>
+    <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 0.25) &lt; 0.001)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

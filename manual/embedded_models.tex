@@ -1,0 +1,517 @@
+\chapter{Embedded models}\label{chap:embedded}
+
+The parameterisations described in chapter \ref{chap:parameterisations}\ are
+used to model fluids processes which cannot be resolved by the model. In
+contrast, the models described in this chapter detail models embedded in
+\fluidity\ which model non-fluids processes.
+
+\section{Biology}
+\label{sec:biology_model}
+The Biology model in \fluidity\ contains a number of different submodels. All are
+currently population level models where variables evolve under an 
+advection-diffusion equation similar to that for other tracers, such as 
+temperature and salinity, but modified by the
+addition of a source term which contains the interactions between the
+biological fields. The fluxes depend on which model is selected and which
+tracers are available. 
+
+There are two models currently distributed with \fluidity: a four-component model
+and a six-component model.
+
+\subsection{Four component model}
+
+Figure \ref{fig:biofluxes} shows the interactions between the
+biological tracers in the four component model. Nutrients (plus sunlight) are converted into
+phytoplankton. Zooplankton feed on phytoplankton and detritus but in doing
+so produce some nutrients and detritus so grazing also results in fluxes
+from phytoplankton and detritus to nutrient and detritus. Both phytoplankton
+and zooplankton die producing detritus and detritus is gradually converted to
+nutrient by a remineralisation process.
+\begin{figure}[hb]
+  \centering
+  \onlypdf{\begin{pdfdisplay}}
+    \begin{psmatrix}[colsep=4,rowsep=4]
+      \psframebox[framearc=.2]{\
+        \begin{minipage}[c][7ex]{0.3\linewidth}
+          \centering
+          Phytoplankton
+        \end{minipage}} &
+      \psframebox[framearc=.2]{
+        \begin{minipage}[c][7ex]{0.3\linewidth}
+          \centering
+          Zooplankton
+        \end{minipage}}\\
+      \psframebox[framearc=.2]{
+        \begin{minipage}[c][7ex]{0.3\linewidth}
+          \centering
+          Nutrient
+        \end{minipage}}&
+      \psframebox[framearc=.2]{
+        \begin{minipage}[c][7ex]{0.3\linewidth}
+          \centering
+          Detritus
+        \end{minipage}}\\
+      \ncarc[angleB=270]{->}{1,1}{1,2}
+      \naput{grazing}
+      \ncarc[angleA=0,angleB=180]{->}{2,1}{1,1}
+      \naput{fertilisation}
+      \ncarc[angleA=180,angleB=0]{->}{1,1}{2,1}
+      \naput{grazing}
+      \ncarc[angleA=270]{->}{2,2}{2,1}
+      \naput{remineralisation}
+      \ncarc[angleA=270]{<-}{2,1}{2,2}
+      \naput{grazing}
+      \ncarc[angleA=180,angleB=0]{->}{1,2}{2,2}
+      \naput{death}
+      \ncarc[angleA=0,angleB=180]{->}{2,2}{1,2}
+      \naput{grazing}
+      \ncarc[angleA=315,angleB=135]{<-}{2,2}{1,1}
+      \naput{death}
+      \ncarc[angleA=135,angleB=315]{->}{1,1}{2,2}
+      \naput{grazing}
+    \end{psmatrix}
+  \onlypdf{\end{pdfdisplay}}
+  \caption{The fluxes between the biological tracers. Grazing refers to the
+    feeding activity of zooplankton on phytoplankton and detritus.}
+  \label{fig:biofluxes}
+\end{figure}
+
+\subsubsection{Biological source terms}
+The source terms for phytoplankton ($P$), zooplankton ($Z$), nutrient ($N$)
+and detritus ($D$) respectively are given by the following expressions:
+\begin{gather}
+  S_P=\mathrm{R}_P -  \mathrm{G}_P -\mathrm{De}_P,\\
+  S_Z=\gamma\beta(\mathrm{G}_P+\mathrm{G}_D) - \mathrm{De}_Z,\\
+  S_N=-\mathrm{R}_P + \mathrm{De}_D +
+  (1-\gamma)\beta(\mathrm{G}_P+\mathrm{G}_D),\\
+  S_D=-\mathrm{De}_D + \mathrm{De}_P + \mathrm{De}_Z + (1-\beta)\mathrm{G}_P
+  -\beta\mathrm{G}_D).
+\end{gather}
+The definitions of each of these terms are given below. It is significant
+that the right-hand sides of these equations sum to zero. This implies that,
+for a closed biological system, the total of the biological constituents is
+always conserved. The terms in these equations are given in table
+\ref{tab:bioparameters}. The variable terms are explained in more detail below.
+
+\begin{table}[ht]
+  \centering
+  \begin{tabular}{llll}\hline
+    \textbf{Symbol} & \textbf{Meaning} & \textbf{Typical value} & \textbf{Section}\\\hline
+    $\mathrm{R}_P$ & phytoplankton growth rate & & \ref{sec:R_P}\\
+    $\mathrm{G}_P$ & rate of zooplankton grazing on phytoplankton && \ref{sec:G_P}\\
+    $\mathrm{De}_P$ & death rate of phytoplankton && \ref{sec:De_P}\\
+    $\mathrm{G}_D$ & rate of zooplankton grazing on detritus && \ref{sec:G_D}\\
+    $\mathrm{De}_Z$ & death rate of zooplankton && \ref{sec:De_Z}\\
+    $\mathrm{De}_D$ & death rate of detritus && \ref{sec:De_D}\\
+    $I$ & photosynthetically active radiation & & \ref{sec:I} \\
+    $\alpha$ & sensitivity of phytoplankton to light & \unit[0.015]{m$^2$\,W$^{-1}$\,day$^{-1}$}  & \ref{sec:R_P}\\
+    $\beta$ & assimilation efficiency of zooplankton & 0.75 \\
+    $\gamma$ & zooplankton excretion parameter & 0.5 \\
+    $\mu_P$ & phytoplankton mortality rate & \unit[0.1]{day$^{-1}$} & \ref{sec:De_P}\\
+    $\mu_Z$ & zooplankton mortality rate & \unit[0.2]{day$^{-1}$} & \ref{sec:De_Z}\\
+    $\mu_D$ & detritus remineralisation rate & \unit[0.05]{day$^{-1}$} & \ref{sec:De_D}\\
+    $g$ & zooplankton maximum growth rate & \unit[1]{day$^{-1}$} & \ref{sec:G_P}\\
+    $k_N$ & half-saturation constant for nutrient & 0.5  & \ref{sec:G_D}\\
+    $k$ & zooplankton grazing parameter & 0.5 & \ref{sec:G_P}\\
+    $p_P$ & zooplankton preference for phytoplankton & 0.75 & \ref{sec:G_P}\\
+    $v$ & maximum phytoplankton growth rate & \unit[1.5]{day$^{-1}$} & \ref{sec:R_P}\\
+    \hline
+  \end{tabular}
+  \caption{Meanings of symbols in the biology model. Typical values are
+    provided for externally set parameters.}
+  \label{tab:bioparameters}
+\end{table}
+
+\textbf{$\mathrm{R}_P$, the phytoplankton growth rate}\label{sec:R_P}
+
+$\mathrm{R}_P$ is the growth-rate of phytoplankton which is governed by the
+current phytoplankton concentration, the available nutrients and the
+available light:
+\begin{equation}
+  \mathrm{R}_P=J\,P\,Q,
+\end{equation}
+where $J$ is the light-limited phytoplankton growth rate which is in turn given
+by:
+\begin{equation}
+  J=\frac{v\alpha I}{(v^2+\alpha^2 I^2)^{1/2}}.
+\end{equation}
+In this expression, $v$ is the maximum phytoplankton growth rate, $\alpha$
+controls the sensitivity of growth rate to light and $I$ is the available
+photosynthetically active radiation.
+
+$Q$ is the nutrient limiting factor and is given by:
+\begin{equation}
+  Q=\frac{N}{k_N+N},
+\end{equation}
+where $k_N$ is the half-saturation constant for nutrient.
+
+\textbf{$\mathrm{G}_P$, the rate of phytoplankton grazing by zooplankton}\label{sec:G_P}
+The rate at which zooplankton eat phytoplankton is given by:
+\begin{equation}
+  \mathrm{G}_P=\frac{g p_P P^2 Z}{k^2 + p_P P^2 + (1-p_P) D^2},
+\end{equation}
+in which $p_P$ is the preference of zooplankton for grazing phytoplankton
+over grazing detritus, $g$ is the maximum zooplankton growth rate and $k$ is
+a parameter which limits the grazing rate if the concentration of
+phytoplankton and detritus becomes very low.
+
+\textbf{$\mathrm{G}_D$, the rate of detritus grazing by zooplankton}\label{sec:G_D}
+The rate at which zooplankton eat detritus is given by:
+\begin{equation}
+  \mathrm{G}_D=\frac{g (1-p_P) D^2 Z}{k^2 + p_P P^2 + (1-p_P) D^2},
+\end{equation}
+in which all of the parameters have the meaning given in the previous
+section.
+
+\textbf{$\mathrm{De}_P$, the phytoplankton death rate}\label{sec:De_P}
+
+A proportion of the phytoplankton in the system will die in any given time
+interval. The dead phytoplankton become detritus:
+\begin{equation}
+  \mathrm{De}_P=\frac{\mu_P P^2}{P+1},
+\end{equation}
+in which $\mu_P$ is the phytoplankton mortality rate.
+
+\textbf{$\mathrm{De}_Z$, the zooplankton death rate}\label{sec:De_Z}
+
+A proportion of the zooplankton in the system will die in any given time
+interval. The dead zooplankton become detritus:
+\begin{equation}
+  \mathrm{De}_Z=\mu_Z Z^2.
+\end{equation}
+
+\textbf{$\mathrm{De}_D$, the detritus remineralisation rate}\label{sec:De_D}
+
+As the detritus falls through the water column, it gradually converts to
+nutrient:
+\begin{equation}
+  \mathrm{De}_D=\mu_D D.
+\end{equation}
+
+\subsection{Six-component model}
+\label{sec:bio-6-component}
+
+The six-component model is based on the model of \citet{popova2006}
+which is designed to be applicably globally. 
+Figure \ref{fig:biofluxes6} shows the interactions between the six
+biological tracers. Nutrients, either ammonium or nitrate, (plus sunlight) are converted into
+phytoplankton. Zooplankton feed on phytoplankton and detritus but in doing
+so produce some nutrients and detritus so grazing also results in fluxes
+from phytoplankton and detritus to nutrient and detritus. Both phytoplankton
+and zooplankton die producing detritus and detritus is gradually converted to
+nutrient by a re-mineralisation process. In addition, chlorophyll is present
+as a subset of the phytoplankton.
+
+\begin{figure}[ht]
+  \centering
+  \pdffig[width=0.7\textwidth]{embedded_models_images/bio_model_6}
+  \caption{Six-component biology model.}
+  \label{fig:biofluxes6}
+\end{figure}
+
+
+The source terms for phytoplankton ($P$), Chlorophyll-a ($\mathrm{Chl}$), zooplankton ($Z$), nitrate ($N$),
+ammonium ($A$), and detritus ($D$) respectively are given by the following expressions:
+\begin{gather}\label{eq:bio6_sources}
+  S_P=PJ(\mathrm{Q}_N+\mathrm{Q}_A) - \mathrm{G}_P - \mathrm{De}_P,\\
+  S_{\mathrm{Chl}}=(\mathrm{R}_P*J*(\mathrm{Q}_N+\mathrm{Q}_A)*P + 
+      (-\mathrm{G}_P-\mathrm{De}_P))*\theta/\zeta),\\
+  S_Z=\delta*(\beta_P*\mathrm{G}_P+\beta_D*\mathrm{G}_D) - \mathrm{De}_Z,\\
+  S_N=-J*P*\mathrm{Q}_N+\mathrm{De}_A,\\
+  S_A=-J*P*\mathrm{Q}_A + \mathrm{De}_D + (1 - \delta)*(\beta_P*\mathrm{G}_P + \beta_D*\mathrm{G}_D) + (1-\gamma)*\mathrm{De}_Z-\mathrm{De}_A,\\
+  S_D=-\mathrm{De}_D + \mathrm{De}_P + \gamma*\mathrm{De}_Z +(1-\beta_P)*\mathrm{G}_P - \beta_D*\mathrm{G}_D
+\end{gather}
+The terms in these equations are given in table 
+
+\ref{tab:bioparameters6}. The variable terms are explained in more detail below.
+\subsubsection{Biological source terms}
+
+\begin{table}[ht]
+  \centering
+  \begin{tabular}{lp{8cm}p{5cm}l}\hline
+    \textbf{Symbol} & \textbf{Meaning} & \textbf{Typical value} & \textbf{Equation}\\\hline
+    $\alpha$ & initial slope of $P-I$ curve,\unit[(W m${-2}$)${-1}$ day$^{-1}$] && \eqref{eq:bio6_alpha} \\
+    $\alpha_c$ & Chl-a specific initial slope of $P-I$ curve & 2 \unit[(gCgChl$^{-1}$Wm$^{-2}$)${-1}$day$^{-1}$] & \\
+    $\beta_P, \beta_D$ & assimilation coefficients of zooplankton & 0.75 & \\
+    $\mathrm{De}_D$ & rate of breakdown of detritus to ammonium && \eqref{eq:bio6_dd}\\
+    $\mathrm{De}_P$ & rate of phytoplankton natural mortality && \eqref{eq:bio6_dp}\\
+    $\mathrm{De}_Z$ & rate of zooplankton natural mortality && \eqref{eq:bio6_dz} \\
+    $\mathrm{De}_A$ & ammonium nitrification rate && \eqref{eq:bio6_da} \\    
+    $\delta$ & excretion parameter & 0.7 & \\
+    $\epsilon$ & grazing parameter relating capture of prey items to prey density & 0.4 & \\
+    $\mathrm{G}_P$ & rate of zooplankton grazing on phytoplankton && \eqref{eq:bio6_gp}\\
+    $\mathrm{G}_D$ & rate of zooplankton grazing on detritus && \eqref{eq:bio6_gd}\\
+    $g$ & zooplankton maximum growth rate & 1.3 \unit[day$^{-1}$] & \\
+    $\gamma$ & fraction of zooplankton mortality going to detritus & 0.5 & \\
+    $I_0$ & photosynthetically active radiation (PAR) immediately below surface of water. Assumed to be 0.43 of the surface radiation &  \\
+    $J$ & light-limited phytoplankton growth rate, \unit[day$^{-1}$] && \eqref{eq:bio6_j}\\
+    $k_A$ & half-saturation constant for ammonium uptake & 0.5 \unit[mmol m$^{-3}$]  & \\
+    $k_N$ & half-saturation constant for nitrate uptake & 0.5 \unit[mmol m$^{-3}$]  & \\
+    $k_P$ & half-saturation constant for phytoplankton mortality & 1 \unit[mmol m$^{-3}$]  & \\
+    $k_Z$ & half-saturation constant for zooplankton mortality & 3 \unit[mmol m$^{-3}$]  & \\
+    $k_w$ & light attenuation due to water & 0.04 \unit[m$^{-1}$] & \\ 
+    $k_c$ & light attenuation due to phytoplankton & 0.03 \unit[m$^2$ mmol$^{-1}$] & \\ 
+    $\lambda_{\mathrm{bio}}$ & rate of the phytoplankton and zooplankton transfer into detritus & 0.05 \unit[day$^{-1}$]& \\
+    $\lambda_A$ & nitrification rate  & 0.03 \unit[day$^{-1}$]& \\
+    $\mu_P$ & phytoplankton mortality rate & 0.05 \unit[day$^{-1}$] & \\
+    $\mu_Z$ & zooplankton mortality rate & 0.2 \unit[day$^{-1}$] & \\
+    $\mu_D$ & detritus reference mineralisaiton rate & 0.05 \unit[day$^{-1}$] & \\
+    $\Psi$ & strength of ammonium inhibition of nitrate uptake & 2.9 \unit[(mmol m$^{-3}$)$^{-1}$] & \\
+    $p_P$ & relative grazing preference for phytoplankton & 0.75 & \\
+    $p_D$ & relative grazing preference for detritus & 0.25 & \\
+    $\mathrm{Q}_N$ & non-dimensional nitrate limiting factor && \eqref{eq:bio6_qn}  \\
+    $\mathrm{Q}_A$ & non-dimensional ammonium limiting factor && \eqref{eq:bio6_qa}  \\
+    $\mathrm{R}_P$ & Chl growth scaling factor && \eqref{eq:bio6_chlgrowth} \\
+    $v$ & Maximum phytoplankton growth rate & 1 \unit[day$^{-1}$] & \\
+    $w_g$ & detritus sinking velocity & 10 \unit[m day$^{-1}$]& \\
+    $z$ & depth && \\
+    $\theta$ & Chl to carbon ratio, \unit[mg Chl mgC$^{-1}$] && \\
+    $\theta_m$ & maximum Chl to carbon ratio & 0.05 \unit[mg Chl mgC$^{-1}$] &\\
+    $\zeta$ & conversion factor from \unit[gC] to \unit[mmolN] based on C:N ratio of 6.5 & 0.0128 \unit[mmolN ngC$^{-1}$] & \\
+    \hline
+  \end{tabular}
+  \caption{Meanings of symbols in the six-component biology model. Typical values are
+    provided for externally set parameters.}
+  \label{tab:bioparameters6}
+\end{table}
+
+Unlike the model of \citet{popova2006} we use a continuous model, with no
+change of equations (bar one exception) above or below the photic zone. For
+our purposes, the photic zone is defined as 100m water depth. First we calculate
+$\theta$:
+\begin{equation}
+    \theta = \frac{\mathrm{Chl}}{\mathrm{P}\zeta}
+\label{eq:bio6_theta}
+\end{equation}
+
+However, at low light levels, $\mathrm{Chl}$ might be zero, therefore
+we take the limit that $\theta \rightarrow \zeta$ at low levels ($1e^{-7}$) of
+chlorphyll-a or photoplankton.
+
+We then calculate $\alpha$:
+\begin{equation}
+    alpha = \alpha_c \theta
+\label{eq:bio6_alpha}
+\end{equation}
+
+Using the PAR available at each vertex of the mesh, we now calculate the
+light-limited phytoplankton growth rate, $J$:
+\begin{equation}
+    J = \frac{v\alpha I_n}{\sqrt{v^2 + \alpha^2 + I_n^2}}
+\label{eq:bio6_j}
+\end{equation}
+
+The limiting factors on nitrate and ammonium are now calculated:
+\begin{equation}
+    \mathrm{Q}_N = \frac{N\exp^{-\Psi A}}{K_N+N}\label{eq:bio6_qn}, 
+\end{equation}
+\begin{equation}
+    \mathrm{Q}_A = \frac{A}{K_A+A}\label{eq:bio6_qa}
+\end{equation}
+
+From these the diagnostic field, primary production ($\mathrm{X_P}$), can be calculated:
+\begin{equation}
+    \mathrm{X_P}=J\left(Q_N + Q_A\right)P
+\label{eq:bio6_primprod}
+\end{equation}
+
+The chlorophyll growth scaling factor is given by:
+\begin{equation}
+    \mathrm{R}_P = Q_N Q_A \left(\frac{\theta_m}{\theta}\right) \left(\frac{v}{\sqrt{v^2 + \alpha^2 + I_n^2}}\right)
+\label{eq:bio6_chlgrowth}
+\end{equation}
+
+The zooplankton grazing terms are now calculated:
+\begin{equation}
+    \mathrm{G}_P = \frac{gp_PP^2Z}{\epsilon + \left(p_PP^2 + p_DD^2\right)}\label{eq:bio6_gp},
+\end{equation}
+\begin{equation}
+    \mathrm{G}_D = \frac{gp_DD^2*Z}{\epsilon+\left(p_PP^2 + p_DD^2\right)}\label{eq:bio6_gd}
+\end{equation}
+
+Finally, the four death rates and re-mineralisation rates are calculated:
+\begin{equation}
+    \mathrm{De}_P = \frac{\mu_pP^2}{P+k_p} + \lambda_{\mathrm{bio}}*P\label{eq:bio6_dp},
+\end{equation}
+\begin{equation}
+    \mathrm{De}_Z = \frac{\mu_zZ^3}{Z+k_z} + \lambda_{\mathrm{bio}}*Z\label{eq:bio6_dz},
+\end{equation}
+\begin{equation}
+    \mathrm{De}_D = \mu_DD+\lambda_{\mathrm{bio}}*P + \lambda_{\mathrm{bio}}*Z\label{eq:bio6_dd},
+\end{equation}
+\begin{equation}
+    \mathrm{De}_A = \lambda_A A \; \mbox{where $z < 100$}\label{eq:bio6_da}
+\end{equation}
+
+
+\subsection{Photosynthetically active radiation (PAR)}\label{sec:I}
+
+Phytoplankton depends on the levels of light in the water column at the
+frequencies useful for photosynthesis. This is referred to as
+photosynthetically active radiation. Sunlight falls on the water surface and
+is absorbed by both water and phytoplankton. This is represented by the
+following equation:
+\begin{equation}
+  \ppx[z]{I}=(A_{\mathrm{water}}+A_PP)I,
+\end{equation}
+where $A_{\mathrm{water}}$ and $A_P$ are the absorption rates of
+photosynthetically active radiation by water and phytoplankton respectively.
+
+This equation has the form of a one-dimensional advection equation and
+therefore requires a single boundary condition: the amount of light incident
+on the water surface. This is a Dirichlet condition on $I$.
+
+As the PAR equation is relatively trivial to solve, the following options
+are recommended:
+\begin{itemize}
+\item Discontinuous discretisation
+\item Solver: gmres iterative method, with no preconditioner.
+\end{itemize}
+
+\subsection{Detritus falling velocity}\label{sec:detritus}
+
+Phytoplankton, zooplankton and nutrient are assumed to be neutrally buoyant
+and therefore move only under the advecting velocity of the water or by
+diffusive mixing. Detritus, on the other hand, is assumed to be denser than
+water so it will slowly sink through the water-column. This is modelled by
+modifying the advecting velocity in the advection-diffusion equation for
+detritus by subtracting a sinking velocity $u_{\mathrm{sink}}$ from the
+vertical component of the advecting velocity.
+
+\section{Sediments}
+
+\fluidity\ is capable of simulating an unlimited number of sediment concentration fields.
+Each sediment field, with concentration, $c_{i}$, behaves as any other tracer field,
+except that it is subject to a settling velocity, $u_{si}$. The equation of conservation
+of suspended sediment mass thus takes the form:
+
+\begin{equation}\label{eq:sediment_conc}
+  \ppt{c_i} + \nabla \cdot c_i ({\bf u} - \delta_{j3}u_{si}) = \nabla \cdot (\kaptens \nabla c_i)
+\end{equation}
+
+Source and absorption terms have been removed from the above equation. These will only be
+present on region boundaries.
+
+Each sediment field represents a discrete sediment type with a specific diameter and
+density. A distribution of sediment types can be achieved by using multiple sediment
+fields.
+
+{\bf Notes on model set up}
+
+Each sediment field must have a sinking velocity. Note that this is not shown as a
+required element in the options tree as it is inherited as a standard option for all
+scalar fields.
+
+A sediment density, and sediment bedload field must also be defined. The sediment bedload
+field stores a record of sediment that has exited the modelled region due to settling of
+sediment particles.
+
+To use sediment, a linear equation of state must also be enabled
+\option{\ldots/equation\_of\_state/fluids/linear}
+
+\subsection{Hindered Sinking Velocity}
+
+The effect of suspended sediment concentration on the fall velocity can be taken into
+account by making the Sinking Velocity field diagnostic. The equation of Richardson and
+Zaki [1954] is then used to calculate the hindered sinking velocity, $u_{si}$, based upon
+the unhindered sinking velocity, $u_{s0}$, and the total concentration of sediment, $c$.
+
+\begin{equation}\label{eq:hindered_sinking_velocity}
+  u_{si} = u_{s0}(1-c)^{2.39}
+\end{equation}
+
+\subsection{Deposition and erosion}
+
+A surface can be defined, the sea-bed, which is a sink for sediment. Once sediment fluxes
+through this surface it is removed from the system and stored in a separate field: the
+Bedload field. Each sediment class has its on bedload field.
+
+Erosion of this bed can be modelled by applying the sediment\_reentrainment boundary
+condition. There are several options for the re-entrainment algorithm that is used to
+calculate the amount of sediment eroded from the bed.
+
+\noindent
+1. Garcia's re-entrainment algorithm
+
+Erosion occurs at a rate based upon the shear velocity of the flow at the bed, $u^*$, the
+distribution of particle classes in the bed, and the particle Reynolds number,
+$R_{p,i}$. The dimensionless entrainment rate for the i$^{th}$ sediment class, $E_i$, is
+given by the following equation:
+
+\begin{equation}
+  E_i = F_i \frac{AZ_i^5}{1-AZ_i^5/0.3}
+\end{equation}
+
+\begin{equation}
+  Z_i = \lambda_m \frac{u^*}{u_{si}} R_{p,i}^{0.6} \left (\frac{d_i}{d_{50}} \right)^{0.2}
+\end{equation}
+
+\noindent
+Where $F_i$ is the volume fraction of the relevant sediment class in the bed, $d_i$ is the
+diameter of the sediment in the i$^{th}$ sediment class and $d_{50}$ is the diameter for
+which 50\% of the sediment in the bed is finer. $A$ is a constant of value $1.3 \times
+10^7$
+
+\noindent
+$u^*$ and $R_{p,i}$ are defined by the following equations:
+
+\begin{equation}
+  u^* = \sqrt{\tau_b/\rho}
+\end{equation}
+
+\begin{equation}
+  R_{p,i} = \sqrt{Rgd^{3}}/\nu
+\end{equation}
+
+This is given dimension by multiplying by the sinking velocity, $u_{si}$, such that the
+total entrainment flux is:
+
+\begin{equation}
+  E_{m} = u_{si}E_i
+\end{equation}
+
+\noindent
+2. Generic re-entrainment algorithm
+
+Erosion occurs when the bed-shear stress is greater than the critical shear stress. Each
+sediment class has a separate shear stress, which can be input or calculated depending on
+the options chosen. Erosion flux, $E_m$ is implemented as a Neumann boundary condition on
+the bedload/erosion surface.
+
+\begin{equation}\label{eq:sediment_erosion_rate}
+  E_m = E_{0m}\left(1-\varphi\right)\frac{\tau_{sf} - \tau_{cm}}{\tau_{cm}}
+\end{equation}
+
+\noindent
+where $E_{0m}$ is the bed erodibility constant (kgm$^{-1}$s${-1}$) for sediment class $m$,
+$\tau_{sf}$ is the bed-shear stress, $\varphi$ is the bed porosity (typically 0.3) and
+$\tau_{cm}$ is the critical shear stress for sediment class $m$. The critical shear stress
+can be input by the user or automatically calculated using:
+
+\begin{equation}\label{eq:critical_shear_stress}
+  \tau_{cm} = 0.041\left(s-1\right)\rho gD
+\end{equation}
+
+\noindent
+where s is the relative density of the sediment, i.e. $\frac{\rho_{S_{m}}}{\rho}$ and $D$
+is the sediment diameter (mm). The SedimentDepositon field effectively mixes the deposited
+sediment, so order of bedload is not preserved.
+
+\subsection{Sediment concentration dependent viscosity}
+
+The viscosity is also affected by the concentration of suspended sediment. This can be
+taken account for by using the sediment\_concentration\_dependent\_viscosity algorithm on
+a diagnostic viscosity field. If using a sub-grid scale parameterisation this must be
+applied to the relevant background viscosity field.
+
+The equation used is that suggested by Krieger and Dougherty, 1959, and more recently by
+Sequeiros, 2009.  Viscosity, $\nu$, is a function of the zero sediment concentration
+viscosity, $\nu_0$, and the total sediment concentration, $c$, as follows.
+
+\begin{equation}\label{eq:sediment_concentration_dependent_viscosity}
+  \nu = \nu_{0}(1-c/0.65)^{-1.625}
+\end{equation}
+
+Note: a ZeroSedimentConcentrationViscosity tensor field is required.
+
+

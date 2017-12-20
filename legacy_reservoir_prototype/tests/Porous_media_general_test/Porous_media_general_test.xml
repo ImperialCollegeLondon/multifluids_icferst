@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Porous_media_general</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml tbc</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst Mid_discontinuous.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="final_dt" language="python">from fluidity_tools import stat_parser as stat
+vals = stat("mid_discontinuous.stat")["dt"]
+A = list(vals.values())
+final_dt = A[0][len(A[0])-1]</variable>
+    <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
+max_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
+    <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat
+int_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
+    <variable name="min_P" language="python">from fluidity_tools import stat_parser as stat
+min_P = stat("mid_discontinuous.stat")["phase1"]["Pressure"]["min"][-1]</variable>
+    <variable name="density_Sat1" language="python">from fluidity_tools import stat_parser as stat
+density_Sat1 = stat("mid_discontinuous.stat")["phase1"]["Density"]["max"][-1]</variable>
+    <variable name="DarcyVel1" language="python">from fluidity_tools import stat_parser as stat
+DarcyVel1 = stat("mid_discontinuous.stat")["phase1"]["DarcyVelocity%1"]["max"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final dT to be correct" language="python">assert(abs(final_dt - 0.0027)/0.0027 &lt; 0.01)</test>
+    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.61) &lt; 0.01)</test>
+    <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 0.222)/0.222 &lt; 0.01)</test>
+    <test name="Assert outlet pressure boundary condition" language="python">assert(abs(min_P - 1.5)/1.5 &lt; 0.01)</test>
+    <test name="Assert density is introduced" language="python">assert(abs(density_Sat1 - 1.0) &lt; 0.0001)</test>
+    <test name="Assert final max Darcy velocity" language="python">assert(abs(DarcyVel1 - 0.8)/0.8 &lt; 0.05)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

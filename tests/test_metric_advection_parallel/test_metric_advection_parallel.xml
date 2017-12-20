@@ -1,0 +1,69 @@
+<?xml version = "1.0" encoding = "UTF-8" ?>
+<testproblem>
+  <name>Metric advection test, parallel</name>
+  <owner userid="pef"/>
+  <tags>flml parallel 2dadapt</tags>
+  <problem_definition length = "medium" nprocs = "2">
+    <command_line>mpiexec ../../bin/flredecomp -i 1 -o 2 -v -l test_metric_advection_parallel test_metric_advection_parallel_flredecomp &amp;&amp;
+mpiexec ../../bin/fluidity -v3 -l test_metric_advection_parallel_flredecomp.flml
+    </command_line>
+  </problem_definition>
+  <variables>
+    <variable name="solvers_converged" language="python">
+import os
+files = os.listdir("./")
+solvers_converged = not "matrixdump" in files and not "matrixdump.info" in files
+    </variable>
+    <variable name = "end_times" language = "python">
+    
+from lxml import etree
+
+################################################################################################
+
+def not_comment(x):
+# function to filter stream for use in Getflmlvalue
+  return not 'comment' in x.tag
+
+################################################################################################
+
+
+def Getflmlvalue(flml_name, xpath):
+
+# We will be filtering the children of the elements later,
+# to remove comments.
+
+# The spud file to modify
+  filename = flml_name
+
+# The path to the node in the tree - xpath
+
+# Open it up
+  tree = etree.parse(open(filename))
+
+  node = tree.xpath(xpath)[0]
+
+  child = filter(not_comment, node.getchildren())[0]
+
+  return child.text
+
+################################################################################################
+    
+    
+from fluidity_tools import stat_parser
+stat = stat_parser('test_metric_advection_parallel.stat')
+end_times = [stat["ElapsedTime"]["value"][-1]]
+end_times.append(float(Getflmlvalue('test_metric_advection_parallel.flml','/fluidity_options/timestepping/finish_time')))
+
+    </variable>
+  </variables>
+  <pass_tests>
+    <test name="Solvers converged" language="python">
+      assert(solvers_converged)
+    </test>
+    <test name = "check run completed" language = "python">
+    assert end_times[1]-end_times[0] &lt; 1.E-6
+    </test>
+  </pass_tests>
+  <warn_tests>
+  </warn_tests>
+</testproblem>
