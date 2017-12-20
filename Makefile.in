@@ -177,7 +177,7 @@ bin/$(FLUIDITY): main.o lib/lib$(FLUIDITY).a
 	@echo "    MKDIR bin"
 	@mkdir -p bin
 	@echo "    LD $(PROGRAM)"
-	@$(EVAL) $(LINKER) -o $(PROGRAM) main.o $(LIBS)
+	@$(EVAL) $(FLLINKER) -o $(PROGRAM) main.o $(LIBS)
 
 mp: bin/icferst
 
