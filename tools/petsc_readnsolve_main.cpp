@@ -47,7 +47,7 @@ void usage(int argc, char **argv){
 #endif
   
   // if it's already specified as a PETSc option, we do nothing:
-  ierr = PetscOptionsHasName("prns_","-flml",&flg);
+  ierr = PetscOptionsHasName(NULL,"prns_","-flml",&flg);
   if (flg) {
     return;
   }
@@ -65,15 +65,15 @@ void usage(int argc, char **argv){
     my_PETSc_options+= flml_file;
     // see if next argument is a valid fieldname
     // but only if not already in the PETSc options database
-    ierr = PetscOptionsHasName("prns_","-field",&flg);
+    ierr = PetscOptionsHasName(NULL,"prns_","-field",&flg);
     if( !flg && (i+1<argc) && (argv[i+1][0]!='-') ) {
       my_PETSc_options+= " -prns_field " + string(argv[i+1]);
     }
-    ierr = PetscOptionsInsertString( my_PETSc_options.c_str() );
+    ierr = PetscOptionsInsertString(NULL, my_PETSc_options.c_str() );
   }
   
   // -l option needs to be dealt with in c++ already
-  ierr = PetscOptionsHasName("","-l",&flg);
+  ierr = PetscOptionsHasName(NULL,"","-l",&flg);
   if (flg) {
     int rank = 0;
 #ifdef HAVE_MPI
