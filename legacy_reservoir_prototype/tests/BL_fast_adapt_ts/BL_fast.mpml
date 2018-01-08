@@ -66,11 +66,11 @@
     <dump_format>
       <string_value>vtk</string_value>
     </dump_format>
-    <dump_period_in_timesteps>
+    <dump_period>
       <constant>
-        <integer_value rank="0">1</integer_value>
+        <real_value rank="0">0.1</real_value>
       </constant>
-    </dump_period_in_timesteps>
+    </dump_period>
     <output_mesh name="PressureMesh"/>
     <stat/>
   </io>
@@ -97,7 +97,7 @@
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
           <increase_factor>
-            <real_value rank="0">1.1</real_value>
+            <real_value rank="0">1.8</real_value>
           </increase_factor>
           <decrease_factor>
             <real_value rank="0">1.5</real_value>

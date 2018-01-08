@@ -72,7 +72,8 @@ characters in the simulation name should be avoided.</a:documentation>
           <element name="dump_period">
             <a:documentation>Period between dumps in time units.
 
-Specifies the period between each dump of the solution to disk.
+Specifies the period between each dump of the solution to disk. 
+If using adaptive time-step this periods will be EXACTLY matched.
 A value of 0.0 indicates that there would be a dump at every timestep.</a:documentation>
             <choice>
               <element name="constant">

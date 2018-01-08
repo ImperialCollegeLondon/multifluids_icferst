@@ -2011,7 +2011,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
-    real :: dt, auxR
+    real, save :: stored_dt = -1
+    real :: dt, auxR, dump_period
     integer :: Aim_num_FPI, auxI, incr_threshold
     integer, save :: show_FPI_conv
     real, save :: OldDt
@@ -2020,7 +2021,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:), pointer :: phasevolumefraction, temperature, OldTemperature
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
-    logical, save :: match_final_t = .true.
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
@@ -2070,6 +2070,23 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
     call get_option( '/timestepping/finish_time', finish_time )
+    !Ensure that even adapting the time, the final time is matched
+    max_ts = max(min(max_ts, abs(finish_time - acctim)), 1d-15)
+    if (stored_dt<0) then!for the first time only
+        call get_option( '/timestepping/timestep', dt )
+        stored_dt = dt
+    end if
+    !To ensure that we always create a vtu file at the desired time,
+    !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
+    if (have_option('/io/dump_period/constant')) then
+        call get_option( '/io/dump_period/constant', dump_period )
+        !First get the next time for a vtu dump
+        auxR = dble(ceiling(acctim/dump_period)) * dump_period
+        if (abs(auxR-acctim) > 1e-8) then
+            max_ts = max(min(max_ts, abs(acctim-auxR)), min_ts*1d-3)!Make sure we dump at the required time and we don't get dt = 0
+        end if
+    end if
+
 
     select case (order)
         case (1)!Store or get from backup
@@ -2277,7 +2294,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !We do not follow the normal approach
                     if (ExitNonLinearLoop.and..not.Repeat_time_step) then
                         !Modify time step
-                        call get_option( '/timestepping/timestep', dt )
+                        dt = stored_dt
                         auxR = PID_time_controller()
                         if (auxR < 1.0 )then!Reduce Ts
                             dt = max(dt * max(abs(auxR), 1./(1.5*decreaseFactor)), min_ts)
@@ -2285,14 +2302,14 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                             dt = min(dt * min(abs(auxR), 1.5*increaseFactor), max_ts)
                         end if
                         call set_option( '/timestepping/timestep', dt )
+                        stored_dt = dt
                         if (getprocno() == 1)then
                             ewrite(show_FPI_conv,*) "Time step changed to:", dt
                         end if
                         ExitNonLinearLoop = .true.
-                        if (match_final_t .and. dt + acctim > finish_time) then
-                            call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
-                            match_final_t = .false.
-                        end if
+                        !Ensure that period_vtus or the final time are matched, controlled by max_ts
+                        dt = max(min(dt, max_ts), min_ts)
+                        call set_option( '/timestepping/timestep', dt )
                         return
                     end if
                 end if
@@ -2300,27 +2317,29 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 !Adaptive Ts for Backtracking only based on the number of FPI
                 if (ExitNonLinearLoop .and. its < incr_threshold .and..not.Repeat_time_step) then
                     !Increase time step
-                    call get_option( '/timestepping/timestep', dt )
+                    dt = stored_dt!retrieve stored_dt
                     dt = min(dt * increaseFactor, max_ts)
                     call set_option( '/timestepping/timestep', dt )
+                    stored_dt = dt
                     if (getprocno() == 1) then
                         ewrite(show_FPI_conv,*) "Time step increased to:", dt
                     end if
                     ExitNonLinearLoop = .true.
-                    if (match_final_t .and. dt + acctim > finish_time) then
-                        call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
-                        match_final_t = .false.
-                    end if
+                    !Ensure that period_vtus or the final time are matched, controlled by max_ts
+                    dt = max(min(dt, max_ts), min_ts)
+                    call set_option( '/timestepping/timestep', dt )
                     return
                 end if
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
-                    call get_option( '/timestepping/timestep', dt )
+!                    call get_option( '/timestepping/timestep', dt )
+                    dt = stored_dt!retrieve stored_dt
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
                         call set_option( '/timestepping/timestep', dt )
+                        stored_dt = dt
                         !Do not decrease if minimum ts is reached
                         Repeat_time_step = .false.
                         ExitNonLinearLoop = .true.
@@ -2337,6 +2356,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call get_option( '/timestepping/current_time', acctim )
                     acctim = acctim - dt
                     call set_option( '/timestepping/current_time', acctim )
+
                     if (PID_controller) then
                         auxR = PID_time_controller()
                         !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
@@ -2347,12 +2367,27 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         dt = max(dt / decreaseFactor,min_ts)
                     end if
                     call set_option( '/timestepping/timestep', dt )
+                    stored_dt = dt
                     if (getprocno() == 1) then
                         ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
                     end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
+                    return
                 end if
+                !If adapting ts and it gets here -meaning it has not been modified-, maybe we still need to adapt ts
+                !to ensure we match the final time or a period_vtu
+                call get_option( '/timestepping/timestep', dt )
+                auxR = dt!Store dt before modification to compare
+                dt = max(min(dt, max_ts), 1d-8)
+                !here we do not store dt, as its modification is not based on stability
+                call set_option( '/timestepping/timestep', dt )
+                if (abs(auxR-dt) > 1d-8) then
+                    if (getprocno() == 1)then
+                        ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt
+                    end if
+                end if
+                return
             end if
     end select
 
