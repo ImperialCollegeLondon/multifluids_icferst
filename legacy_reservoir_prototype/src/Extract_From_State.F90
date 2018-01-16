@@ -3618,7 +3618,7 @@ end subroutine get_DarcyVelocity
         ! Write column headings to file
         counter = 0
         if(itime.eq.1) then
-            write(whole_line,*) "Current Time (s)" // "," // "Current Time (days)" // "," // "Pore Volume"
+            write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
             whole_line = trim(whole_line)
             do ioutlet =1, size(intflux,2)
                 do iphase = 1, size(intflux,1)
@@ -3640,7 +3640,7 @@ end subroutine get_DarcyVelocity
             write(default_stat%conv_unit,*), trim(whole_line)
         endif
             ! Write the actual numbers to the file now
-            write(numbers,'(f15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(24*60*60) , ",",  porevolume
+            write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  porevolume
             whole_line =  trim(numbers)
             do ioutlet =1, size(intflux,2)
                 do iphase = 1, size(intflux,1)
