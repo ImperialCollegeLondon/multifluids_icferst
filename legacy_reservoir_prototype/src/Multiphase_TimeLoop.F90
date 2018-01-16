@@ -749,7 +749,7 @@ call solve_transport()
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
                 ! dump based on the prescribed period of real time
-                Conditional_Dump_RealTime: if( (abs(current_time - dump_period*dump_no) < 1d-8 .or. current_time >= dump_period*dump_no)&
+                Conditional_Dump_RealTime: if( (abs(current_time - dump_period*dump_no) < 1d-12 .or. current_time >= dump_period*dump_no)&
                      .and. current_time/=finish_time) then
                     if (do_checkpoint_simulation(dump_no)) then
                         CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")

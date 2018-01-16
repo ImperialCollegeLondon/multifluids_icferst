@@ -2012,6 +2012,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
     real, save :: stored_dt = -1
+    logical, save :: adjusted_ts_to_dump = .false.
     real :: dt, auxR, dump_period
     integer :: Aim_num_FPI, auxI, incr_threshold
     integer, save :: show_FPI_conv
@@ -2082,7 +2083,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         call get_option( '/io/dump_period/constant', dump_period )
         !First get the next time for a vtu dump
         auxR = dble(ceiling(acctim/dump_period)) * dump_period
-        if (abs(auxR-acctim) > 1e-8) then
+        if (abs(auxR-acctim) > 1e-12) then
             max_ts = max(min(max_ts, abs(acctim-auxR)), min_ts*1d-3)!Make sure we dump at the required time and we don't get dt = 0
         end if
     end if
@@ -2188,10 +2189,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
-!                    auxR = maxval(reference_field(1,1,:))
-!                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
-
-                    !Calculate normalized infinite norm of the difference
                     totally_min_max(1)=minval(reference_field)!use stored pressure
                     totally_min_max(2)=maxval(reference_field)!use stored pressure
                     !For parallel
@@ -2288,6 +2285,16 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 !If maximum number of FPI reached, then repeat time-step
                 if (its >= NonLinearIteration) Repeat_time_step = .true.
 
+                !If dt was modified just to match a dump_period then we impose again the previous time-step
+                if (adjusted_ts_to_dump) then
+                    dt = stored_dt
+                    call set_option( '/timestepping/timestep', dt )
+                    if (getprocno() == 1)then
+                        ewrite(show_FPI_conv,*) "Time step restored to:", dt
+                    end if
+                    adjusted_ts_to_dump = .false.
+                    return
+                end if
 
                 !This controller is supposed to be the most effective
                 if (PID_controller) then
@@ -2303,13 +2310,13 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         end if
                         call set_option( '/timestepping/timestep', dt )
                         stored_dt = dt
+                        !Ensure that period_vtus or the final time are matched, controlled by max_ts
+                        dt = max(min(dt, max_ts), min_ts)
+                        call set_option( '/timestepping/timestep', dt )
                         if (getprocno() == 1)then
                             ewrite(show_FPI_conv,*) "Time step changed to:", dt
                         end if
                         ExitNonLinearLoop = .true.
-                        !Ensure that period_vtus or the final time are matched, controlled by max_ts
-                        dt = max(min(dt, max_ts), min_ts)
-                        call set_option( '/timestepping/timestep', dt )
                         return
                     end if
                 end if
@@ -2333,7 +2340,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
-!                    call get_option( '/timestepping/timestep', dt )
                     dt = stored_dt!retrieve stored_dt
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
@@ -2377,7 +2383,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 end if
                 !If adapting ts and it gets here -meaning it has not been modified-, maybe we still need to adapt ts
                 !to ensure we match the final time or a period_vtu
-                call get_option( '/timestepping/timestep', dt )
+                dt = stored_dt!retrieve stored_dt
                 auxR = dt!Store dt before modification to compare
                 dt = max(min(dt, max_ts), 1d-8)
                 !here we do not store dt, as its modification is not based on stability
@@ -2385,6 +2391,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (abs(auxR-dt) > 1d-8) then
                     if (getprocno() == 1)then
                         ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt
+                        adjusted_ts_to_dump = .true.
                     end if
                 end if
                 return
