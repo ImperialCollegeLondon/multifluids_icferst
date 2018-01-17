@@ -2085,6 +2085,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         auxR = dble(ceiling(acctim/dump_period)) * dump_period
         if (abs(auxR-acctim) > 1e-12) then
             max_ts = max(min(max_ts, abs(acctim-auxR)), min_ts*1d-3)!Make sure we dump at the required time and we don't get dt = 0
+        else
+            max_ts = min(max_ts, dump_period)
         end if
     end if
 
@@ -2306,7 +2308,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         if (auxR < 1.0 )then!Reduce Ts
                             dt = max(dt * max(abs(auxR), 1./(1.5*decreaseFactor)), min_ts)
                         else
-                            dt = min(dt * min(abs(auxR), 1.5*increaseFactor), max_ts)
+                            dt = dt * min(abs(auxR), 1.5*increaseFactor)
                         end if
                         call set_option( '/timestepping/timestep', dt )
                         stored_dt = dt
@@ -2325,7 +2327,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (ExitNonLinearLoop .and. its < incr_threshold .and..not.Repeat_time_step) then
                     !Increase time step
                     dt = stored_dt!retrieve stored_dt
-                    dt = min(dt * increaseFactor, max_ts)
+                    dt = dt * increaseFactor
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
                     if (getprocno() == 1) then
@@ -2381,20 +2383,22 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     ExitNonLinearLoop = .true.
                     return
                 end if
-                !If adapting ts and it gets here -meaning it has not been modified-, maybe we still need to adapt ts
-                !to ensure we match the final time or a period_vtu
-                dt = stored_dt!retrieve stored_dt
-                auxR = dt!Store dt before modification to compare
-                dt = max(min(dt, max_ts), 1d-8)
-                !here we do not store dt, as its modification is not based on stability
-                call set_option( '/timestepping/timestep', dt )
-                if (abs(auxR-dt) > 1d-8) then
-                    if (getprocno() == 1)then
-                        ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt
-                        adjusted_ts_to_dump = .true.
+                if (ExitNonLinearLoop.and..not.Repeat_time_step) then
+                    !If adapting ts and it gets here -meaning it has not been modified-, maybe we still need to adapt ts
+                    !to ensure we match the final time or a period_vtu
+                    dt = stored_dt!retrieve stored_dt
+                    auxR = dt!Store dt before modification to compare
+                    dt = max(min(dt, max_ts), 1d-8)
+                    !here we do not store dt, as its modification is not based on stability
+                    call set_option( '/timestepping/timestep', dt )
+                    if (abs(auxR-dt) > 1d-8) then
+                        if (getprocno() == 1)then
+                            ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt
+                            adjusted_ts_to_dump = .true.
+                        end if
                     end if
+                    return
                 end if
-                return
             end if
     end select
 
