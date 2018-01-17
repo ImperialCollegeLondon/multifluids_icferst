@@ -2287,7 +2287,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
                 !If dt was modified just to match a dump_period then we impose again the previous time-step
                 if (adjusted_ts_to_dump) then
-                    dt = stored_dt
+                    dt = max(min(stored_dt, max_ts), 1d-8)
                     call set_option( '/timestepping/timestep', dt )
                     if (getprocno() == 1)then
                         ewrite(show_FPI_conv,*) "Time step restored to:", dt
