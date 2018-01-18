@@ -2072,7 +2072,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/current_time', acctim )
     call get_option( '/timestepping/finish_time', finish_time )
     !Ensure that even adapting the time, the final time is matched
-    max_ts = max(min(max_ts, abs(finish_time - acctim)), 1d-15)
+    max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
     if (stored_dt<0) then!for the first time only
         call get_option( '/timestepping/timestep', dt )
         stored_dt = dt

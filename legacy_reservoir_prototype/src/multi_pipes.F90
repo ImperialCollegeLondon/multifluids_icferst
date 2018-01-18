@@ -448,8 +448,6 @@ contains
                 ! Calculate element angle sweeped out by element and pipe
                 IF ( Mdims%ndim == 2 ) THEN
                     ELE_ANGLE = PI
-                else if ( Mdims%ndim == 3 ) THEN!THIS SHOULD BE REMOVED FOR GRAVITY EFFECTS
-                    ELE_ANGLE = PI              !HOWEVER FOR THE TIME BEING THIS SEEMS MORE ROBUST
                 ELSE
                     ! find the nodes other than the pipe end corner nodes...
                     ICORNER3 = 0
@@ -1129,8 +1127,6 @@ contains
                 ! Calculate element angle sweeped out by element and pipe
                 IF ( Mdims%ndim == 2 ) THEN
                     ELE_ANGLE = PI
-                else if ( Mdims%ndim == 3 ) THEN!THIS SHOULD BE REMOVED FOR GRAVITY EFFECTS
-                    ELE_ANGLE = PI              !HOWEVER FOR THE TIME BEING THIS SEEMS MORE ROBUST
                 ELSE
                     ! find the nodes other than the pipe end corner nodes...
                     ICORNER3 = 0
