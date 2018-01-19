@@ -2310,12 +2310,13 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         else
                             dt = dt * min(abs(auxR), 1.5*increaseFactor)
                         end if
+                        auxR = stored_dt
                         call set_option( '/timestepping/timestep', dt )
                         stored_dt = dt
                         !Ensure that period_vtus or the final time are matched, controlled by max_ts
                         dt = max(min(dt, max_ts), min_ts)
                         call set_option( '/timestepping/timestep', dt )
-                        if (getprocno() == 1)then
+                        if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
                             ewrite(show_FPI_conv,*) "Time step changed to:", dt
                         end if
                         ExitNonLinearLoop = .true.
@@ -3626,11 +3627,11 @@ end subroutine get_DarcyVelocity
             whole_line = trim(whole_line)
             do ioutlet =1, size(intflux,2)
                 do iphase = 1, size(intflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outlet_id(ioutlet), " flux"
+                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outlet_id(ioutlet), " Massflux"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(intflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " time integrated flux"
+                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " time integrated Massflux"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 if (has_temperature) then

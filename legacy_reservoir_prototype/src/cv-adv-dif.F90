@@ -1712,16 +1712,12 @@ contains
                             END WHERE
                             !Calculate the courant number for porous media
                             if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
-                                do ipres = 1, Mdims%npres
-                                    !ndotq = velocity * normal
-                                    Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
-                                end do
+                                !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
+                                Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                 !and the shock-front Courant number
                                 if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, IDs_ndgln(ELE)))) then
-                                    do ipres = 1, Mdims%npres
-                                        !ndotq = velocity * normal
-                                        Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
-                                    end do
+                                    !ndotq = velocity * normal
+                                    Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                 end if
                             end if
                             If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN

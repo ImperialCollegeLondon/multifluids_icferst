@@ -943,7 +943,7 @@ contains
 
         !Local variables
         LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, U_P0DG
-        LOGICAL :: CALC_SIGMA_PIPE, DEFAULT_SIGMA_PIPE_OPTIONS, SWITCH_PIPES_ON_AND_OFF
+        LOGICAL :: CALC_SIGMA_PIPE, SWITCH_PIPES_ON_AND_OFF
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
             &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE
@@ -977,7 +977,6 @@ contains
         IGNORE_DIAGONAL_PIPES=option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
-        DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
         call get_option("/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
         SWITCH_PIPES_ON_AND_OFF= have_option("/wells_and_pipes/well_options/switch_wells_on_and_off")
