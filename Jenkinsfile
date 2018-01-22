@@ -51,6 +51,15 @@ low: true]]
     }
     
     }
+
+    stage( 'Install diamond locally' )
+    {
+        dir ( "${branch}" )
+        {
+            sh "make -j ${cores} install-diamond"
+            sh "make -j ${cores} install-user-schemata"
+        }
+    }
     
     stage( 'Collect 3rd party dependecies' )
     {
@@ -60,6 +69,10 @@ low: true]]
             sh "cp /usr/lib64/openmpi/lib/libpetsc.so.3.6.3 ./libpetsc.so.3.6"
             sh "cp /usr/lib64/openmpi/lib/libparmetis.so ./libparmetis.so"
             sh "cp /usr/lib64/libnetcdf.so.7.2.0 ./libnetcdf.so.7"
+            
+            sh "echo #!/bin/bash > mpdiamond"
+            sh "echo export PYTHONPATH=$PYTHONPATH:/home/g.vix/local/lib/python2.7/site-packages >> mpdiamond"
+            sh "echo diamond -s /home/g.vix/ICL/legacy_reservoir_prototype/schemas/multiphase.rng $* >> mpdiamond"
         }
         
     }
