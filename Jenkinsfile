@@ -1,6 +1,7 @@
 def branch = 'master'
 def cores = 2
 def rsync_opt = "--rsh='ssh -x -q' --delete --recursive --links --chmod=D2750,F640 --owner --group --chown=:icl_user"
+def okapi_user = "s.koshelev"
 
 node( 'FluidityCentos7' )
 {
@@ -73,6 +74,6 @@ low: true]]
     {
         sh "chmod 750 ${env.WORKSPACE}/icl/"
         //sh "rsync -A -vaz --delete -e ssh ${env.WORKSPACE}/icl/ s.koshelev@okapi.pds.local:/glb/data/icl/"
-        sh "rsync ${rsync_opt} ${env.WORKSPACE}/icl/ shelev@okapi.pds.local:/glb/data/icl"
+        sh "rsync ${rsync_opt} ${env.WORKSPACE}/icl/ ${okapi_user}@okapi.pds.local:/glb/data/icl"
     }
 }
