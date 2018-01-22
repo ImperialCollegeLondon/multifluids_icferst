@@ -9,7 +9,7 @@ node( 'FluidityCentos7' )
 {
   
   //////  
-  if ( false ){
+  //if ( false ){
     
   stage( 'Clean workspace') { cleanWs() }
     
@@ -40,9 +40,9 @@ node( 'FluidityCentos7' )
   {
     dir ( "${branch}" ) { sh "make -j ${cores} install" }
   }
-  
-//////  
-  }
+
+//////
+//  }
 
   stage( 'Install diamond locally' )
   {
