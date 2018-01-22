@@ -65,14 +65,8 @@ low: true]]
     
     stage( 'Collect Fluidity tests' )
     {
-        dir ( "icl/test/Fluidity" )
-        {
-            sh "tar cf - ${env.WORKSPACE}/src/tests | tar fx --strip-components=8 -"
-        }
-        dir ( "icl/test/IC-Ferst" )
-        {
-            sh "cp -r ${env.WORKSPACE}/src/legacy_reservoir_prototype/tests/* ."
-        }
+        dir ( "icl/test/Fluidity" ) { sh "tar cf - ${env.WORKSPACE}/${branch}/tests                            | tar fx --strip-components=8 -" }
+        dir ( "icl/test/IC-Ferst" ) { sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/tests | tar fx --strip-components=9 -" }
     }
     
     stage( 'Deploy build to Okapi' )
