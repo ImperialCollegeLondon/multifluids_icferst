@@ -51,12 +51,13 @@ node( 'FluidityCentos7' )
       sh "make -j ${cores} install-diamond"
       sh "make -j ${cores} install-user-schemata"
     }
+
     dir ( "icl/lib/diamond/mpschemas" )
     {
-      tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/schemas | tar xf - --strip-components=8"
+      sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/schemas | tar xf - --strip-components=8"
     }
   }
-    
+
   stage( 'Collect 3rd party dependecies' )
   {
     dir ( "icl/bin" )
@@ -72,9 +73,8 @@ node( 'FluidityCentos7' )
       sh "echo diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng $* >> mpdiamond"
       sh "chmod 750 mdiamond"
     }
-        
   }
-    
+
   stage( 'Collect Fluidity tests' )
   {
     dir ( "icl/test/Fluidity" ) { sh "tar cf - ${env.WORKSPACE}/${branch}/tests                            | tar fx - --strip-components=8" }
