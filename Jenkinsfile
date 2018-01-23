@@ -19,7 +19,7 @@ node( 'FluidityCentos7' )
 
   stage( 'Configure')
   {
-    dir ( "${branch}" ) { sh "./configure --prefix=${env.WORKSPACE}/icl --with-exodusii"  }
+    dir ( "${branch}" ) { sh "./configure --prefix=${env.WORKSPACE}/icl --with-exodusii --enable-2d-adaptivity"  }
   }
 
   stage( 'Compile Fluidity code' )
