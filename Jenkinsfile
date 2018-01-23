@@ -1,15 +1,11 @@
 def branch = 'master'
 def cores = 2
-// def rsync_opt = "--rsh='ssh -x -q' --delete --recursive --links --chmod=D2750,F640 --owner --group --chown=:icl_user"
 def rsync_opt = "--rsh='ssh -x -q' --delete --exclude '*@tmp' --recursive --links --chmod=D2750,Fo-rxw --owner --group --chown=:icl_user"
 def okapi_user = "s.koshelev"
 def deploy_path = "/glb/data/icl"
 
 node( 'FluidityCentos7' )
 {
-  
-  //////  
-  //if ( false ){
 
   stage( 'Clean workspace') { cleanWs() }
 
@@ -40,9 +36,6 @@ node( 'FluidityCentos7' )
   {
     dir ( "${branch}" ) { sh "make -j ${cores} install" }
   }
-
-//////
-//  }
 
   stage( 'Install diamond locally' )
   {
@@ -75,7 +68,6 @@ node( 'FluidityCentos7' )
       sh "cp /usr/lib64/openmpi/lib/libzoltan.so.3.82 ./libzoltan.so.3"
       sh "cp /usr/lib64/openmpi/lib/libpetsc.so.3.6.3 ./libpetsc.so.3.6"
       sh "cp /usr/lib64/openmpi/lib/libparmetis.so ./libparmetis.so"
-//      sh "cp /usr/lib64/libnetcdf.so.7.2.0 ./libnetcdf.so.7"
       sh "cp /usr/lib64/libmetis.so.0 ./libmetis.so"
       sh "cp /usr/lib64/libudunits2.so.0.1.0 ./libudunits2.so.0"
       sh "cp /usr/lib/libvtkzlib-6.1.so.1 ./libvtkzlib-6.1.so.1"
@@ -100,7 +92,6 @@ node( 'FluidityCentos7' )
   stage( 'Deploy build to Okapi' )
   {
       sh "chmod 750 ${env.WORKSPACE}/icl/"
-      //sh "rsync -A -vaz --delete -e ssh ${env.WORKSPACE}/icl/ s.koshelev@okapi.pds.local:/glb/data/icl/"
       sh "rsync ${rsync_opt} ${env.WORKSPACE}/icl/ ${okapi_user}@okapi.pds.local:/glb/data/icl"
   }
 }
