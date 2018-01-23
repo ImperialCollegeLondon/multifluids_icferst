@@ -68,10 +68,10 @@ node( 'FluidityCentos7' )
       sh "cp /usr/lib64/libnetcdf.so.7.2.0 ./libnetcdf.so.7"
       
       // Generate startup script for Diamond
-      sh "echo #!/bin/bash > mpdiamond"
-      sh "echo export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages >> mpdiamond"
-      sh "echo diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$* >> mpdiamond"
-      sh "chmod 750 mdiamond"
+      sh "echo '#!/bin/bash' > mpdiamond"
+      sh "echo 'export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages' >> mpdiamond"
+      sh "echo 'diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> mpdiamond"
+      sh "chmod 750 mpdiamond"
     }
   }
 
