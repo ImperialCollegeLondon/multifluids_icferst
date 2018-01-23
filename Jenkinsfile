@@ -1,7 +1,8 @@
 def branch = 'master'
 def cores = 2
 // def rsync_opt = "--rsh='ssh -x -q' --delete --recursive --links --chmod=D2750,F640 --owner --group --chown=:icl_user"
-def rsync_opt = "--rsh='ssh -x -q' --delete --recursive --links --chmod=D2750 --owner --group --chown=:icl_user"
+def rsync_opt = "--rsh='ssh -x -q' --delete --exclude '*@tmp' --recursive --links --chmod=D2750,Fo-rxw --owner --group --chown=:icl_user"
+//--chmod=D2750 --owner --group --chown=:icl_user"
 def okapi_user = "s.koshelev"
 def deploy_path = "/glb/data/icl"
 
@@ -54,7 +55,7 @@ node( 'FluidityCentos7' )
 
     dir ( "icl/lib/diamond/mpschemas" )
     {
-      sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/schemas | tar xf - --strip-components=8"
+      sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/schemas | tar xf - --strip-components=9"
     }
   }
 
@@ -70,7 +71,7 @@ node( 'FluidityCentos7' )
       // Generate startup script for Diamond
       sh "echo '#!/bin/bash' > mpdiamond"
       sh "echo 'export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages' >> mpdiamond"
-      sh "echo 'diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> mpdiamond"
+      sh "echo '${deploy_path}/bin/diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> mpdiamond"
       sh "chmod 750 mpdiamond"
     }
   }
