@@ -9,10 +9,10 @@ node( 'FluidityCentos7' )
 {
   
   //////  
-  if ( false ){
-    
+  //if ( false ){
+
   stage( 'Clean workspace') { cleanWs() }
-    
+
   stage('Get source code')
   {
     dir ( "${branch}" )
@@ -23,14 +23,14 @@ node( 'FluidityCentos7' )
 
   stage( 'Configure')
   {
-    dir ( "${branch}" ) { sh "./configure --prefix=${env.WORKSPACE}/icl"  }
+    dir ( "${branch}" ) { sh "./configure --prefix=${env.WORKSPACE}/icl --with-exodusii"  }
   }
-    
+
   stage( 'Compile Fluidity code' )
   {
     dir ( "${branch}" ) { sh "make -j ${cores} all" }
   }
-    
+
   stage( 'Compile IC-Ferst code' )
   {
     dir ( "${branch}" ) { sh "make -j ${cores} mp" }
@@ -42,7 +42,7 @@ node( 'FluidityCentos7' )
   }
 
 //////
-  }
+//  }
 
   stage( 'Install diamond locally' )
   {
@@ -75,7 +75,15 @@ node( 'FluidityCentos7' )
       sh "cp /usr/lib64/openmpi/lib/libzoltan.so.3.82 ./libzoltan.so.3"
       sh "cp /usr/lib64/openmpi/lib/libpetsc.so.3.6.3 ./libpetsc.so.3.6"
       sh "cp /usr/lib64/openmpi/lib/libparmetis.so ./libparmetis.so"
-      sh "cp /usr/lib64/libnetcdf.so.7.2.0 ./libnetcdf.so.7"
+//      sh "cp /usr/lib64/libnetcdf.so.7.2.0 ./libnetcdf.so.7"
+      sh "cp /usr/lib64/libmetis.so.0 ./libmetis.so"
+      sh "cp /usr/lib64/libudunits2.so.0.1.0 ./libudunits2.so.0"
+      sh "cp /usr/lib/libvtkzlib-6.1.so.1 ./libvtkzlib-6.1.so.1"
+      sh "cp /usr/lib/libvtkjsoncpp-6.1.so.1 ./libvtkjsoncpp-6.1.so.1"
+      sh "cp /usr/lib/libvtkpng-6.1.so.1 ./libvtkpng-6.1.so.1"
+      sh "cp /usr/lib/libvtktiff-6.1.so.1 ./libvtktiff-6.1.so.1"
+      sh "cp /usr/lib/libvtkjpeg-6.1.so.1 ./libvtkjpeg-6.1.so.1"
+      sh "cp /usr/lib/libvtkexpat-6.1.so.1 ./libvtkexpat-6.1.so.1"
     }
   }
 
