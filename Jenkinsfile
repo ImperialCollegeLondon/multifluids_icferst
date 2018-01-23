@@ -9,7 +9,7 @@ node( 'FluidityCentos7' )
 {
   
   //////  
-  //if ( false ){
+  if ( false ){
     
   stage( 'Clean workspace') { cleanWs() }
     
@@ -42,7 +42,7 @@ node( 'FluidityCentos7' )
   }
 
 //////
-//  }
+  }
 
   stage( 'Install diamond locally' )
   {
@@ -69,7 +69,7 @@ node( 'FluidityCentos7' )
       
       // Generate startup script for Diamond
       sh "echo #!/bin/bash > mpdiamond"
-      sh "echo export PYTHONPATH=$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages >> mpdiamond"
+      sh "echo export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages >> mpdiamond"
       sh "echo diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$* >> mpdiamond"
       sh "chmod 750 mdiamond"
     }
