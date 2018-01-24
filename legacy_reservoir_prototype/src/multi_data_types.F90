@@ -250,6 +250,16 @@ module multi_data_types
         real, dimension( : ), pointer        :: mass_cvfem2pipe_true=> null()
     end type
 
+    type multi_outfluxes
+        !Contains variables to analyse the flux across the BCs that the user is interested
+        logical :: calculate_flux !True if all the process related with this has to start or not
+        integer, dimension(:), allocatable :: outlet_id !ids the user wants
+        real :: porevolume ! for outfluxes.csv to calculate the pore volume injected
+        real, allocatable, dimension(:,:,:) :: totout!(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
+        real, dimension(:,:),  allocatable  :: intflux
+    end type
+
+
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
          allocate_multi_field1, allocate_multi_field2
 
@@ -1313,6 +1323,49 @@ contains
 
     end subroutine deallocate_multi_pipe_package
 
+    subroutine initialize_multi_outfluxes(outfluxes)
+        implicit none
+        type (multi_outfluxes), intent(inout) :: outfluxes
+        !Local variables
+        integer, dimension(2) :: shapes
+
+        ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxes%outlet_id.
+        ! No need to explicitly allocate outfluxes%outlet_id (done here internally)
+        if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outfluxes%outlet_id))) then
+            shapes = option_shape("/io/dump_boundaryflux/surface_ids")
+            assert(shapes(1) >= 0)
+            allocate(outfluxes%outlet_id(shapes(1)))
+            call get_option( "/io/dump_boundaryflux/surface_ids", outfluxes%outlet_id)
+            outfluxes%calculate_flux = .true.
+        endif
+
+    end subroutine initialize_multi_outfluxes
+
+    subroutine allocate_multi_outfluxes(Mdims, outfluxes)
+        implicit none
+        type (multi_dimensions), intent(in)  ::Mdims
+        type (multi_outfluxes), intent(inout) :: outfluxes
+        !Local variables
+        integer :: k
+
+        allocate(outfluxes%intflux(Mdims%nphase,size(outfluxes%outlet_id)))
+        k = 1
+        if (has_temperature) k = k + 1
+        !(field -saturation, temperature-, Mdims%nphase, size(outfluxes%outlet_id))
+        allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
+
+        outfluxes%intflux= 0.
+        outfluxes%totout= 0.
+
+    end subroutine allocate_multi_outfluxes
+
+    subroutine destroy_multi_outfluxes(outfluxes)
+        implicit none
+        type (multi_outfluxes), intent(inout) :: outfluxes
+
+        deallocate(outfluxes%totout, outfluxes%intflux,outfluxes%outlet_id )
+
+    end subroutine destroy_multi_outfluxes
 
 end module multi_data_types
 

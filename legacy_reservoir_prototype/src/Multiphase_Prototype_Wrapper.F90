@@ -370,7 +370,6 @@ contains
                 shape = option_shape('/wells_and_pipes/well_volume_ids')
                 assert(shape(1) >= 0)
                 allocate(well_ids(shape(1)))
-                !allocate(outlet_id(1))
                 call get_option( '/wells_and_pipes/well_volume_ids', well_ids)
                 !Create field by adding the fields manually
                 option_path = "/wells_and_pipes/scalar_field::Well_domains"

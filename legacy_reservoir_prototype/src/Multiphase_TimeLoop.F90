@@ -179,8 +179,7 @@ contains
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet
-        real, dimension(:,:),  allocatable  :: intflux
-        logical :: calculate_flux
+        type (multi_outfluxes) :: outfluxes
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields = -1
         real :: t_adapt_threshold
@@ -227,7 +226,8 @@ contains
 
         !!$ Compute primary scalars used in most of the code
         call Get_Primary_Scalars_new( state, Mdims )
-
+        !Check if the user wants to store the outfluxes
+        call initialize_multi_outfluxes(outfluxes)
         if(use_sub_state()) then
             call populate_sub_state(state,sub_state)
         end if
@@ -433,20 +433,8 @@ contains
                 timestep, not_to_move_det_yet=.true.)
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
-        calculate_flux = allocated(outlet_id)
-        ! If calculating boundary fluxes, initialise to zero time integrated fluxes (intflux) and the quantity (totout) used to calculate them.
-        if(calculate_flux) then
-            allocate(intflux(Mdims%nphase,size(outlet_id)))
-            k = 1
-            if (has_temperature) k = k +1
-            !(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
-            allocate(totout(k, Mdims%nphase, size(outlet_id)))
-
-            do ioutlet = 1, size(outlet_id)
-                intflux(:, ioutlet) = 0.
-                totout(1, :, ioutlet) = 0.
-            enddo
-        endif
+        ! If calculating boundary fluxes, allocate and initialise to zero outfluxes variables
+        if (outfluxes%calculate_flux) call allocate_multi_outfluxes(Mdims, outfluxes)
 !       Allocate memory and initialise calculate_mass_global if calculate_mass_flag is switched on to store the total mass change in the domain
         allocate(calculate_mass_delta(Mdims%nphase,2))
         calculate_mass_delta(:,:) = 0.0
@@ -625,7 +613,7 @@ call solve_transport()
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta)
+                        IDs_ndgln, calculate_mass_delta, outfluxes)
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
@@ -688,16 +676,16 @@ call solve_transport()
             end do Loop_NonLinearIteration
 
             ! If calculating boundary fluxes, dump them to outfluxes.txt
-            if(calculate_flux .and..not.Repeat_time_step) then
+            if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
             ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
-                where (totout /= totout)
-                    totout = 0.!If nan then make it zero
+                where (outfluxes%totout /= outfluxes%totout)
+                    outfluxes%totout = 0.!If nan then make it zero
                 end where
-                do ioutlet = 1, size(outlet_id)
-                    intflux(:, ioutlet) = intflux(:, ioutlet) + totout(1, :, ioutlet)*dt
-                    totout(1, :, ioutlet) = totout(1, :, ioutlet)!/sum(totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
+                do ioutlet = 1, size(outfluxes%outlet_id)
+                    outfluxes%intflux(:, ioutlet) = outfluxes%intflux(:, ioutlet) + outfluxes%totout(1, :, ioutlet)*dt
+!                    outfluxes%totout(1, :, ioutlet) = outfluxes%totout(1, :, ioutlet)/sum(totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
                 enddo
-                if(getprocno() == 1) call dump_outflux(acctim,porevolume,itime,totout,intflux)
+                if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
             endif
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values
@@ -869,7 +857,7 @@ call solve_transport()
                                                    ! (future work).
         endif
         !***************************************
-        if (calculate_flux) deallocate(outlet_id, totout, intflux)
+        if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
         return
     contains
 
@@ -1154,6 +1142,8 @@ if (is_flooding) then
 end if
                 !!$ Compute primary scalars used in most of the code
                 call Get_Primary_Scalars_new( state, Mdims )
+                !Check if the user wants to store the outfluxes
+                call initialize_multi_outfluxes(outfluxes)
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call prepare_absorptions(state, Mdims, multi_absorp)

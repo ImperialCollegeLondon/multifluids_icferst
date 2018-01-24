@@ -83,7 +83,7 @@ contains
 
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA )
+                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
         type(state_type), intent(inout) :: packed_state
         type(state_type), dimension(:), intent(in) :: state
@@ -101,7 +101,8 @@ contains
         real, intent(in) :: DT, CV_BETA
         !Variables that are used to define the pipe pos.
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
-
+        !variables to store the pipe outfluxes if asked by the user
+        real, dimension(:,:), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
         ! Local variables
         INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase
         INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
@@ -133,11 +134,13 @@ contains
             icorner1, icorner2, icorner3, icorner4, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
             U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
-        type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2
+        type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2, t2_all, only_den_all
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
         type(vector_field), pointer :: X
         !Logical to check if we using a conservative method or not, to save cpu time
         logical :: conservative_advection
+        !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
+        logical :: store_outfluxes
         !Parameters of the simulation
         logical, parameter :: GET_C_PIPES = .FALSE.
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
@@ -149,6 +152,9 @@ contains
         integer, parameter :: WIC_B_BC_DIRICHLET = 1
 
         conservative_advection = abs(cv_beta) > 0.99
+
+        !if allocated then calculate outfluxes
+        store_outfluxes = allocated(bcs_outfluxes)
 
         IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
@@ -312,6 +318,8 @@ contains
             !this is rho * Cp. This is to make it consistent with the advection term in cv-adv-diff
             DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!this is Cp * Rho.
             U_ALL => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )!for consistency with cv_assemb
+            T2_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )!for multiphase
+            only_den_all => extract_tensor_field( packed_state, "PackedDensity" )
         end if
 
         DO CV_NODI = 1, Mdims%cv_nonods
@@ -780,6 +788,7 @@ contains
                     END DO
                     LIMDT = LIMD * LIMT
 
+
                     ! Add in Mmat%C matrix contribution: (DG velocities)
                     ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                     ! over the element of the pressure like source term.
@@ -787,6 +796,12 @@ contains
                     ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                     suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                     IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
+
+                        !If we want to output the outfluxes of the pipes we fill the array here with the information
+                        if (store_outfluxes) then
+                            bcs_outfluxes(Mdims%n_in_pres:Mdims%nphase, JCV_NOD) = NDOTQ * suf_area * LIMDT!velocity * area * density * saturation
+                        end if
+
                         DO IDIM = 1, Mdims%ndim
                             CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:) / DEN_ALL%val(1,:,JCV_NOD)
                         END DO

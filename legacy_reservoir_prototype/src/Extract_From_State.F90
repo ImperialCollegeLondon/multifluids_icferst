@@ -68,20 +68,13 @@ module Copy_Outof_State
         Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
-        calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
+        calculate_outfluxes, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass, prepare_absorptions
 
 
     interface Get_SNdgln
        module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
     end interface Get_SNdgln
-
-
-    !sprint_to_do remove these global variables
-    ! Used in calculations of the outflux - array of integers containing the gmesh IDs of each boundary that you wish to integrate over
-    integer, dimension(:), allocatable :: outlet_id
-
-    integer, dimension(2) :: shape
 
 contains
 
@@ -98,20 +91,7 @@ contains
         type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
         integer :: i, stat
         logical , save :: warning_displayed = .false.
-
         ewrite(3,*)' In Get_Primary_Scalars'
-
-        ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outlet_id.
-        ! No need to explicitly allocate outlet_id (done here internally)
-
-        if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outlet_id))) then
-            shape = option_shape("/io/dump_boundaryflux/surface_ids")
-            assert(shape(1) >= 0)
-            allocate(outlet_id(shape(1)))
-            !allocate(outlet_id(1))
-            call get_option( "/io/dump_boundaryflux/surface_ids", outlet_id)
-
-        endif
 
         !!$ Defining dimension and nstate
         call get_option( '/geometry/dimension', Mdims%ndim )
@@ -2993,124 +2973,77 @@ function GetFEMName(tfield) result(fem_name)
 
 end function GetFEMName
 
-subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
-    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL, Ele_owned_field, totouttemp, tempi)
-
+subroutine calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outfluxes, has_temperature)
     implicit none
 
-    ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
+    ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids given that the massflux has been already stored elsewhere
 
     ! Input/output variables
+    type(state_type), intent(inout) :: packed_state
+    type(multi_dimensions), intent(in) :: Mdims
+    type(multi_ndgln), intent(in) :: ndgln
+    type (multi_outfluxes), optional, intent(inout) :: outfluxes
+    real, dimension(:,:), intent(in) :: bcs_outfluxes
+    logical, intent(in) :: has_temperature
+    !Local variables
+    type(tensor_field), pointer :: t_field, temp_field
+    integer :: sele, k, cv_siloc, cv_inod, iphase, counter
+    integer, dimension(Mdims%stotel*3) :: already_visited !worst case scenario 3 CVs per element touching the boundary
+    !Field to check element ownership
+    t_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+    if (has_temperature) temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+    outfluxes%totout = 0.
+    !Initialised visited array and counter
+    already_visited = -1; counter = 1
+    !Convert all the subroutine to work like this section and get of the global variables...
+    do sele = 1, Mdims%stotel
+        !Check if in parallel who owns the node, to avoid re-counting
+        if (surface_element_owned(t_field, sele)) then
+            do k = 1, size(outfluxes%outlet_id)
+                !If sele is in the desired id then we proceed to store the data
+                if (integrate_over_surface_element(t_field, sele, (/outfluxes%outlet_id(k)/) ) ) then
+                    do cv_siloc = 1, Mdims%cv_snloc
+                        cv_inod = ndgln%suf_cv( (sele-1)*Mdims%cv_snloc + cv_siloc )
+                        !Check if this node has been already visited, if it is the case, then cycle
+                        if (check_visited(cv_inod, already_visited)) cycle
 
-    type(tensor_field), intent(in) :: Ele_owned_field
-    integer, intent(in) :: nphase
-    type(tensor_field), intent(in), pointer :: CVPressure
-    real, dimension( : , : ),  intent(in), allocatable :: phaseV
-    real, dimension( : , : ), intent(in), allocatable :: Dens
-    real, dimension( : ), intent(in), pointer :: Por
+                        outfluxes%totout(1, :, k) = outfluxes%totout(1, :, k) + bcs_outfluxes(:, cv_inod)
+                        if (has_temperature) then
+                            !Store the maximum temperature only
+                            do iphase = 1, Mdims%nphase
+                                outfluxes%totout(2, iphase, k) = max(  temp_field%val(1,iphase,cv_inod), outfluxes%totout(2, iphase, k)   )
+                            end do
+                        end if
+                        already_visited(counter) = cv_inod
+                        counter = counter + 1
+                    end do
+                end if
+            end do
+        end if
+    end do
 
-    real, dimension(:), intent(in) :: ndotqnew
-    integer, dimension(1), intent(in) :: surface_ids
-    real, dimension(:), intent(inout) :: totoutflux
-    integer, intent(in) :: ele
-    integer, intent(in) :: sele
+    contains
 
-    integer, dimension(:), intent( in ) ::  cv_ndgln
-    integer, dimension(:), intent( in ) :: IDs_ndgln
-    integer, intent(in) :: cv_snloc
-    integer, intent(in) :: cv_nloc
-    integer, intent(in) :: cv_siloc
-    integer, intent(in) :: cv_iloc
+    logical function check_visited(cv_inod, already_visited)
+        implicit none
 
-    integer, intent(in) :: gi
-    real, dimension( : ), intent(in) :: detwei
-
-    real, dimension( :,:, : ), intent( in ) :: SUF_T_BC_ALL
-    real, dimension(:), optional, intent(in) :: tempi !Temperature at same position as saturation
-    real, dimension(:), optional, intent(inout) :: totouttemp !Temperature at same position as saturation
-    ! Local variables
-
-    real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
-    real, dimension( : ), allocatable :: DensVG
-    real :: PorG
-    logical :: test
-    integer  :: cv_knod
-    integer :: surf
-    integer :: i
-
-    ! ALLOCATIONS
-    allocate(phaseVG(nphase))
-    allocate(DensVG(nphase))
-
-    ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
-    ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
-    ! Since the CV shape functions are 1 or 0, the value at Gauss point gi, is given by the value at the nearest CV_node. So
-    ! we pass down the value of cv_iloc from cv_adv_diff and calculate cv_knod. This will be the node corresponding to a given
-    ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
-    ! Similar calculation done for density.
-
-    cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
-    phaseVG(:) = phaseV(:,cv_knod)
-
-    ! Having extracted the density at control volume nodes, need to calculate it at quadrature points gi.
-    ! (Density lives on the pressure mesh).
-
-    cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
-    DensVG(:) = Dens(:,cv_knod)
-
-    ! Porosity constant element-wise so simply extract that value associated to a given element ele
-
-    PorG = Por(IDs_ndgln(ele))
-
-    ! This function will return true for surfaces we should be integrating over (this entire subroutine is called inside a loop over ele, cv_iloc, gi in cv-adv-dif)
-    ! i.e. when sele is part of a surface labelled by ID = surface_ids. We then add up (integrate) flux contributions from all elements that test true.
-
-    ! if we are calculating the total mass entering the domain we will integrate over the whole domain and will therefore skip this test.
-    ! This is done by setting surface_ids = /-1/ when calling it in cv-adv-diff
-    if (surface_ids(1) < 0) then
-        test = .true.
-    else
-        test = integrate_over_surface_element(CVPressure, sele, surface_ids)
-    endif
-
-    ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
-    ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
-
-    if (element_owned(Ele_owned_field, ele)) then ! Check if the element number read into the subroutine is owned by the processor that has entered this loop at run-time (so that we don't overcount).
-
-        if(test) then ! Check if we're on a domain boundary (we only want to include contributions there)
-                ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
-                ! Need to pass down an array with the saturation boundary conditions to deal with these cases
-                ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
-
-            do i = 1, size(ndotqnew)
-                surf = (sele - 1 ) * cv_snloc + cv_siloc
-                if(ndotqnew(i) < 0 ) then
-                    ! Inlet boundary - so use boundary phase volume fraction
-                    totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
-
-                else
-                    ! Outlet boundary - so use internal (to the domain) phase volume fraction
-                    totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
-                endif
-            enddo
-            !Store temperature as well
-            if (present(tempi).and.has_temperature) then
-                do i = 1, size(tempi)
-                    totouttemp(i) = max(tempi(i), totouttemp(i))
-                end do
+        integer, dimension(:), intent(in) :: already_visited
+        integer, intent(in) :: cv_inod
+        !Local variables
+        integer :: i
+        i = 1
+        check_visited = .false.
+        do while (already_visited(i) > 0)
+            if (already_visited(i) == cv_inod) then
+                check_visited = .true.
+                return
             end if
-        endif
+            i = i + 1
+        end do
 
-    endif
+    end function check_visited
 
-    ! DEALLOCATIONS
-    deallocate(phaseVG)
-    deallocate(densVG)
-
-    return
-
-end subroutine calculate_outflux
+end subroutine calculate_outfluxes
 
 
 subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculate_mass, TOTELE , &
@@ -3141,7 +3074,6 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
 
     real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
     real, dimension( : ), allocatable :: DensVG
-    real :: PorG
     real :: Mass_ELEG
     integer  :: cv_knod
     integer :: cv_iloc
@@ -3169,10 +3101,8 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
                 Mass_ELEG = Mass_ELE(ele)
 
                 !     Porosity constant element-wise so simply extract that value associated to a given element ele
-                PorG = Por(IDs_ndgln(ele))
-
                 do i = 1, nphase
-                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)               
+                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*Por(IDs_ndgln(ele))*phaseVG(i)*DensVG(i)
                 enddo
 
         ENDDO
@@ -3588,17 +3518,16 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Vector_SNdgln
 
-    subroutine dump_outflux(current_time, porevolume, itime, outflux, intflux)
+    subroutine dump_outflux(current_time, itime, outfluxes)
 
         ! Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file  called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux
         ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
         ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
         !wish to integrate over).
         real,intent(in) :: current_time
-        real, intent(in) :: porevolume
         integer, intent(in) :: itime
-        real, dimension(:,:), intent(inout) :: intflux
-        real, dimension(:,:,:), intent(inout) :: outflux
+        type (multi_outfluxes), intent(in) :: outfluxes
+        !Local variables
         integer :: ioutlet
         integer :: counter
         type(stat_type), target :: default_stat
@@ -3606,9 +3535,9 @@ end subroutine get_DarcyVelocity
         character (len=1000000) :: numbers
         integer :: iphase
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
-        character (len = 1000000), dimension(size(intflux,1)) :: fluxstring
-        character (len = 1000000), dimension(size(intflux,1)) :: intfluxstring
-        character (len = 1000000), dimension(size(intflux,1)) :: tempstring
+        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: fluxstring
+        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
+        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
 
         call get_option('/simulation_name', simulation_name)
@@ -3625,18 +3554,18 @@ end subroutine get_DarcyVelocity
         if(itime.eq.1) then
             write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
             whole_line = trim(whole_line)
-            do ioutlet =1, size(intflux,2)
-                do iphase = 1, size(intflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outlet_id(ioutlet), " Massflux"
+            do ioutlet =1, size(outfluxes%intflux,2)
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outfluxes%outlet_id(ioutlet), " Massflux"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
-                do iphase = 1, size(intflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " time integrated Massflux"
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outfluxes%outlet_id(ioutlet),  " time integrated Massflux"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 if (has_temperature) then
-                    do iphase = 1, size(intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " maximum temperature"
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outfluxes%outlet_id(ioutlet),  " maximum temperature"
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
@@ -3645,20 +3574,20 @@ end subroutine get_DarcyVelocity
             write(default_stat%conv_unit,*), trim(whole_line)
         endif
             ! Write the actual numbers to the file now
-            write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  porevolume
+            write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
             whole_line =  trim(numbers)
-            do ioutlet =1, size(intflux,2)
-                do iphase = 1, size(intflux,1)
-                    write(fluxstring(iphase),'(f15.5)') outflux(1, iphase,ioutlet)
+            do ioutlet =1, size(outfluxes%intflux,2)
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(fluxstring(iphase),'(f15.5)') outfluxes%totout(1, iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
-                do iphase = 1, size(intflux,1)
-                    write(intfluxstring(iphase),'(g15.5)') intflux(iphase,ioutlet)
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(intfluxstring(iphase),'(g15.5)') outfluxes%intflux(iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 if (has_temperature) then
-                    do iphase = 1, size(intflux,1)
-                        write(tempstring(iphase),'(f15.5)') outflux(2, iphase,ioutlet)
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(tempstring(iphase),'(f15.5)') outfluxes%totout(2, iphase,ioutlet)
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
