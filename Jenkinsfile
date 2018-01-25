@@ -34,8 +34,8 @@ node( 'FluidityCentos7' )
 
   stage( 'Generate documentaion' )
   {
-    dir ( "${branch}/legacy_reservoir_prototype" ) { sh "make -j ${cores}" }
-    dir ( "${branch}/master"                     ) { sh "make -j ${cores}" }
+    dir ( "${branch}/legacy_reservoir_prototype/doc" ) { sh "make -j ${cores}" }
+    dir ( "${branch}/manual"                         ) { sh "make -j ${cores}" }
   }
     
   stage( 'Install binaries locally' )
@@ -71,7 +71,7 @@ node( 'FluidityCentos7' )
   {
     dir ( "icl/doc" )
     {
-      sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/doc/*.pdа | tar xf - --strip-components=9"
+      sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/doc/*.pdf | tar xf - --strip-components=9"
       sh "tar cf - ${env.WORKSPACE}/${branch}/manual/*.pdf | tar xf - --strip-components=8"
     }
   }
