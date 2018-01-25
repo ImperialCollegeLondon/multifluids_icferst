@@ -1329,6 +1329,7 @@ contains
         !Local variables
         integer, dimension(2) :: shapes
 
+        outfluxes%calculate_flux = .false.
         ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxes%outlet_id.
         ! No need to explicitly allocate outfluxes%outlet_id (done here internally)
         if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outfluxes%outlet_id))) then

@@ -660,13 +660,12 @@ contains
                         outfluxes%totout(2, :,k) = -1000
                     enddo
                 end if
-
-                !Allocate array to pass to store all the outfluxes
-                allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods)); bcs_outfluxes= 0.
             end if
         ENDIF
 
         ! Initialise the calculate_mass variables
+        !Allocate array to pass to store mass going through the boundaries
+        allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods)); bcs_outfluxes= 0.
         allocate ( calculate_mass_internal(Mdims%nphase))
         calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
 
