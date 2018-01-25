@@ -364,7 +364,8 @@ contains
         end if
 
         !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
-        if (npres>1 .and. have_option('/mesh_adaptivity/hr_adaptivity') ) then
+        !or to show the wells in paraview
+        if (npres>1 ) then
             if (have_option('/wells_and_pipes/well_volume_ids')) then
                 !Introduce some dummy regions to ensure that mesh adaptivity keeps the wells in place
                 shape = option_shape('/wells_and_pipes/well_volume_ids')

@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast_adapt_ts</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml thermal wells wells_complex tbc</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./Check_heat_production.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="Thermal_wells_analytical" language="python">Thermal_wells_analytical = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: Thermal_wells_analytical = True
+
+assert(Thermal_wells_analytical)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
