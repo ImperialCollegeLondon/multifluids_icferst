@@ -70,12 +70,6 @@ node( 'FluidityCentos7' )
       sh "cp /usr/lib64/openmpi/lib/libparmetis.so ./libparmetis.so"
       sh "cp /usr/lib64/libmetis.so.0 ./libmetis.so"
       sh "cp /usr/lib64/libudunits2.so.0.1.0 ./libudunits2.so.0"
-      sh "cp /usr/lib/libvtkzlib-6.1.so.1 ./libvtkzlib-6.1.so.1"
-      sh "cp /usr/lib/libvtkjsoncpp-6.1.so.1 ./libvtkjsoncpp-6.1.so.1"
-      sh "cp /usr/lib/libvtkpng-6.1.so.1 ./libvtkpng-6.1.so.1"
-      sh "cp /usr/lib/libvtktiff-6.1.so.1 ./libvtktiff-6.1.so.1"
-      sh "cp /usr/lib/libvtkjpeg-6.1.so.1 ./libvtkjpeg-6.1.so.1"
-      sh "cp /usr/lib/libvtkexpat-6.1.so.1 ./libvtkexpat-6.1.so.1"
     }
   }
 
