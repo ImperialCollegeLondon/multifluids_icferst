@@ -642,21 +642,6 @@ contains
                 ! T_ALL=>CONV ! conV is an allocatable target
                 call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
             ENDIF
-
-            ! totout stores the integral of n.q across a specified boundary and is calculated through the subroutine calculate_outflux(). It's initialised to zero in the line below
-            if (outfluxes%calculate_flux) then
-                do k = 1, size(outfluxes%outlet_id)
-                    outfluxes%totout(1, :,k) = 0
-                enddo
-                !For temperature, as we will output the maximum temperature we set an unphysical value to
-                !ensure we use a calculated value
-                !If we have temperature we want to include it in the output .csv file
-                if (has_temperature) then
-                    do k = 1, size(outfluxes%outlet_id)
-                        outfluxes%totout(2, :,k) = -1000
-                    enddo
-                end if
-            end if
         ENDIF
 
         ! Initialise the calculate_mass variables
@@ -2647,16 +2632,18 @@ contains
                     if (thermal .and. is_porous_media) then
                         !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                         ! and the fluids. Here we add the porous media contribution
-                        DO IPHASE = 1,Mdims%nphase
+                        DO IPHASE = 1,Mdims%n_in_pres
                             call addto(Mmat%petsc_ACV,iphase,iphase,&
                                 cv_nodi, cv_nodi,&
                                 + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                                * R_PHASE(IPHASE))
+                                * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI ))
+                                !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
+                                    !we divide to remove that term and multiply by the correct term (1-porosity)
+                            LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
+                                + (CV_BETA * porous_heat_coefOLD( iphase, CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
+                                + (ONE_M_CV_BETA) * porous_heat_coef( iphase, CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
+                                * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
                         END DO
-                        LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                            + (CV_BETA * porous_heat_coefOLD( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
-                            + (ONE_M_CV_BETA) * porous_heat_coef( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
-                            * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                     end if
                     DO IPHASE = 1,Mdims%nphase
                         call addto(Mmat%petsc_ACV,iphase,iphase,&

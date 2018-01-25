@@ -2994,8 +2994,11 @@ subroutine calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outflu
     integer, dimension(Mdims%stotel*3) :: already_visited !worst case scenario 3 CVs per element touching the boundary
     !Field to check element ownership
     t_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-    if (has_temperature) temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
     outfluxes%totout = 0.
+    if (has_temperature) then
+        temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+        outfluxes%totout(2, :,:) = -273.15
+    end if
     !Initialised visited array and counter
     already_visited = -1; counter = 1
     !Convert all the subroutine to work like this section and get of the global variables...
@@ -3009,7 +3012,6 @@ subroutine calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outflu
                         cv_inod = ndgln%suf_cv( (sele-1)*Mdims%cv_snloc + cv_siloc )
                         !Check if this node has been already visited, if it is the case, then cycle
                         if (check_visited(cv_inod, already_visited)) cycle
-
                         outfluxes%totout(1, :, k) = outfluxes%totout(1, :, k) + bcs_outfluxes(:, cv_inod)
                         if (has_temperature) then
                             !Store the maximum temperature only
