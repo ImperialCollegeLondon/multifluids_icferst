@@ -116,7 +116,7 @@ contains
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-        porous_heat_coef, porous_heat_coefOLD, outfluxes)
+        porous_heat_coef, outfluxes)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -289,7 +289,7 @@ contains
         real, dimension(:,:), optional :: calculate_mass_delta
         type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
-        REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef, porous_heat_coefOLD
+        REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef
         ! Variable to store outfluxes
         type (multi_outfluxes), optional, intent(inout) :: outfluxes
         ! Local variables
@@ -2640,7 +2640,7 @@ contains
                                 !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                                     !we divide to remove that term and multiply by the correct term (1-porosity)
                             LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
-                                + (CV_BETA * porous_heat_coefOLD( iphase, CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
+                                + (CV_BETA * porous_heat_coef( iphase, CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
                                 + (ONE_M_CV_BETA) * porous_heat_coef( iphase, CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
                                 * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
                         END DO

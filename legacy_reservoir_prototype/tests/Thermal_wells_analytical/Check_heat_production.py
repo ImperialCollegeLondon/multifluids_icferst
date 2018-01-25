@@ -23,7 +23,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Lifetime = 20
+Lifetime = 22
 
 showPlot = False
 ################################AUTOMATIC STUFF###############################
@@ -42,7 +42,7 @@ with open(filename, 'rb') as csvfile:
             continue
 pos = 0
 for i in range(len(temp)):
-    if (temp[i] < (max(temp) -1.5) ):
+    if (temp[i] < (max(temp) -1.0) ):
         pos = i
         break
 

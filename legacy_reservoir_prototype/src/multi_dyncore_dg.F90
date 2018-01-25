@@ -143,7 +143,7 @@ contains
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field
-           REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef, porous_heat_coefOLD
+           REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
            !Variables for controlling the number of iterations
@@ -188,8 +188,8 @@ contains
                         FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                     end if
                     !need to perform average of the effective heat capacity times density for the diffusion and time terms
-                    allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods),porous_heat_coefOLD(Mdims%nphase,Mdims%cv_nonods))
-                    call effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
+                    allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods))
+                    call effective_Cp_density(porous_heat_coef)
                     !Start with the process to apply the min max principle
                     call force_min_max_principle(1)
                 end if
@@ -332,7 +332,7 @@ contains
                    mass_ele_transp, IDs_ndgln, &
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, porous_heat_coefOLD = porous_heat_coefOLD)
+                   porous_heat_coef = porous_heat_coef)
 
 
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
@@ -386,7 +386,7 @@ contains
            if (is_boiling) deallocate(T_absorb)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
-           if (allocated(porous_heat_coef)) deallocate(porous_heat_coef, porous_heat_coefOLD)
+           if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
@@ -429,13 +429,13 @@ contains
 
       end subroutine
 
-      subroutine effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
+      subroutine effective_Cp_density(porous_heat_coef)
         ! Calculation of the averaged heat capacity and density
         ! average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
         ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
         ! as it is stored cv-wise
           implicit none
-        REAL, DIMENSION( : , : ), intent(inout) :: porous_heat_coef, porous_heat_coefOLD
+        REAL, DIMENSION( : , : ), intent(inout) :: porous_heat_coef
         !Local variables
         type( scalar_field ), pointer :: porosity, density_porous, Cp_porous
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
@@ -444,7 +444,7 @@ contains
         density_porous => extract_scalar_field( state(1), "porous_density" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
         porosity=>extract_scalar_field(state(1),"Porosity")
-        porous_heat_coef = 0.; porous_heat_coefOLD = 0.
+        porous_heat_coef = 0.
         cv_counter = 0
         do ele = 1, Mdims%totele
             p_den = min(size(density_porous%val), ele)
@@ -455,16 +455,13 @@ contains
                 do iphase = 1, Mdims%nphase
                     cv_counter( iphase,cv_inod ) = cv_counter( iphase,cv_inod ) + 1.0
                     porous_heat_coef( iphase,cv_inod ) = porous_heat_coef( iphase,cv_inod ) + &
-                        (1.0-porosity%val(ele_nod))*density_porous%val(p_den ) * Cp_porous%val( h_cap )
-                    porous_heat_coefOLD( iphase,cv_inod ) = porous_heat_coefOLD( iphase,cv_inod )+ &
-                        (1.0-porosity%val(ele_nod))*density_porous%val(p_den ) * Cp_porous%val( h_cap )
+                        density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
                 end do
             end do
         end do
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
         porous_heat_coef = porous_heat_coef/cv_counter!<= includes an average of porous and fluid properties
-        porous_heat_coefOLD = porous_heat_coefOLD/cv_counter!<= includes an average of porous and fluid properties
       end subroutine effective_Cp_density
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
