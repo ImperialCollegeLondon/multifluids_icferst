@@ -34,8 +34,8 @@ node( 'FluidityCentos7' )
 
   stage( 'Generate documentaion' )
   {
-    dir ( "${branch}/legacy_reservoir_prototype" ) { make -j ${cores} }
-    dir ( "${branch}/master"                     ) { make -j ${cores} }
+    dir ( "${branch}/legacy_reservoir_prototype" ) { sh "make -j ${cores}" }
+    dir ( "${branch}/master"                     ) { sh "make -j ${cores}" }
   }
     
   stage( 'Install binaries locally' )
