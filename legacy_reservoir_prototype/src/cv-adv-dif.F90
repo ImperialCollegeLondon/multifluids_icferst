@@ -514,11 +514,7 @@ contains
         !Variables for outfluxes
         real, dimension(:,:), allocatable :: bcs_outfluxes
         ! Variables needed when doing calculate_outfluxes
-        type(tensor_field), pointer :: tenfield1, tenfield2
-        type(vector_field), pointer :: vecfield
-        real, dimension( : , : ), allocatable :: phaseV
-        real, dimension( : , : ), allocatable :: Dens
-        real, dimension(:), pointer :: Por
+        type(vector_field), pointer :: Por
         real, dimension( : , : ), pointer ::Imble_frac
         ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'bcs_outfluxes'
         ! and the internal changes in mass will be captured by 'calculate_mass_internal'
@@ -1176,45 +1172,24 @@ contains
 
         if ( is_porous_media .and. GETCT ) then
 
-            allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
-            allocate(Dens(Mdims%nphase,Mdims%cv_nonods))
-
             if (first_nonlinear_time_step ) then
                 calculate_mass_delta(:,1) = 0.0 ! reinitialise
-                tenfield1 => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-                phaseV = tenfield1%val(1,:,:)
-                ! Extract the Density
-                tenfield2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-                Dens =  tenfield2%val(1,:,:)
-                ! Extract the Porosity
-                vecfield => extract_vector_field( packed_state, "Porosity" )
-                Por =>  vecfield%val(1,:)
-                call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
-                    calculate_mass_delta(:,1) , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc, tenfield1)
+                call calculate_internal_mass( packed_state, Mdims, Mass_ELE, &
+                    calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv, IDs_ndgln)
             endif
-            ! Extract the Phase Volume Fraction
-            tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-            phaseV = tenfield1%val(1,:,:)
-            ! Extract the Density
-            tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
-            Dens =  tenfield2%val(1,:,:)
-            ! Extract the Porosity
-            vecfield => extract_vector_field( packed_state, "Porosity" )
-            Por =>  vecfield%val(1,:)
-            call calculate_internal_mass( Mass_ELE, Mdims%nphase, phaseV, Dens, Por, &
-                calculate_mass_internal , Mdims%TOTELE, ndgln%cv, IDs_ndgln, Mdims%cv_nloc, tenfield1)
+            call calculate_internal_mass( packed_state, Mdims, Mass_ELE,  &
+                calculate_mass_internal(1:Mdims%n_in_pres) ,ndgln%cv, IDs_ndgln)
 
 
             if (outfluxes%calculate_flux) then
                 ! Extract the Porosity
-                vecfield => extract_vector_field( packed_state, "Porosity" )
-                Por =>  vecfield%val(1,:)
+                Por => extract_vector_field( packed_state, "Porosity" )
 
                 ! Calculate Pore volume
                 outfluxes%porevolume = 0.0
                 DO ELE = 1, Mdims%totele
-                    if (element_owned(tenfield1, ele)) then
-                        outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por(IDs_ndgln(ELE))
+                    if (element_owned(tracer, ele)) then
+                        outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por%val(1,IDs_ndgln(ELE))
                     end if
                 END DO
 
@@ -2815,6 +2790,16 @@ contains
             ! Difference in Total mass
 
             ! NEED TO MAKE THIS PARALLEL SAFE (allsum the individial deltaM contributions over all processors).
+            if (Mdims%npres>1) then
+                if (first_nonlinear_time_step ) then
+                    call calculate_internal_mass( packed_state, Mdims, pipes_aux%MASS_PIPE, &
+                        calculate_mass_delta(:,1) , ndgln%cv, IDs_ndgln, eles_with_pipe)
+                endif
+                !Consider as well the mass in the pipes
+                call calculate_internal_mass( packed_state, Mdims, pipes_aux%MASS_PIPE,  &
+                    calculate_mass_internal ,ndgln%cv, IDs_ndgln, eles_with_pipe)
+
+            end if
 
             tmp1 = sum(calculate_mass_internal)
             tmp2 = sum(calculate_mass_delta(:,1))

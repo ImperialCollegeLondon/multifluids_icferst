@@ -2184,7 +2184,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
             ! In this case we only calculate the total mass - we could calculate the mass of each phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
-            if (size(pressure,2) > 1) max_calculate_mass_delta = 0.0!<= For wells this does not work correctly, disable it
+
+
+!            if (size(pressure,2) > 1) max_calculate_mass_delta = 0.0!<= For wells this does not work correctly, disable it
+
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
                 call allmax(ts_ref_val)
@@ -3046,43 +3049,34 @@ subroutine calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outflu
 end subroutine calculate_outfluxes
 
 
-subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculate_mass, TOTELE , &
-    cv_ndgln, IDs_ndgln, cv_nloc, Ele_owned_field)
+subroutine calculate_internal_mass(packed_state, Mdims, mass_ele, calculate_mass, &
+    cv_ndgln, IDs_ndgln, eles_with_pipe)
 
     implicit none
 
     ! Subroutine to calculate the integrated mass inside the domain
 
     ! Input/output variables
-
-    type(tensor_field), intent(in) :: Ele_owned_field
-
+    type(state_type), intent(inout) :: packed_state
+    type(multi_dimensions), intent(in) :: Mdims
     real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
-    integer, intent(in) :: nphase
-    real, dimension( : , : ),  intent(in) :: phaseV
-    real, dimension( : , : ), intent(in) :: Dens
-    real, dimension( : ), intent(in) :: Por
-
     real, dimension(:), intent(inout) :: calculate_mass
-    integer, intent(in) :: TOTELE
-
     integer, dimension(:), intent( in ) ::  cv_ndgln
     integer, dimension(:), intent( in ) :: IDs_ndgln
-    integer, intent(in) :: cv_nloc
-
+    type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
     ! Local variables
-
-    real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
-    real, dimension( : ), allocatable :: DensVG
-    real :: Mass_ELEG
+    type (tensor_field), pointer :: saturation, density
+    type (vector_field), pointer :: porosity
     integer  :: cv_knod
     integer :: cv_iloc
     integer :: ele
-    integer :: i
+    integer :: i, k
 
-    ! ALLOCATIONS
-    allocate(phaseVG(nphase))
-    allocate(DensVG(nphase))
+    saturation => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+    ! Extract the Density
+    density => extract_tensor_field( packed_state, "PackedDensity" )
+    ! Extract the Porosity
+    porosity => extract_vector_field( packed_state, "Porosity" )
 
     ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
     ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
@@ -3090,29 +3084,35 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
     ! we pass down the value of cv_iloc from cv_adv_diff and calculate cv_knod. This will be the node corresponding to a given
     ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
     ! Similar calculation done for density.
-
-    Do ELE=1, TOTELE
-       if (element_owned(Ele_owned_field, ELE)) then
-        DO CV_ILOC =1, cv_nloc
-                cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
-
-                phaseVG(:) = phaseV(:,cv_knod)
-                DensVG(:) = Dens(:,cv_knod)
-                Mass_ELEG = Mass_ELE(ele)
-
-                !     Porosity constant element-wise so simply extract that value associated to a given element ele
-                do i = 1, nphase
-                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*Por(IDs_ndgln(ele))*phaseVG(i)*DensVG(i)
-                enddo
-
+    if (present(eles_with_pipe)) then
+        !Calculate mass within pipes
+        DO k = 1, size(eles_with_pipe)
+            ELE = eles_with_pipe(k)%ele!Element with pipe
+            if (element_owned(saturation, ELE)) then
+                DO CV_ILOC =1, mdims%cv_nloc
+                    cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
+                    !     Porosity constant element-wise so simply extract that value associated to a given element ele
+                    do i = Mdims%n_in_pres + 1, Mdims%nphase
+                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod) * density%val(1, i,cv_knod)
+                    enddo
+                ENDDO
+            end if
+        end do
+    else
+        !Calculate mass in the reservoir
+        Do ELE=1, mdims%TOTELE
+            if (element_owned(saturation, ELE)) then
+                DO CV_ILOC =1, mdims%cv_nloc
+                    cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
+                    !     Porosity constant element-wise so simply extract that value associated to a given element ele
+                    do i = 1, size(calculate_mass)
+                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(ele)/mdims%cv_nloc)*&
+                            porosity%val(1, IDs_ndgln(ele))*saturation%val(1, i,cv_knod)*density%val(1, i,cv_knod)
+                    enddo
+                ENDDO
+            end if
         ENDDO
-        end if
-    ENDDO
-
-    ! DEALLOCATIONS
-    deallocate(phaseVG)
-    deallocate(densVG)
-
+    end if
     return
 
 end subroutine calculate_internal_mass

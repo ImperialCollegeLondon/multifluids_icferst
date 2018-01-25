@@ -71,13 +71,6 @@ module multi_pipes
 
     real:: tolerancePipe = 1d-2!tolerancePipe has to be around 1e-2 because that is the precision of the nastran input file
 
-     type pipe_coords
-            integer :: ele, npipes                               !Element containing pipes, pipes per element
-            logical, allocatable, dimension(:) :: pipe_index     !nodes with pipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds1!size npipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds2!size npipes
-     end type pipe_coords
-
 contains
 
 
@@ -799,7 +792,8 @@ contains
 
                         !If we want to output the outfluxes of the pipes we fill the array here with the information
                         if (store_outfluxes) then
-                            bcs_outfluxes(Mdims%n_in_pres:Mdims%nphase, JCV_NOD) = NDOTQ * suf_area * LIMDT!velocity * area * density * saturation
+                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD) = bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD) +&
+                                NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMDT(Mdims%n_in_pres+1:Mdims%nphase)!velocity * area * (density * saturation)
                         end if
 
                         DO IDIM = 1, Mdims%ndim
@@ -1766,8 +1760,8 @@ contains
                                                 end do
                                             end do
                                             if (.not.found) then
-                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1 !Add one pipe
-!                                                ipipe = 1 !One pipe per element for the time being
+!                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1 !Add one pipe
+                                                ipipe = 1 !One pipe per element for the time being
                                                 AUX_eles_with_pipe(j)%npipes = ipipe
                                                 AUX_eles_with_pipe(k)%ele = ele2
                                                 AUX_eles_with_pipe(k)%pipe_index(first_loc) = .true.!Don't know if necessary now...

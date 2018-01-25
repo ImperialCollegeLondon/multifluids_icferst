@@ -259,6 +259,12 @@ module multi_data_types
         real, dimension(:,:),  allocatable  :: intflux
     end type
 
+     type pipe_coords
+            integer :: ele, npipes                               !Element containing pipes, pipes per element
+            logical, allocatable, dimension(:) :: pipe_index     !nodes with pipes
+            integer, allocatable, dimension(:) :: pipe_corner_nds1!size npipes
+            integer, allocatable, dimension(:) :: pipe_corner_nds2!size npipes
+     end type pipe_coords
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
          allocate_multi_field1, allocate_multi_field2
