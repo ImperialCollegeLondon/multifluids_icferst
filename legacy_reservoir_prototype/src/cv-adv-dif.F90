@@ -116,7 +116,7 @@ contains
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-        porous_heat_coef, outfluxes)
+        porous_heat_coef, outfluxes, solving_compositional)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -292,7 +292,8 @@ contains
         REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef
         ! Variable to store outfluxes
         type (multi_outfluxes), optional, intent(inout) :: outfluxes
-        ! Local variables
+        logical, optional, intent(in) :: solving_compositional
+        ! ###################Local variables############################
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
         logical, PARAMETER :: integrate_other_side= .true.
@@ -523,7 +524,7 @@ contains
 
 
         !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction
-        local_upwinding = have_option('/numerical_methods/local_upwinding')
+        local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional)
         !this is true if the user is asking for high order advection scheme
         use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
 
@@ -596,7 +597,7 @@ contains
 
         call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
-        if (is_porous_media) call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+        if (is_porous_media .and. .not. present(solving_compositional)) call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
         !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
         U_ALL => NU_ALL
         old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))

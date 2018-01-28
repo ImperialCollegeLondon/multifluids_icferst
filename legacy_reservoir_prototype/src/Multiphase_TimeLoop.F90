@@ -642,7 +642,6 @@ call solve_transport()
                 end if Conditional_PhaseVolumeFraction
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-
                 if ( have_component_field ) call calc_components()
 
                 !Check if the results are good so far and act in consequence, only does something if requested by the user

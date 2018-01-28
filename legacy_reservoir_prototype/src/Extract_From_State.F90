@@ -3341,14 +3341,12 @@ all_fields_costant = .false.
         end do
     end do
 
-
     !###Compact fields###
     !Relative permeability and Immobile fractions (if cappressure, also cap parameters)
     if (has_tensor_field(packed_state,"PackedRockFluidProp")) then
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         call convert_tensor_field(t_field, IDs_ndgln )
     end if
-
     deallocate(region_ids)
 
 contains

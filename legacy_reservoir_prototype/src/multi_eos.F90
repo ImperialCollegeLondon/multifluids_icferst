@@ -1103,7 +1103,6 @@ contains
                perm=>extract_tensor_field(packed_state,"Permeability")
                RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
 
-
                allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
                    surface_element_count(velocity)))
                allocate(wic_vol_bc(volfrac%dim(1),volfrac%dim(2),&

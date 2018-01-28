@@ -271,6 +271,7 @@ contains
               ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
               allocate( Component_Diffusion_Operator_Coefficient( Mdims%ncomp, ncomp_diff_coef, Mdims%nphase ) )
               Component_Diffusion_Operator_Coefficient = 0.0
+
               call Calculate_ComponentDiffusionTerm( packed_state, &
                  Mdims, CV_GIdims, CV_funs, &
                  ndgln%mat, ndgln%u, ndgln%x, &
@@ -332,8 +333,7 @@ contains
                    mass_ele_transp, IDs_ndgln, &
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef)
-
+                   porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0)
 
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
