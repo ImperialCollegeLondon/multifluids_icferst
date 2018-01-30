@@ -801,7 +801,7 @@ contains
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
         ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])
         if(have_option_for_any_phase('/multiphase_properties/capillary_pressure',nphase)) then
-            call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[5,nphase])
+            call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[6,nphase])
         else
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[3,nphase])
         end if
@@ -2597,7 +2597,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
-    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent)
+    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term)
     !This subroutine returns a pointer to the desired values of a variable stored in packed state
     !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
     !and also all of them are optional, hence you can obtaine whichever you want
@@ -2624,7 +2624,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
-        Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent
+        Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
     real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
     !Local variables
     type(scalar_field), pointer :: sfield
@@ -2841,7 +2841,10 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedRockFluidProp" )
         Cap_exponent => tfield%val(5,:,:)
     end if
-
+    if (present(Imbibition_term))then
+        tfield => extract_tensor_field( packed_state, "PackedRockFluidProp" )
+        Imbibition_term => tfield%val(6,:,:)
+    end if
 
 end subroutine get_var_from_packed_state
 
@@ -3203,6 +3206,7 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             if (have_option_for_any_phase(trim(path), nphase))&
                 all_fields_costant = .false.
         end do
+
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
@@ -3217,6 +3221,19 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             if (have_option_for_any_phase(trim(path), nphase))&
                 all_fields_costant = .false.
         end do
+
+        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::B/prescribed/value'
+            k = 0
+            do i = 0, nphase-1
+                k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
+            end do
+            do i = 0, k-1
+                path = trim(root_path)//'['//int2str(i)//']/python'
+                if (have_option_for_any_phase(trim(path), nphase))&
+                    all_fields_costant = .false.
+            end do
+        endif
     end if
     !Check relative permeability
     if (have_option_for_any_phase('/multiphase_properties/Relperm_Corey/', nphase)) then

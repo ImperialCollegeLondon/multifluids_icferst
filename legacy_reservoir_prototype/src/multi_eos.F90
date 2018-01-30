@@ -1383,13 +1383,15 @@ contains
             logical, save :: Cap_Brooks = .true., Cap_TOTAL = .false.
             logical, save :: first_time = .true.
             !Working pointers
-            real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
+            real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term
             real, dimension(:), allocatable :: Cont_correction
             !Get from packed_state
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
 
             call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
-                Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, Cap_exponent = Cap_exponent)
+                Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, &
+                    Cap_exponent = Cap_exponent, Imbibition_term = Imbibition_term)
+
             nphase =size(Satura,1)
             allocate(Cont_correction(size(satura,2)))
 
@@ -1414,7 +1416,8 @@ contains
                                     cv_nod = cv_ndgln((ele-1)*cv_nloc + cv_iloc)
                                     CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
                                         Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, IDs_ndgln(ele)), &
-                                        Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), iphase)
+                                        Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), &
+                                        Imbibition_term(iphase, IDs_ndgln(ele)), iphase)
                                     Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
                                 end do
                             end do
@@ -1428,11 +1431,11 @@ contains
 
         deallocate(Cont_correction)
         contains
-            pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, iphase)
+            pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, Imbibition_term, iphase)
                 !This functions returns the capillary pressure for a certain input saturation
                 !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
                 Implicit none
-                real, intent(in) :: sat, Pe, a
+                real, intent(in) :: sat, Pe, a, Imbibition_term
                 real, dimension(:), intent(in) :: Immobile_fraction
                 integer, intent(in) :: iphase
                 !Local
@@ -1444,8 +1447,9 @@ contains
                     Get_capPressure = &
                         Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**a
                 else
+                    !A*(Swn^-B) - C; entry pressure = A - C
                     Get_capPressure = &
-                        Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - sum(Immobile_fraction(:)) ), 1.0) ** (-a)
+                        Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - sum(Immobile_fraction(:)) ), 1.0) ** (-a) - Imbibition_term
                 endif
 
             end function Get_capPressure
@@ -2647,7 +2651,7 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-        path2 = "/material_phase["//int2str(iphase-1)//&
+                path2 = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::C/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
@@ -2664,7 +2668,7 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-        path2 = "/material_phase["//int2str(iphase-1)//&
+                path2 = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::a/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
@@ -2676,7 +2680,19 @@ contains
                     t_field%val(5,iphase,:) = 1.0
                 end if
             end do
+            !Get imbibition term
+            do iphase = 1, nphase
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(6,iphase,:) = targ_Store%val(:)
+                else !default value
+                    t_field%val(6,iphase,:) = 0.0
+                end if
+            end do
         end if
+
 
         call deallocate(targ_Store)
     end subroutine get_RockFluidProp
