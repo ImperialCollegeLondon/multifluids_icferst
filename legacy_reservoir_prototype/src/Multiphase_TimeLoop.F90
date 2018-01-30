@@ -673,7 +673,6 @@ call solve_transport()
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
-
             ! If calculating boundary fluxes, dump them to outfluxes.txt
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
             ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step

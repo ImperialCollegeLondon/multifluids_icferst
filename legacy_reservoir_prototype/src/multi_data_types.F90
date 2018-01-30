@@ -1335,15 +1335,14 @@ contains
         !Local variables
         integer, dimension(2) :: shapes
 
-        outfluxes%calculate_flux = .false.
+        outfluxes%calculate_flux = have_option( "/io/dump_boundaryflux/surface_ids")
         ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxes%outlet_id.
         ! No need to explicitly allocate outfluxes%outlet_id (done here internally)
-        if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outfluxes%outlet_id))) then
+        if (outfluxes%calculate_flux .and..not.(allocated(outfluxes%outlet_id))) then
             shapes = option_shape("/io/dump_boundaryflux/surface_ids")
             assert(shapes(1) >= 0)
             allocate(outfluxes%outlet_id(shapes(1)))
             call get_option( "/io/dump_boundaryflux/surface_ids", outfluxes%outlet_id)
-            outfluxes%calculate_flux = .true.
         endif
 
     end subroutine initialize_multi_outfluxes
