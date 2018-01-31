@@ -2993,7 +2993,7 @@ subroutine calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outflu
     logical, intent(in) :: has_temperature
     !Local variables
     type(tensor_field), pointer :: t_field, temp_field
-    integer :: sele, k, cv_siloc, cv_inod, iphase
+    integer :: sele, k, cv_siloc, cv_inod, iphase, counter
     integer, dimension(Mdims%stotel*3) :: already_visited !worst case scenario 3 CVs per element touching the boundary
     !Field to check element ownership
     t_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -3194,8 +3194,6 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
-        elseif (have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::C/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::C/prescribed/value'
         endif
@@ -3211,8 +3209,6 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
 
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
-        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::a/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::a/prescribed/value'
         endif
