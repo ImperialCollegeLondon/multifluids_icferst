@@ -1245,7 +1245,7 @@ contains
                             DO IDIM = 1, Mdims%ndim
                                 ! This is ( S \dot n ) n
                                 Mmat%U_RHS( IDIM, IPHASE, IU_NOD ) =  Mmat%U_RHS( IDIM, IPHASE, IU_NOD ) + &
-                                    NM * SUM(U_SOURCE_CV( :, IPHASE, JCV_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
+                                    NM * dot_product(U_SOURCE_CV( :, IPHASE, JCV_NOD ), DIRECTION( : ) ) * DIRECTION( IDIM )
                             END DO
                         END DO
                     END DO ! DO P_LJLOC = 1, CV_LNLOC

@@ -1229,7 +1229,7 @@ end if
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA,&
-                U_ALL2%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL ) ! No sources in the wells for now...
+                U_ALL2%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL*0.0 ) ! No sources in the wells for now...
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
