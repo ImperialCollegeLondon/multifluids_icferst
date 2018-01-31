@@ -2993,7 +2993,7 @@ subroutine calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outflu
     logical, intent(in) :: has_temperature
     !Local variables
     type(tensor_field), pointer :: t_field, temp_field
-    integer :: sele, k, cv_siloc, cv_inod, iphase, counter
+    integer :: sele, k, cv_siloc, cv_inod, iphase
     integer, dimension(Mdims%stotel*3) :: already_visited !worst case scenario 3 CVs per element touching the boundary
     !Field to check element ownership
     t_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )

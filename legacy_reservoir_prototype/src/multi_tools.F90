@@ -846,13 +846,13 @@ END subroutine RotationMatrix
         integer, dimension(:,:), allocatable, intent(inout) :: edges
         !Local variables
         integer, dimension(:), allocatable:: conversor
-        integer :: i, k, j, ierr
+        integer :: i, k, j, ierr, counter
         character( len = option_path_len ):: cadena
         integer :: Nnodes, Nedges
         real, dimension(4) :: edge_line
 
         !First we need to get the number of nodes and the number of edges to correctly allocate node and edges
-        call get_nodes_edges(Nnodes); Nedges = Nnodes - 1!In 1d there is always one edge less than nodes
+        call get_nodes_edges(Nnodes, Nedges)!; Nedges = Nnodes - 1!In 1d there is always one edge less than nodes
         allocate(node(3, Nnodes), edges(2, Nedges), conversor(Nnodes))
         !Open file
         open(unit= 89, file=trim(filepath)//".bdf", status='old', action='read')
@@ -887,12 +887,12 @@ END subroutine RotationMatrix
         !Before leaving we normalize the edges list, making it to go from 1 to last edge instead of the numeration used
          do j = 1, size(edges,1)
              do i = 1, size(edges,2)
-                do k = 1, size(conversor)
+                conversor_loop: do k = 1, size(conversor)
                     if (edges(j,i) == conversor(k)) then
                         edges(j,i) = k
-                        exit
+                        exit conversor_loop
                     end if
-                end do
+                end do conversor_loop
              end do
          end do
         deallocate(conversor)
@@ -906,9 +906,10 @@ END subroutine RotationMatrix
 !print *, "-----------------------"
 !read*
     contains
-        subroutine get_nodes_edges(Nnodes)
+        subroutine get_nodes_edges(Nnodes, Nedges)
+            !Get the number of nodes and edges that conform the well
             implicit none
-            integer, intent(inout)::Nnodes
+            integer, intent(inout)::Nnodes, Nedges
 
             Nnodes = 0; Nedges = 0
             !Open file
@@ -917,6 +918,12 @@ END subroutine RotationMatrix
             do while (cadena(1:5)/="CROD")
                 read(89,'(A)') cadena
                 if (cadena(1:5)=="GRID")Nnodes = Nnodes + 1
+            end do
+            cadena = "--"
+            Nedges = 1!Because the previous loop finished with CROD
+            do while (cadena(1:5)/="PROD")
+                read(89,'(A)') cadena
+                if (cadena(1:5)=="CROD")Nedges = Nedges + 1
             end do
             close(89)
 

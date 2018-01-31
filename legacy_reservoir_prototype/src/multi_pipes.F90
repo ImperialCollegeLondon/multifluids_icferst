@@ -1591,9 +1591,9 @@ contains
             real :: c1, c2, distance, Saux1, Saux2, diam
             !Initialiase variables
             is_within_pipe = .false.
+
             vec1 = v2(1:Mdims%ndim) - v1(1:Mdims%ndim)
             vec2 = P(1:Mdims%ndim) - v1(1:Mdims%ndim)
-
 
             c1 = dot_product(Vec2,Vec1)
             c2 = dot_product(Vec1,Vec1)!<=lenght of the section**2
