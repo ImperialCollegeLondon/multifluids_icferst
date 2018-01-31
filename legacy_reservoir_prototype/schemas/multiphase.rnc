@@ -1830,10 +1830,53 @@ start =
                     ## exponent -a
                     element scalar_field {
                        attribute name { "a" },
-                      element prescribed {
-                         material_mesh_choice,
-                         prescribed_scalar_field
-                      }
+                       (
+                          element prescribed {
+                             material_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    }}?,
+	          ## Power Law equation
+                  ## 
+                  ## Pc = c*(1-s_eff)**a
+		  ##
+		  ## where s_eff = (S_w-Swir)/(1-Swir-Sor)
+		  ##
+		  ## c = maximum pc pressure; a = pc exponent
+		  ## 
+		  ## (no entry pressure) 
+                  ## 
+                  ## ONLY specify for the wetting phase
+		  element type_Power_Law {
+                    ## Maximum pressure
+                    element scalar_field {
+                       attribute name { "C" },
+                       (
+                          element prescribed {
+                             material_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    },
+                    ## exponent a
+                    element scalar_field {
+                       attribute name { "a" },
+                       (
+                          element prescribed {
+                             material_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
                     }}?,
                   ## Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)
                   element type_TOTALCapillary {

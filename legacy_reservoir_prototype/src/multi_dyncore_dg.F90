@@ -6144,10 +6144,11 @@ end if
 
      Artificial_Pe = .false.
      if (Phase_with_Pc>0) then
-         !Get information for capillary pressure to be use
+         !Get information for capillary pressure to be used
          if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
              "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) ) then
+             "]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+             "]/multiphase_properties/capillary_pressure/type_Power_Law") ) )then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
                  Cap_exponent = Cap_exponent)!no need for the imbibition because we need the derivative which will be zero as it is a constant
          end if
