@@ -2438,7 +2438,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                       </element>
                       <optional>
                         <element name="scalar_field">
-                          <a:documentation>Imbibition term. if on the entry pressure = C - B;
+                          <a:documentation>Imbibition term. if on, entry pressure = C - B;
 By default this value is set to zero.</a:documentation>
                           <attribute name="name">
                             <value>B</value>
@@ -2454,10 +2454,60 @@ By default this value is set to zero.</a:documentation>
                         <attribute name="name">
                           <value>a</value>
                         </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="type_Power_Law">
+                      <a:documentation>Power Law equation
+
+Pc = c*(1-s_eff)**a
+
+where s_eff = (S_w-Swir)/(1-Swir-Sor)
+
+c = maximum pc pressure; a = pc exponent
+
+(no entry pressure) 
+
+ONLY specify for the wetting phase</a:documentation>
+                      <element name="scalar_field">
+                        <a:documentation>Maximum pressure</a:documentation>
+                        <attribute name="name">
+                          <value>C</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
+                      </element>
+                      <element name="scalar_field">
+                        <a:documentation>exponent a</a:documentation>
+                        <attribute name="name">
+                          <value>a</value>
+                        </attribute>
+                        <choice>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          <element name="aliased">
+                            <ref name="generic_aliased_field"/>
+                          </element>
+                        </choice>
                       </element>
                     </element>
                   </optional>
