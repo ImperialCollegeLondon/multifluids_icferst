@@ -43,7 +43,7 @@ module cv_advection
     use adapt_state_prescribed_module
     use sparse_tools
     use sparsity_patterns
-
+    use surface_integrals, only :integrate_over_surface_element
     use petsc_tools
     use vtk_interfaces
 
@@ -464,7 +464,7 @@ contains
         real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
         type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
         type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-        type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield
+        type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field
         integer :: FEM_IT
         integer, dimension(:), pointer :: neighbours
         integer :: nb, i_use_volume_frac_t2
@@ -513,9 +513,8 @@ contains
         real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
         real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
         !Variables for outfluxes
-        real, dimension(:,:), allocatable :: bcs_outfluxes
+        real, dimension(:, :,:), allocatable :: bcs_outfluxes
         ! Variables needed when doing calculate_outfluxes
-        type(vector_field), pointer :: Por
         real, dimension( : , : ), pointer ::Imble_frac
         ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'bcs_outfluxes'
         ! and the internal changes in mass will be captured by 'calculate_mass_internal'
@@ -610,6 +609,7 @@ contains
         TOLD_ALL =>old_tracer%val(1,:,:)
         if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
         T_ALL_KEEP = T_ALL
+
             !##################END OF SET VARIABLES##################
 
 
@@ -643,13 +643,18 @@ contains
                 ! T_ALL=>CONV ! conV is an allocatable target
                 call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
             ENDIF
+            ! Initialise the calculate_mass variables
+            !Allocate array to pass to store mass going through the boundaries
+            allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+            allocate ( calculate_mass_internal(Mdims%nphase))
+            calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
+            !Extract temperature for outfluxes if required
+            if (has_temperature) then
+                temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+                outfluxes%totout(2, :,:) = -273.15
+            end if
         ENDIF
 
-        ! Initialise the calculate_mass variables
-        !Allocate array to pass to store mass going through the boundaries
-        allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods)); bcs_outfluxes= 0.
-        allocate ( calculate_mass_internal(Mdims%nphase))
-        calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
 
 
         !! Get boundary conditions from field
@@ -1156,33 +1161,9 @@ contains
         END IF
         GLOBAL_FACE = 0
 
-        if ( is_porous_media .and. GETCT ) then
-
-            if (first_nonlinear_time_step ) then
-                calculate_mass_delta(:,1) = 0.0 ! reinitialise
-                call calculate_internal_mass( packed_state, Mdims, Mass_ELE, &
-                    calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv, IDs_ndgln)
-            endif
-            call calculate_internal_mass( packed_state, Mdims, Mass_ELE,  &
-                calculate_mass_internal(1:Mdims%n_in_pres) ,ndgln%cv, IDs_ndgln)
-
-
-            if (outfluxes%calculate_flux) then
-                ! Extract the Porosity
-                Por => extract_vector_field( packed_state, "Porosity" )
-
-                ! Calculate Pore volume
-                outfluxes%porevolume = 0.0
-                DO ELE = 1, Mdims%totele
-                    if (element_owned(tracer, ele)) then
-                        outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por%val(1,IDs_ndgln(ELE))
-                    end if
-                END DO
-
-                call allsum(outfluxes%porevolume) ! Now sum the value over all processors
-
-            end if
-
+        if ( is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) ) then
+            !Initialise mass conservation check; calculation of porevolume
+            call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 1)
         endif
 
 
@@ -1870,9 +1851,26 @@ contains
 
                                 !Store fluxes across all the boundaries either for mass conservation check or mass outflux
                                 !velocity * area * density * saturation
-                                if (on_domain_boundary) then
-                                    bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI) =  bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI) + &
-                                        ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:Mdims%n_in_pres)
+                                if (on_domain_boundary ) then
+                                    if (surface_element_owned(old_tracer, sele)) then
+                                        !Store total outflux
+                                        bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, 0) =  bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI,0) + &
+                                            ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMT(1:Mdims%n_in_pres)
+                                        if (outfluxes%calculate_flux)  then
+                                            do k = 1, size(outfluxes%outlet_id)!here below we just need a saturation
+                                                if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
+                                                    bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, k) =  bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, k) + &
+                                                        ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMT(1:Mdims%n_in_pres)
+                                                    if (has_temperature) then
+                                                        do iphase = 1, Mdims%nphase
+                                                            outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                                                                 outfluxes%totout(2, iphase, k)   )
+                                                        end do
+                                                    end if
+                                                end if
+                                            end do
+                                        end if
+                                    end if
                                 end if
 
                             ENDIF Conditional_GETCT2
@@ -2131,7 +2129,7 @@ contains
 
                 CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-                    SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes )
+                    SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes)
 
                 if(is_flooding) then
                     DO CV_NODI = 1, Mdims%cv_nonods
@@ -2773,47 +2771,11 @@ contains
            !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
         END IF
 
-        if(GETCT) then
-            ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
-            ! Difference in Total mass
+        if(GETCT .and. present(calculate_mass_delta) .and. present(outfluxes)) then
+            !Calculate final outfluxes and mass balance in the domain
+            call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
+        end if
 
-            ! NEED TO MAKE THIS PARALLEL SAFE (allsum the individial deltaM contributions over all processors).
-            if (Mdims%npres>1) then
-                if (first_nonlinear_time_step ) then
-                    call calculate_internal_mass( packed_state, Mdims, pipes_aux%MASS_PIPE, &
-                        calculate_mass_delta(:,1) , ndgln%cv, IDs_ndgln, eles_with_pipe)
-                endif
-                !Consider as well the mass in the pipes
-                call calculate_internal_mass( packed_state, Mdims, pipes_aux%MASS_PIPE,  &
-                    calculate_mass_internal ,ndgln%cv, IDs_ndgln, eles_with_pipe)
-
-            end if
-
-            tmp1 = sum(calculate_mass_internal)
-            tmp2 = sum(calculate_mass_delta(:,1))
-            tmp3 = sum(bcs_outfluxes(1:Mdims%n_in_pres,:))*dt
-            call allsum(tmp1)
-            call allsum(tmp2)
-            call allsum(tmp3)
-
-            calculate_mass_delta(1,2) = abs( tmp1 - tmp2 + tmp3 ) / tmp2
-
-            !If calculate outfluxes then do it now
-            if (outfluxes%calculate_flux) then
-                !Retrieve only the values of bcs_outfluxes we are interested in
-                call calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outfluxes, has_temperature)
-                ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-                if (isParallel()) then
-                    do k = 1,size(outfluxes%outlet_id)
-                        ! Ensure all processors have the correct value of totout for parallel runs
-                        do iphase = 1, Mdims%nphase
-                            call allsum(outfluxes%totout(1, iphase, k))
-                            if (has_temperature) call allsum(outfluxes%totout(2, iphase, k))
-                        end do
-                    end do
-                end if
-            end if
-        endif
 
         ! Deallocating temporary working arrays
         IF(GETCT) THEN
@@ -4331,6 +4293,108 @@ end if
                 END IF ! endof IF ( between_elements ) THEN
             ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
         end subroutine get_neigbouring_lists
+
+
+        subroutine mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, flag)
+            ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids given that the massflux has been already stored elsewhere
+            !also used to calculate mass conservation
+            implicit none
+            integer, intent(in) :: flag
+            type (multi_outfluxes), intent(inout) :: outfluxes
+            real, dimension(:,:), intent(inout) :: calculate_mass_delta
+            !Local variables
+            integer :: iphase, k
+            real :: tmp1, tmp2, tmp3
+            type(vector_field), pointer :: Por
+            ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
+            ! Difference in Total mass
+
+            select case (flag)
+                case (1)
+                    !Initialise values
+                    if (first_nonlinear_time_step ) then
+                        calculate_mass_delta(:,1) = 0.0 ! reinitialise
+                        call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
+                            calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv, IDs_ndgln)
+                        if (Mdims%npres >1)then!consider as well the pipes
+                            call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
+                                calculate_mass_delta(:,1) , ndgln%cv, IDs_ndgln, eles_with_pipe)
+                        end if
+                    endif
+                    if (outfluxes%calculate_flux) then
+                        ! Extract the Porosity
+                        Por => extract_vector_field( packed_state, "Porosity" )
+
+                        ! Calculate Pore volume
+                        outfluxes%porevolume = 0.0
+                        DO ELE = 1, Mdims%totele
+                            if (element_owned(tracer, ele)) then
+                                outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por%val(1,IDs_ndgln(ELE))
+                            end if
+                        END DO
+
+                        call allsum(outfluxes%porevolume) ! Now sum the value over all processors
+
+                    end if
+                case default!Now calculate mass conservation
+                    !Calculate internal volumes of each phase
+                    call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
+                        calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv, IDs_ndgln)
+                    if (Mdims%npres >1) then!consider as well the pipes
+                        call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
+                            calculate_mass_internal(:) , ndgln%cv, IDs_ndgln, eles_with_pipe)
+                    end if
+
+                    !Loop over nphases - 1
+                    calculate_mass_delta(1,2) = 0.
+                    do iphase = 1, max(Mdims%n_in_pres -1, 1)
+                        tmp1 = calculate_mass_internal(iphase)!<=volume phase i inside the domain
+                        tmp2 = calculate_mass_delta(iphase,1)!<= volume phase i inside the domain at the beginning of the time-level
+                        tmp3 = sum(bcs_outfluxes(iphase, :, 0))*dt!<= volume phase i across al the boundaries
+                        !Consider also wells
+                        if (Mdims%npres > 1) then
+                            tmp1 = tmp1 + calculate_mass_internal(iphase+ Mdims%n_in_pres)
+                            tmp2 = tmp2 + calculate_mass_delta(iphase+ Mdims%n_in_pres,1)
+                            tmp3 = tmp3 + sum(bcs_outfluxes(iphase + Mdims%n_in_pres, :, 0))*dt
+                        end if
+                        if (isparallel()) then
+                            call allsum(tmp1)
+                            call allsum(tmp2)
+                            call allsum(tmp3)
+                        end if
+                        !Calculate possible mass creation inside the code
+                        calculate_mass_delta(1,2) = max(calculate_mass_delta(1,2), abs( tmp1 - tmp2 + tmp3 ) / tmp2)
+                    end do
+
+                    !If calculate outfluxes then do it now
+                    if (outfluxes%calculate_flux) then
+                        !Retrieve only the values of bcs_outfluxes we are interested in
+                        do k = 1, size(outfluxes%outlet_id)
+                            do iphase = 1, Mdims%nphase
+                                outfluxes%totout(1, iphase, k) = sum(bcs_outfluxes( iphase, :, k))
+                            end do
+                        end do
+                        ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
+                        if (isParallel()) then
+                            do k = 1,size(outfluxes%outlet_id)
+                                ! Ensure all processors have the correct value of totout for parallel runs
+                                do iphase = 1, Mdims%nphase
+                                    call allsum(outfluxes%totout(1, iphase, k))
+                                    if (has_temperature) call allsum(outfluxes%totout(2, iphase, k))
+                                end do
+                            end do
+                        end if
+                    end if
+            end select
+
+
+        end subroutine mass_conservation_check_and_outfluxes
+
+
+
+
+
+
     END SUBROUTINE CV_ASSEMB
 
 

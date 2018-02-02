@@ -42,7 +42,7 @@ module multi_pipes
     use Sparse_tools
     use sparse_tools_petsc
 
-
+    use surface_integrals, only :integrate_over_surface_element
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use shape_functions_prototype
@@ -76,7 +76,7 @@ contains
 
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes )
+                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
         type(state_type), intent(inout) :: packed_state
         type(state_type), dimension(:), intent(in) :: state
@@ -95,7 +95,8 @@ contains
         !Variables that are used to define the pipe pos.
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         !variables to store the pipe outfluxes if asked by the user
-        real, dimension(:,:), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+        real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+        type (multi_outfluxes), intent(inout) :: outfluxes
         ! Local variables
         INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase
         INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
@@ -125,7 +126,7 @@ contains
         integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
             u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
             icorner1, icorner2, icorner3, icorner4, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
-            U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
+            U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k, iofluxes
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
         type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2, t2_all, only_den_all
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
@@ -310,7 +311,7 @@ contains
             T_ALL => extract_tensor_field( packed_state, "PackedTemperature" )
             !this is rho * Cp. This is to make it consistent with the advection term in cv-adv-diff
             DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!this is Cp * Rho.
-            U_ALL => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )!for consistency with cv_assemb
+            U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )!for consistency with cv_assemb!Used to be =>PackedNonlinearVelocity like in cv_assemb
             T2_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )!for multiphase
             only_den_all => extract_tensor_field( packed_state, "PackedDensity" )
         end if
@@ -640,6 +641,7 @@ contains
                         DO IPHASE = 1, Mdims%nphase
                             NDOTQ(IPHASE) = SUM( DIRECTION_norm(:) * UGI_all(:,IPHASE) )
                         END DO
+
                         ! When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
                         WHERE ( NDOTQ <= 0.0 )
                             INCOME_J = 0.0
@@ -751,11 +753,16 @@ contains
                 END IF
 
                 IF ( JCV_NOD /= 0 ) THEN
+                    !We are in the boundary of the domain
                     PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
                     NDOTQ = 0.0
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                         IF ( SOLVE_ACTUAL_VEL) THEN
-                            NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) )
+                            if (WIC_U_BC_ALL_NODS( iphase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
+                                NDOTQ(IPHASE) = dot_product( direction_norm(:), SUF_U_BC_ALL_NODS(:,IPHASE,JCV_NOD) )
+                            else
+                                NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) )
+                            end if
                         ELSE
                             NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
                         END IF
@@ -789,12 +796,23 @@ contains
                     ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                     suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                     IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
-
-                        !If we want to output the outfluxes of the pipes we fill the array here with the information
-                        if (store_outfluxes) then
-                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD) = bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD) +&
-                                NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMDT(Mdims%n_in_pres+1:Mdims%nphase)!velocity * area * (density * saturation)
+                        if (element_owned(T_ALL, ele)) then
+                            !Store total outflux for volume conservation check
+                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, 0) =  bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD,0) + &
+                                NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
+                            if (store_outfluxes) then
+                                !If we want to output the outfluxes of the pipes we fill the array here with the information
+                                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
+                                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
+                                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
+                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) =  &
+                                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) + &
+                                            NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
+                                    end if
+                                end do
+                            end if
                         end if
+
 
                         DO IDIM = 1, Mdims%ndim
                             CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:) / DEN_ALL%val(1,:,JCV_NOD)
@@ -924,6 +942,30 @@ contains
             TDLIM = MAX( TDLIM, 0.0 )
             RETURN
         END SUBROUTINE ONVDLIM_ANO_MANY
+
+
+    real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
+        !Obtain sele from a cv_nod that is on the boundary
+        !if not found then returns -1
+        implicit none
+        integer, intent(in) ::cv_jnod
+        type(multi_ndgln), intent(in) :: ndgln
+        type(multi_dimensions), intent(in) :: Mdims
+        !Local variables
+        integer :: sele, cv_siloc
+
+        sele_from_cv_nod = -1
+        do sele = 1, Mdims%stotel
+            do cv_siloc = 1, Mdims%cv_snloc
+                if (ndgln%suf_cv((sele-1)*Mdims%cv_snloc + cv_siloc) == cv_jnod) then
+                    sele_from_cv_nod = sele
+                    return
+                end if
+            end do
+        end do
+
+    end function sele_from_cv_nod
+
     END SUBROUTINE MOD_1D_CT_AND_ADV
 
 

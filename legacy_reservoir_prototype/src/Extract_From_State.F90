@@ -68,8 +68,8 @@ module Copy_Outof_State
         Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
-        calculate_outfluxes, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass, prepare_absorptions
+        have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions
 
 
     interface Get_SNdgln
@@ -2181,8 +2181,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
             end select
             ! find the maximum mass error to compare with the tolerance below
-            !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
-            ! In this case we only calculate the total mass - we could calculate the mass of each phase
+            ! This is the maximum error of each indivial phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
 
 
@@ -2194,15 +2193,15 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 call allmax(max_calculate_mass_delta)
                 call allmax(inf_norm_val)
             end if
-            if (size(pressure,2) > 1) then!==Mdims%npres > 1!This should be removed once we can check mass conservation with wells
-                if (is_porous_media .and. variable_selection == 3) then
-                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its
-                else if (is_porous_media .and. variable_selection == 4) then
-                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its
-                else
-                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
-                end if
-            else
+!            if (size(pressure,2) > 1) then!==Mdims%npres > 1!This should be removed once we can check mass conservation with wells
+!                if (is_porous_media .and. variable_selection == 3) then
+!                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its
+!                else if (is_porous_media .and. variable_selection == 4) then
+!                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its
+!                else
+!                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+!                end if
+!            else
                 if (is_porous_media .and. variable_selection == 3) then
                     write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
                 else if (is_porous_media .and. variable_selection == 4) then
@@ -2210,7 +2209,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 else
                     write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
                 end if
-            end if
+!            end if
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
@@ -2979,82 +2978,7 @@ function GetFEMName(tfield) result(fem_name)
 
 end function GetFEMName
 
-subroutine calculate_outfluxes(packed_state, Mdims, ndgln, outfluxes, bcs_outfluxes, has_temperature)
-    implicit none
-
-    ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids given that the massflux has been already stored elsewhere
-
-    ! Input/output variables
-    type(state_type), intent(inout) :: packed_state
-    type(multi_dimensions), intent(in) :: Mdims
-    type(multi_ndgln), intent(in) :: ndgln
-    type (multi_outfluxes), optional, intent(inout) :: outfluxes
-    real, dimension(:,:), intent(in) :: bcs_outfluxes
-    logical, intent(in) :: has_temperature
-    !Local variables
-    type(tensor_field), pointer :: t_field, temp_field
-    integer :: sele, k, cv_siloc, cv_inod, iphase, counter
-    integer, dimension(Mdims%stotel*3) :: already_visited !worst case scenario 3 CVs per element touching the boundary
-    !Field to check element ownership
-    t_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-    outfluxes%totout = 0.
-    if (has_temperature) then
-        temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-        outfluxes%totout(2, :,:) = -273.15
-    end if
-    !Initialised visited array and counter
-    already_visited = -1; counter = 1
-    !Convert all the subroutine to work like this section and get of the global variables...
-    do sele = 1, Mdims%stotel
-        !Check if in parallel who owns the node, to avoid re-counting
-        if (surface_element_owned(t_field, sele)) then
-            do k = 1, size(outfluxes%outlet_id)
-                !If sele is in the desired id then we proceed to store the data
-                if (integrate_over_surface_element(t_field, sele, (/outfluxes%outlet_id(k)/) ) ) then
-                    do cv_siloc = 1, Mdims%cv_snloc
-                        cv_inod = ndgln%suf_cv( (sele-1)*Mdims%cv_snloc + cv_siloc )
-                        !Check if this node has been already visited, if it is the case, then cycle
-                        if (check_visited(cv_inod, already_visited)) cycle
-                        outfluxes%totout(1, :, k) = outfluxes%totout(1, :, k) + bcs_outfluxes(:, cv_inod)
-                        if (has_temperature) then
-                            !Store the maximum temperature only
-                            do iphase = 1, Mdims%nphase
-                                outfluxes%totout(2, iphase, k) = max(  temp_field%val(1,iphase,cv_inod), outfluxes%totout(2, iphase, k)   )
-                            end do
-                        end if
-                        already_visited(counter) = cv_inod
-                        counter = counter + 1
-                    end do
-                end if
-            end do
-        end if
-    end do
-
-    contains
-
-    logical function check_visited(cv_inod, already_visited)
-        implicit none
-
-        integer, dimension(:), intent(in) :: already_visited
-        integer, intent(in) :: cv_inod
-        !Local variables
-        integer :: i
-        i = 1
-        check_visited = .false.
-        do while (already_visited(i) > 0)
-            if (already_visited(i) == cv_inod) then
-                check_visited = .true.
-                return
-            end if
-            i = i + 1
-        end do
-
-    end function check_visited
-
-end subroutine calculate_outfluxes
-
-
-subroutine calculate_internal_mass(packed_state, Mdims, mass_ele, calculate_mass, &
+subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_mass, &
     cv_ndgln, IDs_ndgln, eles_with_pipe)
 
     implicit none
@@ -3070,7 +2994,7 @@ subroutine calculate_internal_mass(packed_state, Mdims, mass_ele, calculate_mass
     integer, dimension(:), intent( in ) :: IDs_ndgln
     type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
     ! Local variables
-    type (tensor_field), pointer :: saturation, density
+    type (tensor_field), pointer :: saturation
     type (vector_field), pointer :: porosity
     integer  :: cv_knod
     integer :: cv_iloc
@@ -3078,8 +3002,6 @@ subroutine calculate_internal_mass(packed_state, Mdims, mass_ele, calculate_mass
     integer :: i, k
 
     saturation => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-    ! Extract the Density
-    density => extract_tensor_field( packed_state, "PackedDensity" )
     ! Extract the Porosity
     porosity => extract_vector_field( packed_state, "Porosity" )
 
@@ -3098,7 +3020,7 @@ subroutine calculate_internal_mass(packed_state, Mdims, mass_ele, calculate_mass
                     cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
                     !     Porosity constant element-wise so simply extract that value associated to a given element ele
                     do i = Mdims%n_in_pres + 1, Mdims%nphase
-                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod) * density%val(1, i,cv_knod)
+                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod)
                     enddo
                 ENDDO
             end if
@@ -3112,7 +3034,7 @@ subroutine calculate_internal_mass(packed_state, Mdims, mass_ele, calculate_mass
                     !     Porosity constant element-wise so simply extract that value associated to a given element ele
                     do i = 1, size(calculate_mass)
                         calculate_mass(i) = calculate_mass(i) + (Mass_ELE(ele)/mdims%cv_nloc)*&
-                            porosity%val(1, IDs_ndgln(ele))*saturation%val(1, i,cv_knod)*density%val(1, i,cv_knod)
+                            porosity%val(1, IDs_ndgln(ele))*saturation%val(1, i,cv_knod)
                     enddo
                 ENDDO
             end if
@@ -3120,7 +3042,7 @@ subroutine calculate_internal_mass(packed_state, Mdims, mass_ele, calculate_mass
     end if
     return
 
-end subroutine calculate_internal_mass
+end subroutine calculate_internal_volume
 
 
 logical function have_option_for_any_phase(path, nphase)
@@ -3577,11 +3499,11 @@ end subroutine get_DarcyVelocity
             whole_line = trim(whole_line)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outfluxes%outlet_id(ioutlet), " Massflux"
+                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outfluxes%outlet_id(ioutlet), " Normaliseflux"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outfluxes%outlet_id(ioutlet),  " time integrated Massflux"
+                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outfluxes%outlet_id(ioutlet),  " time integrated Volumeflux"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 if (has_temperature) then
