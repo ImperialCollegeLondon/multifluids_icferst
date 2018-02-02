@@ -4316,10 +4316,11 @@ end if
                         calculate_mass_delta(:,1) = 0.0 ! reinitialise
                         call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
                             calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv, IDs_ndgln)
-                        if (Mdims%npres >1)then!consider as well the pipes
-                            call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
-                                calculate_mass_delta(:,1) , ndgln%cv, IDs_ndgln, eles_with_pipe)
-                        end if
+                        !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
+!                        if (Mdims%npres >1)then!consider as well the pipes
+!                            call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
+!                                calculate_mass_delta(:,1) , ndgln%cv, IDs_ndgln, eles_with_pipe)
+!                        end if
                     endif
                     if (outfluxes%calculate_flux) then
                         ! Extract the Porosity
@@ -4340,10 +4341,11 @@ end if
                     !Calculate internal volumes of each phase
                     call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
                         calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv, IDs_ndgln)
-                    if (Mdims%npres >1) then!consider as well the pipes
-                        call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
-                            calculate_mass_internal(:) , ndgln%cv, IDs_ndgln, eles_with_pipe)
-                    end if
+                    !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
+!                    if (Mdims%npres >1) then!consider as well the pipes
+!                        call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
+!                            calculate_mass_internal(:) , ndgln%cv, IDs_ndgln, eles_with_pipe)
+!                    end if
 
                     !Loop over nphases - 1
                     calculate_mass_delta(1,2) = 0.

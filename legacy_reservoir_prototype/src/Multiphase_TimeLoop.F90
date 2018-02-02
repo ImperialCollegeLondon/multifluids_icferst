@@ -681,13 +681,13 @@ call solve_transport()
                 end where
                 do ioutlet = 1, size(outfluxes%outlet_id)
                     outfluxes%intflux(:, ioutlet) = outfluxes%intflux(:, ioutlet) + outfluxes%totout(1, :, ioutlet)*dt
-                    outfluxes%totout(1, :, ioutlet) = outfluxes%totout(1, :, ioutlet)/sum(outfluxes%totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
+                    !outfluxes%totout(1, :, ioutlet) = outfluxes%totout(1, :, ioutlet)/sum(outfluxes%totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
                     !Check again for Nan
-                    do k = 1, size(outfluxes%totout,2)
-                        if (outfluxes%totout(1, k, ioutlet) /= outfluxes%totout(1, k, ioutlet)) then
-                            outfluxes%totout(1, k, ioutlet) = 0.
-                        end if
-                    end do
+!                    do k = 1, size(outfluxes%totout,2)
+!                        if (outfluxes%totout(1, k, ioutlet) /= outfluxes%totout(1, k, ioutlet)) then
+!                            outfluxes%totout(1, k, ioutlet) = 0.
+!                        end if
+!                    end do
                 enddo
                 if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
             endif

@@ -3492,6 +3492,7 @@ end subroutine get_DarcyVelocity
         else
             open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
         end if
+
         ! Write column headings to file
         counter = 0
         if(itime.eq.1) then
@@ -3499,16 +3500,16 @@ end subroutine get_DarcyVelocity
             whole_line = trim(whole_line)
             do ioutlet =1, size(outfluxes%intflux,2)
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outfluxes%outlet_id(ioutlet), " Normaliseflux"
+                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, "-S", outfluxes%outlet_id(ioutlet), "- Volume rate"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outfluxes%outlet_id(ioutlet),  " time integrated Volumeflux"
+                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 if (has_temperature) then
                     do iphase = 1, size(outfluxes%intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outfluxes%outlet_id(ioutlet),  " maximum temperature"
+                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum temperature"
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
@@ -3516,27 +3517,27 @@ end subroutine get_DarcyVelocity
              ! Write out the line
             write(default_stat%conv_unit,*), trim(whole_line)
         endif
-            ! Write the actual numbers to the file now
-            write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
-            whole_line =  trim(numbers)
-            do ioutlet =1, size(outfluxes%intflux,2)
+        ! Write the actual numbers to the file now
+        write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+        whole_line =  trim(numbers)
+        do ioutlet =1, size(outfluxes%intflux,2)
+            do iphase = 1, size(outfluxes%intflux,1)
+                write(fluxstring(iphase),'(f15.5)') outfluxes%totout(1, iphase,ioutlet)
+                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+            enddo
+            do iphase = 1, size(outfluxes%intflux,1)
+                write(intfluxstring(iphase),'(g15.5)') outfluxes%intflux(iphase,ioutlet)
+                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+            enddo
+            if (has_temperature) then
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(fluxstring(iphase),'(f15.5)') outfluxes%totout(1, iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                    write(tempstring(iphase),'(f15.5)') outfluxes%totout(2, iphase,ioutlet)
+                    whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
-                do iphase = 1, size(outfluxes%intflux,1)
-                    write(intfluxstring(iphase),'(g15.5)') outfluxes%intflux(iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                enddo
-                if (has_temperature) then
-                    do iphase = 1, size(outfluxes%intflux,1)
-                        write(tempstring(iphase),'(f15.5)') outfluxes%totout(2, iphase,ioutlet)
-                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    enddo
-                end if
-            end do
-            ! Write out the line
-            write(default_stat%conv_unit,*), trim(whole_line)
+            end if
+        end do
+        ! Write out the line
+        write(default_stat%conv_unit,*), trim(whole_line)
         close (default_stat%conv_unit)
     end subroutine dump_outflux
 
