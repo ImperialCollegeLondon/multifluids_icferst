@@ -85,6 +85,7 @@ node( 'FluidityCentos7' )
       sh "cp /usr/lib64/openmpi/lib/libparmetis.so ./libparmetis.so"
       sh "cp /usr/lib64/libmetis.so.0 ./libmetis.so"
       sh "cp /usr/lib64/libudunits2.so.0.1.0 ./libudunits2.so.0"
+      sh "cp /usr/lib64/libexodus-5.14.0.so ./libexodus-5.14.0.so"
     }
   }
 
