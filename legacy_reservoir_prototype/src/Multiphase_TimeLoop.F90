@@ -705,7 +705,7 @@ call solve_transport()
             end if
 
             !********************* Write outputs (vtu and checkpoint files) *********************
-            call write_outputs_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats)
+            call write_output_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats)
 
             !********************* Mesh adapt *********************
             if(acctim >= t_adapt_threshold) call adapt_mesh_mp()
