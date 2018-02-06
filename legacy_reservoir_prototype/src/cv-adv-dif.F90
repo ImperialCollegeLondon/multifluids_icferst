@@ -1749,7 +1749,7 @@ contains
                             ! Define face value of theta
                             IF ( GOT_T2 ) THEN
                                 FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, Mdims%nphase, &
-                                    NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
+                                    Mdims%n_in_pres, NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
                                     T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ) * T2_ALL(:, CV_NODJ), &
                                     T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI) * T2_ALL(:, CV_NODI), &
                                     NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
@@ -1757,7 +1757,7 @@ contains
                                     TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI) * T2OLD_ALL(:, CV_NODI) )
                             ELSE
                                 FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, Mdims%nphase, &
-                                    NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
+                                    Mdims%n_in_pres,NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
                                     T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ), &
                                     T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI), &
                                     NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
@@ -3996,13 +3996,13 @@ end if
             RETURN
         END SUBROUTINE ONVDLIM_ANO_MANY
 
-        FUNCTION FACE_THETA_MANY( DT, CV_THETA, INTERFACE_TRACK, HDC, NPHASE, &
+        FUNCTION FACE_THETA_MANY( DT, CV_THETA, INTERFACE_TRACK, HDC, NPHASE, n_in_pres,&
             NDOTQ, LIMDT, DIFF_COEF_DIVDX, &
             T_NODJ_IPHA, T_NODI_IPHA,  &
             NDOTQOLD, LIMDTOLD, DIFF_COEFOLD_DIVDX, TOLD_NODJ_IPHA, TOLD_NODI_IPHA )
             IMPLICIT NONE
             ! Define face value of theta
-            INTEGER, intent(in) :: NPHASE
+            INTEGER, intent(in) :: NPHASE, n_in_pres
             REAL, intent(in) :: DT, CV_THETA, HDC
             REAL, DIMENSION( NPHASE ), intent(in) :: NDOTQ, LIMDT, DIFF_COEF_DIVDX, T_NODJ_IPHA, T_NODI_IPHA,  &
                 NDOTQOLD, LIMDTOLD, DIFF_COEFOLD_DIVDX, TOLD_NODJ_IPHA, TOLD_NODI_IPHA
@@ -4030,12 +4030,14 @@ end if
                         FACE_THETA_MANY(IPHASE) = MAX( 0.0, 1. - 0.5 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
                     END DO
                 ELSE ! for Crank Nickolson time stepping base scheme...
-                    DO IPHASE=1,NPHASE
+                    DO IPHASE=1,n_in_pres!with no wells this is the same to nphase
                         FACE_THETA_MANY(IPHASE) = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
                     END DO
+                    if (nphase /= n_in_pres) then!for wells we impose implicit euler, the Courant number is massive anyway...
+                        FACE_THETA_MANY(n_in_pres + 1 : nphase) = 1.0!<=backward euler
+                    end if
                 ENDIF
             ENDIF
-
             RETURN
 
         END FUNCTION FACE_THETA_MANY

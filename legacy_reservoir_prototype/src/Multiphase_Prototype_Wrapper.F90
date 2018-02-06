@@ -705,7 +705,9 @@ contains
                     have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
             if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
                             .or. have_option('/simulation_type/inertia_dominated'))) then
-                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method, use the P1DGP2CV formulation instead."
+                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
+                ewrite(0, *) "A. Use the P1DGP2CV formulation."
+                ewrite(0, *) "B. Use the P1DGP1CV formulation with mass lumping = 100 in: Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_term/lump_mass_matrix/lump_weight"
                 stop
             end if
         else
