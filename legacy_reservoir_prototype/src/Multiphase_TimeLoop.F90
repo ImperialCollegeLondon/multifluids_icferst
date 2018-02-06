@@ -696,16 +696,8 @@ call solve_transport()
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
 
-            if (is_porous_media) then
-                if (have_option('/io/Courant_number')) then!printout in the terminal
-                    ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
-                else!printout only in the log
-                    ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
-                end if
-            end if
-
             !********************* Write outputs (vtu and checkpoint files) *********************
-            call write_output_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats)
+            call write_output_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats, Courant_number)
 
             !********************* Mesh adapt *********************
             if(acctim >= t_adapt_threshold) call adapt_mesh_mp()
@@ -1431,7 +1423,7 @@ end if
 
     end subroutine adapt_mesh_within_FPI
 
-    subroutine write_output_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats)
+    subroutine write_output_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats, Courant_number)
         !Write outputs (vtu and checkpoint files)
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1439,7 +1431,18 @@ end if
         integer, intent(inout) :: dump_no
         logical, intent(inout) :: not_to_move_det_yet
         logical, intent(in) :: write_all_stats
+        real, dimension(2), intent(in) :: Courant_number !Stored like this[Courant_number, Shock-front Courant number]
         !local variables
+
+
+        !If required for porous media printout the Courant number as well
+        if (is_porous_media) then
+            if (have_option('/io/Courant_number')) then!printout in the terminal
+                ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
+            else!printout only in the log
+                ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
+            end if
+        end if
 
 
         if (have_option('/io/dump_period_in_timesteps')) then
