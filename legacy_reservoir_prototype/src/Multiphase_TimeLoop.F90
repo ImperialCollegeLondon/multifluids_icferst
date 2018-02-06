@@ -146,8 +146,6 @@ contains
         integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
-        type( scalar_field ), pointer :: cfl, rc_field
-        real :: c, rc, minc, maxc, ic
         !Variables for adaptive time stepping based on non-linear iterations
         logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
         real, dimension(:,:,:), allocatable  :: reference_field
@@ -674,23 +672,6 @@ call solve_transport()
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
             ! If calculating boundary fluxes, dump them to outfluxes.txt
-            if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
-            ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
-                where (outfluxes%totout /= outfluxes%totout)
-                    outfluxes%totout = 0.!If nan then make it zero
-                end where
-                do ioutlet = 1, size(outfluxes%outlet_id)
-                    outfluxes%intflux(:, ioutlet) = outfluxes%intflux(:, ioutlet) + outfluxes%totout(1, :, ioutlet)*dt
-                    !outfluxes%totout(1, :, ioutlet) = outfluxes%totout(1, :, ioutlet)/sum(outfluxes%totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
-                    !Check again for Nan
-!                    do k = 1, size(outfluxes%totout,2)
-!                        if (outfluxes%totout(1, k, ioutlet) /= outfluxes%totout(1, k, ioutlet)) then
-!                            outfluxes%totout(1, k, ioutlet) = 0.
-!                        end if
-!                    end do
-                enddo
-                if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
-            endif
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values
                 !to make sure that everything is coherent
@@ -702,9 +683,12 @@ call solve_transport()
                     cycle Loop_Time
                 end if
             end if
-            call set_option( '/timestepping/current_time', acctim )
-            call set_option( '/timestepping/timestep', dt)
-            current_time = acctim
+            !If calculating and outputing the outfluxes of the domain call the subroutine now
+            if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
+                if(getprocno() == 1) call dump_outflux(itime,outfluxes)
+            endif
+            !retrieve current_time in the variable current_time... don't know why this change now...
+            call get_option( '/timestepping/current_time', current_time )
             call Calculate_All_Rhos( state, packed_state, Mdims )
 
             !!$ Calculate diagnostic fields
@@ -720,96 +704,23 @@ call solve_transport()
                 end if
             end if
 
-            !!$ Write outputs (vtu and checkpoint files)
-            if (have_option('/io/dump_period_in_timesteps')) then
-                ! dump based on the prescribed period of time steps
-                Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
-                    if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
-                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                            protect_simulation_name=.true.,file_type='.mpml')
-                        checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
-                    end if
-                    call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
-                    not_to_move_det_yet = .false. ;
+            !********************* Write outputs (vtu and checkpoint files) *********************
+            call write_outputs_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats)
 
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
-                end if Conditional_Dump_TimeStep
-            else if (have_option('/io/dump_period')) then
-                ! dump based on the prescribed period of real time
-                Conditional_Dump_RealTime: if( (abs(current_time - dump_period*dump_no) < 1d-12 .or. current_time >= dump_period*dump_no)&
-                     .and. current_time/=finish_time) then
-                    if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
-                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                            protect_simulation_name=.true.,file_type='.mpml')
-                        checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
-                    end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
-                    not_to_move_det_yet = .false. ;
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
-                end if Conditional_Dump_RealTime
-            end if
+            !********************* Mesh adapt *********************
+            if(acctim >= t_adapt_threshold) call adapt_mesh_mp()
+
+            !******************** Simple adaptive time stepping algorithm ********************
+            if ( have_option( '/timestepping/adaptive_timestep' ) ) call adapt_time_based_on_Courant_number(acctim)
 
 
-            T_Adapt_Delay: if(acctim >= t_adapt_threshold) then
 
-                !!!$! ******************
-                !!!$! *** Mesh adapt ***
-                !!!$! ******************
-
-                call adapt_mesh_mp()
-
-            end if T_Adapt_Delay
-
-            !!$ Simple adaptive time stepping algorithm
-            if ( have_option( '/timestepping/adaptive_timestep' ) ) then
-                c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
-                call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
-                call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat )
-                call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat )
-                call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat )
-                !For porous media we need to use the Courant number obtained in cv_assemb
-                if (is_porous_media) then
-                    c = max ( c, Courant_number(1) )
-                    ! ewrite(1,*) "maximum cfl number at", current_time, "s =", c
-                else
-                    do iphase = 1, Mdims%nphase
-                        ! requested cfl
-                        rc_field => extract_scalar_field( state( iphase ), 'RequestedCFL', stat )
-                        if ( stat == 0 ) rc = min( rc, minval( rc_field % val ) )
-                        ! max cfl
-                        cfl => extract_scalar_field( state( iphase ), 'CFLNumber' )
-                        c = max ( c, maxval( cfl % val ) )
-                    end do
-                end if
-                call get_option( '/timestepping/timestep', dt )
-                !To ensure that we always create a vtu file at the desired time (if requested),
-                !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
-                if (have_option('/io/dump_period/constant')) then
-                    call get_option( '/io/dump_period/constant', dump_period )
-                    !First get the next time for a vtu dump
-                    maxc = max(min(maxc, abs(acctim-(dble(ceiling(acctim/dump_period)) * dump_period))), minc*1d-3)
-                    !Make sure we dump at the required time and we don't get dt = 0
-                end if
-                dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
-!                !Make sure that we finish at required time and we don't get dt = 0
-!                dt = max(min(dt, finish_time - current_time), 1d-15)
-                call allmin(dt)
-                call set_option( '/timestepping/timestep', dt )
-            end if
             if ( do_reallocate_fields ) then
                 after_adapt=.true.
             else
                 after_adapt=.false.
             end if
+
             if ( after_adapt .and. have_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt' ) ) then
                 call get_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt', NonLinearIteration )
             else
@@ -1519,6 +1430,101 @@ end if
         end select
 
     end subroutine adapt_mesh_within_FPI
+
+    subroutine write_output_vtu(state, dump_no, current_time, dt, finish_time, not_to_move_det_yet, write_all_stats)
+        !Write outputs (vtu and checkpoint files)
+        implicit none
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        real, intent(inout) :: current_time, dt, finish_time
+        integer, intent(inout) :: dump_no
+        logical, intent(inout) :: not_to_move_det_yet
+        logical, intent(in) :: write_all_stats
+        !local variables
+
+
+        if (have_option('/io/dump_period_in_timesteps')) then
+            ! dump based on the prescribed period of time steps
+            Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
+                if (do_checkpoint_simulation(dump_no)) then
+                    CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                    FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                    call set(pressure_field,FE_Pressure)
+                    call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                        protect_simulation_name=.true.,file_type='.mpml')
+                    checkpoint_number=checkpoint_number+1
+                    call set(pressure_field,CV_Pressure)
+                end if
+                call get_option( '/timestepping/current_time', current_time ) ! Find the current time
+                if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                not_to_move_det_yet = .false. ;
+
+                call write_state( dump_no, state ) ! Now writing into the vtu files
+            end if Conditional_Dump_TimeStep
+        else if (have_option('/io/dump_period')) then
+            ! dump based on the prescribed period of real time
+            Conditional_Dump_RealTime: if( (abs(current_time - dump_period*dump_no) < 1d-12 .or. current_time >= dump_period*dump_no)&
+                .and. current_time/=finish_time) then
+                if (do_checkpoint_simulation(dump_no)) then
+                    CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                    FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                    call set(pressure_field,FE_Pressure)
+                    call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                        protect_simulation_name=.true.,file_type='.mpml')
+                    checkpoint_number=checkpoint_number+1
+                    call set(pressure_field,CV_Pressure)
+                end if
+                if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                not_to_move_det_yet = .false. ;
+                call write_state( dump_no, state ) ! Now writing into the vtu files
+            end if Conditional_Dump_RealTime
+        end if
+
+    end subroutine write_output_vtu
+
+    subroutine adapt_time_based_on_Courant_number(acctim)
+        implicit none
+        real, intent(in) :: acctim
+        !local variables
+        type( scalar_field ), pointer :: cfl, rc_field
+        real :: c, minc, maxc, ic, rc, dt
+        integer :: dump_period
+
+
+        c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
+        call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
+        call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat )
+        call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat )
+        call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat )
+        !For porous media we need to use the Courant number obtained in cv_assemb
+        if (is_porous_media) then
+            c = max ( c, Courant_number(1) )
+            ! ewrite(1,*) "maximum cfl number at", current_time, "s =", c
+        else
+            do iphase = 1, Mdims%nphase
+                ! requested cfl
+                rc_field => extract_scalar_field( state( iphase ), 'RequestedCFL', stat )
+                if ( stat == 0 ) rc = min( rc, minval( rc_field % val ) )
+                ! max cfl
+                cfl => extract_scalar_field( state( iphase ), 'CFLNumber' )
+                c = max ( c, maxval( cfl % val ) )
+            end do
+        end if
+        call get_option( '/timestepping/timestep', dt )
+        !To ensure that we always create a vtu file at the desired time (if requested),
+        !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
+        if (have_option('/io/dump_period/constant')) then
+            call get_option( '/io/dump_period/constant', dump_period )
+            !First get the next time for a vtu dump
+            maxc = max(min(maxc, abs(acctim-(dble(ceiling(acctim/dump_period)) * dump_period))), minc*1d-3)
+            !Make sure we dump at the required time and we don't get dt = 0
+        end if
+        dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
+        !                !Make sure that we finish at required time and we don't get dt = 0
+        !                dt = max(min(dt, finish_time - current_time), 1d-15)
+        call allmin(dt)
+        call set_option( '/timestepping/timestep', dt )
+
+    end subroutine adapt_time_based_on_Courant_number
 
 
 subroutine BadElementTest(Quality_list, flag)
