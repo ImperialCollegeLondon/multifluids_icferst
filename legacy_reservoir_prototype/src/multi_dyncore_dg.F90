@@ -312,7 +312,7 @@ contains
 
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
-               call zero(Mmat%petsc_ACV)
+               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &

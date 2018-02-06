@@ -1749,18 +1749,18 @@ contains
                             ! Define face value of theta
                             IF ( GOT_T2 ) THEN
                                 FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, Mdims%nphase, &
-                                    Mdims%n_in_pres, NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
+                                    Mdims%n_in_pres, NDOTQ, LIMDTT2, DIFF_COEF_DIVDX, &
                                     T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ) * T2_ALL(:, CV_NODJ), &
                                     T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI) * T2_ALL(:, CV_NODI), &
-                                    NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
+                                    NDOTQOLD, LIMDTT2OLD, DIFF_COEFOLD_DIVDX, &
                                     TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ) * T2OLD_ALL(:, CV_NODJ), &
                                     TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI) * T2OLD_ALL(:, CV_NODI) )
                             ELSE
                                 FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, Mdims%nphase, &
-                                    Mdims%n_in_pres,NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
+                                    Mdims%n_in_pres,NDOTQ, LIMDTT2, DIFF_COEF_DIVDX, &
                                     T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ), &
                                     T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI), &
-                                    NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
+                                    NDOTQOLD, LIMDTT2OLD, DIFF_COEFOLD_DIVDX, &
                                     TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ), &
                                     TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI)  )
                             END IF

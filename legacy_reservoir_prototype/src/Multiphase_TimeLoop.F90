@@ -462,7 +462,6 @@ contains
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
             if (adapt_mesh_in_FPI) call get_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI', Courant_tol, default = -1.)
 
-
             itime = itime + 1
             timestep = itime
             call get_option( '/timestepping/timestep', dt )

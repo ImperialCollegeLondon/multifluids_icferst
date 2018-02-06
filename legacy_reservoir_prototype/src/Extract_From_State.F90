@@ -2447,7 +2447,7 @@ contains
         aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
         if (Aim_num_FPI > 0) then                     !Options for the exponent:
-            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.6! 2.0 => too strongly enforce the number of iterations, ignores other criteria
+            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.9! 2.0 => too strongly enforce the number of iterations, ignores other criteria
             aux = aux + 1.0                           ! 1.0 => default value, forces the number of iterations, almost ignore other criteria
         end if                                        ! 0.6 => soft constrain, it will try but not very much, considers other criteria
         if (max_criteria) then
