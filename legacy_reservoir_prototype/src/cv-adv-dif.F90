@@ -2769,12 +2769,12 @@ contains
             END DO  ! endof DO CV_NODI = 1, Mdims%cv_nonods
             deallocate(DIAG_SCALE_PRES_phase)
            !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
+            if(is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) ) then
+                !Calculate final outfluxes and mass balance in the domain
+                call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
+            end if
         END IF
 
-        if(GETCT .and. present(calculate_mass_delta) .and. present(outfluxes)) then
-            !Calculate final outfluxes and mass balance in the domain
-            call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
-        end if
 
 
         ! Deallocating temporary working arrays

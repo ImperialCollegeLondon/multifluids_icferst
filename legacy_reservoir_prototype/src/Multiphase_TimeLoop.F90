@@ -607,10 +607,6 @@ call solve_transport()
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
 
-                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-                if ( have_component_field ) call calc_components()
-
-
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
@@ -642,6 +638,10 @@ call solve_transport()
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
+
+                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+                if ( have_component_field ) call calc_components()
+
 
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
@@ -1435,13 +1435,16 @@ end if
         real, dimension(2), intent(in) :: Courant_number !Stored like this[Courant_number, Shock-front Courant number]
         !local variables
 
-
         !If required for porous media printout the Courant number as well
         if (is_porous_media) then
             if (have_option('/io/Courant_number')) then!printout in the terminal
-                ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
+                if (getprocno() == 1)then
+                    ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
+                end if
             else!printout only in the log
-                ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
+                if (getprocno() == 1)then
+                    ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
+                end if
             end if
         end if
 
