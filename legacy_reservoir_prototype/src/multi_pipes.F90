@@ -134,7 +134,6 @@ contains
         !Logical to check if we using a conservative method or not, to save cpu time
         logical :: conservative_advection
         !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
-        logical :: store_outfluxes
         !Parameters of the simulation
         logical, parameter :: GET_C_PIPES = .FALSE.
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
@@ -148,7 +147,6 @@ contains
         conservative_advection = abs(cv_beta) > 0.99
 
         !if allocated then calculate outfluxes
-        store_outfluxes = allocated(bcs_outfluxes)
 
         IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
@@ -800,7 +798,7 @@ contains
                             !Store total outflux for volume conservation check
                             bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, 0) =  bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD,0) + &
                                 NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
-                            if (store_outfluxes) then
+                            if (outfluxes%calculate_flux) then
                                 !If we want to output the outfluxes of the pipes we fill the array here with the information
                                 sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
                                 do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
