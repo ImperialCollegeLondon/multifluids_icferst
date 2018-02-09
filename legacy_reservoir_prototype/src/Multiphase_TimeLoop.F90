@@ -542,38 +542,6 @@ contains
                 end if
 
 
-                !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
-                        !!$
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
-                    ! Copy back memory
-                    do iphase=1,Mdims%nphase
-                       T=>extract_scalar_field(state(iphase),"Temperature")
-                       T%val=tracer_field%val(1,iphase,:)
-                    end do
-
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-                end if Conditional_ScalarAdvectionField
-
 !Testing multi_transport
 call solve_transport()
 
@@ -640,6 +608,43 @@ call solve_transport()
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
+
+
+                !!$ Solve advection of the scalar 'Temperature':
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
+                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+
+                    ! Copy back memory
+                    do iphase=1,Mdims%nphase
+                       T=>extract_scalar_field(state(iphase),"Temperature")
+                       T%val=tracer_field%val(1,iphase,:)
+                    end do
+
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if Conditional_ScalarAdvectionField
+
+
+
+
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
                 if ( have_component_field ) call calc_components()
