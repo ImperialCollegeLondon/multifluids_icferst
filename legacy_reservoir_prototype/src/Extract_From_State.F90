@@ -2326,10 +2326,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
                     dt = stored_dt!retrieve stored_dt
-                    !Decrease time step, reset the time and repeat!
-                    call get_option( '/timestepping/current_time', acctim )
-                    acctim = acctim - dt
-                    call set_option( '/timestepping/current_time', acctim )
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
@@ -2347,6 +2343,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         if (PID_controller) auxR = PID_time_controller(reset=.true.)
                         return
                     end if
+                    !Decrease time step, reset the time and repeat!
+                    call get_option( '/timestepping/current_time', acctim )
+                    acctim = acctim - dt
+                    call set_option( '/timestepping/current_time', acctim )
 
                     if (PID_controller) then
                         auxR = PID_time_controller()
@@ -3461,16 +3461,16 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Vector_SNdgln
 
-    subroutine dump_outflux(itime, outfluxes)
+    subroutine dump_outflux(current_time, itime, outfluxes)
 
         ! Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file  called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux
         ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
         ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
         !wish to integrate over).
+        real,intent(in) :: current_time
         integer, intent(in) :: itime
         type (multi_outfluxes), intent(inout) :: outfluxes
         !Local variables
-        real :: current_time, dt
         integer :: ioutlet
         integer :: counter
         type(stat_type), target :: default_stat
@@ -3483,9 +3483,8 @@ end subroutine get_DarcyVelocity
         character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
 
-        call get_option( '/timestepping/timestep', dt)
         call get_option('/simulation_name', simulation_name)
-        call get_option( '/timestepping/current_time', current_time )
+
         default_stat%conv_unit=free_unit()
         if (itime == 1) then
             !The first time, remove file if already exists
@@ -3494,11 +3493,11 @@ end subroutine get_DarcyVelocity
             open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
         end if
 
-        !If nan then make it zero
-        where (outfluxes%totout /= outfluxes%totout)
-            outfluxes%totout = 0.
-        end where
+
         ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
+        where (outfluxes%totout /= outfluxes%totout)
+            outfluxes%totout = 0.!If nan then make it zero
+        end where
         outfluxes%intflux = outfluxes%intflux + outfluxes%totout(1, :, :)*dt
 
         ! Write column headings to file
