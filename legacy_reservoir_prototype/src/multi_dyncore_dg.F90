@@ -374,7 +374,7 @@ contains
                        reference_temp = tracer%val
                    else
                        !Check if the tolerance is good or not
-                       aux = maxval(abs((tracer%val-reference_temp)/reference_temp))
+                       aux = convergence_check(tracer%val, reference_temp)
                        if ( aux < inf_tolerance) exit
                    end if
                end if
@@ -390,6 +390,23 @@ contains
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
+
+
+      real function convergence_check(temperature, reference_temp)
+          implicit none
+          real, dimension(:,:,:) :: temperature, reference_temp
+          !Local variables
+          real, dimension(2) :: totally_min_max
+
+          totally_min_max(1)=minval(reference_temp, MASK = reference_temp > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
+          totally_min_max(2)=maxval(reference_temp)!use stored temperature
+          !For parallel
+          call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+          !Analyse the difference
+          convergence_check = inf_norm_scalar_normalised(temperature(1,:,:), reference_temp(1,:,:), 1.0, totally_min_max)
+
+      end function convergence_check
+
 
 
       subroutine force_min_max_principle(entrance)

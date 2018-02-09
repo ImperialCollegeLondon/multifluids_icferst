@@ -53,6 +53,8 @@ module multi_pipes
     use multi_tools
     use multi_data_types
 
+    use write_state_module, only: write_state
+
     implicit none
 
     private
@@ -138,7 +140,7 @@ contains
         logical, parameter :: GET_C_PIPES = .FALSE.
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
         logical, parameter :: integrate_other_side_and_not_boundary = .FALSE.
-        logical, parameter :: PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
+        logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
         logical, parameter :: SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         real, parameter :: INFINY=1.0E+20
@@ -1531,14 +1533,15 @@ contains
 
     subroutine retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
         implicit none
-        type(state_type), dimension(:), intent(in) :: state
+        type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(in) :: packed_state
         type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe!allocated inside
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         !Local variables
         type(vector_field), pointer :: X
-        integer :: ele, k, ICORNER, CV_ILOC, CV_NODI, PIPE_NOD_COUNT, NCORNER
+        integer :: ele, k, ICORNER, CV_ILOC, CV_NODI, PIPE_NOD_COUNT, NCORNER, x_iloc, x_iloc2
+        real, dimension(Mdims%cv_nonods) :: diameter_of_the_pipe_aux
 !        integer, parameter :: NCORNER = Mdims%ndim + 1!Is this because we only consider P1 tets and triangles?
         type(pipe_coords), dimension(Mdims%totele):: AUX_eles_with_pipe
         type(scalar_field), pointer :: pipe_diameter
@@ -1552,6 +1555,7 @@ contains
         integer, dimension(:,:), allocatable :: edges
         integer, dimension(:), allocatable :: pipe_seeds
         type( tensor_field ), pointer:: tfield
+        logical, save :: dump_vtu_zero = .true.
         !Initialise
         AUX_eles_with_pipe%ele = -1
         k = 1; NCORNER = Mdims%ndim + 1
@@ -1569,14 +1573,29 @@ contains
             diam = maxval(PIPE_DIAMETER%val)
             !Clean eles_with_pipes before reading the files
             if (allocated(eles_with_pipe)) deallocate(eles_with_pipe)
+            diameter_of_the_pipe_aux = 0.
             do k = 1, number_well_files
                 !First identify the well trajectory
                 call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
                 call find_pipe_seeds(X%val, nodes, edges, pipe_seeds)
-                call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe)
+                call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
+            end do
+
+            !Re-populate properly PIPE_DIAMETER
+            PIPE_DIAMETER%val = 0.
+            !Copy values back to PIPE_DIAMETER from diameter_of_the_pipe_aux. This should go over less than 1% of the nodes
+            do ele = 1, size(eles_with_pipe)
+                do k = 1, eles_with_pipe(ele)%npipes
+                    x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(k)
+                    PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = &
+                        diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
+                    x_iloc = eles_with_pipe(ele)%pipe_corner_nds2(k)
+                    PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = &
+                     diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
+                end do
             end do
         else
             do ele = 1, Mdims%totele
@@ -1618,8 +1637,13 @@ contains
                                     eles_with_pipe(k)%pipe_corner_nds2, eles_with_pipe(k)%npipes )
             end do
         end if
-
-
+        if (dump_vtu_zero) then
+            !Overwrite the first dump with the values of the diameter of the pipe, don't remove this section
+            ewrite(1,*) "Overwritting the initial vtu file with the updated values of the diameter of the well"
+            k = 0
+            call write_state( k, state )
+            dump_vtu_zero = .false.
+        end if
     contains
 
         logical function is_within_pipe(P, v1, v2, tol)
@@ -1708,23 +1732,23 @@ contains
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
         end subroutine find_pipe_seeds
 
-        subroutine find_nodes_of_well(X, nodes, edges, pipe_seeds, eles_with_pipe)
+        subroutine find_nodes_of_well(X, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
             implicit none
             real, dimension(:,:), intent(in) :: X
             real, dimension(:,:), allocatable, intent(in) :: nodes
             integer, dimension(:,:), allocatable, intent(in) :: edges
             integer, dimension(:), intent(in) :: pipe_seeds
             type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
+            real, dimension(:), intent(inout) :: diameter_of_the_pipe_aux
             !Local variables
             logical, save :: first_time = .true.
             integer, dimension(2, Mdims%totele) :: visited_eles!Number of element visited and neigbours used
             integer :: starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
-            integer :: ele, ele2, inode, k, i, j, x_iloc, x_inod, ipipe, first_node, first_loc, neighbours_left
+            integer :: ele, ele2, inode, k, i, j, x_iloc, x_iloc2, x_inod, ipipe, first_node, first_loc, neighbours_left
             real :: aux
             real, dimension(Mdims%ndim) :: Vaux
             logical :: got_new_ele, touching_well, continue_looking, found, resize
             type(pipe_coords), dimension(:), allocatable :: AUX_eles_with_pipe, BAK_eles_with_pipe
-
             !Initialise AUX_eles_with_pipe
             allocate(AUX_eles_with_pipe(Mdims%totele))
             AUX_eles_with_pipe%ele = -1
@@ -1921,29 +1945,32 @@ contains
             !Now, introduce the value of the diameter only in the correct regions
             !This should be temporary until it is being read from the well file as well.
 
+            !Populate here diameter_of_the_pipe_aux
+            !This method enables to use different diameters
             if (size(PIPE_DIAMETER%val) > 1) then
-                aux = maxval(PIPE_DIAMETER)
-                PIPE_DIAMETER%val = 0.
+                !Find nodes that have wells and tag them. This first part should go over less than 1% of the nodes
                 do ele = 1, size(eles_with_pipe)
                     do ipipe = 1, eles_with_pipe(ele)%npipes
-                        x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(ipipe)
-                        PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = aux
-                        x_iloc = eles_with_pipe(ele)%pipe_corner_nds2(ipipe)
-                        PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = aux
+                        !get the two ends of the pipe
+                        x_iloc  = ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + eles_with_pipe(ele)%pipe_corner_nds1(ipipe) )
+                        x_iloc2 = ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + eles_with_pipe(ele)%pipe_corner_nds2(ipipe) )
+                        !ensure consistency within the pipe section
+                        aux = max(PIPE_DIAMETER%val(x_iloc), PIPE_DIAMETER%val(x_iloc2 ) )
+                        !Store value
+                        diameter_of_the_pipe_aux(x_iloc)  = aux
+                        diameter_of_the_pipe_aux(x_iloc2) = aux
                     end do
                 end do
             end if
+
             !We have to ensure that the python prescribed field is not recalculated
             !this needs to be removed once the memory is properly allocated
             if (first_time) then
                 first_time = .false.
-                if (getprocno() == 1) then
-                    if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
-                        call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
-                end if
+                if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
+                    call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
             end if
             !#######################################################################
-
 !    !To test the results gnuplot and the run spl'test' w linesp
 !to compare with well plotted from multi_tools: spl'test'  using 1:2:3 with lines palette title "Eles", 'well_coords' with lines
 !do j = 1, size(eles_with_pipe)

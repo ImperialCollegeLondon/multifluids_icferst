@@ -65,7 +65,7 @@ module Copy_Outof_State
     private
 
     public :: Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
-        Get_Ele_Type, Get_Discretisation_Options, &
+        Get_Ele_Type, Get_Discretisation_Options, inf_norm_scalar_normalised, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
@@ -2159,11 +2159,11 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 case (4)!Temperature
                     call get_var_from_packed_state(packed_state, temperature = temperature)
                     !Calculate normalized infinite norm of the difference
-                    totally_min_max(1)=minval(reference_field, MASK = reference_field > 1e-16)!use stored temperature
+                                                            !This Mask is important because otherwise it gets the lowest saturation value
+                    totally_min_max(1)=minval(reference_field, MASK = reference_field > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
                     totally_min_max(2)=maxval(reference_field)!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-
                     !Analyse the difference
                     ts_ref_val = inf_norm_scalar_normalised(temperature, reference_field(1,:,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
@@ -2184,32 +2184,21 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             ! This is the maximum error of each indivial phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
 
-
-!            if (size(pressure,2) > 1) max_calculate_mass_delta = 0.0!<= For wells this does not work correctly, disable it
-
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
                 call allmax(ts_ref_val)
                 call allmax(max_calculate_mass_delta)
                 call allmax(inf_norm_val)
             end if
-!            if (size(pressure,2) > 1) then!==Mdims%npres > 1!This should be removed once we can check mass conservation with wells
-!                if (is_porous_media .and. variable_selection == 3) then
-!                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its
-!                else if (is_porous_media .and. variable_selection == 4) then
-!                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its
-!                else
-!                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
-!                end if
-!            else
-                if (is_porous_media .and. variable_selection == 3) then
-                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
-                else if (is_porous_media .and. variable_selection == 4) then
-                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
-                else
-                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
-                end if
-!            end if
+            !Store output messages
+            if (is_porous_media .and. variable_selection == 3) then
+                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+            else if (is_porous_media .and. variable_selection == 4) then
+                write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+            else
+                write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+            end if
+
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
@@ -2224,18 +2213,20 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     case (4)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                          !################THIS PART BELOW SHOULD NOT BE NECESSARY IF NO MORE NANs APPEAR IN THE TEMPERATURE MATRIX#########
                         !Sometimes the temperature fails to converge and returns T = 0 two times consecutively making it think that it works
                         if (nonLinearAdaptTs .and. ts_ref_val < 1d-8)  then!can this be a problem if the temperature becomes homogenenous in the domain?
                             call get_var_from_packed_state(packed_state, OldTemperature = OldTemperature)
                             auxR = maxval(OldTemperature); call allmax(auxR)
                             !If the min/max temperature is the same and the max temperature has varied more than 1% then repeat
-                            !when this convergence error occurs the tempereture becomes the min temperature (if min/max impriple is imposed) or zero
+                            !when this convergence error occurs the tempereture becomes the min temperature (if min/max principle is imposed) or zero
                             if (abs(totally_min_max(1)-totally_min_max(2)) < 1d-8 .and. abs(auxR-totally_min_max(2)/auxR) > 0.01) then
                                 ewrite(show_FPI_conv,*) "WARNING: Energy not conserved, repeating time-step."
                                 ExitNonLinearLoop = .true.!Ensure that it does not converge
                                 its = NonLinearIteration + 1!modifies its because if this fails in its == 1  it NEEDS to repeat the time-step anyway
                             end if
                         end if
+                        !################THIS PART ABOVE SHOULD NOT BE NECESSARY IF NO MORE NANs APPEAR IN THE TEMPERATURE MATRIX#########
                     case default
                         if (inf_norm_val * 5e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
@@ -2387,39 +2378,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
 contains
 
-    real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
-    !Calculate the inf norm of the normalised field, so the field goes from 0 to 1
-    implicit none
-    real, dimension(:,:), intent(in) :: tracer, reference_tracer
-    real, intent(in) :: dumping
-    real, dimension(2), intent(in) :: totally_min_max
-    !Local variables
-    integer :: cv_inod, iphase
-
-    inf_norm_scalar_normalised = 0.
-    !L_inf norm of all the elements
-    do cv_inod = 1, size(tracer,2)
-        do iphase = 1, size(tracer,1)
-            inf_norm_scalar_normalised = max(inf_norm_scalar_normalised, &
-                abs(normsVal(reference_tracer(iphase,cv_inod)) - normsVal(tracer(iphase,cv_inod))))
-        end do
-    end do
-
-    call allmax(inf_norm_scalar_normalised)
-    !rescale with accumulated dumping, if no dumping just pass down a 1.0
-    inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
-
-    end function
-
-    real function normsVal(val)
-    !Given an input value, it is normalised based on the totally_min_max parameters
-    implicit none
-    real, intent(in) :: val
-
-    normsVal = (val - totally_min_max(1))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
-
-    end function normsVal
-
     real function PID_time_controller(reset)
         !This functions calculates the multiplier to get a new time-step size based on a
         !Proportional-Integral-Derivative (PID) concept. See: SPE-182601-MS
@@ -2469,6 +2427,40 @@ contains
     end function PID_time_controller
 
 end subroutine Adaptive_NonLinear
+
+real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
+    !Calculate the inf norm of the normalised field, so the field goes from 0 to 1
+    implicit none
+    real, dimension(:,:), intent(in) :: tracer, reference_tracer
+    real, intent(in) :: dumping
+    real, dimension(2), intent(in) :: totally_min_max
+    !Local variables
+    integer :: cv_inod, iphase
+
+    inf_norm_scalar_normalised = 0.
+    !L_inf norm of all the elements
+    do cv_inod = 1, size(tracer,2)
+        do iphase = 1, size(tracer,1)
+            inf_norm_scalar_normalised = max(inf_norm_scalar_normalised, &
+                abs(normsVal(reference_tracer(iphase,cv_inod)) - normsVal(tracer(iphase,cv_inod)) ))
+        end do
+    end do
+    call allmax(inf_norm_scalar_normalised)
+    !rescale with accumulated dumping, if no dumping just pass down a 1.0
+    inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
+contains
+    real function normsVal(val)
+        !Given an input value, it is normalised based on the totally_min_max parameters
+        implicit none
+        real, intent(in) :: val
+        normsVal = (val - totally_min_max(1))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
+
+    end function normsVal
+end function
+
+
+
+
 
 real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
     !We create a potential to optimize F = sum (f**2), so the solution is when this potential
