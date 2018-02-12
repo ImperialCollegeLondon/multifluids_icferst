@@ -1330,7 +1330,7 @@ contains
                                 END DO
                             END IF ! SWITCH_PIPES_ON_AND_OFF
                         END IF ! GET_PIVIT_MAT
-                        if ( u_source%have_field ) then
+                        if ( u_source%have_field .and. .false.) then!DISABLED SOURCES, no gravity
                             NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
                             DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                                 DO IDIM = 1, Mdims%ndim

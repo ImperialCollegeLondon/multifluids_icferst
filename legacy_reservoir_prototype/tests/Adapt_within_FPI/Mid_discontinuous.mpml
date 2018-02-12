@@ -113,6 +113,7 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
+        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>
@@ -373,7 +374,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1.0</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
@@ -443,6 +444,11 @@
         </adaptivity_options>
         <galerkin_projection>
           <continuous>
+            <bounded name="Diffuse">
+              <boundedness_iterations>
+                <integer_value rank="0">5</integer_value>
+              </boundedness_iterations>
+            </bounded>
             <solver>
               <iterative_method name="gmres">
                 <restart>
@@ -488,6 +494,9 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
+      <Sat_overRelax>
+        <real_value rank="0">-1e2</real_value>
+      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -761,6 +770,11 @@
         </detectors>
         <galerkin_projection>
           <continuous>
+            <bounded name="Diffuse">
+              <boundedness_iterations>
+                <integer_value rank="0">5</integer_value>
+              </boundedness_iterations>
+            </bounded>
             <solver>
               <iterative_method name="gmres">
                 <restart>

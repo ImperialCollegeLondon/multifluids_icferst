@@ -651,7 +651,9 @@ contains
             !Extract temperature for outfluxes if required
             if (has_temperature) then
                 temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-                outfluxes%totout(2, :,:) = -273.15
+                if (present(outfluxes)) then
+                    if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
+                end if
             end if
         ENDIF
 
