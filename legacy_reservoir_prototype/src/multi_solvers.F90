@@ -925,11 +925,8 @@ contains
             many_phases = Mdims%n_in_pres > 2
             black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
             !Positive effects on the convergence !Need to check for shock fronts...
-            if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) then
-                ov_relaxation = .true.
-            else
-                ov_relaxation = .false.
-            end if
+            ov_relaxation = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation')
+
             one_phase = (Mdims%n_in_pres == 1)
             readed_options = .true.
         end if

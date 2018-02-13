@@ -631,7 +631,7 @@ call solve_transport()
                         THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, IDs2CV_ndgln=IDs2CV_ndgln)
 
                     ! Copy back memory
                     do iphase=1,Mdims%nphase

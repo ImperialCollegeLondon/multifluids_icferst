@@ -374,6 +374,7 @@ contains
         !Initialise INV_SIGMA_NANO based on INV_SIGMA
         INV_SIGMA_NANO = INV_SIGMA
 
+
         DO k = 1, size(eles_with_pipe)
             ELE = eles_with_pipe(k)%ele!Element with pipe
             X_ALL_CORN(:,1:NCORNER) = x%val(:, ndgln%x( ( ELE - 1 ) * Mdims%cv_nloc + CV_LOC_CORNER(1:NCORNER)) )

@@ -570,20 +570,45 @@ The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc
                   </element>
                 </optional>
                 <optional>
-                  <element name="Acceleration_exp">
-                    <a:documentation>THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor &lt; 0
+                  <element name="Vanishing_relaxation">
+                    <a:documentation>Introduce over-relaxation in the saturation equation. 
+This severely HELPS to reduce the number of FPI.
 
-This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
+If positive, the input value is the entry pressure.
 
-100 =&gt; Only the previous saturation is used (more conservative); 
-0.4 =&gt; Recommended (default); 
-0.3 =&gt; Older saturation is at some points as important as the old saturation;
-0 =&gt; Older saturation is more important than old saturation
+If negative, the input value is Peclet number desired.
 
-If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)</a:documentation>
+Recommended value for Saturation =&gt; -1e2
+
+Tip: If running with temperature and single phase disable this setting it to 0.</a:documentation>
                     <ref name="real"/>
+                    <optional>
+                      <element name="Vanishing_for_transport">
+                        <a:documentation>This method can also be applied for a transport equation.
+
+Recommended value for Temperature =&gt; -1e0</a:documentation>
+                        <ref name="real"/>
+                      </element>
+                    </optional>
                   </element>
                 </optional>
+                <!--
+                                   (
+                                     ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
+                                     ##
+                                     ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
+                                     ## 
+                                     ## 100 => Only the previous saturation is used (more conservative); 
+                                     ## 0.4 => Recommended (default); 
+                                     ## 0.3 => Older saturation is at some points as important as the old saturation;
+                                     ## 0 => Older saturation is more important than old saturation
+                                     ## 
+                                     ## If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)
+                                     element Acceleration_exp{
+                                     real
+                                     }?
+                                   ),
+                -->
                 <optional>
                   <element name="Impose_min_max">
                     <a:documentation>For TEMPERATURE ONLY, if there are no sources nor sinks
@@ -2409,13 +2434,6 @@ Default value 2.0</a:documentation>
                 <element name="capillary_pressure">
                   <a:documentation>Option for capillary pressure				 </a:documentation>
                   <optional>
-                    <element name="Diffusive_cap_only">
-                      <a:documentation>Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
-The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. </a:documentation>
-                      <ref name="comment"/>
-                    </element>
-                  </optional>
-                  <optional>
                     <element name="type_Brooks_Corey">
                       <a:documentation>Brooks-Corey equation
 
@@ -2561,22 +2579,6 @@ ONLY specify for the wetting phase</a:documentation>
                       <ref name="prescribed_scalar_field"/>
                     </element>
                   </element>
-                </element>
-              </optional>
-              <optional>
-                <element name="Sat_overRelax">
-                  <a:documentation>Introduce over-relaxation in the saturation equation. 
-This severely HELPS to reduce the number of FPI.
-You MUST specify this ONLY for the wetting phase.
-
-If positive, the input value is the entry pressure.
-
-If negative, the input value is Peclet number desired.
-
-Recommended value =&gt; -1e2
-
-Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.</a:documentation>
-                  <ref name="real"/>
                 </element>
               </optional>
             </element>

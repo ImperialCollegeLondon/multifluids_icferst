@@ -106,6 +106,12 @@
         <Backtracking_factor>
           <real_value rank="0">1</real_value>
         </Backtracking_factor>
+        <Vanishing_relaxation>
+          <real_value rank="0">0</real_value>
+          <Vanishing_for_transport>
+            <real_value rank="0">-1</real_value>
+          </Vanishing_for_transport>
+        </Vanishing_relaxation>
         <Impose_min_max/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
