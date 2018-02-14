@@ -2212,20 +2212,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     case (4)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-                          !################THIS PART BELOW SHOULD NOT BE NECESSARY IF NO MORE NANs APPEAR IN THE TEMPERATURE MATRIX#########
-                        !Sometimes the temperature fails to converge and returns T = 0 two times consecutively making it think that it works
-                        if (nonLinearAdaptTs .and. ts_ref_val < 1d-8)  then!can this be a problem if the temperature becomes homogenenous in the domain?
-                            call get_var_from_packed_state(packed_state, OldTemperature = OldTemperature)
-                            auxR = maxval(OldTemperature); call allmax(auxR)
-                            !If the min/max temperature is the same and the max temperature has varied more than 1% then repeat
-                            !when this convergence error occurs the tempereture becomes the min temperature (if min/max principle is imposed) or zero
-                            if (abs(totally_min_max(1)-totally_min_max(2)) < 1d-8 .and. abs(auxR-totally_min_max(2)/auxR) > 0.01) then
-                                ewrite(show_FPI_conv,*) "WARNING: Energy not conserved, repeating time-step."
-                                ExitNonLinearLoop = .true.!Ensure that it does not converge
-                                its = NonLinearIteration + 1!modifies its because if this fails in its == 1  it NEEDS to repeat the time-step anyway
-                            end if
-                        end if
-                        !################THIS PART ABOVE SHOULD NOT BE NECESSARY IF NO MORE NANs APPEAR IN THE TEMPERATURE MATRIX#########
                     case default
                         if (inf_norm_val * 5e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &

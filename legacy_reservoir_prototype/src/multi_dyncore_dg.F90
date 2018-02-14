@@ -313,13 +313,10 @@ contains
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
-               if (is_porous_media .and. thermal) then
-                   !Get information for capillary pressure to be use in CV_ASSEMB
-                   Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, IDs2CV_ndgln, for_transport = .true.)
-               else
-                Phase_with_Ovrel = -1
-               end if
+               !Get information for capillary pressure to be use in CV_ASSEMB
+                !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
+               call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, IDs2CV_ndgln, for_transport = .true.)
+
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
@@ -364,7 +361,16 @@ contains
                    ELSE
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
-                       call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+                       !There is a bug, or instability issue, and the matrix and RHS get here with NaNs so we first check for it here
+                       if (isnan(Mmat%CV_RHS%val(1,1)) .or. isnan(Mmat%CV_RHS%val(size(Mmat%CV_RHS%val,1),size(Mmat%CV_RHS%val,2))) ) then
+                            !Avoid the solver as it is going to fail and pollute the temperature field.
+                            !Just ensure that the time-level is repeated if using ensure solver convergence is on
+                            call deallocate(Mmat%petsc_ACV, iphase)
+                            solver_not_converged = .true.
+                            cycle
+                       else
+                            call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+                       end if
                        do iphase = 1, Mdims%nphase
                            ewrite(2,*) 'T phase min_max:', iphase, &
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
