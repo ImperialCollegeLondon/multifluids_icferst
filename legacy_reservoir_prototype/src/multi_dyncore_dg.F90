@@ -2397,15 +2397,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         homogenize_mass_matrix = (lump_weight > 0)
 
 
-        !For P1DGP1 or P1DGP2 using the new formulation this solves the problem with pressure boundary conditions
-        !also, this requires to use the old way to get the Pivit Matrix
+        !For P1DGP1 the DCVFEM method does not work and requires P0DGP1. This is done through homogenisation
+        !For historic reasons we always lump with the DCVFEM
         if (Mmat%CV_pressure) then
             lump_mass = .true.
-            homogenize_mass_matrix = .true.
             call get_option( &
             '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
-            !For P1DGP1 the correct value is 100 and for P1DGP2 the correct value seems to be 10.
-            lump_weight = 100.**(1./j)
+            if (j == 1) then
+                homogenize_mass_matrix = .true.
+                !For P1DGP1 the correct value is 100
+                lump_weight = 100.**(1./j)
+            end if
         end if
 
         lump_absorption = .false.
