@@ -111,7 +111,7 @@ contains
     integer :: i
 
     assert(.not. mesh_periodic(old_positions))
-
+    
     if(isparallel()) then
       ! generate stripped versions of the position and metric fields
       call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
@@ -147,7 +147,7 @@ contains
                 exit!Life is good! We can continue!
               else
                   !First deallocate new mesh as it is useless
-                  call deallocate(new_positions)
+                  if (associated(new_positions%val)) call deallocate(new_positions)
                   select case (i)
                       case (1)!First time, we retry with more conservative settings
                               !imposed in Adapt_Integration.F90

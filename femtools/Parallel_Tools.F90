@@ -591,6 +591,7 @@ contains
     
     if(present(communicator)) then
       lcommunicator = communicator
+      
     else
       lcommunicator = MPI_COMM_FEMTOOLS
     end if
@@ -604,7 +605,7 @@ contains
 #endif
 
   end subroutine allor
-    
+
   subroutine alland(value, communicator)
     !!< And the logical value across all processes
     
@@ -618,7 +619,7 @@ contains
     if(present(communicator)) then
       lcommunicator = communicator
     else
-      lcommunicator = MPI_COMM_FEMTOOLS
+      lcommunicator = MPI_COMM_FEMTOOLS      
     end if
     
     if(isparallel()) then    

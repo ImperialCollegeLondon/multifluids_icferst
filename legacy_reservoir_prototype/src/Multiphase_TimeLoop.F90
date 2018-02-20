@@ -647,6 +647,7 @@ call solve_transport()
 
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+
                 if ( have_component_field ) call calc_components()
 
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
@@ -1512,6 +1513,7 @@ end if
         end select
 
     end subroutine adapt_mesh_within_FPI
+
 
 subroutine BadElementTest(Quality_list, flag)
 
