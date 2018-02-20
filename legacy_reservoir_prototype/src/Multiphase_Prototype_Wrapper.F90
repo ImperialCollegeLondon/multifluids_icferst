@@ -364,13 +364,13 @@ contains
         end if
 
         !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
-        if (npres>1 .and. have_option('/mesh_adaptivity/hr_adaptivity') ) then
+        !or to show the wells in paraview
+        if (npres>1 ) then
             if (have_option('/wells_and_pipes/well_volume_ids')) then
                 !Introduce some dummy regions to ensure that mesh adaptivity keeps the wells in place
                 shape = option_shape('/wells_and_pipes/well_volume_ids')
                 assert(shape(1) >= 0)
                 allocate(well_ids(shape(1)))
-                !allocate(outlet_id(1))
                 call get_option( '/wells_and_pipes/well_volume_ids', well_ids)
                 !Create field by adding the fields manually
                 option_path = "/wells_and_pipes/scalar_field::Well_domains"
@@ -705,7 +705,9 @@ contains
                     have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
             if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
                             .or. have_option('/simulation_type/inertia_dominated'))) then
-                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method, use the P1DGP2CV formulation instead."
+                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
+                ewrite(0, *) "A. Use the P1DGP2CV formulation."
+                ewrite(0, *) "B. Use the P1DGP1CV formulation with mass lumping = 100 in: Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_term/lump_mass_matrix/lump_weight"
                 stop
             end if
         else

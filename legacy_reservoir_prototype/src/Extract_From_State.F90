@@ -65,23 +65,16 @@ module Copy_Outof_State
     private
 
     public :: Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
-        Get_Ele_Type, Get_Discretisation_Options, &
+        Get_Ele_Type, Get_Discretisation_Options, inf_norm_scalar_normalised, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
-        calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_mass, prepare_absorptions
+        have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions
 
 
     interface Get_SNdgln
        module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
     end interface Get_SNdgln
-
-
-    !sprint_to_do remove these global variables
-    ! Used in calculations of the outflux - array of integers containing the gmesh IDs of each boundary that you wish to integrate over
-    integer, dimension(:), allocatable :: outlet_id
-
-    integer, dimension(2) :: shape
 
 contains
 
@@ -98,20 +91,7 @@ contains
         type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
         integer :: i, stat
         logical , save :: warning_displayed = .false.
-
         ewrite(3,*)' In Get_Primary_Scalars'
-
-        ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outlet_id.
-        ! No need to explicitly allocate outlet_id (done here internally)
-
-        if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outlet_id))) then
-            shape = option_shape("/io/dump_boundaryflux/surface_ids")
-            assert(shape(1) >= 0)
-            allocate(outlet_id(shape(1)))
-            !allocate(outlet_id(1))
-            call get_option( "/io/dump_boundaryflux/surface_ids", outlet_id)
-
-        endif
 
         !!$ Defining dimension and nstate
         call get_option( '/geometry/dimension', Mdims%ndim )
@@ -821,7 +801,7 @@ contains
         ! if there is capillary pressure, we store 5 entries, otherwise just 3:
         ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])
         if(have_option_for_any_phase('/multiphase_properties/capillary_pressure',nphase)) then
-            call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[5,nphase])
+            call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[6,nphase])
         else
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[3,nphase])
         end if
@@ -2011,7 +1991,9 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
-    real :: dt, auxR
+    real, save :: stored_dt = -1
+    logical, save :: adjusted_ts_to_dump = .false.
+    real :: dt, auxR, dump_period
     integer :: Aim_num_FPI, auxI, incr_threshold
     integer, save :: show_FPI_conv
     real, save :: OldDt
@@ -2020,7 +2002,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:), pointer :: phasevolumefraction, temperature, OldTemperature
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
-    logical, save :: match_final_t = .true.
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
@@ -2070,6 +2051,25 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
     call get_option( '/timestepping/finish_time', finish_time )
+    !Ensure that even adapting the time, the final time is matched
+    max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
+    if (stored_dt<0) then!for the first time only
+        call get_option( '/timestepping/timestep', dt )
+        stored_dt = dt
+    end if
+    !To ensure that we always create a vtu file at the desired time,
+    !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
+    if (have_option('/io/dump_period/constant')) then
+        call get_option( '/io/dump_period/constant', dump_period )
+        !First get the next time for a vtu dump
+        auxR = dble(ceiling(acctim/dump_period)) * dump_period
+        if (abs(auxR-acctim) > 1e-12) then
+            max_ts = max(min(max_ts, abs(acctim-auxR)), min_ts*1d-3)!Make sure we dump at the required time and we don't get dt = 0
+        else
+            max_ts = min(max_ts, dump_period)
+        end if
+    end if
+
 
     select case (order)
         case (1)!Store or get from backup
@@ -2159,21 +2159,17 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 case (4)!Temperature
                     call get_var_from_packed_state(packed_state, temperature = temperature)
                     !Calculate normalized infinite norm of the difference
-                    totally_min_max(1)=minval(reference_field, MASK = reference_field > 1e-16)!use stored temperature
+                                                            !This Mask is important because otherwise it gets the lowest saturation value
+                    totally_min_max(1)=minval(reference_field, MASK = reference_field > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
                     totally_min_max(2)=maxval(reference_field)!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-
                     !Analyse the difference
                     ts_ref_val = inf_norm_scalar_normalised(temperature, reference_field(1,:,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
 
                 case default!Pressure
-                    !Calculate normalized infinite norm of the difference
-!                    auxR = maxval(reference_field(1,1,:))
-!                    inf_norm_val = maxval(abs((reference_field(1,1,:)-pressure(1,1,:))/auxR))
-
                     !Calculate normalized infinite norm of the difference
                     totally_min_max(1)=minval(reference_field)!use stored pressure
                     totally_min_max(2)=maxval(reference_field)!use stored pressure
@@ -2185,33 +2181,23 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
             end select
             ! find the maximum mass error to compare with the tolerance below
-            !max_calculate_mass_delta = maxval(calculate_mass_delta(:,2))
-            ! In this case we only calculate the total mass - we could calculate the mass of each phase
+            ! This is the maximum error of each indivial phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
-            if (size(pressure,2) > 1) max_calculate_mass_delta = 0.0!<= For wells this does not work correctly, disable it
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
                 call allmax(ts_ref_val)
                 call allmax(max_calculate_mass_delta)
                 call allmax(inf_norm_val)
             end if
-            if (size(pressure,2) > 1) then!==Mdims%npres > 1!This should be removed once we can check mass conservation with wells
-                if (is_porous_media .and. variable_selection == 3) then
-                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its
-                else if (is_porous_media .and. variable_selection == 4) then
-                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its
-                else
-                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
-                end if
+            !Store output messages
+            if (is_porous_media .and. variable_selection == 3) then
+                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+            else if (is_porous_media .and. variable_selection == 4) then
+                write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
             else
-                if (is_porous_media .and. variable_selection == 3) then
-                    write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
-                else if (is_porous_media .and. variable_selection == 4) then
-                    write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
-                else
-                    write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
-                end if
+                write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
             end if
+
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
@@ -2226,18 +2212,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     case (4)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-                        !Sometimes the temperature fails to converge and returns T = 0 two times consecutively making it think that it works
-                        if (nonLinearAdaptTs .and. ts_ref_val < 1d-8)  then!can this be a problem if the temperature becomes homogenenous in the domain?
-                            call get_var_from_packed_state(packed_state, OldTemperature = OldTemperature)
-                            auxR = maxval(OldTemperature); call allmax(auxR)
-                            !If the min/max temperature is the same and the max temperature has varied more than 1% then repeat
-                            !when this convergence error occurs the tempereture becomes the min temperature (if min/max impriple is imposed) or zero
-                            if (abs(totally_min_max(1)-totally_min_max(2)) < 1d-8 .and. abs(auxR-totally_min_max(2)/auxR) > 0.01) then
-                                ewrite(show_FPI_conv,*) "WARNING: Energy not conserved, repeating time-step."
-                                ExitNonLinearLoop = .true.!Ensure that it does not converge
-                                its = NonLinearIteration + 1!modifies its because if this fails in its == 1  it NEEDS to repeat the time-step anyway
-                            end if
-                        end if
                     case default
                         if (inf_norm_val * 5e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
@@ -2271,28 +2245,39 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 !If maximum number of FPI reached, then repeat time-step
                 if (its >= NonLinearIteration) Repeat_time_step = .true.
 
+                !If dt was modified just to match a dump_period then we impose again the previous time-step
+                if (adjusted_ts_to_dump) then
+                    dt = max(min(stored_dt, max_ts), 1d-8)
+                    call set_option( '/timestepping/timestep', dt )
+                    if (getprocno() == 1)then
+                        ewrite(show_FPI_conv,*) "Time step restored to:", dt
+                    end if
+                    adjusted_ts_to_dump = .false.
+                    return
+                end if
 
                 !This controller is supposed to be the most effective
                 if (PID_controller) then
                     !We do not follow the normal approach
                     if (ExitNonLinearLoop.and..not.Repeat_time_step) then
                         !Modify time step
-                        call get_option( '/timestepping/timestep', dt )
+                        dt = stored_dt
                         auxR = PID_time_controller()
                         if (auxR < 1.0 )then!Reduce Ts
                             dt = max(dt * max(abs(auxR), 1./(1.5*decreaseFactor)), min_ts)
                         else
-                            dt = min(dt * min(abs(auxR), 1.5*increaseFactor), max_ts)
+                            dt = dt * min(abs(auxR), 1.5*increaseFactor)
                         end if
+                        auxR = stored_dt
                         call set_option( '/timestepping/timestep', dt )
-                        if (getprocno() == 1)then
+                        stored_dt = dt
+                        !Ensure that period_vtus or the final time are matched, controlled by max_ts
+                        dt = max(min(dt, max_ts), min_ts)
+                        call set_option( '/timestepping/timestep', dt )
+                        if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
                             ewrite(show_FPI_conv,*) "Time step changed to:", dt
                         end if
                         ExitNonLinearLoop = .true.
-                        if (match_final_t .and. dt + acctim > finish_time) then
-                            call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
-                            match_final_t = .false.
-                        end if
                         return
                     end if
                 end if
@@ -2300,27 +2285,28 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 !Adaptive Ts for Backtracking only based on the number of FPI
                 if (ExitNonLinearLoop .and. its < incr_threshold .and..not.Repeat_time_step) then
                     !Increase time step
-                    call get_option( '/timestepping/timestep', dt )
-                    dt = min(dt * increaseFactor, max_ts)
+                    dt = stored_dt!retrieve stored_dt
+                    dt = dt * increaseFactor
                     call set_option( '/timestepping/timestep', dt )
+                    stored_dt = dt
                     if (getprocno() == 1) then
                         ewrite(show_FPI_conv,*) "Time step increased to:", dt
                     end if
                     ExitNonLinearLoop = .true.
-                    if (match_final_t .and. dt + acctim > finish_time) then
-                        call set_option( '/timestepping/timestep', abs(finish_time - acctim) )
-                        match_final_t = .false.
-                    end if
+                    !Ensure that period_vtus or the final time are matched, controlled by max_ts
+                    dt = max(min(dt, max_ts), min_ts)
+                    call set_option( '/timestepping/timestep', dt )
                     return
                 end if
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
-                    call get_option( '/timestepping/timestep', dt )
+                    dt = stored_dt!retrieve stored_dt
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
                         call set_option( '/timestepping/timestep', dt )
+                        stored_dt = dt
                         !Do not decrease if minimum ts is reached
                         Repeat_time_step = .false.
                         ExitNonLinearLoop = .true.
@@ -2337,6 +2323,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call get_option( '/timestepping/current_time', acctim )
                     acctim = acctim - dt
                     call set_option( '/timestepping/current_time', acctim )
+
                     if (PID_controller) then
                         auxR = PID_time_controller()
                         !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
@@ -2347,54 +2334,34 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         dt = max(dt / decreaseFactor,min_ts)
                     end if
                     call set_option( '/timestepping/timestep', dt )
+                    stored_dt = dt
                     if (getprocno() == 1) then
                         ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
                     end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
+                    return
+                end if
+                if (ExitNonLinearLoop.and..not.Repeat_time_step) then
+                    !If adapting ts and it gets here -meaning it has not been modified-, maybe we still need to adapt ts
+                    !to ensure we match the final time or a period_vtu
+                    dt = stored_dt!retrieve stored_dt
+                    auxR = dt!Store dt before modification to compare
+                    dt = max(min(dt, max_ts), 1d-8)
+                    !here we do not store dt, as its modification is not based on stability
+                    call set_option( '/timestepping/timestep', dt )
+                    if (abs(auxR-dt) > 1d-8) then
+                        if (getprocno() == 1)then
+                            ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt
+                            adjusted_ts_to_dump = .true.
+                        end if
+                    end if
+                    return
                 end if
             end if
     end select
 
 contains
-
-    real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
-    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
-    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
-    !f = (NewTracer-OldTracer)/Number of nodes; this is the typical approach for algebraic non linear systems
-    !
-    !The convergence is independent of the dumping parameter
-    !and measures how the previous iteration (i.e. using the previous dumping parameter) performed
-    implicit none
-    real, dimension(:,:), intent(in) :: tracer, reference_tracer
-    real, intent(in) :: dumping
-    real, dimension(2), intent(in) :: totally_min_max
-    !Local variables
-    integer :: cv_inod, iphase
-
-    inf_norm_scalar_normalised = 0.
-    !L_inf norm of all the elements
-    do cv_inod = 1, size(tracer,2)
-        do iphase = 1, size(tracer,1)
-            inf_norm_scalar_normalised = max(inf_norm_scalar_normalised, &
-                abs(normsVal(reference_tracer(iphase,cv_inod)) - normsVal(tracer(iphase,cv_inod))))
-        end do
-    end do
-
-    call allmax(inf_norm_scalar_normalised)
-    !rescale with accumulated dumping, if no dumping just pass down a 1.0
-    inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
-
-    end function
-
-    real function normsVal(val)
-    !Given an input value, it is normalised based on the totally_min_max parameters
-    implicit none
-    real, intent(in) :: val
-
-    normsVal = (val - totally_min_max(1))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
-
-    end function normsVal
 
     real function PID_time_controller(reset)
         !This functions calculates the multiplier to get a new time-step size based on a
@@ -2423,7 +2390,7 @@ contains
         aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
         if (Aim_num_FPI > 0) then                     !Options for the exponent:
-            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.6! 2.0 => too strongly enforce the number of iterations, ignores other criteria
+            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.9! 2.0 => too strongly enforce the number of iterations, ignores other criteria
             aux = aux + 1.0                           ! 1.0 => default value, forces the number of iterations, almost ignore other criteria
         end if                                        ! 0.6 => soft constrain, it will try but not very much, considers other criteria
         if (max_criteria) then
@@ -2445,6 +2412,40 @@ contains
     end function PID_time_controller
 
 end subroutine Adaptive_NonLinear
+
+real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
+    !Calculate the inf norm of the normalised field, so the field goes from 0 to 1
+    implicit none
+    real, dimension(:,:), intent(in) :: tracer, reference_tracer
+    real, intent(in) :: dumping
+    real, dimension(2), intent(in) :: totally_min_max
+    !Local variables
+    integer :: cv_inod, iphase
+
+    inf_norm_scalar_normalised = 0.
+    !L_inf norm of all the elements
+    do cv_inod = 1, size(tracer,2)
+        do iphase = 1, size(tracer,1)
+            inf_norm_scalar_normalised = max(inf_norm_scalar_normalised, &
+                abs(normsVal(reference_tracer(iphase,cv_inod)) - normsVal(tracer(iphase,cv_inod)) ))
+        end do
+    end do
+    call allmax(inf_norm_scalar_normalised)
+    !rescale with accumulated dumping, if no dumping just pass down a 1.0
+    inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
+contains
+    real function normsVal(val)
+        !Given an input value, it is normalised based on the totally_min_max parameters
+        implicit none
+        real, intent(in) :: val
+        normsVal = (val - totally_min_max(1))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
+
+    end function normsVal
+end function
+
+
+
+
 
 real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
     !We create a potential to optimize F = sum (f**2), so the solution is when this potential
@@ -2572,7 +2573,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
-    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent)
+    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term)
     !This subroutine returns a pointer to the desired values of a variable stored in packed state
     !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
     !and also all of them are optional, hence you can obtaine whichever you want
@@ -2599,7 +2600,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
-        Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent
+        Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
     real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
     !Local variables
     type(scalar_field), pointer :: sfield
@@ -2816,7 +2817,10 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedRockFluidProp" )
         Cap_exponent => tfield%val(5,:,:)
     end if
-
+    if (present(Imbibition_term))then
+        tfield => extract_tensor_field( packed_state, "PackedRockFluidProp" )
+        Imbibition_term => tfield%val(6,:,:)
+    end if
 
 end subroutine get_var_from_packed_state
 
@@ -2951,164 +2955,32 @@ function GetFEMName(tfield) result(fem_name)
 
 end function GetFEMName
 
-subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
-    cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL, Ele_owned_field, totouttemp, tempi)
-
-    implicit none
-
-    ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
-
-    ! Input/output variables
-
-    type(tensor_field), intent(in) :: Ele_owned_field
-    integer, intent(in) :: nphase
-    type(tensor_field), intent(in), pointer :: CVPressure
-    real, dimension( : , : ),  intent(in), allocatable :: phaseV
-    real, dimension( : , : ), intent(in), allocatable :: Dens
-    real, dimension( : ), intent(in), pointer :: Por
-
-    real, dimension(:), intent(in) :: ndotqnew
-    integer, dimension(1), intent(in) :: surface_ids
-    real, dimension(:), intent(inout) :: totoutflux
-    integer, intent(in) :: ele
-    integer, intent(in) :: sele
-
-    integer, dimension(:), intent( in ) ::  cv_ndgln
-    integer, dimension(:), intent( in ) :: IDs_ndgln
-    integer, intent(in) :: cv_snloc
-    integer, intent(in) :: cv_nloc
-    integer, intent(in) :: cv_siloc
-    integer, intent(in) :: cv_iloc
-
-    integer, intent(in) :: gi
-    real, dimension( : ), intent(in) :: detwei
-
-    real, dimension( :,:, : ), intent( in ) :: SUF_T_BC_ALL
-    real, dimension(:), optional, intent(in) :: tempi !Temperature at same position as saturation
-    real, dimension(:), optional, intent(inout) :: totouttemp !Temperature at same position as saturation
-    ! Local variables
-
-    real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
-    real, dimension( : ), allocatable :: DensVG
-    real :: PorG
-    logical :: test
-    integer  :: cv_knod
-    integer :: surf
-    integer :: i
-
-    ! ALLOCATIONS
-    allocate(phaseVG(nphase))
-    allocate(DensVG(nphase))
-
-    ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
-    ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
-    ! Since the CV shape functions are 1 or 0, the value at Gauss point gi, is given by the value at the nearest CV_node. So
-    ! we pass down the value of cv_iloc from cv_adv_diff and calculate cv_knod. This will be the node corresponding to a given
-    ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
-    ! Similar calculation done for density.
-
-    cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
-    phaseVG(:) = phaseV(:,cv_knod)
-
-    ! Having extracted the density at control volume nodes, need to calculate it at quadrature points gi.
-    ! (Density lives on the pressure mesh).
-
-    cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
-    DensVG(:) = Dens(:,cv_knod)
-
-    ! Porosity constant element-wise so simply extract that value associated to a given element ele
-
-    PorG = Por(IDs_ndgln(ele))
-
-    ! This function will return true for surfaces we should be integrating over (this entire subroutine is called inside a loop over ele, cv_iloc, gi in cv-adv-dif)
-    ! i.e. when sele is part of a surface labelled by ID = surface_ids. We then add up (integrate) flux contributions from all elements that test true.
-
-    ! if we are calculating the total mass entering the domain we will integrate over the whole domain and will therefore skip this test.
-    ! This is done by setting surface_ids = /-1/ when calling it in cv-adv-diff
-    if (surface_ids(1) < 0) then
-        test = .true.
-    else
-        test = integrate_over_surface_element(CVPressure, sele, surface_ids)
-    endif
-
-    ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
-    ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
-
-    if (element_owned(Ele_owned_field, ele)) then ! Check if the element number read into the subroutine is owned by the processor that has entered this loop at run-time (so that we don't overcount).
-
-        if(test) then ! Check if we're on a domain boundary (we only want to include contributions there)
-                ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
-                ! Need to pass down an array with the saturation boundary conditions to deal with these cases
-                ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
-
-            do i = 1, size(ndotqnew)
-                surf = (sele - 1 ) * cv_snloc + cv_siloc
-                if(ndotqnew(i) < 0 ) then
-                    ! Inlet boundary - so use boundary phase volume fraction
-                    totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
-
-                else
-                    ! Outlet boundary - so use internal (to the domain) phase volume fraction
-                    totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
-                endif
-            enddo
-            !Store temperature as well
-            if (present(tempi).and.has_temperature) then
-                do i = 1, size(tempi)
-                    totouttemp(i) = max(tempi(i), totouttemp(i))
-                end do
-            end if
-        endif
-
-    endif
-
-    ! DEALLOCATIONS
-    deallocate(phaseVG)
-    deallocate(densVG)
-
-    return
-
-end subroutine calculate_outflux
-
-
-subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculate_mass, TOTELE , &
-    cv_ndgln, IDs_ndgln, cv_nloc, Ele_owned_field)
+subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_mass, &
+    cv_ndgln, IDs_ndgln, eles_with_pipe)
 
     implicit none
 
     ! Subroutine to calculate the integrated mass inside the domain
 
     ! Input/output variables
-
-    type(tensor_field), intent(in) :: Ele_owned_field
-
+    type(state_type), intent(inout) :: packed_state
+    type(multi_dimensions), intent(in) :: Mdims
     real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
-    integer, intent(in) :: nphase
-    real, dimension( : , : ),  intent(in) :: phaseV
-    real, dimension( : , : ), intent(in) :: Dens
-    real, dimension( : ), intent(in) :: Por
-
     real, dimension(:), intent(inout) :: calculate_mass
-    integer, intent(in) :: TOTELE
-
     integer, dimension(:), intent( in ) ::  cv_ndgln
     integer, dimension(:), intent( in ) :: IDs_ndgln
-    integer, intent(in) :: cv_nloc
-
+    type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
     ! Local variables
-
-    real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
-    real, dimension( : ), allocatable :: DensVG
-    real :: PorG
-    real :: Mass_ELEG
+    type (tensor_field), pointer :: saturation
+    type (vector_field), pointer :: porosity
     integer  :: cv_knod
     integer :: cv_iloc
     integer :: ele
-    integer :: i
+    integer :: i, k
 
-    ! ALLOCATIONS
-    allocate(phaseVG(nphase))
-    allocate(DensVG(nphase))
+    saturation => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+    ! Extract the Porosity
+    porosity => extract_vector_field( packed_state, "Porosity" )
 
     ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
     ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
@@ -3116,34 +2988,38 @@ subroutine calculate_internal_mass(mass_ele, nphase, phaseV, Dens, Por, calculat
     ! we pass down the value of cv_iloc from cv_adv_diff and calculate cv_knod. This will be the node corresponding to a given
     ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point.
     ! Similar calculation done for density.
-
-    Do ELE=1, TOTELE
-       if (element_owned(Ele_owned_field, ELE)) then
-        DO CV_ILOC =1, cv_nloc
-                cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
-
-                phaseVG(:) = phaseV(:,cv_knod)
-                DensVG(:) = Dens(:,cv_knod)
-                Mass_ELEG = Mass_ELE(ele)
-
-                !     Porosity constant element-wise so simply extract that value associated to a given element ele
-                PorG = Por(IDs_ndgln(ele))
-
-                do i = 1, nphase
-                    calculate_mass(i) = calculate_mass(i) + (Mass_ELEG/cv_nloc)*PorG*phaseVG(i)*DensVG(i)               
-                enddo
-
+    if (present(eles_with_pipe)) then
+        !Calculate mass within pipes
+        DO k = 1, size(eles_with_pipe)
+            ELE = eles_with_pipe(k)%ele!Element with pipe
+            if (element_owned(saturation, ELE)) then
+                DO CV_ILOC =1, mdims%cv_nloc
+                    cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
+                    !     Porosity constant element-wise so simply extract that value associated to a given element ele
+                    do i = Mdims%n_in_pres + 1, Mdims%nphase
+                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod)
+                    enddo
+                ENDDO
+            end if
+        end do
+    else
+        !Calculate mass in the reservoir
+        Do ELE=1, mdims%TOTELE
+            if (element_owned(saturation, ELE)) then
+                DO CV_ILOC =1, mdims%cv_nloc
+                    cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
+                    !     Porosity constant element-wise so simply extract that value associated to a given element ele
+                    do i = 1, size(calculate_mass)
+                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(ele)/mdims%cv_nloc)*&
+                            porosity%val(1, IDs_ndgln(ele))*saturation%val(1, i,cv_knod)
+                    enddo
+                ENDDO
+            end if
         ENDDO
-        end if
-    ENDDO
-
-    ! DEALLOCATIONS
-    deallocate(phaseVG)
-    deallocate(densVG)
-
+    end if
     return
 
-end subroutine calculate_internal_mass
+end subroutine calculate_internal_volume
 
 
 logical function have_option_for_any_phase(path, nphase)
@@ -3217,6 +3093,8 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
+        elseif (have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::C/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::C/prescribed/value'
         endif
@@ -3229,8 +3107,11 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             if (have_option_for_any_phase(trim(path), nphase))&
                 all_fields_costant = .false.
         end do
+
         if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
+        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::a/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::a/prescribed/value'
         endif
@@ -3243,6 +3124,19 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             if (have_option_for_any_phase(trim(path), nphase))&
                 all_fields_costant = .false.
         end do
+
+        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
+            root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::B/prescribed/value'
+            k = 0
+            do i = 0, nphase-1
+                k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
+            end do
+            do i = 0, k-1
+                path = trim(root_path)//'['//int2str(i)//']/python'
+                if (have_option_for_any_phase(trim(path), nphase))&
+                    all_fields_costant = .false.
+            end do
+        endif
     end if
     !Check relative permeability
     if (have_option_for_any_phase('/multiphase_properties/Relperm_Corey/', nphase)) then
@@ -3367,14 +3261,12 @@ all_fields_costant = .false.
         end do
     end do
 
-
     !###Compact fields###
     !Relative permeability and Immobile fractions (if cappressure, also cap parameters)
     if (has_tensor_field(packed_state,"PackedRockFluidProp")) then
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         call convert_tensor_field(t_field, IDs_ndgln )
     end if
-
     deallocate(region_ids)
 
 contains
@@ -3546,17 +3438,16 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Vector_SNdgln
 
-    subroutine dump_outflux(current_time, porevolume, itime, outflux, intflux)
+    subroutine dump_outflux(current_time, itime, outfluxes)
 
         ! Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file  called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux
         ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
         ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
         !wish to integrate over).
         real,intent(in) :: current_time
-        real, intent(in) :: porevolume
         integer, intent(in) :: itime
-        real, dimension(:,:), intent(inout) :: intflux
-        real, dimension(:,:,:), intent(inout) :: outflux
+        type (multi_outfluxes), intent(inout) :: outfluxes
+        !Local variables
         integer :: ioutlet
         integer :: counter
         type(stat_type), target :: default_stat
@@ -3564,9 +3455,9 @@ end subroutine get_DarcyVelocity
         character (len=1000000) :: numbers
         integer :: iphase
         ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
-        character (len = 1000000), dimension(size(intflux,1)) :: fluxstring
-        character (len = 1000000), dimension(size(intflux,1)) :: intfluxstring
-        character (len = 1000000), dimension(size(intflux,1)) :: tempstring
+        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: fluxstring
+        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: intfluxstring
+        character (len = 1000000), dimension(size(outfluxes%intflux,1)) :: tempstring
         character (len = 50) :: simulation_name
 
         call get_option('/simulation_name', simulation_name)
@@ -3578,23 +3469,31 @@ end subroutine get_DarcyVelocity
         else
             open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
         end if
+
+
+        ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
+        where (outfluxes%totout /= outfluxes%totout)
+            outfluxes%totout = 0.!If nan then make it zero
+        end where
+        outfluxes%intflux = outfluxes%intflux + outfluxes%totout(1, :, :)*dt
+
         ! Write column headings to file
         counter = 0
         if(itime.eq.1) then
-            write(whole_line,*) "Current Time (s)" // "," // "Current Time (days)" // "," // "Pore Volume"
+            write(whole_line,*) "Current Time (s)" // "," // "Current Time (years)" // "," // "Pore Volume"
             whole_line = trim(whole_line)
-            do ioutlet =1, size(intflux,2)
-                do iphase = 1, size(intflux,1)
-                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, " S", outlet_id(ioutlet), " flux"
+            do ioutlet =1, size(outfluxes%intflux,2)
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(fluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase, "-S", outfluxes%outlet_id(ioutlet), "- Volume rate"
                     whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
                 enddo
-                do iphase = 1, size(intflux,1)
-                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " time integrated flux"
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(intfluxstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Cumulative production"
                     whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
                 enddo
                 if (has_temperature) then
-                    do iphase = 1, size(intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  " S", outlet_id(ioutlet),  " maximum temperature"
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum temperature"
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
@@ -3602,27 +3501,27 @@ end subroutine get_DarcyVelocity
              ! Write out the line
             write(default_stat%conv_unit,*), trim(whole_line)
         endif
-            ! Write the actual numbers to the file now
-            write(numbers,'(f15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(24*60*60) , ",",  porevolume
-            whole_line =  trim(numbers)
-            do ioutlet =1, size(intflux,2)
-                do iphase = 1, size(intflux,1)
-                    write(fluxstring(iphase),'(f15.5)') outflux(1, iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+        ! Write the actual numbers to the file now
+        write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+        whole_line =  trim(numbers)
+        do ioutlet =1, size(outfluxes%intflux,2)
+            do iphase = 1, size(outfluxes%intflux,1)
+                write(fluxstring(iphase),'(f15.5)') outfluxes%totout(1, iphase,ioutlet)
+                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+            enddo
+            do iphase = 1, size(outfluxes%intflux,1)
+                write(intfluxstring(iphase),'(g15.5)') outfluxes%intflux(iphase,ioutlet)
+                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+            enddo
+            if (has_temperature) then
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(tempstring(iphase),'(f15.5)') outfluxes%totout(2, iphase,ioutlet)
+                    whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
-                do iphase = 1, size(intflux,1)
-                    write(intfluxstring(iphase),'(g15.5)') intflux(iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                enddo
-                if (has_temperature) then
-                    do iphase = 1, size(intflux,1)
-                        write(tempstring(iphase),'(f15.5)') outflux(2, iphase,ioutlet)
-                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
-                    enddo
-                end if
-            end do
-            ! Write out the line
-            write(default_stat%conv_unit,*), trim(whole_line)
+            end if
+        end do
+        ! Write out the line
+        write(default_stat%conv_unit,*), trim(whole_line)
         close (default_stat%conv_unit)
     end subroutine dump_outflux
 

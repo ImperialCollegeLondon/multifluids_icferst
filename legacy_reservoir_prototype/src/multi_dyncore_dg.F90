@@ -78,7 +78,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number, IDs2CV_ndgln )
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -111,6 +111,7 @@ contains
            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
            type (multi_pipe_package), intent(in) :: pipes_aux
            real, optional, dimension(:), intent(inout) :: Courant_number
+           integer, dimension(:), optional, intent(in)  :: IDs2CV_ndgln
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -143,7 +144,7 @@ contains
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field
-           REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef, porous_heat_coefOLD
+           REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
            !Variables for controlling the number of iterations
@@ -152,7 +153,9 @@ contains
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
            integer, save :: max_allowed_its = -1
-
+           !Variables for capillary pressure
+           real, dimension(Mdims%cv_nonods) :: OvRelax_param
+           integer :: Phase_with_Ovrel
 
            if(max_allowed_its < 0)  call get_option( &
                '/material_phase[0]/scalar_field::Temperature/prognostic/solver/max_iterations',&
@@ -188,8 +191,8 @@ contains
                         FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                     end if
                     !need to perform average of the effective heat capacity times density for the diffusion and time terms
-                    allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods),porous_heat_coefOLD(Mdims%nphase,Mdims%cv_nonods))
-                    call effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
+                    allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods))
+                    call effective_Cp_density(porous_heat_coef)
                     !Start with the process to apply the min max principle
                     call force_min_max_principle(1)
                 end if
@@ -271,6 +274,7 @@ contains
               ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
               allocate( Component_Diffusion_Operator_Coefficient( Mdims%ncomp, ncomp_diff_coef, Mdims%nphase ) )
               Component_Diffusion_Operator_Coefficient = 0.0
+
               call Calculate_ComponentDiffusionTerm( packed_state, &
                  Mdims, CV_GIdims, CV_funs, &
                  ndgln%mat, ndgln%u, ndgln%x, &
@@ -309,9 +313,13 @@ contains
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
+               !Get information for capillary pressure to be use in CV_ASSEMB
+                !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
+               call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, IDs2CV_ndgln, for_transport = .true.)
+
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
-               call zero(Mmat%petsc_ACV)
+               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -332,8 +340,8 @@ contains
                    mass_ele_transp, IDs_ndgln, &
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, porous_heat_coefOLD = porous_heat_coefOLD)
-
+                   porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
+                   OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
 
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
@@ -353,17 +361,26 @@ contains
                    ELSE
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
-                       call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+                       !There is a bug, or instability issue, and the matrix and RHS get here with NaNs so we first check for it here
+                       if (isnan(Mmat%CV_RHS%val(1,1)) .or. isnan(Mmat%CV_RHS%val(size(Mmat%CV_RHS%val,1),size(Mmat%CV_RHS%val,2))) ) then
+                            !Avoid the solver as it is going to fail and pollute the temperature field.
+                            !Just ensure that the time-level is repeated if using ensure solver convergence is on
+                            call deallocate(Mmat%petsc_ACV, iphase)
+                            solver_not_converged = .true.
+                            cycle
+                       else
+                            call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+                       end if
                        do iphase = 1, Mdims%nphase
                            ewrite(2,*) 'T phase min_max:', iphase, &
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+                   !Checking solver not fully implemented
+                   if (its_taken >= max_allowed_its .or. its_taken == 0 ) solver_not_converged = .true.
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV, iphase)
 
-                   !Checking solver not fully implemented
-                   if (its_taken >= max_allowed_its) solver_not_converged = .true.
                END IF Conditional_Lumping
                 !Control how it is converging and decide
                if(thermal) then
@@ -374,7 +391,7 @@ contains
                        reference_temp = tracer%val
                    else
                        !Check if the tolerance is good or not
-                       aux = maxval(abs((tracer%val-reference_temp)/reference_temp))
+                       aux = convergence_check(tracer%val, reference_temp)
                        if ( aux < inf_tolerance) exit
                    end if
                end if
@@ -386,10 +403,27 @@ contains
            if (is_boiling) deallocate(T_absorb)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
-           if (allocated(porous_heat_coef)) deallocate(porous_heat_coef, porous_heat_coefOLD)
+           if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
+
+
+      real function convergence_check(temperature, reference_temp)
+          implicit none
+          real, dimension(:,:,:) :: temperature, reference_temp
+          !Local variables
+          real, dimension(2) :: totally_min_max
+
+          totally_min_max(1)=minval(reference_temp, MASK = reference_temp > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
+          totally_min_max(2)=maxval(reference_temp)!use stored temperature
+          !For parallel
+          call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+          !Analyse the difference
+          convergence_check = inf_norm_scalar_normalised(temperature(1,:,:), reference_temp(1,:,:), 1.0, totally_min_max)
+
+      end function convergence_check
+
 
 
       subroutine force_min_max_principle(entrance)
@@ -429,13 +463,13 @@ contains
 
       end subroutine
 
-      subroutine effective_Cp_density(porous_heat_coef, porous_heat_coefOLD)
+      subroutine effective_Cp_density(porous_heat_coef)
         ! Calculation of the averaged heat capacity and density
         ! average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
         ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
         ! as it is stored cv-wise
           implicit none
-        REAL, DIMENSION( : , : ), intent(inout) :: porous_heat_coef, porous_heat_coefOLD
+        REAL, DIMENSION( : , : ), intent(inout) :: porous_heat_coef
         !Local variables
         type( scalar_field ), pointer :: porosity, density_porous, Cp_porous
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
@@ -444,7 +478,7 @@ contains
         density_porous => extract_scalar_field( state(1), "porous_density" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
         porosity=>extract_scalar_field(state(1),"Porosity")
-        porous_heat_coef = 0.; porous_heat_coefOLD = 0.
+        porous_heat_coef = 0.
         cv_counter = 0
         do ele = 1, Mdims%totele
             p_den = min(size(density_porous%val), ele)
@@ -455,16 +489,13 @@ contains
                 do iphase = 1, Mdims%nphase
                     cv_counter( iphase,cv_inod ) = cv_counter( iphase,cv_inod ) + 1.0
                     porous_heat_coef( iphase,cv_inod ) = porous_heat_coef( iphase,cv_inod ) + &
-                        (1.0-porosity%val(ele_nod))*density_porous%val(p_den ) * Cp_porous%val( h_cap )
-                    porous_heat_coefOLD( iphase,cv_inod ) = porous_heat_coefOLD( iphase,cv_inod )+ &
-                        (1.0-porosity%val(ele_nod))*density_porous%val(p_den ) * Cp_porous%val( h_cap )
+                        density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
                 end do
             end do
         end do
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
         porous_heat_coef = porous_heat_coef/cv_counter!<= includes an average of porous and fluid properties
-        porous_heat_coefOLD = porous_heat_coefOLD/cv_counter!<= includes an average of porous and fluid properties
       end subroutine effective_Cp_density
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
@@ -769,7 +800,7 @@ if (is_flooding) return!<== Temporary fix for flooding
 
              !If the final saturation solve of the final non-linear FPI fails, then we ensure that the result is not accepted
              !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
-             if (its_taken >= max_allowed_its) solver_not_converged = .true.
+             if (its_taken >= max_allowed_its  .or. its_taken == 0 ) solver_not_converged = .true.
 
              if (IsParallel()) then
                 !Make sure the parameter is consistent between cpus
@@ -851,7 +882,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IDs_ndgln, calculate_mass_delta )
+        IDs_ndgln, calculate_mass_delta, outfluxes )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -878,6 +909,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+        type (multi_outfluxes), intent(inout) :: outfluxes
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
@@ -1213,7 +1245,7 @@ end if
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
-            symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
+            symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta, outfluxes)
 
         deallocate(UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -1588,7 +1620,7 @@ END IF
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta)
+        symmetric_P, boussinesq, IDs_ndgln, calculate_mass_delta, outfluxes)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1636,6 +1668,7 @@ END IF
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
+        type (multi_outfluxes), intent(inout) :: outfluxes
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -1739,7 +1772,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, IDs_ndgln, &
-            calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux)
+            calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+            outfluxes = outfluxes)
+
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
@@ -2362,15 +2397,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         homogenize_mass_matrix = (lump_weight > 0)
 
 
-        !For P1DGP1 or P1DGP2 using the new formulation this solves the problem with pressure boundary conditions
-        !also, this requires to use the old way to get the Pivit Matrix
+        !For P1DGP1 the DCVFEM method does not work and requires P0DGP1. This is done through homogenisation
+        !For historic reasons we always lump with the DCVFEM
         if (Mmat%CV_pressure) then
             lump_mass = .true.
-            homogenize_mass_matrix = .true.
             call get_option( &
             '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
-            !For P1DGP1 the correct value is 100 and for P1DGP2 the correct value seems to be 10.
-            lump_weight = 100.**(1./j)
+            if (j == 1) then
+                homogenize_mass_matrix = .true.
+                !For P1DGP1 the correct value is 100
+                lump_weight = 100.**(1./j)
+            end if
         end if
 
         lump_absorption = .false.
@@ -6091,7 +6128,7 @@ end if
 
 
 
- subroutine getOverrelaxation_parameter(packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, IDs2CV_ndgln)
+ subroutine getOverrelaxation_parameter(packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, IDs2CV_ndgln, for_transport)
      !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
      !It is the derivative of the capillary pressure for each node.
      !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
@@ -6102,12 +6139,13 @@ end if
      real, dimension(:), intent(inout) :: Overrelaxation
      integer, intent(inout) :: Phase_with_Pc
      integer, dimension(:), intent(in) :: IDs2CV_ndgln
+     logical, optional, intent(in) :: for_transport
      !Local variables
      real, save :: domain_length = -1
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
      real :: Pe_aux, parl_max, parl_min
      real, dimension(:), pointer ::Pe, Cap_exp
-     logical :: Artificial_Pe, Diffusive_cap_only
+     logical :: Artificial_Pe
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
      type( tensor_field ), pointer :: Velocity
@@ -6122,42 +6160,48 @@ end if
 
      !#######Only apply this method if it has been explicitly invoked through Pe_stab or
      !non-consistent capillary pressure!######
-     if (.not.(have_option_for_any_phase("/multiphase_properties/Sat_overRelax", nphase) .or. &
-        have_option_for_any_phase("/multiphase_properties/capillary_pressure/Diffusive_cap_only", nphase))) then
+     Phase_with_Pc = -1
+     if (.not. have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation') ) then
          Overrelaxation = 0.0; Phase_with_Pc = -10
          return
      end if
+     !If this is for transport, check if we want to apply it
+     if (present_and_true(for_transport)) then
+        if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport')) then
+            Overrelaxation = 0.0; Phase_with_Pc = -10
+            return
+        end if
+     end if
      !######################################################################################
-
+    !By default phase 1
+    Phase_with_Pc = 1
      !Check capillary pressure options
-     Phase_with_Pc = -1
      do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
          !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
-         if (have_option( "/material_phase["//int2str(iphase-1)//&
-             "]/multiphase_properties/capillary_pressure" ) .or.&
-             have_option("/material_phase[["//int2str(iphase-1)//&
-             "]/multiphase_properties/Sat_overRelax")) then
+         if (have_option( "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure" )) then
              Phase_with_Pc = iphase
          end if
      end do
-
      Artificial_Pe = .false.
      if (Phase_with_Pc>0) then
-         !Get information for capillary pressure to be use
+         !Get information for capillary pressure to be used
          if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
              "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) ) then
+             "]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+             "]/multiphase_properties/capillary_pressure/type_Power_Law") ) )then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
-                 Cap_exponent = Cap_exponent)
+                 Cap_exponent = Cap_exponent)!no need for the imbibition because we need the derivative which will be zero as it is a constant
          end if
          !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
          !Unless we are using the non-consistent form of the capillary pressure
-         Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
-         if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Sat_overRelax")&
-             .and..not.Diffusive_cap_only) then
+         if ( have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation') ) then
              allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
              Artificial_Pe = .true.
-             call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Sat_overRelax", Pe_aux)
+             if (present_and_true(for_transport)) then
+                call get_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
+             else
+                call get_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
+             end if
              if (Pe_aux<0) then!Automatic set up for Pe
                  !Method based on calculating an entry pressure for a given Peclet number;
                  !Peclet = V * L / Diffusivity; We consider only the entry pressure for the diffusivity

@@ -1480,7 +1480,8 @@ coordinates, the nearest vertex will be selected.</a:documentation>
       <element name="CV_P_matrix">
         <a:documentation>Use a Control Volume discretization to form the Pressure matrix.
 If NOT using Pressure inlet boundary conditions, it is recommended to disable 
-CV_press_homogenisation in the numerical_methods section.</a:documentation>
+CV_press_homogenisation in the numerical_methods section.
+At present Mass lumping is imposed always. Moreover P1DGP1(CV) is automatically converted into P0DGP1(CV)</a:documentation>
         <empty/>
       </element>
     </optional>

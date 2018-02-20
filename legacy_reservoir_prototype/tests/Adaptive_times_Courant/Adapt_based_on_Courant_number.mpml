@@ -82,7 +82,7 @@
       <real_value rank="0">1e-3</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">1.1e-3</real_value>
+      <real_value rank="0">1e-1</real_value>
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">100</integer_value>
@@ -94,6 +94,9 @@
         <Backtracking_factor>
           <real_value rank="0">-0.1</real_value>
         </Backtracking_factor>
+        <Vanishing_relaxation>
+          <real_value rank="0">0.25e-2</real_value>
+        </Vanishing_relaxation>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
     <adaptive_timestep>
@@ -474,9 +477,6 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Sat_overRelax>
-        <real_value rank="0">0.25e-2</real_value>
-      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">

@@ -2,7 +2,7 @@
 <testproblem>
   <name>Porous_media_general</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml thermal P0DG tbc</tags>
+  <tags>porous mpml thermal P0DG</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst thermal_porous_compressible.mpml</command_line>
   </problem_definition>
@@ -17,8 +17,8 @@ max_rho = stat("themal_porous.stat")["phase1"]["Density"]["max"][-1]</variable>
 min_rho = stat("themal_porous.stat")["phase1"]["Density"]["min"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max temperature" language="python">assert(abs((max_temp - 49.96)/49.96) &lt; 0.01)</test>
-    <test name="Assert final min temperature" language="python">assert(abs((min_temp - 28.68)/28.68) &lt; 0.01)</test>
+    <test name="Assert final max temperature" language="python">assert(abs((max_temp - 49.8)/49.8) &lt; 0.01)</test>
+    <test name="Assert final min temperature" language="python">assert(abs((min_temp - 21.14)/21.14) &lt; 0.01)</test>
     <test name="Assert final max density" language="python">assert(abs((max_rho - 1002.15)/1002.15) &lt; 0.01)</test>
     <test name="Assert final min density" language="python">assert(abs((min_rho - 998.79)/998.79) &lt; 0.01)</test>
   </pass_tests>

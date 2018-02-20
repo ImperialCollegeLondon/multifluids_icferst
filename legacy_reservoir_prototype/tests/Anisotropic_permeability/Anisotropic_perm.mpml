@@ -85,15 +85,18 @@
       <real_value rank="0">2e-1</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">100</integer_value>
+      <integer_value rank="0">20</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">5e-2</real_value>
+        <real_value rank="0">1e-2</real_value>
         <Infinite_norm_tol>
           <real_value rank="0">0.01</real_value>
         </Infinite_norm_tol>
         <Backtracking_factor>
-          <real_value rank="0">-0.3334</real_value>
+          <real_value rank="0">-10</real_value>
         </Backtracking_factor>
+        <Test_mass_consv>
+          <real_value rank="0">1e6</real_value>
+        </Test_mass_consv>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -371,7 +374,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1.0</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>

@@ -179,8 +179,7 @@ contains
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
         integer :: ioutlet
-        real, dimension(:,:),  allocatable  :: intflux
-        logical :: calculate_flux
+        type (multi_outfluxes) :: outfluxes
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields = -1
         real :: t_adapt_threshold
@@ -227,7 +226,8 @@ contains
 
         !!$ Compute primary scalars used in most of the code
         call Get_Primary_Scalars_new( state, Mdims )
-
+        !Check if the user wants to store the outfluxes
+        call initialize_multi_outfluxes(outfluxes)
         if(use_sub_state()) then
             call populate_sub_state(state,sub_state)
         end if
@@ -433,20 +433,8 @@ contains
                 timestep, not_to_move_det_yet=.true.)
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
-        calculate_flux = allocated(outlet_id)
-        ! If calculating boundary fluxes, initialise to zero time integrated fluxes (intflux) and the quantity (totout) used to calculate them.
-        if(calculate_flux) then
-            allocate(intflux(Mdims%nphase,size(outlet_id)))
-            k = 1
-            if (has_temperature) k = k +1
-            !(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
-            allocate(totout(k, Mdims%nphase, size(outlet_id)))
-
-            do ioutlet = 1, size(outlet_id)
-                intflux(:, ioutlet) = 0.
-                totout(1, :, ioutlet) = 0.
-            enddo
-        endif
+        ! If calculating boundary fluxes, allocate and initialise to zero outfluxes variables
+        if (outfluxes%calculate_flux) call allocate_multi_outfluxes(Mdims, outfluxes)
 !       Allocate memory and initialise calculate_mass_global if calculate_mass_flag is switched on to store the total mass change in the domain
         allocate(calculate_mass_delta(Mdims%nphase,2))
         calculate_mass_delta(:,:) = 0.0
@@ -480,6 +468,7 @@ contains
             itime = itime + 1
             timestep = itime
             call get_option( '/timestepping/timestep', dt )
+            call get_option( '/timestepping/current_time', acctim )
             acctim = acctim + dt
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
@@ -553,38 +542,6 @@ contains
                 end if
 
 
-                !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
-                        !!$
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
-                    ! Copy back memory
-                    do iphase=1,Mdims%nphase
-                       T=>extract_scalar_field(state(iphase),"Temperature")
-                       T%val=tracer_field%val(1,iphase,:)
-                    end do
-
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-                end if Conditional_ScalarAdvectionField
-
 !Testing multi_transport
 call solve_transport()
 
@@ -624,7 +581,7 @@ call solve_transport()
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta)
+                        IDs_ndgln, calculate_mass_delta, outfluxes)
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
@@ -651,6 +608,43 @@ call solve_transport()
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
+
+
+                !!$ Solve advection of the scalar 'Temperature':
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
+                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, IDs2CV_ndgln=IDs2CV_ndgln)
+
+                    ! Copy back memory
+                    do iphase=1,Mdims%nphase
+                       T=>extract_scalar_field(state(iphase),"Temperature")
+                       T%val=tracer_field%val(1,iphase,:)
+                    end do
+
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if Conditional_ScalarAdvectionField
+
+
+
+
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
@@ -687,16 +681,8 @@ call solve_transport()
             end do Loop_NonLinearIteration
 
             ! If calculating boundary fluxes, dump them to outfluxes.txt
-            if(calculate_flux .and..not.Repeat_time_step) then
-            ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
-                where (totout /= totout)
-                    totout = 0.!If nan then make it zero
-                end where
-                do ioutlet = 1, size(outlet_id)
-                    intflux(:, ioutlet) = intflux(:, ioutlet) + totout(1, :, ioutlet)*dt
-                    totout(1, :, ioutlet) = totout(1, :, ioutlet)!/sum(totout(1, :, ioutlet))! We will output totout normalised as f1/(f1+f2)
-                enddo
-                if(getprocno() == 1) call dump_outflux(acctim,porevolume,itime,totout,intflux)
+            if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
+                if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
             endif
             if (nonLinearAdaptTs) then
                 !As the value of dt and acctim may have changed we retrieve their values
@@ -727,54 +713,14 @@ call solve_transport()
                 end if
             end if
 
-            !!$ Write outputs (vtu and checkpoint files)
-            if (have_option('/io/dump_period_in_timesteps')) then
-                ! dump based on the prescribed period of time steps
-                Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
-                    if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
-                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                            protect_simulation_name=.true.,file_type='.mpml')
-                        checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
-                    end if
-                    call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
-                    not_to_move_det_yet = .false. ;
 
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
-                end if Conditional_Dump_TimeStep
-            else if (have_option('/io/dump_period')) then
-                ! dump based on the prescribed period of real time
-                Conditional_Dump_RealTime: if( current_time>=dump_period*dump_no .and. current_time/=finish_time) then
-                    if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
-                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                            protect_simulation_name=.true.,file_type='.mpml')
-                        checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
-                    end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
-                    not_to_move_det_yet = .false. ;
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
-                end if Conditional_Dump_RealTime
-            end if
+            !Call to create the output vtu files, if required and also checkpoint
+            call create_dump_vtu_and_checkpoints()
 
+            ! Call to adapt the mesh if required!
+            if(acctim >= t_adapt_threshold) call adapt_mesh_mp()
 
-            T_Adapt_Delay: if(acctim >= t_adapt_threshold) then
-
-                !!!$! ******************
-                !!!$! *** Mesh adapt ***
-                !!!$! ******************
-                print *, "Calling mesh adaptivity scheme, time=", acctim ! USER EDIT
-                call adapt_mesh_mp()
-                print *, "End of mesh adaptivity scheme" ! USER EDIT
-            end if T_Adapt_Delay
-
+            ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
@@ -797,11 +743,23 @@ call solve_transport()
                     end do
                 end if
                 call get_option( '/timestepping/timestep', dt )
+                !To ensure that we always create a vtu file at the desired time (if requested),
+                !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
+                if (have_option('/io/dump_period/constant')) then
+                    call get_option( '/io/dump_period/constant', dump_period )
+                    !First get the next time for a vtu dump
+                    maxc = max(min(maxc, abs(acctim-(dble(ceiling(acctim/dump_period)) * dump_period))), minc*1d-3)
+                    !Make sure we dump at the required time and we don't get dt = 0
+                end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
-                dt = max(min(dt, finish_time - current_time), 1d-15)!Make sure we finish at required time and we don't get dt = 0
+!                !Make sure that we finish at required time and we don't get dt = 0
+!                dt = max(min(dt, finish_time - current_time), 1d-15)
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
+            ! ####UP TO HERE####
+
+            !Post processing if the mesh has been adapted or to ecalculate fields for the new time-level
             if ( do_reallocate_fields ) then
                 after_adapt=.true.
             else
@@ -818,6 +776,7 @@ call solve_transport()
                 exit Loop_Time
             end if
             first_time_step = .false.
+
         end do Loop_Time
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
@@ -857,7 +816,7 @@ call solve_transport()
                                                    ! (future work).
         endif
         !***************************************
-        if (calculate_flux) deallocate(outlet_id, totout, intflux)
+        if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
         return
     contains
 
@@ -1036,6 +995,45 @@ call solve_transport()
             end do
         end subroutine linearise_components
 
+        subroutine create_dump_vtu_and_checkpoints()
+            !!$ Write outputs (vtu and checkpoint files)
+            if (have_option('/io/dump_period_in_timesteps')) then
+                ! dump based on the prescribed period of time steps
+                Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
+                    if (do_checkpoint_simulation(dump_no)) then
+                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                        call set(pressure_field,FE_Pressure)
+                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                            protect_simulation_name=.true.,file_type='.mpml')
+                        checkpoint_number=checkpoint_number+1
+                        call set(pressure_field,CV_Pressure)
+                    end if
+                    call get_option( '/timestepping/current_time', current_time ) ! Find the current time
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    not_to_move_det_yet = .false. ;
+
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                end if Conditional_Dump_TimeStep
+            else if (have_option('/io/dump_period')) then
+                ! dump based on the prescribed period of real time
+                Conditional_Dump_RealTime: if( (abs(current_time - dump_period*dump_no) < 1d-12 .or. current_time >= dump_period*dump_no)&
+                    .and. current_time/=finish_time) then
+                    if (do_checkpoint_simulation(dump_no)) then
+                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                        call set(pressure_field,FE_Pressure)
+                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                            protect_simulation_name=.true.,file_type='.mpml')
+                        checkpoint_number=checkpoint_number+1
+                        call set(pressure_field,CV_Pressure)
+                    end if
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    not_to_move_det_yet = .false. ;
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                end if Conditional_Dump_RealTime
+            end if
+        end subroutine create_dump_vtu_and_checkpoints
 
         !This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
@@ -1088,9 +1086,7 @@ call solve_transport()
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             itime, not_to_move_det_yet = .true. )
-                        print *, "Run_diagnostics" ! USER EDIT
                         call run_diagnostics( state )
-                        print *, "Adapt_state" ! USER EDIT
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
                         ! Copy U memory
                         do iphase=1,Mdims%nphase
@@ -1102,12 +1098,10 @@ call solve_transport()
                               end do
                            end if
                         end do
-                        print *, "update_state_post_adapt" ! USER EDIT
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             itime, not_to_move_det_yet = .true. )
-                        print *, "Run_diagnosatics 2" ! USER EDIT
                         call run_diagnostics( state )
                     end if Conditional_Adapt_by_TimeStep
                 elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then !!$ Conditional_Adaptivity:
@@ -1145,8 +1139,9 @@ if (is_flooding) then
     end if
 end if
                 !!$ Compute primary scalars used in most of the code
-                print *, "Checkpoint 1" ! USER EDIT
                 call Get_Primary_Scalars_new( state, Mdims )
+                !Check if the user wants to store the outfluxes
+                call initialize_multi_outfluxes(outfluxes)
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call prepare_absorptions(state, Mdims, multi_absorp)
@@ -1175,7 +1170,6 @@ end if
                 !!$
                 !!$ Defining lengths and allocating space for the matrices
 
-                print *, "Checkpoint 2" ! USER EDIT
                 call Defining_MaxLengths_for_Sparsity_Matrices( Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, Mdims%cv_nloc, Mdims%ph_nloc, Mdims%cv_nonods, &
                     mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
                     mx_ncolacv, mx_ncolm, mx_ncolph )
@@ -1197,7 +1191,6 @@ end if
                     if (Mdims%npres > 1) call deallocate_multi_pipe_package(pipes_aux)
                 end if
 
-                print *, "Checkpoint 3" ! USER EDIT
                 call put_CSR_spars_into_packed_state()
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields > 0) then
@@ -1239,7 +1232,6 @@ end if
                 ScalarField_Source_Store=0.
 !                allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
 !                allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.
-                print *, "Checkpoint 4" ! USER EDIT
                 if( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                     ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                     ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
