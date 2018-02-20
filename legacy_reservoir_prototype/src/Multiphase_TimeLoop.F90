@@ -770,9 +770,9 @@ call solve_transport()
                 !!!$! ******************
                 !!!$! *** Mesh adapt ***
                 !!!$! ******************
-
+                print *, "Calling mesh adaptivity scheme, time=", acctim ! USER EDIT
                 call adapt_mesh_mp()
-
+                print *, "End of mesh adaptivity scheme" ! USER EDIT
             end if T_Adapt_Delay
 
             !!$ Simple adaptive time stepping algorithm
@@ -1088,7 +1088,9 @@ call solve_transport()
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             itime, not_to_move_det_yet = .true. )
+                        print *, "Run_diagnostics" ! USER EDIT
                         call run_diagnostics( state )
+                        print *, "Adapt_state" ! USER EDIT
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
                         ! Copy U memory
                         do iphase=1,Mdims%nphase
@@ -1100,10 +1102,12 @@ call solve_transport()
                               end do
                            end if
                         end do
+                        print *, "update_state_post_adapt" ! USER EDIT
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                             itime, not_to_move_det_yet = .true. )
+                        print *, "Run_diagnosatics 2" ! USER EDIT
                         call run_diagnostics( state )
                     end if Conditional_Adapt_by_TimeStep
                 elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then !!$ Conditional_Adaptivity:
@@ -1141,6 +1145,7 @@ if (is_flooding) then
     end if
 end if
                 !!$ Compute primary scalars used in most of the code
+                print *, "Checkpoint 1" ! USER EDIT
                 call Get_Primary_Scalars_new( state, Mdims )
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
@@ -1170,6 +1175,7 @@ end if
                 !!$
                 !!$ Defining lengths and allocating space for the matrices
 
+                print *, "Checkpoint 2" ! USER EDIT
                 call Defining_MaxLengths_for_Sparsity_Matrices( Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, Mdims%cv_nloc, Mdims%ph_nloc, Mdims%cv_nonods, &
                     mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
                     mx_ncolacv, mx_ncolm, mx_ncolph )
@@ -1191,6 +1197,7 @@ end if
                     if (Mdims%npres > 1) call deallocate_multi_pipe_package(pipes_aux)
                 end if
 
+                print *, "Checkpoint 3" ! USER EDIT
                 call put_CSR_spars_into_packed_state()
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields > 0) then
@@ -1232,6 +1239,7 @@ end if
                 ScalarField_Source_Store=0.
 !                allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
 !                allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.
+                print *, "Checkpoint 4" ! USER EDIT
                 if( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                     ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                     ! Initially clip and then ensure the components sum to unity so we don't get surprising results...

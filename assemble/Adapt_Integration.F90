@@ -523,7 +523,6 @@ contains
         !Disable all techniques but the very basics
         mshopt(2:4) = .false.
     end if
-
     call adptvy(intarr, intsiz, rlarr,  rlsiz, &
       & geom3d, srfgmy, useq, &
       & nnod,   nelm,   nselm,  absolutemxnods, &
@@ -546,20 +545,21 @@ contains
     if (present(adapt_error)) then
         adapt_error = (nsweep < 0)
         !Ensure consistenty between processors
-        call alland(adapt_error)
+        call allor(adapt_error)
+        if (adapt_error) return
+    else
+		if(nwnnod < 0) then
+		  FLAbort("Mesh adaptivity exited with an error")
+		end if
+		assert(nwnnod <= absolutemxnods)
+		assert(nwnelm >= 0)
     end if
 #else
-    FLExit("Fluidity compiled without libadaptivity support")
-#endif
-    call toc(TICTOC_ID_SERIAL_ADAPT)
-    ewrite(1, *) "Exited adptvy"
+		FLExit("Fluidity compiled without libadaptivity support")
+#endif  
 
-    if(nwnnod < 0) then
-      FLAbort("Mesh adaptivity exited with an error")
-    end if
-    assert(nwnnod <= absolutemxnods)
-    assert(nwnelm >= 0)
-    
+	call toc(TICTOC_ID_SERIAL_ADAPT)
+	ewrite(1, *) "Exited adptvy"  
     deallocate(orgmtx)
     deallocate(enlbas)
     deallocate(elmreg)
@@ -596,8 +596,8 @@ contains
               .or.present_and_true(force_preserve_regions)) then
       allocate(output_mesh%region_ids(nwnelm))
       output_mesh%region_ids = intarr(nwelrg:nwelrg + nwnelm - 1)
-    end if  
-
+    end if
+    
     if(nhalos > 0) then
       ewrite(2, *) "Constructing output halos"
       
@@ -650,7 +650,7 @@ contains
       
       ewrite(2, *) "Finished constructing output halos"
     end if
-
+    
     deallocate(gather)
     deallocate(atosen)
     deallocate(scater)
