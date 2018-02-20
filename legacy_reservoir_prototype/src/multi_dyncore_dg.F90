@@ -315,8 +315,13 @@ contains
 
                !Get information for capillary pressure to be use in CV_ASSEMB
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
-               call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, IDs2CV_ndgln, for_transport = .true.)
-
+               if (is_porous_media .and. thermal) then
+                   !Get information for capillary pressure to be use in CV_ASSEMB
+                   Phase_with_Ovrel = 1
+                   call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, IDs2CV_ndgln, for_transport = .true.)
+               else
+                Phase_with_Ovrel = -1
+               end if
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
