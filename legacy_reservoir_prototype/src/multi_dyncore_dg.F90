@@ -1503,7 +1503,6 @@ END IF
         DEALLOCATE( Mmat%U_RHS )
         DEALLOCATE( MASS_MN_PRES )
         call deallocate(Mmat%CT_RHS)
-!call printmatrix(Mmat%PIVIT_MAT(:,:,1) ) ! USER EDIT
         if (.not.is_porous_media) then
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
@@ -2406,7 +2405,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !For P1DGP1 the DCVFEM method does not work and requires P0DGP1. This is done through homogenisation
         !For historic reasons we always lump with the DCVFEM
         if (Mmat%CV_pressure) then
-            lump_mass = .false.
+            lump_mass = .true.
             call get_option( &
             '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
             if (j == 1) then
