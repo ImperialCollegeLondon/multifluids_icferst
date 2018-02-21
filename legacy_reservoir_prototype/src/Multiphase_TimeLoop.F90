@@ -197,6 +197,9 @@ contains
         integer, dimension(2) :: shape
         logical :: mesh_diagnostics = .false., bad_element = .false. ! print out mesh diagnostics / change properties of bad elements to improve deltaP calculations for bad meshes (with large angles)
 
+!!-Variable to keep track of dt reduction for meeting dump_period requirements
+        real, save :: stored_dt = -1
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -748,9 +751,21 @@ call solve_transport()
                 call get_option( '/timestepping/timestep', dt )
                 !To ensure that we always create a vtu file at the desired time (if requested),
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
+                !Original solution slowed down simulations due to having to build up dt again after forced reduction, now fixed by using stored_dt when appropiate
                 if (have_option('/io/dump_period')) then
                     maxc = max(min(maxc, abs(current_time - dump_period*dump_no)), 1d-15)
-                    !Make sure we dump at the required time and we don't get dt = 0
+                    ! Make sure we dump at the required time and we don't get dt = 0
+                    ! Storing current dt before reduction by period_dump, so we can go back to it after dump
+                    if (dt>maxc) then
+                        stored_dt=dt
+                    end if
+				end if
+                ! Checking if previous time step was reduced (dt) for meeting dump_period requirement
+                if (have_option('/io/dump_period')) then
+                    if (stored_dt>dt .and. dt>0) then
+                        ! If so, change increase/decrease dt tolerance (so it can catch up faster on dt-before-reduction-by-period-dump)
+                        ic=stored_dt/dt
+                    end if
                 end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
                 !Make sure we finish at required time and we don't get dt = 0
