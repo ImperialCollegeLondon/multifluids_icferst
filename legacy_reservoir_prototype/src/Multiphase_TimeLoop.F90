@@ -565,6 +565,39 @@ call solve_transport()
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
 
+                !!$ Solve advection of the scalar 'Temperature':
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
+                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, IDs2CV_ndgln=IDs2CV_ndgln)
+
+                    ! Copy back memory
+                    do iphase=1,Mdims%nphase
+                       T=>extract_scalar_field(state(iphase),"Temperature")
+                       T%val=tracer_field%val(1,iphase,:)
+                    end do
+
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if Conditional_ScalarAdvectionField
+
+
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance ) then
 
@@ -610,37 +643,6 @@ call solve_transport()
                 end if Conditional_PhaseVolumeFraction
 
 
-                !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
-                        !!$
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, IDs2CV_ndgln=IDs2CV_ndgln)
-
-                    ! Copy back memory
-                    do iphase=1,Mdims%nphase
-                       T=>extract_scalar_field(state(iphase),"Temperature")
-                       T%val=tracer_field%val(1,iphase,:)
-                    end do
-
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-                end if Conditional_ScalarAdvectionField
 
 
 
@@ -722,6 +724,7 @@ call solve_transport()
 
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
+            
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
@@ -745,15 +748,13 @@ call solve_transport()
                 call get_option( '/timestepping/timestep', dt )
                 !To ensure that we always create a vtu file at the desired time (if requested),
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
-                if (have_option('/io/dump_period/constant')) then
-                    call get_option( '/io/dump_period/constant', dump_period )
-                    !First get the next time for a vtu dump
-                    maxc = max(min(maxc, abs(acctim-(dble(ceiling(acctim/dump_period)) * dump_period))), minc*1d-3)
+                if (have_option('/io/dump_period')) then
+                    maxc = max(min(maxc, abs(current_time - dump_period*dump_no)), 1d-15)
                     !Make sure we dump at the required time and we don't get dt = 0
                 end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
-!                !Make sure that we finish at required time and we don't get dt = 0
-!                dt = max(min(dt, finish_time - current_time), 1d-15)
+                !Make sure we finish at required time and we don't get dt = 0
+                dt = max(min(dt, finish_time - current_time), 1d-15)
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
