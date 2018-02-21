@@ -759,10 +759,8 @@ call solve_transport()
                     if (dt>maxc) then
                         stored_dt=dt
                     end if
-				end if
-                ! Checking if previous time step was reduced (dt) for meeting dump_period requirement
-                if (have_option('/io/dump_period')) then
-                    if (stored_dt>dt .and. dt>0) then
+				    ! Checking if previous time step was reduced (dt) for meeting dump_period requirement
+                    if (ic<stored_dt/dt .and. dt>0) then
                         ! If so, change increase/decrease dt tolerance (so it can catch up faster on dt-before-reduction-by-period-dump)
                         ic=stored_dt/dt
                     end if
