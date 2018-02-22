@@ -749,13 +749,16 @@ call solve_transport()
                     end do
                 end if
                 call get_option( '/timestepping/timestep', dt )
+                print *, "current_time=",current_time
+                print *, "stored_dt=",stored_dt
+                print *, "ic1=",ic
                 !To ensure that we always create a vtu file at the desired time (if requested),
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
                 !Original solution slowed down simulations due to having to build up dt again after forced reduction, now fixed by using stored_dt when appropiate
                 if (have_option('/io/dump_period')) then
                     maxc = max(min(maxc, abs(current_time - dump_period*dump_no)), 1d-15)
                     ! Make sure we dump at the required time and we don't get dt = 0
-                    ! Storing current dt before reduction by period_dump, so we can go back to it after dump
+                    ! Storing current dt before reduction by period_dump when necessary, so we can go back to it after dump
                     if (dt>maxc) then
                         stored_dt=dt
                     end if
@@ -764,10 +767,17 @@ call solve_transport()
                         ! If so, change increase/decrease dt tolerance (so it can catch up faster on dt-before-reduction-by-period-dump)
                         ic=stored_dt/dt
                     end if
+                    ! Set stored_dt for normal case to -1 so ic is set as default/in diamond
+                    if (dt<=maxc) then
+                        stored_dt=-1
+                    end if
                 end if
+                print *, "ic2=",ic
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
+                print *,"dt=",dt
                 !Make sure we finish at required time and we don't get dt = 0
-                dt = max(min(dt, finish_time - current_time), 1d-15)
+                dt = max(min(dt, finish_time - current_time), 1d-15)                    
+                
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
