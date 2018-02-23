@@ -554,10 +554,41 @@ contains
         !Read the table
         do i = 1, table_size(2)
             read(89,*, IOSTAT=ierr) data_array(1:table_size(1), i)
-            if (ierr<0) exit
+            if (ierr/=0) exit
         end do
         close(89)
     end subroutine read_csv_table
+
+
+    subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
+        !This subroutine reads a csv file and returns
+        implicit none
+        integer, intent(out) :: Nentries
+        character( len = option_path_len ), intent(in) :: path_to_table
+        character(len=option_path_len), dimension(:,:),  allocatable, intent(out) :: csv_table_strings
+        !Local variables
+        integer :: i, ierr, start, end
+        integer, dimension(2) :: table_size
+        character( len = option_path_len ) :: cadena
+        !Allocate table
+        allocate(csv_table_strings(10000,4))!This should be enough
+
+        !Open file
+        open(unit= 89, file=trim(path_to_table)//'.csv', status='old', action='read')
+        !CSV table must start with the number of columns by rows
+        !Read the table
+        i = 1
+        start = 1
+        do while (.true.)
+            read(89,*, IOSTAT=ierr) csv_table_strings(i,:)!cadena
+            if (ierr/=0) exit
+            !Extract four strings from cadena
+            i = i + 1
+        end do
+        Nentries = i-1
+        close(89)
+
+    end subroutine extract_strings_from_csv_file
 
     !Subroutine to print Arrays by (columns,rows)
     !Matrix = 2D Array

@@ -94,6 +94,18 @@ start =
                 )   
                }
             ),
+          ## Path (without the extension) to the .csv file containing the fluid and porous media properties.
+          ## NOTE: Properties in the .csv file will overwrite the input from diamond.
+          ##
+          ## The information is stored as:
+          ##
+          ## Property, phase, region_ids(0= if all), value (values separated by _ for region ids and tensors)
+          ##
+          ## You can find an example in the Proous_media_general test case
+          ##
+          ## If using this, all the modifiable fields need to have the option to read from a csv file
+          element PropertiesFromFile {xsd:string
+          }?,
             ## Disable dump at simulation start
             element disable_dump_at_start {
                comment
@@ -1695,8 +1707,6 @@ start =
                      ## Relative permeability end point
                      ##
                      ## Value between 0 and 1. Default value 1.0
-                 element relperm_max {
-                 ## End-point relative permeability
                     element scalar_field {
                        attribute name { "relperm_max" },
                        (
@@ -1705,13 +1715,10 @@ start =
                              prescribed_scalar_field
                           }
                        )
-                    }
-                 }?,
+                    },
                      ## Relative permeability exponent
                      ##
                      ## Default value 2.0
-                 element relperm_exponent {
-                 ## Exponent of the formula
                      element scalar_field {
                         attribute name { "relperm_exponent" },
                         (
@@ -1721,7 +1728,6 @@ start =
                   }
                         )
                      }
-                }?
                 }?,
 		## Mark phase as being the continuous phase in dispersed fluid-fluid flow
 		element continuous_phase {
@@ -1884,34 +1890,6 @@ start =
                        )
                     },
                     ## exponent a
-                    element scalar_field {
-                       attribute name { "a" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
-                          }
-                       )
-                    }}?,
-                  ## Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)
-                  element type_TOTALCapillary {
-                    ## Overall coefficient scaling the capillary pressure
-                    element scalar_field {
-                       attribute name { "C" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
-                          }
-                       )
-                    },
-                    ## Exponent in the capillary pressure formula
                     element scalar_field {
                        attribute name { "a" },
                        (

@@ -482,40 +482,36 @@
     </scalar_field>
     <multiphase_properties>
       <Relperm_Corey>
-        <relperm_max>
-          <scalar_field name="relperm_max">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="WholeMesh">
-                <constant>
-                  <real_value rank="0">0.3</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_max>
-        <relperm_exponent>
-          <scalar_field name="relperm_exponent">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="WholeMesh">
-                <constant>
-                  <real_value rank="0">2</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_exponent>
+        <scalar_field name="relperm_max">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.3</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+        <scalar_field name="relperm_exponent">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">2</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </Relperm_Corey>
       <immobile_fraction>
         <scalar_field name="value">
@@ -806,40 +802,36 @@
     </scalar_field>
     <multiphase_properties>
       <Relperm_Corey>
-        <relperm_max>
-          <scalar_field name="relperm_max">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="WholeMesh">
-                <constant>
-                  <real_value rank="0">0.8</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_max>
-        <relperm_exponent>
-          <scalar_field name="relperm_exponent">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="WholeMesh">
-                <constant>
-                  <real_value rank="0">2</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_exponent>
+        <scalar_field name="relperm_max">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.8</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+        <scalar_field name="relperm_exponent">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">2</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </Relperm_Corey>
       <immobile_fraction>
         <scalar_field name="value">

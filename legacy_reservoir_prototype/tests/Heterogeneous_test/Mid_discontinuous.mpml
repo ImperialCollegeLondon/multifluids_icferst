@@ -439,54 +439,50 @@
     </scalar_field>
     <multiphase_properties>
       <Relperm_Corey>
-        <relperm_max>
-          <scalar_field name="relperm_max">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="inner">
-                <region_ids>
-                  <integer_value shape="1" rank="1">25</integer_value>
-                </region_ids>
-                <constant>
-                  <real_value rank="0">0.6</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_max>
-        <relperm_exponent>
-          <scalar_field name="relperm_exponent">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="inner">
-                <region_ids>
-                  <integer_value shape="1" rank="1">25</integer_value>
-                </region_ids>
-                <constant>
-                  <real_value rank="0">2</real_value>
-                </constant>
-              </value>
-              <value name="outer">
-                <region_ids>
-                  <integer_value shape="1" rank="1">24</integer_value>
-                </region_ids>
-                <constant>
-                  <real_value rank="0">1</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_exponent>
+        <scalar_field name="relperm_max">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="inner">
+              <region_ids>
+                <integer_value shape="1" rank="1">25</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">0.6</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+        <scalar_field name="relperm_exponent">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="inner">
+              <region_ids>
+                <integer_value shape="1" rank="1">25</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">2</real_value>
+              </constant>
+            </value>
+            <value name="outer">
+              <region_ids>
+                <integer_value shape="1" rank="1">24</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </Relperm_Corey>
       <capillary_pressure>
         <type_Brooks_Corey>
@@ -859,62 +855,58 @@
     </scalar_field>
     <multiphase_properties>
       <Relperm_Corey>
-        <relperm_max>
-          <scalar_field name="relperm_max">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="inner">
-                <region_ids>
-                  <integer_value shape="1" rank="1">25</integer_value>
-                </region_ids>
-                <constant>
-                  <real_value rank="0">1</real_value>
-                </constant>
-              </value>
-              <value name="outer">
-                <region_ids>
-                  <integer_value shape="1" rank="1">24</integer_value>
-                </region_ids>
-                <constant>
-                  <real_value rank="0">0.6</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_max>
-        <relperm_exponent>
-          <scalar_field name="relperm_exponent">
-            <prescribed>
-              <mesh name="P0DG"/>
-              <value name="inner">
-                <region_ids>
-                  <integer_value shape="1" rank="1">25</integer_value>
-                </region_ids>
-                <constant>
-                  <real_value rank="0">2</real_value>
-                </constant>
-              </value>
-              <value name="outer">
-                <region_ids>
-                  <integer_value shape="1" rank="1">24</integer_value>
-                </region_ids>
-                <constant>
-                  <real_value rank="0">1</real_value>
-                </constant>
-              </value>
-              <output/>
-              <stat/>
-              <detectors>
-                <exclude_from_detectors/>
-              </detectors>
-            </prescribed>
-          </scalar_field>
-        </relperm_exponent>
+        <scalar_field name="relperm_max">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="inner">
+              <region_ids>
+                <integer_value shape="1" rank="1">25</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </value>
+            <value name="outer">
+              <region_ids>
+                <integer_value shape="1" rank="1">24</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">0.6</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
+        <scalar_field name="relperm_exponent">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="inner">
+              <region_ids>
+                <integer_value shape="1" rank="1">25</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">2</real_value>
+              </constant>
+            </value>
+            <value name="outer">
+              <region_ids>
+                <integer_value shape="1" rank="1">24</integer_value>
+              </region_ids>
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </Relperm_Corey>
       <immobile_fraction>
         <scalar_field name="value">

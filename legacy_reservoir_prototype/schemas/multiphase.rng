@@ -114,6 +114,21 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
           </element>
         </choice>
         <optional>
+          <element name="PropertiesFromFile">
+            <a:documentation>Path (without the extension) to the .csv file containing the fluid and porous media properties.
+NOTE: Properties in the .csv file will overwrite the input from diamond.
+
+The information is stored as:
+
+Property, phase, region_ids(0= if all), value (values separated by _ for region ids and tensors)
+
+You can find an example in the Proous_media_general test case
+
+If using this, all the modifiable fields need to have the option to read from a csv file</a:documentation>
+            <data type="string"/>
+          </element>
+        </optional>
+        <optional>
           <element name="disable_dump_at_start">
             <a:documentation>Disable dump at simulation start</a:documentation>
             <ref name="comment"/>
@@ -2219,40 +2234,30 @@ via a compressible equation of state.</a:documentation>
 Corey relperm:
 
 relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent</a:documentation>
-                  <optional>
-                    <element name="relperm_max">
-                      <a:documentation>Relative permeability end point
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability end point
 
 Value between 0 and 1. Default value 1.0</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>End-point relative permeability</a:documentation>
-                        <attribute name="name">
-                          <value>relperm_max</value>
-                        </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                      </element>
+                    <attribute name="name">
+                      <value>relperm_max</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                  </optional>
-                  <optional>
-                    <element name="relperm_exponent">
-                      <a:documentation>Relative permeability exponent
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability exponent
 
 Default value 2.0</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>Exponent of the formula</a:documentation>
-                        <attribute name="name">
-                          <value>relperm_exponent</value>
-                        </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                      </element>
+                    <attribute name="name">
+                      <value>relperm_exponent</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                  </optional>
+                  </element>
                 </element>
               </optional>
               <optional>
@@ -2514,41 +2519,6 @@ ONLY specify for the wetting phase</a:documentation>
                       </element>
                       <element name="scalar_field">
                         <a:documentation>exponent a</a:documentation>
-                        <attribute name="name">
-                          <value>a</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
-                      </element>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="type_TOTALCapillary">
-                      <a:documentation>Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>Overall coefficient scaling the capillary pressure</a:documentation>
-                        <attribute name="name">
-                          <value>C</value>
-                        </attribute>
-                        <choice>
-                          <element name="prescribed">
-                            <ref name="material_mesh_choice"/>
-                            <ref name="prescribed_scalar_field"/>
-                          </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
-                      </element>
-                      <element name="scalar_field">
-                        <a:documentation>Exponent in the capillary pressure formula</a:documentation>
                         <attribute name="name">
                           <value>a</value>
                         </attribute>

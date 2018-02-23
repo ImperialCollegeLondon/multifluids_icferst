@@ -609,7 +609,6 @@ call solve_transport()
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
 
-
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
@@ -643,9 +642,6 @@ call solve_transport()
                 end if Conditional_ScalarAdvectionField
 
 
-
-
-
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
                 if ( have_component_field ) call calc_components()
@@ -655,6 +651,7 @@ call solve_transport()
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
                     exit Loop_NonLinearIteration
                 end if
+                !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, adapt_mesh_in_FPI, calculate_mass_delta)
 
@@ -674,7 +671,6 @@ call solve_transport()
                         exit Loop_NonLinearIteration
                     end if
                 end if
-
                 after_adapt=.false.
                 its = its + 1
                 first_nonlinear_time_step = .false.

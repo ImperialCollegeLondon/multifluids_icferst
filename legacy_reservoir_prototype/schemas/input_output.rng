@@ -63,19 +63,9 @@ THIS WILL NOT WORK FOR PRESCRIBED FIELDS NOT DIRECTLY UNDERNEATH /material_phase
         <ref name="vtu_input_format"/>
         <ref name="comment"/>
       </element>
-      <element name="NEMO_data">
-        <a:documentation>Initialize the field from NEMO data. Note that a file path
-under '/ocean_forcing/external_data_boundary_conditions' must
-be set to use this option.</a:documentation>
-        <element name="format">
-          <element name="string_value">
-            <choice>
-              <value>Temperature</value>
-              <value>Salinity</value>
-              <value>Free-surface height</value>
-            </choice>
-          </element>
-        </element>
+      <element name="csv_file">
+        <a:documentation>Initialize the field property from an input csv file, specified in io/PropertiesFromFile.</a:documentation>
+        <empty/>
       </element>
       <element name="plugin_function">
         <a:documentation>Initialize the field from a subroutine defined in an 
@@ -240,19 +230,9 @@ set to "input.vtu", process 0 reads from "input-0.vtu".</a:documentation>
         </choice>
         <ref name="comment"/>
       </element>
-      <element name="NEMO_data">
-        <a:documentation>Initialize the field from NEMO data. Note that a file path
-under '/ocean_forcing/external_data_boundary_conditions' must
-be set to use this option.</a:documentation>
-        <element name="format">
-          <element name="string_value">
-            <choice>
-              <value>Temperature</value>
-              <value>Salinity</value>
-              <value>Free-surface height</value>
-            </choice>
-          </element>
-        </element>
+      <element name="csv_file">
+        <a:documentation>Initialize the field property from an input csv file, specified in io/PropertiesFromFile.</a:documentation>
+        <empty/>
       </element>
       <element name="from_netcdf">
         <a:documentation>Initialize a single field from data contained within a NetCDF file.
@@ -320,19 +300,9 @@ Note this should be specified not only on the surface, but throughout the domain
 i.e. the same surface value should be applied to all nodes below, with the surface values projected across the mesh in the direction of the gravitational force.</a:documentation>
         <ref name="input_choice_initial_condition_real"/>
       </element>
-      <element name="NEMO_data">
-        <a:documentation>Initialize the field from NEMO data. Note that a file path
-under '/ocean_forcing/external_data_boundary_conditions' must
-be set to use this option.</a:documentation>
-        <element name="format">
-          <element name="string_value">
-            <choice>
-              <value>Temperature</value>
-              <value>Salinity</value>
-              <value>Free-surface height</value>
-            </choice>
-          </element>
-        </element>
+      <element name="csv_file">
+        <a:documentation>Initialize the field property from an input csv file, specified in io/PropertiesFromFile.</a:documentation>
+        <empty/>
       </element>
       <element name="from_netcdf">
         <a:documentation>Initialize a single field from data contained within a NetCDF file.
@@ -377,16 +347,9 @@ THIS WILL NOT WORK FOR PRESCRIBED FIELDS NOT DIRECTLY UNDERNEATH /material_phase
         <ref name="vtu_input_format"/>
         <ref name="comment"/>
       </element>
-      <element name="NEMO_data">
-        <a:documentation>Initialize the field from NEMO data. Note that a file path
-under '/ocean_forcing/external_data_boundary_conditions' must
-be set to use this option.</a:documentation>
-        <element name="format">
-          <a:documentation>Currently, only the velocity vector field may be initialised in this manner.</a:documentation>
-          <element name="string_value">
-            <value>Velocity</value>
-          </element>
-        </element>
+      <element name="csv_file">
+        <a:documentation>Initialize the field property from an input csv file, specified in io/PropertiesFromFile.</a:documentation>
+        <empty/>
       </element>
       <element name="no_initial_condition">
         <a:documentation>Indicate that no initial condition exists. Users should not set this;
@@ -474,16 +437,9 @@ where X and the return value are tuples of length geometry dimension.</a:documen
         <ref name="vtu_input_format"/>
         <ref name="comment"/>
       </element>
-      <element name="NEMO_data">
-        <a:documentation>Initialize the field from NEMO data. Note that a file path
-under '/ocean_forcing/external_data_boundary_conditions' must
-be set to use this option.</a:documentation>
-        <element name="format">
-          <a:documentation>Currently, only the velocity vector field may be initialised in this manner.</a:documentation>
-          <element name="string_value">
-            <value>Velocity</value>
-          </element>
-        </element>
+      <element name="csv_file">
+        <a:documentation>Initialize the field property from an input csv file, specified in io/PropertiesFromFile.</a:documentation>
+        <empty/>
       </element>
       <element name="no_initial_condition">
         <a:documentation>Indicate that no initial condition exists. Users should not set this;
@@ -538,6 +494,10 @@ An example that returns the three-dimensional identity:
                [0, 1, 0],
                [0, 0, 1]]</a:documentation>
         <ref name="python_code"/>
+      </element>
+      <element name="csv_file">
+        <a:documentation>Initialize the field property from an input csv file, specified in io/PropertiesFromFile.</a:documentation>
+        <empty/>
       </element>
     </choice>
   </define>
