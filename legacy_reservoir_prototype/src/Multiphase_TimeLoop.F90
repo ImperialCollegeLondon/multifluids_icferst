@@ -197,6 +197,9 @@ contains
         integer, dimension(2) :: shape
         logical :: mesh_diagnostics = .false., bad_element = .false. ! print out mesh diagnostics / change properties of bad elements to improve deltaP calculations for bad meshes (with large angles)
 
+!!-Variable to keep track of dt reduction for meeting dump_period requirements
+        real, save :: stored_dt = -1
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -718,6 +721,7 @@ call solve_transport()
 
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
+            
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
@@ -741,15 +745,28 @@ call solve_transport()
                 call get_option( '/timestepping/timestep', dt )
                 !To ensure that we always create a vtu file at the desired time (if requested),
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
-                if (have_option('/io/dump_period/constant')) then
-                    call get_option( '/io/dump_period/constant', dump_period )
-                    !First get the next time for a vtu dump
-                    maxc = max(min(maxc, abs(acctim-(dble(ceiling(acctim/dump_period)) * dump_period))), minc*1d-3)
-                    !Make sure we dump at the required time and we don't get dt = 0
+                !Original solution slowed down simulations due to having to build up dt again after forced reduction, now fixed by using stored_dt when appropiate
+                if (have_option('/io/dump_period')) then
+                    maxc = max(min(maxc, abs(current_time - dump_period*dump_no)), 1d-15)
+                    ! Make sure we dump at the required time and we don't get dt = 0
+                    ! Storing current dt before reduction by period_dump when necessary, so we can go back to it after dump
+                    if (dt>maxc) then
+                        stored_dt=dt
+                    end if
+				    ! Checking if previous time step was reduced (dt) for meeting dump_period requirement
+                    if (ic<stored_dt/dt .and. dt>0) then
+                        ! If so, change increase/decrease dt tolerance (so it can catch up faster on dt-before-reduction-by-period-dump)
+                        ic=stored_dt/dt
+                    end if
+                    ! Set stored_dt for normal case to -1 so ic is set as default/in diamond
+                    if (dt<=maxc) then
+                        stored_dt=-1
+                    end if
                 end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
-!                !Make sure that we finish at required time and we don't get dt = 0
-!                dt = max(min(dt, finish_time - current_time), 1d-15)
+                !Make sure we finish at required time and we don't get dt = 0
+                dt = max(min(dt, finish_time - current_time), 1d-15)                    
+                
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
