@@ -4362,8 +4362,13 @@ end if
                             call allsum(tmp2)
                             call allsum(tmp3)
                         end if
+
                         !Calculate possible mass creation inside the code
-                        calculate_mass_delta(1,2) = max(calculate_mass_delta(1,2), abs( tmp1 - tmp2 + tmp3 ) / tmp2)
+                        if (tmp2 > 1d-8) then
+                            calculate_mass_delta(1,2) = max(calculate_mass_delta(1,2), abs( tmp1 - tmp2 + tmp3 ) / tmp2)
+                        else
+                            calculate_mass_delta(1,2) = 0.
+                        end if
                     end do
 
                     !If calculate outfluxes then do it now

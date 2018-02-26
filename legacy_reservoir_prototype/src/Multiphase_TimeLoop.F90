@@ -207,21 +207,6 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
-!########################################################################################################################
-!########################################################################################################################
-!########################################################################################################################
-!########WARNING MESSAGE: ADAPTIVITY LIBRARY CURRENTLY IS COMPILED WITH -O1 INSTEAD OF -O3######################
-!THIS IS BECAUSE WITH THE LATEST VERSION OF GFORTRAN, I PRESUME, MORE ERRORS APPEAR WHEN CREATING A NEW MESH
-!THE ONLY AFFECTED SECTION IS LIBADAPTIVITY/ADAPT3D
-if (getprocno() == 1) then
-ewrite(1,*) "WARNING: ADAPTIVITY LIBRARY CURRENTLY IS COMPILED WITH -O1 INSTEAD OF -O3"
-end if
-!########################################################################################################################
-!########################################################################################################################
-!########################################################################################################################
-!########################################################################################################################
-
-
         ! Check wether we are using the CV_Galerkin method
         numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 

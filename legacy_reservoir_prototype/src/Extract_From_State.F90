@@ -2195,6 +2195,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             ! find the maximum mass error to compare with the tolerance below
             ! This is the maximum error of each indivial phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
+
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
                 call allmax(ts_ref_val)

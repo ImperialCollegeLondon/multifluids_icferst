@@ -147,7 +147,8 @@ contains
                 exit!Life is good! We can continue!
               else
                   !First deallocate new mesh as it is useless
-                  if (associated(new_positions%val)) call deallocate(new_positions)
+                  if (associated(new_positions%refcount)) call deallocate(new_positions)
+
                   select case (i)
                       case (1)!First time, we retry with more conservative settings
                               !imposed in Adapt_Integration.F90
@@ -181,7 +182,6 @@ contains
       case default
         FLAbort("Mesh adaptivity requires a 1D, 2D or 3D mesh")
     end select
-
     if(isparallel()) then
       expanded_positions = expand_positions_halo(new_positions)
       call deallocate(new_positions)
