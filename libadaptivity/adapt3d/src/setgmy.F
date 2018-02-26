@@ -630,9 +630,9 @@ c
          call setflg( biglst, nodlst, edptrs(k), 8, .TRUE.  )
          call stndfl( biglst, nodlst, ndptrs(k), 6, .TRUE. )
          call stndfl( biglst, nodlst, inod,      6, .TRUE. )
-         WRITE(0,*) '+++ GMYBAD: Turned into geometry node'
-         WRITE(0,*) '  olded,newed:',edptrs(gmyed1),edptrs(k)
-         WRITE(0,*) '  node,othnd: ',inod,ndptrs(k)
+         WRITE(1,*) '+++ GMYBAD: Turned into geometry node'
+         WRITE(1,*) '  olded,newed:',edptrs(gmyed1),edptrs(k)
+         WRITE(1,*) '  node,othnd: ',inod,ndptrs(k)
          j = 1
  350     if( hasedg(biglst,nodlst,elptrs(j),edptrs(k)).eq.0 ) then
             j = j + 1

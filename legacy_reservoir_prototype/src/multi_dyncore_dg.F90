@@ -1356,7 +1356,7 @@ end if
                call deallocate(rhs)
                U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             END IF
-            if (isParallel()) call halo_update(U_ALL2)!<=works well, only fails after adapting the mesh!!
+!            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
             deallocate( UP_VEL )
 IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
