@@ -2181,6 +2181,9 @@ coefficient_discretisation_options =
         ##  =0.  -- explicit
         ##  =0.5 -- Crank-Nicolson
         ##  =1.  -- implicit
+        ##
+        ## =-1. -- Automatic
+
         element theta {
           real
         },

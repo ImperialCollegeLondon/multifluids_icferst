@@ -1638,9 +1638,9 @@ C
      :     '   NODLST efficiency: ',STR2
 C
       IF( SPLTED .AND. .NOT. SPLED2 ) THEN
-         ewrite(0,8) 
+         ewrite(1,8)
      :        '+++ ADAPT1: WARNING! LISTS WERE FILLING UP!'
-         ewrite(0,8)
+         ewrite(1,8)
      :  '   ** Edge splitting was switched off during adapt sweep **'
       END IF
 C
