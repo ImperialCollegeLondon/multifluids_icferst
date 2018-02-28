@@ -5553,9 +5553,10 @@ element equation_of_state{
                      element compressible {
                         ## Stiffened Gas EoS
                         ##
-                        ## Used with compressible simulations
-                        ##
                         ## DEN = ( P + EOS_COEFS( 1 )) * EOS_COEFS( 2 ) / T
+                        ##
+                        ## Note that setting EOS_COEFS( 1 ) = 0. and EOS_COEFS( 2 ) = 1/gas constant (Rd [J/kg/K])
+                        ## The equation for ideal gases is obtained.
                         element stiffened_gas {
                            element eos_option1 { real },
                            element eos_option2 { real },

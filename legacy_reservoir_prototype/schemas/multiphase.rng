@@ -6975,9 +6975,10 @@ the hydrostatic level</a:documentation>
             <element name="stiffened_gas">
               <a:documentation>Stiffened Gas EoS
 
-Used with compressible simulations
+DEN = ( P + EOS_COEFS( 1 )) * EOS_COEFS( 2 ) / T
 
-DEN = ( P + EOS_COEFS( 1 )) * EOS_COEFS( 2 ) / T</a:documentation>
+Note that setting EOS_COEFS( 1 ) = 0. and EOS_COEFS( 2 ) = 1/gas constant (Rd [J/kg/K])
+The equation for ideal gases is obtained.</a:documentation>
               <element name="eos_option1">
                 <ref name="real"/>
               </element>
