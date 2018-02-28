@@ -5658,7 +5658,9 @@ element equation_of_state{
                               real
                            }
                         }|
-                        ## Temperature-Pressure correlation 
+                        ## Temperature-Pressure correlation for liquids ONLY.
+                        ##
+                        ## Range of applicability: 0 to 2*10^9 Pa.
                         ##
                         ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
                         ##
