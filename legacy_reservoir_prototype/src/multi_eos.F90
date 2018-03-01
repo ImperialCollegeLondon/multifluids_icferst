@@ -1398,7 +1398,9 @@ contains
             CapPressure = 0.
             ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
             if (first_time) then
+                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
                 Cap_Brooks = .not. (Cap_Power)
+
                 first_time = .false.
             end if
 
@@ -1469,14 +1471,14 @@ contains
         aux = ( 1.0 - sum(immobile_fraction(:)) )
         ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
         if (first_time) then
-                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_", nphase)
+                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
                 Cap_Brooks = .not. (Cap_Power)
                 first_time = .false.
         end if
 
         if(Cap_Power) then
             Get_DevCapPressure = &
-                -a*Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) ) **(a-1)
+                -a*Pe/(1.0 - sum(Immobile_fraction(:)) )  * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) ) **(a-1)
         else
             Get_DevCapPressure = &
                 -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
