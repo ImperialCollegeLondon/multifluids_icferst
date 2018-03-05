@@ -804,7 +804,6 @@ call solve_transport()
         if(.not. have_option("/io/disable_dump_at_end")) then
             call write_state(dump_no, state)
         end if
-
         call tag_references()
         call deallocate(packed_state)
         call deallocate(multiphase_state)
@@ -830,6 +829,7 @@ call solve_transport()
         endif
         !***************************************
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
+
         return
     contains
 

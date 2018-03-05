@@ -231,7 +231,7 @@ contains
                if (thermal) then
                    !We control with the infinite norm of the difference the non-linear iterations done in this sub-cycle
                    !therefore the minimum/default value of nits_flux_lim is set to 9
-                   nits_flux_lim = max(nits_flux_lim, 9)
+                   nits_flux_lim = max(nits_flux_lim, 9)!Currently overriden as we are not updating the rhs or other fields so this is not useful
                    allocate(reference_temp(1, Mdims%nphase, Mdims%cv_nonods))
                    if (inf_tolerance<0) then
                        !Tolerance for the infinite norm
@@ -310,8 +310,11 @@ contains
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-
+NITS_FLUX_LIM = 1!<= currently looping here more does not add anything as RHS and/or velocity are not updated
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+
+
+
 
                !Get information for capillary pressure to be use in CV_ASSEMB
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
@@ -322,9 +325,11 @@ contains
                else
                 Phase_with_Ovrel = -1
                end if
+
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -347,7 +352,6 @@ contains
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                    OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
-
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -366,26 +370,19 @@ contains
                    ELSE
                        call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
-                       !There is a bug, or instability issue, and the matrix and RHS get here with NaNs so we first check for it here
-                       if (isnan(Mmat%CV_RHS%val(1,1)) .or. isnan(Mmat%CV_RHS%val(size(Mmat%CV_RHS%val,1),size(Mmat%CV_RHS%val,2))) ) then
-                            !Avoid the solver as it is going to fail and pollute the temperature field.
-                            !Just ensure that the time-level is repeated if using ensure solver convergence is on
-                            call deallocate(Mmat%petsc_ACV, iphase)
-                            solver_not_converged = .true.
-                            cycle
-                       else
-                            call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
-                       end if
+                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+
                        do iphase = 1, Mdims%nphase
                            ewrite(2,*) 'T phase min_max:', iphase, &
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+
                    !Checking solver not fully implemented
                    if (its_taken >= max_allowed_its .or. its_taken == 0 ) solver_not_converged = .true.
                    !Just after the solvers
-                   call deallocate(Mmat%petsc_ACV, iphase)
-
+                    !call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+                    call clone_deallocate_PETSC_ACV_matrix()
                END IF Conditional_Lumping
                 !Control how it is converging and decide
                if(thermal) then
@@ -412,6 +409,34 @@ contains
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
+
+
+      subroutine clone_deallocate_PETSC_ACV_matrix()
+        !This subroutine was created to avoid a bug with Ubuntu 16.04 happening when compiling in non-debugging
+          implicit none
+
+          integer :: ierr
+
+          ierr=0
+          !call decref(Mmat%petsc_ACV)!<= this seems to be the problem; with debugging everything works. This creates a deallocation error when finishing a run
+          if (associated(Mmat%petsc_ACV%refcount)) nullify(Mmat%petsc_ACV%refcount)!do this by hand
+          call MatDestroy(Mmat%petsc_ACV%M, ierr)
+
+          call deallocate(Mmat%petsc_ACV%row_numbering)
+
+          call deallocate(Mmat%petsc_ACV%column_numbering)
+
+          if (associated(Mmat%petsc_ACV%row_halo)) then
+              call deallocate(Mmat%petsc_ACV%row_halo)
+              deallocate(Mmat%petsc_ACV%row_halo)
+          end if
+
+          if (associated(Mmat%petsc_ACV%column_halo)) then
+              call deallocate(Mmat%petsc_ACV%column_halo)
+              deallocate(Mmat%petsc_ACV%column_halo)
+          end if
+
+      end subroutine clone_deallocate_PETSC_ACV_matrix
 
 
       real function convergence_check(temperature, reference_temp)

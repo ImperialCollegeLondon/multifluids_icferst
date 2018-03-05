@@ -219,10 +219,10 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call deallocate_transform_cache()
 
     ewrite(2, *) "Tagged references remaining:"
-    call print_tagged_references(0)
+    call print_tagged_references(1)
 
 #ifdef HAVE_MEMORY_STATS
-    call print_current_memory_stats(0)
+    call print_current_memory_stats(1)
 #endif
 
     call toc(TICTOC_ID_SIMULATION)
