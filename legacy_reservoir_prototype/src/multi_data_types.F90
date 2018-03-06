@@ -1344,6 +1344,8 @@ contains
             allocate(outfluxes%outlet_id(shapes(1)))
             call get_option( "/io/dump_boundaryflux/surface_ids", outfluxes%outlet_id)
         endif
+!        !At least size 1 to be used to calculate the whole mass of the domain
+!        if (.not. allocated(outfluxes%outlet_id)) allocate(outfluxes%outlet_id(1))
 
     end subroutine initialize_multi_outfluxes
 

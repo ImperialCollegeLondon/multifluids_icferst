@@ -640,7 +640,12 @@ contains
             ENDIF
             ! Initialise the calculate_mass variables
             !Allocate array to pass to store mass going through the boundaries
-            allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+            if (allocated( outfluxes%outlet_id )) then
+                allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+            else
+                allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+            end if
+
             allocate ( calculate_mass_internal(Mdims%nphase))
             calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
             !Extract temperature for outfluxes if required

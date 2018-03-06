@@ -153,9 +153,12 @@ contains
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
            integer, save :: max_allowed_its = -1
-           !Variables for capillary pressure
+           !Variables for vanishing diffusion
            real, dimension(Mdims%cv_nonods) :: OvRelax_param
            integer :: Phase_with_Ovrel
+           !temperature backup for the petsc bug
+           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
+
 
            if(max_allowed_its < 0)  call get_option( &
                '/material_phase[0]/scalar_field::Temperature/prognostic/solver/max_iterations',&
@@ -310,7 +313,9 @@ contains
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-NITS_FLUX_LIM = 1!<= currently looping here more does not add anything as RHS and/or velocity are not updated
+NITS_FLUX_LIM = 9!<= currently looping here more does not add anything as RHS and/or velocity are not updated
+                !we set up 9 iterations but if it converges we exit straigth away
+temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
 
@@ -329,6 +334,7 @@ NITS_FLUX_LIM = 1!<= currently looping here more does not add anything as RHS an
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
@@ -378,11 +384,18 @@ NITS_FLUX_LIM = 1!<= currently looping here more does not add anything as RHS an
                        end do
                    END IF
 
-                   !Checking solver not fully implemented
-                   if (its_taken >= max_allowed_its .or. its_taken == 0 ) solver_not_converged = .true.
                    !Just after the solvers
-                    !call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-                    call clone_deallocate_PETSC_ACV_matrix()
+                   !call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+                   call clone_deallocate_PETSC_ACV_matrix()
+                   !Checking solver not fully implemented
+                   if (its_taken == 0 ) then
+                       solver_not_converged = .true.
+                        tracer%val(1,:,:) = temp_bak!recover backup
+                       cycle!repeat
+                   else
+                       solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                       exit!good to go!
+                   end if
                END IF Conditional_Lumping
                 !Control how it is converging and decide
                if(thermal) then
