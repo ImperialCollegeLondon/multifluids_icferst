@@ -3511,20 +3511,20 @@ end subroutine get_DarcyVelocity
             write(default_stat%conv_unit,*), trim(whole_line)
         endif
         ! Write the actual numbers to the file now
-        write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+        write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
         whole_line =  trim(numbers)
         do ioutlet =1, size(outfluxes%intflux,2)
             do iphase = 1, size(outfluxes%intflux,1)
-                write(fluxstring(iphase),'(f15.5)') outfluxes%totout(1, iphase,ioutlet)
+                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(1, iphase,ioutlet)
                 whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
             enddo
             do iphase = 1, size(outfluxes%intflux,1)
-                write(intfluxstring(iphase),'(g15.5)') outfluxes%intflux(iphase,ioutlet)
+                write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
                 whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
             enddo
             if (has_temperature) then
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(tempstring(iphase),'(f15.5)') outfluxes%totout(2, iphase,ioutlet)
+                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(2, iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
             end if
