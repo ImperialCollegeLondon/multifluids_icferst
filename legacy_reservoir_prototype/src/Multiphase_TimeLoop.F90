@@ -615,13 +615,13 @@ call solve_transport()
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
                     !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                     tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    ewrite(3,*)'Now advecting Temperature Field'
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call set_nu_to_u( packed_state )
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &

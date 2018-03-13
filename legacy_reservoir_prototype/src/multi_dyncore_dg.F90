@@ -335,7 +335,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
-
+!    call MatAssemblyBegin(Mmat%petsc_ACV%M, MAT_FLUSH_ASSEMBLY, iphase)
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -358,6 +358,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                    OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
+!    call MatAssemblyEnd(Mmat%petsc_ACV%M, MAT_FLUSH_ASSEMBLY, iphase)
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -374,8 +375,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
                         '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
                    ELSE
-                       call zero_non_owned(Mmat%CV_RHS)
-                       call zero(vtracer)
+!                       call zero_non_owned(Mmat%CV_RHS)
+!                       call zero(vtracer)
                         call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
                        do iphase = 1, Mdims%nphase
