@@ -2579,7 +2579,9 @@ field itself).</a:documentation>
           <a:documentation>Implicit/explicit control (TTHETA)
  =0.  -- explicit
  =0.5 -- Crank-Nicolson
- =1.  -- implicit</a:documentation>
+ =1.  -- implicit
+
+=-1. -- Automatic</a:documentation>
           <ref name="real"/>
         </element>
         <element name="control_volumes">

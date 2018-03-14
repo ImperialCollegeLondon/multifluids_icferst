@@ -197,7 +197,7 @@ contains
       ! Create serial matrix:
       matrix%M=csr2petsc_CreateSeqAIJ(sparsity, matrix%row_numbering, &
         matrix%column_numbering, ldiagonal, use_inodes=use_inodes)
-      
+
     else
 
        if (associated(sparsity%row_halo)) then

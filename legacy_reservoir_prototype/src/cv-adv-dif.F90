@@ -640,7 +640,12 @@ contains
             ENDIF
             ! Initialise the calculate_mass variables
             !Allocate array to pass to store mass going through the boundaries
-            allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+            if (allocated( outfluxes%outlet_id )) then
+                allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+            else
+                allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+            end if
+
             allocate ( calculate_mass_internal(Mdims%nphase))
             calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
             !Extract temperature for outfluxes if required
@@ -800,7 +805,7 @@ contains
         allocate(CV_P_PHASE_NODI(Mdims%nphase),CV_P_PHASE_NODJ(Mdims%nphase))
         allocate(CT_RHS_PHASE_CV_NODI(Mdims%nphase),CT_RHS_PHASE_CV_NODJ(Mdims%nphase))
 
-        IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
+        IF ( use_volume_frac_T2 ) call get_var_from_packed_state( packed_state, &
             PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
         ! variables for get_int_tden********************
         ! Set up the fields...
@@ -1079,7 +1084,7 @@ contains
         IF ( CV_DISOPT >= 5 ) IANISOLIM = 1
         ALLOCATE( TUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), TOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), &
             DENUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), DENOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ) )
-        ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
+        ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol), T2OLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ) )
         IF ( IANISOLIM == 0 ) THEN
             ! Isotropic limiting - calculate far field upwind maticies...
             CALL ISOTROPIC_LIMITER_ALL( &
@@ -2019,8 +2024,8 @@ contains
                                 END IF
                                 ! this is for the internal energy equation source term..
                                 ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
-                                !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
-                                IF ( THERMAL .and. Mdims%npres == 1) THEN
+                                ! for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
+                                IF ( THERMAL .and. Mdims%npres == 1 ) THEN
                                     THERM_FTHETA = 1.0
                                     IF( RETRIEVE_SOLID_CTY ) THEN
                                         VOL_FRA_FLUID_I = VOL_FRA_FLUID(CV_NODI)
@@ -4362,8 +4367,13 @@ end if
                             call allsum(tmp2)
                             call allsum(tmp3)
                         end if
+
                         !Calculate possible mass creation inside the code
-                        calculate_mass_delta(1,2) = max(calculate_mass_delta(1,2), abs( tmp1 - tmp2 + tmp3 ) / tmp2)
+                        if (tmp2 > 1d-8) then
+                            calculate_mass_delta(1,2) = max(calculate_mass_delta(1,2), abs( tmp1 - tmp2 + tmp3 ) / tmp2)
+                        else
+                            calculate_mass_delta(1,2) = 0.
+                        end if
                     end do
 
                     !If calculate outfluxes then do it now

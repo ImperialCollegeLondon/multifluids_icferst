@@ -1,0 +1,21 @@
+Relperm_Corey-relperm_max,1,25,0.6
+Relperm_Corey-relperm_max,1,24,0.2
+Relperm_Corey-relperm_exponent,1,25,2.
+Relperm_Corey-relperm_exponent,1,24,1.
+capillary_pressure-type_Brooks_Corey-C,1,25,1e-3
+capillary_pressure-type_Brooks_Corey-C,1,24,1e-2
+capillary_pressure-type_Brooks_Corey-a,1,25,0.5
+capillary_pressure-type_Brooks_Corey-a,1,24,1.0
+immobile_fraction-value, 1, 24, 0.2
+immobile_fraction-value, 1, 25, 0.1
+Relperm_Corey-relperm_max,2,25,1.
+Relperm_Corey-relperm_max,2,24,0.6
+Relperm_Corey-relperm_exponent,2,25,2.
+Relperm_Corey-relperm_exponent,2,24,1.
+immobile_fraction-value, 2, 25, 0.1
+immobile_fraction-value, 2, 24, 0.2
+Porosity,0,25,0.3
+Porosity,0,24,0.2
+Permeability,0,25,2.0_0.0_0.0_2.0
+Permeability,0,24,1.0_0.0_0.0_0.5
+

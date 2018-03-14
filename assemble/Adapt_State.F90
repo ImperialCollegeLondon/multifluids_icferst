@@ -147,13 +147,16 @@ contains
                 exit!Life is good! We can continue!
               else
                   !First deallocate new mesh as it is useless
-                  if (associated(new_positions%val)) call deallocate(new_positions)
+                  if (associated(new_positions%refcount)) call deallocate(new_positions)
+
                   select case (i)
                       case (1)!First time, we retry with more conservative settings
                               !imposed in Adapt_Integration.F90
                           !Restart to original mesh
                           if (getprocno() == 1) then
+                            ewrite(0,*) "##############################################################################################"
                             ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
+                            ewrite(0,*) "##############################################################################################"
                           end if
                           if(isparallel()) then
                               ! generate stripped versions of the position and metric fields
@@ -163,8 +166,11 @@ contains
                               stripped_metric = metric
                           end if
                       case default!Second time, back to original mesh...
+                          !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
                           if (getprocno() == 1) then
-                            write(0,*) "WARNING: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
+                            ewrite(0,*) "##############################################################################################"
+                            ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
+                            ewrite(0,*) "##############################################################################################"
                           end if
                           call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
                           call set(new_positions,old_positions)
@@ -181,7 +187,6 @@ contains
       case default
         FLAbort("Mesh adaptivity requires a 1D, 2D or 3D mesh")
     end select
-
     if(isparallel()) then
       expanded_positions = expand_positions_halo(new_positions)
       call deallocate(new_positions)

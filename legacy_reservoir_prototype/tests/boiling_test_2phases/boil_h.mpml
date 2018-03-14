@@ -162,7 +162,13 @@
       <real_value rank="0">0.25</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">3</integer_value>
+      <integer_value rank="0">10</integer_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">1e-2</real_value>
+        <Infinite_norm_tol>
+          <real_value rank="0">0.03</real_value>
+        </Infinite_norm_tol>
+      </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
   <physical_parameters>
@@ -657,9 +663,9 @@ for i in range( t.node_count ):
             <real_value rank="0">1.0e-15</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">501</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -1146,9 +1152,9 @@ for i in range( t.node_count ):
             <real_value rank="0">1.0e-15</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">501</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -1630,9 +1636,9 @@ for i in range( t.node_count ):
             <real_value rank="0">1.0e-15</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">501</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>

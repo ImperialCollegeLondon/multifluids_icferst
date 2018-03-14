@@ -612,17 +612,16 @@ call solve_transport()
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
 
-
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
                     !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                     tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    ewrite(3,*)'Now advecting Temperature Field'
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call set_nu_to_u( packed_state )
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
@@ -655,6 +654,7 @@ call solve_transport()
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
                     exit Loop_NonLinearIteration
                 end if
+                !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, adapt_mesh_in_FPI, calculate_mass_delta)
 
@@ -674,7 +674,6 @@ call solve_transport()
                         exit Loop_NonLinearIteration
                     end if
                 end if
-
                 after_adapt=.false.
                 its = its + 1
                 first_nonlinear_time_step = .false.
@@ -805,7 +804,6 @@ call solve_transport()
         if(.not. have_option("/io/disable_dump_at_end")) then
             call write_state(dump_no, state)
         end if
-
         call tag_references()
         call deallocate(packed_state)
         call deallocate(multiphase_state)
@@ -831,6 +829,7 @@ call solve_transport()
         endif
         !***************************************
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
+
         return
     contains
 

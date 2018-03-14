@@ -578,13 +578,14 @@ contains
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
             !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
             allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
-            if ( have_temperature_field ) temperature_local = temperature % val
+            if ( have_temperature_field ) temperature_local = max(temperature % val,1e-8)!avoid possible oscillations introduced by unphysical values of temperature
+                                                                                        !appearing while achieving convergence
 
             allocate( eos_coefs( 5 ) ) ; eos_coefs = 0.
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', eos_coefs( 1 ) )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/T0/', eos_coefs( 2 ), default = 0. )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/P0/', eos_coefs( 3 ) )
-            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ) )
+            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ), default = 0. )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_E/', eos_coefs( 5 ), default = 0. )
 
             !!$ den = den0/(1+Beta(T1-T0))
@@ -599,8 +600,7 @@ contains
 
             dRhodP =  0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             !we add the pressure part =>1-(P1-P0)/E
-            Rho = abs(Rho /(1-((pressure%val(1,1,:)-eos_coefs(3))/eos_coefs(5))))!ensure a positive density
-                                                                                 !
+            Rho = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5) -eos_coefs(3))/eos_coefs(5)) ) !to avoid possible oscillations the pressure is imposed to be between the range of applicability of the formula.
             deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
@@ -1380,7 +1380,7 @@ contains
             integer, intent(in) :: totele, cv_nloc
             ! Local Variables
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
-            logical, save :: Cap_Brooks = .true., Cap_TOTAL = .false., Cap_Power = .false.
+            logical, save :: Cap_Brooks = .true., Cap_Power = .false.
             logical, save :: first_time = .true.
             !Working pointers
             real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term
@@ -1396,16 +1396,17 @@ contains
             allocate(Cont_correction(size(satura,2)))
 
             CapPressure = 0.
-            ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless TOTAL Pc activated (important to allow overelax even when Pc is off).
+            ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
             if (first_time) then
-                Cap_TOTAL = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_TOTALCapillary", nphase)
-                Cap_Brooks = .not. (Cap_Power .or. Cap_TOTAL)
+                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
+                Cap_Brooks = .not. (Cap_Power)
+
                 first_time = .false.
             end if
 
             DO IPHASE = 1, NPHASE
 
-                if ( (Cap_Brooks) .or. (Cap_TOTAL) .or. (Cap_Power) ) then
+                if ( (Cap_Brooks) .or. (Cap_Power) ) then
 
                     !Apply Capillary model
                     do jphase = 1, nphase
@@ -1441,12 +1442,7 @@ contains
                 !Local
                 real, parameter :: eps = 1d-3 !Small values requires smaller time steps
 
-                if(Cap_TOTAL) then
-                    ! Function is CMC * sqrt(phi/K) * (1-S_norm) ^ a  ! Absorb the sqrt(phi/K) into the constant CMC (User has to specify it !!!)
-                    ! Note also this model only really makes physical sense with a > 0
-                    Get_capPressure = &
-                        Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**a
-                elseif(Cap_Power) then
+                if(Cap_Power) then
                     ! Function is Max_Cap_Pressure * (1-S_norm) ^ a Specify Max_Cap_Pressure in C parameter and exponent a (a>0)
                     Get_capPressure = &
                         Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**a
@@ -1469,24 +1465,20 @@ contains
         real, parameter :: eps = 1d-3
         real :: aux
         integer :: i
-        logical, save :: Cap_Brooks = .true., Cap_TOTAL = .false., Cap_Power = .false.
+        logical, save :: Cap_Brooks = .true., Cap_Power = .false.
         logical, save :: first_time = .true.
 
         aux = ( 1.0 - sum(immobile_fraction(:)) )
-        ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless TOTAL Pc activated (important to allow overelax even when Pc is off).
+        ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
         if (first_time) then
-                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_", nphase)
-                Cap_TOTAL = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_TOTALCapillary", nphase)
-                Cap_Brooks = .not. (Cap_Power .or. Cap_TOTAL)
+                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
+                Cap_Brooks = .not. (Cap_Power)
                 first_time = .false.
         end if
 
-        if(Cap_TOTAL) then
+        if(Cap_Power) then
             Get_DevCapPressure = &
-                -(a/(1.0 - sum(Immobile_fraction(:))))* Pe * (1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**(a-1)
-        elseif(Cap_Power) then
-            Get_DevCapPressure = &
-                -a*Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) ) **(a-1)
+                -a*Pe/(1.0 - sum(Immobile_fraction(:)) )  * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) ) **(a-1)
         else
             Get_DevCapPressure = &
                 -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
@@ -2632,7 +2624,7 @@ contains
         !Retrieve relperm max
         do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/relperm_max/scalar_field::relperm_max/prescribed/value"
+                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(2,iphase,:) = max(min(targ_Store%val(:), 1.0), 0.0)
@@ -2640,11 +2632,10 @@ contains
                 t_field%val(2,iphase,:) = 1.0
             end if
         end do
-
         !Retrieve relperm exponent
         do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/relperm_exponent/scalar_field::relperm_exponent/prescribed/value"
+                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(3,iphase,:) = targ_Store%val(:)
@@ -2659,15 +2650,10 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-                path2 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::C/prescribed/value"
                 path3 = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(4,iphase,:) = targ_Store%val(:)
-                elseif (have_option(trim(path2))) then
-                    call initialise_field_over_regions(targ_Store, trim(path2) , position)
                     t_field%val(4,iphase,:) = targ_Store%val(:)
                 elseif (have_option(trim(path3))) then
                     call initialise_field_over_regions(targ_Store, trim(path3) , position)
@@ -2681,15 +2667,10 @@ contains
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-                path2 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::a/prescribed/value"
                 path3 = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
-                    t_field%val(5,iphase,:) = targ_Store%val(:)
-                elseif (have_option(trim(path2))) then
-                    call initialise_field_over_regions(targ_Store, trim(path2) , position)
                     t_field%val(5,iphase,:) = targ_Store%val(:)
                 elseif (have_option(trim(path3))) then
                     call initialise_field_over_regions(targ_Store, trim(path3) , position)

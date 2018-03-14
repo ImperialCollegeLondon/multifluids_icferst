@@ -1991,6 +1991,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
+    integer, save :: nonlinear_its=0!Needed for adapt_within_fpi to consider all the non-linear iterations together
     real, save :: stored_dt = -1
     logical, save :: adjusted_ts_to_dump = .false.
     real :: dt, auxR, dump_period
@@ -2014,6 +2015,17 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Variables for adaptive time stepping based on non-linear iterations
     real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
     integer :: variable_selection, NonLinearIteration
+    !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
+    !consider less iterations of the total ones if adapting time using PID
+    if (.not.have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+        nonlinear_its = its
+    else
+        if (.not.ExitNonLinearLoop) then
+            nonlinear_its = its!Only do something different when we are suppose to exit
+        else!Store when we are in theory finishing
+            nonlinear_its = nonlinear_its + its
+        end if
+    end if
     !ewrite(0,*) "entering"
     !First of all, check if the user wants to do something
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
@@ -2078,7 +2090,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !we either store the data or we recover it if repeting a timestep
             !Procedure to repeat time-steps
             !If  Repeat_time_step then we recover values, else we store them
-            if (its == 1) call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
+            if (nonlinear_its == 1) call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
         case (2)!Calculate and store reference_field
             !Store variable to check afterwards
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
@@ -2153,7 +2165,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
 
                     !Calculate value of the functional
-                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
+                    ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
                     backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
 
                 case (4)!Temperature
@@ -2183,6 +2195,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             ! find the maximum mass error to compare with the tolerance below
             ! This is the maximum error of each indivial phase
             max_calculate_mass_delta = calculate_mass_delta(1,2)
+
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) then
                 call allmax(ts_ref_val)
@@ -2390,7 +2403,7 @@ contains
         aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
         if (Aim_num_FPI > 0) then                     !Options for the exponent:
-            Cn(3) = (dble(its)/dble(Aim_num_FPI))**0.9! 2.0 => too strongly enforce the number of iterations, ignores other criteria
+            Cn(3) = (dble(nonlinear_its)/dble(Aim_num_FPI))**0.9! 2.0 => too strongly enforce the number of iterations, ignores other criteria
             aux = aux + 1.0                           ! 1.0 => default value, forces the number of iterations, almost ignore other criteria
         end if                                        ! 0.6 => soft constrain, it will try but not very much, considers other criteria
         if (max_criteria) then
@@ -3095,8 +3108,6 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
         elseif (have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::C/prescribed/value'
-        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::C/prescribed/value'
         endif
         k = 0
         do i = 0, nphase-1
@@ -3112,8 +3123,6 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
         elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
             root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::a/prescribed/value'
-        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_TOTALCapillary', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_TOTALCapillary/scalar_field::a/prescribed/value'
         endif
         k = 0
         do i = 0, nphase-1
@@ -3140,7 +3149,7 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
     end if
     !Check relative permeability
     if (have_option_for_any_phase('/multiphase_properties/Relperm_Corey/', nphase)) then
-        root_path = '/multiphase_properties/Relperm_Corey/relperm_max/'&
+        root_path = '/multiphase_properties/Relperm_Corey/'&
             //'scalar_field::relperm_max/prescribed/value'
         k = 0
         do i = 0, nphase-1
@@ -3152,7 +3161,7 @@ subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_
                 all_fields_costant = .false.
         end do
 
-        root_path = '/multiphase_properties/Relperm_Corey/relperm_exponent/'&
+        root_path = '/multiphase_properties/Relperm_Corey/'&
             //'scalar_field::relperm_exponent/prescribed/value'
         k = 0
         do i = 0, nphase-1
@@ -3502,20 +3511,20 @@ end subroutine get_DarcyVelocity
             write(default_stat%conv_unit,*), trim(whole_line)
         endif
         ! Write the actual numbers to the file now
-        write(numbers,'(g15.5,a,f15.5, a, g15.5)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
+        write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
         whole_line =  trim(numbers)
         do ioutlet =1, size(outfluxes%intflux,2)
             do iphase = 1, size(outfluxes%intflux,1)
-                write(fluxstring(iphase),'(f15.5)') outfluxes%totout(1, iphase,ioutlet)
+                write(fluxstring(iphase),'(E17.11)') outfluxes%totout(1, iphase,ioutlet)
                 whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
             enddo
             do iphase = 1, size(outfluxes%intflux,1)
-                write(intfluxstring(iphase),'(g15.5)') outfluxes%intflux(iphase,ioutlet)
+                write(intfluxstring(iphase),'(E17.11)') outfluxes%intflux(iphase,ioutlet)
                 whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
             enddo
             if (has_temperature) then
                 do iphase = 1, size(outfluxes%intflux,1)
-                    write(tempstring(iphase),'(f15.5)') outfluxes%totout(2, iphase,ioutlet)
+                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(2, iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
             end if

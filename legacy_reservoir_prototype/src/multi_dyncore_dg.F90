@@ -153,9 +153,12 @@ contains
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
            integer, save :: max_allowed_its = -1
-           !Variables for capillary pressure
+           !Variables for vanishing diffusion
            real, dimension(Mdims%cv_nonods) :: OvRelax_param
            integer :: Phase_with_Ovrel
+           !temperature backup for the petsc bug
+           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
+
 
            if(max_allowed_its < 0)  call get_option( &
                '/material_phase[0]/scalar_field::Temperature/prognostic/solver/max_iterations',&
@@ -231,7 +234,7 @@ contains
                if (thermal) then
                    !We control with the infinite norm of the difference the non-linear iterations done in this sub-cycle
                    !therefore the minimum/default value of nits_flux_lim is set to 9
-                   nits_flux_lim = max(nits_flux_lim, 9)
+                   nits_flux_lim = max(nits_flux_lim, 9)!Currently overriden as we are not updating the rhs or other fields so this is not useful
                    allocate(reference_temp(1, Mdims%nphase, Mdims%cv_nonods))
                    if (inf_tolerance<0) then
                        !Tolerance for the infinite norm
@@ -310,8 +313,13 @@ contains
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-
+NITS_FLUX_LIM = 9!<= currently looping here more does not add anything as RHS and/or velocity are not updated
+                !we set up 9 iterations but if it converges we exit straigth away
+temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+
+
+
 
                !Get information for capillary pressure to be use in CV_ASSEMB
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
@@ -322,9 +330,12 @@ contains
                else
                 Phase_with_Ovrel = -1
                end if
+
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+
+!    call MatAssemblyBegin(Mmat%petsc_ACV%M, MAT_FLUSH_ASSEMBLY, iphase)
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -347,7 +358,7 @@ contains
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                    OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
-
+!    call MatAssemblyEnd(Mmat%petsc_ACV%M, MAT_FLUSH_ASSEMBLY, iphase)
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -364,28 +375,28 @@ contains
                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
                         '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
                    ELSE
-                       call zero_non_owned(Mmat%CV_RHS)
-                       call zero(vtracer)
-                       !There is a bug, or instability issue, and the matrix and RHS get here with NaNs so we first check for it here
-                       if (isnan(Mmat%CV_RHS%val(1,1)) .or. isnan(Mmat%CV_RHS%val(size(Mmat%CV_RHS%val,1),size(Mmat%CV_RHS%val,2))) ) then
-                            !Avoid the solver as it is going to fail and pollute the temperature field.
-                            !Just ensure that the time-level is repeated if using ensure solver convergence is on
-                            call deallocate(Mmat%petsc_ACV, iphase)
-                            solver_not_converged = .true.
-                            cycle
-                       else
-                            call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
-                       end if
+!                       call zero_non_owned(Mmat%CV_RHS)
+!                       call zero(vtracer)
+                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+
                        do iphase = 1, Mdims%nphase
                            ewrite(2,*) 'T phase min_max:', iphase, &
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
-                   !Checking solver not fully implemented
-                   if (its_taken >= max_allowed_its .or. its_taken == 0 ) solver_not_converged = .true.
-                   !Just after the solvers
-                   call deallocate(Mmat%petsc_ACV, iphase)
 
+                   !Just after the solvers
+                   !call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+                   call clone_deallocate_PETSC_ACV_matrix()
+                   !Checking solver not fully implemented
+                   if (its_taken == 0 ) then
+                       solver_not_converged = .true.
+                        tracer%val(1,:,:) = temp_bak!recover backup
+                       cycle!repeat
+                   else
+                       solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                       exit!good to go!
+                   end if
                END IF Conditional_Lumping
                 !Control how it is converging and decide
                if(thermal) then
@@ -412,6 +423,34 @@ contains
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
+
+
+      subroutine clone_deallocate_PETSC_ACV_matrix()
+        !This subroutine was created to avoid a bug with Ubuntu 16.04 happening when compiling in non-debugging
+          implicit none
+
+          integer :: ierr
+
+          ierr=0
+          !call decref(Mmat%petsc_ACV)!<= this seems to be the problem; with debugging everything works. This creates a deallocation error when finishing a run
+          if (associated(Mmat%petsc_ACV%refcount)) nullify(Mmat%petsc_ACV%refcount)!do this by hand
+          call MatDestroy(Mmat%petsc_ACV%M, ierr)
+
+          call deallocate(Mmat%petsc_ACV%row_numbering)
+
+          call deallocate(Mmat%petsc_ACV%column_numbering)
+
+          if (associated(Mmat%petsc_ACV%row_halo)) then
+              call deallocate(Mmat%petsc_ACV%row_halo)
+              deallocate(Mmat%petsc_ACV%row_halo)
+          end if
+
+          if (associated(Mmat%petsc_ACV%column_halo)) then
+              call deallocate(Mmat%petsc_ACV%column_halo)
+              deallocate(Mmat%petsc_ACV%column_halo)
+          end if
+
+      end subroutine clone_deallocate_PETSC_ACV_matrix
 
 
       real function convergence_check(temperature, reference_temp)
@@ -1356,7 +1395,7 @@ end if
                call deallocate(rhs)
                U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             END IF
-            if (isParallel()) call halo_update(U_ALL2)!<=works well, only fails after adapting the mesh!!
+!            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
             deallocate( UP_VEL )
 IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
@@ -6192,7 +6231,6 @@ end if
          !Get information for capillary pressure to be used
          if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
              "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
-             "]/multiphase_properties/capillary_pressure/type_TOTALCapillary") ) .or. (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
              "]/multiphase_properties/capillary_pressure/type_Power_Law") ) )then
              call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
                  Cap_exponent = Cap_exponent)!no need for the imbibition because we need the derivative which will be zero as it is a constant

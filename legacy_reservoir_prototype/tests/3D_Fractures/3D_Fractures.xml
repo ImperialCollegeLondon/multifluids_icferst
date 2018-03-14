@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>3D_Fractures</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml adaptivity adaptivity_within_FPI meow</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst Klive1by1_5mm_30.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
+max_sat1 = stat("3D_Klive_model_P1DGP1_adaptive.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final integral sat 1" language="python">assert(abs(max_sat1 - 0.0025965)/0.0025965 &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

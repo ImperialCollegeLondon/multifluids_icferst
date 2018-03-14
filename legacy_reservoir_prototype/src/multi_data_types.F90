@@ -1155,7 +1155,7 @@ contains
         if (associated(Mmat%CT_RHS%val)) call deallocate(Mmat%CT_RHS)
         !This one below gives problems unless it has been allocated at some point, as Mmat%CV_RHS%val is by default associated...
 !        if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)!<=Should not need to deallocate anyway as it is done somewhere else
-        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)
+!        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)!<=Should not need to deallocate anyway as it is done somewhere else
         if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
         !Set flag to recalculate
         Mmat%stored = .false.
@@ -1344,6 +1344,8 @@ contains
             allocate(outfluxes%outlet_id(shapes(1)))
             call get_option( "/io/dump_boundaryflux/surface_ids", outfluxes%outlet_id)
         endif
+!        !At least size 1 to be used to calculate the whole mass of the domain
+!        if (.not. allocated(outfluxes%outlet_id)) allocate(outfluxes%outlet_id(1))
 
     end subroutine initialize_multi_outfluxes
 
