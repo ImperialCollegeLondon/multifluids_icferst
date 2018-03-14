@@ -1541,17 +1541,17 @@ subroutine BadElementTest(Quality_list, flag)
 
             ! Allocate memory for the quality_table to check the angles of each element and print out the diagnostics for the mesh
         case (1)
-            if (is_porous_media) then
-                bad_element = have_option('/numerical_methods/Bad_element_fix/')
-                if (have_option('/io/Mesh_Diagnostics_Angles')) then
-                    mesh_diagnostics = .true.
-                    shape = option_shape('/io/Mesh_Diagnostics_Angles')
-                    allocate(quality_table(shape(1)))
-                    call get_option( '/io/Mesh_Diagnostics_Angles', quality_table)
-                    allocate(diagnostics(shape(1)))
-                    diagnostics(:) = -1
-                end if
-            end if
+            
+			bad_element = have_option('/numerical_methods/Bad_element_fix/')
+			if (have_option('/io/Mesh_Diagnostics_Angles')) then
+				mesh_diagnostics = .true.
+				shape = option_shape('/io/Mesh_Diagnostics_Angles')
+				allocate(quality_table(shape(1)))
+				call get_option( '/io/Mesh_Diagnostics_Angles', quality_table)
+				allocate(diagnostics(shape(1)))
+				diagnostics(:) = -1
+			end if
+           
 
         case default
             if (bad_element .or. mesh_diagnostics)  then
