@@ -805,7 +805,7 @@ contains
         allocate(CV_P_PHASE_NODI(Mdims%nphase),CV_P_PHASE_NODJ(Mdims%nphase))
         allocate(CT_RHS_PHASE_CV_NODI(Mdims%nphase),CT_RHS_PHASE_CV_NODJ(Mdims%nphase))
 
-        IF ( use_volume_frac_T2 ) call get_var_from_packed_state( packed_state, &
+        IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
             PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
         ! variables for get_int_tden********************
         ! Set up the fields...
@@ -1084,7 +1084,7 @@ contains
         IF ( CV_DISOPT >= 5 ) IANISOLIM = 1
         ALLOCATE( TUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), TOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), &
             DENUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), DENOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ) )
-        ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol), T2OLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ) )
+        ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
         IF ( IANISOLIM == 0 ) THEN
             ! Isotropic limiting - calculate far field upwind maticies...
             CALL ISOTROPIC_LIMITER_ALL( &
@@ -2024,8 +2024,8 @@ contains
                                 END IF
                                 ! this is for the internal energy equation source term..
                                 ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
-                                ! for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
-                                IF ( THERMAL .and. Mdims%npres == 1 ) THEN
+                                !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
+                                IF ( THERMAL .and. Mdims%npres == 1) THEN
                                     THERM_FTHETA = 1.0
                                     IF( RETRIEVE_SOLID_CTY ) THEN
                                         VOL_FRA_FLUID_I = VOL_FRA_FLUID(CV_NODI)
