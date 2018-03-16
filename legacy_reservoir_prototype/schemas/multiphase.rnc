@@ -37,7 +37,6 @@ start =
                 element flooding{comment}
              ),
           element femdem_fracture{comment}?,
-          element blasting{comment}?,
           element boiling{comment}?
          },
          geometry,

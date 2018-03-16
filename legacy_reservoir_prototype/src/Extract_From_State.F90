@@ -130,7 +130,7 @@ contains
                 end if
             end if
         end if
-        is_multifracture = have_option( '/femdem_fracture' ) .or. is_multifracture
+        is_multifracture = have_option( '/simulation_type/femdem_fracture' ) .or. is_multifracture
 
         positions => extract_vector_field( state, 'Coordinate' )
         pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -707,28 +707,8 @@ contains
         integer :: nphase,ncomp,ndim,stat,n_in_pres
 
 #ifdef USING_FEMDEM
-        if(have_option('/blasting')) then
-            sfield=>extract_scalar_field(state(1),"SolidConcentration" )
-            call insert(packed_state,sfield,"SolidConcentration")
-            call add_new_memory(packed_state,sfield,"OldSolidConcentration")
-
-            vfield=>extract_vector_field(state(1),"delta_U")
-            call insert(packed_state,vfield,"delta_U")
-
-            vfield=>extract_vector_field(state(1),"solid_U")
-            call insert(packed_state,vfield,"solid_U")
-
-            vfield=>extract_vector_field(state(1),"f_x")
-            call insert(packed_state,vfield,"f_x")
-
-            tfield=>extract_tensor_field(state(1),"a_xx")
-            call insert(packed_state,tfield,"a_xx")
-
-            tfield=>extract_tensor_field(state(1),"Viscosity" )
-            call insert(packed_state,tfield,"Viscosity")
-
-        elseif(have_option('/femdem_fracture')) then
-            if(have_option('/femdem_fracture/oneway_coupling_only')) then
+        if(have_option('/simulation_type/femdem_fracture')) then
+            if(have_option('/simulation_type/femdem_fracture/oneway_coupling_only')) then!This option do not exist
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
                 call insert(packed_state,sfield,"SolidConcentration")
                 call add_new_memory(packed_state,sfield,"OldSolidConcentration")
@@ -2000,7 +1980,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
-    real, dimension(:,:), pointer :: phasevolumefraction, temperature, OldTemperature
+    real, dimension(:,:), pointer :: phasevolumefraction, temperature
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message
     !Variables for automatic non-linear iterations
@@ -2459,7 +2439,6 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     !Local variables
     real, save :: First_potential
     integer :: cv_inod, modified_vals, iphase
-    real :: aux
     real, parameter :: tol = 1d-5
     real :: tmp ! Variable used for parallel consistency
 
@@ -2565,8 +2544,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     NonlinearVelocity, OldNonlinearVelocity,IteratedNonlinearVelocity, ComponentDensity, &
     OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
     Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
-    TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
-    TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
     IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
@@ -2594,8 +2571,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
-        TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
-        TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
@@ -3094,11 +3069,10 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
 
 end subroutine get_DarcyVelocity
 
-    subroutine Get_Scalar_SNdgln( sndgln, field, cv_nloc  )
+    subroutine Get_Scalar_SNdgln( sndgln, field  )
       implicit none
       type( scalar_field ), intent( in ) :: field
       integer, dimension( : ), intent( inout ) :: sndgln
-      integer, intent( in ), optional :: cv_nloc
       ! Local variables
       integer, dimension( : ), allocatable :: snloc
       integer :: sele, iloc
@@ -3116,11 +3090,10 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Scalar_SNdgln
 
-    subroutine Get_Vector_SNdgln( sndgln, field, cv_nloc  )
+    subroutine Get_Vector_SNdgln( sndgln, field  )
       implicit none
       type( vector_field ), intent( in ) :: field
       integer, dimension( : ), intent( inout ) :: sndgln
-      integer, intent( in ), optional :: cv_nloc
       ! Local variables
       integer, dimension( : ), allocatable :: snloc
       integer :: sele, iloc

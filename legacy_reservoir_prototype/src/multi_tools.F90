@@ -567,9 +567,7 @@ contains
         character( len = option_path_len ), intent(in) :: path_to_table
         character(len=option_path_len), dimension(:,:),  allocatable, intent(out) :: csv_table_strings
         !Local variables
-        integer :: i, ierr, start, end
-        integer, dimension(2) :: table_size
-        character( len = option_path_len ) :: cadena
+        integer :: i, ierr, start
         !Allocate table
         allocate(csv_table_strings(10000,4))!This should be enough
 
@@ -637,7 +635,7 @@ contains
         integer, intent(in) :: x_nloc, totele
         logical, intent(in) :: bad_element_flag
         !Local variables
-        integer :: ELE, i, j, k
+        integer :: ELE, i, k
         logical :: Bad_found
         real :: MxAngl
         !Definition of Pi
@@ -711,7 +709,6 @@ logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAng
     !Local variables
     real, dimension(size(X_ALL,1)) :: X1, X2, X3, X4
     real, dimension(3) :: alpha, length
-    real :: perp_height , aspect_ratio ! perpendicular height from opposite side of bad angle and the aspect ratio
     real, dimension(3) :: normal ! normal vector of edge opposite largest angle
     !Definition of Pi
     real, parameter :: pi = acos(0.0) * 2.0
@@ -811,9 +808,6 @@ subroutine RotationMatrix(a,R)
     real, dimension(3,3), intent(out) :: R !R = G*T*inv_G
     integer :: d ! dimension of model 2 or 3
 
-    ! local variables
-    integer :: i
-
     ! Normalise vector
     an = a/NORM2(a)
 
@@ -877,7 +871,7 @@ END subroutine RotationMatrix
         integer, dimension(:,:), allocatable, intent(inout) :: edges
         !Local variables
         integer, dimension(:), allocatable:: conversor
-        integer :: i, k, j, ierr, counter
+        integer :: i, k, j
         character( len = option_path_len ):: cadena
         integer :: Nnodes, Nedges
         real, dimension(4) :: edge_line
@@ -910,7 +904,7 @@ END subroutine RotationMatrix
         i = 1!Read edges
         do while (cadena(1:5)=="CROD")
             read(cadena(6:len(cadena)),*) edge_line
-            edges(:,i) = edge_line(3:4)!Only the last two columns contains the connection between nodes
+            edges(:,i) = int(edge_line(3:4))!Only the last two columns contains the connection between nodes
             read(89,'(A)') cadena; i = i + 1!read line and advance the counter
         end do
         close(89)

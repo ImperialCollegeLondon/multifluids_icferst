@@ -342,8 +342,7 @@ contains
         type( multi_field ), intent( inout ) :: mfield
         character( len = * ), optional, intent( in ) :: field_name
         !Local variables
-        integer :: ndim, nphase, nonods, stat, k, i
-        character( len = option_path_len ) :: path_option, root_path
+        integer :: ndim, nphase, nonods
 
         mfield%have_field = .true.
 
@@ -442,7 +441,7 @@ contains
         type( multi_field ), intent( in ) :: mfield
         real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
         !local variables
-        integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
+        integer :: iphase, jphase, idim, jdim, ndim, inode
 
         inode = inode_in
         if (mfield%is_constant) inode = 1
@@ -491,7 +490,7 @@ contains
         type( multi_field ), intent( in ) :: mfield
         real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
         !local variables
-        integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
+        integer :: iphase, jphase, idim, ndim, inode
 
         inode = inode_in
         if (mfield%is_constant) inode = 1
@@ -657,7 +656,7 @@ contains
         type( multi_field ), intent( inout ) :: mfield
         real, dimension(:,:), intent(in) :: b
         !Local variables
-        integer :: idim, jdim, iphase, ndim, jphase
+        integer ::  iphase, ndim, jphase
         real, dimension(:,:), allocatable :: miniB
 
         ndim = size(b,2)/mfield%ndim3
@@ -1331,8 +1330,8 @@ contains
             allocate(outfluxes%outlet_id(shapes(1)))
             call get_option( "/io/dump_boundaryflux/surface_ids", outfluxes%outlet_id)
         endif
-!        !At least size 1 to be used to calculate the whole mass of the domain
-!        if (.not. allocated(outfluxes%outlet_id)) allocate(outfluxes%outlet_id(1))
+        !At least size 1 to be used to calculate the whole mass of the domain, and keep valgrind happy!
+        if (.not. allocated(outfluxes%outlet_id)) allocate(outfluxes%outlet_id(1))
 
     end subroutine initialize_multi_outfluxes
 

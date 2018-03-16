@@ -486,9 +486,6 @@ contains
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
                call fracking(packed_state, state,Mdims%nphase)
-            elseif ( have_option( '/blasting') ) then
-               call blasting( packed_state, Mdims%nphase )
-               call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######

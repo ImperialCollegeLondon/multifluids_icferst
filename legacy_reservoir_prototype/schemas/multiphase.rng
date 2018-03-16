@@ -49,11 +49,6 @@ characters in the simulation name should be avoided.</a:documentation>
           </element>
         </optional>
         <optional>
-          <element name="blasting">
-            <ref name="comment"/>
-          </element>
-        </optional>
-        <optional>
           <element name="boiling">
             <ref name="comment"/>
           </element>
