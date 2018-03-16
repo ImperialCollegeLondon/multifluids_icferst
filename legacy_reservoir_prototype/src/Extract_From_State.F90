@@ -2435,28 +2435,13 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     !Local variables
     integer :: cv_inod, iphase
 
-    inf_norm_scalar_normalised = 0.
-    !L_inf norm of all the elements
-    do cv_inod = 1, size(tracer,2)
-        do iphase = 1, size(tracer,1)
-            inf_norm_scalar_normalised = max(inf_norm_scalar_normalised, &
-                abs(normsVal(reference_tracer(iphase,cv_inod)) - normsVal(tracer(iphase,cv_inod)) ))
-        end do
-    end do
+    !Same as normilising values but should be quicker
+    inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
     call allmax(inf_norm_scalar_normalised)
     !rescale with accumulated dumping, if no dumping just pass down a 1.0
     inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
-contains
-    real function normsVal(val)
-        !Given an input value, it is normalised based on the totally_min_max parameters
-        implicit none
-        real, intent(in) :: val
-        normsVal = (val - totally_min_max(1))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
 
-    end function normsVal
 end function
-
-
 
 
 

@@ -481,100 +481,6 @@ contains
     end subroutine exten_sparse_multi_phase
 
 
-    subroutine exten_sparse_mom_cty( ndim, finmcy2, colmcy2, nlenmcy2, &
-        cv_nonods, findct, colct, &
-        u_nonods, &
-        findc, colc, finmcy, colmcy, midmcy, nlenmcy, &
-        ncolmcy, nphase, ncolcmc, findcmc, colcmc )
-        ! Extend momentum sparsity to include Continuity / pressure.
-        implicit none
-        integer, intent( in ) :: ndim, nlenmcy2
-        integer, dimension( nlenmcy2 + 1 ), intent( in ) :: finmcy2
-        integer, dimension( : ), intent( in ) :: colmcy2
-        integer, intent( in ) :: cv_nonods
-        integer, dimension( cv_nonods + 1 ), intent( in ) :: findct
-        integer, dimension( : ), intent( in ) :: colct
-        integer, intent( in ) :: u_nonods
-        integer, dimension( u_nonods + 1 ), intent( in ) :: findc
-        integer, dimension( : ), intent( in ) :: colc
-        integer, intent( in ) :: nlenmcy
-        integer, dimension( nlenmcy + 1 ), intent( inout ) :: finmcy
-        integer, dimension( : ), intent( inout ), pointer :: colmcy
-        integer, dimension( nlenmcy ), intent( inout ) :: midmcy
-        integer, intent( inout ) :: ncolmcy
-        integer, intent( in ) :: nphase, ncolcmc
-        integer, dimension( cv_nonods + 1 ), intent( in ) :: findcmc
-        integer, dimension( ncolcmc ), intent( in ) :: colcmc
-        ! Local variables
-        integer :: count, count2, iphase, jphase, u_nod, u_pha_nod, cv_nod, icol, idim, jdim, i
-
-        ewrite(3,*) 'In exten_sparse_mom_cty subrt.'
-
-        u_pha_nod = ndim*nphase*u_nonods+1
-        ncolmcy = ndim*nphase*( finmcy2( u_pha_nod ) -1 + findc(u_nonods+1) -1&
-            +findct(cv_nonods+1)-1 ) +findcmc(cv_nonods+1) -1
-
-        call resize(colmcy,ncolmcy,copy=.false.)
-
-        count2 = 0
-        Loop_Phase1: do iphase = 1, nphase
-            Loop_Dim1: do idim= 1, ndim
-                Loop_Nod1: do u_nod = 1, u_nonods
-                    u_pha_nod = u_nod + ( idim - 1 ) * u_nonods + ( iphase - 1 ) * u_nonods*ndim
-                    finmcy( u_pha_nod ) = count2 + 1
-                    Loop_Count1a: do count = finmcy2( u_pha_nod ), finmcy2( u_pha_nod + 1 ) - 1
-                        count2 = count2 + 1
-                        colmcy( count2 ) = colmcy2( count )
-                    end do Loop_Count1a
-                    Loop_Count2: do count = findc( u_nod ), findc( u_nod + 1 ) - 1 ! Add the pressure part in
-                        count2 = count2 + 1
-                        colmcy( count2 ) = colc( count ) + u_nonods * nphase*ndim
-                    end do Loop_Count2
-                end do Loop_Nod1
-            end do Loop_Dim1
-        end do Loop_Phase1
-
-        Loop_Nod2a: do cv_nod = 1, cv_nonods ! Add continuity part in
-            u_pha_nod = cv_nod + u_nonods*nphase*ndim
-            finmcy( u_pha_nod ) = count2 + 1
-
-            Loop_Phase2: do jphase = 1, nphase
-                Loop_Dim2: do jdim = 1, ndim
-                    Loop_Nod2b: do count = findct( cv_nod ), findct( cv_nod + 1 ) - 1
-                        count2 = count2 + 1
-                        icol = colct( count ) + ( jdim - 1 ) * u_nonods + &
-                            ( jphase - 1 ) * u_nonods * ndim
-                        colmcy( count2 ) = icol
-                    end do Loop_Nod2b
-                end do Loop_Dim2
-            end do Loop_Phase2
-
-            ! Now add a diagonal which will have zero values for incompressible,
-            ! but non-zero for compressible
-            Loop_Nod2c: do count = findcmc( cv_nod ), findcmc( cv_nod + 1 ) - 1
-                count2 = count2 + 1
-                icol = colcmc( count ) + u_nonods * nphase * ndim
-                colmcy( count2 ) = icol
-            end do Loop_Nod2c
-
-        end do Loop_Nod2a
-        ncolmcy = count2
-        finmcy( u_nonods * nphase*ndim + cv_nonods + 1 ) = count2 + 1
-
-        ! calculate the diagonal pointers...
-        do i=1,cv_nonods + ndim*nphase*u_nonods
-            do count=finmcy(i), finmcy(i+1)-1
-                if(colmcy(count)==i) midmcy(i)=count
-            end do
-        end do
-
-        ewrite(3,*) 'Leaving exten_sparse_mom_cty subrt.'
-
-        return
-    end subroutine exten_sparse_mom_cty
-
-
-
     subroutine form_dgm_pha_sparsity( totele, nphase, u_nloc, u_pha_nonods, &
         ndim, mx_ncoldgm_pha, ncoldgm_pha, &
         coldgm_pha, findgm_pha, middgm_pha, &
@@ -1217,12 +1123,12 @@ contains
 
 
     subroutine Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
-        mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+        mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, &
         mx_ncolacv, mx_ncolm, mx_ncolph )
         implicit none
         integer, intent( in ) :: ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods
         integer, intent( inout ) :: mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, &
-            mx_ncolmcy, mx_ncolacv, mx_ncolm, mx_ncolph
+            mx_ncolacv, mx_ncolm, mx_ncolph
 
         ewrite(3,*)'In Defining_Lengths_for_Sparsity_Matrices'
 
@@ -1244,18 +1150,11 @@ contains
         mx_ncolcmc = mx_nface_p1 **3 * cv_nloc * cv_nloc * totele
         if(is_porous_media) then
             mx_ncoldgm_pha = 1
-            mx_ncolmcy     = 1
-        !   mx_ncolm = 1
         else
             mx_ncoldgm_pha = ( mxnele + totele ) * ( u_nloc * ndim * nphase) **2    ! for overlapping method =1
-            !         mx_ncolmcy = mx_ncoldgm_pha + mx_nct + mx_nc + mx_ncolcmc
-            !         set mx_ncolmcy to 0 until global_solve works.
-
-            mx_ncolmcy=0
 
                 ! for overlapping method =1
         endif
-        !         mx_ncolmcy = mx_ncoldgm_pha + mx_nct + mx_nc + mx_ncolcmc               ! for overlapping method =1
 
         mx_ncolacv = 3 * mx_nface_p1 * cv_nonods * nphase + cv_nonods * ( nphase - 1 ) * nphase
 
@@ -1264,7 +1163,7 @@ contains
         return
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
 
-    subroutine Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+    subroutine Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         !!$ Allocate and obtain the sparsity patterns of the two types of matricies for
         !!$ (momentum + cty) and for energy
@@ -1274,7 +1173,7 @@ contains
         type (multi_sparsities), intent(inout) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
-        integer, intent( in ) :: mx_ncolacv, nlenmcy, mx_ncolmcy, mx_ncoldgm_pha, &
+        integer, intent( in ) :: mx_ncolacv, mx_ncoldgm_pha, &
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1
         !!$ Local variables
         integer, dimension( : ), pointer :: ph_ndgln, colele_pha, finele_pha, midele_pha, centct, dummyvec
@@ -1287,7 +1186,7 @@ contains
 
         call deallocate_multi_sparsities(Mspars)
         call allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, &
-             mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
+             mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
 
         !-
         !- Computing sparsity for element connectivity
@@ -1328,7 +1227,6 @@ contains
         end if
         call resize(Mspars%DGM_PHA%col,Mspars%DGM_PHA%ncol)
         !-
-        !- Now form the global matrix: Mspars%MCY%fin, Mspars%MCY%col and Mspars%MCY%mid for the
         !- momentum and continuity eqns
         !-
         allocate( centct( Mdims%cv_nonods ) )
@@ -1379,20 +1277,6 @@ contains
             deallocate( dummyvec )
         end if Conditional_Dimensional_3
         if( Mspars%CMC%ncol<1 ) FLAbort("Incorrect number of dimension of CMC sparsity matrix")
-          !-
-          !- Computing the sparsity for the force balance plus cty multi-phase eqns
-          !-
-        if(.not.(is_porous_media .or. mx_ncolmcy==0)) then
-            Mspars%MCY%fin = 0 ; Mspars%MCY%col = 0 ; Mspars%MCY%mid = 0
-            call exten_sparse_mom_cty( Mdims%ndim, Mspars%DGM_PHA%fin, Mspars%DGM_PHA%col, Mdims%nphase * Mdims%u_nonods * Mdims%ndim,&
-                Mdims%cv_nonods, Mspars%CT%fin, Mspars%CT%col, &
-                Mdims%u_nonods, &
-                Mspars%C%fin, Mspars%C%col, Mspars%MCY%fin, Mspars%MCY%col, Mspars%MCY%mid, nlenmcy, &
-                Mspars%MCY%ncol, Mdims%nphase, Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col )
-        else
-            Mspars%MCY%ncol=0
-        endif
-        call resize(Mspars%MCY%col,Mspars%MCY%ncol)
         call resize(Mspars%CMC%col,Mspars%CMC%ncol)
         !-
         !- Computing sparsity CV-FEM
@@ -1559,7 +1443,6 @@ contains
         u_pha_nonods, cv_pha_nonods, &
         u_nonods, cv_nonods, totele, &
         mx_ncolacv, ncolacv, finacv, colacv, midacv, & ! CV multi-phase eqns (e.g. vol frac, temp)
-        nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, & ! Force balance plus cty multi-phase eqns
         mxnele, ncolele, midele, finele, colele, & ! Element connectivity
         mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, & ! Force balance sparsity
         mx_nct, ncolct, findct, colct, & ! CT sparsity - global cty eqn
@@ -1573,10 +1456,6 @@ contains
         integer, dimension( cv_pha_nonods + 1 ), intent (in ) :: finacv
         integer, dimension( mx_ncolacv ), intent (in ) :: colacv
         integer, dimension( cv_pha_nonods ), intent (in ) :: midacv
-        integer, intent ( in ) :: nlenmcy, mx_ncolmcy, ncolmcy
-        integer, dimension( nlenmcy + 1 ), intent (in ) :: finmcy
-        integer, dimension( mx_ncolmcy ), intent (in ) :: colmcy
-        integer, dimension( nlenmcy ), intent (in ) :: midmcy
         integer, intent ( in ) :: mxnele, ncolele
         integer, dimension( totele ), intent (in ) :: midele
         integer, dimension( totele + 1 ), intent (in ) :: finele
@@ -1605,10 +1484,6 @@ contains
 
         ewrite(3,*) 'In check_sparsity'
 
-        open( 15, file = 'CheckSparsityMatrix.dat', status = 'unknown' )
-        write( 15, * )'########## FINMCY, MIDMCY, COLMCY ##################'
-        write(15, * )'NCOLMCY:', NCOLMCY
-        call checksparsity( .true., 15, NCOLMCY, NLENMCY, MX_NCOLMCY, FINMCY, MIDMCY, COLMCY )
 
         write( 15, * )'########## FINACV, COLACV, MIDACV ##################'
         write(15, * )'NCOLACV:', NCOLACV

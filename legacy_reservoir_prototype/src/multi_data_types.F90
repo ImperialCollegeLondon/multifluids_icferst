@@ -158,7 +158,6 @@ module multi_data_types
     type multi_sparsities
         type (multi_sparsity) :: acv     !CV multi-phase eqns (e.g. vol frac, temp)
         type (multi_sparsity) :: small_acv !Local CV multi-phase eqns (e.g. vol frac, temp)
-        type (multi_sparsity) :: mcy     !Force balance plus cty multi-phase eqns
         type (multi_sparsity) :: ele     !Element connectivity
         type (multi_sparsity) :: dgm_pha !Force balance sparsity
         type (multi_sparsity) :: ct      !CT sparsity - global continuity eqn
@@ -983,20 +982,16 @@ contains
     end subroutine deallocate_projection_matrices
 
     !This subroutine, despite it can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns
-    subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
+    subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
         !This subroutine allocates part of the memory inside Mspars
         implicit none
         type (multi_sparsities), intent(inout) :: Mspars
         type(multi_dimensions), intent(in) :: Mdims
-        integer :: mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
+        integer :: mx_ncolacv, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
 
         if(.not.associated(Mspars%ACV%fin))          allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ))
         if(.not.associated(Mspars%ACV%col))          allocate( Mspars%ACV%col( mx_ncolacv ))
         if(.not.associated(Mspars%ACV%mid))          allocate(  Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ))
-
-        if(.not.associated( Mspars%MCY%fin))         allocate(   Mspars%MCY%fin( nlenmcy + 1 ))
-        if(.not.associated(Mspars%MCY%col))          allocate( Mspars%MCY%col( mx_ncolmcy ))
-        if(.not.associated(Mspars%MCY%mid))          allocate(  Mspars%MCY%mid( nlenmcy ))
 
         if(.not.associated(Mspars%DGM_PHA%fin))      allocate(  Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ))
         if(.not.associated(Mspars%DGM_PHA%col))      allocate(  Mspars%DGM_PHA%col( mx_ncoldgm_pha ))
@@ -1042,10 +1037,6 @@ contains
         if (associated(Mspars%small_acv%col)) deallocate(Mspars%small_acv%col)
         if (associated(Mspars%small_acv%mid)) deallocate(Mspars%small_acv%mid)
 
-        if (associated(Mspars%mcy%fin))       deallocate(Mspars%mcy%fin)
-        if (associated(Mspars%mcy%col))       deallocate(Mspars%mcy%col)
-        if (associated(Mspars%mcy%mid))       deallocate(Mspars%mcy%mid)
-
         if (associated(Mspars%dgm_pha%fin))   deallocate(Mspars%dgm_pha%fin)
         if (associated(Mspars%dgm_pha%col))   deallocate(Mspars%dgm_pha%col)
         if (associated(Mspars%dgm_pha%mid))   deallocate(Mspars%dgm_pha%mid)
@@ -1078,10 +1069,6 @@ contains
         if (associated(Mspars%small_acv%fin)) nullify(Mspars%small_acv%fin)
         if (associated(Mspars%small_acv%col)) nullify(Mspars%small_acv%col)
         if (associated(Mspars%small_acv%mid)) nullify(Mspars%small_acv%mid)
-
-        if (associated(Mspars%mcy%fin))       nullify(Mspars%mcy%fin)
-        if (associated(Mspars%mcy%col))       nullify(Mspars%mcy%col)
-        if (associated(Mspars%mcy%mid))       nullify(Mspars%mcy%mid)
 
         if (associated(Mspars%dgm_pha%fin))   nullify(Mspars%dgm_pha%fin)
         if (associated(Mspars%dgm_pha%col))   nullify(Mspars%dgm_pha%col)
