@@ -200,13 +200,6 @@ contains
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-               ! open the boiling test for two phases-gas and liquid
-               if (is_boiling) then ! don't the divide int. energy equation by the volume fraction
-                   a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-                   den_all = den_all * a%val(1,:,:)
-                   aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-                   denold_all = denold_all * aold%val(1,:,:)
-               end if
                IGOT_T2_loc = 1
             else if ( lcomp > 0 ) then
                p => extract_tensor_field( packed_state, "PackedFEPressure" )
@@ -284,13 +277,6 @@ contains
            end if
 
            ! calculate T_ABSORB
-           if (is_boiling) then
-              allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
-              allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
-              call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                   velocity_absorption, T_AbsorB )
-              deallocate ( Velocity_Absorption )
-           end if
 
            if (is_magma) then
               ! set the absorption for magma sims here
@@ -409,7 +395,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            END DO Loop_NonLinearFlux
 
-           if (is_boiling) deallocate(T_absorb)
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(reference_temp)) deallocate(reference_temp)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
@@ -1125,14 +1110,6 @@ if (is_flooding) return!<== Temporary fix for flooding
 
         end if
 
-
-        ! open the boiling test for two phases-gas and liquid
-        if (is_boiling) then
-           allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-           call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                velocity_absorption, temperature_absorption )
-           deallocate( temperature_absorption )
-        end if
 
         ! Check for a python-set absorption field
         ! Assumes that python blocks are (nphase x nphase) and isotropic
@@ -2205,10 +2182,6 @@ end if
 
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
-        ! open the boiling test for two phases-gas and liquid
-        if (is_boiling) then
-            GOT_VIRTUAL_MASS=.true.
-        end if
 
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
         position=>extract_vector_field(packed_state,"PressureCoordinate")
@@ -5974,6 +5947,7 @@ end if
          end if
      end do
      Artificial_Pe = .false.
+     Cap_exponent => null(); Cap_entry_pressure => null()!Initialize
      if (Phase_with_Pc>0) then
          !Get information for capillary pressure to be used
          if ( (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&

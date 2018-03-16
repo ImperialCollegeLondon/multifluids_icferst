@@ -780,9 +780,9 @@ contains
         ! variables for get_int_tden********************
         ! Set up the fields...
         ALLOCATE( IGOT_T_PACK( Mdims%nphase, 6 ), IGOT_T_CONST( Mdims%nphase, 6 ), IGOT_T_CONST_VALUE( Mdims%nphase, 6 ) )
-        IGOT_T_PACK=.FALSE.
-        IGOT_T_CONST( Mdims%nphase, 6 )=.FALSE.
-        IGOT_T_CONST_VALUE( Mdims%nphase, 6 )=0.0
+
+
+
         ! FOR packing as well as for detemining which variables to apply interface tracking**********
         !          STORE=.TRUE.
         STORE=.FALSE.

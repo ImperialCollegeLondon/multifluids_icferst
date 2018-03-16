@@ -512,16 +512,6 @@ contains
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
                 if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
 
-                ! open the boiling test for two phases-gas and liquid
-                if (is_boiling) then
-                   call set_nu_to_u( packed_state )
-                   allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
-                              Temperature_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-                   call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                        velocity_absorption, temperature_absorption )
-                   deallocate ( Velocity_Absorption, temperature_absorption )
-                end if
-
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)

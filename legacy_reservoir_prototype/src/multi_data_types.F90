@@ -1331,7 +1331,9 @@ contains
             call get_option( "/io/dump_boundaryflux/surface_ids", outfluxes%outlet_id)
         endif
         !At least size 1 to be used to calculate the whole mass of the domain, and keep valgrind happy!
-        if (.not. allocated(outfluxes%outlet_id)) allocate(outfluxes%outlet_id(1))
+        if (.not. allocated(outfluxes%outlet_id)) then
+            allocate(outfluxes%outlet_id(1))
+        end if
 
     end subroutine initialize_multi_outfluxes
 

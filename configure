@@ -10641,7 +10641,7 @@ $as_echo "$as_me: Setting optimisation flags for $F77" >&6;}
     cat >> confdefs.h << EOF
 #define NDEBUG 1
 EOF
-    OPTIMISATION_FLAGS="$OPTIMISATION_FLAGS -O3"
+    OPTIMISATION_FLAGS="$OPTIMISATION_FLAGS -g -O3"
     if test "$fcompiler" = "ifort" ; then
       # add inlining and cpu-specific optimisations for intel
       OPTIMISATION_FLAGS="$OPTIMISATION_FLAGS -ip -xHost"

@@ -3123,7 +3123,6 @@ end subroutine get_DarcyVelocity
         !Local variables
         integer :: ioutlet
         integer :: counter
-        type(stat_type), target :: default_stat
         character (len=1000000) :: whole_line
         character (len=1000000) :: numbers
         integer :: iphase
@@ -3135,12 +3134,11 @@ end subroutine get_DarcyVelocity
 
         call get_option('/simulation_name', simulation_name)
 
-        default_stat%conv_unit=free_unit()
         if (itime == 1) then
             !The first time, remove file if already exists
-            open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
+            open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", status="replace", action="write")
         else
-            open(unit=default_stat%conv_unit, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
+            open(unit=89, file=trim(simulation_name)//"_outfluxes.csv", action="write", position="append")
         end if
 
 
@@ -3172,7 +3170,7 @@ end subroutine get_DarcyVelocity
                 end if
             end do
              ! Write out the line
-            write(default_stat%conv_unit,*), trim(whole_line)
+            write(89,*), trim(whole_line)
         endif
         ! Write the actual numbers to the file now
         write(numbers,'(E17.11,a,E17.11, a, E17.11)') current_time, "," , current_time/(86400.*365.) , ",",  outfluxes%porevolume
@@ -3194,8 +3192,8 @@ end subroutine get_DarcyVelocity
             end if
         end do
         ! Write out the line
-        write(default_stat%conv_unit,*), trim(whole_line)
-        close (default_stat%conv_unit)
+        write(89,*), trim(whole_line)
+        close (89)
     end subroutine dump_outflux
 
 
