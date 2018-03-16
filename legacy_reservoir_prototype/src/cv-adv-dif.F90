@@ -113,7 +113,7 @@ contains
         MEAN_PORE_CV, &
         MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
         got_free_surf,  MASS_SUF, &
-        MASS_ELE_TRANSP, IDs_ndgln, &
+        MASS_ELE_TRANSP, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
         porous_heat_coef, outfluxes, solving_compositional)
@@ -252,7 +252,6 @@ contains
         type(multi_absorption), intent(inout) :: multi_absorp
         INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
             IGOT_T2, IGOT_THETA_FLUX
-        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (Mdims%npres, Mdims%npres, Mdims%cv_nonods)
@@ -1314,7 +1313,7 @@ contains
                             use_porous_limiter = .true.
                             do iphase = 1, Mdims%nphase - 1
                                 use_porous_limiter = use_porous_limiter &
-                                    .and. abs(T_ALL(iphase, cv_inod) - Imble_frac(iphase, IDs_ndgln(ELE))) > 1e-4
+                                    .and. abs(T_ALL(iphase, cv_inod) - Imble_frac(iphase, ELE)) > 1e-4
                             end do
                             use_porous_limiter = use_porous_limiter .or. on_domain_boundary
                         end if
@@ -1630,7 +1629,7 @@ contains
                                 !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                 Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                 !and the shock-front Courant number
-                                if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, IDs_ndgln(ELE)))) then
+                                if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
                                     !ndotq = velocity * normal
                                     Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                 end if
@@ -4318,11 +4317,11 @@ end if
                     if (first_nonlinear_time_step ) then
                         calculate_mass_delta(:,1) = 0.0 ! reinitialise
                         call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
-                            calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv, IDs_ndgln)
+                            calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv)
                         !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
 !                        if (Mdims%npres >1)then!consider as well the pipes
 !                            call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
-!                                calculate_mass_delta(:,1) , ndgln%cv, IDs_ndgln, eles_with_pipe)
+!                                calculate_mass_delta(:,1) , ndgln%cv, eles_with_pipe)
 !                        end if
                     endif
                     if (outfluxes%calculate_flux) then
@@ -4333,7 +4332,7 @@ end if
                         outfluxes%porevolume = 0.0
                         DO ELE = 1, Mdims%totele
                             if (element_owned(tracer, ele)) then
-                                outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por%val(1,IDs_ndgln(ELE))
+                                outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por%val(1,ELE)
                             end if
                         END DO
 
@@ -4343,11 +4342,11 @@ end if
                 case default!Now calculate mass conservation
                     !Calculate internal volumes of each phase
                     call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
-                        calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv, IDs_ndgln)
+                        calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv)
                     !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
 !                    if (Mdims%npres >1) then!consider as well the pipes
 !                        call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
-!                            calculate_mass_internal(:) , ndgln%cv, IDs_ndgln, eles_with_pipe)
+!                            calculate_mass_internal(:) , ndgln%cv, eles_with_pipe)
 !                    end if
 
                     !Loop over nphases - 1

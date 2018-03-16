@@ -163,7 +163,6 @@ contains
         !type( scalar_field ) :: Saturation_bak, ConvSats
         integer :: checkpoint_number
         !Array to map nodes to region ids
-        integer, dimension(:), allocatable :: IDs_ndgln, IDs2CV_ndgln!sprint_to_do; get this into ndgln structure?
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
@@ -395,13 +394,10 @@ contains
         if (is_porous_media) then
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
-            !Convert material properties to be stored using region ids, only if porous media
-            call get_regionIDs2nodes(state, packed_state, ndgln%cv, IDs_ndgln, IDs2CV_ndgln, &
-                fake_IDs_ndgln = .not. is_porous_media)! .or. is_multifracture )
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
-            call Ensure_initial_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, Mdims%npres)
+            call Ensure_initial_Saturation_to_sum_one(Mdims, ndgln, packed_state)
         end if
 
         !!$ Starting Time Loop
@@ -537,7 +533,7 @@ contains
                 if( solve_force_balance) then
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
+                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, Quality_list )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
@@ -583,7 +579,7 @@ call solve_transport()
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, calculate_mass_delta, outfluxes)
+                        calculate_mass_delta, outfluxes)
 
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
@@ -605,7 +601,7 @@ call solve_transport()
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, mass_ele, &
-                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
+                        its, Courant_number, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
@@ -629,10 +625,10 @@ call solve_transport()
                         !!$
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, eles_with_pipe, pipes_aux, &
+                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, IDs2CV_ndgln=IDs2CV_ndgln)
+                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                     ! Copy back memory
                     do iphase=1,Mdims%nphase
@@ -1058,7 +1054,7 @@ call solve_transport()
 
             if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
-                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type, 0)
+                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col , 0)
                 endif
             endif
 
@@ -1192,10 +1188,7 @@ end if
                 call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv,&
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
                 if (is_porous_media) then
-                    !Re-calculate IDs_ndgln after adapting the mesh
                     call get_RockFluidProp(state, packed_state)
-                    !Convert material properties to be stored using region ids, only if porous media
-                    call get_regionIDs2nodes(state, packed_state, ndgln%cv, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                     !Clean the pipes memory if required
@@ -1207,7 +1200,7 @@ end if
                 if (numberfields > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
                         call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, &
-                                Mspars%small_acv%fin, Mspars%small_acv%col, Mdisopt%cv_ele_type , 1, IDs2CV_ndgln = IDs2CV_ndgln)
+                                Mspars%small_acv%fin, Mspars%small_acv%col, 1)
                         call MemoryCleanupInterpolation2()
                     endif
                 endif
@@ -1357,7 +1350,7 @@ end if
                     SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                     igot_t2, igot_theta_flux, &
                     Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &
-                    theta_gdiff, IDs_ndgln, eles_with_pipe, pipes_aux,&
+                    theta_gdiff, eles_with_pipe, pipes_aux,&
                     thermal = .false.,& ! the false means that we don't add an extra source term
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                     icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)

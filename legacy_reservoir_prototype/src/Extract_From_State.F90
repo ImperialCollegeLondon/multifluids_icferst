@@ -68,7 +68,7 @@ module Copy_Outof_State
         Get_Ele_Type, Get_Discretisation_Options, inf_norm_scalar_normalised, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
-        have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
+        have_option_for_any_phase, Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions
 
 
@@ -2954,7 +2954,7 @@ function GetFEMName(tfield) result(fem_name)
 end function GetFEMName
 
 subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_mass, &
-    cv_ndgln, IDs_ndgln, eles_with_pipe)
+    cv_ndgln, eles_with_pipe)
 
     implicit none
 
@@ -2966,7 +2966,6 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
     real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
     real, dimension(:), intent(inout) :: calculate_mass
     integer, dimension(:), intent( in ) ::  cv_ndgln
-    integer, dimension(:), intent( in ) :: IDs_ndgln
     type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
     ! Local variables
     type (tensor_field), pointer :: saturation
@@ -3009,7 +3008,7 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
                     !     Porosity constant element-wise so simply extract that value associated to a given element ele
                     do i = 1, size(calculate_mass)
                         calculate_mass(i) = calculate_mass(i) + (Mass_ELE(ele)/mdims%cv_nloc)*&
-                            porosity%val(1, IDs_ndgln(ele))*saturation%val(1, i,cv_knod)
+                            porosity%val(1, ele)*saturation%val(1, i,cv_knod)
                     enddo
                 ENDDO
             end if
@@ -3037,299 +3036,6 @@ logical function have_option_for_any_phase(path, nphase)
 
 end function have_option_for_any_phase
 
-
-!sprint_to_do!PERMEABILITY AND POROSITY AT PRESENT ARE NOT COMPACTED
-subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln)
-    !This subroutine creates a conversor so material variables
-    !can be stored based on region ids, but accessed in a normal way (node access)
-    !Also re-adapts the material properties to work in this new way.
-    !IDs2CV_ndgln gives you the value regarding one node, if it happens to have many it will be the last
-    !value introduced
-    implicit none
-    type(state_type), dimension(:), intent(inout) :: state
-    type(state_type), intent( inout ) :: packed_state
-    integer, dimension(:), intent(in) :: CV_NDGLN
-    integer, dimension(:), allocatable, intent(inout) :: IDs_ndgln
-    integer, dimension(:), allocatable, intent(inout) :: IDs2CV_ndgln
-    logical, optional, intent(in) :: fake_IDs_ndgln
-    !Local variables
-
-    type (tensor_field), pointer :: t_field
-    type(mesh_type), pointer :: fl_mesh
-    integer :: i, j, k, number_of_ids, nphase,mtemp, CV_NLOC
-    integer, dimension(:), allocatable :: region_ids
-    logical :: stored, all_fields_costant
-    integer, dimension(1) :: aux
-    character(len=200):: path, root_path
-    !Use P0DG mesh
-    fl_mesh => extract_mesh( state(1), "P0DG" )
-
-    if (.not.associated(fl_mesh%region_ids)) FLAbort("P0DG mesh not defined or if using adaptivity preserve_mesh_regions is off")
-
-    t_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-    nphase = size(t_field%val,2)
-    !Re-allocate if necessary
-    if (allocated(IDs_ndgln)) then
-        if (size(IDs_ndgln)/=element_count(fl_mesh)) then
-            deallocate(IDs_ndgln)
-            allocate(IDs_ndgln(element_count(fl_mesh)))
-        end if
-        if (size(IDs2CV_ndgln)/=size(t_field%val,3)) then
-            deallocate(IDs2CV_ndgln)
-            allocate(IDs2CV_ndgln(size(t_field%val,3)))
-        end if
-    else
-        allocate(IDs2CV_ndgln(size(t_field%val,3)))
-        allocate(IDs_ndgln(element_count(fl_mesh)))
-    end if
-
-    !Check if all the fields are constant whitin region ids, otherwise we cannot compact the data.
-    !Despite this seems restrictive, it is unlikely to use non constant values for region ids
-    !since it goes against the surface based modeling idea
-!    all_fields_costant = .true. !<= to disable this
-    !Check capillary
-    if (have_option_for_any_phase('/multiphase_properties/capillary_pressure/', nphase)) then
-        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::C/prescribed/value'
-        elseif (have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::C/prescribed/value'
-        endif
-        k = 0
-        do i = 0, nphase-1
-            k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
-        end do
-        do i = 0, k-1
-            path = trim(root_path)//'['//int2str(i)//']/python'
-            if (have_option_for_any_phase(trim(path), nphase))&
-                all_fields_costant = .false.
-        end do
-
-        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::a/prescribed/value'
-        elseif ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Power_Law', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_Power_Law/scalar_field::a/prescribed/value'
-        endif
-        k = 0
-        do i = 0, nphase-1
-            k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
-        end do
-        do i = 0, k-1
-            path = trim(root_path)//'['//int2str(i)//']/python'
-            if (have_option_for_any_phase(trim(path), nphase))&
-                all_fields_costant = .false.
-        end do
-
-        if ( have_option_for_any_phase('/multiphase_properties/capillary_pressure/type_Brooks_Corey', nphase) ) then
-            root_path = '/multiphase_properties/capillary_pressure/'//'type_Brooks_Corey/scalar_field::B/prescribed/value'
-            k = 0
-            do i = 0, nphase-1
-                k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
-            end do
-            do i = 0, k-1
-                path = trim(root_path)//'['//int2str(i)//']/python'
-                if (have_option_for_any_phase(trim(path), nphase))&
-                    all_fields_costant = .false.
-            end do
-        endif
-    end if
-    !Check relative permeability
-    if (have_option_for_any_phase('/multiphase_properties/Relperm_Corey/', nphase)) then
-        root_path = '/multiphase_properties/Relperm_Corey/'&
-            //'scalar_field::relperm_max/prescribed/value'
-        k = 0
-        do i = 0, nphase-1
-            k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
-        end do
-        do i = 0, k-1
-            path = trim(root_path)//'['//int2str(i)//']/python'
-            if (have_option_for_any_phase(trim(path), nphase))&
-                all_fields_costant = .false.
-        end do
-
-        root_path = '/multiphase_properties/Relperm_Corey/'&
-            //'scalar_field::relperm_exponent/prescribed/value'
-        k = 0
-        do i = 0, nphase-1
-            k = max(k,option_count('/material_phase['// int2str( i ) //']'//trim(root_path)))
-        end do
-        do i = 0, k-1
-            path = trim(root_path)//'['//int2str(i)//']/python'
-            if (have_option_for_any_phase(trim(path), nphase))&
-                all_fields_costant = .false.
-        end do
-    end if
-    !Check permeability
-    if (have_option('porous_media/scalar_field::Permeability')) then
-        root_path = 'porous_media/scalar_field::Permeability/prescribed/value'
-        k = option_count(trim(root_path))
-        do i = 0, k-1
-            path = trim(root_path)//'['//int2str(i)//']/python'
-            if (have_option(trim(path)))&
-                all_fields_costant = .false.
-        end do
-    end if
-    if (have_option('porous_media/tensor_field::Permeability')) then
-        root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
-        k = option_count(trim(root_path))
-        do i = 0, k-1
-            path = trim(root_path)//'['//int2str(i)//']/isotropic/python'
-            if (have_option(trim(path)))&
-                all_fields_costant = .false.
-            path = trim(root_path)//'['//int2str(i)//']/diagonal/python'
-            if (have_option(trim(path)))&
-                all_fields_costant = .false.
-            path = trim(root_path)//'['//int2str(i)//']/anisotropic_symmetric/python'
-            if (have_option(trim(path)))&
-                all_fields_costant = .false.
-            path = trim(root_path)//'['//int2str(i)//']/anisotropic_asymmetric/python'
-            if (have_option(trim(path)))&
-                all_fields_costant = .false.
-        end do
-    end if
-    if(have_option('porous_media/vector_field::Permeability')) then
-        all_fields_costant = .false.
-    end if
-    if(have_option('porous_media/Permeability_from_femdem')) then
-        all_fields_costant = .false.
-    end if
-    !Check porosity
-    if (have_option('porous_media/scalar_field::Porosity')) then
-        root_path = 'porous_media/scalar_field::Porosity/prescribed/value'
-        k = option_count(trim(root_path))
-        do i = 0, k-1
-            path = trim(root_path)//'['//int2str(i)//']/python'
-            if (have_option(trim(path)))&
-                all_fields_costant = .false.
-        end do
-    end if
-
-all_fields_costant = .false.
-    !If fake_IDs_ndgln, then we are not using compacted data and
-    !IDs_ndgln and IDs2CV_ndgln will point to the same position
-    if (present_and_true(fake_IDs_ndgln) .or. .not. all_fields_costant) then
-        CV_NLOC = size(CV_ndgln)/size(IDs_ndgln)
-        do i = 1, size(IDs_ndgln)
-            IDs_ndgln(i) = i
-        end do
-
-        do i = 1, size(IDs_ndgln)
-            do j = 1, CV_NLOC
-                k = CV_ndgln((i-1)* CV_NLOC + j)
-                IDs2CV_ndgln(k) = IDs_ndgln(i)
-            end do
-        end do
-
-        return
-    end if
-
-    allocate(region_ids(size(fl_mesh%region_ids)))
-    region_ids = -1
-    !Store all the regions ids that appear
-    do i = 1, size(fl_mesh%region_ids)
-        !Check if already store
-        stored = .false.; j = 1
-        do while (region_ids(j)>0)
-            if (fl_mesh%region_ids(i) == region_ids(j)) stored = .true.
-            j = j + 1
-        end do
-        if (.not.stored) region_ids(j) = fl_mesh%region_ids(i)
-    end do
-    !Return the number of region ids to properly allocate the fields with this
-    number_of_ids = j - 1
-
-    !Store the position where fl_mesh%region_ids(i) appears
-    do i = 1, size(fl_mesh%region_ids)
-        !The number should appear only once
-        aux = MAXLOC(region_ids, MASK = region_ids == fl_mesh%region_ids(i))
-        IDs_ndgln(i) = aux(1)
-    end do
-
-    !Create IDs2CV_ndgln
-    mtemp = size(CV_NDGLN)/size(IDs_ndgln)
-    DO i = 1, size(IDs_ndgln)
-        !DO j = 1, size(CV_NDGLN)/size(IDs_ndgln)
-        DO j = 1, mtemp
-            !k = CV_NDGLN(( i - 1 ) * size(CV_NDGLN)/size(IDs_ndgln) + j )
-            k = CV_NDGLN(( i - 1 )*mtemp +j )
-            IDs2CV_ndgln(k) = IDs_ndgln(i)
-        end do
-    end do
-
-    !###Compact fields###
-    !Relative permeability and Immobile fractions (if cappressure, also cap parameters)
-    if (has_tensor_field(packed_state,"PackedRockFluidProp")) then
-        t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
-        call convert_tensor_field(t_field, IDs_ndgln )
-    end if
-    deallocate(region_ids)
-
-contains
-
-    subroutine convert_scalar_field(s_field, IDs_ndgln )
-        !This subroutine converts an scalar field to use region ids
-        implicit none
-        integer, dimension(:), allocatable, intent(inout) :: IDs_ndgln
-        type (scalar_field), intent(inout), pointer :: s_field
-        !Local variables
-        real, dimension(:), allocatable :: s_field_bak
-        integer :: i
-
-        !Create backup
-        allocate(s_field_bak(size(s_field%val,1))); s_field_bak = s_field%val
-        !re-size the field
-        deallocate(s_field%val); allocate(s_field%val(number_of_ids))
-        !Re-store the data
-        do i = 1, size(IDs_ndgln)
-            s_field%val(IDs_ndgln(i)) = s_field_bak(i)
-        end do
-        !To keep the registry of memory correct we have to re-adapt it as well
-#ifdef HAVE_MEMORY_STATS
-call register_deallocation("scalar_field", "real", &
-    size(s_field_bak,1), s_field%name)
-#endif
-#ifdef HAVE_MEMORY_STATS
-call register_allocation("scalar_field", "real", &
-size(s_field%val,1), s_field%name)
-#endif
-        deallocate(s_field_bak)
-    end subroutine convert_scalar_field
-
-    subroutine convert_tensor_field(t_field, IDs_ndgln )
-        !This subroutine converts an scalar field to use region ids
-        implicit none
-        integer, dimension(:), allocatable, intent(inout) :: IDs_ndgln
-        type (tensor_field), intent(inout), pointer :: t_field
-        !Local variables
-        real, dimension(:, :, :), allocatable :: t_field_bak
-        integer :: i
-
-        !Create backup
-        allocate(t_field_bak(size(t_field%val,1), size(t_field%val,2)&
-            , size(t_field%val,3))); t_field_bak = t_field%val
-        !re-size the field
-        deallocate(t_field%val); allocate(t_field%val(size(t_field%val,1)&
-            , size(t_field%val,2), number_of_ids))
-        !Re-store the data
-        do i = 1, size(IDs_ndgln)
-            t_field%val(:, :, IDs_ndgln(i)) = t_field_bak(:, :, i)
-        end do
-
-        !To keep the registry of memory correct we have to re-adapt it as well
-#ifdef HAVE_MEMORY_STATS
-call register_deallocation("tensor_field", "real", &
-    size(t_field_bak,1)*size(t_field_bak,2)*size(t_field_bak,3), t_field%name)
-#endif
-        t_field%mesh%nodes = size(IDs_ndgln)
-        t_field%mesh%elements = size(IDs_ndgln)
-
-#ifdef HAVE_MEMORY_STATS
-call register_allocation("tensor_field", "real", &
-size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
-#endif
-            deallocate(t_field_bak)
-    end subroutine convert_tensor_field
-
-end subroutine get_regionIDs2nodes
 
 !!$ This subroutine calculates the actual Darcy velocity
 subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)

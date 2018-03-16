@@ -74,7 +74,7 @@ module multi_interpolation
 contains
 
   subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, &
-            small_colacv, cv_ele_type, flag, IDs2CV_ndgln)
+            small_colacv, flag)
     implicit none
     ! IMPORTANT: flag is a switch before and after the adapt and tells us which interpolation step (1) or (3) to implement
     type( state_type ), dimension( : ), intent( inout ) :: state
@@ -82,10 +82,8 @@ contains
     type(multi_dimensions), intent(in) :: Mdims
     type(multi_GI_dimensions), intent(in) :: CV_GIdims
     type(multi_shape_funs), intent(in) :: CV_funs
-    integer, intent( in ) :: cv_ele_type
     integer, intent(in) :: flag
     integer, dimension(:), pointer, intent(inout) :: small_finacv, small_colacv
-    integer, optional, dimension(:) :: IDs2CV_ndgln
     !          ! local variables...checking
     type ( tensor_field ), pointer :: ufield
     integer :: ele, cv_iloc, cv_jloc, iphase, &            ! Leave iphase where it is for now (will probably need it for multiphase flow)
@@ -290,7 +288,7 @@ contains
     if (have_option('/material_phase[0]/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
        if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv)
     else if(have_option('/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv,.true., IDs2CV_ndgln)
+       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv,.true.)
     endif
     ! DEALLOCATIONS
     deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)

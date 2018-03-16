@@ -868,7 +868,7 @@ contains
     end subroutine Calculate_flooding_absorptionTerm
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                      upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
+                                                      upwnd, suf_sig_diagten_bc, Quality_list )
        implicit none
        type( state_type ), dimension( : ), intent( inout ) :: state
        type( state_type ), intent( inout ) :: packed_state
@@ -879,7 +879,6 @@ contains
        type (multi_sparsities), intent( in ) :: Mspars
        type(multi_ndgln), intent(in) :: ndgln
        type (porous_adv_coefs), intent(inout) :: upwnd
-       integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
        type(bad_elements), allocatable, dimension(:), optional :: Quality_list
        !Local variables
@@ -955,19 +954,19 @@ contains
             call set_viscosity(state, Mdims, viscosities(:,1))
        end if
        call Calculate_PorousMedia_adv_terms( state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-              upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities)
+              upwnd, inv_perm, viscosities)
 
        ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
        ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
        ! is diagonal
        call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-                              Mspars, ndgln, PorousMedia_absorp, state, ids_ndgln, inv_perm, viscosities)
+                              Mspars, ndgln, PorousMedia_absorp, state, inv_perm, viscosities)
 
        deallocate(viscosities)
        contains
 
            subroutine Calculate_PorousMedia_adv_terms( state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-               upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities )
+               upwnd, inv_perm, viscosities )
 
                implicit none
                type( state_type ), dimension( : ), intent( in ) :: state
@@ -976,7 +975,6 @@ contains
                type( multi_dimensions ), intent( in ) :: Mdims
                type( multi_ndgln ), intent( in ) :: ndgln
                type (porous_adv_coefs), intent(inout) :: upwnd
-               integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
                real, dimension(:, :, :), target, intent(in):: inv_perm
                real, dimension(:,:), intent(in) :: viscosities
                !!$ Local variables:
@@ -1001,27 +999,30 @@ contains
                allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
-                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
+                   PERM%val, viscosities, inv_perm1=inv_perm)
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
                PERT = 0.0001; allocate(Max_sat(Mdims%nphase))
-               do icv = 1, size(satura,2)
-                   Max_sat(:) = 1. - sum(Immobile_fraction(:, IDs2CV_ndgln(icv))) + Immobile_fraction(:, IDs2CV_ndgln(icv))
-                   do iphase = 1, Mdims%n_in_pres !Mdims%nphase
-                       SATURA2(iphase, icv) = SATURA(iphase, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
-                       !If out of bounds then we perturbate in the opposite direction
-                       if (satura2(iphase, icv) > Max_sat(iphase) .or. &
-                           satura2(iphase, icv) < Immobile_fraction(iphase, IDs2CV_ndgln(icv))) then
-                           SATURA2(iphase, icv) = SATURA2(iphase, icv) - 2. * sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
-                       end if
+               do ele = 1, Mdims%totele
+                   do cv_iloc = 1, Mdims%cv_nloc
+                       icv = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                       Max_sat(:) = 1. - sum(Immobile_fraction(:, ele)) + Immobile_fraction(:, ele)
+                       do iphase = 1, Mdims%n_in_pres !Mdims%nphase
+                           SATURA2(iphase, icv) = SATURA(iphase, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+                           !If out of bounds then we perturbate in the opposite direction
+                           if (satura2(iphase, icv) > Max_sat(iphase) .or. &
+                               satura2(iphase, icv) < Immobile_fraction(iphase, ele)) then
+                               SATURA2(iphase, icv) = SATURA2(iphase, icv) - 2. * sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+                           end if
+                       end do
                    end do
                end do
 
 
                call allocate_multi_field( Mdims, PorousMedia_absorp2, size(PorousMedia_absorp%val,4), field_name="PorousMedia_AbsorptionTerm")
                CALL calculate_absorption2( packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, &
-                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
+                   PERM%val, viscosities, inv_perm1=inv_perm)
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma" )
@@ -1065,7 +1066,7 @@ contains
 
 
            subroutine calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-               Mspars, ndgln, PorousMedia_absorp, state, IDs_ndgln, inv_perm, viscosities)
+               Mspars, ndgln, PorousMedia_absorp, state, inv_perm, viscosities)
                implicit none
                type( state_type ), intent( inout ) :: packed_state
                type(multi_dimensions), intent(in) :: Mdims
@@ -1073,7 +1074,6 @@ contains
                type(multi_shape_funs), intent(inout) :: CV_funs
                type (multi_sparsities), intent(in) :: Mspars
                type(multi_ndgln), intent(in) :: ndgln
-               integer, dimension( : ), intent( in ) :: IDs_ndgln
                type (multi_field), intent( inout ) :: PorousMedia_absorp
                type(state_type), dimension( : ), intent(in) :: state
                real, dimension( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), intent( inout ) :: suf_sig_diagten_bc
@@ -1121,9 +1121,9 @@ contains
 
                    do ele = 1, Mdims%totele
                        !Get properties from packed state
-                       Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
-                       Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
-                       Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
+                       Immobile_fraction => RockFluidProp%val(1, :, ELE)
+                       Endpoint_relperm => RockFluidProp%val(2, :, ELE)
+                       Corey_exponent => RockFluidProp%val(3, :, ELE)
                        do iface = 1, CV_GIdims%nface
                            ele2  = face_ele( iface, ele )
                            sele2 = max( 0, -ele2 )
@@ -1204,7 +1204,7 @@ contains
 
 
     SUBROUTINE calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
-        PERM, viscosities, IDs_ndgln, inv_mat_absorp, inv_perm1)
+        PERM, viscosities, inv_mat_absorp, inv_perm1)
         ! Calculate absorption for momentum eqns
         implicit none
         type( state_type ), intent( inout ) :: packed_state
@@ -1212,7 +1212,6 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         REAL, DIMENSION( :, : ), intent( in ) :: SATURA
-        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION( :, :, : ), intent( in ) :: PERM
         real, intent(in), dimension(:,:) :: viscosities
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: inv_mat_absorp
@@ -1243,9 +1242,9 @@ contains
         Maux = 0.
         DO ELE = 1, Mdims%totele
             !Get properties from packed state
-            Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
-            Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
-            Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
+            Immobile_fraction => RockFluidProp%val(1, :, ELE)
+            Endpoint_relperm => RockFluidProp%val(2, :, ELE)
+            Corey_exponent => RockFluidProp%val(3, :, ELE)
             DO CV_ILOC = 1, Mdims%cv_nloc
                 MAT_NOD = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC)
                 CV_NOD = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + CV_ILOC )
@@ -1367,7 +1366,7 @@ contains
 
 
     SUBROUTINE calculate_capillary_pressure( packed_state, &
-        CV_NDGLN, ids_ndgln, totele, cv_nloc)
+        NDGLN, totele, cv_nloc)
 
             ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
             ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
@@ -1376,8 +1375,8 @@ contains
 
             IMPLICIT NONE
             type(state_type), intent(inout) :: packed_state
-            integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
             integer, intent(in) :: totele, cv_nloc
+            type(multi_ndgln), intent(in) :: ndgln
             ! Local Variables
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
             logical, save :: Cap_Brooks = .true., Cap_Power = .false.
@@ -1414,11 +1413,11 @@ contains
                         if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                             do ele = 1, totele
                                 do cv_iloc = 1, cv_nloc
-                                    cv_nod = cv_ndgln((ele-1)*cv_nloc + cv_iloc)
+                                    cv_nod = ndgln%cv((ele-1)*cv_nloc + cv_iloc)
                                     CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
-                                        Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, IDs_ndgln(ele)), &
-                                        Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), &
-                                        Imbibition_term(iphase, IDs_ndgln(ele)), iphase)
+                                        Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, ele), &
+                                        Cap_exponent(iphase, ele),Immobile_fraction(:,ele), &
+                                        Imbibition_term(iphase, ele), iphase)
                                     Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
                                 end do
                             end do
