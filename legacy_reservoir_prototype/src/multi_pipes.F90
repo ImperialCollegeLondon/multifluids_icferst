@@ -585,7 +585,7 @@ contains
                         TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
                         TUPWIND_IN=0.0; DUPWIND_IN=0.0
                         DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                            ! CV incomming T:
+                            ! CV incomming T: !WTF! CAN'T WE DO THIS IN JUST ONE GO?
                             IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                                 TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
                             ELSE

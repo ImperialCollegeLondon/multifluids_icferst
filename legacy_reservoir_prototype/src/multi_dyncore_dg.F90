@@ -124,7 +124,6 @@ contains
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
            INTEGER :: IPHASE, its_taken
-           REAL, PARAMETER :: SECOND_THETA = 1.0
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
            integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
@@ -323,7 +322,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
                    TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, SECOND_THETA, cv_beta, &
+                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
@@ -374,6 +373,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                        cycle!repeat
                    else
                        solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+!   IF THIS WORKS BETTER CONSIDER ADDING A VERY SIMPLE BACKTRACKING FOR THIS AS WELL
+! aux = 0.1
+!tracer%val(1,:,:) = (1.0 -aux )*temp_bak + aux* tracer%val(1,:,:)
                        exit!good to go!
                    end if
                END IF Conditional_Lumping
@@ -382,13 +384,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    !Apply, if required the min_max_principle
                    call force_min_max_principle(2)
 
-                   if (ITS_FLUX_LIM == 1) then
-                       reference_temp = tracer%val
-                   else
-                       !Check if the tolerance is good or not
-                       aux = convergence_check(tracer%val, reference_temp)
-                       if ( aux < inf_tolerance) exit
-                   end if
+                   if (ITS_FLUX_LIM == 1) reference_temp = tracer%val
                end if
 
 
@@ -573,7 +569,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
              REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
              LOGICAL :: GET_THETA_FLUX
-             REAL , PARAMETER :: SECOND_THETA = 1.0
              INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
              type( tensor_field ), pointer :: den_all2, denold_all2
@@ -704,7 +699,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
                      TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, SECOND_THETA, Mdisopt%v_beta, &
+                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
                      SUF_SIG_DIAGTEN_BC, &
                      DERIV%val(1,:,:), P, &
                      V_SOURCE, V_ABSORB, VOLFRA_PORE, &
@@ -1618,7 +1613,6 @@ end if
         type (multi_outfluxes), intent(inout) :: outfluxes
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
-        REAL, PARAMETER :: SECOND_THETA = 1.0
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
@@ -1686,7 +1680,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
             TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-            Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, SECOND_THETA, v_beta, &
+            Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
             SUF_SIG_DIAGTEN_BC, &
             DERIV, CV_P, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &
@@ -5146,10 +5140,6 @@ end if
 
                 CS2=CS**2
                 FOURCS=CS2
-
-                !            IF(LES_DISOPT.ge.8) THEN
-                !               ALLOCATE(Q_SCHEME_ABS_CONT_VOL( NPHASE, U_NLOC, TOTELE  ))
-                !            ENDIF
 
                 Q_SCHEME_ABS_CONT_VOL=0.0
 

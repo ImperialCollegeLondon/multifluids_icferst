@@ -1982,7 +1982,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     real, dimension(:,:,:), pointer :: pressure
     real, dimension(:,:), pointer :: phasevolumefraction, temperature
     real, dimension(:,:,:), pointer :: velocity
-    character (len = OPTION_PATH_LEN) :: output_message
+    character (len = OPTION_PATH_LEN) :: output_message =''
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
@@ -2184,19 +2184,16 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             end if
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
-                write(output_message, * )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
             else if (is_porous_media .and. variable_selection == 4) then
-                write(output_message, * )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations:", its, "; Mass error:", max_calculate_mass_delta
+                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
             else
-                write(output_message, * ) "L_inf:", inf_norm_val, "; Total iterations:", its
+                write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", its
             end if
 
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
-            if (getprocno() == 1) then
-                ewrite(1,*) trim(output_message)
-            end if
             !Automatic non-linear iteration checking
             if (is_porous_media) then
                 select case (variable_selection)
@@ -2414,7 +2411,6 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     real, dimension(2), intent(in) :: totally_min_max
     !Local variables
     integer :: cv_inod, iphase
-
     !Same as normilising values but should be quicker
     inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
     call allmax(inf_norm_scalar_normalised)

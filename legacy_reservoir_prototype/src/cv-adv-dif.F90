@@ -103,7 +103,7 @@ contains
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
         DEN_ALL, DENOLD_ALL, &
         TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-        CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
+        CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
         SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
@@ -266,7 +266,7 @@ contains
         INTEGER, intent( in ) :: IGOT_THERM_VIS
         REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
         REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
-        REAL, intent( in ) :: DT, CV_THETA, SECOND_THETA, CV_BETA
+        REAL, intent( in ) :: DT, CV_THETA, CV_BETA
         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (Mdims%nphase,Mdims%cv_nonods)
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
@@ -383,7 +383,7 @@ contains
         REAL :: HDC, &
             RSUM, &
             THERM_FTHETA, &
-            W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta
+            W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta, auxR
         REAL :: FTHETA(Mdims%nphase), FTHETA_T2(Mdims%nphase), ONE_M_FTHETA_T2OLD(Mdims%nphase), FTHETA_T2_J(Mdims%nphase), ONE_M_FTHETA_T2OLD_J(Mdims%nphase)
         REAL :: ROBIN1(Mdims%nphase), ROBIN2(Mdims%nphase)
         integer :: IGETCT, IANISOLIM, global_face,J
@@ -678,8 +678,8 @@ contains
         GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 )
 
         call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
-        ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS:', &
-            CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS
+        ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
+            CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
         ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
 
         !For flooding, only for the saturation equation we need to take out the density
@@ -765,7 +765,7 @@ contains
         IGETCT = 0
         IF ( GETCT ) IGETCT = 1
         GOT_T2=( IGOT_T2 == 1 )
-        use_volume_frac_T2=( GOT_T2 .or. thermal )
+        use_volume_frac_T2=( IGOT_T2 == 1 .or. thermal )
         i_use_volume_frac_t2= 0
         if (use_volume_frac_T2) i_use_volume_frac_t2= 1
         nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
@@ -1843,8 +1843,9 @@ contains
                                         END DO
                                     ELSE
                                         do iphase=1,Mdims%nphase
-                                            call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
-                                                SECOND_THETA * FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase) ) ! Advection
+                                            !temporary to check a possible memory problem with Valgrind!!!
+                                            auxR = FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase)
+                                            call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,auxR) ! Advection
                                             if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
                                                             - FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
                                             if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
@@ -1854,7 +1855,7 @@ contains
                                         if(integrate_other_side_and_not_boundary) then
                                             do iphase=1,Mdims%nphase
                                                 call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
-                                                    - SECOND_THETA * FTHETA_T2_J(IPHASE) * SdevFuns%DETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) ) ! Advection
+                                                    - FTHETA_T2_J(IPHASE) * SdevFuns%DETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) ) ! Advection
                                             if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
                                                     - FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE))
                                             if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
@@ -1873,28 +1874,28 @@ contains
                                     END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
                                     do iphase=1,Mdims%nphase
                                         call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
-                                            +  SECOND_THETA * FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) ) ! Advection
+                                            +  FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) ) ! Advection
 
                                         if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
                                            +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
                                         if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
                                            +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
                                         if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
-                                           - SECOND_THETA * FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                           - FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
                                         if (on_domain_boundary) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
                                                                 SdevFuns%DETWEI( GI ) * ROBIN1(iphase))
                                     end do
                                     if(integrate_other_side_and_not_boundary) then
                                         do iphase=1,Mdims%nphase
                                             call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
-                                                -  SECOND_THETA * FTHETA_T2_J(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) ) ! Advection
+                                                -  FTHETA_T2_J(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) ) ! Advection
 
                                             if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
                                                 +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
                                             if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
                                                 +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
                                             if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
-                                                + SECOND_THETA * FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                                + FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
 
                                         end do
                                     endif
@@ -1912,7 +1913,7 @@ contains
                                 ! Put results into the RHS vector
                                 LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : )  &
                                        ! subtract 1st order adv. soln.
-                                    + SECOND_THETA * FTHETA_T2(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                                    + FTHETA_T2(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
                                     -  SdevFuns%DETWEI( GI ) * ( FTHETA_T2(:) * NDOTQNEW(:) * LIMDT(:) &
                                     + ONE_M_FTHETA_T2OLD(:)* NDOTQOLD(:) * LIMDTOLD(:) ) ! hi order adv
                                 ! Subtract out 1st order term non-conservative adv.
@@ -1933,7 +1934,7 @@ contains
                                 if(integrate_other_side_and_not_boundary) then
                                     LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
                                            ! subtract 1st order adv. soln.
-                                        - SECOND_THETA * FTHETA_T2_J(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                                        - FTHETA_T2_J(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
                                         +  SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J(:) * NDOTQNEW(:) * LIMDT(:) &
                                         + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDTOLD(:) )
                                     if (GOT_DIFFUS) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
@@ -7860,7 +7861,6 @@ end if
         real, parameter :: tol = 0.05!Shock fronts smaller than this are unlikely to require extra handling
 
         minival = 10.; maxival = 0.
-        shock_front_in_ele = .false.
         do cv_iloc = 1, Mdims%cv_nloc
             do iphase = 1, mdims%nphase - 1
                 aux = sat(iphase, ndgln%cv((ELE-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase)
@@ -7869,7 +7869,7 @@ end if
             end do
         end do
 
-        if (minival < tol .and. (maxival-minival) > tol ) shock_front_in_ele = .true.
+        shock_front_in_ele = minival < tol .and. (maxival-minival) > tol
 
     end function shock_front_in_ele
 
