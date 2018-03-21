@@ -71,7 +71,6 @@ module multiphase_time_loop
     use multi_data_types
     use vtk_interfaces
     use multi_interpolation
-    use multi_transport
     use multi_pipes
     use momentum_diagnostic_fields, only: calculate_densities
 
@@ -527,8 +526,6 @@ contains
                 end if
 
 
-!Testing multi_transport
-call solve_transport()
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then

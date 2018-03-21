@@ -39,7 +39,7 @@ Multiphase_Prototype_Wrapper.o : Multiphase_Prototype_Wrapper.F90 \
    ../../include/state_module.mod ../../include/tictoc.mod \
    ../../include/timeloop_utilities.mod ../../include/timers.mod \
    ../../include/write_gmsh.mod ../../include/write_state_module.mod \
-   ../include/diagnostic_fields_new_multiphase.mod \
+   ../include/diagnostic_fields_new_multiphase.mod ../include/multi_tools.mod \
    ../include/multiphase_time_loop.mod
 
 ../include/multiphase_time_loop.mod: Multiphase_TimeLoop.o
@@ -67,7 +67,7 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/diagnostic_fields_new_multiphase.mod \
    ../include/multi_data_types.mod ../include/multi_interpolation.mod \
-   ../include/multi_transport.mod ../include/multiphase_1d_engine.mod \
+   ../include/multi_pipes.mod ../include/multiphase_1d_engine.mod \
    ../include/multiphase_eos.mod ../include/multiphase_fractures.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
@@ -83,10 +83,11 @@ cv-adv-dif.o ../include/cv_advection.mod: cv-adv-dif.F90 \
    ../../include/petsc_tools.mod ../../include/reference_counting.mod \
    ../../include/solvers.mod ../../include/sparse_tools.mod \
    ../../include/sparsity_patterns.mod ../../include/spud.mod \
-   ../../include/vtk_interfaces.mod ../include/copy_outof_state.mod \
-   ../include/matrix_operations.mod ../include/multi_data_types.mod \
-   ../include/multi_interpolation.mod ../include/multi_pipes.mod \
-   ../include/multi_tools.mod ../include/multiphase_eos.mod \
+   ../../include/surface_integrals.mod ../../include/vtk_interfaces.mod \
+   ../include/copy_outof_state.mod ../include/matrix_operations.mod \
+   ../include/multi_data_types.mod ../include/multi_interpolation.mod \
+   ../include/multi_pipes.mod ../include/multi_tools.mod \
+   ../include/multiphase_eos.mod \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod
@@ -121,14 +122,15 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../../include/field_options.mod ../../include/fields_allocates.mod \
    ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/memory_diagnostics.mod \
-   ../../include/reference_counting.mod ../../include/shape_functions.mod \
-   ../../include/solvers.mod ../../include/sparse_tools_petsc.mod \
-   ../../include/spud.mod ../../include/state_module.mod \
-   ../include/compositional_terms.mod ../include/copy_outof_state.mod \
-   ../include/cv_advection.mod ../include/matrix_operations.mod \
-   ../include/multi_data_types.mod ../include/multi_pipes.mod \
-   ../include/multi_surface_tension.mod ../include/multi_tools.mod \
-   ../include/multiphase_eos.mod ../include/shape_functions_ndim.mod \
+   ../../include/parallel_tools.mod ../../include/reference_counting.mod \
+   ../../include/shape_functions.mod ../../include/solvers.mod \
+   ../../include/sparse_tools_petsc.mod ../../include/spud.mod \
+   ../../include/state_module.mod ../include/compositional_terms.mod \
+   ../include/copy_outof_state.mod ../include/cv_advection.mod \
+   ../include/matrix_operations.mod ../include/multi_data_types.mod \
+   ../include/multi_pipes.mod ../include/multi_surface_tension.mod \
+   ../include/multi_tools.mod ../include/multiphase_eos.mod \
+   ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod \
    ../include/spact.mod
 
@@ -209,6 +211,7 @@ multi_pipes.o ../include/multi_pipes.mod: multi_pipes.F90 \
    ../../include/global_parameters.mod ../../include/memory_diagnostics.mod \
    ../../include/petsc_tools.mod ../../include/reference_counting.mod \
    ../../include/sparse_tools.mod ../../include/sparse_tools_petsc.mod \
+   ../../include/surface_integrals.mod ../../include/write_state_module.mod \
    ../include/copy_outof_state.mod ../include/matrix_operations.mod \
    ../include/multi_data_types.mod ../include/multi_tools.mod \
    ../include/shape_functions_linear_quadratic.mod \
@@ -294,12 +297,6 @@ multi_surface_tension.o ../include/multi_surface_tension.mod: \
 
 multi_tools.o ../include/multi_tools.mod: multi_tools.F90 \
    ../../include/confdefs.h ../../include/fdebug.h ../../include/fields.mod \
-   ../../include/fldebug.mod ../../include/global_parameters.mod
-
-../include/multi_transport.mod: multi_transport.o
-	@true
-
-multi_transport.o ../include/multi_transport.mod: multi_transport.F90 \
-   ../../include/confdefs.h ../../include/fdebug.h ../../include/fldebug.mod \
-   ../include/multi_data_types.mod ../include/multiphase_1d_engine.mod
+   ../../include/fldebug.mod ../../include/global_parameters.mod \
+   ../../include/vector_tools.mod
 

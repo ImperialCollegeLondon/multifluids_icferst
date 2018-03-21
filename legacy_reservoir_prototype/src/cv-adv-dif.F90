@@ -102,7 +102,6 @@ contains
         tracer, velocity, density, multi_absorp, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
         DEN_ALL, DENOLD_ALL, &
-        TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
@@ -114,6 +113,7 @@ contains
         MASS_MN_PRES, THERMAL, &
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, &
+        TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
         porous_heat_coef, outfluxes, solving_compositional)
@@ -262,10 +262,6 @@ contains
         REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (Mdims%nphase,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
-        INTEGER, intent( in ) :: IGOT_THERM_VIS
-        REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
-        REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
         REAL, intent( in ) :: DT, CV_THETA, CV_BETA
         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (Mdims%nphase,Mdims%cv_nonods)
@@ -278,9 +274,13 @@ contains
         REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
         type(tensor_field), intent(in), optional, target :: saturation
+        REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
+        INTEGER, intent( in ), optional :: IGOT_THERM_VIS
+        REAL, DIMENSION(:,:,:,:), intent( in ), optional :: THERM_U_DIFFUSION
+        REAL, DIMENSION(:,:), intent( in ), optional :: THERM_U_DIFFUSION_VOL
         !Variables for Capillary pressure
-        real, optional, dimension(:), intent(in) :: OvRelax_param
         integer, optional, intent(in) :: Phase_with_Pc
+        real, optional, dimension(:), intent(in) :: OvRelax_param
         !Variables to cache get_int_vel OLD
         real, optional, dimension(:), intent(inout) :: Courant_number
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
@@ -388,7 +388,6 @@ contains
         REAL :: ROBIN1(Mdims%nphase), ROBIN2(Mdims%nphase)
         integer :: IGETCT, IANISOLIM, global_face,J
         ! Functions...
-        !REAL :: R2NORM, FACE_THETA
         !        ===>  LOGICALS  <===
         LOGICAL :: GETMAT, &
             D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, &
@@ -673,9 +672,10 @@ contains
         IDUM = 0
         ewrite(3,*) 'In CV_ASSEMB'
         GOT_VIS = .FALSE.
-        IF(IGOT_THERM_VIS==1) GOT_VIS = ( R2NORM( THERM_U_DIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 ) &
-            .OR. ( R2NORM( THERM_U_DIFFUSION_VOL, Mdims%mat_nonods * Mdims%nphase ) /= 0 )
-        GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 )
+        if (present(IGOT_THERM_VIS)) then
+            IF(IGOT_THERM_VIS==1) GOT_VIS = present(THERM_U_DIFFUSION) .OR. present(THERM_U_DIFFUSION_VOL)
+        end if
+        GOT_DIFFUS = present(TDIFFUSION)
 
         call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
         ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
@@ -964,14 +964,14 @@ contains
             FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
             IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-            tracer,PSI_AVE, PSI_INT)
+            tracer,PSI_AVE, PSI_INT, Mmat%CV_pressure)
         XC_CV_ALL=0.0
         !sprint_to_do!use a pointer?
         XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
         MASS_CV=psi_int(1)%ptr%val(1,:)
         FEMT_ALL(:,:)=FEMPSI(1)%ptr%val(1,:,:)
         FEMTOLD_ALL(:,:)=FEMPSI(2)%ptr%val(1,:,:)
-        FEM_IT=3
+        FEM_IT=3!<==============WHY DO WE SET IT TO THREE??
         if (.not. is_constant(density)) then
             FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
             tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
@@ -1000,7 +1000,7 @@ contains
                 FEMt2OLD_ALL=old_saturation%val(1,:,:)
             end if
         end IF
-        do i=1,FEM_IT-1
+        do i=1,FEM_IT-1!<==============WHY TO -1
             if (fempsi(i)%ptr%name(1:6)=='FEMPSI') then
                 call deallocate(fempsi(i)%ptr)
                 deallocate(fempsi(i)%ptr)
@@ -1480,9 +1480,9 @@ contains
                             If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
                                 ! This sub caculates the effective diffusion
                                 ! coefficient DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-                                T_ALL_J( : )   =T_ALL(:, CV_NODJ)
-                                TOLD_ALL_J( : )=TOLD_ALL(:, CV_NODJ)
-                                LOC_WIC_T_BC_ALL(:)=0
+                                T_ALL_J  =T_ALL(:, CV_NODJ)
+                                TOLD_ALL_J=TOLD_ALL(:, CV_NODJ)
+                                LOC_WIC_T_BC_ALL=0
                                 !           IF(SELE.NE.0) THEN
                                 IF(on_domain_boundary) THEN
                                     DO IPHASE=1,Mdims%nphase
@@ -1989,12 +1989,10 @@ contains
                                         DO IPHASE=1,Mdims%nphase
                                             CALL CALC_STRESS_TEN( STRESS_IJ_THERM(:,:,IPHASE), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                                 CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SdevFuns%DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODI), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODI) )
-                                              !UFENX_ALL(1:Mdims%ndim,U_ILOC,GI), UFENX_ALL(1:Mdims%ndim,U_JLOC,GI) * DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,CV_NODI), THERM_U_DIFFUSION_VOL(IPHASE,CV_NODI) )
                                             if ( integrate_other_side_and_not_boundary ) then
                                                 STRESS_IJ_THERM_J(:,:,IPHASE) = 0.0
                                                 CALL CALC_STRESS_TEN( STRESS_IJ_THERM_J(:,:,IPHASE), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                                     CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SdevFuns%DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODJ), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODJ) )
-                                                 !UFENX_ALL(1:Mdims%ndim,U_ILOC,GI), UFENX_ALL(1:Mdims%ndim,U_JLOC,GI) * DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,CV_NODJ), THERM_U_DIFFUSION_VOL(IPHASE,CV_NODJ) )
                                             end if
                                             DO JDIM = 1, Mdims%ndim
                                                 DO IDIM = 1, Mdims%ndim
@@ -4621,7 +4619,7 @@ end if
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
         igetct, X, mass_ele, mass_mn_pres, &
-        tracer, psi_ave, psi_int)
+        tracer, psi_ave, psi_int, CV_pressure)
 
         !------------------------------------------------
         ! Subroutine description:
@@ -4649,6 +4647,7 @@ end if
         real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
         real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
         type(tensor_field), intent(in) :: tracer
+        logical, intent(in) :: CV_pressure
         ! the following two need to be changed to optional in the future
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
@@ -4674,7 +4673,7 @@ end if
         !---------------------------------
         ! initialisation and allocation
         !---------------------------------
-        do_not_project = have_option(projection_options//'/do_not_project')
+        do_not_project = have_option(projection_options//'/do_not_project')! .or. CV_pressure
         cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)
 
@@ -5377,27 +5376,16 @@ end if
         ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use
         ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction.
         REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
-
         REAL :: COEF
         INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC
         LOGICAL :: ZER_DIFF
-
-        REAL, DIMENSION ( :, : ), allocatable :: DTDX_GI_ALL, DTOLDDX_GI_ALL, DTDX_GI2_ALL, DTOLDDX_GI2_ALL
-        REAL, DIMENSION ( : ), allocatable :: N_DOT_DKDT_ALL, N_DOT_DKDTOLD_ALL, N_DOT_DKDT2_ALL, N_DOT_DKDTOLD2_ALL
-        REAL, DIMENSION ( : ), allocatable :: DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL
-        REAL, DIMENSION ( :, :, : ), allocatable :: DIFF_GI, DIFF_GI2
-
-        ALLOCATE( DTDX_GI_ALL( NDIM, NPHASE ), DTOLDDX_GI_ALL( NDIM, NPHASE ) )
-        ALLOCATE( DTDX_GI2_ALL( NDIM, NPHASE ), DTOLDDX_GI2_ALL( NDIM, NPHASE ) )
-        ALLOCATE( N_DOT_DKDT_ALL( NPHASE ), N_DOT_DKDTOLD_ALL( NPHASE ) )
-        ALLOCATE( N_DOT_DKDT2_ALL( NPHASE ), N_DOT_DKDTOLD2_ALL( NPHASE ) )
-        ALLOCATE( DIFF_STAND_DIVDX_ALL( NPHASE ), DIFF_STAND_DIVDX2_ALL( NPHASE ) )
-
-        ALLOCATE( DIFF_GI( NDIM, NDIM, NPHASE ) )
-        ALLOCATE( DIFF_GI2( NDIM, NDIM, NPHASE ) )
+        REAL, DIMENSION ( NDIM, NPHASE ) :: DTDX_GI_ALL, DTOLDDX_GI_ALL, DTDX_GI2_ALL, DTOLDDX_GI2_ALL
+        REAL, DIMENSION ( NPHASE ) :: N_DOT_DKDT_ALL, N_DOT_DKDTOLD_ALL, N_DOT_DKDT2_ALL, N_DOT_DKDTOLD2_ALL
+        REAL, DIMENSION ( NPHASE ) :: DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL
+        REAL, DIMENSION ( NDIM, NDIM, NPHASE ) :: DIFF_GI, DIFF_GI2
 
         ZER_DIFF = .FALSE.
-        IF ( on_domain_boundary ) ZER_DIFF = ANY ( LOC_WIC_T_BC( : ) /= WIC_T_BC_DIRICHLET )
+        IF ( on_domain_boundary ) ZER_DIFF = ANY ( LOC_WIC_T_BC /= WIC_T_BC_DIRICHLET )
 
         Cond_ZerDiff: IF ( ZER_DIFF ) THEN
 
@@ -5408,8 +5396,8 @@ end if
 
             DTDX_GI_ALL = 0.0 ; DTOLDDX_GI_ALL = 0.0
             DO CV_KLOC = 1, CV_NLOC
-                DTDX_GI_ALL( :, : ) = DTDX_GI_ALL( :, : ) + SCVFEN( CV_KLOC, GI ) * LOC_DTX_ELE_ALL( :, :, CV_KLOC )
-                DTOLDDX_GI_ALL( :, : ) = DTOLDDX_GI_ALL( :, : ) + SCVFEN( CV_KLOC, GI ) * LOC_DTOLDX_ELE_ALL( :, :, CV_KLOC )
+                DTDX_GI_ALL = DTDX_GI_ALL + SCVFEN( CV_KLOC, GI ) * LOC_DTX_ELE_ALL( :, :, CV_KLOC )
+                DTOLDDX_GI_ALL = DTOLDDX_GI_ALL + SCVFEN( CV_KLOC, GI ) * LOC_DTOLDX_ELE_ALL( :, :, CV_KLOC )
             END DO
 
             DIFF_GI = 0.0
@@ -5431,20 +5419,13 @@ end if
                 DIFF_STAND_DIVDX_ALL( IPHASE ) = COEF / HDC
             END DO
 
-
-
-            !       Conditional_MAT_DISOPT_ELE2: IF ( ( ELE2 /= 0 ) .AND. ( ELE2 /= ELE ) ) THEN
             Conditional_MAT_DISOPT_ELE2: IF ( between_elements ) THEN
-
-
                 DTDX_GI2_ALL = 0.0 ; DTOLDDX_GI2_ALL = 0.0
                 DO CV_SKLOC=1,CV_SNLOC
                     CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
                     CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                    !             IF ( CV_KLOC2 /= 0 )THEN
-                    DTDX_GI2_ALL( :, : ) = DTDX_GI2_ALL( :, : ) + SCVFEN( CV_KLOC, GI ) *  LOC2_DTX_ELE_ALL( :, :, CV_KLOC )
-                    DTOLDDX_GI2_ALL( :, : ) = DTOLDDX_GI2_ALL( :, : ) + SCVFEN( CV_KLOC, GI ) * LOC2_DTOLDX_ELE_ALL( :, :, CV_KLOC )
-                !             END IF
+                    DTDX_GI2_ALL = DTDX_GI2_ALL + SCVFEN( CV_KLOC, GI ) *  LOC2_DTX_ELE_ALL( :, :, CV_KLOC )
+                    DTOLDDX_GI2_ALL = DTOLDDX_GI2_ALL + SCVFEN( CV_KLOC, GI ) * LOC2_DTOLDX_ELE_ALL( :, :, CV_KLOC )
                 END DO
 
                 DIFF_GI2 = 0.0
@@ -5494,12 +5475,6 @@ end if
         ENDIF
 
 
-        DEALLOCATE( DIFF_GI, DIFF_GI2, &
-            DTDX_GI_ALL, DTOLDDX_GI_ALL, &
-            DTDX_GI2_ALL, DTOLDDX_GI2_ALL, &
-            N_DOT_DKDT_ALL, N_DOT_DKDTOLD_ALL, &
-            N_DOT_DKDT2_ALL, N_DOT_DKDTOLD2_ALL, &
-            DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL )
 
         RETURN
 

@@ -131,9 +131,6 @@ contains
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
-           integer :: IGOT_THERM_VIS
-           real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
-           real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
            type( tensor_field ), pointer :: perm, python_tfield
@@ -155,6 +152,7 @@ contains
            !temperature backup for the petsc bug
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
 
+            real, dimension(1,1):: Matvalue
 
            if(max_allowed_its < 0)  call get_option( &
                '/material_phase[0]/scalar_field::Temperature/prognostic/solver/max_iterations',&
@@ -165,9 +163,6 @@ contains
            else
               perm=>extract_tensor_field(packed_state,"Permeability")
            end if
-           IGOT_THERM_VIS = 0
-           ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
-           ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
 
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
@@ -292,8 +287,8 @@ contains
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-NITS_FLUX_LIM = 9!<= currently looping here more does not add anything as RHS and/or velocity are not updated
-                !we set up 9 iterations but if it converges we exit straigth away
+NITS_FLUX_LIM = 3!<= currently looping here more does not add anything as RHS and/or velocity are not updated
+                !we set up 3 iterations but if it converges => we exit straigth away
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -321,7 +316,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
-                   TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                    cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
@@ -333,10 +327,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    mass_Mn_pres, THERMAL, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
+                   TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                    OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
+
+!call assemble(Mmat%petsc_ACV)
+
+!call MatGetValues(Mmat%petsc_ACV%M,1,(/0/),1,(/0/), Matvalue, iphase)
+!aux = Matvalue(1,1)
+!print *, "MATVALUE", Matvalue, aux, isNaN(aux),  aux/=aux
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -561,15 +562,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( : ), allocatable :: mass_mn_pres
              REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
              REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
-             REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
              REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
              REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
              REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
              REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
-             REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
-             REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
              LOGICAL :: GET_THETA_FLUX
-             INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
+             INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
              type( tensor_field ), pointer :: den_all2, denold_all2
              ! Element quality fix
@@ -639,7 +637,6 @@ if (is_flooding) return!<== Temporary fix for flooding
              ALLOCATE( Mmat%CT( 0,0,0 ) )
              ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
              ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), INV_B( 0,0,0 ) )
-             ALLOCATE( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION = 0.
              ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
 
              IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
@@ -665,11 +662,7 @@ if (is_flooding) return!<== Temporary fix for flooding
                      DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
                  end if
              END IF
-             TDIFFUSION = 0.0
              Mdisopt%v_beta = 1.0
-             IGOT_THERM_VIS=0
-             ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
-             ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
              tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
              velocity=>extract_tensor_field(packed_state,"PackedVelocity")
              density=>extract_tensor_field(packed_state,"PackedDensity")
@@ -698,7 +691,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                      tracer, velocity, density, multi_absorp, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
-                     TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                      Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
                      SUF_SIG_DIAGTEN_BC, &
                      DERIV%val(1,:,:), P, &
@@ -812,7 +804,6 @@ if (is_flooding) return!<== Temporary fix for flooding
              DEALLOCATE( mass_mn_pres )
              DEALLOCATE( Mmat%CT )
              DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP)
-             DEALLOCATE( TDIFFUSION )
              IF ( IGOT_T2 == 1 ) THEN
                  DEALLOCATE( T2 )
                  DEALLOCATE( T2OLD )
@@ -1631,10 +1622,8 @@ end if
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
         ALLOCATE( THETA_GDIFF( Mdims%nphase * IGOT_T2, Mdims%cv_nonods * IGOT_T2 )) ; THETA_GDIFF = 0.
-        ALLOCATE( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase )) ; TDIFFUSION = 0.
         ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods )) ; MEAN_PORE_CV = 0.
         allocate( dummy_transp( Mdims%totele ) ) ; dummy_transp = 0.
-        TDIFFUSION = 0.0
         ! Obtain the momentum and Mmat%C matricies
         if (is_porous_media .and. Mmat%CV_pressure) then
             !Only the Mass matrix and the RHS of the Darcy equation is assembled here
@@ -1679,7 +1668,6 @@ end if
             tracer, velocity, density, multi_absorp, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
-            TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
             SUF_SIG_DIAGTEN_BC, &
             DERIV, CV_P, &
@@ -1691,13 +1679,13 @@ end if
             MASS_MN_PRES, THERMAL,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
+            IGOT_THERM_VIS = IGOT_THERM_VIS, THERM_U_DIFFUSION = THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL, &
             calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
             outfluxes = outfluxes)
 
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )
-        DEALLOCATE( TDIFFUSION )
         DEALLOCATE( MEAN_PORE_CV )
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
