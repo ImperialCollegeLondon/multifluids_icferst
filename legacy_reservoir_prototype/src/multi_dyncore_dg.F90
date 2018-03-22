@@ -292,9 +292,6 @@ NITS_FLUX_LIM = 3!<= currently looping here more does not add anything as RHS an
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
-
-
-
                !Get information for capillary pressure to be use in CV_ASSEMB
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
                if (is_porous_media .and. thermal) then
@@ -333,11 +330,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                    OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
 
-!call assemble(Mmat%petsc_ACV)
-
-!call MatGetValues(Mmat%petsc_ACV%M,1,(/0/),1,(/0/), Matvalue, iphase)
-!aux = Matvalue(1,1)
-!print *, "MATVALUE", Matvalue, aux, isNaN(aux),  aux/=aux
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
@@ -374,9 +366,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                        cycle!repeat
                    else
                        solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
-!   IF THIS WORKS BETTER CONSIDER ADDING A VERY SIMPLE BACKTRACKING FOR THIS AS WELL
-! aux = 0.1
-!tracer%val(1,:,:) = (1.0 -aux )*temp_bak + aux* tracer%val(1,:,:)
                        exit!good to go!
                    end if
                END IF Conditional_Lumping
@@ -871,7 +860,6 @@ if (is_flooding) return!<== Temporary fix for flooding
         DT, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
-        !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         calculate_mass_delta, outfluxes )
@@ -947,8 +935,6 @@ if (is_flooding) return!<== Temporary fix for flooding
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
         integer :: IGOT_THERM_VIS
-        real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
-        real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         INTEGER :: IPLIKE_GRAD_SOU
@@ -966,10 +952,6 @@ if (is_flooding) return!<== Temporary fix for flooding
             call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations',&
              max_allowed_V_its, default = 100000)
         end if
-        ! if q scheme allocate a field in state and use pointers..
-        IGOT_THERM_VIS=0
-        ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
-        ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
 
         deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
@@ -1194,7 +1176,7 @@ end if
             V_SOURCE, VOLFRA_PORE, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, &
-            UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+            UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             IPLIKE_GRAD_SOU,&
@@ -1553,7 +1535,7 @@ end if
         V_SOURCE, VOLFRA_PORE, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         JUST_BL_DIAG_MAT, &
-        UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+        UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         IPLIKE_GRAD_SOU, &
@@ -1597,9 +1579,7 @@ end if
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN_ALL, UDENOLD_ALL
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION_ALL
-        REAL, DIMENSION( :, :, :, : ), intent( inout ) :: THERM_U_DIFFUSION
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL_ALL
-        REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         type (multi_outfluxes), intent(inout) :: outfluxes
         ! Local variables
@@ -1639,7 +1619,7 @@ end if
                 UDEN_ALL, UDENOLD_ALL, DERIV, &
                 DT, &
                 JUST_BL_DIAG_MAT, &
-                UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, &
+                UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, &
                 IPLIKE_GRAD_SOU, &
                 P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
         end if
@@ -1679,7 +1659,7 @@ end if
             MASS_MN_PRES, THERMAL,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
-            IGOT_THERM_VIS = IGOT_THERM_VIS, THERM_U_DIFFUSION = THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL, &
+            IGOT_THERM_VIS = IGOT_THERM_VIS, &
             calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
             outfluxes = outfluxes)
 
@@ -1891,7 +1871,7 @@ end if
         NU_ALL, NUOLD_ALL, &
         UDEN, UDENOLD, DERIV, &
         DT, JUST_BL_DIAG_MAT,  &
-        UDIFFUSION, UDIFFUSION_VOL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, &
+        UDIFFUSION, UDIFFUSION_VOL, DEN_ALL, &
         IPLIKE_GRAD_SOU, &
         P,&
         got_free_surf, mass_suf, symmetric_P )
@@ -1918,8 +1898,6 @@ end if
         REAL, intent( in ) :: DT
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL
-        REAL, DIMENSION( :, :, :, : ), intent( inout ) :: THERM_U_DIFFUSION
-        REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION( :, :, : ), intent( in ) :: P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
@@ -3595,33 +3573,6 @@ end if
                 Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
             END DO
         END DO Loop_Elements
-        IF ( Q_SCHEME ) THEN
-            THERM_U_DIFFUSION = 0.0
-            THERM_U_DIFFUSION_VOL = 0.0
-            IF ( THERMAL_STAB_VISC ) THEN ! Petrov-Galerkin visc...
-                RCOUNT_NODS = 0.0
-                DO ELE = 1, Mdims%totele
-                    DO MAT_ILOC=1,Mdims%mat_nloc
-                        MAT_NOD = ndgln%mat( (ELE-1)*Mdims%mat_nloc + MAT_ILOC )
-                        THERM_U_DIFFUSION( :,:,:,MAT_NOD ) = THERM_U_DIFFUSION( :,:,:,MAT_NOD ) + DIFFCV_TEN_ELE( :,:,:,MAT_ILOC,ELE ) * MASS_ELE( ELE )
-                        RCOUNT_NODS( MAT_NOD ) = RCOUNT_NODS( MAT_NOD ) + MASS_ELE( ELE )
-                    END DO
-                END DO
-                DO MAT_NOD = 1, Mdims%mat_nonods
-                    THERM_U_DIFFUSION( :,:,:,MAT_NOD ) = THERM_U_DIFFUSION( :,:,:,MAT_NOD ) / RCOUNT_NODS( MAT_NOD )
-                    THERM_U_DIFFUSION_VOL( :,MAT_NOD ) = 0.0
-                END DO
-            END IF
-            ! Put the fluid viscocity (also includes LES viscocity) into the Q-scheme thermal viscocity
-            IF ( THERMAL_FLUID_VISC .AND. THERMAL_LES_VISC) THEN
-                THERM_U_DIFFUSION = THERM_U_DIFFUSION + UDIFFUSION_ALL
-                THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL + UDIFFUSION_VOL_ALL
-            ELSE IF ( THERMAL_FLUID_VISC ) THEN
-                THERM_U_DIFFUSION = THERM_U_DIFFUSION + UDIFFUSION
-                !THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL + UDIFFUSION_VOL
-                if ( UDIFFUSION_VOL%have_field ) THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL + UDIFFUSION_VOL%val(:,1,1,:)
-            END IF
-        END IF
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !! *************************loop over surfaces*********************************************

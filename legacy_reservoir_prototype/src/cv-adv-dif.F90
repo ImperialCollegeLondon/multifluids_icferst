@@ -113,7 +113,7 @@ contains
         MASS_MN_PRES, THERMAL, &
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, &
-        TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+        TDIFFUSION, IGOT_THERM_VIS, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
         porous_heat_coef, outfluxes, solving_compositional)
@@ -276,8 +276,6 @@ contains
         type(tensor_field), intent(in), optional, target :: saturation
         REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
         INTEGER, intent( in ), optional :: IGOT_THERM_VIS
-        REAL, DIMENSION(:,:,:,:), intent( in ), optional :: THERM_U_DIFFUSION
-        REAL, DIMENSION(:,:), intent( in ), optional :: THERM_U_DIFFUSION_VOL
         !Variables for Capillary pressure
         integer, optional, intent(in) :: Phase_with_Pc
         real, optional, dimension(:), intent(in) :: OvRelax_param
@@ -672,9 +670,6 @@ contains
         IDUM = 0
         ewrite(3,*) 'In CV_ASSEMB'
         GOT_VIS = .FALSE.
-        if (present(IGOT_THERM_VIS)) then
-            IF(IGOT_THERM_VIS==1) GOT_VIS = present(THERM_U_DIFFUSION) .OR. present(THERM_U_DIFFUSION_VOL)
-        end if
         GOT_DIFFUS = present(TDIFFUSION)
 
         call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
@@ -1982,30 +1977,6 @@ contains
                                             THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
                                             + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
                                     end if
-                                    IF ( GOT_VIS ) THEN
-                                        ! stress form of viscosity...
-                                        NU_LEV_GI(:, :) =  (1.-THERM_FTHETA) * NUOLDGI_ALL(:,:) + THERM_FTHETA * NUGI_ALL(:,:)
-                                        STRESS_IJ_THERM(:,:,:) = 0.0
-                                        DO IPHASE=1,Mdims%nphase
-                                            CALL CALC_STRESS_TEN( STRESS_IJ_THERM(:,:,IPHASE), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                                CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SdevFuns%DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODI), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODI) )
-                                            if ( integrate_other_side_and_not_boundary ) then
-                                                STRESS_IJ_THERM_J(:,:,IPHASE) = 0.0
-                                                CALL CALC_STRESS_TEN( STRESS_IJ_THERM_J(:,:,IPHASE), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                                    CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SdevFuns%DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODJ), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODJ) )
-                                            end if
-                                            DO JDIM = 1, Mdims%ndim
-                                                DO IDIM = 1, Mdims%ndim
-                                                    VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODI) = VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODI) + STRESS_IJ_THERM(IDIM,JDIM,IPHASE)
-                                                    VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) = VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) + NU_LEV_GI(IDIM,IPHASE) * CVNORMX_ALL(JDIM,GI) * SdevFuns%DETWEI(GI)
-                                                    if ( integrate_other_side_and_not_boundary ) then
-                                                        VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODJ) = VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODJ) - STRESS_IJ_THERM_J(IDIM,JDIM,IPHASE )
-                                                        VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODJ) = VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODJ) - NU_LEV_GI(IDIM,IPHASE) * CVNORMX_ALL(JDIM,GI) * SdevFuns%DETWEI(GI)
-                                                    end if
-                                                END DO
-                                            END DO
-                                        END DO! ENDOF DO IPHASE=1,Mdims%nphase
-                                    END IF ! GOT_VIS
                                 END IF ! THERMAL
                                 call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
                                 call addto(Mmat%CV_RHS,CV_NODJ,LOC_CV_RHS_J)
