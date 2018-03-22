@@ -290,17 +290,18 @@ contains
         ! Variable to store outfluxes
         type (multi_outfluxes), optional, intent(inout) :: outfluxes
         logical, optional, intent(in) :: solving_compositional
+
         ! ###################Local variables############################
         REAL :: ZERO_OR_TWO_THIRDS
+
+
+        !        ===>  LOGICALS  <===
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
         logical, PARAMETER :: integrate_other_side= .true.
         ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
         logical, PARAMETER :: correct_method_petrov_method= .true.
-        ! IF GOT_CAPDIFFUS then add a diffusion term to treat capillary pressure term implicitly
-        logical, PARAMETER :: GOT_CAPDIFFUS = .true.
-        ! If UPWIND_CAP_DIFFUSION then when calculating capillary pressure diffusion coefficient use the
-        ! upwind value
-        logical, PARAMETER :: UPWIND_CAP_DIFFUSION = .true.
+        LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, NORMALISE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+        logical :: skip, GOT_T2, use_volume_frac_T2, symmetric_P
         ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
         ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
         ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
@@ -308,43 +309,57 @@ contains
         real :: THETA_VEL_HAT = 1.0
         ! if APPLY_ENO then apply ENO method to T and TOLD
         LOGICAL :: APPLY_ENO
-        ! Mmat%CT will not change with this option...
-        LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE.,  PIPES_1D=.TRUE.
-        ! PIPES_1D uses 1D pipes along edges of elements...
-        ! GRAVTY is used in the free surface method only...
-        REAL :: GRAVTY
-        !
-        logical, parameter :: EXPLICIT_PIPES= .false.
-        logical, parameter :: EXPLICIT_PIPES2= .true.
-        logical, PARAMETER :: MULTB_BY_POROSITY= .false.
         ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
         ! if RECAL_C_CV_RHS, calculate the RHS forr the Mmat%C_CV matrix
         logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
+        LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
+        !Logical to check if we using a conservative method or not, to save cpu time
+        logical :: conservative_advection
+        ! GRAVTY is used in the free surface method only...
+        !        ===> GENEREIC INTEGERS <===
+        INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
+            CV_NODJ, ISWITCH, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
+        INTEGER :: I, IDIM, U_ILOC, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, &
+            IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, IANISOLIM, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
+        INTEGER, dimension(1) :: IDUM
+        integer, dimension(:), pointer :: neighbours
+        INTEGER, dimension(Mdims%nphase) :: LOC_WIC_T_BC_ALL
+        !        ===>  GENERIC REALS  <===
+        REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta, auxR
+        REAL :: R, NDOTQ_HAT, DeltaP
+        REAL, dimension(Mdims%nphase) :: FTHETA, FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, &
+            ROBIN1, ROBIN2, BCZERO,  T_ALL_J, TOLD_ALL_J
+        REAL :: GRAVTY
         REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
+
+        character( len = option_path_len ) :: option_path2
         ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement
         ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained
         ! by correlating the IC-FERST production results with Eclipse results on a regular mesh
         ! of linear tetrahedra elements and a single well at steady state. =0.0 is no correction =0.35 recommended.
-        LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
+        LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
+        integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC, SHAPE_CV_SNL
+        integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
+        integer, dimension (Mdims%u_nloc) ::U_OTHER_LOC
+        integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
+        integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
+        !Allocate only for get_CT
         INTEGER, DIMENSION( : ), allocatable :: &
-            CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC, &
             JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
-            C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, &
-            CV_SLOC2LOC, U_SLOC2LOC
-        INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
-        REAL, DIMENSION( : ), allocatable ::  &
-            MASS_CV, MASS_ELE,  &
-            SUM_CV, N, RSUM_VEC
-        REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
-        REAL, DIMENSION( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
+            C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
+
+        INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
+        REAL, DIMENSION( : ), allocatable ::  N
+        real, dimension (Mdims%cv_nonods) :: MASS_CV, SUM_CV
+        real, dimension (Mdims%totele) :: MASS_ELE
+        REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
+        REAL, DIMENSION( Mdims%ndim, Mdims%cv_nonods ) :: XC_CV_ALL
+        REAL, DIMENSION( Mdims%ndim,Mdims%nphase,Mdims%u_nloc ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
         !###Variables for shape function calculation###
         type (multi_dev_shape_funs) :: SdevFuns
-        !###Pointers for Shape function calculation###
-        REAL, DIMENSION( : ), allocatable :: SHAPE_CV_SNL
-        REAL, DIMENSION( :, :, : ), allocatable :: DUMMY_ZERO_NDIM_NDIM_NPHASE
-        REAL, DIMENSION( :, :, :, : ), allocatable :: DTX_ELE_ALL, DTOLDX_ELE_ALL
-        ! Variables used to calculate CV face values:
+
+        ! Variables used to calculate CV face values and depend on NFIELD:
         REAL, DIMENSION( :, : ), allocatable :: LOC_F, LOC_FEMF
         REAL, DIMENSION( :, : ), allocatable :: SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF
         REAL, DIMENSION( :, :, : ), allocatable :: LOC_UF
@@ -352,85 +367,41 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: SLOC_SUF_F_BC
         REAL, DIMENSION( : ), allocatable :: FUPWIND_IN, FUPWIND_OUT, LIMF, F_INCOME, F_NDOTQ
         ! Variables used in GET_INT_VEL_NEW:
-        REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U, LOC2_U
-        REAL, DIMENSION ( :, :, : ), allocatable :: LOC_NU, LOC2_NU, SLOC_NU, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD
-        REAL, DIMENSION ( :, : ), allocatable :: LOC_U_HAT, LOC2_U_HAT
+        REAL, DIMENSION ( Mdims%ndim, Mdims%nphase, Mdims%u_nloc ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU, LOC_NUOLD, LOC2_NUOLD
+        REAL, DIMENSION ( Mdims%ndim, Mdims%nphase, Mdims%u_snloc ) :: SLOC_NU, SLOC_NUOLD
         INTEGER :: CV_KNOD2, U_SNODK
-        REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD
-        REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT2, LOC2_FEMT2, LOC_FEMT2OLD, LOC2_FEMT2OLD
+        REAL, DIMENSION ( Mdims%nphase, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
+                                                            LOC_FEMT2OLD, LOC2_FEMT2OLD
         ! Mdims%nphase Variables:
-        REAL, DIMENSION( : ), allocatable :: CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, &
-            NDOTQNEW,   INCOME_J, LIMT2OLD, LIMDTOLD, &
-            NDOTQ, INCOME, LIMT2, LIMTOLD, LIMT, LIMT_HAT, &
-            LIMDOLD, LIMDTT2OLD,&
-            FVT, FVT2, FVD, LIMD,  &
-            LIMDT, LIMDTT2, Porous_diff_coef_divdx, Porous_diff_coefold_divdx
-        LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
-        !Logical to check if we using a conservative method or not, to save cpu time
-        logical :: conservative_advection
-        !        ===> INTEGERS <===
-        INTEGER :: COUNT, ICOUNT, JCOUNT, &
-            ELE, ELE2, GI, GCOUNT, SELE,   &
-            CV_SILOC, U_KLOC, &
-            CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-            CV_NODJ, ISWITCH, &
-            CV_NODI, U_NODK, TIMOPT, &
-            X_NODI,  X_NODJ, &
-            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS
-        !        ===>  REALS  <===
-        REAL :: HDC, &
-            RSUM, &
-            THERM_FTHETA, &
-            W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta, auxR
-        REAL :: FTHETA(Mdims%nphase), FTHETA_T2(Mdims%nphase), ONE_M_FTHETA_T2OLD(Mdims%nphase), FTHETA_T2_J(Mdims%nphase), ONE_M_FTHETA_T2OLD_J(Mdims%nphase)
-        REAL :: ROBIN1(Mdims%nphase), ROBIN2(Mdims%nphase)
-        integer :: IGETCT, IANISOLIM, global_face,J
-        ! Functions...
-        !        ===>  LOGICALS  <===
-        LOGICAL :: GETMAT, &
-            D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, &
-            NORMALISE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
-        LOGICAL, PARAMETER :: DCYL = .FALSE.
-        character( len = option_path_len ) :: option_path2
-        real, dimension(:,:), allocatable :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
-            DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
-        INTEGER :: IDUM(1)
-        INTEGER :: I, IDIM, U_ILOC, ELE3, k
-        INTEGER :: NFIELD, CV_KLOC, CV_NODK
-        INTEGER :: IFI
-        INTEGER :: COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC
-        INTEGER :: IPT_IN, IPT_OUT
-        INTEGER :: U_KLOC2,U_NODK2,U_SKLOC
-        INTEGER :: IPT,ILOOP,IMID,JMID,JDIM
+        REAL, DIMENSION( : ), allocatable ::  NDOTQ, INCOME, Porous_diff_coef_divdx, Porous_diff_coefold_divdx
+        real, dimension(Mdims%nphase)::CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
+            INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
+        real, dimension(Mdims%nphase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
+        REAL, DIMENSION( Mdims%ndim,Mdims%ndim,Mdims%nphase ) :: DUMMY_ZERO_NDIM_NDIM_NPHASE
+        REAL, DIMENSION( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
+        REAL , DIMENSION( Mdims%ndim, Mdims%nphase ) :: NUGI_ALL, NUOLDGI_ALL
+        real, dimension(Mdims%nphase, Mspars%small_acv%ncol) :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
+            DENOLDUPWIND_MAT_ALL
+        real, dimension(:,:), allocatable :: T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
         LOGICAL :: STORE, integrate_other_side_and_not_boundary, GOT_VIS
-        REAL :: R, NDOTQ_HAT, DeltaP
         REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
-        REAL , DIMENSION( :, : ), ALLOCATABLE :: NUGI_ALL, NU_LEV_GI, SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, opt_vel_upwind_coefs_new_cv
         REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
         REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
-        REAL :: BCZERO(Mdims%nphase),  T_ALL_J( Mdims%nphase ), TOLD_ALL_J( Mdims%nphase )
-        INTEGER :: LOC_WIC_T_BC_ALL(Mdims%nphase)
-        REAL , DIMENSION( :, : ), allocatable :: NUOLDGI_ALL
-        REAL, DIMENSION( : ), allocatable :: NDOTQOLD, INCOMEOLD
-        REAL, DIMENSION( :, : ), ALLOCATABLE, target :: &
-            FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL
         LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
         LOGICAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_PACK, IGOT_T_CONST
         REAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_CONST_VALUE
-        REAL, DIMENSION( : ), ALLOCATABLE :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
         !Working variables
         real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
         real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
         real, dimension(:,:), allocatable, target :: T_TEMP, TOLD_TEMP
-        real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
+        real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL
         real, dimension(:, :, :), pointer :: U_ALL, NU_ALL, NUOLD_ALL
         real, dimension(Mdims%nphase, Mdims%cv_nonods) :: T_ALL_KEEP
-        real, dimension(:,:), allocatable :: MASS_CV_PLUS
+
         real, dimension( : ), allocatable :: DIAG_SCALE_PRES_phase
         real, dimension( : ), allocatable :: R_PEACMAN
-        real, dimension( Mdims%nphase ) :: ct_rhs_phase
-        real, dimension( : ), allocatable :: R_PRES,R_PHASE,CV_P_PHASE_NODI,CV_P_PHASE_NODJ,MEAN_PORE_CV_PHASE, MASS_PIPE_FOR_COUP
-        real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2, PIPE_ABS
+        real, dimension( Mdims%nphase ) :: ct_rhs_phase, CV_P_PHASE_NODI,CV_P_PHASE_NODJ,ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj,R_PRES,R_PHASE,MEAN_PORE_CV_PHASE
+
         !! boundary_condition fields
         type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
         type(tensor_field) :: pressure_BCs
@@ -448,11 +419,10 @@ contains
             SUF_T_BC_ROB1, SUF_T_BC_ROB2
         !Working variables for subroutines that are called several times
         real, dimension( Mdims%ndim,Mdims%nphase ) :: rdum_ndim_nphase_1
-        real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3
+        real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, LOC_CV_RHS_I, LOC_CV_RHS_J, THETA_VEL
         REAL, DIMENSION( Mdims%nphase ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
                 wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
         REAL, DIMENSION ( Mdims%ndim,Mdims%nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
-        real, dimension( Mdims%nphase ) :: LOC_CV_RHS_I, LOC_CV_RHS_J, THETA_VEL
         type( vector_field ), pointer :: MeanPoreCV
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
@@ -461,15 +431,15 @@ contains
         type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
         type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
         type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field
-        integer :: FEM_IT
-        integer, dimension(:), pointer :: neighbours
-        integer :: nb, i_use_volume_frac_t2
-        logical :: skip
-        logical :: GOT_T2, use_volume_frac_T2
-        logical :: symmetric_P
-        ! pipe diamter for reservior modelling
+
+        ! variables for pipes, allocatable because they are big and barely used
         type( scalar_field ), pointer :: pipe_Diameter, pipe_Diameter_nano, pipe_Length_nano, conductivity_pipes, well_thickness
         logical :: has_conductivity_pipes
+        real, dimension( : ), allocatable :: MASS_PIPE_FOR_COUP
+        REAL, DIMENSION( : ), allocatable ::  RSUM_VEC
+        real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2, PIPE_ABS
+        REAL , DIMENSION( :, : ), ALLOCATABLE :: SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, opt_vel_upwind_coefs_new_cv
+        real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS
         !Permeability
         type( tensor_field ), pointer :: perm
         !Variables for Capillary pressure
@@ -507,13 +477,10 @@ contains
         INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE, iv_u_kloc2
         real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
         real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
-        !Variables for outfluxes
-        real, dimension(:, :,:), allocatable :: bcs_outfluxes
-        ! Variables needed when doing calculate_outfluxes
+        ! ####Variables for outfluxes#####
+        real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
         real, dimension( : , : ), pointer ::Imble_frac
-        ! Additions for calculating mass conservation - the total mass entering the domain is captured by 'bcs_outfluxes'
-        ! and the internal changes in mass will be captured by 'calculate_mass_internal'
-        real, allocatable, dimension(:) :: calculate_mass_internal  ! used in calculate_internal_mass subroutine
+        real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
         real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
 
 
@@ -576,10 +543,8 @@ contains
         end if
         !Check capillary pressure options
         capillary_pressure_activated = .false.
-        if (GOT_CAPDIFFUS) then
-            if (present(OvRelax_param) .and. present(Phase_with_Pc)) then
-                capillary_pressure_activated = Phase_with_Pc >0
-            end if
+        if (present(OvRelax_param) .and. present(Phase_with_Pc)) then
+            capillary_pressure_activated = Phase_with_Pc >0
         end if
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
@@ -624,28 +589,15 @@ contains
             end if
         ENDIF
 
-
-
         !! Get boundary conditions from field
-        call get_entire_boundary_condition(tracer,&
-            ['weakdirichlet','robin        '],&
-            tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
-        call get_entire_boundary_condition(density,&
-            ['weakdirichlet'],&
-            density_BCs,WIC_D_BC_ALL)
+        call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+        call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
         if (present(saturation))&
-            call get_entire_boundary_condition(saturation,&
-            ['weakdirichlet','robin        '],&
-            saturation_BCs,WIC_T2_BC_ALL,&
-            boundary_second_value=saturation_BCs_robin2)
-        call get_entire_boundary_condition(velocity,&
-            ['weakdirichlet'],&
-            velocity_BCs,WIC_U_BC_ALL)
+            call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
+        call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
         if(got_free_surf.or.is_porous_media .or. Mmat%CV_pressure) then
             pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-            call get_entire_boundary_condition(pressure,&
-                ['weakdirichlet','freesurface  '],&
-                pressure_BCs,WIC_P_BC_ALL)
+            call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
         endif
         !! reassignments to old arrays, to be discussed
         SUF_T_BC_ALL=>tracer_BCs%val
@@ -704,15 +656,11 @@ contains
         QUAD_OVER_WHOLE_ELE=.FALSE.
         ! Allocate memory for the control volume surface shape functions, etc.
         IF(GETCT) THEN
-            ALLOCATE( JCOUNT_KLOC( Mdims%u_nloc ))
-            ALLOCATE( JCOUNT_KLOC2( Mdims%u_nloc ))
-            ALLOCATE( ICOUNT_KLOC( Mdims%u_nloc ))
-            ALLOCATE( ICOUNT_KLOC2( Mdims%u_nloc ))
+            ALLOCATE( JCOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( JCOUNT_KLOC2( Mdims%u_nloc ))
+            ALLOCATE( ICOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( ICOUNT_KLOC2( Mdims%u_nloc ))
             IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                ALLOCATE( C_JCOUNT_KLOC( Mdims%u_nloc ))
-                ALLOCATE( C_JCOUNT_KLOC2( Mdims%u_nloc ))
-                ALLOCATE( C_ICOUNT_KLOC( Mdims%u_nloc ))
-                ALLOCATE( C_ICOUNT_KLOC2( Mdims%u_nloc ))
+                ALLOCATE( C_JCOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_JCOUNT_KLOC2( Mdims%u_nloc ))
+                ALLOCATE( C_ICOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_ICOUNT_KLOC2( Mdims%u_nloc ))
             ENDIF
         ENDIF
         DISTCONTINUOUS_METHOD = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
@@ -730,45 +678,22 @@ contains
         end if
         !Initialize Courant number for porous media
         if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
-        ALLOCATE( CVNORMX_ALL( Mdims%ndim, CV_GIdims%scvngi )) ; CVNORMX_ALL=0.0
-        ALLOCATE( CV_OTHER_LOC( Mdims%cv_nloc ))
-        ALLOCATE( U_OTHER_LOC( Mdims%u_nloc ))
-        ALLOCATE( MAT_OTHER_LOC( Mdims%mat_nloc ))
-        ALLOCATE( X_SHARE( Mdims%x_nonods ))
-        ALLOCATE( SHAPE_CV_SNL( Mdims%cv_nloc ))
-        ALLOCATE( DUMMY_ZERO_NDIM_NDIM_NPHASE(Mdims%ndim,Mdims%ndim,Mdims%nphase))
-        DUMMY_ZERO_NDIM_NDIM_NPHASE=0.0
-        ALLOCATE( CV_SLOC2LOC( Mdims%cv_snloc ))
-        ALLOCATE( U_SLOC2LOC( Mdims%u_snloc ))
-        ALLOCATE( UGI_COEF_ELE_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nloc) )
-        ALLOCATE( UGI_COEF_ELE2_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nloc) )
+        CVNORMX_ALL=0.0; DUMMY_ZERO_NDIM_NDIM_NPHASE=0.0
+
         ! The procity mapped to the CV nodes
-        ALLOCATE( SUM_CV( Mdims%cv_nonods ))
         D1 = ( Mdims%ndim == 1 )
         D3 = ( Mdims%ndim == 3 )
-        !DCYL = ( Mdims%ndim == -2 )
         GETMAT = .TRUE.
         X_SHARE = .FALSE.
         ! Determine FEMT (finite element wise) etc from T (control volume wise)
         ! Also determine the CV mass matrix MASS_CV and centre of the CV's XC_CV_ALL
         ! This is for projecting to finite element basis functions...
-        ALLOCATE( MASS_CV( Mdims%cv_nonods ))
-        ALLOCATE( MASS_ELE( Mdims%totele ))
-        ALLOCATE( XC_CV_ALL( Mdims%ndim, Mdims%cv_nonods ))
-        ALLOCATE( DTX_ELE_ALL( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ))
-        ALLOCATE( DTOLDX_ELE_ALL( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ))
         IGETCT = 0
         IF ( GETCT ) IGETCT = 1
         GOT_T2=( IGOT_T2 == 1 )
         use_volume_frac_T2=( IGOT_T2 == 1 .or. thermal )
         i_use_volume_frac_t2= 0
         if (use_volume_frac_T2) i_use_volume_frac_t2= 1
-        nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
-        ALLOCATE( FEMT_ALL( Mdims%nphase, Mdims%cv_nonods ), FEMTOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
-        ALLOCATE( FEMDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), FEMDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
-        ALLOCATE( FEMT2_ALL( Mdims%nphase, Mdims%cv_nonods ), FEMT2OLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
-        allocate(CV_P_PHASE_NODI(Mdims%nphase),CV_P_PHASE_NODJ(Mdims%nphase))
-        allocate(CT_RHS_PHASE_CV_NODI(Mdims%nphase),CT_RHS_PHASE_CV_NODJ(Mdims%nphase))
 
         IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
             PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
@@ -839,52 +764,28 @@ contains
         ! This logical needs to be expanded...
         DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
         IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
+        ALLOCATE(NDOTQ(Mdims%nphase), INCOME(Mdims%nphase))
         ! F and LOC_U:
-        ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc))
-        ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
-        ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc))
-        ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
-        ALLOCATE(SLOC2_F(NFIELD,Mdims%cv_snloc))
-        ALLOCATE(SLOC2_FEMF(NFIELD,Mdims%cv_snloc))
+        ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
+        ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
+        ALLOCATE(SLOC2_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC2_FEMF(NFIELD,Mdims%cv_snloc))
         ALLOCATE(LOC_UF(Mdims%ndim,NFIELD,Mdims%u_nloc))
-        ! Local variables used in GET_INT_VEL_NEW:
-        ALLOCATE( LOC_U(Mdims%ndim, Mdims%nphase, Mdims%u_nloc), LOC2_U(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
-        ALLOCATE( LOC_NU(Mdims%ndim, Mdims%nphase, Mdims%u_nloc), LOC2_NU(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
-        ALLOCATE( SLOC_NU(Mdims%ndim, Mdims%nphase, Mdims%u_snloc) )
-        ALLOCATE( LOC_NUOLD(Mdims%ndim, Mdims%nphase, Mdims%u_nloc), LOC2_NUOLD(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
-        ALLOCATE( SLOC_NUOLD(Mdims%ndim, Mdims%nphase, Mdims%u_snloc) )
-        ALLOCATE( LOC_FEMT(Mdims%nphase, Mdims%cv_nloc), LOC2_FEMT(Mdims%nphase, Mdims%cv_nloc) )
-        ALLOCATE( LOC_FEMTOLD(Mdims%nphase, Mdims%cv_nloc), LOC2_FEMTOLD(Mdims%nphase, Mdims%cv_nloc) )
-        ALLOCATE( LOC_FEMT2(Mdims%nphase, Mdims%cv_nloc), LOC2_FEMT2(Mdims%nphase, Mdims%cv_nloc) )
-        ALLOCATE( LOC_FEMT2OLD(Mdims%nphase, Mdims%cv_nloc), LOC2_FEMT2OLD(Mdims%nphase, Mdims%cv_nloc) )
         ! bc's:
-        ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) )
-        ALLOCATE( SLOC_SUF_F_BC(NFIELD, Mdims%cv_snloc) )
+        ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) );ALLOCATE( SLOC_SUF_F_BC(NFIELD, Mdims%cv_snloc) )
         ! limiting values...
-        ALLOCATE( FUPWIND_IN( NFIELD ) )
-        ALLOCATE( FUPWIND_OUT( NFIELD ) )
+        ALLOCATE( FUPWIND_IN( NFIELD ) );ALLOCATE( FUPWIND_OUT( NFIELD ) )
         ! limiting and upwinding:
-        ALLOCATE( LIMF( NFIELD ) )
-        ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
-        !
+        ALLOCATE( LIMF( NFIELD ) );ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
         ALLOCATE( F_CV_NODI( NFIELD ), F_CV_NODJ( NFIELD ) )
-        !
-        ALLOCATE( NUGI_ALL( Mdims%ndim, Mdims%nphase ),  NUOLDGI_ALL(Mdims%ndim, Mdims%nphase), NU_LEV_GI( Mdims%ndim, Mdims%nphase ) )
-        !
+
+        !Conditional allocations
         IF(THERMAL.AND.GOT_VIS) THEN
             ALLOCATE( VECS_STRESS( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ), VECS_GRAD_U( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ) ) ; VECS_STRESS=0. ; VECS_GRAD_U=0.
             ALLOCATE( STRESS_IJ_THERM( Mdims%ndim, Mdims%ndim, Mdims%nphase ), STRESS_IJ_THERM_J( Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; STRESS_IJ_THERM=0. ; STRESS_IJ_THERM_J=0.
         ENDIF
         ! NFIELD Variables:
-        ALLOCATE(CAP_DIFF_COEF_DIVDX(Mdims%nphase), DIFF_COEF_DIVDX(Mdims%nphase), DIFF_COEFOLD_DIVDX(Mdims%nphase), &
-            NDOTQNEW(Mdims%nphase), LIMT2OLD(Mdims%nphase), LIMDTOLD(Mdims%nphase), INCOMEOLD(Mdims%nphase), NDOTQOLD(Mdims%nphase), &
-            NDOTQ(Mdims%nphase), INCOME(Mdims%nphase), LIMT2(Mdims%nphase), LIMTOLD(Mdims%nphase), LIMT(Mdims%nphase), LIMT_HAT(Mdims%nphase), &
-            LIMDOLD(Mdims%nphase), LIMDTT2OLD(Mdims%nphase),&
-            FVT(Mdims%nphase), FVT2(Mdims%nphase), FVD(Mdims%nphase), LIMD(Mdims%nphase),  &
-            LIMDT(Mdims%nphase), LIMDTT2(Mdims%nphase)  )
         if (thermal .and.is_porous_media) allocate(Porous_diff_coef_divdx(Mdims%nphase), Porous_diff_coefold_divdx(Mdims%nphase))
         LIMT_HAT=0.0
-        ALLOCATE(INCOME_J(Mdims%nphase))
         IF ( capillary_pressure_activated) THEN
             ALLOCATE( CAP_DIFFUSION( Mdims%nphase, Mdims%mat_nonods ) )
             !Introduce the information in CAP_DIFFUSION
@@ -911,7 +812,6 @@ contains
         ! variables for get_int_tden********************
         !      print *,'after allocate'
         ! END OF TEMP STUFF HERE
-        ALLOCATE( R_PRES( Mdims%npres ), R_PHASE( Mdims%nphase ), MEAN_PORE_CV_PHASE( Mdims%nphase ) )
         IF ( Mdims%npres > 1 ) THEN
             ALLOCATE( A_GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ); A_GAMMA_PRES_ABS = 0.
             ALLOCATE( GAMMA_PRES_ABS2( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ); GAMMA_PRES_ABS2 = 0.
@@ -1036,8 +936,6 @@ contains
 
         IANISOLIM = 0
         IF ( CV_DISOPT >= 5 ) IANISOLIM = 1
-        ALLOCATE( TUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), TOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), &
-            DENUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), DENOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ) )
         ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
         IF ( IANISOLIM == 0 ) THEN
             ! Isotropic limiting - calculate far field upwind maticies...
@@ -1064,7 +962,7 @@ contains
                 ndgln%x,Mdims%x_nonods,Mdims%ndim, &
                 X_ALL, XC_CV_ALL, use_reflect)
         END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
-        ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
+        FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
             Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
@@ -1596,17 +1494,9 @@ contains
                                         rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
                                             CVNORMX_ALL(:, GI) ))
                                     end do!If we are using the non-consistent capillary pressure we want to use the central...
-                                    IF( UPWIND_CAP_DIFFUSION ) THEN!...method to encourage a normal diffusion
-                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                            * rsum_nodi*(1.-INCOME(:))  +&
-                                            CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
-
-                                    ELSE ! Central difference...
-                                        CAP_DIFF_COEF_DIVDX( : ) =  -OvRelax_param(CV_NODI) * (0.5*(T_ALL( :, CV_NODI )&
-                                            * rsum_nodi(:) + T_ALL( :, CV_NODJ ) * rsum_nodj(:) ) /HDC)
-!                                        CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
-!                                            * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
-                                    ENDIF
+                                    CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                        * rsum_nodi*(1.-INCOME(:))  +&
+                                        CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
                                 ELSE
                                     CAP_DIFF_COEF_DIVDX( : ) = 0.0
                                 ENDIF
@@ -1737,12 +1627,6 @@ contains
                             END IF
                             !====================== ACV AND RHS ASSEMBLY ===================
                             Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
-                                IF(CT_DO_NOT_CHANGE) THEN ! Mmat%CT will not change with this option...
-                                    FTHETA_T2=1.0
-                                    ONE_M_FTHETA_T2OLD=0.0
-                                    FTHETA_T2_J=1.0
-                                    ONE_M_FTHETA_T2OLD_J=0.0
-                                ENDIF
                                 IF ( got_free_surf ) THEN
                                     IF ( on_domain_boundary ) THEN
                                         IF ( .not.symmetric_P ) THEN
@@ -1992,7 +1876,6 @@ contains
             END DO
         ENDIF
         ! Used for pipe modelling...
-        ALLOCATE(MASS_CV_PLUS(Mdims%npres,Mdims%cv_nonods))
         DO CV_NODI = 1, Mdims%cv_nonods
             MASS_CV_PLUS(:,CV_NODI)= MASS_CV(CV_NODI)
         END DO
@@ -2000,8 +1883,6 @@ contains
         IF ( Mdims%npres > 1 ) THEN
             OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
             DO ELE = 1, Mdims%totele
-!            DO k = 1, size(eles_with_pipe)
-!                ELE = eles_with_pipe(k)%ele!Element with pipe
                 DO CV_ILOC = 1, Mdims%cv_nloc
                     CV_NODI = ndgln%cv( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
                     MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
@@ -2028,24 +1909,21 @@ contains
                     SIGMA_INV_APPROX( :, CV_NODI ) = 1.0
                 end if
             END DO
-            IF ( PIPES_1D ) THEN
-                allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
+            allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
 
-                CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                    getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-                    SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes)
+            CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+                getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
+                SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes)
 
-                if(is_flooding) then
-                    DO CV_NODI = 1, Mdims%cv_nonods
-                        SIGMA_INV_APPROX(:, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, :, CV_NODI )!Only has the friction inside the pipes
-!                        SIGMA_INV_APPROX(1:2, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, 1:2, CV_NODI )!Only has the friction inside the pipes
-                    END DO
-                endif
-                ! Used for pipe modelling...
+            if(is_flooding) then
                 DO CV_NODI = 1, Mdims%cv_nonods
-                    MASS_CV_PLUS(2:Mdims%npres,CV_NODI) = pipes_aux%MASS_PIPE(CV_NODI)
+                    SIGMA_INV_APPROX(:, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, :, CV_NODI )!Only has the friction inside the pipes
                 END DO
-            END IF
+            endif
+            ! Used for pipe modelling...
+            DO CV_NODI = 1, Mdims%cv_nonods
+                MASS_CV_PLUS(2:Mdims%npres,CV_NODI) = pipes_aux%MASS_PIPE(CV_NODI)
+            END DO
             GAMMA_PRES_ABS2 = 0.0
             A_GAMMA_PRES_ABS = 0.0
             if(is_flooding ) then
@@ -2059,11 +1937,7 @@ contains
                 if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
 
                 ! variables used in the edge approach
-                IF ( PIPES_1D ) THEN
-                    h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi), 1.0e-10))**2 )
-                ELSE
-                    h = mass_cv( cv_nodi )**(1.0/Mdims%ndim)
-                END IF
+                h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi), 1.0e-10))**2 )
                 h = max( h, 1.0e-10 )
                 h_nano = h
                 cc = 0.0
@@ -2225,11 +2099,7 @@ contains
                     !Only go through the nodes that have a well
                     if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
 
-                    IF ( PIPES_1D ) THEN
-                        h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
-                    ELSE
-                        h = mass_cv( cv_nodi )**(1.0/Mdims%ndim)
-                    END IF
+                    h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
                     h = max( h, 1.0e-10 )
                     h_nano = h
                     cc = 0.0
@@ -2324,11 +2194,7 @@ contains
                         if (has_conductivity_pipes) then
                             !Apply onle where wells are closed  !don't like the maxval here...
                             if (maxval(pipes_aux%GAMMA_PRES_ABS( :, :, CV_NODI ))<1d-8) then!REMOVE THIS IF LATER ON IT SHOULD DO NOT HARM...
-                                IF ( PIPES_1D ) THEN
-                                    h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
-                                ELSE
-                                    h = mass_cv( cv_nodi )**(1.0/Mdims%ndim)
-                                END IF
+                                h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
                                 h = max( h, 1.0e-10 )
                                 h_nano = h
                                 count = min(1,cv_nodi)
@@ -2495,12 +2361,6 @@ contains
 
                     CALL INVERT( INV_B( :, :, CV_NODI ) )
                 END DO
-                IF ( MULTB_BY_POROSITY ) THEN
-                    DO IPHASE = 1, Mdims%nphase
-                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                        INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) * MEAN_PORE_CV( IPRES, : )
-                    END DO
-                END IF
             ENDIF ! ENDOF IF ( GETCT ) THEN
         END IF ! IF ( Mdims%npres > 1 ) THEN
 
@@ -2565,17 +2425,11 @@ contains
                         + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
                         * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                 END IF
-                IF( Mdims%npres > 1 .and. explicit_pipes ) THEN ! this is not safe...
-                    DO JPHASE = 1, Mdims%nphase
-                        LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                            - pipes_aux%MASS_PIPE( CV_NODI ) * A_GAMMA_PRES_ABS(:,JPHASE,CV_NODI )*CV_P_PHASE_NODI(JPHASE )
-                    END DO
-                END IF
 
                 Conditional_GETMAT2: IF ( GETMAT ) THEN
                     do jphase = 1, Mdims%nphase
                         do iphase=1,Mdims%nphase
-                            IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES ) THEN
+                            IF ( Mdims%npres > 1 ) THEN
                                 call addto(Mmat%petsc_ACV,iphase,jphase, &
                                     cv_nodi, cv_nodi, &
                                     MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
@@ -2628,7 +2482,7 @@ contains
                    END DO
                 END IF
                 ! scaling coefficient...
-                IF ( Mdims%npres > 1 .AND. explicit_pipes2 ) THEN
+                IF ( Mdims%npres > 1 ) THEN
                     DO IPRES=1,Mdims%npres
                         DO JPRES=1,Mdims%npres
                             DO jphase=1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
@@ -2641,11 +2495,6 @@ contains
                             end do
                         END DO
                     END DO
-                END IF
-                IF ( Mdims%npres > 1 .AND. .NOT.explicit_pipes2 ) THEN
-                    DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) * DEN_ALL( :, CV_NODI )
-                    CT_RHS_PHASE( : ) = CT_RHS_PHASE( : ) * DEN_ALL( :, CV_NODI )
-                    CT_RHS_PHASE( : ) = MATMUL( INV_B( :, :, CV_NODI) , CT_RHS_PHASE( : ) )
                 END IF
                 DO IPRES = 1, Mdims%npres
                     if ( Mdims%npres > 1 ) then
@@ -2672,22 +2521,8 @@ contains
         IF(GETCT) THEN
             DEALLOCATE( JCOUNT_KLOC )
         ENDIF
-        DEALLOCATE( CV_OTHER_LOC )
-        DEALLOCATE( U_OTHER_LOC )
-        DEALLOCATE( MAT_OTHER_LOC )
-        DEALLOCATE( X_SHARE )
-        DEALLOCATE( CV_SLOC2LOC )
-        DEALLOCATE( U_SLOC2LOC )
-        DEALLOCATE( MASS_CV )
-        DEALLOCATE( XC_CV_ALL )
-        DEALLOCATE( FACE_ELE )
-        DEALLOCATE(TUPWIND_MAT_ALL)
-        DEALLOCATE(TOLDUPWIND_MAT_ALL)
-        DEALLOCATE(DENUPWIND_MAT_ALL)
-        DEALLOCATE(DENOLDUPWIND_MAT_ALL)
         DEALLOCATE(T2UPWIND_MAT_ALL)
         DEALLOCATE(T2OLDUPWIND_MAT_ALL)
-        DEALLOCATE( DUMMY_ZERO_NDIM_NDIM_NPHASE )
         call deallocate_multi_dev_shape_funs(SdevFuns)
         call deallocate(tracer_BCs)
         call deallocate(tracer_BCs_robin2)
@@ -2698,9 +2533,6 @@ contains
             call deallocate(saturation_BCs)
             call deallocate(saturation_BCs_robin2)
         end if
-        deallocate(INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
-        DEALLOCATE( FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL)
-        nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
         !if (present(T_input)) then!<==TEMPORARY
         !      deallocate( T_ALL_TARGET, TOLD_ALL_TARGET, FEMT_ALL_TARGET, FEMTOLD_ALL_TARGET)
         !end if
@@ -3630,8 +3462,8 @@ end if
                     ! ************NEW LIMITER**************************
                     XI_LIMIT = 2.0
                      !Call the limiter to obtain the limited saturation value at the interface
-                    CALL ONVDLIM_ANO_MANY( Mdims%nphase, LIMT3(:), FEMTGI_IPHA(:), INCOME(:), &
-                        LOC_T_I(:), LOC_T_J(:),XI_LIMIT(:), TUPWIND_IN(:), TUPWIND_OUT(:) )
+                    CALL ONVDLIM_ANO_MANY( Mdims%nphase, LIMT3, FEMTGI_IPHA, INCOME, &
+                        LOC_T_I, LOC_T_J,XI_LIMIT, TUPWIND_IN, TUPWIND_OUT )
                     !We perform: n' * sigma * n
                     DO iv_iphase = 1, Mdims%nphase
                         ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
@@ -4636,7 +4468,6 @@ end if
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(tensor_field), pointer :: tfield
         type(csr_sparsity), pointer :: sparsity
-        logical, parameter :: DCYL = .false.
         logical :: do_not_project, cv_test_space, is_to_update
         character(len=*), parameter :: projection_options = '/projections/control_volume_projections'
         character(len=option_path_len) :: option_path
@@ -4883,14 +4714,13 @@ end if
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        !DCYL = .FALSE.
 
         Loop_Elements1: DO ELE = 1, TOTELE
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
             CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
                 X_NLOC, X_NLOC, CV_NGI, &
-                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
                 X_NX_ALL, &
                 CV_NLOC, NLX, NLY, NLZ, NX_ALL)
             Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
@@ -5148,7 +4978,7 @@ end if
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
             CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
                 X_NLOC, X_NLOC, CV_NGI, &
-                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
                 X_NX_ALL, &
                 CV_NLOC, NLX, NLY, NLZ, NX_ALL)
 
