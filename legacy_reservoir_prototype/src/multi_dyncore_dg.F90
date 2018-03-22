@@ -1090,8 +1090,6 @@ if (is_flooding) return!<== Temporary fix for flooding
                  do idim = 1, Mdims%ndim
                     idx1 = idim+(iphase-1)*Mdims%ndim ; idx2 = idim+(jphase-1)*Mdims%ndim
                     velocity_absorption( idx1, idx2, : ) = python_tfield%val( iphase, jphase, : )
-                    ewrite(3,*) idx1, idx2, minval( velocity_absorption( idx1, idx2, : ) ), &
-                         maxval( velocity_absorption( idx1, idx2, : ) )
                  end do
               end do
            end do

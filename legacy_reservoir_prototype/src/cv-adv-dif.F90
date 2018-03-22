@@ -4680,9 +4680,9 @@ end if
         LOGICAL, intent( in ) :: get_gradU
         TYPE( STATE_TYPE), DIMENSION( : ), intent( inout ) :: state
         ! Local variables
-        REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
-        REAL, DIMENSION( :, :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, APPLYBC( NCOMP, NPHASE )
+        REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
+        REAL, DIMENSION( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE, VTOLDX_ELE
+        LOGICAL, dimension(NCOMP, NPHASE) :: APPLYBC
         LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, dimension( CV_NGI ) :: DETWEI, RA
         REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
@@ -4702,25 +4702,14 @@ end if
         ewrite(3,*)'in DG_DERIVS'
 
         DTX_ELE = 0.0 ; DTOLDX_ELE = 0.0
-
-        ALLOCATE( MASELE( CV_NLOC, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTX_ELE( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTOLDX_ELE( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) )
-
-        MASELE = 0.0
-        VTX_ELE = 0.0
-
-        VTOLDX_ELE = 0.0
-
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
+        MASELE = 0.0 ;VTX_ELE = 0.0;  VTOLDX_ELE = 0.0
 
         Loop_Elements1: DO ELE = 1, TOTELE
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
             CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
                 X_NLOC, X_NLOC, CV_NGI, &
-                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
+                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, NDIM == 1, NDIM == 3, .false., &
                 X_NX_ALL, &
                 CV_NLOC, NLX, NLY, NLZ, NX_ALL)
             Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
@@ -4898,8 +4887,6 @@ end if
         end if
 
 
-        DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
-
         ewrite(3,*)'about to leave DG_DERIVS'
 
         RETURN
@@ -4943,10 +4930,9 @@ end if
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
 
         ! Local variables
-        REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
-        REAL, DIMENSION( :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
+        REAL, DIMENSION( CV_NLOC, CV_NLOC, TOTELE ) :: MASELE
+        REAL, DIMENSION( NDIM, NPHASE, CV_NLOC, TOTELE ) :: VTX_ELE, VTOLDX_ELE
         LOGICAL :: D1, D3, APPLYBC( NPHASE )
-        LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, dimension( CV_NGI ) :: DETWEI, RA
         REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
         REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
@@ -4963,22 +4949,15 @@ end if
         ewrite(3,*)'in DG_DERIVS'
 
         DTX_ELE = 0.0 ; DTOLDX_ELE = 0.0
-
-        ALLOCATE( MASELE( CV_NLOC, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTX_ELE( NDIM, NPHASE, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTOLDX_ELE( NDIM, NPHASE, CV_NLOC, TOTELE ) )
-
         MASELE = 0.0 ; VTX_ELE = 0.0 ; VTOLDX_ELE = 0.0
 
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
         !DCYL = .FALSE.
         Loop_Elements1: DO ELE = 1, TOTELE
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
             CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
                 X_NLOC, X_NLOC, CV_NGI, &
-                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
+                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, NDIM == 1, NDIM == 3, .false., &
                 X_NX_ALL, &
                 CV_NLOC, NLX, NLY, NLZ, NX_ALL)
 
@@ -5019,7 +4998,6 @@ end if
                 ELE2 = FACE_ELE( IFACE, ELE )
                 SELE2 = MAX( 0, - ELE2 )
                 ELE2 = MAX( 0, + ELE2 )
-                !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
 
                 ! The surface nodes on element face IFACE.
                 SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
@@ -5126,13 +5104,9 @@ end if
                 DTX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
                 DTOLDX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
 
-               !DTX_ELE( IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
-               !DTOLDX_ELE( IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
             END FORALL
 
         END DO Loop_Elements3
-
-        DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
 
         ewrite(3,*)'about to leave DG_DERIVS'
 
