@@ -382,7 +382,7 @@ contains
         real, dimension(Mdims%nphase, Mspars%small_acv%ncol) :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
             DENOLDUPWIND_MAT_ALL
         real, dimension(:,:), allocatable :: T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
-        LOGICAL :: STORE, integrate_other_side_and_not_boundary, GOT_VIS
+        LOGICAL :: STORE, integrate_other_side_and_not_boundary
         REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
         LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
         LOGICAL, DIMENSION( Mdims%nphase, 6 ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
@@ -618,9 +618,11 @@ contains
         end if
         IDUM = 0
         ewrite(3,*) 'In CV_ASSEMB'
-        GOT_VIS = .FALSE.
-        GOT_DIFFUS = present(TDIFFUSION)
-
+        GOT_DIFFUS = .false.
+        if (present(TDIFFUSION)) then
+            GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 )!<=I hate this thing...
+            call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
+        end if
         call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
         ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
             CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS

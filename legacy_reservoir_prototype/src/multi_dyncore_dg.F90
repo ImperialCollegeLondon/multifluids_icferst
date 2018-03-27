@@ -116,7 +116,7 @@ contains
            logical :: lump_eqns
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-           REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
+           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -242,7 +242,7 @@ contains
                'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-           allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
+           TDIFFUSION=0.0
 
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
                 !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
@@ -1579,7 +1579,6 @@ end if
         REAL, PARAMETER :: v_beta = 1.0
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
-        REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
         REAL, DIMENSION( : , : ), allocatable :: DENOLD_OR_ONE
         REAL, DIMENSION( : , : ), target, allocatable :: DEN_OR_ONE
