@@ -854,7 +854,7 @@ contains
             FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
             IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-            tracer,PSI_AVE, PSI_INT, Mmat%CV_pressure)
+            tracer,PSI_AVE, PSI_INT)
         XC_CV_ALL=0.0
         !sprint_to_do!use a pointer?
         XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
@@ -4417,7 +4417,7 @@ end if
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
         igetct, X, mass_ele, mass_mn_pres, &
-        tracer, psi_ave, psi_int, CV_pressure)
+        tracer, psi_ave, psi_int)
 
         !------------------------------------------------
         ! Subroutine description:
@@ -4445,7 +4445,6 @@ end if
         real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
         real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
         type(tensor_field), intent(in) :: tracer
-        logical, intent(in) :: CV_pressure
         ! the following two need to be changed to optional in the future
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
@@ -4470,7 +4469,7 @@ end if
         !---------------------------------
         ! initialisation and allocation
         !---------------------------------
-        do_not_project = have_option(projection_options//'/do_not_project')! .or. CV_pressure
+        do_not_project = have_option(projection_options//'/do_not_project') .or. is_porous_media
         cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)
 
