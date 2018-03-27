@@ -388,8 +388,8 @@ contains
         REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
         REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
         LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
-        LOGICAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_PACK, IGOT_T_CONST
-        REAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_CONST_VALUE
+        LOGICAL, DIMENSION( Mdims%nphase, 6 ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
+        REAL, DIMENSION(  Mdims%nphase, 6 ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
         !Working variables
         real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
         real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
@@ -697,11 +697,6 @@ contains
 
         IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
             PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
-        ! variables for get_int_tden********************
-        ! Set up the fields...
-        ALLOCATE( IGOT_T_PACK( Mdims%nphase, 6 ), IGOT_T_CONST( Mdims%nphase, 6 ), IGOT_T_CONST_VALUE( Mdims%nphase, 6 ) )
-
-
 
         ! FOR packing as well as for detemining which variables to apply interface tracking**********
         !          STORE=.TRUE.

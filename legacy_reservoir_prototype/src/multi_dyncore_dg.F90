@@ -140,8 +140,6 @@ contains
            REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
-           !Variables for controlling the number of iterations
-           real, dimension(:,:,:), allocatable :: reference_temp
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -219,7 +217,6 @@ contains
                    !We control with the infinite norm of the difference the non-linear iterations done in this sub-cycle
                    !therefore the minimum/default value of nits_flux_lim is set to 9
                    nits_flux_lim = max(nits_flux_lim, 9)!Currently overriden as we are not updating the rhs or other fields so this is not useful
-                   allocate(reference_temp(1, Mdims%nphase, Mdims%cv_nonods))
                    if (inf_tolerance<0) then
                        !Tolerance for the infinite norm
                        call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/Temperature_solver_tol',&
@@ -355,6 +352,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+                    !Control how it is converging and decide
+                   if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
 
                    !Just after the solvers
                    !call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
@@ -362,27 +361,19 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    !Checking solver not fully implemented
                    if (its_taken == 0 ) then
                        solver_not_converged = .true.
-                        tracer%val(1,:,:) = temp_bak!recover backup
+                       tracer%val(1,:,:) = temp_bak!recover backup
                        cycle!repeat
                    else
                        solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
                        exit!good to go!
                    end if
                END IF Conditional_Lumping
-                !Control how it is converging and decide
-               if(thermal) then
-                   !Apply, if required the min_max_principle
-                   call force_min_max_principle(2)
-
-                   if (ITS_FLUX_LIM == 1) reference_temp = tracer%val
-               end if
 
 
 
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-           if (allocated(reference_temp)) deallocate(reference_temp)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
