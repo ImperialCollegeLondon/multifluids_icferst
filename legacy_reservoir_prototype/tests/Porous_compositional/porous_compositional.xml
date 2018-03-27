@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Porous_media_general</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml compositional</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst Porous_compositional.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="int_comp1" language="python">from fluidity_tools import stat_parser as stat
+int_comp1 = stat("porous_compositional.stat")["Component1"]["ComponentMassFractionPhase1"]["integral"][-1]</variable>
+    <variable name="int_comp2" language="python">from fluidity_tools import stat_parser as stat
+int_comp2 = stat("porous_compositional.stat")["Component2"]["ComponentMassFractionPhase1"]["integral"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert integral component 2" language="python">assert(abs(int_comp1 - 0.106)/0.106 &lt; 0.01)</test>
+    <test name="Assert integral component 2" language="python">assert(abs(int_comp2 - 0.0267)/0.267 &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

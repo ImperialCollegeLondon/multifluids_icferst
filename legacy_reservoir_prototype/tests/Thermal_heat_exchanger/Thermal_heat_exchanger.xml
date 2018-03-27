@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Porous_media_general</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml thermal P0DG</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst thermal_porous.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_temp" language="python">from fluidity_tools import stat_parser as stat
+max_temp = stat("thermal_porous.stat")["phase1"]["Temperature"]["max"][-1]</variable>
+    <variable name="min_temp" language="python">from fluidity_tools import stat_parser as stat
+min_temp = stat("thermal_porous.stat")["phase1"]["Temperature"]["min"][-1]</variable>
+    <variable name="max_temp_well" language="python">from fluidity_tools import stat_parser as stat
+max_temp_well = stat("thermal_porous.stat")["phase2"]["Temperature"]["max"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final max temperature" language="python">assert(abs((max_temp - 80.)/80.) &lt; 0.01)</test>
+    <test name="Assert final min temperature" language="python">assert(abs((min_temp - 79.8)/79.8) &lt; 0.01)</test>
+    <test name="Assert final max temperature wells" language="python">assert(abs((max_temp_well - 31.7)/31.7) &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
