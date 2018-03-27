@@ -15,6 +15,7 @@ include "temporal_discretisation.rnc"
 start =
    (
       ## The root node of the options dictionary.
+      ## S.I. units are RECOMMENDED to obtain consistent results.
       element multiphase_options {
          comment,
          ## Model output files are named according to the simulation
@@ -36,7 +37,6 @@ start =
                 element flooding{comment}
              ),
           element femdem_fracture{comment}?,
-          element blasting{comment}?,
           element boiling{comment}?
          },
          geometry,
@@ -51,7 +51,8 @@ start =
             (
                ## Period between dumps in time units.
                ##
-               ## Specifies the period between each dump of the solution to disk.
+               ## Specifies the period between each dump of the solution to disk. 
+               ## If using adaptive time-step this periods will be EXACTLY matched.
                ## A value of 0.0 indicates that there would be a dump at every timestep.
                element dump_period {
                 (
@@ -92,6 +93,18 @@ start =
                 )   
                }
             ),
+          ## Path (without the extension) to the .csv file containing the fluid and porous media properties.
+          ## NOTE: Properties in the .csv file will overwrite the input from diamond.
+          ##
+          ## The information is stored as:
+          ##
+          ## Property, phase, region_ids(0= if all), value (values separated by _ for region ids and tensors)
+          ##
+          ## You can find an example in the Proous_media_general test case
+          ##
+          ## If using this, all the modifiable fields need to have the option to read from a csv file
+          element PropertiesFromFile {xsd:string
+          }?,
             ## Disable dump at simulation start
             element disable_dump_at_start {
                comment
@@ -474,20 +487,48 @@ start =
                     real
                     }?
                   ),
-                  (
-                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
+                    ## Introduce over-relaxation in the saturation equation. 
+                    ## This severely HELPS to reduce the number of FPI.
                     ##
-                    ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
-                    ## 
-                    ## 100 => Only the previous saturation is used (more conservative); 
-                    ## 0.4 => Recommended (default); 
-                    ## 0.3 => Older saturation is at some points as important as the old saturation;
-                    ## 0 => Older saturation is more important than old saturation
-                    ## 
-                    ## If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)
-                    element Acceleration_exp{
-                    real
-                    }?
+                    ## If positive, the input value is the entry pressure.
+                    ##
+                    ## If negative, the input value is Peclet number desired.
+                    ##
+                    ## Recommended value for Saturation => -1e2
+                    ##
+                    ## Tip: If running with temperature and single phase disable this setting it to 0.
+                    element Vanishing_relaxation{
+                    real,
+                      (
+                        ## This method can also be applied for a transport equation.
+                        ##
+                        ## Recommended value for Temperature => -1e0
+                        element Vanishing_for_transport{
+                        real
+                        }?
+                      )
+                    }?,
+#                  (
+#                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
+#                    ##
+#                    ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
+#                    ## 
+#                    ## 100 => Only the previous saturation is used (more conservative); 
+#                    ## 0.4 => Recommended (default); 
+#                    ## 0.3 => Older saturation is at some points as important as the old saturation;
+#                    ## 0 => Older saturation is more important than old saturation
+#                    ## 
+#                    ## If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)
+#                    element Acceleration_exp{
+#                    real
+#                    }?
+#                  ),
+                  (
+                    ## For TEMPERATURE ONLY, if there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+	                ## 
+		            ## This imposes that the temperature has to be between bounds.
+                    element Impose_min_max{empty}?
                   ),
                   (
                     ## Convergence criterion based on the 
@@ -1665,8 +1706,6 @@ start =
                      ## Relative permeability end point
                      ##
                      ## Value between 0 and 1. Default value 1.0
-                 element relperm_max {
-                 ## End-point relative permeability
                     element scalar_field {
                        attribute name { "relperm_max" },
                        (
@@ -1675,13 +1714,10 @@ start =
                              prescribed_scalar_field
                           }
                        )
-                    }
-                 }?,
+                    },
                      ## Relative permeability exponent
                      ##
                      ## Default value 2.0
-                 element relperm_exponent {
-                 ## Exponent of the formula
                      element scalar_field {
                         attribute name { "relperm_exponent" },
                         (
@@ -1691,7 +1727,6 @@ start =
                   }
                         )
                      }
-                }?
                 }?,
 		## Mark phase as being the continuous phase in dispersed fluid-fluid flow
 		element continuous_phase {
@@ -1788,27 +1823,33 @@ start =
 	       element coarse_graining {integer}?,	      
                ## Option for capillary pressure				 
                element capillary_pressure {
-            ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
-            ## The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. 
-            element Diffusive_cap_only { comment }?,
                   ## Brooks-Corey equation
                   ##
-                  ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a
+                  ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
+                  ##
+                  ## For imbibition swith the formula is:
+                  ##
+                  ## ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure 
+                  ##
                   ## You should specify this ONLY for the wetting phase
                   element type_Brooks_Corey {
                     ## Entry pressure of the formula
                     element scalar_field {
                        attribute name { "C" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
-                          }
-                       )
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      } 
                     },
+                    ## Imbibition term. if on, entry pressure = C - B;
+                    ## By default this value is set to zero.
+                    element scalar_field {
+                       attribute name { "B" },
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      } 
+                    }?,
                     ## exponent -a
                     element scalar_field {
                        attribute name { "a" },
@@ -1822,9 +1863,19 @@ start =
                           }
                        )
                     }}?,
-                  ## Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)
-                  element type_TOTALCapillary {
-                    ## Overall coefficient scaling the capillary pressure
+	          ## Power Law equation
+                  ## 
+                  ## Pc = c*(1-s_eff)**a
+		  ##
+		  ## where s_eff = (S_w-Swir)/(1-Swir-Sor)
+		  ##
+		  ## c = maximum pc pressure; a = pc exponent
+		  ## 
+		  ## (no entry pressure) 
+                  ## 
+                  ## ONLY specify for the wetting phase
+		  element type_Power_Law {
+                    ## Maximum pressure
                     element scalar_field {
                        attribute name { "C" },
                        (
@@ -1837,7 +1888,7 @@ start =
                           }
                        )
                     },
-                    ## Exponent in the capillary pressure formula
+                    ## exponent a
                     element scalar_field {
                        attribute name { "a" },
                        (
@@ -1863,19 +1914,7 @@ start =
                           }
                        )
                     }
-               }?,
-               ## Introduce over-relaxation in the saturation equation. 
-               ## This severely HELPS to reduce the number of FPI.
-               ## You MUST specify this ONLY for the wetting phase.
-               ##
-               ## If positive, the input value is the entry pressure.
-               ##
-               ## If negative, the input value is Peclet number desired.
-               ##
-               ## Recommended value => -1e1
-               ##
-               ## Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.
-               element Sat_overRelax {real}?
+               }?
             }?
          }+,
          mesh_adaptivity_options?,
@@ -2044,25 +2083,48 @@ start =
                   }
                )
             },
-            ## Specify the conductivity of the well/pipe material.
-            ## If there are several layers this has to be the equivalent conductivity from inside the well/pipe to
-            ## the reservoir.
-            ## This is only required for heat transport
-            element scalar_field {
-               attribute name { "Conductivity" },
-               (
-                  element prescribed {
-                     pressure_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                element diagnostic {
-                  vector_python_diagnostic_algorithm,
-                  diagnostic_scalar_field_no_adapt
-                }| 
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
+            ## Specify thermal well-related options
+            element thermal_well_properties {
+                ## Specify the conductivity of the well/pipe material.
+                ## If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
+                ## the reservoir.
+                ## This is only required for heat transport
+                element scalar_field {
+                   attribute name { "Conductivity" },
+                   (
+                      element prescribed {
+                         pressure_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify the thickness of the well/pipe.
+                ## If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
+                ## the reservoir.
+                ## This is only required for heat transport
+                element scalar_field {
+                   attribute name { "well_thickness" },
+                   (
+                      element prescribed {
+                         pressure_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                }
             }?,
             ## Specify well-related options
             element well_options {
@@ -2078,8 +2140,25 @@ start =
                ## Switches wells on and off to optimise production
                element switch_wells_on_and_off{
                   element phase_exclude{ integer }
-               }?
+               }?,
+                ## If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+                ## .bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+                ## the other way round for values below 100.
+                ## The default value is 1e-2.
+                element wells_bdf_tolerance {
+                  real
+                 }?
             }?,
+
+            ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+            ## that the well trajectories are preserved.
+            element well_volume_ids {
+              integer_vector,
+                  (
+                    ## Output the ids of the wells
+                    element Show_well_volumes_ids{comment}?
+                  )
+             }?,
              ## Introduce here the relative path to the file defining a 1D well
              ##
              ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
@@ -5473,9 +5552,10 @@ element equation_of_state{
                      element compressible {
                         ## Stiffened Gas EoS
                         ##
-                        ## Used with compressible simulations
-                        ##
                         ## DEN = ( P + EOS_COEFS( 1 )) * EOS_COEFS( 2 ) / T
+                        ##
+                        ## Note that setting EOS_COEFS( 1 ) = 0. and EOS_COEFS( 2 ) = 1/gas constant (Rd [J/kg/K])
+                        ## The equation for ideal gases is obtained.
                         element stiffened_gas {
                            element eos_option1 { real },
                            element eos_option2 { real },
@@ -5578,7 +5658,9 @@ element equation_of_state{
                               real
                            }
                         }|
-                        ## Temperature-Pressure correlation 
+                        ## Temperature-Pressure correlation for liquids ONLY.
+                        ##
+                        ## Range of applicability: 0 to 2*10^9 Pa.
                         ##
                         ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
                         ##

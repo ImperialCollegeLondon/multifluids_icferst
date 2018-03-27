@@ -60,7 +60,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use MeshDiagnostics
     use write_gmsh
     use signals
-
+    use multi_tools, only: extract_strings_from_csv_file
     !use mp_prototype
     use tictoc
     implicit none
@@ -219,10 +219,10 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call deallocate_transform_cache()
 
     ewrite(2, *) "Tagged references remaining:"
-    call print_tagged_references(0)
+    call print_tagged_references(1)
 
 #ifdef HAVE_MEMORY_STATS
-    call print_current_memory_stats(0)
+    call print_current_memory_stats(1)
 #endif
 
     call toc(TICTOC_ID_SIMULATION)
@@ -248,18 +248,22 @@ contains
         implicit none
         type(state_type), dimension(:), pointer, intent(inout) :: state
         !Local variables
-        integer :: i, nphase, npres
+        integer :: i, nphase, npres, aux
+        integer, dimension(2) :: shape
         character( len = option_path_len ) :: option_path
         integer :: stat
         type (scalar_field), target :: targ_Store
         type (scalar_field), pointer :: sfield1, sfield2
         type (vector_field), pointer :: position
-
+        integer, dimension(:), allocatable :: well_ids
 
         nphase = option_count("/material_phase")
         npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
         !Adjust nphase to not account for the extra phases added by the wells
         nphase = nphase/npres
+
+        !Read at the very beginning the property input file
+        call read_fluid_and_rock_properties_from_csv()
 
         !If the input file is the simplified version of the mpml
         ! file then we need to reconstruct the original mpml file
@@ -362,11 +366,190 @@ contains
             end do
         end if
 
+        !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
+        !or to show the wells in paraview
+        if (npres>1 ) then
+            if (have_option('/wells_and_pipes/well_volume_ids')) then
+                !Introduce some dummy regions to ensure that mesh adaptivity keeps the wells in place
+                shape = option_shape('/wells_and_pipes/well_volume_ids')
+                assert(shape(1) >= 0)
+                allocate(well_ids(shape(1)))
+                call get_option( '/wells_and_pipes/well_volume_ids', well_ids)
+                !Create field by adding the fields manually
+                option_path = "/wells_and_pipes/scalar_field::Well_domains"
+                call add_option(trim(option_path),  stat=stat)
+                call add_option(trim(option_path)//"/prescribed",  stat=stat)
+                call add_option(trim(option_path)//"/prescribed/mesh::P0DG",  stat=stat)
+
+                !Add dummy values only for the regions with wells, the others are set to zero by default which is fine
+                do i = 1, size(well_ids,1)
+                    call add_option(trim(option_path)//"/prescribed/value::"//"Well_domain_"//int2str(well_ids(i)),  stat=stat)
+                    call add_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/region_ids",  stat=stat)
+                    call set_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/region_ids", (/well_ids(i)/),  stat=stat)
+                    call add_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/constant",  stat=stat)
+                    call set_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/constant", real(well_ids(i)), stat=stat)
+                end do
+                deallocate(well_ids)
+
+                if (.not.have_option('/wells_and_pipes/well_volume_ids/Show_well_volumes_ids'))&
+                    call copy_option("/simulation_type/porous_media", trim(option_path)//"/prescribed/output/exclude_from_vtu")
+
+                call add_option(trim(option_path)//"/prescribed/do_not_recalculate",  stat=stat)
+             else if (have_option('/wells_and_pipes/well_from_file[0]')) then
+                ewrite(0, *) "WARNING: well trajectories may not be preserved after mesh adaptivity. It is recommended to use /wells_and_pipes/well_volume_ids"
+             end if
+        end if
+!print all the options in the diamond file and added here to the terminal
+!call print_options()
         !Call fluidity to populate state
         call populate_state(state)
 
     end subroutine populate_multi_state
 
+
+    subroutine read_fluid_and_rock_properties_from_csv()
+        !This subroutine reads the properties from the given input file, introduced in diamond
+        !and create the correspoding entries in spud from inside the code.
+        !The input files are as follows:
+        !Property, Phase, region_id, value
+        !Brooks_Corey/relperm_max,1,25,0.6
+        !Permeability,0,24,1.;0.;0.;0.5
+        implicit none
+        !Local variables
+        real :: value
+        real, dimension(:,:), allocatable :: permeabilities
+        integer :: Nentries, i, iphase, bar_pos, start, end, k, j, stat, Number_region_ids, ndim
+        integer, dimension(10000) :: region_ids
+        character( len = option_path_len ) :: path_to_file, diamond_path, property, cadena
+        character(len=option_path_len), dimension(:,:),  allocatable :: csv_table_strings
+
+
+
+        if (have_option('/io/PropertiesFromFile')) then
+            call get_option('/geometry/dimension',ndim)
+            allocate(permeabilities(ndim,ndim))
+            !Get filepath
+            call get_option('/io/PropertiesFromFile', path_to_file)
+
+            call extract_strings_from_csv_file(csv_table_strings, path_to_file, Nentries)
+
+            do i = 1, Nentries
+                region_ids = -1
+                property = trim(csv_table_strings(i,1))
+                bar_pos = index(property,'-')
+                !Capillary pressure is a special case
+                if (index(property,'capillary_pressure') > 0 )then
+                    !Unify the first two entries
+                    property = property(1:bar_pos-1)//'/'//property(bar_pos+1:len_trim(property))
+                    bar_pos = index(property,'-')
+                end if
+                !Thermal_porous data is also an special case
+                if (index(property,'thermal_porous') > 0 )then
+                    !Unify the first two entries
+                    property = property(1:bar_pos-1)//'/'//property(bar_pos+1:len_trim(property))
+                    bar_pos = index(property,'-')
+                end if
+                !Extract phase
+                read(csv_table_strings(i,2) , *) iphase
+                !Extract region ids
+                cadena = csv_table_strings(i,3)
+                end = min(len_trim(cadena)+1,max(0,index(cadena,'_')))
+                if (end ==0) end = len_trim(cadena)+1
+                k = 1
+                do while (end>1)
+                    read(cadena(1:end-1) , *) region_ids(k)
+                    !trim cadena
+                    cadena = cadena(end+1:len_trim(cadena))
+                    !Calculate new end
+                    end = min(len_trim(cadena)+1,max(0,index(cadena,'_')))
+                    if (end ==0) end = len_trim(cadena)+1
+                    !Advance index
+                    k = k + 1
+                end do
+                Number_region_ids = k - 1
+                if (bar_pos>0) then
+                    !It is a fluid property
+                    diamond_path = '/multiphase_properties/'//property(1:bar_pos-1)//'/scalar_field::'//property(bar_pos+1:len_trim(property))//'/prescribed/value'
+                    !Get value
+                    read(csv_table_strings(i,4) , *) value
+
+                    !Proceed to first remove the present options, and next to add the new options
+                    if (have_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::WholeMesh/csv_file')) &
+                    call delete_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::WholeMesh')
+                    !Next proceed to add the new values
+                    if (region_ids(1) == 0) then
+                        call add_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::WholeMesh/constant',  stat=stat)
+                        call set_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::WholeMesh/constant', value,  stat=stat)
+                    else                                                                            !Add name and also values
+                        call add_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::CSV_Property_'//int2str(i-1),  stat=stat)
+                        call add_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::CSV_Property_'//int2str(i-1)//"/region_ids",  stat=stat)
+                        call set_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::CSV_Property_'//int2str(i-1)//"/region_ids", region_ids(1:Number_region_ids),  stat=stat)
+                        call add_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::CSV_Property_'//int2str(i-1)//"/constant",  stat=stat)
+                        call set_option('/material_phase['//int2str(iphase-1)//']'//trim(diamond_path)//'::CSV_Property_'//int2str(i-1)//"/constant", value, stat=stat)
+                    end if
+                    !NOTHING FOR WELLS AS IT IS NOT A POROUS MEDIUM
+                else!Porous media property
+
+                    !If permeability, then tensor field, otherwise scalar field
+                    if (index(property,'Permeability') <= 0 )then
+                        diamond_path = '/porous_media/scalar_field::Porosity/prescribed/value'
+                        !Get value
+                        read(csv_table_strings(i,4) , *) value
+
+                        !Proceed to first remove the present options, and next to add the new options
+                        if (have_option(trim(diamond_path)//'::WholeMesh/csv_file')) call delete_option(trim(diamond_path)//'::WholeMesh')
+                        !Next proceed to add the new values
+                        if (region_ids(1) == 0) then
+                            call add_option(trim(diamond_path)//'::WholeMesh/constant',  stat=stat)
+                            call set_option(trim(diamond_path)//'::WholeMesh/constant', value,  stat=stat)
+                        else                                    !Add name and also values
+                            call add_option(trim(diamond_path)//'::CSV_Petrophysical_property_'//int2str(i-1),  stat=stat)
+                            call add_option(trim(diamond_path)//'::CSV_Petrophysical_property_'//int2str(i-1)//"/region_ids",  stat=stat)
+                            call set_option(trim(diamond_path)//'::CSV_Petrophysical_property_'//int2str(i-1)//"/region_ids", region_ids(1:Number_region_ids),  stat=stat)
+                            call add_option(trim(diamond_path)//'::CSV_Petrophysical_property_'//int2str(i-1)//"/constant",  stat=stat)
+                            call set_option(trim(diamond_path)//'::CSV_Petrophysical_property_'//int2str(i-1)//"/constant", value, stat=stat)
+                        end if
+                    else!Permeability
+                        !Extract permeability entries
+                        cadena = csv_table_strings(i,4)
+                        end = min(len_trim(cadena)+1,max(0,index(cadena,'_')))
+                        if (end == 0) end = len_trim(cadena)+1
+                        do k = 1, ndim
+                            do j = 1, ndim
+
+                                read(cadena(1:end-1) , *) value
+                                permeabilities(k,j) = value
+                                !trim cadena
+                                cadena = cadena(end+1:len_trim(cadena))
+                                            !Calculate new end
+                                end = min(len_trim(cadena)+1,max(0,index(cadena,'_')))
+                                if (end ==0) end = len_trim(cadena)+1
+                            end do
+                        end do
+                        diamond_path = '/porous_media/tensor_field::Permeability/prescribed/value'
+                        !Proceed to first remove the present options, and next to add the new options
+                        if (have_option(trim(diamond_path)//'::WholeMesh/anisotropic_asymmetric/csv_file')) &
+                            call delete_option(trim(diamond_path)//'::WholeMesh')
+                        !Next proceed to add the new values
+                        if (region_ids(1) == 0) then
+                            call add_option(trim(diamond_path)//'::WholeMesh/anisotropic_asymmetric/constant',  stat=stat)
+                            call set_option(trim(diamond_path)//'::WholeMesh/anisotropic_asymmetric/constant', value,  stat=stat)
+                        else                                    !Add name and also values
+                            call add_option(trim(diamond_path)//'::CSV_Permeability_'//int2str(i-1),  stat=stat)
+                            call add_option(trim(diamond_path)//'::CSV_Permeability_'//int2str(i-1)//"/region_ids",  stat=stat)
+                            call set_option(trim(diamond_path)//'::CSV_Permeability_'//int2str(i-1)//"/region_ids", region_ids(1:Number_region_ids),  stat=stat)
+                            call add_option(trim(diamond_path)//'::CSV_Permeability_'//int2str(i-1)//"/anisotropic_asymmetric/constant",  stat=stat)
+                            call set_option(trim(diamond_path)//'::CSV_Permeability_'//int2str(i-1)//"/anisotropic_asymmetric/constant", permeabilities, stat=stat)
+                        end if
+                    end if
+                end if
+            end do
+
+            deallocate(permeabilities)
+        else
+            return
+        end if
+    end subroutine read_fluid_and_rock_properties_from_csv
 
     subroutine convert_FERST_input_file(nphase, npres)
                 ! ################################
@@ -653,10 +836,6 @@ contains
         is_flooding = have_option('/simulation_type/flooding')
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/simulation_type/femdem_fracture' )
-        !Flag to set up boiling
-        is_boiling = have_option( '/simulation_type/boiling' )
-        !Flag to set up blasting
-        is_blasting = have_option( '/simulation_type/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         !Check if it is P0DGP1
@@ -669,7 +848,9 @@ contains
                     have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
             if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
                             .or. have_option('/simulation_type/inertia_dominated'))) then
-                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method, use the P1DGP2CV formulation instead."
+                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
+                ewrite(0, *) "A. Use the P1DGP2CV formulation."
+                ewrite(0, *) "B. Use the P1DGP1CV formulation with mass lumping = 100 in: Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_term/lump_mass_matrix/lump_weight"
                 stop
             end if
         else

@@ -178,10 +178,6 @@ module global_parameters
 
   !! Checking multifracture
   logical :: is_multifracture = .false.
-  !! Multiphase prototype, boiling simulator
-  logical :: is_boiling = .false.
-  !! Multiphase prototype, blasting simulator
-  logical :: is_blasting = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
   !! Checking if using the P0DG for velocity,

@@ -158,7 +158,6 @@ module multi_data_types
     type multi_sparsities
         type (multi_sparsity) :: acv     !CV multi-phase eqns (e.g. vol frac, temp)
         type (multi_sparsity) :: small_acv !Local CV multi-phase eqns (e.g. vol frac, temp)
-        type (multi_sparsity) :: mcy     !Force balance plus cty multi-phase eqns
         type (multi_sparsity) :: ele     !Element connectivity
         type (multi_sparsity) :: dgm_pha !Force balance sparsity
         type (multi_sparsity) :: ct      !CT sparsity - global continuity eqn
@@ -250,6 +249,22 @@ module multi_data_types
         real, dimension( : ), pointer        :: mass_cvfem2pipe_true=> null()
     end type
 
+    type multi_outfluxes
+        !Contains variables to analyse the flux across the BCs that the user is interested
+        logical :: calculate_flux !True if all the process related with this has to start or not
+        integer, dimension(:), allocatable :: outlet_id !ids the user wants
+        real :: porevolume ! for outfluxes.csv to calculate the pore volume injected
+        real, allocatable, dimension(:,:,:) :: totout!(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
+        real, dimension(:,:),  allocatable  :: intflux
+    end type
+
+     type pipe_coords
+            integer :: ele, npipes                               !Element containing pipes, pipes per element
+            logical, allocatable, dimension(:) :: pipe_index     !nodes with pipes
+            integer, allocatable, dimension(:) :: pipe_corner_nds1!size npipes
+            integer, allocatable, dimension(:) :: pipe_corner_nds2!size npipes
+     end type pipe_coords
+
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
          allocate_multi_field1, allocate_multi_field2
 
@@ -327,8 +342,7 @@ contains
         type( multi_field ), intent( inout ) :: mfield
         character( len = * ), optional, intent( in ) :: field_name
         !Local variables
-        integer :: ndim, nphase, nonods, stat, k, i
-        character( len = option_path_len ) :: path_option, root_path
+        integer :: ndim, nphase, nonods
 
         mfield%have_field = .true.
 
@@ -427,7 +441,7 @@ contains
         type( multi_field ), intent( in ) :: mfield
         real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
         !local variables
-        integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
+        integer :: iphase, jphase, idim, jdim, ndim, inode
 
         inode = inode_in
         if (mfield%is_constant) inode = 1
@@ -476,7 +490,7 @@ contains
         type( multi_field ), intent( in ) :: mfield
         real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
         !local variables
-        integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
+        integer :: iphase, jphase, idim, ndim, inode
 
         inode = inode_in
         if (mfield%is_constant) inode = 1
@@ -642,7 +656,7 @@ contains
         type( multi_field ), intent( inout ) :: mfield
         real, dimension(:,:), intent(in) :: b
         !Local variables
-        integer :: idim, jdim, iphase, ndim, jphase
+        integer ::  iphase, ndim, jphase
         real, dimension(:,:), allocatable :: miniB
 
         ndim = size(b,2)/mfield%ndim3
@@ -967,20 +981,16 @@ contains
     end subroutine deallocate_projection_matrices
 
     !This subroutine, despite it can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns
-    subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
+    subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
         !This subroutine allocates part of the memory inside Mspars
         implicit none
         type (multi_sparsities), intent(inout) :: Mspars
         type(multi_dimensions), intent(in) :: Mdims
-        integer :: mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
+        integer :: mx_ncolacv, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
 
         if(.not.associated(Mspars%ACV%fin))          allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ))
         if(.not.associated(Mspars%ACV%col))          allocate( Mspars%ACV%col( mx_ncolacv ))
         if(.not.associated(Mspars%ACV%mid))          allocate(  Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ))
-
-        if(.not.associated( Mspars%MCY%fin))         allocate(   Mspars%MCY%fin( nlenmcy + 1 ))
-        if(.not.associated(Mspars%MCY%col))          allocate( Mspars%MCY%col( mx_ncolmcy ))
-        if(.not.associated(Mspars%MCY%mid))          allocate(  Mspars%MCY%mid( nlenmcy ))
 
         if(.not.associated(Mspars%DGM_PHA%fin))      allocate(  Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ))
         if(.not.associated(Mspars%DGM_PHA%col))      allocate(  Mspars%DGM_PHA%col( mx_ncoldgm_pha ))
@@ -1026,10 +1036,6 @@ contains
         if (associated(Mspars%small_acv%col)) deallocate(Mspars%small_acv%col)
         if (associated(Mspars%small_acv%mid)) deallocate(Mspars%small_acv%mid)
 
-        if (associated(Mspars%mcy%fin))       deallocate(Mspars%mcy%fin)
-        if (associated(Mspars%mcy%col))       deallocate(Mspars%mcy%col)
-        if (associated(Mspars%mcy%mid))       deallocate(Mspars%mcy%mid)
-
         if (associated(Mspars%dgm_pha%fin))   deallocate(Mspars%dgm_pha%fin)
         if (associated(Mspars%dgm_pha%col))   deallocate(Mspars%dgm_pha%col)
         if (associated(Mspars%dgm_pha%mid))   deallocate(Mspars%dgm_pha%mid)
@@ -1062,10 +1068,6 @@ contains
         if (associated(Mspars%small_acv%fin)) nullify(Mspars%small_acv%fin)
         if (associated(Mspars%small_acv%col)) nullify(Mspars%small_acv%col)
         if (associated(Mspars%small_acv%mid)) nullify(Mspars%small_acv%mid)
-
-        if (associated(Mspars%mcy%fin))       nullify(Mspars%mcy%fin)
-        if (associated(Mspars%mcy%col))       nullify(Mspars%mcy%col)
-        if (associated(Mspars%mcy%mid))       nullify(Mspars%mcy%mid)
 
         if (associated(Mspars%dgm_pha%fin))   nullify(Mspars%dgm_pha%fin)
         if (associated(Mspars%dgm_pha%col))   nullify(Mspars%dgm_pha%col)
@@ -1139,7 +1141,7 @@ contains
         if (associated(Mmat%CT_RHS%val)) call deallocate(Mmat%CT_RHS)
         !This one below gives problems unless it has been allocated at some point, as Mmat%CV_RHS%val is by default associated...
 !        if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)!<=Should not need to deallocate anyway as it is done somewhere else
-        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)
+!        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)!<=Should not need to deallocate anyway as it is done somewhere else
         if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
         !Set flag to recalculate
         Mmat%stored = .false.
@@ -1313,6 +1315,53 @@ contains
 
     end subroutine deallocate_multi_pipe_package
 
+    subroutine initialize_multi_outfluxes(outfluxes)
+        implicit none
+        type (multi_outfluxes), intent(inout) :: outfluxes
+        !Local variables
+        integer, dimension(2) :: shapes
+
+        outfluxes%calculate_flux = have_option( "/io/dump_boundaryflux/surface_ids")
+        ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outfluxes%outlet_id.
+        ! No need to explicitly allocate outfluxes%outlet_id (done here internally)
+        if (outfluxes%calculate_flux .and..not.(allocated(outfluxes%outlet_id))) then
+            shapes = option_shape("/io/dump_boundaryflux/surface_ids")
+            assert(shapes(1) >= 0)
+            allocate(outfluxes%outlet_id(shapes(1)))
+            call get_option( "/io/dump_boundaryflux/surface_ids", outfluxes%outlet_id)
+        endif
+        !At least size 1 to be used to calculate the whole mass of the domain, and keep valgrind happy!
+        if (.not. allocated(outfluxes%outlet_id)) then
+            allocate(outfluxes%outlet_id(1))
+        end if
+
+    end subroutine initialize_multi_outfluxes
+
+    subroutine allocate_multi_outfluxes(Mdims, outfluxes)
+        implicit none
+        type (multi_dimensions), intent(in)  ::Mdims
+        type (multi_outfluxes), intent(inout) :: outfluxes
+        !Local variables
+        integer :: k
+
+        allocate(outfluxes%intflux(Mdims%nphase,size(outfluxes%outlet_id)))
+        k = 1
+        if (has_temperature) k = k + 1
+        !(field -saturation, temperature-, Mdims%nphase, size(outfluxes%outlet_id))
+        allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
+
+        outfluxes%intflux= 0.
+        outfluxes%totout= 0.
+
+    end subroutine allocate_multi_outfluxes
+
+    subroutine destroy_multi_outfluxes(outfluxes)
+        implicit none
+        type (multi_outfluxes), intent(inout) :: outfluxes
+
+        deallocate(outfluxes%totout, outfluxes%intflux,outfluxes%outlet_id )
+
+    end subroutine destroy_multi_outfluxes
 
 end module multi_data_types
 

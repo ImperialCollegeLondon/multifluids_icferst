@@ -59,7 +59,8 @@ module solvers_module
 
     private
 
-    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one, Ensure_initial_Saturation_to_sum_one
+    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
+         Ensure_initial_Saturation_to_sum_one, auto_backtracking
 
     interface multi_solver
         module procedure solve_via_copy_to_petsc_csr_matrix
@@ -202,7 +203,7 @@ contains
 
     subroutine BoundedSolutionCorrections( state, packed_state, &
         Mdims, CV_funs, small_findrm, small_colm, &
-        for_sat, IDs2CV_ndgln)
+        for_sat)
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
         ! The sparcity of the local CV connectivity is in: small_findrm, small_colm.
@@ -222,7 +223,6 @@ contains
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
         logical, optional, intent(in) :: for_sat
-        integer, optional, dimension(:) :: IDs2CV_ndgln
         ! local variables...
         type (multi_dev_shape_funs) :: DevFuns
         type ( tensor_field ), pointer :: field, ufield
@@ -231,7 +231,7 @@ contains
         real, dimension( :, : ), allocatable :: r_min, r_max
         integer, dimension( :, : ), allocatable :: ii_min, ii_max
         real, dimension( : ), allocatable :: mass_cv, mass_cv_sur
-        integer :: ndim1, ndim2,  i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its
+        integer :: ndim1, ndim2,  i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its, cv_iloc
         logical :: changed, changed_something
         real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
         integer :: ele, iloc, jloc
@@ -292,20 +292,19 @@ contains
         mass_cv_sur(:)=mass_cv_sur_halo%val(:)
         !Establish bounds
         if (present_and_true(for_sat)) then
-            if (present(IDs2CV_ndgln)) then!if this is present then the bounds are applied using immobile fractions
-                !Define the immobile fractions for each phase
-                call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
-                do inod = 1, Mdims%cv_nonods
+            !Define the immobile fractions for each phase
+            call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
+
+            do ele = 1, Mdims%totele
+                do cv_iloc = 1, Mdims%cv_nloc
+                    inod = cv_ndgln(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                     do ii = 1, ndim2!phases
-                        field_min(:, ii, inod) = immobile_fraction(ii,IDs2CV_ndgln(inod))
-                        field_max(:, ii, inod) = 1.0 - sum(immobile_fraction(:,IDs2CV_ndgln(inod)))&
-                            + immobile_fraction(ii,IDs2CV_ndgln(inod))
+                        field_min(:, ii, inod) = immobile_fraction(ii, ele)
+                        field_max(:, ii, inod) = 1.0 - sum(immobile_fraction(:,ele))&
+                            + immobile_fraction(ii,ele)
                     end do
                 end do
-            else!Otherwise, the bounds are between o and 1, which is not the usual case
-                ewrite(3,*) 'IDs2CV_ndgln not passed into BoundedSolutionCorrections for SAT, default bounds set'
-                field_min = 0.0 ; field_max = 1.0
-            end if
+            end do
         else
             field_min = 0.0 ; field_max = 1.0
         end if
@@ -436,23 +435,24 @@ contains
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
-    subroutine FPI_backtracking(state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
+    subroutine FPI_backtracking(Mdims, ndgln, state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
         Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration, useful_sats, res, &
-        res_ratio, first_res, npres, IDs2CV_ndgln)
+        res_ratio, first_res)
         !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
         !this idea is based on the paper SPE-173267-MS.
         !The method ensures convergence "independent" of the time step.
         implicit none
         !Global variables
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
         type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent(inout) :: packed_state
         real, dimension(:, :), intent(in) :: sat_bak, backtrack_sat
         real, intent(in) :: backtrack_par_from_schema, res, res_ratio, first_res
         logical, intent(inout) :: satisfactory_convergence
         real, intent(inout) :: new_backtrack_par, Previous_convergence
-        integer, intent(in) :: Max_sat_its, its, nonlinear_iteration, npres
+        integer, intent(in) :: Max_sat_its, its, nonlinear_iteration
         integer, intent(inout) :: useful_sats
-        integer, dimension(:), optional :: IDs2CV_ndgln
         !Local parameters
         real, parameter :: Conv_to_achiv = 10.0
         real, save :: anders_exp!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
@@ -477,7 +477,7 @@ contains
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
         if (is_porous_media) then
-            if (present(IDs2CV_ndgln)) call Set_Saturation_to_sum_one(state, packed_state, IDs2CV_ndgln, npres)
+            call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             Satura =>  sat_field%val(1,:,:)
             !Stablish minimum backtracking parameter
@@ -775,54 +775,59 @@ contains
 
     end subroutine FPI_backtracking
 
-    subroutine Set_Saturation_to_sum_one(state, packed_state, IDs2CV_ndgln, npres)
+    subroutine Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
         type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent(inout) :: packed_state
-        integer, dimension(:), intent(in) :: IDs2CV_ndgln
-        integer, intent(in) :: npres
         !Local variables
         type(scalar_field), pointer :: pipe_diameter
-        integer :: iphase, nphase, cv_nod, i_start, i_end, ipres, stat
+        integer :: iphase, cv_iloc, ele, cv_nod, i_start, i_end, ipres, stat
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
 
+
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
-        nphase = size(satura,1)
-        if (npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" , stat = stat)
+
+        if (Mdims%npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" , stat = stat)
         !Allocate
-        allocate(Normalized_sat(nphase))
+        allocate(Normalized_sat(Mdims%nphase))
         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
-        do ipres = 1, npres
-            i_start = 1 + (ipres-1) * nphase/npres
-            i_end = ipres * nphase/npres
+        do ipres = 1, Mdims%npres
+            i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+            i_end = ipres * Mdims%nphase/Mdims%npres
             !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
-            do cv_nod = 1, size(satura,2 )!to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
-                if (ipres>1 .and. stat == 0) then
-                    if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
-                end if
-                moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
-                !Work in normalize saturation here
-                Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
-                    Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))/moveable_sat
-                sum_of_phases = sum(Normalized_sat(i_start:i_end))
-                correction = (1.0 - sum_of_phases)
-                !Spread the error to all the phases weighted by their moveable presence in that CV
-                !Increase the range to look for solutions by allowing oscillations below 0.01 percent
-                if (abs(correction) > 1d-8) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * (1.0 + correction/sum_of_phases))*&
-                    moveable_sat + Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod))
-                !Make sure saturation is between bounds after the modification
-                do iphase = i_start, i_end
-                    minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
-                    maxsat = moveable_sat + minsat
-                    satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+            !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
+            do ele = 1, Mdims%totele
+                do cv_iloc = 1, Mdims%cv_nloc
+                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                    if (ipres>1 .and. stat == 0) then
+                        if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
+                    end if
+                    moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
+                    !Work in normalize saturation here
+                    Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
+                        Immobile_fraction(i_start:i_end, ele))/moveable_sat
+                    sum_of_phases = sum(Normalized_sat(i_start:i_end))
+                    correction = (1.0 - sum_of_phases)
+                    !Spread the error to all the phases weighted by their moveable presence in that CV
+                    !Increase the range to look for solutions by allowing oscillations below 0.01 percent
+                    if (abs(correction) > 1d-8) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * (1.0 + correction/sum_of_phases))*&
+                        moveable_sat + Immobile_fraction(i_start:i_end, ele)
+                    !Make sure saturation is between bounds after the modification
+                    do iphase = i_start, i_end
+                        minsat = Immobile_fraction(iphase, ele)
+                        maxsat = moveable_sat + minsat
+                        satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+                    end do
                 end do
             end do
         end do
@@ -831,17 +836,17 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
-    subroutine Ensure_initial_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
+    subroutine Ensure_initial_Saturation_to_sum_one(mdims, ndgln, packed_state)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
         type( state_type ), intent(inout) :: packed_state
-        integer, dimension(:), intent(in) :: IDs2CV_ndgln
-        integer, intent(in) :: npres
         !Local variables
-        integer :: iphase, nphase, cv_nod, i_start, i_end, ipres, scapegoat_phase
-        real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
+        integer :: iphase, cv_nod, cv_iloc, ele, i_start, i_end, ipres, scapegoat_phase
+        real :: maxsat, minsat, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
@@ -849,14 +854,13 @@ contains
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
-        nphase = size(satura,1)
 
         !Allocate
-        allocate(Normalized_sat(nphase))
+        allocate(Normalized_sat(Mdims%nphase))
         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
-        do ipres = 1, npres
-            i_start = 1 + (ipres-1) * nphase/npres
-            i_end = ipres * nphase/npres
+        do ipres = 1, Mdims%npres
+            i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+            i_end = ipres * Mdims%nphase/Mdims%npres
             !First find a phase with values lower than -0.5 if that is so. This is a perturbation from opal and that needs to be considered
             !otherwise the last phase will be used to normalized
             scapegoat_phase = i_end
@@ -868,20 +872,24 @@ contains
             end do
             !Once the saturation is found then ensure that the saturations are between bounds
             !Set saturation to be between bounds
-            do cv_nod = 1, size(satura,2 )!to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
-                moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
-                !Work in normalize saturation here
-                Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
-                    Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))/moveable_sat
-                sum_of_phases = sum(Normalized_sat(i_start:i_end))
-                !Ensure that the phases sum to 1.
-                satura(scapegoat_phase, cv_nod) = ((1.0 - sum_of_phases) + Normalized_sat(scapegoat_phase))*&
-                            moveable_sat + Immobile_fraction(scapegoat_phase, IDs2CV_ndgln(cv_nod))
-                !Make sure saturation is between bounds after the modification
-                do iphase = i_start, i_end
-                    minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
-                    maxsat = moveable_sat + minsat
-                    satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+            !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
+            do ele = 1, Mdims%totele
+                do cv_iloc = 1, Mdims%cv_nloc
+                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                    moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
+                    !Work in normalize saturation here
+                    Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
+                        Immobile_fraction(i_start:i_end, ele))/moveable_sat
+                    sum_of_phases = sum(Normalized_sat(i_start:i_end))
+                    !Ensure that the phases sum to 1.
+                    satura(scapegoat_phase, cv_nod) = ((1.0 - sum_of_phases) + Normalized_sat(scapegoat_phase))*&
+                        moveable_sat + Immobile_fraction(scapegoat_phase, ele)
+                    !Make sure saturation is between bounds after the modification
+                    do iphase = i_start, i_end
+                        minsat = Immobile_fraction(iphase, ele)
+                        maxsat = moveable_sat + minsat
+                        satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+                    end do
                 end do
             end do
         end do
@@ -889,6 +897,87 @@ contains
         deallocate(Normalized_sat)
 
     end subroutine Ensure_initial_Saturation_to_sum_one
+
+
+    subroutine auto_backtracking(Mdims, backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration, I_am_temperature)
+        !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        real, intent(inout) :: backtrack_par_factor
+        real, dimension(:), intent(inout) :: courant_number_in
+        logical, intent(in) :: first_time_step
+        integer, intent(in) :: nonlinear_iteration
+        logical, optional, intent(in) :: I_am_temperature
+        !Local variables
+        real, save :: backup_shockfront_Courant = 0.
+        real :: physics_adjustment, courant_number
+        logical, save :: Readed_options = .false.
+        logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
+
+        !Sometimes the shock-front courant number is not well calculated, then use previous value
+        if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
+        !Combination of the overall and the shock-front Courant number
+        courant_number = 0.4 * courant_number_in(1) + 0.6 * courant_number_in(2)
+        backup_shockfront_Courant = courant_number_in(2)
+
+        if (.not.readed_options) then
+            !We read the options just once, and then they are stored as logicals
+            gravity = have_option("/physical_parameters/gravity")
+            if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) then
+                cap_pressure = .true.
+            else
+                cap_pressure = .false.
+            end if
+            compositional = Mdims%ncomp > 0
+            many_phases = Mdims%n_in_pres > 2
+            black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
+            !Positive effects on the convergence !Need to check for shock fronts...
+            ov_relaxation = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation')
+
+            one_phase = (Mdims%n_in_pres == 1)
+            readed_options = .true.
+        end if
+
+        !Depending on the active physics, the problem is more complex and requires more relaxation
+        physics_adjustment = 1.
+        !Negative effects on the convergence
+        if (gravity) physics_adjustment = physics_adjustment * 5.0
+        if (cap_pressure) physics_adjustment = physics_adjustment * 5.0
+        if (compositional) physics_adjustment = physics_adjustment * 1.5
+        if (many_phases) physics_adjustment = physics_adjustment * 1.5
+        !For the first two non-linear iterations, it has to re-adjust, as the gas and oil are again mixed
+        if (black_oil .and. nonlinear_iteration <= 2) physics_adjustment = physics_adjustment * 2.
+
+        !Positive effects on the convergence !Need to check for shock fronts...
+        if (ov_relaxation) physics_adjustment = physics_adjustment * 0.05!huge benefits when using ov_relaxation...
+        if (one_phase) physics_adjustment = physics_adjustment * 0.5
+        if (present_and_true(I_am_temperature)) then
+            !Much simpler for temperature?
+            if (.not.ov_relaxation) physics_adjustment = physics_adjustment * 0.01
+!            if (Mdims%npres>1) physics_adjustment = physics_adjustment * 5.0
+        end if
+        !For the time being, it is based on this simple table
+        if (Courant_number * physics_adjustment > 50.) then
+            backtrack_par_factor = -0.1
+        else if (Courant_number * physics_adjustment > 25.) then
+            backtrack_par_factor = -0.15
+        else if (Courant_number * physics_adjustment > 15.) then
+            backtrack_par_factor = -0.2
+        else if (Courant_number * physics_adjustment > 8.) then
+            backtrack_par_factor = -0.33
+        else if (Courant_number * physics_adjustment > 5.) then
+            backtrack_par_factor = -0.5
+        else if (Courant_number * physics_adjustment > 1) then
+            backtrack_par_factor = -0.8
+        else
+            backtrack_par_factor = -1.
+        end if
+        !For the first calculation, the Courant number is usually zero, hence we force a safe value here
+        if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
+        !Use the most restrictive value across all the processors
+        if (IsParallel()) call allmin(backtrack_par_factor)
+
+    end subroutine auto_backtracking
 
 end module solvers_module
 

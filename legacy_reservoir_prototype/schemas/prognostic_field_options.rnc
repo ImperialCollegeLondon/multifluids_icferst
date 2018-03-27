@@ -1283,6 +1283,7 @@ prognostic_pressure_field =
        ## Use a Control Volume discretization to form the Pressure matrix.
        ## If NOT using Pressure inlet boundary conditions, it is recommended to disable 
        ## CV_press_homogenisation in the numerical_methods section.
+       ## At present Mass lumping is imposed always. Moreover P1DGP1(CV) is automatically converted into P0DGP1(CV)
          element CV_P_matrix {
             empty}
       )?,
@@ -2180,6 +2181,9 @@ coefficient_discretisation_options =
         ##  =0.  -- explicit
         ##  =0.5 -- Crank-Nicolson
         ##  =1.  -- implicit
+        ##
+        ## =-1. -- Automatic
+
         element theta {
           real
         },

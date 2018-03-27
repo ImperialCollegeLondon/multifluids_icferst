@@ -118,7 +118,7 @@ contains
 !                        !!$
 !                        0, igot_theta_flux, &
 !                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-!                        THETA_GDIFF, IDs_ndgln, &
+!                        THETA_GDIFF, &
 !                        option_path = '/material_phase[0]/scalar_field::Temperature', &
 !                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
 !                        saturation=saturation_field )
@@ -133,7 +133,7 @@ contains
 !                        suf_sig_diagten_bc,  Porosity_field%val, &
 !                        0, igot_theta_flux, &
 !                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-!                        THETA_GDIFF, IDs_ndgln, &
+!                        THETA_GDIFF, &
 !                        option_path = '/material_phase[0]/scalar_field::Temperature', &
 !                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
 !                        saturation=saturation_field)

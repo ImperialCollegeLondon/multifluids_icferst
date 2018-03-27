@@ -91,6 +91,9 @@
         <Backtracking_factor>
           <real_value rank="0">-1</real_value>
         </Backtracking_factor>
+        <Vanishing_relaxation>
+          <real_value rank="0">0.1e-3</real_value>
+        </Vanishing_relaxation>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -110,6 +113,7 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
+        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>
@@ -450,9 +454,6 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Sat_overRelax>
-        <real_value rank="0">0.1e-3</real_value>
-      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">

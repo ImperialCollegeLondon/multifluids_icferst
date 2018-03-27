@@ -265,6 +265,10 @@ contains
     ! if we're parallel we'll need to reorder the region ids after the halo derivation
     integer, dimension(:), allocatable :: old_new_region_ids, renumber_permutation
     
+    !If mesh adaptivity fails, and we return to this subroutine to try obtain a new mesh
+    !we want only the processor that failed to obtain a mesh to try with more conservative settings
+    logical, save :: use_conservative_settings = .false.
+
     ewrite(1, *) "In adapt_mesh"
     
 #ifdef DDEBUG
@@ -514,16 +518,17 @@ contains
 
 #ifdef HAVE_ADAPTIVITY
     !If this is the second try because there was an error, try with different parameters
-    if (present_and_true(adapt_error)) then!If this is the second try because there was an error, try with different parameters
+    if (present_and_true(adapt_error) .and. use_conservative_settings) then
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
         nsweep = 50!Increase drastically the number of sweeps
         !Relax tolerance
         dotop = dotop * 2.
         !Disable all techniques but the very basics
-        mshopt(2:4) = .false.
+        mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
     end if
-
+    !disable conservative settings flag, this has to be just above call adptvy
+    use_conservative_settings = .false.
     call adptvy(intarr, intsiz, rlarr,  rlsiz, &
       & geom3d, srfgmy, useq, &
       & nnod,   nelm,   nselm,  absolutemxnods, &
@@ -545,21 +550,25 @@ contains
       & atosen, atorec, nproc, debug_level, dbg, chcnsy)
     if (present(adapt_error)) then
         adapt_error = (nsweep < 0)
-        !Ensure consistenty between processors
-        call alland(adapt_error)
+        !We want only the processor that has failed to use conservative settings
+        use_conservative_settings = adapt_error
+        !however we need to ensure consistenty between processors
+        !for the rest of the options
+        call allor(adapt_error)
+        if (adapt_error) return
+    else
+		if(nwnnod < 0) then
+		  FLAbort("Mesh adaptivity exited with an error")
+		end if
+		assert(nwnnod <= absolutemxnods)
+		assert(nwnelm >= 0)
     end if
 #else
-    FLExit("Fluidity compiled without libadaptivity support")
-#endif
-    call toc(TICTOC_ID_SERIAL_ADAPT)
-    ewrite(1, *) "Exited adptvy"
+		FLExit("Fluidity compiled without libadaptivity support")
+#endif  
 
-    if(nwnnod < 0) then
-      FLAbort("Mesh adaptivity exited with an error")
-    end if
-    assert(nwnnod <= absolutemxnods)
-    assert(nwnelm >= 0)
-    
+	call toc(TICTOC_ID_SERIAL_ADAPT)
+	ewrite(1, *) "Exited adptvy"  
     deallocate(orgmtx)
     deallocate(enlbas)
     deallocate(elmreg)
@@ -596,8 +605,8 @@ contains
               .or.present_and_true(force_preserve_regions)) then
       allocate(output_mesh%region_ids(nwnelm))
       output_mesh%region_ids = intarr(nwelrg:nwelrg + nwnelm - 1)
-    end if  
-
+    end if
+    
     if(nhalos > 0) then
       ewrite(2, *) "Constructing output halos"
       
@@ -650,7 +659,7 @@ contains
       
       ewrite(2, *) "Finished constructing output halos"
     end if
-
+    
     deallocate(gather)
     deallocate(atosen)
     deallocate(scater)

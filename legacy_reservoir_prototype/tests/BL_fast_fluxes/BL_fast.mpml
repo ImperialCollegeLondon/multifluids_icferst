@@ -23,7 +23,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">0</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -49,7 +49,7 @@
           </element_type>
         </mesh_shape>
         <mesh_continuity>
-          <string_value>discontinuous</string_value>
+          <string_value>continuous</string_value>
         </mesh_continuity>
         <stat>
           <exclude_from_stat/>
@@ -94,8 +94,14 @@
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Backtracking_factor>
-          <real_value rank="0">0.2</real_value>
+          <real_value rank="0">-1</real_value>
         </Backtracking_factor>
+        <Vanishing_relaxation>
+          <real_value rank="0">-1e1</real_value>
+        </Vanishing_relaxation>
+        <Test_mass_consv>
+          <real_value rank="0">1e-4</real_value>
+        </Test_mass_consv>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -115,6 +121,7 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
+        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>
@@ -464,9 +471,6 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Sat_overRelax>
-        <real_value rank="0">-100.</real_value>
-      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">

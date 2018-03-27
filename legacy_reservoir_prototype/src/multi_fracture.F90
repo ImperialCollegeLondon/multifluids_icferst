@@ -105,61 +105,10 @@ module multiphase_fractures
     integer, save :: ndim
 
     private
-    public :: fracking, blasting, update_blasting_memory
+    public :: fracking
 
 contains
 
-
-!!----------------------------- Py BLASTING -----------------------------------------------------
-
-  subroutine blasting( packed_state, nphase )
-
-    implicit none
-
-    integer, intent( in ) :: nphase
-    type( state_type ), intent( in ) :: packed_state
-
-    real, dimension( : ), allocatable :: p_r, muf_r, p_v
-    real, dimension( :, : ), allocatable :: uf_r, uf_v, du_s, u_s, f ,u
-    real, dimension( :, :, : ), allocatable :: a
-    integer :: r_nonods, v_nonods
-    real :: dt
-
-    ! read in ring and solid volume meshes
-    ! and simplify the volume mesh
-    call initialise_femdem
-
-    r_nonods = node_count( positions_r )
-    v_nonods = node_count( positions_v )
-
-
-
-    allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
-               f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
-               uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ) , p_v(v_nonods)  ) 
-             
-
-    p_r=0.0 ; uf_r=0.0 ; muf_r=0.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0
-  
-    call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
-
-    call interpolate_fields_out_v( packed_state, nphase, uf_v )
-    call get_option( "/timestepping/timestep", dt )
-
-    call y2dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), &
-                     uf_v( 1, : ), uf_v( 2, : ), du_s( 1, : ), du_s( 2, : ), u_s( 1, : ), u_s( 2, : ), &
-                     muf_r, f( 1, : ), f( 2, : ), u(1, : ), u(2, : ), a( 1, 1, : ), a( 1, 2, : ), a( 2 ,2 , : ),p_v )
-
-    call interpolate_fields_in_v( packed_state, du_s, u_s )
-    call interpolate_fields_in_r( packed_state, f, a )
-
-
-    ! deallocate
-    call deallocate_femdem
-    deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v)
-
-    return
-  end subroutine blasting
 
     !------------------ao---------------hydro-fracture/fracturing subroutine --------------------------------------------------
     subroutine fracking( packed_state, state, nphase )
@@ -189,8 +138,8 @@ contains
             vel%val=darc_vel%val(:,1,:)
 
         !!**************************************************************
-        if ( have_option( '/femdem_fracture/oneway_coupling_only')) then
-            call get_option( '/femdem_fracture/oneway_coupling_only', opt )
+        if ( have_option( '/simulation_type/femdem_fracture/oneway_coupling_only')) then!This option do not exist
+            call get_option( '/simulation_type/femdem_fracture/oneway_coupling_only', opt )!This option do not exist
         !!**************************************************************
             if (trim( opt ) == "1way" ) then
 
@@ -254,7 +203,7 @@ contains
 
 
            !interpolate pressure locally in solid to calculate local stresses due to pore fluid pressure
-             if ( have_option( '/femdem_fracture/include_pore_pressure')) then !with pore_fluid presure
+             if ( have_option( '/simulation_type/femdem_fracture/include_pore_pressure')) then !with pore_fluid presure!This option do not exist
 
                 call interpolate_fields_out_v_pf( packed_state, nphase, p_v)
 
@@ -326,12 +275,9 @@ contains
 
     ewrite(3,*) "inside initialise_femdem"
 
-    if (have_option('/femdem_fracture') ) then
-    call get_option( "/femdem_fracture/femdem_file/name", femdem_mesh_name ) 
-    femdem_mesh_name = trim( femdem_mesh_name ) // ".y"
-    elseif ( have_option('/blasting') ) then
-    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name ) 
-    femdem_mesh_name = trim( femdem_mesh_name ) // ".y"
+    if (have_option('/simulation_type/femdem_fracture') ) then
+        call get_option( "/simulation_type/femdem_fracture/femdem_file/name", femdem_mesh_name )!This option do not exist
+        femdem_mesh_name = trim( femdem_mesh_name ) // ".y"
     end if
 
     call get_option( "/geometry/quadrature/degree", quad_degree )
@@ -861,13 +807,6 @@ print *, "passed populate here" !!-ao
             allocate( u_tmpv( ndim, u_nonods ) )
             u_tmpv = vel % val
 
-        elseif (have_option('/blasting')) then
-            ! deal with velocity - this part needs optimisation...
-            velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-            u_nonods = node_count( velocity )
-            u_nloc = ele_loc( velocity, 1 )
-            allocate( u_tmp( ndim, nphase, u_nonods ) )
-            u_tmp = velocity % val
         endif
 
         u_mesh => extract_mesh( packed_state, "VelocityMesh" )
@@ -878,8 +817,6 @@ print *, "passed populate here" !!-ao
 
         if  ( is_multifracture  ) then
             u_dg % val = u_tmpv( 1, : ) ; v_dg % val = u_tmpv( 2, : ) !!-ao darcy
-        elseif (have_option('/blasting')) then
-            u_dg % val = u_tmp( 1, 1, : ) ; v_dg % val = u_tmp( 2, 1, : )
         endif
 
 
@@ -1721,40 +1658,6 @@ print *, "passed populate here" !!-ao
 
         return
     end subroutine deallocate_femdem
-
-    subroutine update_blasting_memory ( packed_state, state, timestep )
-
-        implicit none
-
-        type( state_type ), intent( inout ) :: packed_state
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        integer, intent ( in ) :: timestep
-
-        type( scalar_field ), pointer :: sfield1, sfield2, sfield3
-        type( vector_field ), pointer :: vfield1, vfield2
-
-        sfield1 => extract_scalar_field( state(1), "SolidConcentration" )
-        sfield2 => extract_scalar_field( packed_state, "SolidConcentration" )
-        sfield3 => extract_scalar_field( packed_state, "OldSolidConcentration" )
-        call set( sfield1, sfield2 )
-        if (timestep==1) call set( sfield3, sfield2 )
-
-        vfield1 => extract_vector_field( state(1), "delta_U" )
-        vfield2 => extract_vector_field( packed_state, "delta_U" )
-        call set( vfield1, vfield2 )
-
-        vfield1 => extract_vector_field( state(1), "solid_U" )
-        vfield2 => extract_vector_field( packed_state, "solid_U" )
-        call set( vfield1, vfield2 )
-
-        return
-    end subroutine update_blasting_memory
-
-
-
-
-
-
 
     real function triangle_area( x1, y1, x2, y2, x3, y3 )
 

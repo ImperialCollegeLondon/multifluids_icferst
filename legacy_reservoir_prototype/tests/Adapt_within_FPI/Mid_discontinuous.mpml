@@ -94,6 +94,9 @@
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>
         </Backtracking_factor>
+        <Vanishing_relaxation>
+          <real_value rank="0">-1e2</real_value>
+        </Vanishing_relaxation>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -113,6 +116,7 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
+        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>
@@ -373,7 +377,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1.0</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
@@ -443,6 +447,11 @@
         </adaptivity_options>
         <galerkin_projection>
           <continuous>
+            <bounded name="Diffuse">
+              <boundedness_iterations>
+                <integer_value rank="0">5</integer_value>
+              </boundedness_iterations>
+            </bounded>
             <solver>
               <iterative_method name="gmres">
                 <restart>
@@ -761,6 +770,11 @@
         </detectors>
         <galerkin_projection>
           <continuous>
+            <bounded name="Diffuse">
+              <boundedness_iterations>
+                <integer_value rank="0">5</integer_value>
+              </boundedness_iterations>
+            </bounded>
             <solver>
               <iterative_method name="gmres">
                 <restart>

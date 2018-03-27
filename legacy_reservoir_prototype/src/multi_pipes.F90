@@ -42,7 +42,7 @@ module multi_pipes
     use Sparse_tools
     use sparse_tools_petsc
 
-
+    use surface_integrals, only :integrate_over_surface_element
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use shape_functions_prototype
@@ -52,6 +52,8 @@ module multi_pipes
 
     use multi_tools
     use multi_data_types
+
+    use write_state_module, only: write_state
 
     implicit none
 
@@ -69,19 +71,14 @@ module multi_pipes
         WIC_P_BC_DIRICHLET = 1, &
         WIC_P_BC_FREE = 2
 
-     type pipe_coords
-            integer :: ele, npipes                               !Element containing pipes, pipes per element
-            logical, allocatable, dimension(:) :: pipe_index     !nodes with pipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds1!size npipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds2!size npipes
-     end type pipe_coords
+    real:: tolerancePipe = 1d-2!tolerancePipe has to be around 1e-2 because that is the precision of the nastran input file
 
 contains
 
 
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal )
+                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
         type(state_type), intent(inout) :: packed_state
         type(state_type), dimension(:), intent(in) :: state
@@ -96,10 +93,12 @@ contains
         real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
         real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
         logical, intent( in ) :: getcv_disc, getct, thermal
-        real, intent(in) :: DT
+        real, intent(in) :: DT, CV_BETA
         !Variables that are used to define the pipe pos.
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
-
+        !variables to store the pipe outfluxes if asked by the user
+        real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+        type (multi_outfluxes), intent(inout) :: outfluxes
         ! Local variables
         INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase
         INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
@@ -129,20 +128,27 @@ contains
         integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
             u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
             icorner1, icorner2, icorner3, icorner4, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
-            U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k
+            U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k, iofluxes
         real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
-        type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2
+        type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2, t2_all, only_den_all
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
         type(vector_field), pointer :: X
+        !Logical to check if we using a conservative method or not, to save cpu time
+        logical :: conservative_advection
+        !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
         !Parameters of the simulation
         logical, parameter :: GET_C_PIPES = .FALSE.
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
         logical, parameter :: integrate_other_side_and_not_boundary = .FALSE.
-        logical, parameter :: PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
+        logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
         logical, parameter :: SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         real, parameter :: INFINY=1.0E+20
         integer, parameter :: WIC_B_BC_DIRICHLET = 1
+
+        conservative_advection = abs(cv_beta) > 0.99
+
+        !if allocated then calculate outfluxes
 
         IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
@@ -305,7 +311,9 @@ contains
             T_ALL => extract_tensor_field( packed_state, "PackedTemperature" )
             !this is rho * Cp. This is to make it consistent with the advection term in cv-adv-diff
             DEN_ALL => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )!this is Cp * Rho.
-            U_ALL => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )!for consistency with cv_assemb
+            U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )!for consistency with cv_assemb!Used to be =>PackedNonlinearVelocity like in cv_assemb
+            T2_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )!for multiphase
+            only_den_all => extract_tensor_field( packed_state, "PackedDensity" )
         end if
 
         DO CV_NODI = 1, Mdims%cv_nonods
@@ -365,6 +373,7 @@ contains
         end do
         !Initialise INV_SIGMA_NANO based on INV_SIGMA
         INV_SIGMA_NANO = INV_SIGMA
+
 
         DO k = 1, size(eles_with_pipe)
             ELE = eles_with_pipe(k)%ele!Element with pipe
@@ -576,7 +585,7 @@ contains
                         TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
                         TUPWIND_IN=0.0; DUPWIND_IN=0.0
                         DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                            ! CV incomming T:
+                            ! CV incomming T: !WTF! CAN'T WE DO THIS IN JUST ONE GO?
                             IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                                 TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
                             ELSE
@@ -633,6 +642,7 @@ contains
                         DO IPHASE = 1, Mdims%nphase
                             NDOTQ(IPHASE) = SUM( DIRECTION_norm(:) * UGI_all(:,IPHASE) )
                         END DO
+
                         ! When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
                         WHERE ( NDOTQ <= 0.0 )
                             INCOME_J = 0.0
@@ -697,6 +707,7 @@ contains
                             END DO
                         END IF
                         IF ( GETCV_DISC ) THEN
+
                             FVT(:) = T_CV_NODI(:)*(1.0-INCOME(:)) + T_CV_NODJ(:)*INCOME(:)
                             ! Put results into the RHS vector
                             LOC_CV_RHS_I = 0.0
@@ -705,6 +716,9 @@ contains
                                       ! subtract 1st order adv. soln.
                                     + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
                                     - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                                if (.not.conservative_advection)  LOC_CV_RHS_I( IPHASE ) = LOC_CV_RHS_I( IPHASE ) &
+                                    - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * T_CV_NODI(IPHASE) &
+                                    + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * T_CV_NODI(IPHASE)
                             end do
                             ! Put into matrix...
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -712,6 +726,9 @@ contains
                                     +suf_DETWEI( bGI ) * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
                                 call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodj, &
                                     +suf_DETWEI( bGI ) * NDOTQ(iphase) * INCOME(iphase) * LIMD(iphase))
+                                if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, cv_nodi, cv_nodi, &
+                                    -suf_DETWEI( bGI ) * NDOTQ(iphase) * LIMD(iphase))
+
                             end do
                             call addto( Mmat%CV_RHS, CV_NODI, LOC_CV_RHS_I )
                         END IF
@@ -737,11 +754,16 @@ contains
                 END IF
 
                 IF ( JCV_NOD /= 0 ) THEN
+                    !We are in the boundary of the domain
                     PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
                     NDOTQ = 0.0
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                         IF ( SOLVE_ACTUAL_VEL) THEN
-                            NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) )
+                            if (WIC_U_BC_ALL_NODS( iphase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
+                                NDOTQ(IPHASE) = dot_product( direction_norm(:), SUF_U_BC_ALL_NODS(:,IPHASE,JCV_NOD) )
+                            else
+                                NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) )
+                            end if
                         ELSE
                             NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
                         END IF
@@ -767,6 +789,7 @@ contains
                     END DO
                     LIMDT = LIMD * LIMT
 
+
                     ! Add in Mmat%C matrix contribution: (DG velocities)
                     ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                     ! over the element of the pressure like source term.
@@ -774,6 +797,24 @@ contains
                     ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                     suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                     IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
+                        if (element_owned(T_ALL, ele)) then
+                            !Store total outflux for volume conservation check
+                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, 0) =  bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD,0) + &
+                                NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
+                            if (outfluxes%calculate_flux) then
+                                !If we want to output the outfluxes of the pipes we fill the array here with the information
+                                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
+                                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
+                                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
+                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) =  &
+                                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) + &
+                                            NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
+                                    end if
+                                end do
+                            end if
+                        end if
+
+
                         DO IDIM = 1, Mdims%ndim
                             CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:) / DEN_ALL%val(1,:,JCV_NOD)
                         END DO
@@ -815,12 +856,16 @@ contains
                                 ! subtract 1st order adv. soln.
                                 + suf_area  * NDOTQ(IPHASE) * ( 1. - INCOME(iphase) ) * LIMD(IPHASE) * FVT(IPHASE)  &
                                 - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                              if (.not.conservative_advection)  LOC_CV_RHS_I( IPHASE ) = LOC_CV_RHS_I( IPHASE ) &
+                                    - suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * T_ALL%val(1,IPHASE,JCV_NOD) &
+                                    + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * T_ALL%val(1,IPHASE,JCV_NOD)
                         end do
-
                         ! Put into matrix...
                         do iphase = Mdims%n_in_pres+1, Mdims%nphase
                             call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
                                 + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
+                            if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
+                                -suf_area * NDOTQ(iphase) * LIMD(iphase))
                         end do
                         call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                     ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
@@ -898,6 +943,30 @@ contains
             TDLIM = MAX( TDLIM, 0.0 )
             RETURN
         END SUBROUTINE ONVDLIM_ANO_MANY
+
+
+    real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
+        !Obtain sele from a cv_nod that is on the boundary
+        !if not found then returns -1
+        implicit none
+        integer, intent(in) ::cv_jnod
+        type(multi_ndgln), intent(in) :: ndgln
+        type(multi_dimensions), intent(in) :: Mdims
+        !Local variables
+        integer :: sele, cv_siloc
+
+        sele_from_cv_nod = -1
+        do sele = 1, Mdims%stotel
+            do cv_siloc = 1, Mdims%cv_snloc
+                if (ndgln%suf_cv((sele-1)*Mdims%cv_snloc + cv_siloc) == cv_jnod) then
+                    sele_from_cv_nod = sele
+                    return
+                end if
+            end do
+        end do
+
+    end function sele_from_cv_nod
+
     END SUBROUTINE MOD_1D_CT_AND_ADV
 
 
@@ -926,7 +995,7 @@ contains
 
         !Local variables
         LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, U_P0DG
-        LOGICAL :: CALC_SIGMA_PIPE, DEFAULT_SIGMA_PIPE_OPTIONS, SWITCH_PIPES_ON_AND_OFF
+        LOGICAL :: CALC_SIGMA_PIPE, SWITCH_PIPES_ON_AND_OFF
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
             &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE
@@ -960,7 +1029,6 @@ contains
         IGNORE_DIAGONAL_PIPES=option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
-        DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
         call get_option("/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
         SWITCH_PIPES_ON_AND_OFF= have_option("/wells_and_pipes/well_options/switch_wells_on_and_off")
@@ -1220,7 +1288,7 @@ contains
                             DO IDIM = 1, Mdims%ndim
                                 ! This is ( S \dot n ) n
                                 Mmat%U_RHS( IDIM, IPHASE, IU_NOD ) =  Mmat%U_RHS( IDIM, IPHASE, IU_NOD ) + &
-                                    NM * SUM(U_SOURCE_CV( :, IPHASE, JCV_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
+                                    NM * dot_product(U_SOURCE_CV( :, IPHASE, JCV_NOD ), DIRECTION( : ) ) * DIRECTION( IDIM )
                             END DO
                         END DO
                     END DO ! DO P_LJLOC = 1, CV_LNLOC
@@ -1263,7 +1331,7 @@ contains
                                 END DO
                             END IF ! SWITCH_PIPES_ON_AND_OFF
                         END IF ! GET_PIVIT_MAT
-                        if ( u_source%have_field ) then
+                        if ( u_source%have_field .and. .false.) then!DISABLED SOURCES, no gravity
                             NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
                             DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                                 DO IDIM = 1, Mdims%ndim
@@ -1466,14 +1534,15 @@ contains
 
     subroutine retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
         implicit none
-        type(state_type), dimension(:), intent(in) :: state
+        type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(in) :: packed_state
         type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe!allocated inside
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         !Local variables
         type(vector_field), pointer :: X
-        integer :: ele, k, ICORNER, CV_ILOC, CV_NODI, PIPE_NOD_COUNT, NCORNER
+        integer :: ele, k, ICORNER, CV_ILOC, CV_NODI, PIPE_NOD_COUNT, NCORNER, x_iloc, x_iloc2
+        real, dimension(Mdims%cv_nonods) :: diameter_of_the_pipe_aux
 !        integer, parameter :: NCORNER = Mdims%ndim + 1!Is this because we only consider P1 tets and triangles?
         type(pipe_coords), dimension(Mdims%totele):: AUX_eles_with_pipe
         type(scalar_field), pointer :: pipe_diameter
@@ -1487,6 +1556,7 @@ contains
         integer, dimension(:,:), allocatable :: edges
         integer, dimension(:), allocatable :: pipe_seeds
         type( tensor_field ), pointer:: tfield
+        logical, save :: dump_vtu_zero = .true.
         !Initialise
         AUX_eles_with_pipe%ele = -1
         k = 1; NCORNER = Mdims%ndim + 1
@@ -1504,14 +1574,29 @@ contains
             diam = maxval(PIPE_DIAMETER%val)
             !Clean eles_with_pipes before reading the files
             if (allocated(eles_with_pipe)) deallocate(eles_with_pipe)
+            diameter_of_the_pipe_aux = 0.
             do k = 1, number_well_files
                 !First identify the well trajectory
                 call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
                 call find_pipe_seeds(X%val, nodes, edges, pipe_seeds)
-                call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe)
+                call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
+            end do
+
+            !Re-populate properly PIPE_DIAMETER
+            PIPE_DIAMETER%val = 0.
+            !Copy values back to PIPE_DIAMETER from diameter_of_the_pipe_aux. This should go over less than 1% of the nodes
+            do ele = 1, size(eles_with_pipe)
+                do k = 1, eles_with_pipe(ele)%npipes
+                    x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(k)
+                    PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = &
+                        diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
+                    x_iloc = eles_with_pipe(ele)%pipe_corner_nds2(k)
+                    PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = &
+                     diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
+                end do
             end do
         else
             do ele = 1, Mdims%totele
@@ -1553,28 +1638,34 @@ contains
                                     eles_with_pipe(k)%pipe_corner_nds2, eles_with_pipe(k)%npipes )
             end do
         end if
-
-
+        if (dump_vtu_zero) then
+            !Overwrite the first dump with the values of the diameter of the pipe, don't remove this section
+            ewrite(1,*) "Overwritting the initial vtu file with the updated values of the diameter of the well"
+            k = 0
+            call write_state( k, state )
+            dump_vtu_zero = .false.
+        end if
     contains
 
-        logical function is_within_pipe(P, v1, v2, diameter)
+        logical function is_within_pipe(P, v1, v2, tol)
             implicit none
             real, dimension(:), intent(in) :: P, v1, v2
-            real, intent(in) :: diameter
+            real, intent(in) :: tol
             !local variables
             real, dimension(Mdims%ndim) :: vec1, vec2, Vaux
-            real :: c1, c2, distance, Saux1, Saux2
+            real :: c1, c2, distance, Saux1, Saux2, diam
             !Initialiase variables
             is_within_pipe = .false.
+
             vec1 = v2(1:Mdims%ndim) - v1(1:Mdims%ndim)
             vec2 = P(1:Mdims%ndim) - v1(1:Mdims%ndim)
 
             c1 = dot_product(Vec2,Vec1)
-            c2 = dot_product(Vec1,Vec1)
+            c2 = dot_product(Vec1,Vec1)!<=lenght of the section**2
             !First we check that the point is between the two vertexes
-            if (c1 <= 0.)then!Before v1
+            if (c1 <= tol)then!Before v1
                 distance = sqrt(dot_product(Vec2,Vec2))
-            else if ( c2 <= c1)then!after v2
+            else if ( c2 - c1 <= tol )then!after v2
                 Vec2 = P(1:Mdims%ndim)-v2(1:Mdims%ndim)
                 distance = sqrt(dot_product(Vec2,Vec2))
             else !Calculate distance to a line
@@ -1583,9 +1674,14 @@ contains
 
                 Vaux = abs(v2(1:Mdims%ndim)-v1(1:Mdims%ndim))
                 Saux2 = sqrt(dot_product(Vaux,Vaux))
-                if (Saux2>1e-10) distance = Saux1/Saux2
+                distance = Saux1/max(Saux2,1d-16)
+
            end if
-           is_within_pipe = (distance <= diameter)
+
+!           is_within_pipe = (distance <= diameter)
+            !Use a relative tolerance to the lenght of the section, as mesh adaptivity allows a bit of movement
+            diam = max(0.01 * sqrt(c2), tol)
+           is_within_pipe = (distance <= diam)
         end function is_within_pipe
 
 
@@ -1596,13 +1692,19 @@ contains
             integer, dimension(:,:), allocatable, intent(in) :: edges
             integer, dimension(:), allocatable, intent(inout) :: pipe_seeds
             !Local variables
+            logical, save :: first_time =.true.
             logical :: found
             integer :: i, j, l, count
             integer :: sele, siloc, sinod
             real, dimension(size(nodes,2)) :: aux_pipe_seeds
             aux_pipe_seeds = -1
-
-
+            !Initialise tolerancePipe just once per simulation
+            if (first_time) then
+                first_time = .false.
+                if (have_option('/wells_and_pipes/well_options/wells_bdf_tolerance')) then
+                    call get_option('/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
+                end if
+            end if
             !Use brute force through the surface of the domain. This should work in parallel and in serial
             !as long as the well reaches a boundary of one of the domains. The cost is minimised by looping over the boundary of
             !the domain only
@@ -1610,8 +1712,9 @@ contains
             do sele = 1, Mdims%stotel
                 do siloc = 1, Mdims%p_snloc
                     sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(edges,2)-1
-                        if (is_within_pipe(X(:,sinod), nodes(:,edge), nodes(:,edge+1), 9d-3)) then
+                    do edge = 1, size(edges,2)
+                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
+
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
                                 if (aux_pipe_seeds(j)==sinod) found = .true.
@@ -1630,24 +1733,23 @@ contains
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
         end subroutine find_pipe_seeds
 
-        subroutine find_nodes_of_well(X, nodes, edges, pipe_seeds, eles_with_pipe)
+        subroutine find_nodes_of_well(X, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
             implicit none
             real, dimension(:,:), intent(in) :: X
             real, dimension(:,:), allocatable, intent(in) :: nodes
             integer, dimension(:,:), allocatable, intent(in) :: edges
             integer, dimension(:), intent(in) :: pipe_seeds
             type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe
+            real, dimension(:), intent(inout) :: diameter_of_the_pipe_aux
             !Local variables
             logical, save :: first_time = .true.
-            real, parameter:: tolerance = 1e-2!tol has to be 1e-2 because that is the precision of the nastran input file
             integer, dimension(2, Mdims%totele) :: visited_eles!Number of element visited and neigbours used
-            integer :: starting_node, starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
-            integer :: ele, ele2, inode, k, i, j, x_iloc, x_inod, ipipe, first_node, first_loc, neighbours_left
+            integer :: starting_ele, edge, neig, ele_bak, neig_bak, visit_counter, seed
+            integer :: ele, ele2, inode, k, i, j, x_iloc, x_iloc2, x_inod, ipipe, first_node, first_loc, neighbours_left
             real :: aux
             real, dimension(Mdims%ndim) :: Vaux
             logical :: got_new_ele, touching_well, continue_looking, found, resize
             type(pipe_coords), dimension(:), allocatable :: AUX_eles_with_pipe, BAK_eles_with_pipe
-
             !Initialise AUX_eles_with_pipe
             allocate(AUX_eles_with_pipe(Mdims%totele))
             AUX_eles_with_pipe%ele = -1
@@ -1657,9 +1759,9 @@ contains
                 allocate(AUX_eles_with_pipe(j)%pipe_corner_nds1(Mdims%ndim))!Maximum of number of dimension pipes per element
                 allocate(AUX_eles_with_pipe(j)%pipe_corner_nds2(Mdims%ndim))
             end do
+
             !First retrieve the first seed of the well
             seeds_loop: do seed = 1, size(pipe_seeds)
-                starting_node = pipe_seeds(seed)
                 do ele = 1, Mdims%totele
                     do x_iloc = 1, Mdims%x_nloc
                         x_inod = ndgln%x( ( ele - 1 ) * Mdims%x_nloc + x_iloc )
@@ -1672,7 +1774,6 @@ contains
                 visited_eles(1,:) = -1; visited_eles(2,:) = 0
                 visited_eles(1,1) = ele; visited_eles(2,1) = 1
 
-
                 !Once we have the starting node we use that to go through the neighbouring nodes to build up the well and the connections
                 k = 1; ele2 = ele
                 ele_loop: do while (.true.)
@@ -1683,15 +1784,15 @@ contains
                         i = 1
                         loc_loop: do x_iloc = 1, Mdims%x_nloc
                             x_inod = ndgln%x( ( ele2 - 1 ) * Mdims%x_nloc + x_iloc )
-                            do edge = 1, size(edges,2)-1!<= this can be optimised if we know that there is one well only defined per edges array
-                                if (is_within_pipe(X(:,x_inod), nodes(:,edge), nodes(:,edge+1), tolerance)) then
+                            do edge = 1, size(edges,2)!<= this can be optimised if we know that there is one well only defined per edges array
+                                if (is_within_pipe(X(:,x_inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)),  tolerancePipe)) then
                                     select case (i)
                                         case (1)!First true
                                             first_node = x_inod
                                             first_loc = x_iloc
                                             touching_well = .true.
                                             i = i + 1
-                                            !backup just in case this element is not an in between element
+                                            !backup just in case this element is not an in-between-element
                                             ele_bak = ele; neig_bak = neig!<= has to be BEFORE updating ele
                                             !Update position
                                             ele = ele2; neig = max(1, visited_eles(2,get_pos(ele2, visited_eles)))
@@ -1706,8 +1807,8 @@ contains
                                             j = 1
                                             do while (AUX_eles_with_pipe(j)%ele > 0)
                                                 do ipipe = 1, AUX_eles_with_pipe(j)%npipes!Test all the available pipes
-                                                    if ((first_node == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&!We consider one pipe
-                                                        first_node == AUX_eles_with_pipe(j)%pipe_corner_nds2(ipipe)) .and. &  !for the time being!!
+                                                    if ((first_node == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&
+                                                        first_node == AUX_eles_with_pipe(j)%pipe_corner_nds2(ipipe)) .and. &
                                                         (x_inod == AUX_eles_with_pipe(j)%pipe_corner_nds1(ipipe) .or.&
                                                         x_inod == AUX_eles_with_pipe(j)%pipe_corner_nds2(ipipe))) then
                                                         found = .true.
@@ -1724,7 +1825,8 @@ contains
                                                 end do
                                             end do
                                             if (.not.found) then
-                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1!Add one pipe
+!                                                ipipe = AUX_eles_with_pipe(j)%npipes + 1 !Add one pipe
+                                                ipipe = 1 !One pipe per element for the time being
                                                 AUX_eles_with_pipe(j)%npipes = ipipe
                                                 AUX_eles_with_pipe(k)%ele = ele2
                                                 AUX_eles_with_pipe(k)%pipe_index(first_loc) = .true.!Don't know if necessary now...
@@ -1745,7 +1847,7 @@ contains
                             visited_eles(2, visit_counter) = 100
                         end if
                         !Look for new proposed element
-                        do while (.true. .and. neig <= Mdims%ndim + 1)
+                        do while (neig <= Mdims%ndim + 1)
                             ele2 = max(ele_neigh(tfield%mesh, ele, neig),0)!This is the cv mesh; test next neighbour
                             !Update neighbour used in the list
                             i = get_pos(ele, visited_eles)
@@ -1754,7 +1856,6 @@ contains
                             !Store element about to be inspected
                             i = get_pos(ele2, visited_eles)
                             visited_eles(1,i) = ele2
-
                             !If proposed element does not have available elements to study then find another
                             if (visited_eles(2,i) > Mdims%ndim + 1 .or. ele2 == 0) then!Ignore boundary
                                 got_new_ele = .false.
@@ -1798,6 +1899,27 @@ contains
 
                 end do ele_loop
             end do seeds_loop
+
+
+!print *, "ELEMENT COORDINATES"
+!j = 1
+!do while (visited_eles(1,j) > 0)
+!ele = visited_eles(1,j)
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+!j = j + 1
+!end do
+!read*
             !Count useful values
             j = 0
             do while (AUX_eles_with_pipe(j+1)%ele > 0)
@@ -1815,33 +1937,48 @@ contains
             call copy_from_pipe_coords(Aux_eles_with_pipe, eles_with_pipe, 1, j, siz = k + j)
             !Finally if required, copy bak_eles back into eles_with_pipes
             if (resize) call copy_from_pipe_coords(BAK_eles_with_pipe, eles_with_pipe, j+1, k + j)
+
+
+
+
             !#######################################################################
             !####THIS NEEDS TO BE REVISITED ONCE THE MEMORY IS CORRECTLY CREATED####
             !Now, introduce the value of the diameter only in the correct regions
             !This should be temporary until it is being read from the well file as well.
 
+            !Populate here diameter_of_the_pipe_aux
+            !This method enables to use different diameters
             if (size(PIPE_DIAMETER%val) > 1) then
-                aux = maxval(PIPE_DIAMETER)
-                PIPE_DIAMETER%val = 0.
+                !Find nodes that have wells and tag them. This first part should go over less than 1% of the nodes
                 do ele = 1, size(eles_with_pipe)
                     do ipipe = 1, eles_with_pipe(ele)%npipes
-                        x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(ipipe)
-                        PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = aux
-                        x_iloc = eles_with_pipe(ele)%pipe_corner_nds2(ipipe)
-                        PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = aux
+                        !get the two ends of the pipe
+                        x_iloc  = ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + eles_with_pipe(ele)%pipe_corner_nds1(ipipe) )
+                        x_iloc2 = ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + eles_with_pipe(ele)%pipe_corner_nds2(ipipe) )
+                        !ensure consistency within the pipe section
+                        aux = max(PIPE_DIAMETER%val(x_iloc), PIPE_DIAMETER%val(x_iloc2 ) )
+                        !Store value
+                        diameter_of_the_pipe_aux(x_iloc)  = aux
+                        diameter_of_the_pipe_aux(x_iloc2) = aux
                     end do
                 end do
             end if
+
             !We have to ensure that the python prescribed field is not recalculated
             !this needs to be removed once the memory is properly allocated
             if (first_time) then
                 first_time = .false.
-                if (getprocno() == 1) then
-                    if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
-                        call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
-                end if
+                if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
+                    call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
             end if
             !#######################################################################
+!    !To test the results gnuplot and the run spl'test' w linesp
+!to compare with well plotted from multi_tools: spl'test'  using 1:2:3 with lines palette title "Eles", 'well_coords' with lines
+!do j = 1, size(eles_with_pipe)
+!print *, X(:,eles_with_pipe(j)%pipe_corner_nds1(1))
+!print *, X(:,eles_with_pipe(j)%pipe_corner_nds2(1))
+!end do
+!read*
         end subroutine find_nodes_of_well
 
         subroutine copy_from_pipe_coords(original, copy, start, end, siz)
@@ -1856,6 +1993,7 @@ contains
             !Local variables
             integer :: k, k_orig
             if (present(siz)) allocate(copy(siz))
+
             k_orig = 1
             do k = start, end
                 allocate(copy(k)%pipe_index(Mdims%ndim + 1))

@@ -1321,10 +1321,16 @@ contains
              states(i), field_name='Sigma')
           call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::DiameterPipe', &
              states(i), field_name='DiameterPipe')
-          if (have_option('/wells_and_pipes/scalar_field::Conductivity'))then
-             call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Conductivity', &
+          if (have_option('/wells_and_pipes/thermal_well_properties'))then
+             call allocate_and_insert_scalar_field('/wells_and_pipes/thermal_well_properties/scalar_field::Conductivity', &
                 states(i), field_name='Conductivity')
+             call allocate_and_insert_scalar_field('/wells_and_pipes/thermal_well_properties/scalar_field::well_thickness', &
+                states(i), field_name='well_thickness')
           end if
+          if (have_option('/wells_and_pipes/well_volume_ids')) then
+              call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Well_domains', &
+                 states(i), field_name='Well_domains')
+        end if
        end do
     end if
 

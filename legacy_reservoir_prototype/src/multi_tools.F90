@@ -554,10 +554,39 @@ contains
         !Read the table
         do i = 1, table_size(2)
             read(89,*, IOSTAT=ierr) data_array(1:table_size(1), i)
-            if (ierr<0) exit
+            if (ierr/=0) exit
         end do
         close(89)
     end subroutine read_csv_table
+
+
+    subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
+        !This subroutine reads a csv file and returns
+        implicit none
+        integer, intent(out) :: Nentries
+        character( len = option_path_len ), intent(in) :: path_to_table
+        character(len=option_path_len), dimension(:,:),  allocatable, intent(out) :: csv_table_strings
+        !Local variables
+        integer :: i, ierr, start
+        !Allocate table
+        allocate(csv_table_strings(10000,4))!This should be enough
+
+        !Open file
+        open(unit= 89, file=trim(path_to_table)//'.csv', status='old', action='read')
+        !CSV table must start with the number of columns by rows
+        !Read the table
+        i = 1
+        start = 1
+        do while (.true.)
+            read(89,*, IOSTAT=ierr) csv_table_strings(i,:)!cadena
+            if (ierr/=0) exit
+            !Extract four strings from cadena
+            i = i + 1
+        end do
+        Nentries = i-1
+        close(89)
+
+    end subroutine extract_strings_from_csv_file
 
     !Subroutine to print Arrays by (columns,rows)
     !Matrix = 2D Array
@@ -606,7 +635,7 @@ contains
         integer, intent(in) :: x_nloc, totele
         logical, intent(in) :: bad_element_flag
         !Local variables
-        integer :: ELE, i, j, k
+        integer :: ELE, i, k
         logical :: Bad_found
         real :: MxAngl
         !Definition of Pi
@@ -680,7 +709,6 @@ logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAng
     !Local variables
     real, dimension(size(X_ALL,1)) :: X1, X2, X3, X4
     real, dimension(3) :: alpha, length
-    real :: perp_height , aspect_ratio ! perpendicular height from opposite side of bad angle and the aspect ratio
     real, dimension(3) :: normal ! normal vector of edge opposite largest angle
     !Definition of Pi
     real, parameter :: pi = acos(0.0) * 2.0
@@ -780,9 +808,6 @@ subroutine RotationMatrix(a,R)
     real, dimension(3,3), intent(out) :: R !R = G*T*inv_G
     integer :: d ! dimension of model 2 or 3
 
-    ! local variables
-    integer :: i
-
     ! Normalise vector
     an = a/NORM2(a)
 
@@ -846,13 +871,13 @@ END subroutine RotationMatrix
         integer, dimension(:,:), allocatable, intent(inout) :: edges
         !Local variables
         integer, dimension(:), allocatable:: conversor
-        integer :: i, k, j, ierr
+        integer :: i, k, j
         character( len = option_path_len ):: cadena
         integer :: Nnodes, Nedges
         real, dimension(4) :: edge_line
 
         !First we need to get the number of nodes and the number of edges to correctly allocate node and edges
-        call get_nodes_edges(Nnodes); Nedges = Nnodes - 1!In 1d there is always one edge less than nodes
+        call get_nodes_edges(Nnodes, Nedges)!; Nedges = Nnodes - 1!In 1d there is always one edge less than nodes
         allocate(node(3, Nnodes), edges(2, Nedges), conversor(Nnodes))
         !Open file
         open(unit= 89, file=trim(filepath)//".bdf", status='old', action='read')
@@ -879,7 +904,7 @@ END subroutine RotationMatrix
         i = 1!Read edges
         do while (cadena(1:5)=="CROD")
             read(cadena(6:len(cadena)),*) edge_line
-            edges(:,i) = edge_line(3:4)!Only the last two columns contains the connection between nodes
+            edges(:,i) = int(edge_line(3:4))!Only the last two columns contains the connection between nodes
             read(89,'(A)') cadena; i = i + 1!read line and advance the counter
         end do
         close(89)
@@ -887,12 +912,12 @@ END subroutine RotationMatrix
         !Before leaving we normalize the edges list, making it to go from 1 to last edge instead of the numeration used
          do j = 1, size(edges,1)
              do i = 1, size(edges,2)
-                do k = 1, size(conversor)
+                conversor_loop: do k = 1, size(conversor)
                     if (edges(j,i) == conversor(k)) then
                         edges(j,i) = k
-                        exit
+                        exit conversor_loop
                     end if
-                end do
+                end do conversor_loop
              end do
          end do
         deallocate(conversor)
@@ -906,9 +931,10 @@ END subroutine RotationMatrix
 !print *, "-----------------------"
 !read*
     contains
-        subroutine get_nodes_edges(Nnodes)
+        subroutine get_nodes_edges(Nnodes, Nedges)
+            !Get the number of nodes and edges that conform the well
             implicit none
-            integer, intent(inout)::Nnodes
+            integer, intent(inout)::Nnodes, Nedges
 
             Nnodes = 0; Nedges = 0
             !Open file
@@ -917,6 +943,12 @@ END subroutine RotationMatrix
             do while (cadena(1:5)/="CROD")
                 read(89,'(A)') cadena
                 if (cadena(1:5)=="GRID")Nnodes = Nnodes + 1
+            end do
+            cadena = "--"
+            Nedges = 1!Because the previous loop finished with CROD
+            do while (cadena(1:5)/="PROD")
+                read(89,'(A)') cadena
+                if (cadena(1:5)=="CROD")Nedges = Nedges + 1
             end do
             close(89)
 

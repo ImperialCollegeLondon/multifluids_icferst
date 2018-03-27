@@ -581,10 +581,10 @@ c
       do i = 1, numedg
 c
          if( edptrs(i) .le. 0 ) then
-            WRITE(0,*) '*** GMYBAD: FOUND BAD EDGE!',i
-            WRITE(0,*) (edptrs(j),j=1,numedg)
-            WRITE(0,*) (ndptrs(j),j=1,numedg)
-            WRITE(0,*) gmyed1,numedg,numelm,inod,ielm
+            WRITE(1,*) '*** GMYBAD: FOUND BAD EDGE!',i
+            WRITE(1,*) (edptrs(j),j=1,numedg)
+            WRITE(1,*) (ndptrs(j),j=1,numedg)
+            WRITE(1,*) gmyed1,numedg,numelm,inod,ielm
             ierr = -5678
             return
          end if
@@ -604,12 +604,12 @@ c
      :    getflg(biglst,nodlst,edptrs(gmyed1),8) ) then
 c         print*,'+++ GMYBAD: Force gmynd, edge: ',edptrs(gmyed1),a1
          if( k .eq. 0 ) then
-            WRITE(0,*) '*** GMYBAD: COULD NOT FIND AN EDGE AS GEOMETRY'
-            WRITE(0,*) 'edge: ',edptrs(gmyed1),a1
-            WRITE(0,*) 'numedg,numelm: ',numedg,numelm
-            WRITE(0,*) edptrs
-            WRITE(0,*) ndptrs
-            WRITE(0,*) elptrs
+            WRITE(1,*) '*** GMYBAD: COULD NOT FIND AN EDGE AS GEOMETRY'
+            WRITE(1,*) 'edge: ',edptrs(gmyed1),a1
+            WRITE(1,*) 'numedg,numelm: ',numedg,numelm
+            WRITE(1,*) edptrs
+            WRITE(1,*) ndptrs
+            WRITE(1,*) elptrs
             do i = 1, numedg
                a1 = biglst(7,edptrs(i))
                WRITE(0,*) 'ed:',edptrs(i),a1,
@@ -630,9 +630,9 @@ c
          call setflg( biglst, nodlst, edptrs(k), 8, .TRUE.  )
          call stndfl( biglst, nodlst, ndptrs(k), 6, .TRUE. )
          call stndfl( biglst, nodlst, inod,      6, .TRUE. )
-         WRITE(0,*) '+++ GMYBAD: Turned into geometry node'
-         WRITE(0,*) '  olded,newed:',edptrs(gmyed1),edptrs(k)
-         WRITE(0,*) '  node,othnd: ',inod,ndptrs(k)
+         WRITE(1,*) '+++ GMYBAD: Turned into geometry node'
+         WRITE(1,*) '  olded,newed:',edptrs(gmyed1),edptrs(k)
+         WRITE(1,*) '  node,othnd: ',inod,ndptrs(k)
          j = 1
  350     if( hasedg(biglst,nodlst,elptrs(j),edptrs(k)).eq.0 ) then
             j = j + 1

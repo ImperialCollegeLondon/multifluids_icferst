@@ -578,13 +578,14 @@ contains
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
             !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
             allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
-            if ( have_temperature_field ) temperature_local = temperature % val
+            if ( have_temperature_field ) temperature_local = max(temperature % val,1e-8)!avoid possible oscillations introduced by unphysical values of temperature
+                                                                                        !appearing while achieving convergence
 
             allocate( eos_coefs( 5 ) ) ; eos_coefs = 0.
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', eos_coefs( 1 ) )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/T0/', eos_coefs( 2 ), default = 0. )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/P0/', eos_coefs( 3 ) )
-            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ) )
+            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ), default = 0. )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_E/', eos_coefs( 5 ), default = 0. )
 
             !!$ den = den0/(1+Beta(T1-T0))
@@ -599,8 +600,7 @@ contains
 
             dRhodP =  0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             !we add the pressure part =>1-(P1-P0)/E
-            Rho = abs(Rho /(1-((pressure%val(1,1,:)-eos_coefs(3))/eos_coefs(5))))!ensure a positive density
-                                                                                 !
+            Rho = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5) -eos_coefs(3))/eos_coefs(5)) ) !to avoid possible oscillations the pressure is imposed to be between the range of applicability of the formula.
             deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
@@ -868,7 +868,7 @@ contains
     end subroutine Calculate_flooding_absorptionTerm
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                      upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln, Quality_list )
+                                                      upwnd, suf_sig_diagten_bc, Quality_list )
        implicit none
        type( state_type ), dimension( : ), intent( inout ) :: state
        type( state_type ), intent( inout ) :: packed_state
@@ -879,7 +879,6 @@ contains
        type (multi_sparsities), intent( in ) :: Mspars
        type(multi_ndgln), intent(in) :: ndgln
        type (porous_adv_coefs), intent(inout) :: upwnd
-       integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
        type(bad_elements), allocatable, dimension(:), optional :: Quality_list
        !Local variables
@@ -955,19 +954,19 @@ contains
             call set_viscosity(state, Mdims, viscosities(:,1))
        end if
        call Calculate_PorousMedia_adv_terms( state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-              upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities)
+              upwnd, inv_perm, viscosities)
 
        ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
        ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
        ! is diagonal
        call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-                              Mspars, ndgln, PorousMedia_absorp, state, ids_ndgln, inv_perm, viscosities)
+                              Mspars, ndgln, PorousMedia_absorp, state, inv_perm, viscosities)
 
        deallocate(viscosities)
        contains
 
            subroutine Calculate_PorousMedia_adv_terms( state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-               upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities )
+               upwnd, inv_perm, viscosities )
 
                implicit none
                type( state_type ), dimension( : ), intent( in ) :: state
@@ -976,7 +975,6 @@ contains
                type( multi_dimensions ), intent( in ) :: Mdims
                type( multi_ndgln ), intent( in ) :: ndgln
                type (porous_adv_coefs), intent(inout) :: upwnd
-               integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
                real, dimension(:, :, :), target, intent(in):: inv_perm
                real, dimension(:,:), intent(in) :: viscosities
                !!$ Local variables:
@@ -1001,27 +999,30 @@ contains
                allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
-                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
+                   PERM%val, viscosities, inv_perm1=inv_perm)
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
                PERT = 0.0001; allocate(Max_sat(Mdims%nphase))
-               do icv = 1, size(satura,2)
-                   Max_sat(:) = 1. - sum(Immobile_fraction(:, IDs2CV_ndgln(icv))) + Immobile_fraction(:, IDs2CV_ndgln(icv))
-                   do iphase = 1, Mdims%n_in_pres !Mdims%nphase
-                       SATURA2(iphase, icv) = SATURA(iphase, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
-                       !If out of bounds then we perturbate in the opposite direction
-                       if (satura2(iphase, icv) > Max_sat(iphase) .or. &
-                           satura2(iphase, icv) < Immobile_fraction(iphase, IDs2CV_ndgln(icv))) then
-                           SATURA2(iphase, icv) = SATURA2(iphase, icv) - 2. * sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
-                       end if
+               do ele = 1, Mdims%totele
+                   do cv_iloc = 1, Mdims%cv_nloc
+                       icv = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                       Max_sat(:) = 1. - sum(Immobile_fraction(:, ele)) + Immobile_fraction(:, ele)
+                       do iphase = 1, Mdims%n_in_pres !Mdims%nphase
+                           SATURA2(iphase, icv) = SATURA(iphase, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+                           !If out of bounds then we perturbate in the opposite direction
+                           if (satura2(iphase, icv) > Max_sat(iphase) .or. &
+                               satura2(iphase, icv) < Immobile_fraction(iphase, ele)) then
+                               SATURA2(iphase, icv) = SATURA2(iphase, icv) - 2. * sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+                           end if
+                       end do
                    end do
                end do
 
 
                call allocate_multi_field( Mdims, PorousMedia_absorp2, size(PorousMedia_absorp%val,4), field_name="PorousMedia_AbsorptionTerm")
                CALL calculate_absorption2( packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, &
-                   PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
+                   PERM%val, viscosities, inv_perm1=inv_perm)
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma" )
@@ -1065,7 +1066,7 @@ contains
 
 
            subroutine calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-               Mspars, ndgln, PorousMedia_absorp, state, IDs_ndgln, inv_perm, viscosities)
+               Mspars, ndgln, PorousMedia_absorp, state, inv_perm, viscosities)
                implicit none
                type( state_type ), intent( inout ) :: packed_state
                type(multi_dimensions), intent(in) :: Mdims
@@ -1073,7 +1074,6 @@ contains
                type(multi_shape_funs), intent(inout) :: CV_funs
                type (multi_sparsities), intent(in) :: Mspars
                type(multi_ndgln), intent(in) :: ndgln
-               integer, dimension( : ), intent( in ) :: IDs_ndgln
                type (multi_field), intent( inout ) :: PorousMedia_absorp
                type(state_type), dimension( : ), intent(in) :: state
                real, dimension( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), intent( inout ) :: suf_sig_diagten_bc
@@ -1103,7 +1103,6 @@ contains
                perm=>extract_tensor_field(packed_state,"Permeability")
                RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
 
-
                allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
                    surface_element_count(velocity)))
                allocate(wic_vol_bc(volfrac%dim(1),volfrac%dim(2),&
@@ -1122,9 +1121,9 @@ contains
 
                    do ele = 1, Mdims%totele
                        !Get properties from packed state
-                       Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
-                       Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
-                       Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
+                       Immobile_fraction => RockFluidProp%val(1, :, ELE)
+                       Endpoint_relperm => RockFluidProp%val(2, :, ELE)
+                       Corey_exponent => RockFluidProp%val(3, :, ELE)
                        do iface = 1, CV_GIdims%nface
                            ele2  = face_ele( iface, ele )
                            sele2 = max( 0, -ele2 )
@@ -1205,7 +1204,7 @@ contains
 
 
     SUBROUTINE calculate_absorption2( packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
-        PERM, viscosities, IDs_ndgln, inv_mat_absorp, inv_perm1)
+        PERM, viscosities, inv_mat_absorp, inv_perm1)
         ! Calculate absorption for momentum eqns
         implicit none
         type( state_type ), intent( inout ) :: packed_state
@@ -1213,7 +1212,6 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         REAL, DIMENSION( :, : ), intent( in ) :: SATURA
-        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION( :, :, : ), intent( in ) :: PERM
         real, intent(in), dimension(:,:) :: viscosities
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: inv_mat_absorp
@@ -1244,9 +1242,9 @@ contains
         Maux = 0.
         DO ELE = 1, Mdims%totele
             !Get properties from packed state
-            Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
-            Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
-            Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
+            Immobile_fraction => RockFluidProp%val(1, :, ELE)
+            Endpoint_relperm => RockFluidProp%val(2, :, ELE)
+            Corey_exponent => RockFluidProp%val(3, :, ELE)
             DO CV_ILOC = 1, Mdims%cv_nloc
                 MAT_NOD = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC)
                 CV_NOD = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + CV_ILOC )
@@ -1291,18 +1289,15 @@ contains
         real, parameter :: epsilon = 1d-10!This value should in theory never be used, the real lower limit
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
-
         select case (nphase)
             case (1)
                 material_absorption = INV_PERM* visc(iphase) * min(1.0,max(eps,sat(iphase)))
                 if (present(inv_mat_absorp).and.present(PERM)) &
                         inv_mat_absorp = PERM /(visc(iphase) * min(1.0,max(eps,sat(iphase))))
-            case (2)
-                call relperm_corey_epsilon(material_absorption)
             case (3)
                 call relperm_stone(material_absorption)
-            case default!One phase
-                FLAbort("No relative permeability function implemented for more than 3 phases")
+            case default
+                call relperm_corey_epsilon(material_absorption)
         end select
 
         contains
@@ -1371,7 +1366,7 @@ contains
 
 
     SUBROUTINE calculate_capillary_pressure( packed_state, &
-        CV_NDGLN, ids_ndgln, totele, cv_nloc)
+        NDGLN, totele, cv_nloc)
 
             ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
             ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
@@ -1380,45 +1375,49 @@ contains
 
             IMPLICIT NONE
             type(state_type), intent(inout) :: packed_state
-            integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
             integer, intent(in) :: totele, cv_nloc
+            type(multi_ndgln), intent(in) :: ndgln
             ! Local Variables
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
-            logical, save :: Cap_Brooks = .true., Cap_TOTAL = .false.
+            logical, save :: Cap_Brooks = .true., Cap_Power = .false.
             logical, save :: first_time = .true.
             !Working pointers
-            real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
+            real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term
             real, dimension(:), allocatable :: Cont_correction
             !Get from packed_state
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
 
             call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
-                Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, Cap_exponent = Cap_exponent)
+                Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, &
+                    Cap_exponent = Cap_exponent, Imbibition_term = Imbibition_term)
+
             nphase =size(Satura,1)
             allocate(Cont_correction(size(satura,2)))
 
             CapPressure = 0.
-            ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless TOTAL Pc activated (important to allow overelax even when Pc is off).
+            ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
             if (first_time) then
-                Cap_TOTAL = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_TOTALCapillary", nphase)
-                Cap_Brooks = .not. Cap_TOTAL
+                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
+                Cap_Brooks = .not. (Cap_Power)
+
                 first_time = .false.
             end if
 
             DO IPHASE = 1, NPHASE
 
-                if ( (Cap_Brooks) .or. (Cap_TOTAL) ) then
+                if ( (Cap_Brooks) .or. (Cap_Power) ) then
 
-                    !Apply Brooks-Corey model
+                    !Apply Capillary model
                     do jphase = 1, nphase
                         Cont_correction = 0
                         if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                             do ele = 1, totele
                                 do cv_iloc = 1, cv_nloc
-                                    cv_nod = cv_ndgln((ele-1)*cv_nloc + cv_iloc)
+                                    cv_nod = ndgln%cv((ele-1)*cv_nloc + cv_iloc)
                                     CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
-                                        Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, IDs_ndgln(ele)), &
-                                        Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), iphase)
+                                        Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, ele), &
+                                        Cap_exponent(iphase, ele),Immobile_fraction(:,ele), &
+                                        Imbibition_term(iphase, ele), iphase)
                                     Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
                                 end do
                             end do
@@ -1432,24 +1431,24 @@ contains
 
         deallocate(Cont_correction)
         contains
-            pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, iphase)
+            pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, Imbibition_term, iphase)
                 !This functions returns the capillary pressure for a certain input saturation
                 !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
                 Implicit none
-                real, intent(in) :: sat, Pe, a
+                real, intent(in) :: sat, Pe, a, Imbibition_term
                 real, dimension(:), intent(in) :: Immobile_fraction
                 integer, intent(in) :: iphase
                 !Local
                 real, parameter :: eps = 1d-3 !Small values requires smaller time steps
 
-                if(Cap_TOTAL) then
-                    ! Function is CMC * sqrt(phi/K) * (1-S_norm) ^ a  ! Absorb the sqrt(phi/K) into the constant CMC (User has to specify it !!!)
-                    ! Note also this model only really makes physical sense with a > 0
+                if(Cap_Power) then
+                    ! Function is Max_Cap_Pressure * (1-S_norm) ^ a Specify Max_Cap_Pressure in C parameter and exponent a (a>0)
                     Get_capPressure = &
                         Pe * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**a
                 else
+                    !A*(Swn^-B) - C; entry pressure = A - C
                     Get_capPressure = &
-                        Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - sum(Immobile_fraction(:)) ), 1.0) ** (-a)
+                        Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - sum(Immobile_fraction(:)) ), 1.0) ** (-a) - Imbibition_term
                 endif
 
             end function Get_capPressure
@@ -1465,20 +1464,20 @@ contains
         real, parameter :: eps = 1d-3
         real :: aux
         integer :: i
-        logical, save :: Cap_Brooks = .true., Cap_TOTAL = .false.
+        logical, save :: Cap_Brooks = .true., Cap_Power = .false.
         logical, save :: first_time = .true.
 
         aux = ( 1.0 - sum(immobile_fraction(:)) )
-        ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless TOTAL Pc activated (important to allow overelax even when Pc is off).
+        ! Determine which capillary pressure model is to be used for overrelaxation. Use Brooks-Corey unless power_law Pc activated (important to allow overelax even when Pc is off).
         if (first_time) then
-            Cap_TOTAL = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_TOTALCapillary", nphase)
-            Cap_Brooks = .not. Cap_TOTAL
-            first_time = .false.
+                Cap_Power = have_option_for_any_phase("/multiphase_properties/capillary_pressure/type_Power_Law", nphase)
+                Cap_Brooks = .not. (Cap_Power)
+                first_time = .false.
         end if
 
-        if(Cap_TOTAL) then
+        if(Cap_Power) then
             Get_DevCapPressure = &
-                -(a/(1.0 - sum(Immobile_fraction(:))))* Pe * (1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) )**(a-1)
+                -a*Pe/(1.0 - sum(Immobile_fraction(:)) )  * ( 1.0 - ( sat - Immobile_fraction(iphase) )/( 1.0 - sum(Immobile_fraction(:)) ) ) **(a-1)
         else
             Get_DevCapPressure = &
                 -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
@@ -1530,7 +1529,7 @@ contains
       type(scalar_field), pointer :: component, sfield
       type(tensor_field), pointer :: diffusivity, tfield
       integer :: icomp, iphase, idim, stat, ele
-      integer :: iloc, mat_inod, cv_inod, ele_nod
+      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
       type(tensor_field), intent(inout) :: tracer
 
@@ -1584,6 +1583,7 @@ contains
                     diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
                     do ele = 1, Mdims%totele
                         ele_nod = min(size(sfield%val), ele)
+                        t_ele_nod = min(size(tfield%val, 3), ele)
                          do iloc = 1, Mdims%mat_nloc
                             mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                             cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
@@ -1591,7 +1591,7 @@ contains
                                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
                                     (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, ele_nod))
+                                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
                             end do
                         end do
                     end do
@@ -1648,7 +1648,7 @@ contains
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
-      if ( is_porous_media .or. is_boiling) then
+      if ( is_porous_media) then
          momentum_diffusion=0.0
       else
          momentum_diffusion=0.0
@@ -1903,666 +1903,6 @@ contains
     end subroutine update_velocity_source
 
 
-    !sprint_to_do!delete before the sprint is over
-    subroutine boiling( states, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
-         velocity_absorption, temperature_absorption )
-        implicit none
-
-        type( state_type ), dimension(:), intent( inout ) :: states
-        type( state_type ), intent( in ) :: packed_state
-        integer, intent( in ) :: cv_nonods, mat_nonods, nphase, ndim
-        real, dimension( :, :, : ), intent( inout ) :: velocity_absorption, temperature_absorption
-
-        type( tensor_field ), pointer :: temperature, temperature_source, PhaseVolumeFractionSource, volume_fraction
-        real, dimension( :, : ), allocatable :: A
-        real, dimension( : ), allocatable :: S_lg_l, S_lg_g, S_ls_l, S_gs_g, &
-            T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, &
-            St_gl, St_sl, St_sg
-        integer :: iphase, jphase, idim
-        real, parameter :: Le0=2375.7e3, Cp_l = 4200.0, Cp_g = 1996.0, HeatSource = 17.1e+3 / (0.082 * 0.095 * 0.25)
-
-        ewrite(3,*) 'inside boiling routine'
-
-        velocity_absorption=0.0 ; temperature_absorption=0.0
-
-        allocate( S_lg_l(mat_nonods), S_lg_g(mat_nonods), S_ls_l(mat_nonods), S_gs_g(mat_nonods), A(nphase,mat_nonods) )
-        allocate( T_sat(cv_nonods), Svap_l(cv_nonods), Svap_g(cv_nonods), &
-            &    Gamma_l(cv_nonods), Gamma_g(cv_nonods), h_l(cv_nonods), h_g(cv_nonods), &
-            &    St_gl(cv_nonods), St_sl(cv_nonods), St_sg(cv_nonods) )
-
-
-        call calculate_boiling_drag( packed_state, S_lg_l, S_lg_g, S_ls_l, S_gs_g, A )
-
-        ! Momentum absorption
-
-        ! open the boiling test for two phases-gas and liquid
-        if (is_boiling) then
-            S_ls_l=0.0
-            S_gs_g=0.0
-        end if
-
-
-
-        iphase=1 ; jphase=1
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = S_lg_l + S_ls_l
-        end do
-        iphase=1 ; jphase=2
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_lg_l
-        end do
-        iphase=1 ; jphase=3
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_ls_l
-        end do
-
-        iphase=2 ; jphase=1
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_lg_g
-        end do
-        iphase=2 ; jphase=2
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = S_lg_g + S_gs_g
-        end do
-        iphase=2 ; jphase=3
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_gs_g
-        end do
-
-        iphase=3 ; jphase=1
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 0.0
-        end do
-        iphase=3 ; jphase=2
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 0.0
-        end do
-        iphase=3 ; jphase=3
-        do idim = 1, ndim
-            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 1.0e+15
-        end do
-
-
-        call calculate_boiling_variables( states, packed_state, ndim, nphase, T_sat, Svap_l, Svap_g, &
-            Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg )
-
-
-        ! Temperature absorption
-
-        ! open the boiling test for two phases-gas and liquid
-        if (is_boiling) then
-            St_sl=0.0
-            St_sg=0.0
-        end if
-
-
-        iphase=1 ; jphase=1
-        temperature_absorption( iphase, jphase, : ) =  St_gl + St_sl + Svap_l + Cp_l*Gamma_l
-        iphase=1 ; jphase=2
-        temperature_absorption( iphase, jphase, : ) = -St_gl
-        iphase=1 ; jphase=3
-        temperature_absorption( iphase, jphase, : ) = -St_sl
-
-        iphase=2 ; jphase=1
-        temperature_absorption( iphase, jphase, : ) = -St_gl
-        iphase=2 ; jphase=2
-        temperature_absorption( iphase, jphase, : ) =  St_gl + St_sg + Svap_g + Cp_g*Gamma_g + 1.0e+6 * 1.0
-        iphase=2 ; jphase=3
-        temperature_absorption( iphase, jphase, : ) = -St_sg
-
-        iphase=3 ; jphase=1
-        temperature_absorption( iphase, jphase, : ) = -St_sl
-        iphase=3 ; jphase=2
-        temperature_absorption( iphase, jphase, : ) = -St_sg
-        iphase=3 ; jphase=3
-        temperature_absorption( iphase, jphase, : ) =  St_sl + St_sg
-
-
-        ! Temperature source
-
-        temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-        temperature_source => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-
-        volume_fraction => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
-        iphase=1
-        temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0 + HeatSource*volume_fraction%val(1,1,:)
-
-        iphase=2
-        temperature_source%val( 1, iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val( 1, iphase, : ) * 1.0
-
-
-        ! Mass source
-
-        PhaseVolumeFractionSource => extract_tensor_field( packed_state, "PackedPhaseVolumeFractionSource" )
-
-        iphase=1
-        PhaseVolumeFractionSource%val( 1, iphase, : ) = Gamma_l
-
-        iphase=2
-        PhaseVolumeFractionSource%val( 1, iphase, : ) = Gamma_g
-
-
-        ! deallocate
-        deallocate( S_lg_l, S_lg_g, S_ls_l, S_gs_g, A )
-        deallocate( T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg )
-
-        ewrite(3,*) 'leaving boiling routine'
-
-        return
-    end subroutine boiling
-
-
-
-    !sprint_to_do!delete before the sprint is over
-    subroutine calculate_boiling_drag( packed_state, S_lg_l, S_lg_g, S_ls_l, S_gs_g, A )
-        implicit none
-
-        type( state_type ), intent( in ) :: packed_state
-        real, dimension( : ), intent( inout ) :: S_lg_l, S_lg_g, S_ls_l, S_gs_g
-        real, dimension( :, : ), intent( inout ) :: A
-
-        type( tensor_field ), pointer :: pressure
-        type( tensor_field ), pointer :: density, velocity, volume_fraction
-
-        integer, dimension( : ), pointer :: mat_ndgln, cv_ndgln, u_ndgln
-
-        real :: rho_l, rho_g, u_l, u_g, u_s, u_gs, u_ls, u_gl, a_l, a_g, a_s, &
-            a_sg, a_gs, a_sl, a_ls, a_lg, a_gl, d_b, Re_gl, Re_lg, CD, &
-            CD_u, CD_d, A_I, aa_g, D, w, A_I1, A_I2
-
-        real, dimension( : ), allocatable :: ul, ug, us
-
-        integer :: ele, totele, mat_iloc, mat_nloc, u_nloc, mat_inod, cv_inod, &
-            u_inod, u_inod1, u_inod2, ndim, i
-
-        real, parameter :: &
-            mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.01 !0.001 ! 0.005
-
-        pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
-        density => extract_tensor_field( packed_state, "PackedDensity" )
-        velocity => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
-
-        volume_fraction => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
-        mat_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh_Discontinuous" ) )
-        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
-        u_ndgln => get_ndglno( extract_mesh( packed_state, "VelocityMesh" ) )
-
-        totele = ele_count( pressure )
-        mat_nloc = ele_loc( pressure, 1 )
-        u_nloc = ele_loc( velocity, 1 )
-        ndim = size(velocity%val,1)
-
-        ! characteristic length scale
-        D = huge(0.0)
-        do i = 1, ndim
-           D = min( D, domain_bbox(i,2)-domain_bbox(i,1) )
-        end do
-
-        S_lg_l=0.0 ; S_lg_g=0.0 ; S_ls_l=0.0 ; S_gs_g=0.0 ; A=0.0
-
-        allocate( ul(ndim), ug(ndim), us(ndim) ) ; ul=0.0 ; ug=0.0 ; us=0.0
-
-        do ele = 1, totele
-
-            do mat_iloc = 1, mat_nloc
-
-                mat_inod = mat_ndgln( ( ele - 1 ) * mat_nloc + mat_iloc )
-                cv_inod = cv_ndgln( ( ele - 1 ) * mat_nloc + mat_iloc )
-
-                rho_l = density%val(1,1,cv_inod) ; rho_g = density%val(1,2,cv_inod)
-
-                if ( mat_iloc==1  ) then
-                    u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
-                end if
-                if ( mat_iloc==3 ) then
-                    u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                    ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
-                end if
-                if ( mat_iloc==6 ) then
-                    u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                    ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
-                end if
-                if ( mat_iloc==10 ) then
-                    u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                    ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
-                end if
-                u_inod1=-666 ; u_inod2=-666
-                if ( mat_iloc==2 ) then
-                    u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                end if
-                if ( mat_iloc==4 ) then
-                    u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                end if
-                if ( mat_iloc==5 ) then
-                    u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                    u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                end if
-                if ( mat_iloc==7 ) then
-                    u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                end if
-                if ( mat_iloc==8 ) then
-                    u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                    u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                end if
-                if ( mat_iloc==9 ) then
-                    u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                    u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                end if
-                if ( u_inod1>0 ) then
-                    ul = (velocity%val(:,1,u_inod1)+velocity%val(:,1,u_inod2))/2.0
-                    ug = (velocity%val(:,2,u_inod1)+velocity%val(:,2,u_inod2))/2.0
-                    us = (velocity%val(:,3,u_inod1)+velocity%val(:,3,u_inod2))/2.0
-                end if
-
-                u_l = sqrt( sum( ul**2 ) )
-                u_g = sqrt( sum( ug**2 ) )
-                u_s = sqrt( sum( us**2 ) )
-
-                u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=abs(u_g-u_l)
-
-                a_l = volume_fraction%val(1,1,cv_inod)
-                a_g = volume_fraction%val(1,2,cv_inod)
-                a_s = volume_fraction%val(1,3,cv_inod)
-
-                A(1,mat_inod)=a_l ;  A(2,mat_inod)=a_g ; A(3,mat_inod)=a_s
-
-                a_sg=a_s/(a_s+a_g) ; a_gs=1.0-a_sg
-                a_sl=a_s/(a_s+a_l) ; a_ls=1.0-a_sl
-                a_lg=a_l/(a_l+a_g) ; a_gl=1.0-a_lg
-
-                d_b = 5.0*0.06/max((rho_l*u_gl**2),1.0e-5) ; d_b=min(0.5*d_p,max(1.0e-7,d_b))
-                !d_b = 1.0*d_p
-
-                Re_gl = max(rho_l*u_gl*d_b/mu_l,1.0e-5) ; Re_lg=Re_gl
-
-                if ( .false. ) then
-
-                   if(a_lg*Re_lg<1.0e3)then
-                      CD=(24.0/(max(a_lg,1.0e-5)*Re_lg))*(1.0+0.15*(a_lg*Re_lg)**0.687)
-                   else
-                      CD=0.44
-                   end if
-
-                   !S_gs_g(mat_inod) = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
-                   !S_ls_l(mat_inod) = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))  ! BUG HERE
-
-                   ! for boiling test: two phases-gas and liquid
-                   S_gs_g(mat_inod) = 0.0
-                   S_ls_l(mat_inod) = 0.0
-
-                   S_lg_l(mat_inod) = 0.75 * CD * ( (a_gl*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) !* max(a_lg,1.0e-5)**(-2.65)
-                   S_lg_g(mat_inod) = 0.75 * CD * ( (a_lg*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) !* max(a_lg,1.0e-5)**(-2.65)
-
-                else
-
-                   ! New code for separated flows - CD from Pain et al., 2001
-
-                   S_gs_g(mat_inod) = 0.0
-                   S_ls_l(mat_inod) = 0.0
-
-                   if(a_gl<=0.25)then
-                      CD_d = 1.73205 / (1.0-a_gl)**0.5
-                      if (Re_gl<2.0e+5)then
-                         CD_u = 24.0 * (1.0+0.1*Re_gl**0.75) / Re_gl
-                      else if(Re_gl<5.0e+5)then ! linear interpolation between 2.0e+5 and 5.0e+5
-                         w = (Re_gl-2.0e+5)/3.0e+5
-                         CD_u = (1-w)*0.11361 + w*0.45078
-                      else
-                         CD_u = 0.45078
-                      end if
-
-                      CD = (1.0-4.0*a_gl)*CD_u + 4.0*a_gl*CD_d
-
-                      !A_I = 6.0*a_gl/d_b
-                      !Sigma = 0.125 * CD * A_I * rho_l * u_gl
-
-                      S_lg_l(mat_inod) = 0.125 * CD * (6.0*a_gl/d_b)/a_l * rho_l * u_gl 
-                      S_lg_g(mat_inod) = 0.125 * CD * (6.0/d_b)/(a_g+a_l) * rho_l * u_gl 
-
-                   else if(a_gl>0.6)then
-
-                      aa_g = 0.3929 - 0.5714*a_gl
-                      A_I = 4.5/(0.95*D)*(a_gl-0.05) + ((6.0-0.05*aa_g)/d_b)*a_lg/0.95
-
-                      !CD = (16.0/15.0)*a_lg
-                      !Sigma = 0.125 * CD * A_I * rho_l * u_gl
-
-                      S_lg_l(mat_inod) = 0.125 * (16.0/15.0)/(a_l+a_g) * A_I * rho_l * u_gl 
-                      S_lg_g(mat_inod) = 0.125 * (16.0/15.0)*a_lg/a_g * A_I * rho_l * u_gl 
-
-                   else
-
-                      if(a_gl>0.55)then
-                         ! linear interpolation for A_I between 0.55 and 0.6 a_gl
-
-                         !A_I for 0.25<a_gl<0.6
-                         !A_I1 = 4.5/D*(a_gl-aa_g)/(1.0-aa_g) + (6.0*aa_g/d_b)*a_lg/(1.0-aa_g)
-                         aa_g = 0.3929 - 0.5714*0.55 ! aa_g for a_gl=0.55
-                         A_I1 = 4.5/D*(0.55-aa_g)/(1.0-aa_g) + (6.0*aa_g/d_b)*0.45/(1.0-aa_g)
-
-                         !A_I for 0.6<a_gl
-                         !A_I2 = 4.5/(0.95*D)*(a_gl-0.05) + ((6.0-0.05*aa_g)/d_b)*a_lg/0.95
-                         aa_g = 0.3929 - 0.5714*0.6 ! aa_g for a_gl=0.6
-                         A_I2 = 4.5/(0.95*D)*(0.6-0.05) + ((6.0-0.05*aa_g)/d_b)*0.4/0.95
-
-                         w = (a_gl-0.55)/0.05
-                         A_I = (1-w)*A_I1 + w*A_I2
-                      else
-                         aa_g = 0.3929 - 0.5714*a_gl
-                         A_I = 4.5/D*(a_gl-aa_g)/(1.0-aa_g) + (6.0*aa_g/d_b)*a_lg/(1.0-aa_g)
-                      end if
-
-                      CD = (8.0/3.0)*(1.0-a_gl)**2
-
-                      S_lg_l(mat_inod) = 0.125 * CD * A_I * rho_l * u_gl / a_lg
-                      S_lg_g(mat_inod) = 0.125 * CD * A_I * rho_l * u_gl / a_gl
-
-                   end if
-
-                end if
-
-             end do
-
-          end do
-
-        !dummy => extract_scalar_field( states(1), "S_gs", stat )
-        !if (stat==0) dummy%val = S_gs
-        !dummy => extract_scalar_field( states(1), "S_ls", stat )
-        !if (stat==0) dummy%val = S_ls
-        !dummy => extract_scalar_field( states(1), "S_lg", stat )
-        !if (stat==0) dummy%val = S_lg
-
-
-        ewrite(3,*) 'S_gs_g min/max:', minval(S_gs_g), maxval(S_gs_g)
-        ewrite(3,*) 'S_ls_l min/max:', minval(S_ls_l), maxval(S_ls_l)
-        ewrite(3,*) 'S_lg_g min/max:', minval(S_lg_g), maxval(S_lg_g)
-        ewrite(3,*) 'S_lg_l min/max:', minval(S_lg_l), maxval(S_lg_l)
-
-
-        deallocate( ul, ug, us )
-
-        return
-    end subroutine calculate_boiling_drag
-
-
-
-    !sprint_to_do!delete before the sprint is over
-    subroutine calculate_boiling_variables( states, packed_state, ndim, nphase, &
-        T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg )
-        implicit none
-
-        type( state_type ), dimension( : ), intent( inout ) :: states
-        type( state_type ), intent( in ) :: packed_state
-        integer, intent( in ) :: ndim, nphase
-        real, dimension( : ), intent( inout ) :: T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg
-
-        type( scalar_field ), pointer :: dummy
-        type( tensor_field ), pointer :: pressure
-        type( tensor_field ), pointer :: density, velocity, temperature, volume_fraction
-
-        integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, xu_ndgln
-
-
-        real :: p, rho_l, rho_g, u_l, u_g, u_s, t_l, t_g, Tsat, a_l, a_g, a_lg, a_gl, &
-            &  a_b, Lh, d_b, dtr, rho_v, Svap_l_max, Svap_g_max, Svap_l1, Svap_l2, &
-            &  C, phi, F5, Re_sl, Re_sg, Re_gl, Re_lg, Pr_l, Pr_g
-
-        real, dimension( : ), allocatable :: ul, ug, us, cnt
-        real, dimension( :, :, : ), allocatable :: uc
-
-        integer :: ele, totele, cv_iloc, cv_nloc, u_nloc, cv_inod, &
-            u_inod, u_inod1, u_inod2, u_iloc, xu_inod, &
-            iphase, idim, xu_nonods, stat
-
-        real, parameter :: &
-            k_l = 0.58, k_g = 0.016, k_s = 16.2, &
-            Cp_l = 4200.0, Cp_g = 1996.0, Cp_s = 500.0, &
-            mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.01, & !0.001, & !0.005, &
-            Le0 = 2375.7e3, Csf = 0.006, g = 9.81
-
-        pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
-        density => extract_tensor_field( packed_state, "PackedDensity" )
-        velocity => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
-        temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-        volume_fraction => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
-        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
-        u_ndgln => get_ndglno( extract_mesh( packed_state, "VelocityMesh" ) )
-        xu_ndgln => get_ndglno( extract_mesh( packed_state, "VelocityMesh_Continuous" ) )
-
-
-        totele = ele_count( pressure )
-        cv_nloc = ele_loc( pressure, 1 )
-        u_nloc = ele_loc( velocity, 1 )
-        xu_nonods = node_count( extract_mesh( packed_state, "VelocityMesh_Continuous" )  )
-
-        allocate( uc(ndim,nphase,xu_nonods), cnt(xu_nonods) ) ; uc=0.0 ; cnt=0
-        do ele = 1, totele
-            do u_iloc = 1, u_nloc
-                xu_inod = xu_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
-                u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
-                do iphase = 1, nphase
-                    uc( :, iphase, xu_inod ) = uc( :, iphase, xu_inod ) + velocity%val(:,iphase,u_inod)
-                end do
-                cnt( xu_inod ) = cnt( xu_inod ) + 1
-            end do
-        end do
-        do iphase = 1, nphase
-            do idim = 1, ndim
-                uc(idim,iphase,:) = uc(idim,iphase,:) / cnt
-            end do
-        end do
-
-        allocate( ul(ndim), ug(ndim), us(ndim) ) ; ul=0.0 ; ug=0.0 ; us=0.0
-
-        do ele = 1, totele
-
-            do cv_iloc = 1, cv_nloc
-
-                cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-
-                Svap_l(cv_inod)=0.0 ; Svap_g(cv_inod)=0.0
-                Gamma_l(cv_inod)=0.0 ; Gamma_g(cv_inod)=0.0
-                h_l(cv_inod)=0.0 ; h_g(cv_inod)=0.0
-                St_gl(cv_inod)=0.0 ; St_sl(cv_inod)=0.0 ; St_sg(cv_inod)=0.0
-
-                p = pressure%val(1,1,cv_inod)
-
-                rho_l = density%val(1,1,cv_inod) ; rho_g = density%val(1,2,cv_inod)
-
-                if ( cv_iloc==1  ) then
-                    u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
-                end if
-                if ( cv_iloc==3 ) then
-                    u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                    ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
-                end if
-                if ( cv_iloc==6 ) then
-                    u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                    ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
-                end if
-                if ( cv_iloc==10 ) then
-                    u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                    ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
-                end if
-                u_inod1=-666 ; u_inod2=-666
-                if ( cv_iloc==2 ) then
-                    u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                end if
-                if ( cv_iloc==4 ) then
-                    u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                end if
-                if ( cv_iloc==5 ) then
-                    u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                    u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                end if
-                if ( cv_iloc==7 ) then
-                    u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
-                    u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                end if
-                if ( cv_iloc==8 ) then
-                    u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
-                    u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                end if
-                if ( cv_iloc==9 ) then
-                    u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
-                    u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
-                end if
-                if ( u_inod1>0 ) then
-                    ul = (uc(:,1,u_inod1)+uc(:,1,u_inod2))/2.0
-                    ug = (uc(:,2,u_inod1)+uc(:,2,u_inod2))/2.0
-                    us = (uc(:,3,u_inod1)+uc(:,3,u_inod2))/2.0
-                end if
-
-                u_l = sqrt( sum( ul**2 ) )
-                u_g = sqrt( sum( ug**2 ) )
-                u_s = sqrt( sum( us**2 ) )
-
-                t_l = temperature%val(1,1,cv_inod) ; t_g = temperature%val(1,2,cv_inod)
-                Tsat = saturation_temperature( p )
-                T_sat(cv_inod) = Tsat
-
-                a_l = volume_fraction%val(1,1,cv_inod) ; a_g = volume_fraction%val(1,2,cv_inod)
-                a_lg=a_l/(a_l+a_g) ; a_gl=1.0-a_lg
-                a_b = max(a_g,1.0e-5)
-
-                if (Tsat<t_l) then
-                    h_l(cv_inod) = -Le0 + Cp_l*t_l + p/rho_l
-                else
-                    h_l(cv_inod) = -Le0 + Cp_l*Tsat + p/rho_l
-                end if
-
-                if (Tsat<t_g) then
-                    h_g(cv_inod) = Cp_g*Tsat + p/rho_g
-                else
-                    h_g(cv_inod) = Cp_g*t_g  + p/rho_g
-                end if
-
-                Lh = h_g(cv_inod) - h_l(cv_inod)
-
-                !h_l(cv_inod) = -Le0 + Cp_l*Tsat + p/rho_l
-                !h_g(cv_inod) = h_l(cv_inod) + Lh
-
-                d_b = 5.0*0.06/max((rho_l*abs(u_g-u_l)**2),1.0e-5) ; d_b=min(0.5*d_p,max(1.0e-7,d_b))
-                !d_b = 1.0*d_p
-
-                Re_sl = rho_l*abs(u_s-u_l)*d_p/mu_l
-                Re_sg = rho_g*abs(u_s-u_g)*d_p/mu_g
-                Re_gl = rho_l*abs(u_g-u_l)*d_b/mu_l ; Re_lg=Re_gl
-
-                Pr_l = Cp_l*mu_l/k_l ; Pr_g = Cp_g*mu_g/k_g
-
-                St_gl(cv_inod) = (k_l/d_b)*(2.0+0.6*Re_gl**0.5*Pr_l**0.3333) + 1.0e+7 * a_lg**10
-                St_sl(cv_inod) = (k_l/d_p)*(2.0+0.6*Re_sl**0.5*Pr_l**0.3333)
-                St_sg(cv_inod) = (k_g/d_p)*(2.0+0.6*Re_sg**0.5*Pr_g**0.3333)
-
-                !dtr = 1.0e-2 ; rho_v = 1.0 * rho_g
-                dtr = 1.0e-3 ; rho_v = 10.0 * rho_g
-                if (Tsat<t_l) then
-                    Svap_l_max = ((min(rho_v,a_l*rho_l)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_l))
-                else
-                    Svap_l_max = (((a_g*rho_v)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_l))
-                end if
-                if (Tsat<t_g) then
-                    Svap_g_max = ((min(rho_v,a_l*rho_l)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_g))
-                else
-                    Svap_g_max = (((a_g*rho_v)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_g))
-                end if
-
-                if(Tsat<t_l) then
-                    Svap_l1 = (k_l/d_b)*(12.0/pi)*abs(Tsat-t_l)*(rho_l*Cp_l)/(rho_g*Lh)
-                    Svap_l2 = (k_l/d_b)*(2.0+0.74*(a_l*Re_lg)**0.5)
-                    Svap_l(cv_inod) = max(Svap_l1,Svap_l2)*3.6*a_b/d_b
-                else
-                    if(p<=1.1272*1.0e6) then
-                        C=65.0-5.69e-5*(p-1.0e5)
-                    else
-                        C=2.5e9*p**(-1.418)
-                    end if
-
-                    if(abs(u_g-u_l)<=0.61) then
-                        phi=1.0
-                    else
-                        phi=(1.639344*abs(u_g-u_l))**0.47
-                    end if
-
-                    if(a_g<0.25) then
-                        F5=0.075+1.8*phi*C*exp(-45.0*a_b)
-                    else
-                        F5=0.075
-                    end if
-
-                    Svap_l(cv_inod) = F5*Lh*rho_g*rho_l*a_g/(rho_l-rho_g)
-                    Svap_l(cv_inod) = min( Svap_l(cv_inod), 17539.0*max(4.724,472.4*a_g*a_l)*max(0.0,min(1.0,a_g/0.1)) )
-
-                end if
-
-                Svap_g(cv_inod) = 1.0e4*3.6*a_b/d_b
-
-                Svap_l(cv_inod) = min( Svap_l(cv_inod), Svap_l_max)
-                Svap_g(cv_inod) = min( Svap_g(cv_inod), Svap_g_max)
-
-                Gamma_g(cv_inod) = (Svap_l(cv_inod)*(t_l-Tsat)+Svap_g(cv_inod)*(t_g-Tsat))/Lh
-                Gamma_l(cv_inod) = -Gamma_g(cv_inod)
-
-            end do
-        end do
-
-
-        dummy => extract_scalar_field( states(1), "Gamma_l", stat )
-        if (stat==0) dummy%val = Gamma_l
-        dummy => extract_scalar_field( states(1), "Gamma_g", stat )
-        if (stat==0) dummy%val = Gamma_g
-
-        dummy => extract_scalar_field( states(1), "Svap_l", stat )
-        if (stat==0) dummy%val = Svap_l
-        dummy => extract_scalar_field( states(1), "Svap_g", stat )
-        if (stat==0) dummy%val = Svap_g
-
-        dummy => extract_scalar_field( states(1), "h_l", stat )
-        if (stat==0) dummy%val = h_l
-        dummy => extract_scalar_field( states(1), "h_g", stat )
-        if (stat==0) dummy%val = h_g
-
-        dummy => extract_scalar_field( states(1), "St_gl", stat )
-        if (stat==0) dummy%val = St_gl
-        dummy => extract_scalar_field( states(1), "St_sl", stat )
-        if (stat==0) dummy%val = St_sl
-        dummy => extract_scalar_field( states(1), "St_sg", stat )
-        if (stat==0) dummy%val = St_sg
-
-
-        ewrite(3,*) 'Gamma_l min/max:', minval(Gamma_l), maxval(Gamma_l)
-        ewrite(3,*) 'Gamma_g min/max:', minval(Gamma_g), maxval(Gamma_g)
-
-        ewrite(3,*) 'Svap_l min/max:', minval(Svap_l), maxval(Svap_l)
-        ewrite(3,*) 'Svap_g min/max:', minval(Svap_g), maxval(Svap_g)
-
-
-        ewrite(3,*) 'h_l min/max:', minval(h_l), maxval(h_l)
-        ewrite(3,*) 'h_g min/max:', minval(h_g), maxval(h_g)
-
-        ewrite(3,*) 'T_sat min/max:', minval(T_sat), maxval(T_sat)
-
-        ewrite(3,*) 'St_gl min/max:', minval(St_gl), maxval(St_gl)
-        ewrite(3,*) 'St_sl min/max:', minval(St_sl), maxval(St_sl)
-        ewrite(3,*) 'St_sg min/max:', minval(St_sg), maxval(St_sg)
-
-        deallocate( ul, ug, us )
-
-        return
-    end subroutine calculate_boiling_variables
 
 
 
@@ -2596,7 +1936,7 @@ contains
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
         integer :: iphase, nphase
-        character(len=500) :: path, path2
+        character(len=500) :: path, path2, path3
 
         t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         nphase = size(t_field%val,2)
@@ -2623,7 +1963,7 @@ contains
         !Retrieve relperm max
         do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/relperm_max/scalar_field::relperm_max/prescribed/value"
+                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(2,iphase,:) = max(min(targ_Store%val(:), 1.0), 0.0)
@@ -2631,11 +1971,10 @@ contains
                 t_field%val(2,iphase,:) = 1.0
             end if
         end do
-
         !Retrieve relperm exponent
         do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/relperm_exponent/scalar_field::relperm_exponent/prescribed/value"
+                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(3,iphase,:) = targ_Store%val(:)
@@ -2646,40 +1985,52 @@ contains
 
         !Initialize capillary pressure
         if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
-            !Get cap entry pressure
+            !Get cap pressure constant, C
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-        path2 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::C/prescribed/value"
+                path3 = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::C/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
                     t_field%val(4,iphase,:) = targ_Store%val(:)
-                elseif (have_option(trim(path2))) then
-                    call initialise_field_over_regions(targ_Store, trim(path2) , position)
+                elseif (have_option(trim(path3))) then
+                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
                     t_field%val(4,iphase,:) = targ_Store%val(:)
                 else !default value
                     t_field%val(4,iphase,:) = 0.0
                 end if
             end do
 
-            !Get cap exponent
+            !Get cap exponent, a
             do iphase = 1, nphase
                 path = "/material_phase["//int2str(iphase-1)//&
                     "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-        path2 = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_TOTALCapillary/scalar_field::a/prescribed/value"
+                path3 = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Power_Law/scalar_field::a/prescribed/value"
                 if (have_option(trim(path))) then
                     call initialise_field_over_regions(targ_Store, trim(path) , position)
                     t_field%val(5,iphase,:) = targ_Store%val(:)
-                elseif (have_option(trim(path2))) then
-                    call initialise_field_over_regions(targ_Store, trim(path2) , position)
+                elseif (have_option(trim(path3))) then
+                    call initialise_field_over_regions(targ_Store, trim(path3) , position)
                     t_field%val(5,iphase,:) = targ_Store%val(:)
                 else !default value
                     t_field%val(5,iphase,:) = 1.0
                 end if
             end do
+            !Get imbibition term
+            do iphase = 1, nphase
+                path = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::B/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(6,iphase,:) = targ_Store%val(:)
+                else !default value
+                    t_field%val(6,iphase,:) = 0.0
+                end if
+            end do
         end if
+
 
         call deallocate(targ_Store)
     end subroutine get_RockFluidProp
