@@ -113,7 +113,7 @@ contains
         MASS_MN_PRES, THERMAL, &
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, &
-        TDIFFUSION, IGOT_THERM_VIS, &
+        TDIFFUSION, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
         porous_heat_coef, outfluxes, solving_compositional)
@@ -275,7 +275,6 @@ contains
         REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
         type(tensor_field), intent(in), optional, target :: saturation
         REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
-        INTEGER, intent( in ), optional :: IGOT_THERM_VIS
         !Variables for Capillary pressure
         integer, optional, intent(in) :: Phase_with_Pc
         real, optional, dimension(:), intent(in) :: OvRelax_param
@@ -385,8 +384,6 @@ contains
         real, dimension(:,:), allocatable :: T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
         LOGICAL :: STORE, integrate_other_side_and_not_boundary, GOT_VIS
         REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
-        REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
-        REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
         LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
         LOGICAL, DIMENSION( Mdims%nphase, 6 ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
         REAL, DIMENSION(  Mdims%nphase, 6 ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
@@ -773,11 +770,7 @@ contains
         ALLOCATE( LIMF( NFIELD ) );ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
         ALLOCATE( F_CV_NODI( NFIELD ), F_CV_NODJ( NFIELD ) )
 
-        !Conditional allocations
-        IF(THERMAL.AND.GOT_VIS) THEN
-            ALLOCATE( VECS_STRESS( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ), VECS_GRAD_U( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ) ) ; VECS_STRESS=0. ; VECS_GRAD_U=0.
-            ALLOCATE( STRESS_IJ_THERM( Mdims%ndim, Mdims%ndim, Mdims%nphase ), STRESS_IJ_THERM_J( Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; STRESS_IJ_THERM=0. ; STRESS_IJ_THERM_J=0.
-        ENDIF
+        !###############Conditional allocations######################
         ! NFIELD Variables:
         if (thermal .and.is_porous_media) allocate(Porous_diff_coef_divdx(Mdims%nphase), Porous_diff_coefold_divdx(Mdims%nphase))
         LIMT_HAT=0.0
@@ -2367,12 +2360,6 @@ contains
                     CV_P_PHASE_NODI(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
                 END DO
                 IF ( THERMAL .and. Mdims%npres == 1) THEN
-                    IF ( GOT_VIS ) THEN
-                        DO IPHASE = 1, Mdims%nphase
-                            LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                                + SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI)
-                        END DO
-                    END IF
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
                         - CV_P_PHASE_NODI(:) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
                 END IF

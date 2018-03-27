@@ -149,8 +149,7 @@ contains
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
-
-            real, dimension(1,1):: Matvalue
+           logical :: repeat_assemb_solve
 
            if(max_allowed_its < 0)  call get_option( &
                '/material_phase[0]/scalar_field::Temperature/prognostic/solver/max_iterations',&
@@ -284,8 +283,8 @@ contains
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-NITS_FLUX_LIM = 3!<= currently looping here more does not add anything as RHS and/or velocity are not updated
-                !we set up 3 iterations but if it converges => we exit straigth away
+NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
+                !we set up 5 iterations but if it converges => we exit straigth away
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -352,19 +351,25 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                                minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
                        end do
                    END IF
+
+
                     !Control how it is converging and decide
                    if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
 
                    !Just after the solvers
-                   !call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-                   call clone_deallocate_PETSC_ACV_matrix()
+                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+!                   call clone_deallocate_PETSC_ACV_matrix()
+
+                   repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
+                   call allor(repeat_assemb_solve)
                    !Checking solver not fully implemented
-                   if (its_taken == 0 ) then
+                   if (repeat_assemb_solve ) then
                        solver_not_converged = .true.
                        tracer%val(1,:,:) = temp_bak!recover backup
                        cycle!repeat
                    else
                        solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                       call allor(solver_not_converged)
                        exit!good to go!
                    end if
                END IF Conditional_Lumping
@@ -380,7 +385,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
       contains
 
 
-      subroutine clone_deallocate_PETSC_ACV_matrix()
+      subroutine clone_deallocate_PETSC_ACV_matrix()!REMOVEME AS SOON AS i AM NOT NEEDED!
         !This subroutine was created to avoid a bug with Ubuntu 16.04 happening when compiling in non-debugging
           implicit none
 
@@ -925,7 +930,6 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
-        integer :: IGOT_THERM_VIS
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         INTEGER :: IPLIKE_GRAD_SOU
@@ -1581,7 +1585,7 @@ end if
         REAL, DIMENSION( : , : ), target, allocatable :: DEN_OR_ONE
         REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
         LOGICAL :: GET_THETA_FLUX
-        INTEGER :: IGOT_T2, I, IGOT_THERM_VIS
+        INTEGER :: IGOT_T2, I
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
@@ -1627,7 +1631,6 @@ end if
            DENOLD_OR_ONE = 1.0
         end if
         ! no q scheme
-        IGOT_THERM_VIS = 0
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
 
@@ -1648,7 +1651,6 @@ end if
             MASS_MN_PRES, THERMAL,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
-            IGOT_THERM_VIS = IGOT_THERM_VIS, &
             calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
             outfluxes = outfluxes)
 
