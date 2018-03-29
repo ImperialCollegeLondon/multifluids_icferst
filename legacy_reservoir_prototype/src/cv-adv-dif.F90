@@ -300,7 +300,7 @@ contains
         ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
         logical, PARAMETER :: correct_method_petrov_method= .true.
         LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, NORMALISE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
-        logical :: skip, GOT_T2, use_volume_frac_T2, symmetric_P
+        logical :: skip, GOT_T2, use_volume_frac_T2, symmetric_P, logical_igot_theta_flux
         ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
         ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
         ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
@@ -319,7 +319,7 @@ contains
         INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
             CV_NODJ, ISWITCH, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
         INTEGER :: I, IDIM, U_ILOC, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, &
-            IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, IANISOLIM, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
+            IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
         INTEGER, dimension(1) :: IDUM
         integer, dimension(:), pointer :: neighbours
         INTEGER, dimension(Mdims%nphase) :: LOC_WIC_T_BC_ALL
@@ -485,6 +485,8 @@ contains
         local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional)
         !this is true if the user is asking for high order advection scheme
         use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
+
+        logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
         have_absorption=.false.
         if ( associated( absorbt_all ) ) have_absorption = .true.
@@ -924,10 +926,8 @@ contains
         MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
         MeanPoreCV%val=MEAN_PORE_CV
 
-        IANISOLIM = 0
-        IF ( CV_DISOPT >= 5 ) IANISOLIM = 1
         ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
-        IF ( IANISOLIM == 0 ) THEN
+        IF ( CV_DISOPT < 5 ) THEN
             ! Isotropic limiting - calculate far field upwind maticies...
             CALL ISOTROPIC_LIMITER_ALL( &
                 ! FOR SUB SURRO_CV_MINMAX:
@@ -937,7 +937,7 @@ contains
                 ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
                 TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
                 TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
-        ELSE ! endof IF ( IANISOLIM == 0 ) THEN
+        ELSE
             use_reflect = have_option("/numerical_methods/use_reflect_method")
             CALL CALC_ANISOTROP_LIM( &
                 ! Caculate the upwind values stored in matrix form...
@@ -951,7 +951,7 @@ contains
                 Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
                 ndgln%x,Mdims%x_nonods,Mdims%ndim, &
                 X_ALL, XC_CV_ALL, use_reflect)
-        END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
+        END IF
         FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
             Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
@@ -988,7 +988,7 @@ contains
             END IF
         END IF
         GET_GTHETA = .FALSE.
-        IF ( IGOT_THETA_FLUX == 1 ) THEN
+        IF ( logical_igot_theta_flux ) THEN
             IF ( GET_THETA_FLUX ) THEN
                 THETA_FLUX = 0.0
                 ONE_M_THETA_FLUX = 0.0
@@ -1597,7 +1597,7 @@ contains
                             ONE_M_FTHETA_T2OLD(:) = (1.0-FTHETA(:)) * LIMT2OLD(:)
                             FTHETA_T2_J(:) = FTHETA_T2(:)!FTHETA(:) * LIMT2(:)
                             ONE_M_FTHETA_T2OLD_J(:) = ONE_M_FTHETA_T2OLD(:)!(1.0-FTHETA(:)) * LIMT2OLD(:)
-                            IF(IGOT_THETA_FLUX == 1) THEN
+                            IF(logical_igot_theta_flux) THEN
                                 IF ( GET_THETA_FLUX ) THEN
                                     THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(:, CV_NODI)
                                     ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(:, CV_NODI)
@@ -5719,7 +5719,7 @@ end if
     END SUBROUTINE DGSIMPLNORM
 
 
-    !sprint_to_do!does this work???
+    !sprint_to_do! do we need two? this one seems a simpler version of the other one, is the speedup worth it?
     SUBROUTINE ISOTROPIC_LIMITER_ALL( &
         ! FOR SUB SURRO_CV_MINMAX:
         T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, IGOT_T2, NPHASE, CV_NONODS, nsmall_colm, SMALL_CENTRM, SMALL_FINDRM, SMALL_COLM, &
@@ -5740,40 +5740,14 @@ end if
         INTEGER, DIMENSION( :,:, : ), intent( in ) :: WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL
 
         ! Local variables...
-        REAL, DIMENSION( :, : ), allocatable :: TMIN_ALL, TMAX_ALL, TOLDMIN_ALL, TOLDMAX_ALL, &
-            T2MIN_ALL, T2MAX_ALL, T2OLDMIN_ALL, T2OLDMAX_ALL, DENMIN_ALL, DENMAX_ALL,  &
-            DENOLDMIN_ALL, DENOLDMAX_ALL
-        INTEGER, DIMENSION( :, : ), allocatable ::TMIN_NOD_ALL, TMAX_NOD_ALL, TOLDMIN_NOD_ALL, TOLDMAX_NOD_ALL, &
-            T2MIN_NOD_ALL, T2MAX_NOD_ALL, T2OLDMIN_NOD_ALL, T2OLDMAX_NOD_ALL, &
-            DENMIN_NOD_ALL, DENMAX_NOD_ALL, DENOLDMIN_NOD_ALL, DENOLDMAX_NOD_ALL
+        real, dimension(NPHASE, CV_NONODS) :: TMIN_ALL, TMAX_ALL, TOLDMIN_ALL, TOLDMAX_ALL, DENMIN_ALL, DENMAX_ALL, DENOLDMIN_ALL, DENOLDMAX_ALL
+        integer, dimension(NPHASE, CV_NONODS) :: TMIN_NOD_ALL, TMAX_NOD_ALL, TOLDMIN_NOD_ALL, TOLDMAX_NOD_ALL, DENMIN_NOD_ALL, DENMAX_NOD_ALL, &
+                                DENOLDMIN_NOD_ALL, DENOLDMAX_NOD_ALL
+
+        real, dimension(NPHASE*igot_t2, CV_NONODS*igot_t2) :: T2MIN_ALL, T2MAX_ALL, T2OLDMIN_ALL, T2OLDMAX_ALL
+        integer, dimension(nphase*igot_t2, cv_nonods*igot_t2) :: T2MIN_NOD_ALL, T2MAX_NOD_ALL, T2OLDMIN_NOD_ALL, T2OLDMAX_NOD_ALL
+
         INTEGER :: CV_NODI, IMID, IPHASE
-
-        ! Allocate memory for terms needed by GETGXYZ OR ONVDLIM
-        ALLOCATE(      TMIN_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(      TMAX_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(   TOLDMIN_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(   TOLDMAX_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(      T2MIN_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(      T2MAX_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(   T2OLDMIN_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(   T2OLDMAX_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(    DENMIN_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(    DENMAX_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE( DENOLDMIN_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE( DENOLDMAX_ALL( NPHASE, CV_NONODS) )
-
-        ALLOCATE(      TMIN_NOD_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(      TMAX_NOD_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(   TOLDMIN_NOD_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(   TOLDMAX_NOD_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(      T2MIN_NOD_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(      T2MAX_NOD_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(   T2OLDMIN_NOD_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(   T2OLDMAX_NOD_ALL( NPHASE, CV_NONODS* IGOT_T2) )
-        ALLOCATE(    DENMIN_NOD_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE(    DENMAX_NOD_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE( DENOLDMIN_NOD_ALL( NPHASE, CV_NONODS) )
-        ALLOCATE( DENOLDMAX_NOD_ALL( NPHASE, CV_NONODS) )
 
         ! For each node, find the largest and smallest value of T and
         ! DENSITY for both the current and previous timestep, out of
@@ -5822,14 +5796,6 @@ end if
                 ENDIF
             END DO
         END DO
-
-        DEALLOCATE( TMIN_ALL, TMAX_ALL, TOLDMIN_ALL, TOLDMAX_ALL, &
-            T2MIN_ALL, T2MAX_ALL, T2OLDMIN_ALL, T2OLDMAX_ALL, DENMIN_ALL, DENMAX_ALL,  &
-            DENOLDMIN_ALL, DENOLDMAX_ALL )
-        DEALLOCATE( TMIN_NOD_ALL, TMAX_NOD_ALL, TOLDMIN_NOD_ALL, TOLDMAX_NOD_ALL, &
-            T2MIN_NOD_ALL, T2MAX_NOD_ALL, T2OLDMIN_NOD_ALL, T2OLDMAX_NOD_ALL, &
-            DENMIN_NOD_ALL, DENMAX_NOD_ALL, DENOLDMIN_NOD_ALL, DENOLDMAX_NOD_ALL )
-
 
         contains
             SUBROUTINE SURRO_CV_MINMAX( TMAX_ALL, TMIN_ALL, TOLDMAX_ALL, TOLDMIN_ALL, DENMAX_ALL, DENMIN_ALL, DENOLDMAX_ALL, DENOLDMIN_ALL, &
@@ -6527,7 +6493,7 @@ end if
             T2UPWIND_MAT_ALL(1:NPHASE,    :)=FUPWIND_MAT_ALL(4*NPHASE+1:5*NPHASE, :)
             T2OLDUPWIND_MAT_ALL(1:NPHASE, :)=FUPWIND_MAT_ALL(5*NPHASE+1:6*NPHASE, :)
         ENDIF
-
+        deallocate(FUPWIND_MAT_ALL, F_ALL, FEMF_ALL)
         contains
 
             SUBROUTINE CALC_ANISOTROP_LIM_VALS( &
@@ -6643,8 +6609,6 @@ end if
                     N, NLX_ALL, WEIGHT, use_reflect)
 
 
-                !    DEALLOCATE( N, NLX, NLY, NLZ, L1, L2, L3, L4, &
-                !         WEIGHT, SUB_NDGLNO, SUB_XNDGLNO )
                 DEALLOCATE( N, NLX_ALL, L1, L2, L3, L4, &
                     WEIGHT, SUB_NDGLNO, SUB_XNDGLNO )
                 RETURN
@@ -6674,104 +6638,38 @@ end if
                 INTEGER, DIMENSION( : ), INTENT(IN) :: FINDRM,COLM
 
                 REAL, DIMENSION(:,:), intent( in ) :: X_ALL
-                REAL, DIMENSION( NDIM, NONODS ), intent( in ) :: XC_CV_ALL
-                REAL, DIMENSION(NLOC,NGI), INTENT(IN) :: N!,NLX,NLY,NLZ
+                REAL, DIMENSION( :, : ), intent( in ) :: XC_CV_ALL
+                REAL, DIMENSION(:,:), INTENT(IN) :: N!,NLX,NLY,NLZ
                 REAL, DIMENSION(:,:,:), INTENT(IN) :: NLX_ALL!DIMENSION(NDIM, NLOC,NGI)
-                REAL, DIMENSION(NGI), INTENT(IN) :: WEIGHT
+                REAL, DIMENSION(:), INTENT(IN) :: WEIGHT
                 !Local variables
 
-                INTEGER, DIMENSION( : ), ALLOCATABLE, SAVE :: ELEMATPSI
-                REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
-                LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
+                INTEGER, DIMENSION( NCOLM ) :: ELEMATPSI
+                REAL, DIMENSION( NCOLM * NLOC  ) :: ELEMATWEI
                 ! Allocate memory for the interpolated upwind values
                 LOGICAL, PARAMETER :: BOUND  = .TRUE.! limiting options
-                logical:: REFLECT ! limiting options
-                INTEGER, DIMENSION( : ), allocatable :: NOD_FINDELE,NOD_COLELE, NLIST, INLIST, DUMMYINT
-                REAL, DIMENSION( : ), allocatable :: DUMMYREAL
-                INTEGER MXNCOLEL,NCOLEL,adapt_time_steps
-                REAL current_time
-                !Reflect option defined from diamond
-                REFLECT = use_reflect
-                ! Over-estimate the size of the COLELE array
-                MXNCOLEL=20*TOTELE+500
-
-                ALLOCATE( NOD_FINDELE(X_NONODS+1) )
-                ALLOCATE( NOD_COLELE(MXNCOLEL) )
-                ALLOCATE( NLIST(X_NONODS) )
-                ALLOCATE( INLIST(X_NONODS) )
+                integer, dimension(X_NONODS+1) :: NOD_FINDELE
+                integer, dimension(X_NONODS) ::NLIST, INLIST
+                INTEGER, DIMENSION( 20*TOTELE+500 ) :: NOD_COLELE! Over-estimate the size of the COLELE array
+                INTEGER:: NCOLEL
 
                 ! Calculate node element list - moved from (I)FINPTS
                 CALL PHILNODELE(X_NONODS,NOD_FINDELE,NOD_COLELE, &
-                    NCOLEL,MXNCOLEL, &
+                    NCOLEL,SIZE(NOD_COLELE), &
                     TOTELE,NLOC,X_NDGLN, &
                     NLIST,INLIST)
 
-                IF( STORE_ELE ) THEN
 
-                    ALLOCATE( ELEMATPSI( NCOLM ) )
-                    ALLOCATE( ELEMATWEI( NCOLM * NLOC ) )
+                CALL FINPTSSTORE(T_ALL,FEMT_ALL,USE_FEMT,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
+                    TUPWIND_ALL,FINDRM,COLM,NCOLM,NDIM, &
+                    X_NDGLN,X_NONODS, &
+                    X_ALL, XC_CV_ALL, &
+                    N,NLX_ALL, WEIGHT, &
+                    NOD_FINDELE,NOD_COLELE,NCOLEL, &
+                    ELEMATPSI,ELEMATWEI,1, &
+                    BOUND, use_reflect)
 
-                    CALL FINPTSSTORE(T_ALL,FEMT_ALL,USE_FEMT,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
-                        TUPWIND_ALL,FINDRM,COLM,NCOLM,NDIM, &
-                        X_NDGLN,X_NONODS, &
-                        X_ALL, XC_CV_ALL, &
-                        N,NLX_ALL, WEIGHT, &
-                        NOD_FINDELE,NOD_COLELE,NCOLEL, &
-                        ELEMATPSI,ELEMATWEI,1, &
-                        BOUND, REFLECT)
-
-                ELSE IF( RET_STORE_ELE ) THEN
-
-                    ! Find the weights for the interpolation
-                    ! This does depend on the solns T when BOUND...
-                    CALL GETSTOREELEWEI(T_ALL,NFIELD,NONODS,NLOC,TOTELE,NDGLNO, &
-                        TUPWIND_ALL,FINDRM,COLM,NCOLM,BOUND, &
-                        ELEMATPSI,ELEMATWEI)
-
-                ELSE
-
-                    ! Assume we have not stored anything (elements or weights)...
-                    ALLOCATE(DUMMYINT(NCOLM))
-                    ALLOCATE(DUMMYREAL(NCOLM*NLOC))
-
-                    CALL FINPTSSTORE(T_ALL,FEMT_ALL,USE_FEMT,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
-                        TUPWIND_ALL,FINDRM,COLM,NCOLM,NDIM, &
-                        X_NDGLN,X_NONODS, &
-                        X_ALL, XC_CV_ALL, &
-                        N,NLX_ALL, WEIGHT, &
-                        NOD_FINDELE,NOD_COLELE,NCOLEL, &
-                        DUMMYINT,DUMMYREAL,0, &
-                        BOUND, REFLECT)
-
-                    DEALLOCATE(DUMMYINT,DUMMYREAL)
-
-                ENDIF
-
-                store_ele = .false. ; ret_store_ele = .true.
-                if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
-                    if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
-                        call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', &
-                            adapt_time_steps )
-                        if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
-                    else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI') ) then
-                        STORE_ELE=.TRUE.; RET_STORE_ELE=.FALSE.
-                    end if
-                elseif( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric') ) then
-                    if( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps') ) then
-                        call get_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps', &
-                            adapt_time_steps )
-                    end if
-                    if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
-                elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then
-                    call get_option( '/timestepping/current_time', current_time )
-                    if( do_adapt_state_prescribed( current_time ) ) store_ele = .true.
-                end if
-                if ( store_ele ) then
-                    ret_store_ele = .false.
-                    deallocate( elematpsi, elematwei )
-                end if
-
-                DEALLOCATE( NOD_FINDELE, NOD_COLELE, NLIST, INLIST )
+                return
 
             END SUBROUTINE CALC_ANISOTROP_LIM_VALS2
 
@@ -6800,11 +6698,7 @@ end if
                 !  LOCAL VARIABLES...
                 INTEGER NOD,COUNT,ELEWIC,ILOC,INOD,IFIELD
                 REAL RMATPSI
-                REAL, ALLOCATABLE, DIMENSION(:,:)::MINPSI
-                REAL, ALLOCATABLE, DIMENSION(:,:)::MAXPSI
-
-                ALLOCATE(MINPSI(NFIELD, TOTELE))
-                ALLOCATE(MAXPSI(NFIELD, TOTELE))
+                REAL, DIMENSION(NFIELD, TOTELE)::MINPSI, MAXPSI
 
                 if ( bound ) then
 
@@ -6840,10 +6734,6 @@ end if
                     END DO
                 END DO
 
-                !    if ( bound ) then
-                DEALLOCATE( MINPSI, MAXPSI )
-                !    end if
-
                 RETURN
 
             end subroutine getstoreelewei
@@ -6878,13 +6768,9 @@ end if
                                 = MIN( PSI_ALL(:, JNOD), MINPSI(:, ELEWIC) )
                             MAXPSI( :, ELEWIC )  &
                                 = MAX( PSI_ALL(:, JNOD), MAXPSI(:, ELEWIC) )
-                        !                     = MAX( PSI_ALL(JNOD+(IFIELD-1)*NONODS), MAXPSI(ELEWIC+(IFIELD-1)*TOTELE) )
-                           !END DO
                         END DO
                     END DO
                 END DO
-
-                !ewrite(3,*) '***M-m', MAXPSI-MINPSI
 
                 RETURN
 
@@ -6911,26 +6797,26 @@ end if
                 ! IF REFLECT then use a reflection condition at boundary to
                 ! do limiting.
                 INTEGER, intent(in) :: NFIELD,NONODS,NLOC,NGI,TOTELE,NDIM,X_NONODS
-                INTEGER, dimension(TOTELE*NLOC),intent(in) :: NDGLNO
+                INTEGER, dimension(:),intent(in) :: NDGLNO
                 REAL, dimension(:,:), intent(in) :: PSI_ALL
                 REAL, dimension(:,:), intent(in) :: FEMPSI_ALL
                 LOGICAL, intent(in) :: USE_FEMPSI
                 INTEGER, intent(in) :: NCOLM,NCOLEL
-                INTEGER, dimension(NONODS+1), intent(in) :: FINDRM
-                INTEGER, dimension(NCOLM),intent(in) :: COLM
+                INTEGER, dimension(:), intent(in) :: FINDRM
+                INTEGER, dimension(:),intent(in) :: COLM
                 REAL, dimension(:,:), intent(inout) :: MATPSI_ALL
-                INTEGER, dimension(TOTELE*NLOC),  intent(in) :: X_NDGLN
+                INTEGER, dimension(:),  intent(in) :: X_NDGLN
                 REAL, dimension(:,:), intent(in) :: X_ALL
-                REAL, DIMENSION( NDIM, NONODS ), intent( in ) :: XC_CV_ALL
-                REAL, dimension(NLOC,NGI), intent(in) :: N!,NLX,NLY,NLZ
+                REAL, DIMENSION( :, : ), intent( in ) :: XC_CV_ALL
+                REAL, dimension(:,:), intent(in) :: N!,NLX,NLY,NLZ
                 REAL, dimension(:, :,:), intent(in) :: NLX_ALL!dimension(NDIM, NLOC,NGI)
                 REAL, dimension(:), intent(in) :: WEIGHT!dimenson(NGI)
                 !     work space...
-                INTEGER, dimension(X_NONODS+1),intent(in) :: FINDELE
-                INTEGER, dimension(NCOLEL),intent(in) :: COLELE
+                INTEGER, dimension(:),intent(in) :: FINDELE
+                INTEGER, dimension(:),intent(in) :: COLELE
                 INTEGER, intent(in) :: IGETSTOR
-                INTEGER, dimension(NCOLM*IGETSTOR), intent(inout) :: ELEMATPSI
-                REAL, dimension(NCOLM*NLOC*IGETSTOR), intent(inout) :: ELEMATWEI
+                INTEGER, dimension(:), intent(inout) :: ELEMATPSI
+                REAL, dimension(:), intent(inout) :: ELEMATWEI
                 ! ELEWIC is the element to do interpolation from
                 ! LOCCORDSK contains the weights.
                 !     Local variables...
@@ -6939,40 +6825,27 @@ end if
                 REAL LOCCORDSK(NLOC)
                 REAL INVH,LENG
                 !     work space...
-                real, pointer :: VOLUME
-                real, target :: VOLUME2
-                real, dimension(:), pointer :: DETWEI, RA !dimension(NGI)
-                real, dimension(:), allocatable, target :: DETWEI2, RA2
-                real, dimension (size(X_ALL,1)) :: NORMX1_ALL
-                real, dimension(:, :, :), pointer :: NX_ALL ! dimension (size(X_ALL,1), NLOC, NGI)
-                real, dimension(:,:,:), allocatable, target :: NX_ALL2
+                real :: VOLUME
+                real, dimension(NGI) :: DETWEI, RA
+                real, dimension (size(X_ALL,1)) :: NORMX1_ALL, X1_ALL, X2_ALL
+                real, dimension(size(X_ALL,1), NLOC, NGI) :: NX_ALL
                 real, dimension (size(X_ALL,1), NONODS) :: NORMX_ALL
-                REAL, ALLOCATABLE, DIMENSION(:)::MLUM
-                !    REAL, ALLOCATABLE, DIMENSION(:)::MINPSI
-                !    REAL, ALLOCATABLE, DIMENSION(:)::MAXPSI
-                REAL, ALLOCATABLE, DIMENSION(:,:)::MINPSI
-                REAL, ALLOCATABLE, DIMENSION(:,:)::MAXPSI
-                INTEGER, ALLOCATABLE, DIMENSION(:)::NOD2XNOD
-                real, dimension(size(X_ALL,1)) :: X1_ALL, X2_ALL
+                REAL, DIMENSION(NONODS)::MLUM
+                REAL,  DIMENSION(NFIELD, TOTELE)::MINPSI, MAXPSI
+                INTEGER, DIMENSION(NONODS)::NOD2XNOD
 
                 ! Initialisation
                 ELEMATPSI = 0
                 ELEMATWEI = 0.0
-                allocate(DETWEI2(NGI))
-                allocate(RA2(NGI))
-                allocate(NX_ALL2(size(X_ALL,1), NLOC, NGI))
-                VOLUME=>VOLUME2; DETWEI=>DETWEI2;
-                RA=>RA2; NX_ALL=>NX_ALL2
 
                 NORMX1_ALL=0.0
                 IF(REFLECT) THEN
                     !     calculate normals...********************
-                    ALLOCATE(MLUM(NONODS))
                     NORMX_ALL = 0
                     MLUM(1:NONODS) = 0.0
                     DO ELE=1,TOTELE! Was loop
                         call DETNLXR( ELE, X_ALL, X_NDGLN, NLOC, NGI, &
-                            N, NLX_ALL, WEIGHT, DETWEI, RA2, VOLUME2, .false., NX_ALL2)
+                            N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, .false., NX_ALL)
                         DO ILOC=1,NLOC! Was loop
                             NODI=NDGLNO((ELE-1)*NLOC+ILOC)
                             DO GI=1,NGI! Was loop
@@ -6995,21 +6868,13 @@ end if
                         END IF
                     END DO
                 ENDIF
-
-                ALLOCATE(MINPSI(NFIELD, TOTELE))
-                ALLOCATE(MAXPSI(NFIELD, TOTELE))
-
-                IF(BOUND) THEN
-                    ! find the max and min local to each element...
-                    CALL MINMAXELEWIC(PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
-                        &     FINDRM,COLM,NCOLM,&
-                        &     MINPSI,MAXPSI)
-                ENDIF
+                ! find the max and min local to each element...
+                IF(BOUND) CALL MINMAXELEWIC(PSI_ALL,NONODS,NLOC,TOTELE,NDGLNO, &
+                             FINDRM,COLM,NCOLM, MINPSI,MAXPSI)
 
                 !
                 !     Calculate node element list.
 
-                ALLOCATE(NOD2XNOD(NONODS))
                 DO ELE=1,TOTELE! Was loop
                     DO ILOC=1,NLOC! Was loop
                         NOD =NDGLNO((ELE-1)*NLOC+ILOC)
@@ -7045,10 +6910,7 @@ end if
                             CALL MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
                                 PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
                                 NLOC,TOTELE,X_NDGLN,NDGLNO,&
-                                X1_ALL,&
-                                X2_ALL,&
-                                NORMX1_ALL,&
-                                X_ALL,&
+                                X1_ALL,X2_ALL,NORMX1_ALL,X_ALL,&
                                 !     work space...
                                 FINDELE,COLELE,NCOLEL, &
                                 MINPSI,MAXPSI, &
@@ -7063,10 +6925,6 @@ end if
 
                     END DO ! Was loop 20
                 END DO ! Was loop 10
-
-                deallocate(DETWEI2)
-                deallocate(RA2)
-                deallocate(NX_ALL2)
 
                 RETURN
 
