@@ -932,28 +932,29 @@ contains
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
             &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE
+        integer, dimension(Mdims%ndim + 1) :: CV_LOC_CORNER, U_LOC_CORNER
+        INTEGER, DIMENSION(:), ALLOCATABLE :: CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, U_GL_LOC, U_GL_GL
+        INTEGER, DIMENSION(Mdims%npres, Mdims%cv_nonods) :: WIC_P_BC_ALL_NODS
+        INTEGER, DIMENSION(Mdims%ndim + 1, Mdims%ndim + 1) :: CV_MID_SIDE, U_MID_SIDE
         TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER, WD
         TYPE(VECTOR_FIELD), POINTER :: X
         TYPE(TENSOR_FIELD), POINTER :: WM, CV_VOL_FRAC
-        !Variables for shape functions
-        INTEGER, DIMENSION(:), ALLOCATABLE :: CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, U_GL_LOC, U_GL_GL
-        REAL, DIMENSION( :, : ), ALLOCATABLE :: scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, sufen, sufenslx, sufensly, &
-                                              sufenlx, sufenly, sufenlz
+        REAL, DIMENSION( :, : ), ALLOCATABLE :: scvfen, scvfenslx, scvfensly, &
+            &                                  scvfenlx, scvfenly, scvfenlz, &
+            &                                  sufen, sufenslx, sufensly, &
+            &                                  sufenlx, sufenly, sufenlz
         REAL, DIMENSION( : ), ALLOCATABLE :: scvfeweigh
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
         REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
         REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN
-
+        REAL, DIMENSION(Mdims%ndim, Mdims%nphase) :: LOC_U_RHS_U_ILOC
+        REAL, DIMENSION(Mdims%npres, Mdims%cv_nonods) ::SUF_P_BC_ALL_NODS, RVEC_SUM
         REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL, WELL_DENSITY, WELL_VISCOSITY
         REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI, SIGMA_ON_OFF_GI
         TYPE( SCALAR_FIELD ), POINTER :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
         INTEGER :: PHASE_EXCLUDE
-
-        integer, dimension(Mdims%ndim + 1) :: CV_LOC_CORNER, U_LOC_CORNER
-        integer, dimension(Mdims%ndim + 1, Mdims%ndim + 1) :: CV_MID_SIDE, U_MID_SIDE
         LOGICAL, DIMENSION( Mdims%ndim + 1 ) :: PIPE_INDEX_LOGICAL
         REAL, dimension(Mdims%ndim) :: DIRECTION, DIRECTION_NORM
-        real, dimension(Mdims%npres, Mdims%cv_nonods) :: WIC_P_BC_ALL_NODS, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
         REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
         REAL :: S_WATER, S_WATER_MIN, S_WATER_MAX, SIGMA_SWITCH_ON_OFF_PIPE_GI, PIPE_SWITCH
         INTEGER :: ncorner, scvngi, k, &
@@ -1035,7 +1036,6 @@ contains
             l_cvfenx_all_reversed(Mdims%ndim, scvngi, cv_lnloc) , &
             l_ufen_reversed(scvngi, u_lnloc), &
             nmx_all( Mdims%ndim ), X_ALL_CORN(Mdims%ndim, ncorner) )
-
         call fv_1d_quad( scvngi, cv_lnloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
             scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
         call fv_1d_quad( scvngi, u_lnloc, sufen, sufenslx, sufensly, scvfeweigh, &
