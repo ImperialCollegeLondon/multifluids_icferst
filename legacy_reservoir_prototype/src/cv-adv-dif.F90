@@ -4458,8 +4458,8 @@ end if
         !---------------------------------
         ! initialisation and allocation
         !---------------------------------
-        do_not_project = have_option(projection_options//'/do_not_project') .or. is_porous_media
-        cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')
+        do_not_project = have_option(projection_options//'/do_not_project') .or. is_porous_media!<=DISABLED FOR POROUS MEDIA TEMPORARILY, BUT ACTUALLY THE DIFFERENCE IS SMALL
+        cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')  !AND IT SHOULD BE SLIGTHLY FASTER; DISABLED FOR THE PETSC MEMORY PROBLEM
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)
 
         do it=1,size(fempsi)
