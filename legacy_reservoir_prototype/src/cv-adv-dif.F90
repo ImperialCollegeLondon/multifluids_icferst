@@ -372,8 +372,8 @@ contains
         REAL, DIMENSION ( Mdims%nphase, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
                                                             LOC_FEMT2OLD, LOC2_FEMT2OLD
         ! Mdims%nphase Variables:
-        REAL, DIMENSION( : ), allocatable ::  NDOTQ, INCOME, Porous_diff_coef_divdx, Porous_diff_coefold_divdx
-        real, dimension(Mdims%nphase)::CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
+        REAL, DIMENSION( : ), allocatable ::  Porous_diff_coef_divdx, Porous_diff_coefold_divdx
+        real, dimension(Mdims%nphase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
             INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
         real, dimension(Mdims%nphase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
         REAL, DIMENSION( Mdims%ndim,Mdims%ndim,Mdims%nphase ) :: DUMMY_ZERO_NDIM_NDIM_NPHASE
@@ -760,7 +760,7 @@ contains
         ! This logical needs to be expanded...
         DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
         IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
-        ALLOCATE(NDOTQ(Mdims%nphase), INCOME(Mdims%nphase))
+
         ! F and LOC_U:
         ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
         ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
@@ -945,8 +945,6 @@ contains
                 FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
                 TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
                 T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                ! Store the upwind element for interpolation and its weights for
-                ! faster results...
                 i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
                 Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
                 ndgln%x,Mdims%x_nonods,Mdims%ndim, &
