@@ -2257,11 +2257,11 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     if (ExitNonLinearLoop.and..not.Repeat_time_step) then
                         !Modify time step
                         dt = stored_dt
-                        auxR = PID_time_controller()
+                        auxR = abs(PID_time_controller())
                         if (auxR < 1.0 )then!Reduce Ts
-                            dt = max(dt * max(abs(auxR), 1./(1.5*decreaseFactor)), min_ts)
+                            dt = max(dt * max(auxR, 1./(1.5*decreaseFactor)), min_ts)
                         else
-                            dt = dt * min(abs(auxR), 1.5*increaseFactor)
+                            dt = dt * min(auxR, 1.5*increaseFactor)
                         end if
                         auxR = stored_dt
                         call set_option( '/timestepping/timestep', dt )
@@ -2322,7 +2322,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     if (PID_controller) then
                         auxR = PID_time_controller()
                         !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
-                        dt = max(min(dt / decreaseFactor, max( auxR, 0.5*dt / decreaseFactor)), min_ts)
+                        dt = max(min(dt / decreaseFactor, max( auxR*dt, 0.5*dt / decreaseFactor)), min_ts)
                         !If PID_controller then update the status
                         auxR = PID_time_controller(reset=.true.)
                     else
@@ -2400,6 +2400,22 @@ contains
             PID_time_controller = (1./Cn(1))**Ki * (Cn1/Cn(1))**Kp
         else!Not enough information
             PID_time_controller = (1./Cn(1))**1.0
+        end if
+
+        !Check if there is a problem with the numbers, i.e. PID_time_controller is out of bounds due to division by almost zero
+        if (PID_time_controller > 10.) then
+            PID_time_controller = increaseFactor
+            !Reset the controller
+            Cn1 = -1; Cn2 = -1
+        else if (PID_time_controller < -10.) then
+            PID_time_controller = decreaseFactor
+            !Reset the controller
+            Cn1 = -1; Cn2 = -1
+        else if (PID_time_controller/=PID_time_controller) then
+            !If is NaN then do not modify the time-step
+            PID_time_controller = 1.0
+            !Reset the controller
+            Cn1 = -1; Cn2 = -1
         end if
 
         !Store previous values
