@@ -2199,7 +2199,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 select case (variable_selection)
                     case (4)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
-                            .and. max_calculate_mass_delta < calculate_mass_tol ))
+                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                     case default
                         !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                         !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
@@ -2208,13 +2208,11 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                             write(output_message, * ) "Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
                         end if
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
-                            .and. max_calculate_mass_delta < calculate_mass_tol ) )
+                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                 end select
             else
-                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol)
+                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol) .or. its >= NonLinearIteration
             end if
-            !Consider as well reaching the maximum number of non-linear iterations if it has not reached convergence
-            if (.not.ExitNonLinearLoop) ExitNonLinearLoop = ExitNonLinearLoop .or. its >= NonLinearIteration
             !At least two non-linear iterations
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
 
@@ -2237,8 +2235,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ewrite(show_FPI_conv,*) "WARNING: A solver failed to achieve convergence in the current non-linear iteration. Repeating time-level."
                     end if
                 end if
-                !If maximum number of FPI reached and convergence have not been achieved, then repeat time-step
-                if (its >= NonLinearIteration .and..not.ExitNonLinearLoop) Repeat_time_step = .true.
+                !If maximum number of FPI reached, then repeat time-step
+                if (its >= NonLinearIteration) Repeat_time_step = .true.
 
                 !If dt was modified just to match a dump_period then we impose again the previous time-step
                 if (adjusted_ts_to_dump) then
@@ -2293,7 +2291,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     call set_option( '/timestepping/timestep', dt )
                     return
                 end if
-                if (Repeat_time_step) then
+                if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
                     dt = stored_dt!retrieve stored_dt
