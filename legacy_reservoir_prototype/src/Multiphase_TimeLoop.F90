@@ -197,7 +197,7 @@ contains
 
 !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
-
+        real :: old_acctim
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -466,6 +466,7 @@ contains
             timestep = itime
             call get_option( '/timestepping/timestep', dt )
             call get_option( '/timestepping/current_time', acctim )
+            old_acctim = acctim
             acctim = acctim + dt
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
@@ -493,7 +494,7 @@ contains
             its = 1
             !Store backup to be able to repeat a timestep
             if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
-                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
+                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
             ExitNonLinearLoop = .false.
@@ -513,7 +514,7 @@ contains
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 if( solve_force_balance) then
@@ -635,7 +636,7 @@ contains
                 end if
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, adapt_mesh_in_FPI, calculate_mass_delta)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, adapt_mesh_in_FPI, calculate_mass_delta)
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
@@ -673,8 +674,8 @@ contains
                     cycle Loop_Time
                 end if
             end if
-            call set_option( '/timestepping/current_time', acctim )
-            call set_option( '/timestepping/timestep', dt)
+!            call set_option( '/timestepping/current_time', acctim )
+!            call set_option( '/timestepping/timestep', dt)
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
 

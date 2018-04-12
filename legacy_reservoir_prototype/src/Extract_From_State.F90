@@ -1956,13 +1956,14 @@ end subroutine finalise_multistate
 
 
 subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
-    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order, adapt_mesh_in_FPI, calculate_mass_delta)
+    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, adapt_mesh_in_FPI, calculate_mass_delta)
     !This subroutine either store variables before the nonlinear timeloop starts, or checks
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
     Implicit none
     type(state_type), intent(inout) :: packed_state
     real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
+    real, intent(in) :: old_acctim
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
     integer, intent(inout) :: its!not to be modified unless VERY sure
     logical, intent(in) :: nonLinearAdaptTs
@@ -2049,6 +2050,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         call get_option( '/timestepping/timestep', dt )
         stored_dt = dt
     end if
+
     !To ensure that we always create a vtu file at the desired time,
     !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
     if (have_option('/io/dump_period/constant')) then
@@ -2313,19 +2315,15 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         return
                     end if
                     !Decrease time step, reset the time and repeat!
-                    call get_option( '/timestepping/current_time', acctim )
-                    acctim = acctim - dt
-                    call set_option( '/timestepping/current_time', acctim )
-
-                    if (PID_controller) then
-                        auxR = PID_time_controller()
-                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
-                        dt = max(min(dt / decreaseFactor, max( auxR*dt, 0.5*dt / decreaseFactor)), min_ts)
-                        !If PID_controller then update the status
-                        auxR = PID_time_controller(reset=.true.)
-                    else
-                        dt = max(dt / decreaseFactor,min_ts)
-                    end if
+                    call set_option( '/timestepping/current_time', old_acctim )
+!                    if (PID_controller) then
+!                        auxR = PID_time_controller()
+!                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
+!                        dt = max(min(dt / decreaseFactor, max( auxR*dt, 0.5*dt / decreaseFactor)), min_ts)
+!                        !If PID_controller then update the status
+!                        auxR = PID_time_controller(reset=.true.)
+!                    end if
+                    dt = max(dt / decreaseFactor,min_ts)
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
                     if (getprocno() == 1) then
@@ -2418,6 +2416,10 @@ contains
 
         !Store previous values
         Cn2 = Cn1; Cn1 = Cn(1)
+        !Ensure parallel stability
+        call allmin(Cn1); call allmin(Cn2)
+        call allmin(PID_time_controller)
+
     end function PID_time_controller
 
 end subroutine Adaptive_NonLinear
