@@ -2296,7 +2296,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
-                    dt = stored_dt!retrieve stored_dt
+                    call get_option( '/timestepping/timestep', dt )
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
