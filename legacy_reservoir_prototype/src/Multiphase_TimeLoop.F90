@@ -674,8 +674,6 @@ contains
                     cycle Loop_Time
                 end if
             end if
-!            call set_option( '/timestepping/current_time', acctim )
-!            call set_option( '/timestepping/timestep', dt)
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
 

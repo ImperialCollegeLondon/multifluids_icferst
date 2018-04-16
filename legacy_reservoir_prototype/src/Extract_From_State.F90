@@ -2316,6 +2316,13 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     end if
                     !Decrease time step, reset the time and repeat!
                     call set_option( '/timestepping/current_time', old_acctim )
+                    if (PID_controller) auxR = PID_time_controller(reset=.true.)
+!
+!                    call get_option( '/timestepping/current_time', acctim )
+!                     acctim = acctim - dt
+!                    call set_option( '/timestepping/current_time', acctim )
+
+
 !                    if (PID_controller) then
 !                        auxR = PID_time_controller()
 !                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
