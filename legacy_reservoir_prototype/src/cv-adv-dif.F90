@@ -1015,6 +1015,8 @@ contains
         !Allocate derivatives of the shape functions
         call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
         
+        ! The above leads to CV_funs%NX_ALL equaling always to zero, which makes the negative diffusion ZERO (GET_INT_T_DEN_new( LIMF ))
+        ! In order to fix this, we use FE_funs - only when we calculate negative diffusion coefficient (cv_disopt >= 8_. [INTRO_NX_ALL]
         IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
 	        !Calculate the gauss integer numbers
             call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
@@ -1533,6 +1535,7 @@ contains
                                   !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
                                   ! Calculate T and DEN on the CV face at quadrature point GI.
 
+                            ! Only when cvdispot>=8. See/Find [INTRO_NX_ALL] above.
                             IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
                                 call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
                             END IF
@@ -3181,7 +3184,7 @@ end if
                                     DO CV_KLOC = 1, Mdims%cv_nloc
                                         IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
                                             IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
-						RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                             ELSE
                                                 RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*FSdevFuns%NX_ALL( :, CV_KLOC, GI )  )
                                             END IF
