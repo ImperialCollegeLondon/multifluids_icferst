@@ -129,7 +129,8 @@ contains
         logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, ELE_HAS_PIPE, U_P0DG
         logical :: IGNORE_DIAGONAL_PIPES, CALC_SIGMA_PIPE
 
-        real, dimension(Mdims%ndim) :: LOC_CV_RHS_I, T1, T2, TT1, TT2, NN1
+        real, dimension(Mdims%ndim) :: T1, T2, TT1, TT2, NN1
+        real, dimension(Mdims%nphase) :: LOC_CV_RHS_I
         real :: T1TT1, TT1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND, MIN_INV_SIG
         real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, MIN_DIAM
         real, dimension(1) :: R1, R2, RZ
