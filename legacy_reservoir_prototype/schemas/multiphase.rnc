@@ -143,10 +143,6 @@ start =
             element output_scalars_fem {
                empty
             }?,
-            ## Calculates the Darcy velocity and is outputed in the vtu files.
-            element output_darcy_vel {
-               empty
-            }?,
             ## This option is used to calculate the amount of mass flux across a boundary id.
             ## The output is a .csv file containing this information. use this if you want to 
             ## calculate the production.

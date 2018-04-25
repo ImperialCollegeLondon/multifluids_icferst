@@ -178,12 +178,6 @@ interpolated for VTK output.</a:documentation>
           </element>
         </optional>
         <optional>
-          <element name="output_darcy_vel">
-            <a:documentation>Calculates the Darcy velocity and is outputed in the vtu files.</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
           <element name="dump_boundaryflux">
             <a:documentation>This option is used to calculate the amount of mass flux across a boundary id.
 The output is a .csv file containing this information. use this if you want to 

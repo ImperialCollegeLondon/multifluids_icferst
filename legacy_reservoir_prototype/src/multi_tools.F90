@@ -955,7 +955,6 @@ END subroutine RotationMatrix
         end subroutine get_nodes_edges
     end subroutine read_nastran_file
 
-
 end module multi_tools
 
 

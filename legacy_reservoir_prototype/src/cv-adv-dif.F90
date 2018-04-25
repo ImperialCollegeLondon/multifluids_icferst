@@ -1478,12 +1478,12 @@ contains
                                     CAP_DIFF_COEF_DIVDX = 0.
                                     do iphase =1, Mdims%nphase
                                         rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
-                                            CVNORMX_ALL(:, GI)))
+                                            CVNORMX_ALL(:, GI) ))
                                         rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
                                             CVNORMX_ALL(:, GI) ))
-                                    end do!If we are using the non-consistent capillary pressure we want to use the central...
+                                    end do
                                     CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                        * rsum_nodi*(1.-INCOME(:))  +&
+                                        * rsum_nodi*(1.-INCOME(:)) +&
                                         CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
                                 ELSE
                                     CAP_DIFF_COEF_DIVDX( : ) = 0.0
@@ -1492,6 +1492,7 @@ contains
                                 !This is very important as it allows to use the over-relaxation parameter safely
                                 !and reduce the cost of using capillary pressure in several orders of magnitude
                                 CAP_DIFF_COEF_DIVDX(1:Mdims%n_in_pres) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
+
                             ELSE
                                 CAP_DIFF_COEF_DIVDX( : ) = 0.0
                             END IF If_GOT_CAPDIFFUS

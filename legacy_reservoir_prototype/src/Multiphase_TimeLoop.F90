@@ -569,7 +569,7 @@ contains
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
                         !Do not calculate unless necessary, this is not specially efficient...
-                        if(have_option('/io/output_darcy_vel').or. is_multifracture) then
+                        if(is_multifracture) then
                             call get_DarcyVelocity( Mdims, ndgln, packed_state, multi_absorp%PorousMedia )
                         end if
                     end if
@@ -987,6 +987,13 @@ contains
         end subroutine linearise_components
 
         subroutine create_dump_vtu_and_checkpoints()
+
+            if (is_porous_media) then!Calculate Darcy velocity to output in the vtu files
+                !Do not recalculate for "is_multifracture"
+                if(.not.is_multifracture) call get_DarcyVelocity( Mdims, ndgln, packed_state, multi_absorp%PorousMedia )
+            end if
+
+
             !!$ Write outputs (vtu and checkpoint files)
             if (have_option('/io/dump_period_in_timesteps')) then
                 ! dump based on the prescribed period of time steps

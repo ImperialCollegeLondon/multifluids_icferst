@@ -1170,38 +1170,15 @@ contains
 
         !!$ memory allocation for darcy velocity
         if(is_porous_media) then
-            if(have_option('/io/output_darcy_vel') .or. is_multifracture) then
-                ! allocate darcy velocity[in packed_state]
-                call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
-                call zero(ten_field)
-                call insert(packed_state,ten_field,"PackedDarcyVelocity")
-                call deallocate(ten_field)
+            ! allocate darcy velocity[in packed_state]
+            call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
+            call zero(ten_field)
+            call insert(packed_state,ten_field,"PackedDarcyVelocity")
+            call deallocate(ten_field)
 
-                do iphase = 1, n_in_pres
-                    call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
-                end do
-
-!                ! let velocity[in state] point to darcy velocity[packed_state]
-!                tfield=>extract_tensor_field(packed_state,"PackedDarcyVelocity")
-!
-!                do iphase=1,size(state)
-!                    vfield=>extract_vector_field(state(iphase),"Velocity")
-!                    vfield%val=>tfield%val(:,iphase,:)
-!                end do
-
-                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                ! unfinished part -- still working on the field copy for when adaptivity is switched on
-                ! 3 places to be changed: here, Populate_State, Multiphase_TimeLoop
-                !
-                ! add velocity_int[in state] and point it to internal velocity[packed_state]
-                ! tfield=>extract_tensor_field(packed_state,"PackedVelocity")
-                !do iphase=1,size(state)
-                    ! call allocate_and_insert_vector_field('/material_phase['//int2str(size(state)-1)//']/vector_field::Velocity', &
-                    !   state(iphase), field_name = "Velocity_int", parent_mesh = "VelocityMesh", dont_assign_boundary_condition = .true.)
-                    !vfield=>extract_vector_field(state(iphase),"Velocity_bak")
-                    !vfield%val=>tfield%val(:,iphase,:)
-                !end do
-            end if
+            do iphase = 1, n_in_pres
+                call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
+            end do
         end if
 
 
@@ -2207,7 +2184,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
                         if (inf_norm_val * 5. < Infinite_norm_tol) then
                             ts_ref_val = tolerance_between_non_linear/2.
-                            write(output_message, * ) "Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
+                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
                         end if
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
@@ -3047,8 +3024,9 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
 
     ! Local variables
     type(tensor_field), pointer :: darcy_velocity, velocity, saturation
-    real, dimension(:,:), allocatable :: loc_absorp_matrix
-    real, dimension(:), allocatable :: sat_weight_velocity
+    real, dimension(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim) :: loc_absorp_matrix
+    real, dimension(Mdims%ndim) :: sat_weight_velocity
+    real :: auxR
     integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
     ! Initialisation
     darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
@@ -3056,8 +3034,6 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
     call zero(darcy_velocity)
-    allocate(loc_absorp_matrix(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim))
-    allocate(sat_weight_velocity(Mdims%ndim))
 
     ! Calculation
     do ele = 1, Mdims%totele
@@ -3069,14 +3045,6 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
                 !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
                 call get_multi_field_inverse(PorousMedia_absorp, imat, loc_absorp_matrix)
                 do iphase = 1, Mdims%nphase
-                    !Inverse of sigma avoiding inversion
-                    !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = matmul(permeability%val(:,:,ele),&
-                    !    absorption_term%val(imat,ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim))
-                    !All the elements should be equal in the diagonal now
-                    !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = &
-                    !    permeability%val(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim,ele)/&
-                    !    loc_absorp_matrix(ndim*(iphase-1)+1,ndim*(iphase-1)+1)!Inverse
-
                     sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim, &
                         (iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim),velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
@@ -3087,9 +3055,6 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
         end do
     end do
     call halo_update(darcy_velocity)
-    ! Deallocation
-    deallocate(loc_absorp_matrix)
-    deallocate(sat_weight_velocity)
 
 end subroutine get_DarcyVelocity
 
