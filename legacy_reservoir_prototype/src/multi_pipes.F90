@@ -1599,6 +1599,8 @@ contains
 
 
         subroutine find_pipe_seeds(X, nodes, edges, pipe_seeds)
+            !This do not work in parallel
+            !Change for brute force by looking in the well region ids initially
             implicit none
             real, dimension(:,:), intent(in) :: X
             real, dimension(:,:), allocatable, intent(in) :: nodes
@@ -1609,7 +1611,7 @@ contains
             logical :: found
             integer :: i, j, l, count
             integer :: sele, siloc, sinod
-            real, dimension(size(nodes,2)) :: aux_pipe_seeds
+            real, dimension(Mdims%stotel) :: aux_pipe_seeds
             aux_pipe_seeds = -1
             !Initialise tolerancePipe just once per simulation
             if (first_time) then
