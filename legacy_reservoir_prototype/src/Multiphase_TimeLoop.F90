@@ -179,7 +179,7 @@ contains
         integer :: ioutlet
         type (multi_outfluxes) :: outfluxes
         ! Variables used in the CVGalerkin interpolation calculation
-        integer, save :: numberfields = -1
+        integer, save :: numberfields_CVGalerkin_interp = -1
         real :: t_adapt_threshold
         !Variables for FPI acceleration for flooding
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
@@ -206,7 +206,7 @@ contains
 #endif
 
         ! Check wether we are using the CV_Galerkin method
-        numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
+        numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
         ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
         call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold, default = 0.0 )
@@ -798,7 +798,7 @@ contains
         call deallocate_multi_pipe_package(pipes_aux)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
-        if (numberfields > 0) then
+        if (numberfields_CVGalerkin_interp > 0) then
             call MemoryCleanupInterpolation1()     ! Clean up state_old allocations here.
                                                    ! State_new cleanup happens straight after calling the interpolation with flag = 1
                                                    ! inside the adaptivity loop. Probably best to split M2Minterpolation into
@@ -1042,7 +1042,7 @@ contains
 
 
 
-            if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
+            if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
                     call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col , 0)
                 endif
@@ -1177,17 +1177,23 @@ end if
                 !Allocate and calculate the sparsity patterns
                 call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv,&
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
+                call put_CSR_spars_into_packed_state()
+
                 if (is_porous_media) then
                     call get_RockFluidProp(state, packed_state)
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                     !Clean the pipes memory if required
                     if (Mdims%npres > 1) call deallocate_multi_pipe_package(pipes_aux)
+                    !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
+                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
+                    call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)!<= just in case, cap unphysical values if there are still some
                 end if
+                !Remove unphysical peaks from the temperature field
+                if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col)
 
-                call put_CSR_spars_into_packed_state()
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
-                if (numberfields > 0) then
+                if (numberfields_CVGalerkin_interp > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
                         call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, &
                                 Mspars%small_acv%fin, Mspars%small_acv%col, 1)
