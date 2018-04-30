@@ -1039,8 +1039,8 @@ contains
             type( scalar_field ), pointer ::  s_field, s_field2, s_field3
             type( vector_field ), pointer ::  U_x1, U_x2
             integer :: U_x1_stat, idim
-
-
+            real, dimension(2) :: min_max_limits_before
+            type (tensor_field), pointer :: tempfield
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1048,6 +1048,12 @@ contains
                 endif
             endif
 
+            !If has_temperature then we want to ensure than when adapting the mesh the field is between bounds
+            if (has_temperature) then
+                tempfield => extract_tensor_field( packed_state, "PackedTemperature" )
+                min_max_limits_before(1) = minval(tempfield%val); call allmin(min_max_limits_before(1))
+                min_max_limits_before(2) = maxval(tempfield%val); call allmax(min_max_limits_before(2))
+            end if
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
                 if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
@@ -1189,7 +1195,7 @@ end if
                     call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
                     call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)!<= just in case, cap unphysical values if there are still some
                 end if
-
+                if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,min_max_limits = min_max_limits_before)
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields_CVGalerkin_interp > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on

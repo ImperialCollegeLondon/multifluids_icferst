@@ -2203,41 +2203,27 @@ contains
                         end if
                         !add the heat loss contribution due to diffusion to the nodes with pipes defined, even if it is closed
                         !this might be true only for thermal and porous media
-                        if (has_conductivity_pipes) then
-                            !Apply onle where wells are closed  !don't like the maxval here...
-                            if (maxval(pipes_aux%GAMMA_PRES_ABS( :, :, CV_NODI ))<1d-8) then!REMOVE THIS IF LATER ON IT SHOULD DO NOT HARM...
-                                h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
-                                h = max( h, 1.0e-10 )
-                                h_nano = h
+                        if (has_conductivity_pipes) then!NOT SURE IF THIS WILL WORK FOR MUTIPHASE AS IT IS NOW, SINCE THE HEAT IS EXCHANGED THROUGH PHASES
+                            !Apply only where wells are closed, this is a good approximation
+                            !Gamma should be the same for at least the well phases, so we check Mdims%nphase
+                            if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
                                 count = min(1,cv_nodi)
                                 !Rp is the internal radius of the well
                                 rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
-                                rp_NANO = rp!0.14 * h_NANO
-                                DO IPHASE = 1, Mdims%nphase
-                                    DO JPHASE = 1, Mdims%nphase
-                                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                                        JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                                        IF ( IPRES /= JPRES ) THEN
-                                            !we apply Q = (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
-                                            IF ( T_ALL(IPHASE, CV_NODI) >= T_ALL(JPHASE, CV_NODI) ) THEN
-!                                            IF (IPRES < JPRES) THEN
-                                                PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
-                                                    conductivity_pipes%val(count) * 2.0 * PI * h &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                                IF ( GOT_NANO ) PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-                                                     conductivity_pipes%val(count) * 2.0 * PI * h_nano &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
-                                            ELSE
-                                                PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - &
-                                                    conductivity_pipes%val(count) * 2.0 * PI * h &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                                IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - &
-                                                    conductivity_pipes%val(count) * 2.0 * PI * h_nano &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
-                                            END IF
-                                        END IF
-                                    END DO
-                                END DO
+                                h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi )**2.))!height/volume pipe
+                                !we apply Q = 1/WellVolume * (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
+                                auxR = conductivity_pipes%val(count) * 2.0 * PI * h / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
+                                DO IPHASE = 1, Mdims%n_in_pres!Mdims%nphase
+                                    jphase = iphase+Mdims%n_in_pres
+                                    PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
+                                    PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
+                                end do
+                                !Need to apply variation of heat from the other domain as well
+                                DO IPHASE = Mdims%n_in_pres + 1, Mdims%nphase!Mdims%nphase
+                                    jphase = iphase-Mdims%n_in_pres
+                                    PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
+                                    PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
+                                end do
                             end if
                         end if
                     else ! flooding
