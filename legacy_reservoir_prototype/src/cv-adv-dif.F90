@@ -483,10 +483,6 @@ contains
         real, dimension( : , : ), pointer ::Imble_frac
         real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
         real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
-		  type( scalar_field ), pointer :: alphaT
-		  logical :: alphaT_ON
-
-
 
 
 
@@ -735,16 +731,8 @@ contains
         if (use_volume_frac_T2) i_use_volume_frac_t2= 1
 
 
-		  alphaT_ON = .false.
-        IF ( GOT_T2 .OR. THERMAL) then
-			call get_var_from_packed_state( packed_state, &
+        IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
             PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
-
-			if (have_option( '/simulation_type/femdem_thermal/coupling')) then
-					alphaT => extract_scalar_field( packed_state, "DummyT")
-					alphaT_ON = .false.
-			end if
-		 end if
 
         ! FOR packing as well as for detemining which variables to apply interface tracking**********
         !          STORE=.TRUE.
@@ -808,15 +796,7 @@ contains
         ! This logical needs to be expanded...
         DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
         IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
-        !IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations !CJ215 deactivate
-        !    IF(THERMAL .and. Mdims%npres == 1) THEN
-        !        IF( RETRIEVE_SOLID_CTY ) THEN
-        !            ALLOCATE(VOL_FRA_FLUID(Mdims%cv_nonods))
-        !            Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-        !            VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! Mdims%cv_nonods
-        !        ENDIF
-        !    ENDIF
-        !ENDIF
+
         ! F and LOC_U:
         ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
         ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
@@ -2493,11 +2473,6 @@ contains
                             + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                             * R_PHASE(IPHASE)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
                     END DO
-							if (alphaT_ON) then
-		                  DO IPHASE = 1,Mdims%nphase
-		                     call addto(Mmat%petsc_ACV,iphase,iphase, cv_nodi, cv_nodi, alphaT%val(cv_nodi))
-								end do
-							end if
 
 
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
