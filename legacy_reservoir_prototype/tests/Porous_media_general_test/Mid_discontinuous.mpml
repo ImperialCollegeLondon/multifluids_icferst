@@ -73,7 +73,6 @@
     </dump_period_in_timesteps>
     <PropertiesFromFile>substances_properties</PropertiesFromFile>
     <output_mesh name="PressureMesh"/>
-    <output_darcy_vel/>
     <stat/>
   </io>
   <timestepping>

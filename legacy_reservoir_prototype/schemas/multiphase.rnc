@@ -445,7 +445,7 @@ start =
                     ##
                     ## This can be used to control the number of non-linear interations dynamically.
                     ##
-                    ## By default 0.03; Recommended between 0.05 and 0.005
+                    ## By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005
                     element Infinite_norm_tol{
                     real,
                       (

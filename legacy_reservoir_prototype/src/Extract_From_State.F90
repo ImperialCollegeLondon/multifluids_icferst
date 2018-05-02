@@ -1990,7 +1990,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     if (tolerance_between_non_linear<0) return
     !Tolerance for the infinite norm
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',&
-        Infinite_norm_tol, default = 0.03 )
+        Infinite_norm_tol, default = 0.01 )
     !retrieve number of Fixed Point Iterations
     call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.

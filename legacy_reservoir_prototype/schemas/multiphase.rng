@@ -532,7 +532,7 @@ between two consecutive non-linear iterations.
 
 This can be used to control the number of non-linear interations dynamically.
 
-By default 0.03; Recommended between 0.05 and 0.005</a:documentation>
+By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
                     <ref name="real"/>
                     <group>
                       <optional>

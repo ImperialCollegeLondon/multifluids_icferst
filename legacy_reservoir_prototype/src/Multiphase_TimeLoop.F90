@@ -142,7 +142,7 @@ contains
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
@@ -441,6 +441,12 @@ contains
         ! Reading options for bad_element test
         call BadElementTest(Quality_list, 1)
 
+        !Prepapre the pipes
+        if (Mdims%npres > 1) then
+           !Retrieve the elements with pipes and the corresponding coordinates
+           call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
+           call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+        end if
 
 !!$ Time loop
         Loop_Time: do
@@ -448,15 +454,11 @@ contains
             ! Tests bad elements and creates table of angles for model elements
             call BadElementTest(Quality_list, 2)
 
+
+
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
-            !Prepapre the pipes
-            if (Mdims%npres > 1) then
-               !Retrieve the elements with pipes and the corresponding coordinates
-               if (after_adapt .or. first_time_step) call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
-               call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
-            end if
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
             if (adapt_mesh_in_FPI) call get_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI', Courant_tol, default = -1.)
@@ -492,6 +494,7 @@ contains
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
+
             !Store backup to be able to repeat a timestep
             if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
@@ -1190,7 +1193,11 @@ end if
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                     !Clean the pipes memory if required
-                    if (Mdims%npres > 1) call deallocate_multi_pipe_package(pipes_aux)
+                    if (Mdims%npres > 1) then
+                        call deallocate_multi_pipe_package(pipes_aux)
+                        call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
+                        call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+                    end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
                     call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
                     call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)!<= just in case, cap unphysical values if there are still some
