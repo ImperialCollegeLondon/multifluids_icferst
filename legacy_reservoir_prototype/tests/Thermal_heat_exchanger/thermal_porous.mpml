@@ -439,7 +439,7 @@
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="CompressiveAdvection"/>
+                <limiter name="Sweby"/>
               </limit_face_value>
             </face_value>
             <diffusion_scheme name="ElementGradient"/>

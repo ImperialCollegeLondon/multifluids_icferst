@@ -127,9 +127,10 @@ contains
         real, dimension(:,:), allocatable:: cvn_fem, cvn_femlx, cvnn_fem, cvnn_femlx
         real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
         logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, ELE_HAS_PIPE, U_P0DG
-        logical :: IGNORE_DIAGONAL_PIPES, CALC_SIGMA_PIPE
+        logical :: CALC_SIGMA_PIPE
 
-        real, dimension(Mdims%ndim) :: LOC_CV_RHS_I, T1, T2, TT1, TT2, NN1
+        real, dimension(Mdims%ndim) :: T1, T2, TT1, TT2, NN1
+        real, dimension(Mdims%nphase) :: LOC_CV_RHS_I
         real :: T1TT1, TT1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND, MIN_INV_SIG
         real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, MIN_DIAM
         real, dimension(1) :: R1, R2, RZ
@@ -157,7 +158,6 @@ contains
 
         !if allocated then calculate outfluxes
 
-        IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
         NCORNER = Mdims%ndim + 1
         ! default limiting NVD diagram...
@@ -398,9 +398,6 @@ contains
                 DIRECTION = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
                 DX = SQRT( SUM( DIRECTION**2 ) )
                 DIRECTION = DIRECTION / DX
-                IF ( IGNORE_DIAGONAL_PIPES ) THEN
-                    IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(Mdims%ndim))<0.99 ) CYCLE
-                END IF
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 L_CVFENX_ALL(:,:) = 2.0 * cvn_femlx(:,:) / DX
                 L_UFENX_ALL(:,:) = 2.0 * UNLX(:,:) / DX
@@ -927,7 +924,7 @@ contains
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
 
         !Local variables
-        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, U_P0DG
+        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, U_P0DG
         LOGICAL :: CALC_SIGMA_PIPE, SWITCH_PIPES_ON_AND_OFF
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
@@ -963,7 +960,6 @@ contains
 
         ncorner = Mdims%ndim + 1
         PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
-        IGNORE_DIAGONAL_PIPES=option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
         call get_option("/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
@@ -1128,9 +1124,7 @@ contains
                 DIRECTION = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
                 DX = SQRT( SUM( DIRECTION**2 ) )
                 DIRECTION = DIRECTION / DX
-                IF ( IGNORE_DIAGONAL_PIPES ) THEN
-                    IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(Mdims%ndim))<0.99 ) CYCLE
-                END IF
+
                 IF ( PIPE_MIN_DIAM ) THEN
                     MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                     PIPE_DIAM_GI = MIN_DIAM
@@ -1605,6 +1599,8 @@ contains
 
 
         subroutine find_pipe_seeds(X, nodes, edges, pipe_seeds)
+            !This do not work in parallel
+            !Change for brute force by looking in the well region ids initially
             implicit none
             real, dimension(:,:), intent(in) :: X
             real, dimension(:,:), allocatable, intent(in) :: nodes
@@ -1615,7 +1611,7 @@ contains
             logical :: found
             integer :: i, j, l, count
             integer :: sele, siloc, sinod
-            real, dimension(size(nodes,2)) :: aux_pipe_seeds
+            real, dimension(Mdims%stotel) :: aux_pipe_seeds
             aux_pipe_seeds = -1
             !Initialise tolerancePipe just once per simulation
             if (first_time) then

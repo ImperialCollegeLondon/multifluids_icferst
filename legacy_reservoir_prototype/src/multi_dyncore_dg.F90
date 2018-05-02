@@ -5990,6 +5990,7 @@ end if
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
      type( tensor_field ), pointer :: Velocity
 
+
      !Extract variables from packed_state
      call get_var_from_packed_state(packed_state,FEPressure = P,&
          PhaseVolumeFraction = satura, immobile_fraction = immobile_fraction, PressureCoordinate = X_ALL)
@@ -6042,6 +6043,13 @@ end if
              else
                 call get_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
+
+             if (associated(Cap_exponent)) then
+                 Cap_exp = 2.0 !Quadratic exponent
+             else
+                 Cap_exp = 1.!Linear exponent
+             end if
+
              if (Pe_aux<0) then!Automatic set up for Pe
                  !Method based on calculating an entry pressure for a given Peclet number;
                  !Peclet = V * L / Diffusivity; We consider only the entry pressure for the diffusivity
@@ -6050,25 +6058,23 @@ end if
 
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) then
-                    parl_max = maxval(X_ALL)
-                    parl_min = minval(X_ALL)
-                    if (IsParallel()) then
-                        call allmax(parl_max)
-                        call allmin(parl_min)
-                    end if
-                    domain_length = abs(parl_max-parl_min)
+                     parl_max = maxval(X_ALL)
+                     parl_min = minval(X_ALL)
+                     if (IsParallel()) then
+                         call allmax(parl_max)
+                         call allmin(parl_min)
+                     end if
+                     domain_length = abs(parl_max-parl_min)
                  end if
                  Pe_aux = abs(Pe_aux)
-                 !Obtain an approximation of the capillary number to obtain an entry pressure
-                Pe = 0.
+                  !Obtain an approximation of the capillary number to obtain an entry pressure
+                 Pe = 0.
                  do ele = 1, Mdims%totele
                      do u_iloc = 1, Mdims%u_nloc
                          u_inod = ndgln%u(( ELE - 1 ) * Mdims%u_nloc +u_iloc )
                          do cv_iloc = 1, Mdims%cv_nloc
                              cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-!                             Pe(cv_nodi) = (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
                              Pe(cv_nodi) = Pe(cv_nodi) + (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
-
                          end do
                      end do
                  end do
@@ -6077,12 +6083,7 @@ end if
              else
                  Pe = Pe_aux
              end if
-             if (associated(Cap_exponent)) then
-!                 Cap_exp = 1./minval(Cap_exponent(Phase_with_Pc,:))
-                Cap_exp = 2.0 !Quadratic exponent
-             else
-                 Cap_exp = 1.!Linear exponent
-             end if
+
          end if
 
          !Calculate the overrrelaxation parameter, the numbering might be different for Pe and real capillary
@@ -6108,7 +6109,6 @@ end if
                  end do
              end do
          end if
-
      else
          Overrelaxation = 0.0
      end if

@@ -240,7 +240,9 @@ contains
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
+        type(multi_GI_dimensions) :: FE_GIdims
         type(multi_shape_funs), intent(inout) :: CV_funs
+        type(multi_shape_funs) :: FE_funs
         type(multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
@@ -357,6 +359,7 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
         !###Variables for shape function calculation###
         type (multi_dev_shape_funs) :: SdevFuns
+        type (multi_dev_shape_funs) :: FSdevFuns
 
         ! Variables used to calculate CV face values and depend on NFIELD:
         REAL, DIMENSION( :, : ), allocatable :: LOC_F, LOC_FEMF
@@ -1065,6 +1068,19 @@ contains
 
         !Allocate derivatives of the shape functions
         call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
+        
+        ! The above leads to CV_funs%NX_ALL equaling always to zero, which makes the negative diffusion ZERO (GET_INT_T_DEN_new( LIMF ))
+        ! In order to fix this, we use FE_funs - only when we calculate negative diffusion coefficient (cv_disopt >= 8_. [INTRO_NX_ALL]
+        IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
+	        !Calculate the gauss integer numbers
+            call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+
+            !! Compute reference shape functions
+            call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
+            call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+            call allocate_multi_dev_shape_funs(FE_funs%scvfenlx_all, FE_funs%sufenlx_all, FSdevFuns)
+        END IF
+
         !###########################################
         Loop_Elements: DO ELE = 1, Mdims%totele
             if (IsParallel()) then
@@ -1534,12 +1550,12 @@ contains
                                     CAP_DIFF_COEF_DIVDX = 0.
                                     do iphase =1, Mdims%nphase
                                         rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
-                                            CVNORMX_ALL(:, GI)))
+                                            CVNORMX_ALL(:, GI) ))
                                         rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
                                             CVNORMX_ALL(:, GI) ))
-                                    end do!If we are using the non-consistent capillary pressure we want to use the central...
+                                    end do
                                     CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                        * rsum_nodi*(1.-INCOME(:))  +&
+                                        * rsum_nodi*(1.-INCOME(:)) +&
                                         CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
                                 ELSE
                                     CAP_DIFF_COEF_DIVDX( : ) = 0.0
@@ -1548,6 +1564,7 @@ contains
                                 !This is very important as it allows to use the over-relaxation parameter safely
                                 !and reduce the cost of using capillary pressure in several orders of magnitude
                                 CAP_DIFF_COEF_DIVDX(1:Mdims%n_in_pres) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
+
                             ELSE
                                 CAP_DIFF_COEF_DIVDX( : ) = 0.0
                             END IF If_GOT_CAPDIFFUS
@@ -1571,8 +1588,15 @@ contains
                                 CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )  ! T2
                                 CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
                             ENDIF
+
                                   !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
                                   ! Calculate T and DEN on the CV face at quadrature point GI.
+
+                            ! Only when cvdispot>=8. See/Find [INTRO_NX_ALL] above.
+                            IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
+                                call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
+                            END IF
+
                             IF(NFIELD.GT.0) THEN
                                 CALL GET_INT_T_DEN_new( LIMF )
                             ENDIF
@@ -2259,41 +2283,27 @@ contains
                         end if
                         !add the heat loss contribution due to diffusion to the nodes with pipes defined, even if it is closed
                         !this might be true only for thermal and porous media
-                        if (has_conductivity_pipes) then
-                            !Apply onle where wells are closed  !don't like the maxval here...
-                            if (maxval(pipes_aux%GAMMA_PRES_ABS( :, :, CV_NODI ))<1d-8) then!REMOVE THIS IF LATER ON IT SHOULD DO NOT HARM...
-                                h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
-                                h = max( h, 1.0e-10 )
-                                h_nano = h
+                        if (has_conductivity_pipes) then!NOT SURE IF THIS WILL WORK FOR MUTIPHASE AS IT IS NOW, SINCE THE HEAT IS EXCHANGED THROUGH PHASES
+                            !Apply only where wells are closed, this is a good approximation
+                            !Gamma should be the same for at least the well phases, so we check Mdims%nphase
+                            if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
                                 count = min(1,cv_nodi)
                                 !Rp is the internal radius of the well
                                 rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
-                                rp_NANO = rp!0.14 * h_NANO
-                                DO IPHASE = 1, Mdims%nphase
-                                    DO JPHASE = 1, Mdims%nphase
-                                        IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
-                                        JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
-                                        IF ( IPRES /= JPRES ) THEN
-                                            !we apply Q = (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
-                                            IF ( T_ALL(IPHASE, CV_NODI) >= T_ALL(JPHASE, CV_NODI) ) THEN
-!                                            IF (IPRES < JPRES) THEN
-                                                PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
-                                                    conductivity_pipes%val(count) * 2.0 * PI * h &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                                IF ( GOT_NANO ) PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-                                                     conductivity_pipes%val(count) * 2.0 * PI * h_nano &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
-                                            ELSE
-                                                PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - &
-                                                    conductivity_pipes%val(count) * 2.0 * PI * h &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
-                                                IF ( GOT_NANO ) PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - &
-                                                    conductivity_pipes%val(count) * 2.0 * PI * h_nano &
-                                                    / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp_nano )
-                                            END IF
-                                        END IF
-                                    END DO
-                                END DO
+                                h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi )**2.))!height/volume pipe
+                                !we apply Q = 1/WellVolume * (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
+                                auxR = conductivity_pipes%val(count) * 2.0 * PI * h / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
+                                DO IPHASE = 1, Mdims%n_in_pres!Mdims%nphase
+                                    jphase = iphase+Mdims%n_in_pres
+                                    PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
+                                    PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
+                                end do
+                                !Need to apply variation of heat from the other domain as well
+                                DO IPHASE = Mdims%n_in_pres + 1, Mdims%nphase!Mdims%nphase
+                                    jphase = iphase-Mdims%n_in_pres
+                                    PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
+                                    PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
+                                end do
                             end if
                         end if
                     else ! flooding
@@ -3183,7 +3193,7 @@ end if
                                 IF ( DOWNWIND_EXTRAP  ) THEN
                                     DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD)
                                         DO IDIM=1,Mdims%ndim
-                                            FXGI_ALL(IDIM,IFIELD) = dot_product(SdevFuns%NX_ALL(IDIM, : , GI ) , LOC_FEMF(IFIELD,:))
+                                            FXGI_ALL(IDIM,IFIELD) = dot_product(FSdevFuns%NX_ALL(IDIM, : , GI ) , LOC_FEMF(IFIELD,:))
                                         END DO
                                         !FEMFGI(IFIELD) = dot_product( CV_funs%scvfen( : , GI ), LOC_FEMF(IFIELD,:)  )
                                         DO IDIM=1,Mdims%ndim
@@ -3195,7 +3205,7 @@ end if
                                         DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD) ! It should be Mdims%nphase because interface tracking only applied to the 1st set of fields.
                                             RSCALE(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM( UDGI_ALL(:,IFIELD)**2)   ) )
                                             DO IDIM = 1, Mdims%ndim
-                                                VEC_VEL2(IDIM,IFIELD) = SUM( SdevFuns%INV_JAC(IDIM, 1:Mdims%ndim, GI) * UDGI_ALL(1:Mdims%ndim,IFIELD) )
+                                                VEC_VEL2(IDIM,IFIELD) = SUM( FSdevFuns%INV_JAC(IDIM, 1:Mdims%ndim, GI) * UDGI_ALL(1:Mdims%ndim,IFIELD) )
                                             END DO
                                             ! normalize the velocity in here:
                                             ELE_LENGTH_SCALE(IFIELD) = 0.5 * SQRT( SUM(UDGI_ALL(:,IFIELD)**2) ) / PTOLFUN( SUM( VEC_VEL2(:,IFIELD)**2 ) )
@@ -3215,7 +3225,7 @@ end if
                                             A_STAR_F(IFIELD) = 0.0
                                             A_STAR_X_ALL(:,IFIELD) = COEF(IFIELD) * FXGI_ALL(:,IFIELD)
                                             RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC
-                                            VEC_VEL2(1:Mdims%ndim,IFIELD) = matmul( SdevFuns%INV_JAC(:,:,GI), A_STAR_X_ALL(1:Mdims%ndim,IFIELD) )
+                                            VEC_VEL2(1:Mdims%ndim,IFIELD) = matmul( FSdevFuns%INV_JAC(:,:,GI), A_STAR_X_ALL(1:Mdims%ndim,IFIELD) )
                                             ! Needs 0.25 for quadratic elements...Chris
                                             P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
                                             !                                      IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
@@ -3231,25 +3241,25 @@ end if
                                                 case ( 6 )     ! accurate...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case ( 7 )     ! accurate (could be positive or negative)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case ( 8 )     ! accurate (force to be positive)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                     DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
                                                 case ( 9 )     ! accurate (simplified residual squared)...
-                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
+                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  ) 
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case default   ! isotropic diffusion with u magnitide
@@ -3268,9 +3278,9 @@ end if
                                     DO CV_KLOC = 1, Mdims%cv_nloc
                                         IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
                                             IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
-                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
+                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                             ELSE
-                                                RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*SdevFuns%NX_ALL( :, CV_KLOC, GI )  )
+                                                RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*FSdevFuns%NX_ALL( :, CV_KLOC, GI )  )
                                             END IF
                                         ELSE
                                             RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )

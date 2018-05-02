@@ -101,7 +101,6 @@
               <integer_value rank="0">5</integer_value>
             </Aim_num_FPI>
           </PID_controller>
-          <ensure_solvers_convergence/>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>

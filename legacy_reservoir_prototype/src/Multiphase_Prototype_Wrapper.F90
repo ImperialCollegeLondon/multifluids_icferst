@@ -350,8 +350,9 @@ contains
             end if
         end if
 
-        if (is_porous_media .and. (have_option('/io/output_darcy_vel'))) then
+        if (is_porous_media) then
             !Create a copy of the velocity fields to store the DarcyVelocity in it
+            !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
             do i = 1, nphase
                 option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
                 call copy_option(trim(option_path)//"Velocity", trim(option_path)//"DarcyVelocity")
