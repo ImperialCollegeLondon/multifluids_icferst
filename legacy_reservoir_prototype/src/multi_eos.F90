@@ -1526,7 +1526,7 @@ contains
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
       !Local variables
-      type(scalar_field), pointer :: component, sfield
+      type(scalar_field), pointer :: component, sfield, solid_concentration
       type(tensor_field), pointer :: diffusivity, tfield
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
@@ -1596,15 +1596,51 @@ contains
                         end do
                     end do
                 end do
-
-            else
+			else if (have_option( '/simulation_type/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/simulation_type/femdem_thermal/coupling/volume_relaxation') ) then
+					 sfield=> extract_scalar_field( state(1), "SolidConcentration" )
+                !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+                ScalarAdvectionField_Diffusion = 0.
                 do iphase = 1, Mdims%nphase
                     diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-                    do idim = 1, Mdims%ndim
-                        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
+                    do ele = 1, Mdims%totele
+                        ele_nod = min(size(sfield%val), ele)
+                        !t_ele_nod = min(size(tfield%val, 3), ele)
+                         do iloc = 1, Mdims%mat_nloc
+                            mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                            cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                            do idim = 1, Mdims%ndim
+                                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                                    ( 1.0 - sfield%val(ele_nod)) * node_val( diffusivity, idim, idim, mat_inod )
+                            end do
+                        end do
                     end do
                 end do
-            end if
+          else
+				 ScalarAdvectionField_Diffusion = 0.
+             do iphase = 1, Mdims%nphase
+                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+                 do ele = 1, Mdims%totele
+                     ele_nod = min(size(sfield%val), ele)
+                     !t_ele_nod = min(size(tfield%val, 3), ele)
+                      do iloc = 1, Mdims%mat_nloc
+                         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                         do idim = 1, Mdims%ndim
+                             ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                                 node_val( diffusivity, idim, idim, mat_inod )
+                         end do
+                     end do
+                 end do
+             end do
+             !do iphase = 1, Mdims%nphase
+             !    diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+             !    do idim = 1, Mdims%ndim
+             !        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
+             !    end do
+             !end do
+          end if
         end if
       end if
       if ( harmonic_average ) then

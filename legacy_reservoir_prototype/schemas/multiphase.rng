@@ -53,6 +53,42 @@ characters in the simulation name should be avoided.</a:documentation>
             <ref name="comment"/>
           </element>
         </optional>
+        <optional>
+          <element name="femdem_thermal">
+            <ref name="comment"/>
+			<choice>
+				<element name="coupling">
+				<ref name="comment"/>
+		        <choice>
+					<element name="one_way_coupling">
+					 <ref name="comment"/>
+		          	</element>
+					<element name="two_way_coupling">
+					 <ref name="comment"/>              	
+					</element>
+				</choice>
+				<choice>
+					<element name="ring_method">
+	  				</element>
+					<element name="volume_relaxation">
+	  				</element>
+					<element name="ring_and_volume">
+	  				</element>
+					<element name="porous_media">
+	  				</element>
+				</choice>
+				</element>
+				<element name="validation">
+	  			</element>
+			</choice>
+			<element name="femdem_input_file">
+        		<a:documentation>Specify FEMDEM input file</a:documentation>
+        		<attribute name="name">
+          			<data type="string"/>
+        		</attribute>
+      		</element>
+          </element>
+        </optional>
       </element>
       <ref name="geometry"/>
       <element name="io">
@@ -5482,6 +5518,24 @@ Sums up the divergence of each phase's bulk velocity, i.e. \sum{ div(vfrac*u) }<
         </attribute>
         <attribute name="name">
           <value>SolidConcentration</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+            <ref name="velocity_mesh_choice"/>
+            <ref name="diagnostic_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>shell_volume_fraction</value>
         </attribute>
         <choice>
           <element name="diagnostic">

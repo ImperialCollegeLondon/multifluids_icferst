@@ -62,7 +62,7 @@ module multiphase_time_loop
     use spact
     use Compositional_Terms
     use multiphase_EOS
-    use multiphase_fractures
+    use multiphase_fractures_3D
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
@@ -485,6 +485,10 @@ contains
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
                call fracking(packed_state, state,Mdims%nphase)
+            end if
+            if ( have_option( '/simulation_type/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
+               call femdemthermal(packed_state, state,Mdims%nphase)
+					call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######

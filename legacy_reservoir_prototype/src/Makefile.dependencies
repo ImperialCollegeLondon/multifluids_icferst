@@ -68,7 +68,7 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../include/cv_advection.mod ../include/diagnostic_fields_new_multiphase.mod \
    ../include/multi_data_types.mod ../include/multi_interpolation.mod \
    ../include/multi_pipes.mod ../include/multiphase_1d_engine.mod \
-   ../include/multiphase_eos.mod ../include/multiphase_fractures.mod \
+   ../include/multiphase_eos.mod ../include/multiphase_fractures_3d.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
 ../include/cv_advection.mod: cv-adv-dif.o
@@ -150,10 +150,10 @@ multi_eos.o ../include/multiphase_eos.mod: multi_eos.F90 \
    ../../include/vector_tools.mod ../include/copy_outof_state.mod \
    ../include/multi_tools.mod ../include/shape_functions_linear_quadratic.mod
 
-../include/multiphase_fractures.mod: multi_fracture.o
+../include/multiphase_fractures_3d.mod: multi_fracture_3D.o
 	@true
 
-multi_fracture.o ../include/multiphase_fractures.mod: multi_fracture.F90 \
+multi_fracture_3D.o ../include/multiphase_fractures_3d.mod: multi_fracture_3D.F90 \
    ../../include/confdefs.h ../../include/elements.mod ../../include/fdebug.h \
    ../../include/fefields.mod ../../include/fields.mod \
    ../../include/fldebug.mod ../../include/futils.mod \

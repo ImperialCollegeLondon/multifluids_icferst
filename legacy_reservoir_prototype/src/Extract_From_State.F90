@@ -707,7 +707,34 @@ contains
         integer :: nphase,ncomp,ndim,stat,n_in_pres
 
 #ifdef USING_FEMDEM
-        if(have_option('/simulation_type/femdem_fracture')) then
+        if(have_option('/blasting')) then
+            sfield=>extract_scalar_field(state(1),"SolidConcentration" )
+            call insert(packed_state,sfield,"SolidConcentration")
+            call add_new_memory(packed_state,sfield,"OldSolidConcentration")
+			!call add_new_memory(packed_state,sfield,"shell_volume_fraction")
+
+            vfield=>extract_vector_field(state(1),"delta_U")
+            call insert(packed_state,vfield,"delta_U")
+
+            vfield=>extract_vector_field(state(1),"solid_U")
+            call insert(packed_state,vfield,"solid_U")
+
+            vfield=>extract_vector_field(state(1),"f_x")
+            call insert(packed_state,vfield,"f_x")
+
+            tfield=>extract_tensor_field(state(1),"a_xx")
+            call insert(packed_state,tfield,"a_xx")
+
+            tfield=>extract_tensor_field(state(1),"Viscosity" )
+            call insert(packed_state,tfield,"Viscosity")
+
+				sfield=>extract_scalar_field(state(1),"DummyT")
+            call insert(packed_state,sfield,"DummyT")
+
+				sfield=>extract_scalar_field(state(1),"shell_volume_fraction")
+            call insert(packed_state,sfield,"shell_volume_fraction")
+
+        else if(have_option('/simulation_type/femdem_fracture')) then
             if(have_option('/simulation_type/femdem_fracture/oneway_coupling_only')) then!This option do not exist
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
                 call insert(packed_state,sfield,"SolidConcentration")

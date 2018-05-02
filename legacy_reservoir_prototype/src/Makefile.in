@@ -49,7 +49,7 @@ ARFLAGS = @ARFLAGS@
 OBJS_PREDIAGNOSTICS = Extract_From_State.o multi_matrix_operations.o \
 multi_shape_fct_ND.o multi_shape_fct.o multi_sparsity.o multi_eos.o cv-adv-dif.o multi_solvers.o \
 multi_compositional.o multi_dyncore_dg.o \
-multi_fracture.o multi_interpolation.o \
+multi_fracture_3D.o multi_interpolation.o \
 
 OBJS_POSTDIAGNOSTICS = Multiphase_TimeLoop.o Multiphase_Prototype_Wrapper.o
 
