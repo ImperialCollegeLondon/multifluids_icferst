@@ -4860,6 +4860,19 @@ tensor_field_choice =
         }
             )
         }|
+        element tensor_field {
+            attribute name { "FractureMap" },
+            (
+               element diagnostic {
+                  internal_algorithm,
+                  mesh_choice,
+                  diagnostic_tensor_field
+               }|
+               element aliased {
+                  generic_aliased_field
+        }
+            )
+        }|
         ## This is the gradient of the velocity field - calculated in the dynamic core.
         element tensor_field {
             attribute name { "grad_U" },
