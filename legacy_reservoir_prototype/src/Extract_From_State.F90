@@ -746,11 +746,11 @@ contains
                 sfield=>extract_scalar_field(state(1),"Dummy")
                 call insert(packed_state,sfield,"Dummy")
 
-                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
-                call insert(packed_state,vfield,"Darcy_Velocity")
-
                 sfield=>extract_scalar_field(state(1),"TotalFlux")
                 call insert(packed_state,sfield,"TotalFlux")
+
+		tfield=>extract_tensor_field(state(1),"FractureMap")
+            	call insert(packed_state,tfield,"FractureMap")
             else
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
                 call insert(packed_state,sfield,"SolidConcentration")
@@ -765,14 +765,9 @@ contains
                 sfield=>extract_scalar_field(state(1),"TotalFlux")
                 call insert(packed_state,sfield,"TotalFlux")
 
-                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
-                call insert(packed_state,vfield,"Darcy_Velocity" )
+          	tfield=>extract_tensor_field(state(1),"FractureMap")
+            	call insert(packed_state,tfield,"FractureMap")
 
-                vfield=>extract_vector_field(state(1),"delta_U")
-                call insert(packed_state,vfield,"delta_U")
-
-                vfield=>extract_vector_field(state(1),"solid_U")
-                call insert(packed_state,vfield,"solid_U")
             end if
         end if
 #endif
