@@ -925,15 +925,32 @@ print *,  'leaving calculate_absorption'
     perm2_val => extract_scalar_field( state(1), "TotalFlux" )
     allocate(perm2_val%val(totele))
     call zero( perm2_val)
+    FracMap => extract_tensor_field( state(1), "FractureMap" )
+    allocate( FracMap%val(ndim, ndim, totele) ) 
+    call zero( FracMap)
 !!-ao comment - porosity is not scaled due to problems arising in the wall
 !               where porosities (rvf) can arise lower than background porosity
     do ele = 1, totele
         if (rvf % val (ele) > 0.0) then
              porosity % val (:,ele) = bg_poro*(1-rvf % val(ele))+ rvf % val (ele) ! calcualtion of effective phi --->  Phi_bg*(1-rvf_ring)+1*(rvf_ring)
         endif
-        if (rvf%val(ele)> 0.0) perm_val % val (ele)=1
-        if ( maxval( permeability % val( :, :, ele ) ) <= bg_perm ) perm_val % val (ele) = 0 !     ! for adaptivity (bound porosity field)
-        perm2_val % val (ele) = maxval( permeability % val( :, :, ele ) ) !        !visualising permeability in 'totalflux'Dummy field
+	! Dummy for adaptivity (bound fracture field)
+        if ((0.5 > rvf%val(ele)) .AND. (rvf%val(ele) > 0.0)) perm_val % val (ele)=rvf%val(ele)
+        if (rvf%val(ele)>= 0.5) perm_val % val (ele)=1
+      	if ( maxval( permeability % val( :, :, ele ) ) < bg_perm ) perm_val % val (ele) = 0 !     
+	
+	!visualising permeability in 'totalflux'Dummy field
+        perm2_val % val (ele) = maxval( permeability % val( :, :, ele ) ) !    
+
+	!-ao FRACTURE MAPING IS DONE HERE
+!	 if (rvf % val (ele) > 0.0 .AND. maxval( permeability % val( :, :, ele ) ) >= bg_perm ) then
+	 if ((rvf % val (ele) > 0.0) .AND. ((permeability % val( 1, 1, ele )+ &
+					   & permeability % val( 2, 2, ele )+ &
+					   & permeability % val( 3, 3, ele )/3) > bg_perm) ) then
+		FracMap%val(1,1,ele)=1;
+		FracMap%val(2,2,ele)=1;
+		FracMap%val(3,3,ele)=1;
+        endif
     end do
 
     call bound_volume_fraction( vf%val )
@@ -941,17 +958,7 @@ print *,  'leaving calculate_absorption'
 
     ! deallocate
     deallocate( perm)
-!    call deallocate( field_fl_p22 )
-!    call deallocate( field_fl_p21 )
-!    call deallocate( field_fl_p12 )
-!    call deallocate( field_fl_p11 )
-!    call deallocate( field_fl_p13 )
-!    call deallocate( field_fl_p23 )
-!    call deallocate( field_fl_p33 )
-!    call deallocate( field_fl_p31 )
-!    call deallocate( field_fl_p32 )
 
-!return
     call deallocate( rvf )
     call deallocate( alg_ext )
     call deallocate( alg_fl )
