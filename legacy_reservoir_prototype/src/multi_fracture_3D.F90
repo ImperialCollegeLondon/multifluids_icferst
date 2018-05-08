@@ -944,9 +944,9 @@ print *,  'leaving calculate_absorption'
 
 	!-ao FRACTURE MAPING IS DONE HERE
 !	 if (rvf % val (ele) > 0.0 .AND. maxval( permeability % val( :, :, ele ) ) >= bg_perm ) then
-	 if ((rvf % val (ele) > 0.0) .AND. ((permeability % val( 1, 1, ele )+ &
+	 if ((rvf % val (ele) > 0.0) .AND. (((permeability % val( 1, 1, ele )+ &
 					   & permeability % val( 2, 2, ele )+ &
-					   & permeability % val( 3, 3, ele )/3) > bg_perm) ) then
+					   & permeability % val( 3, 3, ele ))/3) > bg_perm) ) then
 		FracMap%val(1,1,ele)=1;
 		FracMap%val(2,2,ele)=1;
 		FracMap%val(3,3,ele)=1;
