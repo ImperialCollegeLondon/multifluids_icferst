@@ -727,7 +727,7 @@ print *,  'leaving calculate_absorption'
         type(vector_field):: fl_positions2
 
     type( vector_field ), pointer :: fl_positions, dealloc, porosity
-    type( tensor_field ), pointer :: permeability, perm_state
+    type( tensor_field ), pointer :: permeability, perm_state, FracMap
         type( scalar_field ), pointer :: vf , poro_state, dum, perm_val, perm2_val
     real, dimension( :, :, : ), allocatable :: perm
 
