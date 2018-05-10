@@ -523,11 +523,13 @@ contains
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
         nsweep = 50!Increase drastically the number of sweeps
-        !Relax tolerance
-        dotop = dotop * 2.
         !Disable all techniques but the very basics
         mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
-        if (second_try) mshopt(1) = .false.! <= Leave only r-adaptivity
+        if (second_try) then
+			mshopt(1) = .false.! <= Leave only r-adaptivity
+			!Relax tolerance
+			dotop = dotop * 2.
+		end if
         !Set this to true just in case we have to repeat one second time
         second_try = .true.
     else
