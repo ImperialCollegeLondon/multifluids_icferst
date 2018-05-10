@@ -121,7 +121,6 @@ contains
       call incref(stripped_positions)
       call incref(stripped_metric)
     end if
-    STOP 27
     select case(stripped_positions%dim)
       case(1)
         call adapt_mesh_1d(stripped_positions, stripped_metric, new_positions, &
