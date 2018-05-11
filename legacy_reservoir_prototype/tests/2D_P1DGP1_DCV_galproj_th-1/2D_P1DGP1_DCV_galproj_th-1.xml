@@ -4,7 +4,7 @@
   <owner userid="lv216"/>
   <tags>components mpml tbc inertia</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>python ./check_cwc.py</command_line>
+    <command_line>python ./check_cwc.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

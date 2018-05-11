@@ -12,6 +12,7 @@ import fluidity_tools
 
 TOLERANCE_H=0.01
 TOLERANCE_P=100
+plotting=False
 
 # first extract the water gauge data from the vtus
 def get_water_depths(filelist, xarray, delta):
@@ -69,17 +70,19 @@ P_check=True
 
 # first the water gauges
 for x in range(len(xarray)):
-  pylab.figure(x)
-  pylab.title(warray[x]+" water gauge at "+str(xarray[x])+"m.")
-  pylab.xlabel('Time (s)')
-  pylab.ylabel('Water Depth (m)')
-  if((warray[x]=="H1") or (warray[x]=="H2") or (warray[x]=="H3")):
-    experiment = numpy.load(warray[x]+".npy")
-    pylab.plot(experiment[:,1], experiment[:,2], marker = 'o', markerfacecolor='white', markersize=6, markeredgecolor='black', linestyle="None")
-  pylab.plot(time, results[:,2+x], color='black', linestyle="dashed")
-  pylab.axis([0.0, 1.0, 0.0, 0.75])
-  pylab.legend(("Experiment", "Model"), loc="upper left")
-  pylab.savefig("water_gauge_"+warray[x]+".png")
+  experiment = numpy.load(warray[x]+".npy")
+
+  if plotting==True:
+	  
+	  pylab.figure(x)
+	  pylab.title(warray[x]+" water gauge at "+str(xarray[x])+"m.")
+	  pylab.xlabel('Time (s)')
+	  pylab.ylabel('Water Depth (m)')
+	  pylab.plot(experiment[:,1], experiment[:,2], marker = 'o', markerfacecolor='white', markersize=6, markeredgecolor='black', linestyle="None")
+	  pylab.plot(time, results[:,2+x], color='black', linestyle="dashed")
+	  pylab.axis([0.0, 1.0, 0.0, 0.75])
+	  pylab.legend(("Experiment", "Model"), loc="upper left")
+	  pylab.savefig("water_gauge_"+warray[x]+".png")
 
   print str(warray[x]),"TOL=",TOLERANCE_H,", ERROR=",abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))
   H_check=abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))<TOLERANCE_H
@@ -95,10 +98,7 @@ results = fluidity_tools.stat_parser("cwc.detectors")
 time = results["ElapsedTime"]["value"]
 
 for p in range(len(parray)):
-  pylab.figure(p+len(xarray))
-  pylab.title(parray[p]+' pressure gauge.')
-  pylab.xlabel('Time (s)')
-  pylab.ylabel('Pressure (Pa)')
+	
   data_o = results["phase1"]["Pressure"][parray[p]]
   if "Ph" in results["phase1"]:
       data_o+=results["phase1"]["Ph"][parray[p]]
@@ -115,13 +115,18 @@ for p in range(len(parray)):
       i2=list(experiment.item(0)["ElapsedTime"]["value"]).index(round(i,2))
       data_o2.append(data_o[io2])
       data_2.append(data[i2])
-
-  pylab.plot(ts, data_2, marker = 'o', markerfacecolor='white', markersize=6, markeredgecolor='black', linestyle="None")
-  pylab.plot(ts, data_o2, color='black', linestyle="dashed")
-  pylab.axis([0.0, 1.0, -1000., 10000.])
-  pylab.legend(("Experiment", "Model"), loc="upper left")
-  pylab.savefig("pressure_gauge_"+parray[p]+".png")
-
+      
+  if plotting==True:
+	  pylab.figure(p+len(xarray))
+	  pylab.title(parray[p]+' pressure gauge.')
+	  pylab.xlabel('Time (s)')
+	  pylab.ylabel('Pressure (Pa)')
+	  pylab.plot(ts, data_2, marker = 'o', markerfacecolor='white', markersize=6, markeredgecolor='black', linestyle="None")
+	  pylab.plot(ts, data_o2, color='black', linestyle="dashed")
+	  pylab.axis([0.0, 1.0, -1000., 10000.])
+	  pylab.legend(("Experiment", "Model"), loc="upper left")
+	  pylab.savefig("pressure_gauge_"+parray[p]+".png")
+  
   print str(parray[p]),"TOL=",TOLERANCE_P,", ERROR=",abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2)))
   P_check=abs(numpy.std(numpy.array(data_o2)-numpy.array(data_2)))<TOLERANCE_P
   if P_check==False:
