@@ -4,7 +4,7 @@
   <owner userid="lv216"/>
   <tags>components mpml inertia</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>python ./check_cwc_3D.py</command_line>
+    <command_line>python ./check_cwc_3D.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

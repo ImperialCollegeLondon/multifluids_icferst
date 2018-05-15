@@ -11,7 +11,7 @@ import pylab
 import fluidity_tools
 
 TOLERANCE_H=0.01
-TOLERANCE_P=100
+TOLERANCE_P=150
 plotting=False
 
 # first extract the water gauge data from the vtus
