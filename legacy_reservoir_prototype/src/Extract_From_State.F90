@@ -36,6 +36,7 @@ module Copy_Outof_State
     use fields
     use field_options
     use spud
+    use quicksort
     use populate_state_module
     use diagnostic_variables
     use diagnostic_fields
@@ -2043,7 +2044,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
-            calculate_mass_tol, default = 5d-3)
+            calculate_mass_tol, default = 1d-2)
     PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
@@ -2469,6 +2470,26 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     integer :: cv_inod, modified_vals, iphase
     real, parameter :: tol = 1d-5
     real :: tmp ! Variable used for parallel consistency
+    !Functional considering the average of the inf norm of the 1% of the nodes!
+    real, dimension(size(phasevolumefraction,1), size(phasevolumefraction,2)) :: sat_diff
+    integer, dimension(size(phasevolumefraction,2)) :: sorted_list
+    integer :: k, i
+    logical :: Inf_potential = .false.
+
+    if (Inf_potential) then
+        !Considered just a sample of nodes, either the 1% or 1000 nodes
+        !and then do the average of the error of all of those nodes
+        sat_diff = abs(reference_sat - phasevolumefraction)
+        call qsort(sat_diff(1,:), sorted_list)
+        k = min(1000, nint(0.05* size(phasevolumefraction,2) ) )
+        get_Convergence_Functional = 0
+        do i = 1, k
+            get_Convergence_Functional = get_Convergence_Functional + sat_diff(1, sorted_list(size(sorted_list) - i+1))
+        end do
+        get_Convergence_Functional = get_Convergence_Functional/dble(k)
+        return
+    end if
+
 
     modified_vals = 0
     get_Convergence_Functional = 0.0
