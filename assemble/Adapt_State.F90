@@ -121,7 +121,6 @@ contains
       call incref(stripped_positions)
       call incref(stripped_metric)
     end if
-
     select case(stripped_positions%dim)
       case(1)
         call adapt_mesh_1d(stripped_positions, stripped_metric, new_positions, &
@@ -154,7 +153,7 @@ contains
                           !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
                           if (getprocno() == 1) then
                             ewrite(0,*) "##############################################################################################"
-                            ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
+                            ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
                             ewrite(0,*) "##############################################################################################"
                           end if
                           call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
@@ -169,7 +168,7 @@ contains
                           !Restart to original mesh
                           if (getprocno() == 1) then
                             ewrite(0,*) "##############################################################################################"
-                            ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
+                            ewrite(0,*) "WARNING",i,": Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
                             ewrite(0,*) "##############################################################################################"
                           end if
                           if(isparallel()) then

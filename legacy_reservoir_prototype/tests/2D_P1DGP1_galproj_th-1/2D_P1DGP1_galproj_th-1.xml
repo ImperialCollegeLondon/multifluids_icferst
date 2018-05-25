@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>2D_P1DGP1_galproj_th-1</name>
+  <owner userid="lv216"/>
+  <tags>components mpml inertia</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./check_cwc.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="2D_P1DGP1_galproj_th-1" language="python">cwc = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: cwc = True
+
+assert(cwc)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

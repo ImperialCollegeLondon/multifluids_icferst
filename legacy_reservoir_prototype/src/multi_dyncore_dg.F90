@@ -6538,27 +6538,12 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                end do
             end if
 
-            ! solver for pressure ph
-            call set_solver_options( path, &
-                 !ksptype = "cg", &
-                 pctype = "hypre", &
-                 ksptype = "gmres", &
-                 !pctype = "sor", &
-                 !ksptype = "preonly", &
-                 !pctype = "lu", &
-                 rtol = 1.0e-10, &
-                 atol = 0.0, &
-                 max_its = 10000 )
-
-            call add_option( &
-                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
-            call set_option( &
-                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
+            path = "/material_phase[0]/scalar_field::Ph/prognostic"
 
             if ( .not.got_free_surf ) call add_option( &
                  trim( path ) // "/solver/remove_null_space", stat )
-            ph_sol % option_path = path
 
+            ph_sol % option_path = path
 
             call zero(ph_sol) ; call zero_non_owned(rhs)
 
