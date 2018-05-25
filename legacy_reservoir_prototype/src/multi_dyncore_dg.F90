@@ -592,7 +592,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
-             integer, parameter :: Max_sat_its = 9
+             integer, parameter :: Max_sat_its = 5
              real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1

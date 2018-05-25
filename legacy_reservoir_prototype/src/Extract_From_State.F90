@@ -2207,7 +2207,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
                         if (inf_norm_val * 5. < Infinite_norm_tol) then
                             ts_ref_val = tolerance_between_non_linear/2.
-                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
+!                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
                         end if
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
