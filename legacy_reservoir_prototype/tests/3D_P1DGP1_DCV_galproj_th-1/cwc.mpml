@@ -213,16 +213,9 @@
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
-            <python>
-              <string_value lines="20" type="code" language="python">def val(X, t):
-  from math import pi, sqrt, tanh, sin
-  val=0.
-  h=1.0
-  h1=1.0
-  if (X[2]&gt;0): val=1.125 * 9.8 * (h1 - X[2])
-  else: val=1.125*9.8*h1+1000.0*9.8*(0-X[2])
-  return val</string_value>
-            </python>
+            <constant>
+              <real_value rank="0">0</real_value>
+            </constant>
           </type>
         </boundary_conditions>
         <boundary_conditions name="top_Ph">
@@ -874,7 +867,7 @@
             <real_value rank="0">1.0e-10</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">0</integer_value>
+            <integer_value rank="0">10000</integer_value>
           </max_iterations>
           <ignore_all_solver_failures/>
           <diagnostics>
