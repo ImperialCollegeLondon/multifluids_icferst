@@ -1621,7 +1621,7 @@ contains
              do iphase = 1, Mdims%nphase
                  diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
                  do ele = 1, Mdims%totele
-                     ele_nod = min(size(sfield%val), ele)
+!                     ele_nod = min(size(sfield%val), ele)
                      !t_ele_nod = min(size(tfield%val, 3), ele)
                       do iloc = 1, Mdims%mat_nloc
                          mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
@@ -1750,7 +1750,15 @@ contains
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         mat_nod = mat_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+                        !!-PY: changed it for the index problem
+                        !!t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+
+                        if ( have_option( '/blasting' ) ) then
+                           t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
+                        else
+                           t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+                        end if
+
                      end do
                   end do
                end do

@@ -838,7 +838,7 @@ contains
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/simulation_type/femdem_fracture' )
         !Flag to set up blasting
-        is_blasting = have_option( '/simulation_type/blasting' )
+        is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         !Check if it is P0DGP1
