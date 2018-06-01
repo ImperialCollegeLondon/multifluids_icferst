@@ -488,10 +488,12 @@ contains
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
                call fracking(packed_state, state,Mdims%nphase)
-            end if
-            if ( have_option( '/simulation_type/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
-               call femdemthermal(packed_state, state,Mdims%nphase)
-					call update_blasting_memory( packed_state, state, timestep )
+            elseif ( have_option( '/blasting') ) then
+               call blasting( packed_state, Mdims%nphase )
+               call update_blasting_memory( packed_state, state, timestep )
+!            elseif (have_option( '/simulation_type/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
+ !              call femdemthermal(packed_state, state,Mdims%nphase)
+!			   call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######

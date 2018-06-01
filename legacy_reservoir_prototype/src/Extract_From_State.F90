@@ -729,14 +729,14 @@ contains
             tfield=>extract_tensor_field(state(1),"Viscosity" )
             call insert(packed_state,tfield,"Viscosity")
 
-				sfield=>extract_scalar_field(state(1),"DummyT")
-            call insert(packed_state,sfield,"DummyT")
+!				sfield=>extract_scalar_field(state(1),"DummyT")
+ !           call insert(packed_state,sfield,"DummyT")
 
-				sfield=>extract_scalar_field(state(1),"shell_volume_fraction")
-            call insert(packed_state,sfield,"shell_volume_fraction")
+!				sfield=>extract_scalar_field(state(1),"shell_volume_fraction")
+ !           call insert(packed_state,sfield,"shell_volume_fraction")
 
         else if(have_option('/simulation_type/femdem_fracture')) then
-            if(have_option('/simulation_type/femdem_fracture/oneway_coupling_only')) then!This option do not exist
+            if(have_option('/femdem_fracture/oneway_coupling_only')) then!This option do not exist
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
                 call insert(packed_state,sfield,"SolidConcentration")
                 call add_new_memory(packed_state,sfield,"OldSolidConcentration")
@@ -747,10 +747,13 @@ contains
                 sfield=>extract_scalar_field(state(1),"Dummy")
                 call insert(packed_state,sfield,"Dummy")
 
+!                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
+!                call insert(packed_state,vfield,"Darcy_Velocity")
+
                 sfield=>extract_scalar_field(state(1),"TotalFlux")
                 call insert(packed_state,sfield,"TotalFlux")
 
-		tfield=>extract_tensor_field(state(1),"FractureMap")
+		       tfield=>extract_tensor_field(state(1),"FractureMap")
             	call insert(packed_state,tfield,"FractureMap")
             else
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
@@ -769,6 +772,11 @@ contains
           	tfield=>extract_tensor_field(state(1),"FractureMap")
             	call insert(packed_state,tfield,"FractureMap")
 
+  !              vfield=>extract_vector_field(state(1),"delta_U")
+  !              call insert(packed_state,vfield,"delta_U")
+
+  !              vfield=>extract_vector_field(state(1),"solid_U")
+  !              call insert(packed_state,vfield,"solid_U")
             end if
         end if
 #endif

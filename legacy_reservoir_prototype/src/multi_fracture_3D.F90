@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!
+!    
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -54,8 +54,9 @@ module multiphase_fractures_3D
   interface
      subroutine y3d_allocate_femdem( string, &
           &     nodes_r, elements_r, edges_r, &
-          &     nodes_v, elements_v, edges_v )
+          &     nodes_v, elements_v, edges_v, iflag )
        character( len = * ), intent( in ) :: string
+       integer, dimension( * ), intent( in ):: iflag
        integer, intent( out ) :: nodes_r, elements_r, edges_r, &
             &                    nodes_v, elements_v, edges_v
      end subroutine y3d_allocate_femdem
@@ -77,15 +78,12 @@ module multiphase_fractures_3D
 
 ! Subroutine for coupling with viscosity (drag force, slip velocity, viscosity)
   interface
-     subroutine y3dfemdem( string, flag_thm, dt, T_r, T_v, S_c, porosity, p, uf_r, vf_r, wf_r, uf_v, vf_v, wf_v, du_s, dv_s, dw_s, u_s, v_s, w_s, &
+     subroutine y3dfemdem( string, dt, p, uf_r, vf_r, wf_r, uf_v, vf_v, wf_v, du_s, dv_s, dw_s, u_s, v_s, w_s, &
          mu_f, f_x, f_y, f_z, usl, vsl, wsl,a_xx, a_xy, a_yy, a_xz, a_yz, a_zz, p_v )
        character( len = * ), intent( in ) :: string
-	   integer :: flag_thm
        real, intent( in ) :: dt
-	   real, dimension( * ), intent( inout ) :: T_r, T_v, S_c, porosity
        real, dimension( * ), intent( in ) :: p, uf_r, vf_r, uf_v, wf_r, vf_v, wf_v,mu_f, p_v
        real, dimension( * ), intent( out ) :: du_s, dv_s, dw_s, u_s, v_s, w_s, f_x, f_y, f_z, usl, vsl,wsl, a_xx, a_xy, a_yy, a_xz, a_yz, a_zz
-	   
      end subroutine y3dfemdem
   end interface
 #endif
@@ -101,27 +99,31 @@ module multiphase_fractures_3D
 !  end interface
 !#endif
 
+
+
   type( vector_field ), save :: positions_r, positions_v, positions_vc
     type( tensor_field ), save :: permeability_r
   character( len = FIELD_NAME_LEN ), save :: femdem_mesh_name
   integer, save :: ndim
 
   private
-  public :: fracking, blasting, update_blasting_memory, femdemthermal
+  public :: fracking, blasting, update_blasting_memory
 
 contains
+
+
 !!----------------------------- Py BLASTING -----------------------------------------------------
-    subroutine blasting( packed_state, nphase )
+  subroutine blasting( packed_state, nphase )
 
     implicit none
 
     integer, intent( in ) :: nphase
     type( state_type ), intent( in ) :: packed_state
 
-    real, dimension( : ), allocatable :: T_r, T_v, S_c, p_r, muf_r, porosity, p_v
+    real, dimension( : ), allocatable :: p_r, muf_r, p_v
     real, dimension( :, : ), allocatable :: uf_r, uf_v, du_s, u_s, f ,u
     real, dimension( :, :, : ), allocatable :: a
-    integer :: r_nonods, v_nonods, flag_thm
+    integer :: r_nonods, v_nonods
     real :: dt
 
 print *,  'inside blasting'
@@ -133,31 +135,32 @@ print *,  'inside blasting: finish initialise femdem'
     r_nonods = node_count( positions_r )
     v_nonods = node_count( positions_v )
 
-
+   
  print *, 'r_nonods:  ', r_nonods
  print *, 'v_nonods:  ', v_nonods
 
-		allocate( T_r( r_nonods ), T_v( v_nonods ), S_c( r_nonods ), porosity ( v_nonods), p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
-				f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
-				uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods), p_v(v_nonods))
-
-		T_r = 0.0; T_v=0.0; S_c=0.0; p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0; porosity = 0.0 ; p_v=0.0
- ;
+    allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
+               f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
+               uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ), p_v(v_nonods) )
+             
+  
+print *,  'inside blasting: finish allocate'
+    p_r=0.0 ; uf_r=0.0 ; muf_r=0.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0; p_v=0.0;
+  
 print *,  'inside blasting: in interpolate_fields_out_r'
 
-    !call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
+    call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
 
 print *,  'inside blasting: in interpolate_fields_out_v'
 
-    !call interpolate_fields_out_v( packed_state, nphase, uf_v )
+    call interpolate_fields_out_v( packed_state, nphase, uf_v )
     call get_option( "/timestepping/timestep", dt )
 
-				call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), flag_thm, dt, T_r, T_v, S_c, porosity, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
-					uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
-					u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
-					muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
-					a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ),  p_v)
-
+    call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
+                     uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), & 
+                     u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
+                     muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
+                     a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ), p_v)
 print *,  'ready to interpolate_fields_in_v'
 
     call interpolate_fields_in_v( packed_state, du_s, u_s )
@@ -168,21 +171,22 @@ print *,  'ready to interpolate_fields_in_r_out------'
     ! deallocate
     call deallocate_femdem
 
-
-    deallocate( T_r, T_v, p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u)
+    deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v)
 	print *,  'finish deallocate_femdem------'
 
     return
   end subroutine blasting
-!------------------ao---------------hydro-fracture/fracturing subroutine --------------------------------------------------
-    subroutine fracking( packed_state, state, nphase )
 
+    !------------------ao---------------hydro-fracture/fracturing subroutine --------------------------------------------------
+
+  subroutine fracking( packed_state, state, nphase )
+  !!-ao add a flag for femdem? 1=fracking; 2=blasting; 3=thermal?
     implicit none
     integer, intent( in ) :: nphase
-        real, dimension( : ), allocatable :: T_r, T_v, S_c, p_r, muf_r, porosity, p_v
+        real, dimension( : ), allocatable :: p_r, muf_r, p_v
         real, dimension( :, : ), allocatable :: uf_r, uf_v, du_s, u_s, f ,u
         real, dimension( :, :, : ), allocatable :: a
-        integer :: r_nonods, v_nonods, flag_thm
+        integer :: r_nonods, v_nonods
         real :: dt
     type( state_type ), intent( inout ) :: packed_state
     type( state_type ), dimension( : ), intent( inout ) :: state
@@ -190,14 +194,11 @@ print *,  'ready to interpolate_fields_in_r_out------'
 
     ! read in ring and solid volume meshes
     ! and simplify the volume mesh
-
     call initialise_femdem
-
     !!**************************************************************
     if ( have_option( '/femdem_fracture/oneway_coupling_only')) then
         call get_option( '/femdem_fracture/oneway_coupling_only', opt )
-        !!**************************************************************
-
+    !!**************************************************************
         if (trim( opt ) == "1way" ) then
             !calculate volume-fraction for mapping solid concentration
             call calculate_volume_fraction( packed_state)
@@ -211,20 +212,20 @@ print *,  'ready to interpolate_fields_in_r_out------'
             r_nonods = node_count( positions_r )
             v_nonods = node_count( positions_v )
 
-		allocate( T_r( r_nonods ), T_v( v_nonods ), S_c( r_nonods ), porosity ( v_nonods), p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
-				f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
-				uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods),  p_v(v_nonods))
+            allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
+                f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
+                uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ), p_v(v_nonods))
 
-		T_r = 0.0; T_v=0.0; S_c=0.0; p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0; porosity = 0.0  ;p_v=0.0;
+            p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0; p_v=0.0;
 
             call get_option( "/timestepping/timestep", dt )
             print *, "pressure:", maxval(p_r), minval(p_r) !!-ao
 
-				call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), flag_thm, dt, T_r, T_v, S_c, porosity, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
-					uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
-					u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
-					muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
-					a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ),  p_v)
+            call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
+                uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
+                u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
+                muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
+                a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ), p_v)
 
             !calculate volume-fraction for mapping solid concentration
             call calculate_volume_fraction( packed_state)
@@ -234,7 +235,7 @@ print *,  'ready to interpolate_fields_in_r_out------'
 
             ! deallocate
             call deallocate_femdem
-            deallocate( T_r, T_v, p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v)
+            deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v)
 	        print *,  'finish deallocate_femdem------'
         end if
     else
@@ -242,14 +243,12 @@ print *,  'ready to interpolate_fields_in_r_out------'
         r_nonods = node_count( positions_r )
         v_nonods = node_count( positions_v )
 
-		allocate( T_r( r_nonods ), T_v( v_nonods ), S_c( r_nonods ), porosity ( v_nonods), p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
-				f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
-				uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods), p_v(v_nonods))
+        allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
+            f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
+            uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ), p_v(v_nonods))
+	        p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0;  p_v=0.0;
 
-		T_r = 0.0; T_v=0.0; S_c=0.0; p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0; porosity = 0.0 ;p_v=0.0;
-
-        !           !interpolate presure, velocity and visc from fluid to solid through ring
-
+       !interpolate pressure from fluid to solid through ring
         call interpolate_fields_out_r_p( packed_state, nphase, p_r)
 
         call get_option( "/timestepping/timestep", dt )
@@ -257,13 +256,15 @@ print *,  'ready to interpolate_fields_in_r_out------'
         !interpolate pressure locally in solid to calculate local stresses due to pore fluid pressure
         if ( have_option( '/femdem_fracture/include_pore_pressure')) then !with pore_fluid presure
 
+
             call interpolate_fields_out_v_pf( packed_state, nphase, p_v)
 
-				call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), flag_thm, dt, T_r, T_v, S_c, porosity, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
-					uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
-					u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
-					muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
-					a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ),  p_v)
+
+            call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
+                uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
+                u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
+                muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
+                a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ), p_v)
 
             !calculate volume-fraction for mapping solid concentration
             call calculate_volume_fraction( packed_state)
@@ -271,24 +272,37 @@ print *,  'ready to interpolate_fields_in_r_out------'
             ! calculate porosity and permeability
             call calculate_phi_and_perm( packed_state, state )
 
-                            ! interpolate from solid to fluid through volume mesh
-            !               call interpolate_fields_in_v( packed_state, du_s, u_s )
+            ! interpolate from solid to fluid through volume mesh
+            ! call interpolate_fields_in_v( packed_state, du_s, u_s )
 
-                      ! deallocate
+            ! deallocate
             call deallocate_femdem
-            deallocate( T_r, T_v, p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v)
+
+            deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v)
             print *,  'finish deallocate_femdem------'
 
         else !without pore_fluid pressure
 
-            print *, "-----WARNING: PORE PRESSURE IS NOT INCLUDED!------"
+         print *, "-----WARNING: PORE PRESSURE IS NOT INCLUDED!------"
+	     print *, "FLUIDS 1 -------------------"
+ 	    print *, size(p_r)
+        print *, size(a)
 
-				call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), flag_thm, dt, T_r, T_v, S_c, porosity, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
-					uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
-					u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
-					muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
-					a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ) , p_v)
+        print *, ndim
 
+         call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
+                uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
+                u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
+                muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
+                a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ), p_v)
+
+         print *, "FLUIDS 2 -------------------"
+         print *, size(p_r)
+         print *, size(p_v)
+        print *, size(a)
+
+!        flush(10)
+!        return 0
 
             !calculate volume-fraction for mapping solid concentration
             call calculate_volume_fraction( packed_state)
@@ -296,101 +310,21 @@ print *,  'ready to interpolate_fields_in_r_out------'
             ! calculate porosity and permeability
             call calculate_phi_and_perm( packed_state, state )
 
-             ! deallocate
+            ! deallocate
             call deallocate_femdem
-            deallocate( T_r, T_v, p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v)
+
+            deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, p_v) !problem here with coupling
+
             print *,  'finish deallocate_femdem------'
 
         end if
-
     endif
         !!**************************************************************
-	return
+    return
 end subroutine fracking
-!------------------cj---------------Thermal for femdem --------------------------------------------------
-    subroutine femdemthermal(packed_state, state, nphase )
 
-        implicit none
-		integer, intent( in ) :: nphase
-        real, dimension( : ), allocatable :: T_r, T_v, p_r, muf_r, S_c, porosity, p_v
-        real, dimension( :, : ), allocatable :: uf_r, uf_v, du_s, u_s, f ,u
-        real, dimension( :, :, : ), allocatable :: a
-        integer :: r_nonods, v_nonods, way=0, flag_thm=0
-        real :: dt, acctim
-    	type( state_type ), intent( inout ) :: packed_state
-    	type( state_type ), dimension( : ), intent( inout ) :: state
-		integer, parameter :: out_unit=20
-
-		if(have_option( '/simulation_type/femdem_thermal/coupling/one_way_coupling')) way=1		
-		if(have_option( '/simulation_type/femdem_thermal/coupling/two_way_coupling')) way=2
-		
-		if(have_option( '/simulation_type/femdem_thermal/coupling/volume_relaxation')) flag_thm=1
-		if(have_option( '/simulation_type/femdem_thermal/coupling/ring_method')) flag_thm=2
-		if(have_option( '/simulation_type/femdem_thermal/coupling/ring_and_volume')) flag_thm=3
-		if(have_option( '/simulation_type/femdem_thermal/validation')) flag_thm=4
-		if(have_option( '/simulation_type/femdem_thermal/coupling/porous_media')) flag_thm=5
-		print *,  'Inside femdemthermal'
-		call initialise_femdem
-
-		r_nonods = node_count( positions_r )
-		v_nonods = node_count( positions_v )
-
-		allocate( T_r( r_nonods ), T_v( v_nonods ), S_c( r_nonods ), porosity ( v_nonods), p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
-				f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
-				uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ),  p_v(v_nonods))
-
-		T_r = 0.0; T_v=0.0; S_c=0.0; p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0; porosity = 0.0 ; p_v=0.0
-
-		call get_option( "/timestepping/timestep", dt )
-        call get_option( '/timestepping/current_time', acctim )
-		print *, "FLAG_THM is "
-		print *, flag_thm
-
-        if (abs(acctim-dt)<1.0e-10 .AND. flag_thm == 4) then
-		!if (acctim == dt .AND. flag_thm == 4) then
-			print *,  'VALIDATION TEST CASE'
-			!call calculate_shell_volume_fraction (packed_state)	
-			call calculate_solid_concentration(packed_state, flag_thm)
-		  end if
-		
-		!if (abs(acctim-dt)>=1.0e-10) then
-			if (way==2 .OR. flag_thm==4) then 
-				if (flag_thm==1 .OR. flag_thm==4 .OR. flag_thm==5) call interpolate_fields_out_v_t( packed_state, nphase, T_v, porosity) !VOLUME
-				if (flag_thm==2 .OR. flag_thm==3 .OR. flag_thm==4) call interpolate_fields_out_r_t( packed_state, nphase, T_r) !RING
-			end if 
-
-            call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
-            call interpolate_fields_out_v( packed_state, nphase, uf_v )
-			
-			!if (way==2 .OR. flag_thm==4) then
-				call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), flag_thm, dt, T_r, T_v, S_c, porosity, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
-					uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
-					u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
-					muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
-					a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ),  p_v)
-			!end if
-
-			if (way==1) T_v = 0.0
-			if (way==1) T_r = 0.0
-
-			call interpolate_fields_in_v( packed_state, du_s, u_s )
-    		call interpolate_fields_in_r( packed_state, f, a )
-
-			if (flag_thm==2 .OR. flag_thm==3) call interpolate_fields_in_r_t( packed_state, T_r, S_c, flag_thm)
-			if (flag_thm==1 .OR. flag_thm==3 .OR. flag_thm==5) call interpolate_fields_in_v_t( packed_state, T_v, flag_thm)
-
-
-		!end if
-		! deallocate
-		call deallocate_femdem
-		deallocate(T_r, T_v, p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u, porosity, p_v)
-		print *,  'finish deallocate_femdem------'
-	  
-
-        return
-    end subroutine femdemthermal
-!----------------------------------------------------------------------------------------------------------
-    subroutine initialise_femdem
+  !----------------------------------------------------------------------------------------------------------
+  subroutine initialise_femdem
 
     implicit none
 
@@ -399,7 +333,7 @@ end subroutine fracking
          &     nodes_v, elements_v, edges_v
     integer, dimension( : ), allocatable :: ele1_r, ele2_r, ele3_r,ele4_r, &
          &                                  ele1_v, ele2_v, ele3_v, ele4_v, &
-         &                                  face1_r, face2_r,face3_r, face1_v, face2_v, face3_v
+         &                                  face1_r, face2_r,face3_r, face1_v, face2_v, face3_v,iflag
     real, dimension( : ), allocatable :: x_r, y_r,z_r, x_v, y_v, z_v, p1, p2, p3, p4, p5, p6, p7, p8, p9
     type( quadrature_type ) :: quad
     type( element_type ) :: shape
@@ -408,21 +342,17 @@ end subroutine fracking
     integer :: quad_degree, poly_degree, continuity
     type( mesh_type ) :: mesh_r, mesh_v, mesh_r_p0
 
-	real, dimension( : ), allocatable :: temp_femdem
-
 print *,  'inside initialise_femdem'
 
-    if (have_option('/femdem_fracture') ) then
-    		call get_option( "/femdem_fracture/femdem_file/name", femdem_mesh_name )
-		!!-PY changed it for 3D_fracture_coupling_with_multiphase
-    		femdem_mesh_name = trim( femdem_mesh_name ) // ".Y3D"
-	elseif ( have_option('/blasting') ) then
-	    	call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name )
-	    	femdem_mesh_name = trim( femdem_mesh_name ) // ".Y3D"
-	elseif ( have_option('/simulation_type/femdem_thermal') ) then
-	    	call get_option( "/simulation_type/femdem_thermal/femdem_input_file/name", femdem_mesh_name )
-	    	femdem_mesh_name = trim( femdem_mesh_name ) // ".Y3D"
-	end if
+    if (have_option('/simulation_type/femdem_fracture') ) then
+
+    call get_option( "/femdem_fracture/femdem_file/name", femdem_mesh_name )
+!!-PY changed it for 3D_fracture_coupling_with_multiphase
+    femdem_mesh_name = trim( femdem_mesh_name ) // ".Y3D"
+    elseif ( have_option('/blasting') ) then
+    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name ) 
+    femdem_mesh_name = trim( femdem_mesh_name ) // ".Y3D"
+    end if
 
     call get_option( "/geometry/quadrature/degree", quad_degree )
     call get_option( "/geometry/dimension", ndim )
@@ -435,11 +365,34 @@ print *,  'inside initialise_femdem'
     end if
 
     print *, femdem_mesh_name
+    allocate( iflag( 3 ))
 
+    iflag=0
+!    iflag(2)=0
+!    iflag(3)=0
+
+
+    if (have_option('/simulation_type/femdem_fracture') ) then
+    
+    iflag(2)=1
+    print *, "/simulation_type/femdem_fracture"
+    print *, "iflag"
+
+    print *, iflag(1),iflag(2),iflag(3)
+    elseif (have_option('/simulation_type/inertia_dominated') ) then
+    iflag(1)=1
+    print *, "iflag"
+
+    print *, "/simulation_type/intertia_dominated"
+    print *, iflag(1),iflag(2),iflag(3)
+
+    end if
+    print *,"iflag"
+    print *, iflag(1),iflag(2),iflag(3)
     call y3d_allocate_femdem( trim( femdem_mesh_name ) // char( 0 ), &
-         nodes_r, elements_r, edges_r, nodes_v, elements_v, edges_v )
-
+         nodes_r, elements_r, edges_r, nodes_v, elements_v, edges_v,iflag )
     print *, "nodes_r, elements_r, edges_r, nodes_v, elements_v, edges_v"
+
     print *, nodes_r, elements_r, edges_r, nodes_v, elements_v, edges_v
 
     allocate( ele1_r( elements_r ), ele2_r( elements_r ), ele3_r( elements_r ), ele4_r( elements_r ) )
@@ -523,7 +476,7 @@ print *, "----------------------------"
             (/ ele1_r(i)+1, ele2_r(i)+1, ele3_r(i)+1, ele4_r(i)+1 /)
    end do
 
-
+ 
    allocate( sndglno_r( edges_r * sloc ) ) ; sndglno_r = 0
    allocate( boundary_ids_r( edges_r ) ) ; boundary_ids_r = 666
 
@@ -535,7 +488,8 @@ print *, "----------------------------"
 !! -ao problem here for overlapping ring mesh
     call add_faces( positions_r%mesh, &
          sndgln = sndglno_r, &
-         boundary_ids = boundary_ids_r )
+         boundary_ids = boundary_ids_r, allow_duplicate_internal_facets=.true.)
+
 
     positions_r%dim = ndim
 
@@ -544,7 +498,7 @@ print *, "----------------------------"
 
     ! create the volume mesh
     call allocate( mesh_v, nodes_v, elements_v, shape, name="CoordinateMesh" )
-
+  
     call allocate( positions_v, ndim, mesh_v, name="Coordinate" )
     positions_v%val( 1, : ) = x_v
     positions_v%val( 2, : ) = y_v
@@ -559,7 +513,7 @@ print *, "----------------------------"
 !print *, 'ele1_v(i)+1: ', ele4_v(i)+1
 
     end do
-
+  
     allocate( sndglno_v( edges_v * sloc ) ) ; sndglno_v = 0
 
     allocate( boundary_ids_v( edges_v ) ) ; boundary_ids_v = 666
@@ -568,6 +522,7 @@ print *, "----------------------------"
        sndglno_v( (i-1)*sloc+1 : i*sloc ) = &
             (/ face1_v(i)+1, face2_v(i)+1, face3_v(i)+1 /)
   end do
+
 
     call add_faces( positions_v%mesh, &
          sndgln = sndglno_v, &
@@ -599,13 +554,13 @@ print *, "----------------------------"
 
     call set_all( permeability_r, 1, 1, p1 )
     call set_all( permeability_r, 1, 2, p2 )
-    call set_all( permeability_r, 2, 1, p3 )
-    call set_all( permeability_r, 2, 2, p4 )
-    call set_all( permeability_r, 1, 3, p5 )
+    call set_all( permeability_r, 1, 3, p3 )
+    call set_all( permeability_r, 2, 1, p4 )
+    call set_all( permeability_r, 2, 2, p5 )
     call set_all( permeability_r, 2, 3, p6 )
-    call set_all( permeability_r, 3, 3, p7 )
+    call set_all( permeability_r, 3, 1, p7 )
     call set_all( permeability_r, 3, 2, p8 )
-    call set_all( permeability_r, 3, 1, p9 )
+    call set_all( permeability_r, 3, 3, p9 )
 
     ! deallocate
         call deallocate( mesh_r_p0 )
@@ -614,14 +569,16 @@ print *, "----------------------------"
 
     deallocate( ele1_r, ele2_r, ele3_r, ele4_r, face1_r, face2_r,face3_r, &
          &      ele1_v, ele2_v, ele3_v, ele4_v, face1_v, face2_v,face3_v, &
-        &      x_r, y_r, z_r, x_v, y_v, z_v, p1, p2, p3, p4, p5, p6, p7, p8, p9 )
+        &      x_r, y_r, z_r, x_v, y_v, z_v, p1, p2, p3, p4, p5, p6, p7, p8, p9, iflag )
 
     ewrite(3,*) "leaving initialise_femdem"
 
     return
   end subroutine initialise_femdem
+
   !----------------------------------------------------------------------------------------------------------
-    subroutine calculate_volume_fraction( packed_state )
+
+  subroutine calculate_volume_fraction( packed_state )
 
     implicit none
 
@@ -670,8 +627,10 @@ print *, "----------------------------"
 
     return
   end subroutine calculate_volume_fraction
+
   !----------------------------------------------------------------------------------------------------------
-    subroutine calculate_absorption( totele, cv_nloc, cv_nonods, &
+
+  subroutine calculate_absorption( totele, cv_nloc, cv_nonods, &
        &                           nphase, cv_ndgln, rho, vf, dt, absorption )
 
     implicit none
@@ -712,8 +671,11 @@ print *,  'leaving calculate_absorption'
 
     return
   end subroutine calculate_absorption
+
   !----------------------------------------------------------------------------------------------------------
-    subroutine calculate_phi_and_perm( packed_state, state )
+
+
+  subroutine calculate_phi_and_perm( packed_state, state )
 
     implicit none
 
@@ -726,9 +688,9 @@ print *,  'leaving calculate_absorption'
     type( scalar_field ) :: rvf
         type(vector_field):: fl_positions2
 
-    type( vector_field ), pointer :: fl_positions, dealloc, porosity
+    type( vector_field ), pointer :: fl_positions,  porosity
     type( tensor_field ), pointer :: permeability, perm_state, FracMap
-        type( scalar_field ), pointer :: vf , poro_state, dum, perm_val, perm2_val
+        type( scalar_field ), pointer :: vf , poro_state, perm_val, perm2_val
     real, dimension( :, :, : ), allocatable :: perm
 
 
@@ -750,7 +712,7 @@ print *,  'leaving calculate_absorption'
     call insert( alg_ext, positions_r, "Coordinate" )
 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-        fl_positions => extract_vector_field( packed_state, "Coordinate" )
+    fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
     call insert( alg_fl, fl_mesh, "Mesh" )
     call insert( alg_fl, fl_positions, "Coordinate" )
@@ -772,82 +734,85 @@ print *,  'leaving calculate_absorption'
 
     ewrite(3,*) "...generating fluids state"
 
+
     ! this is the permeability on the fluidity mesh
     call allocate( field_fl_p11, p0_fl_mesh, "Permeability11" )
     call zero( field_fl_p11 )
     call insert( alg_fl, field_fl_p11, "Permeability11" )
-    field_fl_p11 % option_path = path
+   ! field_fl_p11 % option_path = path
 
-    call allocate( field_fl_p12, p0_fl_mesh, "Permeability12" )
-    call zero( field_fl_p12 )
-    call insert( alg_fl, field_fl_p12, "Permeability12" )
-    field_fl_p12 % option_path = path
-
-    call allocate( field_fl_p21, p0_fl_mesh, "Permeability21" )
-    call zero( field_fl_p21 )
-    call insert( alg_fl, field_fl_p21, "Permeability21" )
-    field_fl_p21 % option_path = path
+!    call allocate( field_fl_p12, p0_fl_mesh, "Permeability12" )
+!    call zero( field_fl_p12 )
+!    call insert( alg_fl, field_fl_p12, "Permeability12" )
+!   ! field_fl_p12 % option_path = path
+!
+!    call allocate( field_fl_p21, p0_fl_mesh, "Permeability21" )
+!    call zero( field_fl_p21 )
+!    call insert( alg_fl, field_fl_p21, "Permeability21" )
+   ! field_fl_p21 % option_path = path
 
     call allocate( field_fl_p22, p0_fl_mesh, "Permeability22" )
     call zero( field_fl_p22 )
     call insert( alg_fl, field_fl_p22, "Permeability22" )
-    field_fl_p22 % option_path = path
-
-   call allocate( field_fl_p13, p0_fl_mesh, "Permeability13" )
-    call zero( field_fl_p13 )
-    call insert( alg_fl, field_fl_p13, "Permeability13" )
-    field_fl_p13 % option_path = path
-
-    call allocate( field_fl_p23, p0_fl_mesh, "Permeability23" )
-    call zero( field_fl_p23 )
-    call insert( alg_fl, field_fl_p23, "Permeability23" )
-    field_fl_p23 % option_path = path
-
+    !field_fl_p22 % option_path = path
+!
+!!   call allocate( field_fl_p13, p0_fl_mesh, "Permeability13" )
+!!    call zero( field_fl_p13 )
+!!    call insert( alg_fl, field_fl_p13, "Permeability13" )
+!!    !field_fl_p13 % option_path = path
+!!
+!!    call allocate( field_fl_p23, p0_fl_mesh, "Permeability23" )
+!!    call zero( field_fl_p23 )
+!!    call insert( alg_fl, field_fl_p23, "Permeability23" )
+!    !field_fl_p23 % option_path = path
+!
     call allocate( field_fl_p33, p0_fl_mesh, "Permeability33" )
     call zero( field_fl_p33 )
     call insert( alg_fl, field_fl_p33, "Permeability33" )
-    field_fl_p33 % option_path = path
+    !field_fl_p33 % option_path = path
 
-    call allocate( field_fl_p32, p0_fl_mesh, "Permeability32" )
-    call zero( field_fl_p32 )
-    call insert( alg_fl, field_fl_p32, "Permeability32" )
-    field_fl_p32 % option_path = path
-
-    call allocate( field_fl_p31, p0_fl_mesh, "Permeability31" )
-    call zero( field_fl_p31 )
-    call insert( alg_fl, field_fl_p31, "Permeability31" )
-    field_fl_p31 % option_path = path
-
+!    call allocate( field_fl_p32, p0_fl_mesh, "Permeability32" )
+!    call zero( field_fl_p32 )
+!    call insert( alg_fl, field_fl_p32, "Permeability32" )
+!    !field_fl_p32 % option_path = path
+!
+!    call allocate( field_fl_p31, p0_fl_mesh, "Permeability31" )
+!    call zero( field_fl_p31 )
+!    call insert( alg_fl, field_fl_p31, "Permeability31" )
+    !field_fl_p31 % option_path = path
 
     ewrite(3,*) "...generating femdem/ring state"
+    ewrite(3,*) "...interpolating"
 
     ! this is the permeability on the solid mesh
     field_ext_p11 = extract_scalar_field( permeability_r, 1, 1 )
-     call insert( alg_ext, field_ext_p11, "Permeability11" )
+    call insert( alg_ext, field_ext_p11, "Permeability11" )
 
-     field_ext_p12 = extract_scalar_field( permeability_r, 1, 2 )
-     call insert( alg_ext, field_ext_p12, "Permeability12" )
+!     field_ext_p12 = extract_scalar_field( permeability_r, 1, 2 )
+!     call insert( alg_ext, field_ext_p12, "Permeability12" )
 
-     field_ext_p21 = extract_scalar_field( permeability_r, 2, 1 )
-     call insert( alg_ext, field_ext_p21, "Permeability21" )
+!     field_ext_p21 = extract_scalar_field( permeability_r, 2, 1 )
+!     call insert( alg_ext, field_ext_p21, "Permeability21" )
 
      field_ext_p22 = extract_scalar_field( permeability_r, 2, 2 )
      call insert( alg_ext, field_ext_p22, "Permeability22" )
+!
+!!    field_ext_p13 = extract_scalar_field( permeability_r, 1, 3 )
+!!    call insert( alg_ext, field_ext_p13, "Permeability13" )
+!
+!!     field_ext_p23 = extract_scalar_field( permeability_r, 2, 3 )
+!!     call insert( alg_ext, field_ext_p23, "Permeability23" )
+!
+   field_ext_p33 = extract_scalar_field( permeability_r, 3, 3 )
+    call insert( alg_ext, field_ext_p33, "Permeability33" )
 
-    field_ext_p13 = extract_scalar_field( permeability_r, 1, 3 )
-     call insert( alg_ext, field_ext_p13, "Permeability13" )
+!     field_ext_p32 = extract_scalar_field( permeability_r, 3, 2 )
+!     call insert( alg_ext, field_ext_p32, "Permeability32" )
 
-     field_ext_p23 = extract_scalar_field( permeability_r, 2, 3 )
-     call insert( alg_ext, field_ext_p23, "Permeability23" )
+!     field_ext_p31 = extract_scalar_field( permeability_r, 3, 1 )
+!     call insert( alg_ext, field_ext_p31, "Permeability31" )
 
-     field_ext_p33 = extract_scalar_field( permeability_r, 3, 3 )
-     call insert( alg_ext, field_ext_p33, "Permeability33" )
 
-     field_ext_p31 = extract_scalar_field( permeability_r, 3, 1 )
-     call insert( alg_ext, field_ext_p31, "Permeability31" )
-
-     field_ext_p32 = extract_scalar_field( permeability_r, 3, 2 )
-     call insert( alg_ext, field_ext_p32, "Permeability32" )
 
     ! volume fraction - this is the ring
     call allocate( rvf, p0_fl_mesh, "VolumeFraction" )
@@ -857,7 +822,30 @@ print *,  'leaving calculate_absorption'
 
     print *, "Projecting Permeability"
 
-        ! interpolate through shell-mesh
+    print*, "---------------------------- before projecting ---------------------"
+    print *, minval(field_ext_p11)
+	print *, maxval(field_ext_p11)
+
+	print *, minval(field_ext_p22)
+	print *, maxval(field_ext_p22)
+
+	print *, minval(field_ext_p33)
+	print *, maxval(field_ext_p33)
+
+	print *, "------ fl -----"
+	print *, minval(field_fl_p11)
+    print *, maxval(field_fl_p11)
+
+    print *, minval(field_fl_p22)
+    print *, maxval(field_fl_p22)
+
+    print *, minval(field_fl_p33)
+    print *, maxval(field_fl_p33)
+
+	print*, "---------------------------- before projecting ---------------------"
+
+
+    ! interpolate through shell-mesh
     call interpolation_galerkin_femdem( alg_ext, alg_fl, field = rvf )
 
     ! bound ring volume fraction
@@ -868,54 +856,73 @@ print *,  'leaving calculate_absorption'
     ! perm is non-zero only in fractures
     ! also add an isotropic, background/matrix permeability
 
+	print*, "---------------------------- after projecting ---------------------"
+	print *, minval(field_fl_p11)	
+	print *, maxval(field_fl_p11)	
+
+	print *, minval(field_fl_p22)
+	print *, maxval(field_fl_p22)
+
+	print *, minval(field_fl_p33)
+	print *, maxval(field_fl_p33)
+    print*, "---------------------------- after projecting ---------------------"
+
     permeability => extract_tensor_field( packed_state, "Permeability" )
     totele=ele_count(fl_mesh)
 
     call get_option("/porous_media/tensor_field::Permeability/prescribed/value::WholeMesh/isotropic/constant", bg_perm)
     call get_option("/porous_media/scalar_field::Porosity/prescribed/value::WholeMesh/constant", bg_poro)
-    allocate( perm(ndim, ndim, totele) ) ; perm= 0.0
-    do ele=1, totele
-        if ((rvf % val (ele) > 0.0) .AND. ((field_fl_p11%val(ele)>bg_perm) .OR. (field_fl_p22%val(ele)>bg_perm) .OR. (field_fl_p33%val(ele)>bg_perm))) then
-                      ! non-normalised and conservative permeability interpolation
-            perm( 1, 1, ele ) = field_fl_p11 % val (ele)
-            perm( 1, 2, ele ) = field_fl_p12 % val (ele)
-            perm( 2, 1, ele ) = field_fl_p21 % val (ele)
-            perm( 2, 2, ele ) = field_fl_p22 % val (ele)
-            perm( 1, 3, ele ) = field_fl_p13 % val (ele)
-            perm( 2, 3, ele ) = field_fl_p23 % val (ele)
-            perm( 3, 3, ele ) = field_fl_p33 % val (ele)
-            perm( 3, 2, ele ) = field_fl_p32 % val (ele)
-            perm( 3, 1, ele ) = field_fl_p31 % val (ele)
 
-        else
-            perm( 1, 1, ele ) =permeability%val(1,1,ele)
-            perm( 1, 2, ele ) =permeability%val(1,2,ele)
-            perm( 2, 1, ele ) =permeability%val(2,1,ele)
-            perm( 2, 2, ele ) =permeability%val(2,2,ele)
-           perm( 1, 3, ele ) =permeability%val(1,3,ele)
-            perm( 2, 3, ele ) =permeability%val(2,3,ele)
-            perm( 3, 3, ele ) =permeability%val(3,3,ele)
-            perm( 3, 1, ele ) =permeability%val(3,1,ele)
-           perm( 3, 2, ele ) =permeability%val(3,2,ele)
-        end if
+    allocate( perm(ndim, ndim, totele) ) ; perm= permeability % val
+
+
+    do ele=1, totele
+       ! if ((rvf % val (ele) > 0.0) .AND. ((field_fl_p11%val(ele)>bg_perm) .or. (field_fl_p22%val(ele)>bg_perm) .or. (field_fl_p33%val(ele)>bg_perm))) then
+
+       if ((rvf % val (ele) > 0.0)) then 
+             if (field_fl_p11%val(ele)>bg_perm) then
+                perm( 1, 1, ele ) = field_fl_p11 % val (ele)
+            end if
+             if (field_fl_p22%val(ele)>bg_perm) then
+                perm( 2, 2, ele ) = field_fl_p22 % val (ele)
+            end if
+             if (field_fl_p33%val(ele)>bg_perm) then
+                perm( 3, 3, ele ) = field_fl_p33 % val (ele)
+            end if
+       ! non-normalised and conservative permeability interpolation
+
+            perm( 1, 2, ele ) = 0. !field_fl_p12 % val (ele)
+            perm( 2, 1, ele ) = 0. ! field_fl_p21 % val (ele)
+
+            perm( 1, 3, ele ) =0.  ! field_fl_p13 % val (ele)
+            perm( 2, 3, ele ) = 0. ! field_fl_p23 % val (ele)
+
+            perm( 3, 2, ele ) = 0. ! field_fl_p32 % val (ele)
+            perm( 3, 1, ele ) = 0. ! field_fl_p31 % val (ele)
+         end if
     end do
 
 
-    permeability % val( 1, 1, : ) =   perm( 1, 1, : )
+      permeability % val( 1, 1, : ) =   perm( 1, 1, : )
     permeability % val( 1, 2, : ) =   perm( 1, 2, : )
+    permeability % val( 1, 3, : ) =   perm( 1, 3, : )
+
     permeability % val( 2, 1, : ) =   perm( 2, 1, : )
     permeability % val( 2, 2, : ) =   perm( 2, 2, : )
+    permeability % val( 2, 3, : ) =   perm( 2, 3, : )
+
     permeability % val( 3, 1, : ) =   perm( 3, 1, : )
     permeability % val( 3, 2, : ) =   perm( 3, 2, : )
     permeability % val( 3, 3, : ) =   perm( 3, 3, : )
-    permeability % val( 2, 3, : ) =   perm( 2, 3, : )
-    permeability % val( 1, 3, : ) =   perm( 1, 3, : )
+
+
+
 
     ! extract porosity and solid concentration fields from state
     porosity => extract_vector_field( packed_state, "Porosity" )
     vf => extract_scalar_field( packed_state, "SolidConcentration" )
 
-
+ 
     ! for adaptivity (bound perm field)
     perm_val => extract_scalar_field( state(1), "Dummy" )
     allocate(perm_val%val(totele))
@@ -925,6 +932,7 @@ print *,  'leaving calculate_absorption'
     perm2_val => extract_scalar_field( state(1), "TotalFlux" )
     allocate(perm2_val%val(totele))
     call zero( perm2_val)
+
     FracMap => extract_tensor_field( state(1), "FractureMap" )
     allocate( FracMap%val(ndim, ndim, totele) ) 
     call zero( FracMap)
@@ -944,9 +952,9 @@ print *,  'leaving calculate_absorption'
 
 	!-ao FRACTURE MAPING IS DONE HERE
 !	 if (rvf % val (ele) > 0.0 .AND. maxval( permeability % val( :, :, ele ) ) >= bg_perm ) then
-	 if ((rvf % val (ele) > 0.0) .AND. (((permeability % val( 1, 1, ele )+ &
+	 if ((rvf % val (ele) > 0.0) .AND. ((permeability % val( 1, 1, ele )+ &
 					   & permeability % val( 2, 2, ele )+ &
-					   & permeability % val( 3, 3, ele ))/3) > bg_perm) ) then
+					   & permeability % val( 3, 3, ele )/3) > bg_perm) ) then
 		FracMap%val(1,1,ele)=1;
 		FracMap%val(2,2,ele)=1;
 		FracMap%val(3,3,ele)=1;
@@ -955,20 +963,34 @@ print *,  'leaving calculate_absorption'
 
     call bound_volume_fraction( vf%val )
 
-
-    ! deallocate
+    
+    ! deallocate    
     deallocate( perm)
 
+!    call deallocate( field_fl_p22 )
+!    call deallocate( field_fl_p21 )
+!    call deallocate( field_fl_p12 )
+!    call deallocate( field_fl_p11 )
+!    call deallocate( field_fl_p13 )
+!    call deallocate( field_fl_p23 )
+!    call deallocate( field_fl_p33 )
+!    call deallocate( field_fl_p31 )
+!    call deallocate( field_fl_p32 )
+
+!return
     call deallocate( rvf )
     call deallocate( alg_ext )
     call deallocate( alg_fl )
 
 
     ewrite(3,*) "leaving calculate_phi_and_perm"
-    return
+     print  *, "leaving calculate_phi_and_perm"	    
+	return
   end subroutine calculate_phi_and_perm
+
   !----------------------------------------------------------------------------------------------------------
-    subroutine interpolate_fields_out_r( packed_state, nphase, p_r, u_r, mu_r )
+
+  subroutine interpolate_fields_out_r( packed_state, nphase, p_r, u_r, mu_r )
 
     implicit none
 
@@ -976,6 +998,7 @@ print *,  'leaving calculate_absorption'
     integer, intent( in ) :: nphase
     real, dimension( : ), intent( inout ) :: p_r, mu_r
     real, dimension( :, : ), intent( inout ) :: u_r
+    integer:: i
 
     !Local variables
     type( mesh_type ), pointer :: fl_mesh, u_mesh
@@ -983,7 +1006,7 @@ print *,  'leaving calculate_absorption'
          &                  field_ext_p, field_ext_u, field_ext_v,field_ext_w, field_ext_mu, &
          &                  u_dg, v_dg, w_dg
     !!type( scalar_field ), pointer :: pressure
-
+    
     type( vector_field ), pointer :: fl_positions
     type( tensor_field ), pointer :: velocity, viscosity , pressure
     type( state_type ) :: alg_ext, alg_fl
@@ -999,17 +1022,17 @@ print *,  'leaving calculate_absorption'
 !    call print_state(packed_state)
 
     cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
-
+    
 
     pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
  !   pressure => extract_tensor_field( packed_state, "PressureMesh" )
-
-   cv_nloc = ele_loc( pressure, 1 )
+    
+    cv_nloc = ele_loc( pressure, 1 )
 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
 !!
-     viscosity => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+     viscosity => extract_tensor_field( packed_state, "Viscosity", stat )
  !!  viscosity => extract_tensor_field( packed_state, "PackedFEPressure")
 
     !have_viscosity = ( stat == 0 )
@@ -1043,10 +1066,10 @@ print *,  'leaving calculate_absorption'
 
        call allocate( field_fl_w, fl_mesh, "Velocity3" )
      call zero( field_fl_w )
-
+ 
     call allocate( field_fl_mu, fl_mesh, "Viscosity" )
       call zero( field_fl_mu )
-
+     
       print *, 'cv_nloc',' ',cv_nloc
 
     ! deal with pressure and viscosity
@@ -1076,28 +1099,36 @@ print *,  'leaving calculate_absorption'
           field_fl_p % val( fl_ele_nodes( 2 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
            field_fl_p % val( fl_ele_nodes( 3 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
           field_fl_p % val( fl_ele_nodes( 4 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 10 ) )
-
-
+          
+!!-PY this is a big problem 
+         
           if ( constant_mu ) then
-                 field_fl_mu % val(fl_ele_nodes( 1 ) ) =0.01  ! viscosity % val( 1, 1, 1 )
-                field_fl_mu % val(fl_ele_nodes( 2 ) ) =0.01 ! viscosity % val( 1, 1, 1 )
-             field_fl_mu % val(fl_ele_nodes( 3 ) ) =0 ! viscosity % val( 1, 1, 1 )
-                 field_fl_mu % val(fl_ele_nodes( 4 ) ) =0.01 ! viscosity % val( 1, 1, 1 )
+                 field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, 1 )
+                 field_fl_mu % val(fl_ele_nodes( 2 ) ) = viscosity % val( 1, 1, 1 )
+                 field_fl_mu % val(fl_ele_nodes( 3 ) ) = viscosity % val( 1, 1, 1 )
+                 field_fl_mu % val(fl_ele_nodes( 4 ) ) = viscosity % val( 1, 1, 1 )
           else
-                 field_fl_mu % val(fl_ele_nodes( 1 ) ) =0.01 ! viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
-                  field_fl_mu % val(fl_ele_nodes( 2 ) ) =0.01 ! viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
-                field_fl_mu % val(fl_ele_nodes( 3 ) ) =0.01 ! viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
-               field_fl_mu % val(fl_ele_nodes( 4 ) ) =0.01 ! viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 10 ) )
+                 field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
+                 field_fl_mu % val(fl_ele_nodes( 2 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
+                 field_fl_mu % val(fl_ele_nodes( 3 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
+                 field_fl_mu % val(fl_ele_nodes( 4 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 10 ) )
           end if
        end do
     else
        ! just copy memory for p1
-       field_fl_p % val = pressure % val (1, 1, :)
-         field_fl_mu % val =0.001 ! viscosity % val( 1, 1, : )
+         field_fl_p % val = pressure % val (1, 1, :)
+         field_fl_mu % val = viscosity % val( 1, 1, : )
     end if
 
-   !!!!!      print *, 'field_fl_mu',' ', size(field_fl_mu%val)
-  !!!!!      print *, 'viscosity%val',' ', size(viscosity%val(1,1,:))
+     if (.false.) then
+            open  (unit=101,file="fluid_viscosity.txt",action="write",status="replace")
+            do i=1, size(field_fl_mu%val)
+                 write(101,*), viscosity%val(1,1,i)
+            end do
+            close (101)
+     end if
+
+
 
   !!!!!    print *, 'field_fl_p%val',' ', size(field_fl_p%val)
   !!!!!    print *, 'pressure',' ', size(pressure%val(1,1,:))
@@ -1139,7 +1170,7 @@ u_dg % val = u_tmp( 1, 1, : ) ;  v_dg % val = u_tmp( 2, 1, : ) ;   w_dg % val = 
    !!!!! print *, 'v_dg',' ', size(v_dg%val)
   !!!!!  print *, 'w_dg',' ', size(w_dg%val)
   !!!!!  print *, 'u_nonods',' ', u_nonods
-
+ 
    !call project_field( u_dg, field_fl_u, fl_positions )
     !call project_field( v_dg, field_fl_v, fl_positions )
 
@@ -1248,7 +1279,7 @@ print *,  'interpolate_fields_out_r, 08-0'
     mu_r = field_ext_mu % val
 
    print *,  'interpolate_fields_out_r, 09'
-
+ 
     ! deallocate
     call deallocate( field_fl_p )
     call deallocate( field_fl_u )
@@ -1275,8 +1306,10 @@ print *,  'interpolate_fields_out_r, 08-0'
 
     return
   end subroutine interpolate_fields_out_r
+
   !----------------------------------------------------------------------------------------------------------
-    subroutine interpolate_fields_out_v( packed_state, nphase, u_v )
+
+  subroutine interpolate_fields_out_v( packed_state, nphase, u_v )
 
     implicit none
 
@@ -1298,7 +1331,7 @@ print *,  'interpolate_fields_out_r, 08-0'
 
     u_v = 0.0
  print *,  'interpolate_fields_out_v, 01'
-
+ 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
@@ -1367,7 +1400,7 @@ print *,  'interpolate_fields_out_r, 08-0'
     field_ext_u % option_path = path
     call insert( alg_ext, field_ext_u, "Velocity1" )
 
- !!!!
+ !!!! 
     call allocate( field_ext_v, positions_v%mesh, "Velocity2" )
     call zero( field_ext_v )
     field_ext_v % option_path = path
@@ -1382,11 +1415,11 @@ print *,  'interpolate_fields_out_r, 08-0'
     ewrite(3,*) "...interpolating"
 
  print *,  'interpolate_fields_out_v, 02'
-
+ 
     ! interpolate
     call interpolation_galerkin_femdem( alg_fl, alg_ext, femdem_out = .true. )
  print *,  'interpolate_fields_out_v, 03'
-
+ 
     ! copy memory
     u_v( 1, : ) = field_ext_u % val
     u_v( 2, : ) = field_ext_v % val
@@ -1412,8 +1445,10 @@ print *,  'interpolate_fields_out_r, 08-0'
 
     return
   end subroutine interpolate_fields_out_v
+
   !----------------------------------------------------------------------------------------------------------
-    subroutine interpolate_fields_in_v( packed_state, du_s, u_s )
+
+  subroutine interpolate_fields_in_v( packed_state, du_s, u_s )
 
     implicit none
 
@@ -1421,17 +1456,19 @@ print *,  'interpolate_fields_out_r, 08-0'
     real, dimension( :, : ), intent( in ) :: du_s, u_s
 
     !Local variables
-    type( mesh_type ), pointer :: p0_fl_mesh, fl_mesh, u_mesh
-    type( scalar_field ), pointer :: solid, solid_true, old_solid, f
+    type( mesh_type ), pointer :: p0_fl_mesh, fl_mesh, u_mesh, p_mesh
+    type( scalar_field ), pointer :: solid, solid_t, old_solid, f
     type( scalar_field ) :: field_fl_du, field_fl_dv,field_fl_dw, &
          &                  field_fl_us, field_fl_vs,field_fl_ws, &
          &                  field_ext_du, field_ext_dv,field_ext_dw, &
-         &                  field_ext_us, field_ext_vs,field_ext_ws, f2, &
+         &                  field_ext_us, field_ext_vs,field_ext_ws, f2, f3, &
          &                  field_fl_solid, field_ext_solid, dummy
     type( vector_field ), pointer :: fl_positions, delta_u, solid_u
     type( state_type ) :: alg_ext, alg_fl
     integer :: stat, idim
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
+
+    
 
     call set_solver_options( path, &
          ksptype = "gmres", &
@@ -1523,22 +1560,35 @@ print *,  'interpolate_fields_out_r, 08-0'
     call insert( alg_ext, field_ext_solid, "SolidConcentration" )
 
     ! deal with SolidConcentration
-    !solid => extract_scalar_field( packed_state, "OldSolidConcentration" )!cj215 modif OldSolidConcentration
-    !old_solid => extract_scalar_field( packed_state, "OldSolidConcentration" )
 
-	 call allocate( dummy, fl_positions%mesh, "dummy" )
+!!-PY change it to make SolidConcentration correct
+!!    solid => extract_scalar_field( packed_state, "SolidConcentration" )
+    !!solid => extract_scalar_field( alg_fl, "SolidConcentration" )
+!!    old_solid => extract_scalar_field( packed_state, "OldSolidConcentration" )
+!!    call set( old_solid, solid )
+!!    call zero( solid )
+
+    ! interpolate
+!!    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = solid )
+
+!!    solid_t => extract_scalar_field( packed_state, "SolidConcentration" )
+!!    call set( solid_t, solid )
+
+
+
+
+    call allocate( dummy, fl_positions%mesh, "dummy" )
     call zero( dummy )
-
-    !call set( old_solid, solid )
-    !call zero( solid )
-
     ! interpolate
     call interpolation_galerkin_femdem( alg_ext, alg_fl, field = dummy )
 
+
+
+
+
+
     ! bound solid concentration
-    !solid_true => extract_scalar_field( alg_fl, "SolidConcentration" )
-    !solid%val = solid_true%val
-    !call bound_volume_fraction( solid % val )!cj215
+    !call bound_volume_fraction( solid % val )
 
     u_mesh => extract_mesh( packed_state, "VelocityMesh" )
     call allocate( f2, u_mesh, "dummy" )
@@ -1566,6 +1616,34 @@ print *,  'interpolate_fields_out_r, 08-0'
     end do
 
 
+
+!!-PY make solidconcentration correct
+       solid => extract_scalar_field( packed_state, "SolidConcentration" )
+       old_solid => extract_scalar_field( packed_state, "OldSolidConcentration" )
+       call set( old_solid, solid )
+       call zero( solid )
+
+       p_mesh => extract_mesh( packed_state, "PressureMesh" )
+       call allocate( f3, p_mesh, "dummy" )
+
+       f => extract_scalar_field( alg_fl, "SolidConcentration")
+       call linear2quadratic_field(f, f3)
+       
+!!print *, "size(f % val)", size(f % val)
+!!print *, "size(f3 % val)", size(f3 % val)
+!!print *, "size(solid % val)", size(solid % val)
+
+
+       solid % val = f3 % val
+
+      
+ 
+
+
+
+
+
+
     ! deallocate
     call deallocate( field_fl_du )
     call deallocate( field_fl_dv )
@@ -1587,13 +1665,17 @@ print *,  'interpolate_fields_out_r, 08-0'
     call deallocate( alg_ext )
 
     call deallocate( f2 )
+    call deallocate( f3 )
 
     return
   end subroutine interpolate_fields_in_v
-!----------------------------------------------------------------------------------------------------------
-    subroutine interpolate_fields_in_r( packed_state, fin, ain )
 
+  !----------------------------------------------------------------------------------------------------------
 
+  subroutine interpolate_fields_in_r( packed_state, fin, ain )
+
+  
+   
     implicit none
 
     type( state_type ), intent( in ) :: packed_state
@@ -1728,7 +1810,7 @@ print *,  'ready to interpolate_fields_in_r03'
 
 print *,  'ready to interpolate_fields_in_r04'
 
-    p_mesh => extract_mesh( packed_state, "PressureMesh" )
+    p_mesh => extract_mesh( packed_state, "PressureMesh" ) 
     call allocate( f2, p_mesh, "dummy" )
 
     f_x => extract_vector_field( packed_state, "f_x" )
@@ -1787,7 +1869,7 @@ print *,  ' interpolate_fields_in_v 02'
     call deallocate( field_ext_a13 )
     call deallocate( field_ext_a23 )
     call deallocate( field_ext_a33 )
-
+ 
 
     call deallocate( alg_fl )
     call deallocate( alg_ext )
@@ -1799,8 +1881,13 @@ print *,  ' interpolate_fields_in_v 02'
 
     return
   end subroutine interpolate_fields_in_r
-!----------------------------------------------------------------------------------------------------------
-    subroutine ibubble( a )
+
+  !----------------------------------------------------------------------------------------------------------
+
+  !----------------------------------------------------------------------------------------------------------
+  !----------------------------------------------------------------------------------------------------------
+
+  subroutine ibubble( a )
 
     implicit none
 
@@ -1812,7 +1899,7 @@ print *,  ' interpolate_fields_in_v 02'
 
     do i = 1, n
        do j = n, i + 1, -1
-          p = a( j - 1 )
+          p = a( j - 1 ) 
           q = a( j )
           if ( p > q ) then
               a( j - 1 ) = q
@@ -1823,8 +1910,8 @@ print *,  ' interpolate_fields_in_v 02'
 
     return
   end subroutine ibubble
-!----------------------------------------------------------------------------------------------------------
-    subroutine delete_duplicates( a, count )
+
+  subroutine delete_duplicates( a, count )
 
     implicit none
 
@@ -1858,8 +1945,8 @@ print *,  ' interpolate_fields_in_v 02'
 
     return
   end subroutine delete_duplicates
-!----------------------------------------------------------------------------------------------------------
-    subroutine bound_volume_fraction ( v, v_min, v_max )
+
+  subroutine bound_volume_fraction ( v, v_min, v_max )
 
     implicit none
 
@@ -1875,8 +1962,8 @@ print *,  ' interpolate_fields_in_v 02'
 
     return
   end subroutine bound_volume_fraction
-!----------------------------------------------------------------------------------------------------------
-    subroutine deallocate_femdem
+
+  subroutine deallocate_femdem
 
     implicit none
 
@@ -1887,8 +1974,8 @@ print *,  ' interpolate_fields_in_v 02'
 
     return
   end subroutine deallocate_femdem
-!----------------------------------------------------------------------------------------------------------
-    subroutine update_blasting_memory ( packed_state, state, timestep )
+
+  subroutine update_blasting_memory ( packed_state, state, timestep )
 
     implicit none
 
@@ -1917,8 +2004,10 @@ print *,  ' interpolate_fields_in_v 02'
 
     return
   end subroutine update_blasting_memory
-!----------------------------------------------------------------------------------------------------------
-    subroutine coarsen_mesh_2d( f, c )
+
+
+
+  subroutine coarsen_mesh_2d( f, c )
 
     implicit none
 
@@ -1955,7 +2044,7 @@ print *,  ' interpolate_fields_in_v 02'
 
        nele = element_count( f )
 
-       allocate( ndglno( nloc * nele ), sndglno( snloc * nbcs ) )
+       allocate( ndglno( nloc * nele ), sndglno( snloc * nbcs ) ) 
        allocate( ele_nodes( nloc ), ele2_nodes( nloc ) )
        allocate( n( snloc ), bc(snloc ) )
 
@@ -1989,7 +2078,7 @@ print *,  ' interpolate_fields_in_v 02'
                    on_the_wall = .true.
                    exit
                 end if
-                ! if one node is on the wall
+                ! if one node is on the wall 
                 ! figure out which one it is
                 st = -666
                 if ( any( n == bc ) .and. .not.on_the_wall ) then
@@ -2073,7 +2162,7 @@ print *,  ' interpolate_fields_in_v 02'
 
           if ( area < 0.0 ) then
              ! swap 2nd and 3rd nodes
-             ndglno_s( ( ele - 1 ) * nloc + 2 : ele * nloc ) = (/ ele_nodes( 3 ), ele_nodes( 2 ) /)
+             ndglno_s( ( ele - 1 ) * nloc + 2 : ele * nloc ) = (/ ele_nodes( 3 ), ele_nodes( 2 ) /) 
           end if
        end do
 
@@ -2198,8 +2287,12 @@ print *,  ' interpolate_fields_in_v 02'
 
     return
   end subroutine coarsen_mesh_2d
-!----------------------------------------------------------------------------------------------------------
-    real function triangle_area( x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4 )
+
+
+
+
+
+  real function triangle_area( x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4 )
 
     implicit none
 
@@ -2214,15 +2307,16 @@ print *,  ' interpolate_fields_in_v 02'
     c3=z3-z4
     a3=z1-z4
     x4=0.0
-    y4=0.0
-    z4=0.0
+    y4=0.0   
+    z4=0.0 
 
  !   triangle_area = 0.5 * ( ( x2 * y3 - y2 * x3 ) - x1 * ( y3 - y2 ) + y1 * ( x3 - x2 ) )
  triangle_area =  ( ( a1*b2*c3 + b1*c2*a3 + c1*a2*b3-a1*c2*b3-b1*a2*c3-c1*b2*a3) ) / 6
 
     return
   end function triangle_area
-!----------------------------------------------------------------------------------------------------------
+
+
     subroutine linear2quadratic_field( field_in, field_out )
         implicit none
         type( scalar_field ), intent( in ) :: field_in
@@ -2303,10 +2397,10 @@ print *,  ' interpolate_fields_in_v 02'
                 field_p2_loc( 2 ) =field_p1_loc( 2 )
                 field_p2_loc( 3 ) =field_p1_loc( 3 )
 
-
+                
 
                 if ( p2_nloc == 4 ) then
-           !print *, 'p2_nloc',' ',p2_nloc
+           !print *, 'p2_nloc',' ',p2_nloc 
                     field_p2_loc( 4 ) =field_p1_loc( 4 )
            !         field_p2_loc( 5 ) =field_p1_loc( 5 )
            !         field_p2_loc( 6 ) =field_p1_loc( 6 )
@@ -2319,11 +2413,11 @@ print *,  ' interpolate_fields_in_v 02'
 
             end do
 
-
+            
 
 
            else
-
+            
 
 
 ! we have not called this routine with a p2 field
@@ -2338,7 +2432,8 @@ deallocate( field_p1_loc, field_p2_loc)
 
         return
     end subroutine linear2quadratic_field
-!!---------------------------- interpolating Pressure through the ring
+
+!!---------------------------- interpolating Pressure through just the ring
     subroutine interpolate_fields_out_r_p( packed_state, nphase, p_r)
 
         implicit none
@@ -2366,12 +2461,16 @@ deallocate( field_p1_loc, field_p2_loc)
 
         !    call print_state(packed_state)
 
-        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
-        if ( have_option( '/material_phase/scalar_field::Pressure/prognostic/CV_P_matrix')) then !with pore_fluid presure
+        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )	
+
+    if ( have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix')) then !with pore_fluid presure
         	pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
 	else
-        pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
-	end if
+       		pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+	end if 
+
+
+
         cv_nloc = ele_loc( pressure, 1 )
 
         fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
@@ -2459,7 +2558,7 @@ deallocate( field_p1_loc, field_p2_loc)
     end subroutine interpolate_fields_out_r_p
 
 
-!!---------------------------- interpolating Pressure through just the volume
+!!---------------------------- interpolating Pressure through just the ring
 subroutine interpolate_fields_out_v_pf( packed_state, nphase, p_v)
 
     implicit none
@@ -2567,6 +2666,16 @@ subroutine interpolate_fields_out_v_pf( packed_state, nphase, p_v)
     ! copy memory
     p_v= field_ext_p % val
 
+    print *, "FLUIDS: entered into pore_pressure sub-------------------------------------------------------", size(p_v), size(field_ext_p%val), totele
+!        !-ao--------------------------------debugging--------------------------------------------------------------------------
+            open  (unit=100,file="projection_pressure.txt",action="write",status="replace")
+            do ele=1, size(p_v)
+                 write(100,*) "Pressure", ele, p_v(ele)
+            end do
+            close (100)
+!        !-ao--------------------------------debugging--------------------------------------------------------------------------
+
+
     ! deallocate
     call deallocate( field_fl_p )
     call deallocate( field_ext_p )
@@ -2577,806 +2686,5 @@ subroutine interpolate_fields_out_v_pf( packed_state, nphase, p_v)
     return
   end subroutine interpolate_fields_out_v_pf
 ! ----------------------------------------------- end pore fluid pressure ----------------!
-
-
-
-
-
-!!---------------------------- interpolating Temperature through the ring
-    subroutine interpolate_fields_out_r_t( packed_state, nphase, t_r)
-
-        implicit none
-
-        type( state_type ), intent( in ) :: packed_state
-        integer, intent( in ) :: nphase
-        real, dimension( : ), intent( inout ) :: t_r
-
-        !Local variables
-        type( mesh_type ), pointer :: fl_mesh, u_mesh
-        type( scalar_field ) :: field_fl_p,  field_ext_p
-        !!type( scalar_field ), pointer :: pressure
-
-        type( vector_field ), pointer :: fl_positions
-        type( tensor_field ), pointer ::  pressure
-        type( state_type ) :: alg_ext, alg_fl
-
-        integer, dimension( : ), pointer :: fl_ele_nodes, cv_ndgln
-        integer :: ele, totele, cv_nloc, u_nonods, &
-            &     stat
-        logical :: constant_mu
-        character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
-
-        t_r = 0.0
-
-        !    call print_state(packed_state)
-
-        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
-        pressure => extract_tensor_field( packed_state, "PackedTemperature" )
-
-        cv_nloc = ele_loc( pressure, 1 )
-
-        fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-        fl_positions => extract_vector_field( packed_state, "Coordinate" )
-
-        totele = ele_count( fl_mesh )
-
-        call set_solver_options( path, &
-            ksptype = "gmres", &
-            pctype = "hypre", &
-            rtol = 1.0e-10, &
-            atol = 1.0e-14, &
-            max_its = 10000 )
-        call add_option( &
-            trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-        call set_option( &
-            trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
-
-        path = "/tmp"
-
-        call allocate( field_fl_p, fl_mesh, "Pressure" )
-        call zero( field_fl_p )
-
-
-        print *, 'cv_nloc',' ',cv_nloc
-
-        ! deal with pressure
-        field_fl_p % val = pressure % val (1, 1, :)
-
-        ! fluidity state
-        call insert( alg_fl, fl_mesh, "PressureMesh" )
-        call insert( alg_fl, fl_positions, "Coordinate" )
-
-        call insert( alg_fl, field_fl_p, "Temperature" )
-
-        ! ring state
-        call insert( alg_ext, positions_r%mesh, "Mesh" )
-        call insert( alg_ext, positions_r, "Coordinate" )
-
-        call allocate( field_ext_p, positions_r%mesh, "Temperature" )
-        call zero( field_ext_p )
-        field_ext_p % option_path = path
-        call insert( alg_ext, field_ext_p, "Temperature" )
-
-
-        ewrite(3,*) "...interpolating"
-
-        ! interpolate
-        call interpolation_galerkin_femdem( alg_fl, alg_ext, femdem_out = .true. )
-        !    call linear_interpolation(alg_fl, alg_ext, different_domains=.true.)
-
-        ! copy memory
-        t_r(:) = field_ext_p % val
-
-        ! deallocate
-        call deallocate( field_fl_p )
-        call deallocate( field_ext_p )
-
-
-        call deallocate( alg_fl )
-        call deallocate( alg_ext )
-
-        return
-    end subroutine interpolate_fields_out_r_t
-!----------------------------------------------------------------------------------------------------------
-!Thermal interpolate out volume
-
-    subroutine interpolate_fields_out_v_t_save( packed_state, nphase, t_v )
-
-    implicit none
-
-    type( state_type ), intent( in ) :: packed_state
-    integer, intent( in ) :: nphase
-    real, dimension( : ), intent( inout ) :: t_v
-
-    !Local variables
-    type( mesh_type ), pointer :: fl_mesh, u_mesh
-    type( scalar_field ) :: field_fl_u, &! field_fl_v,field_fl_w,  &
-         &                  field_ext_u,&! field_ext_v,field_ext_w, &
-         &                  u_dg !, v_dg, w_dg
-    type( vector_field ), pointer :: fl_positions
-    type( tensor_field ), pointer :: velocity
-    type( state_type ) :: alg_ext, alg_fl
-    real, dimension( :, : ), allocatable :: u_tmp
-    integer :: stat, u_nonods
-    character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
-
-    t_v = 0.0
-    print *,  'interpolate_fields_out_t, 01'
-
-    fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-    fl_positions => extract_vector_field( packed_state, "Coordinate" )
-
-    call set_solver_options( path, &
-         ksptype = "gmres", &
-         pctype = "hypre", &
-         rtol = 1.0e-10, &
-         atol = 1.0e-14, &
-         max_its = 10000 )
-    call add_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-    call set_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
-
-    path = "/tmp"
-
-    call allocate( field_fl_u, fl_mesh, "Temperature" ) !change name
-    call zero( field_fl_u )
-
-
-    velocity => extract_tensor_field( packed_state, "PackedTemperature" )
-    u_nonods = node_count( velocity )
-
-
-    allocate( u_tmp( nphase, u_nonods ) )
-    u_tmp = velocity % val( 1, :, : )
-	!print *,  u_tmp(1,1)
-
-    u_mesh => extract_mesh( packed_state, "PressureMesh" )
-
-    call allocate( u_dg, u_mesh, "u_dg" )
-    call zero( u_dg )
-
-    u_dg % val = u_tmp( 1, : )
-	!print *,  u_dg % val (:)
-
-    call project_field( u_dg, field_fl_u, fl_positions )
-
-
-    ! fluidity state
-    call insert( alg_fl, fl_mesh, "Mesh" )
-    call insert( alg_fl, fl_positions, "Coordinate" )
-    call insert( alg_fl, field_fl_u, "Velocity1" )
-
-    ! ring state
-    call insert( alg_ext, positions_v%mesh, "Mesh" )
-    call insert( alg_ext, positions_v, "Coordinate" )
-
-    call allocate( field_ext_u, positions_v%mesh, "Velocity1" )
-    call zero( field_ext_u )
-    field_ext_u % option_path = path
-    call insert( alg_ext, field_ext_u, "Velocity1" )
-
-    ewrite(3,*) "...interpolating"
-
-    ! interpolate
-    call interpolation_galerkin_femdem( alg_fl, alg_ext, femdem_out = .true. )
-
-    t_v(:) = field_ext_u % val
-	print *,  t_v(1)
-	print *,  field_ext_u % val
-	
-	
-    ! deallocate
-    call deallocate( field_fl_u )
-
-    call deallocate( field_ext_u )
-
-    call deallocate( alg_fl )
-    call deallocate( alg_ext )
-
-    call deallocate( u_dg )
-
-    deallocate( u_tmp )
-
-    return
-  end subroutine interpolate_fields_out_v_t_save
-
-
-    subroutine interpolate_fields_out_v_t( packed_state, nphase, t_v, S_c )
-
-    implicit none
-
-    type( state_type ), intent( in ) :: packed_state
-    integer, intent( in ) :: nphase
-    real, dimension( : ), intent( inout ) :: t_v, S_c
-
-    !Local variables
-    type( mesh_type ), pointer :: fl_mesh, u_mesh
-    type( scalar_field ) :: field_fl_u, field_fl_s, &
-							field_ext_u, field_ext_s, &
-							u_dg, s_dg
-    type( vector_field ), pointer :: fl_positions
-    type( tensor_field ), pointer :: temperature
-	type( vector_field ), pointer :: porosity
-    type( state_type ) :: alg_ext, alg_fl
-    real, dimension( :, : ), allocatable :: u_tmp
-	real, dimension( : ), allocatable :: s_tmp
-    integer :: stat, u_nonods, s_nonods
-	real :: dt, acctim
-    character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
-
-    t_v = 0.0
-
-    fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-    fl_positions => extract_vector_field( packed_state, "Coordinate" )
-
-    call set_solver_options( path, &
-         ksptype = "gmres", &
-         pctype = "hypre", &
-         rtol = 1.0e-10, &
-         atol = 1.0e-14, &
-         max_its = 10000 )
-    call add_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-    call set_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
-
-    path = "/tmp"
-
-    call allocate( field_fl_u, fl_mesh, "Temperature" )
-	call allocate( field_fl_s, fl_mesh, "Porosity" )
-
-    call zero( field_fl_u )
-	call zero( field_fl_s )
-
-   ! deal with velocity - this part needs optimisation...
-    temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-    u_nonods = node_count( temperature )
-
-	porosity => extract_vector_field( packed_state, "Porosity" )
-    s_nonods = node_count( porosity )
-
-    allocate( u_tmp( nphase, u_nonods ) )
-	u_tmp = temperature % val( 1, :, : )
-	
-	allocate( s_tmp(s_nonods) )
-    s_tmp = porosity % val (1 , :)
-
-    u_mesh => extract_mesh( packed_state, "PressureMesh" )
-
-    call allocate( u_dg, u_mesh, "u_dg" )
-	call allocate( s_dg, u_mesh, "Porosity" )
-    call zero( u_dg )
-  
-    call get_option( "/timestepping/timestep", dt )
-    call get_option( '/timestepping/current_time', acctim )
-
-    !if (acctim==dt) then 
-		!u_dg % val = 1.0* (1.0 - s_tmp( : )) + 0.0 * s_tmp( : ) !To account for TBULK at the first time step
-	!else 
-		u_dg % val = u_tmp(1, : )
-	!end if
-	
-
-    call project_field( u_dg, field_fl_u, fl_positions )
-	call project_field( s_dg, field_fl_s, fl_positions )
-
-    call insert( alg_fl, fl_mesh, "Mesh" )
-    call insert( alg_fl, fl_positions, "Coordinate" )
-
-    call insert( alg_fl, field_fl_u, "Temperature" )
-	call insert( alg_fl, field_fl_s, "Porosity" )
-
-    ! ring state
-    call insert( alg_ext, positions_v%mesh, "Mesh" )
-    call insert( alg_ext, positions_v, "Coordinate" )
-
-    call allocate( field_ext_u, positions_v%mesh, "Temperature" )
-	call allocate( field_ext_s, positions_v%mesh, "Porosity" )
-
-    call zero( field_ext_u )
-	call zero( field_ext_s )
-
-    field_ext_u % option_path = path
-	field_ext_s % option_path = path
-
-    call insert( alg_ext, field_ext_u, "Temperature" )
-	call insert( alg_ext, field_ext_s, "Porosity" )
-
-    ! interpolate
-    call interpolation_galerkin_femdem( alg_fl, alg_ext, femdem_out = .true. )
-
-    ! copy memory
-    t_v(:) = field_ext_u % val
-	S_c(:) = field_ext_s % val
-
-    ! deallocate
-    call deallocate( field_fl_u )
-	call deallocate( field_fl_s )
-    call deallocate( field_ext_u )
-	call deallocate( field_ext_s )
-    call deallocate( alg_fl )
-    call deallocate( alg_ext )
-    call deallocate( u_dg )
-    call deallocate( s_dg )
-    deallocate( u_tmp )
-    deallocate( s_tmp )
-	! IF EVER REINSERT SOLIDC> ADD THE DEALLOCATE
-    return
-end subroutine interpolate_fields_out_v_t
-!----------------------------------------------------------------------------------------------------------
-
-subroutine interpolate_fields_in_r_t( packed_state, T_s, surf_int,flag_thm)
-
-    implicit none
-
-    type( state_type ), intent( in ) :: packed_state
-    real, dimension( : ), intent( in ) :: T_s, surf_int
-	integer, intent( in ) :: flag_thm
-	
-    !Local variables
-    type( mesh_type ), pointer :: p0_fl_mesh, fl_mesh, T_mesh
-    type( scalar_field ), pointer :: solid, old_solid, solid_true, ring_relax, T, dummy, alphaT
-    type( scalar_field ) :: field_fl_Ts, T2, field_fl_Rr, &
-         &                  field_ext_Ts, field_ext_Rr, solid_true2, ring_relax2, &
-         &                  field_fl_shell, field_ext_shell
-							
-    type( vector_field ), pointer :: fl_positions
-    type( tensor_field ), pointer :: Absorption, Q, temperature
-    real :: k_e, thickness_lenght, dt
-	integer :: i
-    type( tensor_field ), pointer ::  fluid_density_capacity
-
-    ! delta_T, solid_u
-    type( state_type ) :: alg_ext, alg_fl
-    integer :: stat, idim
-    character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
-
-    call set_solver_options( path, &
-         ksptype = "gmres", &
-         pctype = "hypre", &
-         rtol = 1.0e-10, &
-         atol = 1.0e-14, &
-         max_its = 10000 )
-    call add_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-    call set_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
-
-    path = "/tmp"
-
-    fl_mesh => extract_mesh( packed_state, "PressureMesh" ) !Need to be pressure mesh for interpolatefemdem?
-    fl_positions => extract_vector_field( packed_state, "Coordinate" )
-    
-    ! fluidity state-------------------------------------------------------------------------------------
-    call insert( alg_fl, fl_mesh, "Mesh" )
-    call insert( alg_fl, fl_positions, "Coordinate" )
-    !call insert( alg_fl,fl_T, "Temperature" )
-
-    call allocate( field_fl_Ts, fl_positions%mesh, "SolidTemp" )
-    call zero( field_fl_Ts )
-    field_fl_Ts % option_path = path
-    call insert( alg_fl, field_fl_Ts, "SolidTemp" )
-
-	call allocate( field_fl_Rr, fl_positions%mesh, "RingRelax" )
-    call zero( field_fl_Rr )
-    field_fl_Rr % option_path = path
-    call insert( alg_fl, field_fl_Rr, "RingRelax" )
-
-    call allocate( field_fl_shell, fl_positions%mesh, "shell_volume_fraction" )
-    call zero( field_fl_shell )
-    field_fl_shell % option_path = path
-    call insert( alg_fl, field_fl_shell, "shell_volume_fraction" )
-
-    ! solidity state-------------------------------------------------------------------------------------
-    call insert( alg_ext, positions_r%mesh, "Mesh" )
-    call insert( alg_ext, positions_r, "Coordinate" )
-
-    call allocate( field_ext_Ts, positions_r%mesh, "SolidTemp" )
-    field_ext_Ts % val = T_s( : )
-    call insert( alg_ext, field_ext_Ts, "SolidTemp" )
-
-	call allocate( field_ext_Rr, positions_r%mesh, "RingRelax" )
-    field_ext_Rr % val = surf_int ( : )
-    call insert( alg_ext, field_ext_Rr, "RingRelax" )
-
-    call allocate( field_ext_shell, positions_r%mesh, "shell_volume_fraction" )
-    field_ext_shell % val = 1.0
-    call insert( alg_ext, field_ext_shell, "shell_volume_fraction" )
-
-	! deal with field = dummy----------------------------------------------------------------------------
-	!call allocate( dummy, fl_positions%mesh, "dummy" )
-    !call zero( dummy )
-	solid => extract_scalar_field( packed_state, "shell_volume_fraction" )
-
-    ! interpolate----------------------------------------------------------------------------------------
-   	call interpolation_galerkin_femdem( alg_ext, alg_fl, field = solid )
-	solid_true => extract_scalar_field( alg_fl, "shell_volume_fraction" )
-	ring_relax => extract_scalar_field( alg_fl, "RingRelax" )
-	T => extract_scalar_field( alg_fl, "SolidTemp" )
-    ! bound solid concentration--------------------------------------------------------------------------
-    call bound_volume_fraction( solid_true % val )
-
-	! output---------------------------------------------------------------------------------------------
-	temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-	solid % val = solid_true % val
-
-	! linear to quadratic--------------------------------------------------------------------------------
-    T_mesh => extract_mesh( packed_state, "PressureMesh" )
-    call allocate( T2, T_mesh, "dummy" )
-	call allocate( ring_relax2, T_mesh, "dummy" )
-	call allocate( solid_true2, T_mesh, "dummy" )
-    call linear2quadratic_field(T, T2)
-    call linear2quadratic_field(ring_relax, ring_relax2)
-	call linear2quadratic_field(solid_true, solid_true2)
-	
-	!forall(i = 1 :size(solid_true2 % val), solid_true2 % val (i) .EQ. 0.0) ring_relax2 % val (i)  = 0.0 
-	!forall(i = 1 :size(solid_true2 % val), solid_true2 % val (i) .EQ. 0.0) T2 % val (i)  = 0.0 
-	
-	! Update RHS and LHS---------------------------------------------------------------------------------
-   Absorption => extract_tensor_field( packed_state, "PackedTemperatureAbsorption")
-	alphaT => extract_scalar_field( packed_state, "DummyT")
-	Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-
-	
-	Absorption % val (1,1,:)= ring_relax2 % val
-
-	alphaT % val = ring_relax2 % val
-	Q % val( 1, 1, : ) = T2 %val
-
-    !temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-	!temperature % val (1, 1, :) =  T2 %val
-	! dealocate------------------------------------------------------------------------------------------
-    call deallocate( field_fl_Ts ) 
-    call deallocate( field_fl_shell )
-	call deallocate( field_fl_Rr )
-    call deallocate( field_ext_Ts )
-    call deallocate( field_ext_shell )
-	call deallocate( field_ext_Rr )    
-	call deallocate( alg_fl )
-    call deallocate( alg_ext )
-    call deallocate( T2 )
-	call deallocate( solid_true2 )
-	call deallocate( ring_relax2 )
-
-    return
-end subroutine interpolate_fields_in_r_t
-
-subroutine interpolate_fields_in_v_t( packed_state, T_s, flag_thm)
-
-    implicit none
-
-    type( state_type ), intent( in ) :: packed_state
-    real, dimension( : ), intent( in ) :: T_s
-	integer, intent( in ) :: flag_thm
-
-    !Local variables
-    type( mesh_type ), pointer :: p0_fl_mesh, fl_mesh, T_mesh
-    type( scalar_field ), pointer :: solid, old_solid, solid_true, T, f, alphaT
-    type( scalar_field ) :: field_fl_Ts, &
-         &                  field_ext_Ts, T2, solid_true2, shell_concentration, solid_pure, &
-         &                  field_fl_solid, field_ext_solid
-    type( vector_field ), pointer :: fl_positions, porosity
-    type( scalar_field ), pointer :: interpoltemp
-    type( tensor_field ), pointer :: Absorption, Q , temperature
-
-    real :: k_e, dt, acctim
-    type( tensor_field ), pointer ::  fluid_density_capacity
-    type( state_type ) :: alg_ext, alg_fl
-    integer :: stat, idim,i
-    character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
-
-    call set_solver_options( path, &
-         ksptype = "gmres", &
-         pctype = "hypre", &
-         rtol = 1.0e-10, &
-         atol = 1.0e-14, &
-         max_its = 10000 )
-    call add_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-    call set_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
-
-    path = "/tmp"
-
-    fl_mesh => extract_mesh( packed_state, "PressureMesh" )
-    fl_positions => extract_vector_field( packed_state, "Coordinate" )
-
-    ! fluidity state----------------------------------------------------------------------------------------
-    !alg_fl contains fluid mesh and coordinates and velocity
-    call insert( alg_fl, fl_mesh, "Mesh" )
-    call insert( alg_fl, fl_positions, "Coordinate" )
-    !call insert( alg_fl,fl_T, "Temperature" )
-
-    call allocate( field_fl_Ts, fl_positions%mesh, "SolidTemp" )
-    call zero( field_fl_Ts )
-    field_fl_Ts % option_path = path
-    call insert( alg_fl, field_fl_Ts, "SolidTemp" )
-
-    call allocate( field_fl_solid, fl_positions%mesh, "SolidConcentration" )
-    call zero( field_fl_solid )
-    field_fl_solid % option_path = path
-    call insert( alg_fl, field_fl_solid, "SolidConcentration" )
-
-    ! solidity state----------------------------------------------------------------------------------------
-    call insert( alg_ext, positions_v%mesh, "Mesh" )
-    call insert( alg_ext, positions_v, "Coordinate" )
-
-    call allocate( field_ext_Ts, positions_v%mesh, "SolidTemp" )
-    field_ext_Ts % val = T_s( : )
-    call insert( alg_ext, field_ext_Ts, "SolidTemp" )
-
-    call allocate( field_ext_solid, positions_v%mesh, "SolidConcentration" )
-    field_ext_solid % val = 1.0
-    call insert( alg_ext, field_ext_solid, "SolidConcentration" )
-
-    ! deal with SolidConcentration, update Old solid concentration
-    solid => extract_scalar_field( packed_state, "SolidConcentration" )
-	T_mesh => extract_mesh( packed_state, "PressureMesh" )
-	call allocate( shell_concentration, T_mesh, "dummy" )
-	shell_concentration % val = solid % val
-    call zero( solid )
-
-    ! interpolate
-    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = solid )
-
-
-	!if (flag_thm == 3 ) call bound_volume_fraction( solid_true % val ) ! Ruins the implicit bdary condition, especially with a coarse mesh. Only ok to use when ring + volume(pure solid)
-	!if (flag_thm == 3 ) forall(i = 1 :size(solid_true % val), solid_true % val (i) .NE. 1.0) solid_true % val (i)  = 0.0 
-	!call bound_volume_fraction( solid_true % val )
-
-	!call bound_volume_fraction( shell_concentration % val )
-	!solid_true % val = solid_true % val - solid_true % val * shell_concentration % val
-	!solid % val = solid_true % val
-    !call bound_volume_fraction( solid % val )
-	!call bound_volume_fraction( shell_concentration % val )
-	!forall(i = 1 :size(shell_concentration % val), shell_concentration % val (i) .NE. 0.0) solid_true % val (i)  = 0.0 
-	!solid_true % val = solid_true % val - shell_concentration % val
-	!call bound_volume_fraction( solid_true % val )
-	!forall(i = 1 :size(solid_true % val), solid_true % val (i) .NE. 1.0) solid_true % val (i)  = 0.0 
-	!solid % val = solid_true % val !you dont wanna relax where the ring is, the ring is a fluid bc
-    
-
-	solid_true => extract_scalar_field( alg_fl, "SolidConcentration" )
-	call bound_volume_fraction( solid_true % val )
-	call allocate( solid_pure, T_mesh, "dummy" )
-	T => extract_scalar_field( alg_fl, "SolidTemp" )
-	
-	if(flag_thm == 3) then !This def causes pb, why binary of the erro tho?
-		!forall(i = 1 :size(shell_concentration % val), shell_concentration % val (i) .NE. 0.0) solid_true % val (i)  = 0.0
-		!forall(i = 1 :size(shell_concentration % val), shell_concentration % val (i) .NE. 0.0) T % val (i)  = 0.0
-		!!solid_true % val = solid_true % val * (1.0 - shell_concentration % val)
-	end if 
-	
-	solid % val = solid_true % val
-
-
-   
-    call allocate( T2, T_mesh, "dummy" )
-	call allocate( solid_true2, T_mesh, "dummy" )
-    call linear2quadratic_field(T, T2)
-	call linear2quadratic_field(solid_true, solid_true2)
-
-	Absorption => extract_tensor_field( packed_state, "PackedTemperatureAbsorption")
-	Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-	
-	if(flag_thm == 1) then
-		call get_option( '/timestepping/timestep', dt )
-		fluid_density_capacity => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-		k_e = fluid_density_capacity % val (1,1,1) /dt
-		Absorption % val (1,1,:) = solid_true2 % val * k_e
-		Q % val( 1, 1, : ) = T2 % val * k_e
-	else if(flag_thm == 3) then
-		k_e = 0.5/(0.005*0.005)
-		Absorption % val (1,1,:) = Absorption % val (1,1,:) + k_e * solid_true2 % val 
-		alphaT => extract_scalar_field( packed_state, "DummyT")
-		alphaT % val = alphaT % val + k_e * solid_true2 % val
-		Q % val( 1, 1, : ) = Q % val( 1, 1, : ) + T2 % val * k_e !* solid_true2 % val 
-	else if(flag_thm == 5) then
-		porosity => extract_vector_field( packed_state, "Porosity" )
-		!k_e = 1.0 * porosity % val (:, :)
-		Absorption % val (1,1,:) = k_e * solid_true2 % val 
-		Q % val( 1, 1, : ) = T2 % val * k_e !* solid_true2 % val 
-	end if
-
-	
-		call get_option( "/timestepping/timestep", dt )
-		call get_option( '/timestepping/current_time', acctim )
-	!if (acctim == dt) then
-	!	temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-	!	temperature % val (1, 1, :) =  (1- solid_true % val) * 1.0 +  solid_true % val * 0.0
-	!end if
-
-    call deallocate( field_fl_Ts )
-    call deallocate( field_fl_solid )
-    call deallocate( field_ext_Ts )
-    call deallocate( field_ext_solid )
-    call deallocate( alg_fl )
-    call deallocate( alg_ext )
-    call deallocate( T2 )
-
-    return
-  end subroutine interpolate_fields_in_v_t
-
-  subroutine calculate_solid_concentration( packed_state, flag_thm)
-
-    implicit none
-
-    type( state_type ), intent( inout ) :: packed_state
-	integer, intent( in ) :: flag_thm
-    !Local variables
-    type( mesh_type ), pointer :: p0_fl_mesh, fl_mesh, T_mesh
-    type( scalar_field ), pointer :: solid, solid_true
-    type( scalar_field ) :: field_fl_solid, field_ext_solid, shell_concentration
-    type( vector_field ), pointer :: fl_positions
-	type( tensor_field ), pointer ::  temperature
-    type( state_type ) :: alg_ext, alg_fl
-	type( scalar_field ), pointer :: shell_vf
-    integer :: stat, idim,i
-    character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
-
-    call set_solver_options( path, &
-         ksptype = "gmres", &
-         pctype = "hypre", &
-         rtol = 1.0e-10, &
-         atol = 1.0e-14, &
-         max_its = 10000 )
-    call add_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-    call set_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
-
-    path = "/tmp"
-
-    fl_mesh => extract_mesh( packed_state, "PressureMesh" )
-    fl_positions => extract_vector_field( packed_state, "Coordinate" )
-    
-print *, "CALCULATE SOLID CONCENTRATION"
-    ! fluidity state----------------------------------------------------------------------------------------
-    !alg_fl contains fluid mesh and coordinates and velocity
-    call insert( alg_fl, fl_mesh, "Mesh" )
-    call insert( alg_fl, fl_positions, "Coordinate" )
-    !call insert( alg_fl,fl_T, "Temperature" )
-
-
-    call allocate( field_fl_solid, fl_positions%mesh, "SolidConcentration" )
-    call zero( field_fl_solid )
-    field_fl_solid % option_path = path
-    call insert( alg_fl, field_fl_solid, "SolidConcentration" )
-
-    ! solidity state----------------------------------------------------------------------------------------
-    call insert( alg_ext, positions_v%mesh, "Mesh" )
-    call insert( alg_ext, positions_v, "Coordinate" )
-
-
-    call allocate( field_ext_solid, positions_v%mesh, "SolidConcentration" )
-    field_ext_solid % val = 1.0
-    call insert( alg_ext, field_ext_solid, "SolidConcentration" )
-
-    !call allocate( dummy, fl_positions%mesh, "dummy" )
-    !call zero( dummy )
-
-print *,  'debugA'
-    ! deal with SolidConcentration, update Old solid concentration
-    solid => extract_scalar_field( packed_state, "SolidConcentration" )
-print *,  'debugB'
-	T_mesh => extract_mesh( packed_state, "PressureMesh" )
-print *,  'debugC'
-	call allocate( shell_concentration, T_mesh, "dummy" )
-print *,  'debugD'
-	shell_concentration % val = solid % val
-print *,  'debugE'
-    call zero( solid )
-
-    ! interpolate
-    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = solid )
-    solid_true => extract_scalar_field( alg_fl, "SolidConcentration" )
-print *,  'debug1'
-
-
-	!solid_true % val = solid_true % val - shell_vf % val
-	call bound_volume_fraction( solid_true % val )
-	print *,  'debug1'
-	
-	!forall(i = 1 :size(shell_concentration % val), shell_concentration % val (i) .NE. 0.0) solid_true % val (i)  = 0.0
-	solid % val = solid_true % val
-	!Initialise to the bulk temperature for ring only or validation, if volume it will be done in multi dyncore with den_all (heat cap density)
-	
-	!temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-	!if(flag_thm == 2  .OR. flag_thm == 3 .OR. flag_thm == 4) then !not for ring if solid not imbeded in fluid
-	!if (flag_thm == 4) then 
-		!temperature % val(1 , 1 , :) = (1- solid_true % val) * 1.0 +  solid_true % val * 0.0
-	!end if
-
-    call deallocate( field_fl_solid )
-    call deallocate( field_ext_solid )
-    call deallocate( alg_fl )
-    call deallocate( alg_ext )
-
-    return
-  end subroutine calculate_solid_concentration
-
-
-subroutine calculate_shell_volume_fraction( packed_state )
-        implicit none
-        type( state_type ), intent( inout ) :: packed_state
-        !Local variables
-        type( state_type ) :: alg_ext, alg_fl
-        type( mesh_type ), pointer :: fl_mesh, p0_fl_mesh, p_mesh
-        type( vector_field ), pointer :: fl_positions
-        type( scalar_field ) :: rvf
-        type( scalar_field ), pointer :: shell_vf, f
-        type( scalar_field ) :: f3, dummy, field_ext_shell, field_fl_shell
-
-integer :: stat, idim
-    character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
-
-    call set_solver_options( path, &
-         ksptype = "gmres", &
-         pctype = "hypre", &
-         rtol = 1.0e-10, &
-         atol = 1.0e-14, &
-         max_its = 10000 )
-    call add_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-    call set_option( &
-         trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
-
-    path = "/tmp"
-
-
-
-
-
-
-        !ewrite(3,*) "inside calculate_phi_and_perm"
-
-        call insert( alg_ext, positions_r%mesh, "Mesh" )
-        call insert( alg_ext, positions_r, "Coordinate" ) 
-        call allocate( field_ext_shell, positions_r%mesh, "shell_volume_fraction" )
-        field_ext_shell % val = 1.0
-        call insert( alg_ext, field_ext_shell, "shell_volume_fraction" )
-
-
-
-
-        fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-        fl_positions => extract_vector_field( packed_state, "Coordinate" )
-
-        call insert( alg_fl, fl_mesh, "Mesh" )
-        call insert( alg_fl, fl_positions, "Coordinate" )  
-
-        call allocate( field_fl_shell, fl_positions%mesh, "shell_volume_fraction" )
-        call zero( field_fl_shell )
-        field_fl_shell % option_path = path
-        call insert( alg_fl, field_fl_shell, "shell_volume_fraction" )
-
-
-    call allocate( dummy, fl_positions%mesh, "dummy" )
-    call zero( dummy )
-    ! interpolate
-    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = dummy )
-
-!!-PY make solidconcentration correct
-       shell_vf => extract_scalar_field( packed_state, "SolidConcentration" )!extract_scalar_field( packed_state, "shell_volume_fraction" )
-       call zero( shell_vf  )
-
-       p_mesh => extract_mesh( packed_state, "PressureMesh" )
-       call allocate( f3, p_mesh, "dummy" )
-
-       f => extract_scalar_field( alg_fl, "shell_volume_fraction")
-	   call bound_volume_fraction( f % val )
-       call linear2quadratic_field(f, f3)
-       shell_vf  % val = f3 % val
-
-
-
-        
-        call deallocate( alg_fl )
-        call deallocate( alg_ext )
-
-
-        return
-    end subroutine calculate_shell_volume_fraction
 
 end module multiphase_fractures_3D
