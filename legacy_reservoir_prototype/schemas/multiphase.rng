@@ -2988,6 +2988,13 @@ To disable it manually, set it to negative values. </a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="max_sat_its">
+              <a:documentation>Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
+By default this number is 5. Recommended range: 3 - 9.</a:documentation>
+              <ref name="integer"/>
+            </element>
+          </optional>
+          <optional>
             <element name="Bad_element_fix">
               <a:documentation>Look for bad elements to change its anisotropic permeability to improve their quality</a:documentation>
               <optional>

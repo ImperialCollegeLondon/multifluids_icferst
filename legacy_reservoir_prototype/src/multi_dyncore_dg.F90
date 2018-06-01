@@ -592,7 +592,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
-             integer, parameter :: Max_sat_its = 9
+             integer :: Max_sat_its
              real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
@@ -625,6 +625,9 @@ if (is_flooding) return!<== Temporary fix for flooding
              end if
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
+             !Retrieve number of saturation fixed point iterations from diamond, by default 5
+             call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 5)
+
 
              GET_THETA_FLUX = .FALSE.
              IGOT_T2 = 0
