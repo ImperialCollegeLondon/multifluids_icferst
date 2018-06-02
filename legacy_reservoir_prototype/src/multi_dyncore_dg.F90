@@ -625,8 +625,8 @@ if (is_flooding) return!<== Temporary fix for flooding
              end if
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
-             !Retrieve number of saturation fixed point iterations from diamond, by default 5
-             call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 5)
+             !Retrieve number of saturation fixed point iterations from diamond, by default 9
+             call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
 
 
              GET_THETA_FLUX = .FALSE.
