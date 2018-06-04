@@ -2835,7 +2835,9 @@ The default value is 1e-2.</a:documentation>
           <optional>
             <element name="well_volume_ids">
               <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
-that the well trajectories are preserved.</a:documentation>
+that the well trajectories are preserved.
+
+***This is MANDATORY when using files to define wells***</a:documentation>
               <ref name="integer_vector"/>
               <optional>
                 <element name="Show_well_volumes_ids">
@@ -2848,9 +2850,10 @@ that the well trajectories are preserved.</a:documentation>
           <zeroOrMore>
             <element name="well_from_file">
               <a:documentation>Introduce here the relative path to the file defining a 1D well
-
 Note that the only accepted file format is NASTRAN, i.e. .bdf.
-Each file has to describe a continuous well touching an external boundary.</a:documentation>
+Each file has to describe a continuous well touching an external boundary.
+
+***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
               <attribute name="name">
                 <data type="string" datatypeLibrary=""/>
               </attribute>

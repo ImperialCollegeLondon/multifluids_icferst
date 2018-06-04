@@ -2148,6 +2148,8 @@ start =
 
             ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
             ## that the well trajectories are preserved.
+            ##
+            ## ***This is MANDATORY when using files to define wells***
             element well_volume_ids {
               integer_vector,
                   (
@@ -2156,9 +2158,10 @@ start =
                   )
              }?,
              ## Introduce here the relative path to the file defining a 1D well
-             ##
              ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
              ## Each file has to describe a continuous well touching an external boundary.
+             ##
+             ## ***Well_volume_ids option is MANDATORY when using this method to define wells.***
              element well_from_file {
              attribute name { string },
              attribute file_path { string }                  

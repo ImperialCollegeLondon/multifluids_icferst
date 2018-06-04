@@ -1462,13 +1462,14 @@ contains
         integer, dimension(Mdims%ndim + 1) :: CV_LOC_CORNER!NCORNER
         logical, dimension(Mdims%ndim + 1) :: PIPE_INDEX_LOGICAL!NCORNER
         !Variables to read from input files
-        integer :: number_well_files, edge
+        integer :: number_well_files, edge, stat
         real :: diam
         character( len = option_path_len ):: file_path
         real, dimension(:,:), allocatable :: nodes
         integer, dimension(:,:), allocatable :: edges
         integer, dimension(:), allocatable :: pipe_seeds
         type( tensor_field ), pointer:: tfield
+        type (scalar_field), pointer :: well_domains
         logical, save :: dump_vtu_zero = .true.
         !Initialise
         AUX_eles_with_pipe%ele = -1
@@ -1488,11 +1489,18 @@ contains
             !Clean eles_with_pipes before reading the files
             if (allocated(eles_with_pipe)) deallocate(eles_with_pipe)
             diameter_of_the_pipe_aux = 0.
+
+            well_domains =>  extract_scalar_field( state(1), "Well_domains" , stat)
+            if (stat /= 0) then
+                if (getprocno() == 1)then
+                    FLExit( "ERROR: Wells defined by a file requires the well_volumes_ids to be specified")
+                end if
+            end if
             do k = 1, number_well_files
                 !First identify the well trajectory
                 call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
-                call find_pipe_seeds(X%val, nodes, edges, pipe_seeds)
+                call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
                 call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
@@ -1598,10 +1606,11 @@ contains
         end function is_within_pipe
 
 
-        subroutine find_pipe_seeds(X, nodes, edges, pipe_seeds)
+        subroutine find_pipe_seeds(well_domains, X, nodes, edges, pipe_seeds)
             !This do not work in parallel
             !Change for brute force by looking in the well region ids initially
             implicit none
+            type (scalar_field), pointer :: well_domains
             real, dimension(:,:), intent(in) :: X
             real, dimension(:,:), allocatable, intent(in) :: nodes
             integer, dimension(:,:), allocatable, intent(in) :: edges
@@ -1610,7 +1619,7 @@ contains
             logical, save :: first_time =.true.
             logical :: found
             integer :: i, j, l, count
-            integer :: sele, siloc, sinod
+            integer :: sele, siloc, sinod, ele, iloc, inod
             real, dimension(Mdims%stotel) :: aux_pipe_seeds
             aux_pipe_seeds = -1
             !Initialise tolerancePipe just once per simulation
@@ -1620,29 +1629,52 @@ contains
                     call get_option('/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
                 end if
             end if
-            !Use brute force through the surface of the domain. This should work in parallel and in serial
-            !as long as the well reaches a boundary of one of the domains. The cost is minimised by looping over the boundary of
-            !the domain only
-            l = 0; aux_pipe_seeds = -1
-            do sele = 1, Mdims%stotel
-                do siloc = 1, Mdims%p_snloc
-                    sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(edges,2)
-                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
 
+            !Use brute force through the whole mesh but selecting only elements that live within the wells region ids to find a seed
+            !This should definetively work in parallel and be cheap
+            l = 0; aux_pipe_seeds = -1
+            do ele = 1, size(well_domains%val)
+                if (well_domains%val(ele) <= 1e-8) cycle!Only look at elements within the well regions, the rest is set to 0
+                do iloc  = 1, Mdims%cv_nloc
+                    inod = ndgln%p( ( ele - 1 ) * Mdims%cv_nloc + iloc )
+                    do edge = 1, size(edges,2)
+                        if (is_within_pipe(X(:,inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
-                                if (aux_pipe_seeds(j)==sinod) found = .true.
+                                if (aux_pipe_seeds(j)==inod) found = .true.
                                 if (aux_pipe_seeds(j) < 0 .or. found) exit
                             end do
                             if (.not.found) then
                                 l = l + 1
-                                aux_pipe_seeds(l) = sinod!Store the global node number
+                                aux_pipe_seeds(l) = inod!Store the global node number
                             end if
                         end if
                     end do
                 end do
             end do
+            !OLD METHOD, June/2018. REMOVEME IF THIS DATE IS TOO OLD...
+!            !Use brute force through the surface of the domain. This only works in serial...
+!            !The cost is minimised by looping over the boundary of the domain only
+!            l = 0; aux_pipe_seeds = -1
+!            do sele = 1, Mdims%stotel
+!                do siloc = 1, Mdims%p_snloc
+!                    sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
+!                    do edge = 1, size(edges,2)
+!                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
+!
+!                            found = .false.
+!                            do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
+!                                if (aux_pipe_seeds(j)==sinod) found = .true.
+!                                if (aux_pipe_seeds(j) < 0 .or. found) exit
+!                            end do
+!                            if (.not.found) then
+!                                l = l + 1
+!                                aux_pipe_seeds(l) = sinod!Store the global node number
+!                            end if
+!                        end if
+!                    end do
+!                end do
+!            end do
 
             allocate(pipe_seeds(l))
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
