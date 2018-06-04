@@ -1607,8 +1607,7 @@ contains
 
 
         subroutine find_pipe_seeds(well_domains, X, nodes, edges, pipe_seeds)
-            !This do not work in parallel
-            !Change for brute force by looking in the well region ids initially
+            !For a given NASTRAN file find a node that is within the pipe
             implicit none
             type (scalar_field), pointer :: well_domains
             real, dimension(:,:), intent(in) :: X
@@ -1633,7 +1632,7 @@ contains
             !Use brute force through the whole mesh but selecting only elements that live within the wells region ids to find a seed
             !This should definetively work in parallel and be cheap
             l = 0; aux_pipe_seeds = -1
-            do ele = 1, size(well_domains%val)
+            element_loop: do ele = 1, size(well_domains%val)
                 if (well_domains%val(ele) <= 1e-8) cycle!Only look at elements within the well regions, the rest is set to 0
                 do iloc  = 1, Mdims%cv_nloc
                     inod = ndgln%p( ( ele - 1 ) * Mdims%cv_nloc + iloc )
@@ -1647,11 +1646,12 @@ contains
                             if (.not.found) then
                                 l = l + 1
                                 aux_pipe_seeds(l) = inod!Store the global node number
+                                exit element_loop !just one seed per well
                             end if
                         end if
                     end do
                 end do
-            end do
+            end do element_loop
             !OLD METHOD, June/2018. REMOVEME IF THIS DATE IS TOO OLD...
 !            !Use brute force through the surface of the domain. This only works in serial...
 !            !The cost is minimised by looping over the boundary of the domain only
