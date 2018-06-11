@@ -782,6 +782,8 @@ contains
                 IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
             END DO
         END DO
+        if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
+
         ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) )
         ! Determine IGOT_T_PACK(IPHASE,:):
         IGOT_T_PACK=.FALSE.
@@ -1971,27 +1973,32 @@ contains
                     N( CV_NODI ) = N( CV_NODI ) + MASS_ELE( ELE )
                 END DO
             END DO
-            DO CV_NODI = 1, Mdims%cv_nonods
-                if (is_porous_media) then
-                    SIGMA_INV_APPROX( :, CV_NODI ) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) / N( CV_NODI ) )
-                else if(is_flooding) then
-                ! set \sigma for the pipes here      !multi_absorp%Flooding is always of memory type 1
-                    SIGMA_INV_APPROX(:, cv_nodi)=1.0/multi_absorp%Flooding%val( 1, 1, :, cv_nodi )!Only has the friction inside the pipes
-                else
-                    SIGMA_INV_APPROX( :, CV_NODI ) = 1.0
-                end if
-            END DO
+
+            !Populate SIGMA_INV_APPROX depending on what type of problem we are trying to solve
+            if (is_porous_media) then
+                DO CV_NODI = 1, Mdims%cv_nonods
+                    SIGMA_INV_APPROX(:, CV_NODI) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV(:, CV_NODI) / N(CV_NODI) )
+                end do
+            else if(is_flooding) then
+            ! set \sigma for the pipes here      !multi_absorp%Flooding is always of memory type 1
+                DO CV_NODI = 1, Mdims%cv_nonods
+                    SIGMA_INV_APPROX(:, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, :, CV_NODI )!Only has the friction inside the pipes
+                end do
+            else if (is_poroelasticity) then!For poroelasticity ensure that the first phase is immobile
+                SIGMA_INV_APPROX(1, :) = huge(1.0)
+                if (Mdims%nphase > 1) SIGMA_INV_APPROX(2:Mdims%nphase, :) = 1.0
+            else
+                SIGMA_INV_APPROX = 1.0
+            end if
+
+
+
             allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
 
             CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                 getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
                 SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes)
 
-            if(is_flooding) then
-                DO CV_NODI = 1, Mdims%cv_nonods
-                    SIGMA_INV_APPROX(:, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, :, CV_NODI )!Only has the friction inside the pipes
-                END DO
-            endif
             ! Used for pipe modelling...
             DO CV_NODI = 1, Mdims%cv_nonods
                 MASS_CV_PLUS(2:Mdims%npres,CV_NODI) = pipes_aux%MASS_PIPE(CV_NODI)

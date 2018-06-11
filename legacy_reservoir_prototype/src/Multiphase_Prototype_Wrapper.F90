@@ -835,6 +835,7 @@ contains
         is_porous_media = have_option('/simulation_type/porous_media') .or. have_option('/is_porous_media')
         is_magma = have_option('/simulation_type/magma')
         is_flooding = have_option('/simulation_type/flooding')
+        is_poroelasticity = have_option('/simulation_type/poroelasticity')
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/simulation_type/femdem_fracture' )
         !Flag to set up blasting

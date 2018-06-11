@@ -675,7 +675,6 @@ if (is_flooding) return!<== Temporary fix for flooding
              density=>extract_tensor_field(packed_state,"PackedDensity")
              sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
 
-
              !This logical is used to loop over the saturation equation until the functional
              !explained in function get_Convergence_Functional has been reduced enough
              satisfactory_convergence = .false.
@@ -1030,7 +1029,7 @@ if (is_flooding) return!<== Temporary fix for flooding
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
-           UDEN_ALL=0.0; UDENOLD_ALL=0.0
+           UDEN_ALL=0.0; UDENOLD_ALL=0.0!This is to disable the time-derivative that inertia has
            call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_SOURCE_CV_ALL )
         else
            if ( linearise_density ) then
@@ -1053,6 +1052,12 @@ if (is_flooding) return!<== Temporary fix for flooding
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
+            if (is_poroelasticity) then
+                !We disable the first order time derivative of the first phase (solid phase)
+                !phase1 is considered the solid phase and we solve for displacement
+                !The second order time derivative for the first phase, and the coupling terms need to be added from diamond
+                UDEN_ALL(1,:)=0.0; UDENOLD_ALL(1,:)=0.0
+            end if
         end if
 
         if ( have_option( '/blasting' ) ) then
@@ -2077,7 +2082,8 @@ end if
         REAL, DIMENSION ( :, :, : ), allocatable :: CENT_RELAX, CENT_RELAX_OLD
         ! For derivatives...
         REAL, DIMENSION ( : ), allocatable :: NMX_ALL, VNMX_ALL
-        LOGICAL :: GOT_DIFFUS, GOT_UDEN, DISC_PRES, QUAD_OVER_WHOLE_ELE
+        logical :: GOT_UDEN !Controls the momentum terms
+        LOGICAL :: GOT_DIFFUS, DISC_PRES, QUAD_OVER_WHOLE_ELE
         INTEGER :: IPHASE, KPHASE, ELE, GI, IU_NOD, JCV_NOD, &
             COUNT, COUNT2, IPHA_IDIM, JPHA_JDIM, MAT_NOD, SGI, SELE, &
             U_SILOC, P_SJLOC, &
@@ -2171,10 +2177,10 @@ end if
         ! If =1 then modify the stress term to take into
         ! account dividing through by DevFuns%VOLUME fraction.
         integer, parameter :: IDIVID_BY_VOL_FRAC = 0
-
         ! gradU
         logical :: get_gradU
         type(tensor_field), pointer :: gradU
+
 
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
@@ -2633,6 +2639,14 @@ end if
             Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
+        !For poroelasticity we need to modify the absorption term, disable the inertia terms,
+        !phase1 is considered the solid phase and we solve for displacement
+        !The second order time derivative for the first phase, and the coupling terms need to be added from diamond
+        if (is_poroelasticity) then
+            GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
+            GOT_UDEN = .false.!Disable inertia terms
+        end if
+
        IF( GOT_DIFFUS .or. get_gradU ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
                 DUX_ELE_ALL, DUOLDX_ELE_ALL, &
@@ -2702,6 +2716,11 @@ end if
             allocate( vol_s_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
+
+
+
+
+
 
         ! surface tension-like terms
         IF ( IPLIKE_GRAD_SOU /= 0 ) THEN
@@ -3639,10 +3658,7 @@ end if
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                            !                                        w=1.0
-                                            !                                        if (i/=j) w = wv
-                                            !                                        Mmat%PIVIT_MAT( I,J, ELE )  &
-                                            !                                        = Mmat%PIVIT_MAT( I,J, ELE ) + w * VLK_UVW( IDIM )
+
                                             Mmat%PIVIT_MAT( I,J, ELE ) = Mmat%PIVIT_MAT( I,J, ELE ) + VLK_UVW( IDIM )
                                         ENDIF
                                     END IF
