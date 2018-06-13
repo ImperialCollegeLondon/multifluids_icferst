@@ -37,7 +37,7 @@ module multiphase_fractures_3D
   use state_module
   use copy_outof_state
   use spud
-    use global_parameters, only: option_path_len, field_name_len, is_multifracture
+  use global_parameters, only: option_path_len, field_name_len, is_multifracture, is_fracturing
   use futils, only: int2str
   use solvers
   use implicit_solids
@@ -186,7 +186,7 @@ print *,  'ready to interpolate_fields_in_r_out------'
         real, dimension( : ), allocatable :: p_r, muf_r, p_v
         real, dimension( :, : ), allocatable :: uf_r, uf_v, du_s, u_s, f ,u
         real, dimension( :, :, : ), allocatable :: a
-        integer :: r_nonods, v_nonods
+        integer :: r_nonods, v_nonods, r_noold
         real :: dt
     type( state_type ), intent( inout ) :: packed_state
     type( state_type ), dimension( : ), intent( inout ) :: state
@@ -211,6 +211,14 @@ print *,  'ready to interpolate_fields_in_r_out------'
             !!-ao two way coupling
             r_nonods = node_count( positions_r )
             v_nonods = node_count( positions_v )
+
+            if(r_nonods > r_noold) then !if the node count before and after projection is different that indicates new fractures
+                  print *, "*** dynamic AMR - FRACTURING ***"
+
+                   is_fracturing = .true.
+            else
+                   is_fracturing = .false.
+            endif
 
             allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
                 f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
@@ -242,6 +250,15 @@ print *,  'ready to interpolate_fields_in_r_out------'
         !!-ao two way coupling
         r_nonods = node_count( positions_r )
         v_nonods = node_count( positions_v )
+
+
+            if(r_nonods > r_noold) then !if the node count before and after projection is different that indicates new fractures
+                    print *, "*** dynamic AMR - FRACTURING ***"
+                   is_fracturing = .true.
+            else
+                   is_fracturing = .false.
+            endif
+
 
         allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
             f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
