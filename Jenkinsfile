@@ -26,9 +26,7 @@ pipeline {
         }
         stage('Testing') {       
             steps { 
-                sh 'make unittest' ;
-                sh 'make test' ;
-                sh 'make mediumtest'
+                sh 'make test-mp' 
             }
         }
     }
