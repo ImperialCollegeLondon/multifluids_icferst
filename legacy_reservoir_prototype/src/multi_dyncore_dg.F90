@@ -343,7 +343,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
-                   OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
 
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
@@ -708,8 +708,9 @@ if (is_flooding) return!<== Temporary fix for flooding
                      mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
-                     OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux)
+                     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     nonlinear_iteration = nonlinear_iteration)
 
                  !Make the inf norm of the Courant number across cpus
                  if (IsParallel()) then

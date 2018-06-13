@@ -114,9 +114,9 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, &
         TDIFFUSION, &
-        saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
+        saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-        porous_heat_coef, outfluxes, solving_compositional)
+        porous_heat_coef, outfluxes, solving_compositional, nonlinear_iteration)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -277,9 +277,9 @@ contains
         REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
         type(tensor_field), intent(in), optional, target :: saturation
         REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
-        !Variables for Capillary pressure
+        !Variables for Vanishing artificial diffusion
         integer, optional, intent(in) :: Phase_with_Pc
-        real, optional, dimension(:), intent(in) :: OvRelax_param
+        real, optional, dimension(:), intent(in) :: VAD_parameter
         !Variables to cache get_int_vel OLD
         real, optional, dimension(:), intent(inout) :: Courant_number
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
@@ -291,7 +291,8 @@ contains
         ! Variable to store outfluxes
         type (multi_outfluxes), optional, intent(inout) :: outfluxes
         logical, optional, intent(in) :: solving_compositional
-
+        !Non-linear iteration count
+        integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
         REAL :: ZERO_OR_TWO_THIRDS
 
@@ -443,8 +444,8 @@ contains
         real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS
         !Permeability
         type( tensor_field ), pointer :: perm
-        !Variables for Capillary pressure
-        logical :: capillary_pressure_activated, between_elements, on_domain_boundary
+        !Variables for Vanishing artificial diffusion (VAD)
+        logical :: VAD_activated, between_elements, on_domain_boundary
         !Variables for get_int_vel_porous_vel
         logical :: anisotropic_and_frontier, anisotropic_perm
         real, dimension(Mdims%nphase):: rsum_nodi, rsum_nodj
@@ -485,12 +486,18 @@ contains
         real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
 
 
-
+        !Check vanishing artificial diffusion options
+        VAD_activated = .false.
+        if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
+            VAD_activated = Phase_with_Pc >0
+        end if
         !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction
         local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional)
         !this is true if the user is asking for high order advection scheme
         use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
-
+        !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
+        !we only do this for the first 2 non-linear iterations, this should be fine as it is very unlikely for porous media to do less than 3
+        if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 2
         logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
         have_absorption=.false.
@@ -545,11 +552,7 @@ contains
         else
             THETA_VEL_HAT = 1.0
         end if
-        !Check capillary pressure options
-        capillary_pressure_activated = .false.
-        if (present(OvRelax_param) .and. present(Phase_with_Pc)) then
-            capillary_pressure_activated = Phase_with_Pc >0
-        end if
+
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
         !#################SET WORKING VARIABLES#################
@@ -817,7 +820,7 @@ contains
         ! NFIELD Variables:
         if (thermal .and.is_porous_media) allocate(Porous_diff_coef_divdx(Mdims%nphase), Porous_diff_coefold_divdx(Mdims%nphase))
         LIMT_HAT=0.0
-        IF ( capillary_pressure_activated) THEN
+        IF ( VAD_activated) THEN
             ALLOCATE( CAP_DIFFUSION( Mdims%nphase, Mdims%mat_nonods ) )
             !Introduce the information in CAP_DIFFUSION
             CAP_DIFFUSION = 0.!Initialize to zero just in case
@@ -826,7 +829,7 @@ contains
                     CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
                     MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
                     CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
-                        - T_ALL(Phase_with_Pc, CV_NODI) * OvRelax_param(CV_NODI)
+                        - T_ALL(Phase_with_Pc, CV_NODI) * VAD_parameter(CV_NODI)
                 end do
             end do
         ENDIF
@@ -1527,7 +1530,7 @@ contains
                                     Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                 end if
                             end if
-                            If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
+                            If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                                 IF(SELE == 0) THEN
                                     CAP_DIFF_COEF_DIVDX = 0.
                                     do iphase =1, Mdims%nphase
@@ -1796,7 +1799,7 @@ contains
                                             call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,auxR) ! Advection
                                             if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
                                                             - FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
-                                            if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
+                                            if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
                                                             - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
                                         end do
                                          ! integrate the other CV side contribution (the sign is changed)...
@@ -1806,7 +1809,7 @@ contains
                                                     - FTHETA_T2_J(IPHASE) * SdevFuns%DETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) ) ! Advection
                                             if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
                                                     - FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE))
-                                            if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
+                                            if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
                                                            - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE))
                                             end do
                                         endif
@@ -1826,7 +1829,7 @@ contains
 
                                         if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
                                            +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
-                                        if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
+                                        if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
                                            +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
                                         if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
                                            - FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
@@ -1840,7 +1843,7 @@ contains
 
                                             if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
                                                 +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
-                                            if (capillary_pressure_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
+                                            if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
                                                 +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
                                             if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
                                                 + FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
@@ -1868,7 +1871,7 @@ contains
                                     if (GOT_DIFFUS) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
                                         + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                                         * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) )
-                                    if (capillary_pressure_activated) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
+                                    if (VAD_activated) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
                                         - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
                                         * ( T_ALL(:, CV_NODJ) - T_ALL(:, CV_NODI) )
                                     if (.not.conservative_advection) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
@@ -1888,7 +1891,7 @@ contains
                                     if (GOT_DIFFUS) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
                                         + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                                         * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) )
-                                    if (capillary_pressure_activated) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
+                                    if (VAD_activated) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
                                         - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capillary pressure stabilization term..
                                         * ( T_ALL(:, CV_NODI) - T_ALL(:, CV_NODJ) )
                                     if (.not.conservative_advection) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
@@ -2622,7 +2625,7 @@ contains
          if (tracer%name == "PackedTemperature" )  then
             deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
         end if
-        if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
+        if (VAD_activated) deallocate(CAP_DIFFUSION)
         ewrite(3,*) 'Leaving CV_ASSEMB'
         if (is_flooding) deallocate(DEN_ALL_DIVID)
         if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
