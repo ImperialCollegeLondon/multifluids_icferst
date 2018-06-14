@@ -116,7 +116,7 @@ contains
         TDIFFUSION, &
         saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
         Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-        porous_heat_coef, outfluxes, solving_compositional, nonlinear_iteration)
+        porous_heat_coef, outfluxes, solving_compositional)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -291,8 +291,6 @@ contains
         ! Variable to store outfluxes
         type (multi_outfluxes), optional, intent(inout) :: outfluxes
         logical, optional, intent(in) :: solving_compositional
-        !Non-linear iteration count
-        integer, optional, intent(in) :: nonlinear_iteration
         ! ###################Local variables############################
         REAL :: ZERO_OR_TWO_THIRDS
 
@@ -495,9 +493,7 @@ contains
         local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional)
         !this is true if the user is asking for high order advection scheme
         use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
-        !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
-        !we only do this for the first non-linear iteration
-        if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 1
+
         logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
         have_absorption=.false.
