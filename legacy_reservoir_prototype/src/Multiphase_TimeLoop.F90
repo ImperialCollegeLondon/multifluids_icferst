@@ -1068,6 +1068,20 @@ contains
                 if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
                     call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', &
                         adapt_time_steps, default=5 )
+
+                !-ao solid modelling (AMR field for fracturing)
+                if (is_multifracture ) then
+                    if ((is_fracturing) .AND. (itime>1)) then !-asiri- If new fractures surfaces are detected, reduce AMR period and adapt every timestep
+                        adapt_time_steps=1
+                    else if (.not. is_fracturing .AND. ((itime/adapt_time_steps)>5)) then !after intial adapt
+                        adapt_time_steps=50
+                    else
+                        call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', & !forcing default again (just in case)
+                            adapt_time_steps, default=5 )
+                endif
+                !-ao solid modelling (AMR field for fracturing)
+
+                end if
                 else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                     do_reallocate_fields = .true.
                     adapt_time_steps = 5!adapt_time_steps requires a default value

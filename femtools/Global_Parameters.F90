@@ -181,6 +181,8 @@ module global_parameters
 
   !! Checking multifracture
   logical :: is_multifracture = .false.
+    !! Checking to see if fracturing is occuring in FEMDEM
+  logical :: is_fracturing = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
   !! Checking if using the P0DG for velocity,
