@@ -354,16 +354,35 @@ contains
             !Create a copy of the velocity fields to store the DarcyVelocity in it
             !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
             do i = 1, nphase
-                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
-                call copy_option(trim(option_path)//"Velocity", trim(option_path)//"DarcyVelocity")
-                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")) &
-                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")
 
-                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption"))&
-                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption")
+                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity"
+                if (.not.have_option(option_path)) then
+                    call add_option(trim(option_path),  stat=stat)
+                    option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity/prescribed"
+                    call add_option(trim(option_path)//"/mesh::VelocityMesh",  stat=stat)
+                    call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                    call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                    call add_option(trim(option_path)//"/output",  stat=stat)
+                    call add_option(trim(option_path)//"/stat",  stat=stat)
+                    call add_option(trim(option_path)//"/stat/exclude_from_stat",  stat=stat)
 
-                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options"))&
-                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options")
+                    call add_option(trim(option_path)//"/detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                    call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+                end if
+
+
+
+!                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
+!                call copy_option(trim(option_path)//"Velocity", trim(option_path)//"DarcyVelocity")
+!                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")) &
+!                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/tensor_field::Viscosity")
+!
+!                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption"))&
+!                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/vector_field::Absorption")
+!
+!                if (have_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options"))&
+!                        call delete_option(trim(option_path)//"DarcyVelocity"//"/prognostic/adaptivity_options")
             end do
         end if
 

@@ -496,8 +496,8 @@ contains
         !this is true if the user is asking for high order advection scheme
         use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
         !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
-        !we only do this for the first 2 non-linear iterations, this should be fine as it is very unlikely for porous media to do less than 3
-        if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 2
+        !we only do this for the first non-linear iteration
+        if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 1
         logical_igot_theta_flux = IGOT_THETA_FLUX == 1
 
         have_absorption=.false.

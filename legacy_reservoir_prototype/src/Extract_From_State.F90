@@ -1200,17 +1200,17 @@ contains
         end if
 
         !!$ memory allocation for darcy velocity
-        if(is_porous_media) then
-            ! allocate darcy velocity[in packed_state]
-            call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
-            call zero(ten_field)
-            call insert(packed_state,ten_field,"PackedDarcyVelocity")
-            call deallocate(ten_field)
-
-            do iphase = 1, n_in_pres
-                call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
-            end do
-        end if
+!        if(is_porous_media) then!Since this is created as a diagnostic, linking memory gives problems when deallocating the different states
+!            ! allocate darcy velocity[in packed_state]
+!            call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
+!            call zero(ten_field)
+!            call insert(packed_state,ten_field,"PackedDarcyVelocity")
+!            call deallocate(ten_field)
+!
+!            do iphase = 1, n_in_pres
+!                call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
+!            end do
+!        end if
 
 
         !! // How to add density as a dependant of olddensity,  as an example
@@ -3065,26 +3065,33 @@ end function have_option_for_any_phase
 
 
 !!$ This subroutine calculates the actual Darcy velocity
-subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
+subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_absorp)
 
     implicit none
+    type( state_type ), dimension( : ), intent( inout ) :: state
     type(multi_ndgln), intent(in) :: ndgln
     type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(in) :: packed_state
     type (multi_field), intent(in) :: PorousMedia_absorp
 
     ! Local variables
-    type(tensor_field), pointer :: darcy_velocity, velocity, saturation
+    type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
+    type(tensor_field), pointer :: velocity, saturation
     real, dimension(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim) :: loc_absorp_matrix
     real, dimension(Mdims%ndim) :: sat_weight_velocity
     real :: auxR
     integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
     ! Initialisation
-    darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
+
+    do iphase = 1, Mdims%nphase
+        darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
+        call zero(darcy_velocity(iphase)%ptr)
+    end do
+
+    !darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-    call zero(darcy_velocity)
 
     ! Calculation
     do ele = 1, Mdims%totele
@@ -3099,14 +3106,15 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
                     sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim, &
                         (iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim),velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
-                    darcy_velocity%val(:,iphase,u_inod) = darcy_velocity%val(:,iphase,u_inod)+ &
+                    darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
                         sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
                 end do
             end do
         end do
     end do
-    call halo_update(darcy_velocity)
-
+    do iphase = 1, Mdims%nphase
+        call halo_update(darcy_velocity(iphase)%ptr)
+    end do
 end subroutine get_DarcyVelocity
 
     subroutine Get_Scalar_SNdgln( sndgln, field  )

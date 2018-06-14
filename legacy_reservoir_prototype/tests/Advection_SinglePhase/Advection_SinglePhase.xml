@@ -13,7 +13,7 @@ Reference_Advection_Max = stat("Advection_SinglePhase.stat")["phase1"]["Temperat
 Reference_Advection_Min = stat("Advection_SinglePhase.stat")["phase1"]["Temperature_DifferenceRef"]["min"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert max absolute regression difference for Temperature Advection Field is less than 1.0e-10" language="python">assert(abs(Reference_Advection_Max) &lt; .99)</test>
+    <test name="Assert max absolute regression difference for Temperature Advection Field is less than 1.0e-10" language="python">assert(abs(Reference_Advection_Max) &lt; 1.01)</test>
     <test name="Assert min absolute regression difference for Temperature Advection Field is less than 1.0e-10" language="python">assert(abs(Reference_Advection_Min) &lt; .95)</test>
   </pass_tests>
   <warn_tests/>

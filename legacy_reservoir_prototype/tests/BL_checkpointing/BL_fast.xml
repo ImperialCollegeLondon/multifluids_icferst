@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml checkpointing2</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/multiphase_prototype BL_fast.mpml
+../../../bin/multiphase_prototype QuickTest_DG_2_checkpoint.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="pressure_P1DGP1" language="python">import vtk
+import numpy
+file=vtk.vtkXMLUnstructuredGridReader()
+file.SetFileName("QuickTest_DG_20.vtu")
+file.Update()
+data=file.GetOutput()
+data.GetPointData().SetActiveScalars("phase1::PhaseVolumeFraction")
+d1=numpy.zeros(data.GetNumberOfPoints())
+data.GetPointData().GetScalars().ExportToVoidPointer(d1)
+file2=vtk.vtkXMLUnstructuredGridReader()
+file2.SetFileName("QuickTest_DG_checkpoint_10.vtu")
+file2.Update()
+data2=file2.GetOutput()
+data2.GetPointData().SetActiveScalars("phase1::PhaseVolumeFraction")
+d2=numpy.zeros(data2.GetNumberOfPoints())
+data2.GetPointData().GetScalars().ExportToVoidPointer(d2)
+pressure_P1DGP1=(d1-d2)</variable>
+  </variables>
+  <pass_tests>
+    <test name="P1DGP1 pressure ok" language="python">assert all(abs(pressure_P1DGP1)&lt;1.0e-8)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
