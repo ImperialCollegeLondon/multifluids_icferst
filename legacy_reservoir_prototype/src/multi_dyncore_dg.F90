@@ -709,7 +709,8 @@ if (is_flooding) return!<== Temporary fix for flooding
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp, &          !Capillary variables
                      VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux)
+                     Courant_number = Courant_number, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
+                     nonlinear_iteration = nonlinear_iteration)
 
                  !Make the inf norm of the Courant number across cpus
                  if (IsParallel()) then
