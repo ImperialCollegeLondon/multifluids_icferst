@@ -26,7 +26,7 @@ pipeline {
         }
         stage('Testing') {       
             steps { 
-                sh 'make test-mp' 
+                sh 'make test-mp-xml' 
             }
         }
     }
