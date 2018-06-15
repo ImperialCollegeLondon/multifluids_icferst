@@ -349,12 +349,10 @@ contains
                  "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
             end if
         end if
-
         if (is_porous_media) then
             !Create a copy of the velocity fields to store the DarcyVelocity in it
             !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
             do i = 1, nphase
-
                 option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity"
                 if (.not.have_option(option_path)) then
                     call add_option(trim(option_path),  stat=stat)
@@ -364,7 +362,7 @@ contains
                     call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
                     call add_option(trim(option_path)//"/output",  stat=stat)
                     call add_option(trim(option_path)//"/stat",  stat=stat)
-                    call add_option(trim(option_path)//"/stat/exclude_from_stat",  stat=stat)
+                    call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
 
                     call add_option(trim(option_path)//"/detectors",  stat=stat)
                     call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)

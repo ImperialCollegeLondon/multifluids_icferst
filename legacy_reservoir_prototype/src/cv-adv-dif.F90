@@ -6330,7 +6330,7 @@ end if
         INTEGER :: U_KLOC, U_KLOC2, IDIM, &
             IPHASE, U_SKLOC, I, J, U_KKLOC, &
             u_iloc, u_siloc, count, COUNT_SUF
-        real :: Mass_corrector
+        real :: Mass_corrector, auxR
         !Local variables for CV pressure bcs
         integer :: KPHASE, CV_SNODK, CV_SNODK_IPHA, CV_SKLOC
         real, dimension(:,:), allocatable :: SUF_SIG_DIAGTEN_BC_pha_GI
@@ -6372,7 +6372,11 @@ end if
                     IF ( between_elements) THEN
                         ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
                         !This is to perform the average between two DG pressures (same mass => 0.5)
-                        Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
+                        auxR = 0.25!<= original!0.5 seems similar, should try up to 2
+                        Mass_corrector = (MASS_ELE( ELE2 ) + auxR * MASS_ELE( ELE ))/( (1.+auxR) *(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
+                        !Mass_corrector = MASS_ELE( ELE2 )/(MASS_ELE( ELE2 ) + MASS_ELE( ELE ) )!<=this seems to work
+
+
 
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &

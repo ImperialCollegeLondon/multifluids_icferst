@@ -3082,12 +3082,10 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_abso
     real :: auxR
     integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
     ! Initialisation
-
-    do iphase = 1, Mdims%nphase
+    do iphase = 1, Mdims%n_in_pres
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
         call zero(darcy_velocity(iphase)%ptr)
     end do
-
     !darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -3102,7 +3100,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_abso
                 cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                 !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
                 call get_multi_field_inverse(PorousMedia_absorp, imat, loc_absorp_matrix)
-                do iphase = 1, Mdims%nphase
+                do iphase = 1, Mdims%n_in_pres
                     sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim, &
                         (iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim),velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
@@ -3112,7 +3110,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_abso
             end do
         end do
     end do
-    do iphase = 1, Mdims%nphase
+    do iphase = 1, Mdims%n_in_pres
         call halo_update(darcy_velocity(iphase)%ptr)
     end do
 end subroutine get_DarcyVelocity
