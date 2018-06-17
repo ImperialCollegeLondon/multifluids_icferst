@@ -391,6 +391,16 @@ contains
         end if
 
         if (is_porous_media) then
+            !Check that all the elements have permeability defined
+            perm_field => extract_tensor_field(packed_state,"Permeability")
+            do its = 1, size(perm_field%val,3)
+                do its2 = 1, size(perm_field%val,2)
+                    if (perm_field%val(its2,its2,its)< 1e-30) then
+                        FLExit( "Some elements do not have permebility defined or it is zero. Use a very small value instead, currently the minimum is 1e-30." )
+                    end if
+                end do
+            end do
+
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
             !Allocate the memory to obtain the sigmas at the interface between elements

@@ -99,7 +99,6 @@
         <Vanishing_relaxation>
           <real_value rank="0">-1e2</real_value>
         </Vanishing_relaxation>
-        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
