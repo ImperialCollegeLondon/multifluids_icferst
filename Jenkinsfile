@@ -26,13 +26,13 @@ pipeline {
         }
         stage('Testing') {       
             steps { 
-                sh 'make test-mp' 
+                sh 'make test-mp-xml' 
             }
         }
     }
     post {
         always {
-            junit 'tests/test_result*xml'
+            junit 'legacy_reservoir_prototype/tests/multiphase_test_result*xml'
         }
     }
 }
