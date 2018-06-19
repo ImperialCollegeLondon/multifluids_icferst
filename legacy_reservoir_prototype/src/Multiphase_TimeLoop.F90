@@ -62,7 +62,7 @@ module multiphase_time_loop
     use spact
     use Compositional_Terms
     use multiphase_EOS
-    use multiphase_fractures
+    use multiphase_fractures_3D
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
@@ -71,7 +71,6 @@ module multiphase_time_loop
     use multi_data_types
     use vtk_interfaces
     use multi_interpolation
-    use multi_transport
     use multi_pipes
     use momentum_diagnostic_fields, only: calculate_densities
 
@@ -143,7 +142,7 @@ contains
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
@@ -180,7 +179,7 @@ contains
         integer :: ioutlet
         type (multi_outfluxes) :: outfluxes
         ! Variables used in the CVGalerkin interpolation calculation
-        integer, save :: numberfields = -1
+        integer, save :: numberfields_CVGalerkin_interp = -1
         real :: t_adapt_threshold
         !Variables for FPI acceleration for flooding
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
@@ -198,7 +197,7 @@ contains
 
 !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
-
+        real :: old_acctim
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -207,7 +206,7 @@ contains
 #endif
 
         ! Check wether we are using the CV_Galerkin method
-        numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
+        numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
         ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
         call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold, default = 0.0 )
@@ -392,6 +391,16 @@ contains
         end if
 
         if (is_porous_media) then
+            !Check that all the elements have permeability defined
+            perm_field => extract_tensor_field(packed_state,"Permeability")
+            do its = 1, size(perm_field%val,3)
+                do its2 = 1, size(perm_field%val,2)
+                    if (perm_field%val(its2,its2,its)< 1e-30) then
+                        FLExit( "Some elements do not have permebility defined or it is zero. Use a very small value instead, currently the minimum is 1e-30." )
+                    end if
+                end do
+            end do
+
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
             !Allocate the memory to obtain the sigmas at the interface between elements
@@ -442,6 +451,12 @@ contains
         ! Reading options for bad_element test
         call BadElementTest(Quality_list, 1)
 
+        !Prepapre the pipes
+        if (Mdims%npres > 1) then
+           !Retrieve the elements with pipes and the corresponding coordinates
+           call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
+           call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+        end if
 
 !!$ Time loop
         Loop_Time: do
@@ -449,15 +464,11 @@ contains
             ! Tests bad elements and creates table of angles for model elements
             call BadElementTest(Quality_list, 2)
 
+
+
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
-            !Prepapre the pipes
-            if (Mdims%npres > 1) then
-               !Retrieve the elements with pipes and the corresponding coordinates
-               if (after_adapt .or. first_time_step) call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
-               call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
-            end if
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
             if (adapt_mesh_in_FPI) call get_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI', Courant_tol, default = -1.)
@@ -467,6 +478,7 @@ contains
             timestep = itime
             call get_option( '/timestepping/timestep', dt )
             call get_option( '/timestepping/current_time', acctim )
+            old_acctim = acctim
             acctim = acctim + dt
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
@@ -486,15 +498,22 @@ contains
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
                call fracking(packed_state, state,Mdims%nphase)
+            elseif ( have_option( '/blasting') ) then
+               call blasting( packed_state, Mdims%nphase )
+               call update_blasting_memory( packed_state, state, timestep )
+!            elseif (have_option( '/simulation_type/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
+ !              call femdemthermal(packed_state, state,Mdims%nphase)
+!			   call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
+
             !Store backup to be able to repeat a timestep
             if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
-                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
+                Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
             ExitNonLinearLoop = .false.
@@ -514,7 +533,7 @@ contains
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 if( solve_force_balance) then
@@ -527,8 +546,6 @@ contains
                 end if
 
 
-!Testing multi_transport
-call solve_transport()
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -571,8 +588,8 @@ call solve_transport()
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
                         !Do not calculate unless necessary, this is not specially efficient...
-                        if(have_option('/io/output_darcy_vel').or. is_multifracture) then
-                            call get_DarcyVelocity( Mdims, ndgln, packed_state, multi_absorp%PorousMedia )
+                        if(is_multifracture) then
+                            call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
                         end if
                     end if
 
@@ -638,7 +655,7 @@ call solve_transport()
                 end if
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(packed_state, reference_field, its,&
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, adapt_mesh_in_FPI, calculate_mass_delta)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, adapt_mesh_in_FPI, calculate_mass_delta)
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
@@ -676,8 +693,6 @@ call solve_transport()
                     cycle Loop_Time
                 end if
             end if
-            call set_option( '/timestepping/current_time', acctim )
-            call set_option( '/timestepping/timestep', dt)
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
 
@@ -802,7 +817,7 @@ call solve_transport()
         call deallocate_multi_pipe_package(pipes_aux)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
-        if (numberfields > 0) then
+        if (numberfields_CVGalerkin_interp > 0) then
             call MemoryCleanupInterpolation1()     ! Clean up state_old allocations here.
                                                    ! State_new cleanup happens straight after calling the interpolation with flag = 1
                                                    ! inside the adaptivity loop. Probably best to split M2Minterpolation into
@@ -991,6 +1006,13 @@ call solve_transport()
         end subroutine linearise_components
 
         subroutine create_dump_vtu_and_checkpoints()
+
+            if (is_porous_media) then!Calculate Darcy velocity to output in the vtu files
+                !Do not recalculate for "is_multifracture"
+                if(.not.is_multifracture) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
+            end if
+
+
             !!$ Write outputs (vtu and checkpoint files)
             if (have_option('/io/dump_period_in_timesteps')) then
                 ! dump based on the prescribed period of time steps
@@ -1036,20 +1058,40 @@ call solve_transport()
             type( scalar_field ), pointer ::  s_field, s_field2, s_field3
             type( vector_field ), pointer ::  U_x1, U_x2
             integer :: U_x1_stat, idim
+            real, dimension(2) :: min_max_limits_before
+            type (tensor_field), pointer :: tempfield
 
-
-
-            if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
+            if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
                     call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col , 0)
                 endif
             endif
 
+            !If has_temperature then we want to ensure than when adapting the mesh the field is between bounds
+            if (has_temperature) then
+                tempfield => extract_tensor_field( packed_state, "PackedTemperature" )
+                min_max_limits_before(1) = minval(tempfield%val); call allmin(min_max_limits_before(1))
+                min_max_limits_before(2) = maxval(tempfield%val); call allmax(min_max_limits_before(2))
+            end if
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
                 if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
                     call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', &
                         adapt_time_steps, default=5 )
+
+                !-ao solid modelling (AMR field for fracturing)
+                if (is_multifracture ) then
+                    if ((is_fracturing) .AND. (itime>1)) then !-asiri- If new fractures surfaces are detected, reduce AMR period and adapt every timestep
+                        adapt_time_steps=1
+                    else if (.not. is_fracturing .AND. ((itime/adapt_time_steps)>5)) then !after intial adapt
+                        adapt_time_steps=50
+                    else
+                        call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', & !forcing default again (just in case)
+                            adapt_time_steps, default=5 )
+                endif
+                !-ao solid modelling (AMR field for fracturing)
+
+                end if
                 else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                     do_reallocate_fields = .true.
                     adapt_time_steps = 5!adapt_time_steps requires a default value
@@ -1174,17 +1216,25 @@ end if
                 !Allocate and calculate the sparsity patterns
                 call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv,&
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
+                call put_CSR_spars_into_packed_state()
+
                 if (is_porous_media) then
                     call get_RockFluidProp(state, packed_state)
                     call deallocate_porous_adv_coefs(upwnd)
                     call allocate_porous_adv_coefs(Mdims, upwnd)
                     !Clean the pipes memory if required
-                    if (Mdims%npres > 1) call deallocate_multi_pipe_package(pipes_aux)
+                    if (Mdims%npres > 1) then
+                        call deallocate_multi_pipe_package(pipes_aux)
+                        call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
+                        call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+                    end if
+                    !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
+                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
+                    call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)!<= just in case, cap unphysical values if there are still some
                 end if
-
-                call put_CSR_spars_into_packed_state()
+                if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,min_max_limits = min_max_limits_before)
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
-                if (numberfields > 0) then
+                if (numberfields_CVGalerkin_interp > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
                         call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, &
                                 Mspars%small_acv%fin, Mspars%small_acv%col, 1)

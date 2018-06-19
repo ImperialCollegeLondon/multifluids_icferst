@@ -268,7 +268,7 @@ contains
     !If mesh adaptivity fails, and we return to this subroutine to try obtain a new mesh
     !we want only the processor that failed to obtain a mesh to try with more conservative settings
     logical, save :: use_conservative_settings = .false.
-
+    logical, save :: second_try = .false.
     ewrite(1, *) "In adapt_mesh"
     
 #ifdef DDEBUG
@@ -517,15 +517,24 @@ contains
 
 
 #ifdef HAVE_ADAPTIVITY
+
     !If this is the second try because there was an error, try with different parameters
     if (present_and_true(adapt_error) .and. use_conservative_settings) then
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
         nsweep = 50!Increase drastically the number of sweeps
-        !Relax tolerance
-        dotop = dotop * 2.
         !Disable all techniques but the very basics
         mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+        if (second_try) then
+			mshopt(1) = .false.! <= Leave only r-adaptivity
+			!Relax tolerance
+			dotop = dotop * 2.
+		end if
+        !Set this to true just in case we have to repeat one second time
+        second_try = .true.
+    else
+        !Re-set second-try to false the first time we enter in this subroutine
+        second_try = .false.
     end if
     !disable conservative settings flag, this has to be just above call adptvy
     use_conservative_settings = .false.

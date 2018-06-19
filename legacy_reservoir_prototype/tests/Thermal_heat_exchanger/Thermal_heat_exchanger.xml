@@ -16,8 +16,8 @@ max_temp_well = stat("thermal_porous.stat")["phase2"]["Temperature"]["max"][-1]<
   </variables>
   <pass_tests>
     <test name="Assert final max temperature" language="python">assert(abs((max_temp - 80.)/80.) &lt; 0.01)</test>
-    <test name="Assert final min temperature" language="python">assert(abs((min_temp - 79.8)/79.8) &lt; 0.01)</test>
-    <test name="Assert final max temperature wells" language="python">assert(abs((max_temp_well - 31.7)/31.7) &lt; 0.01)</test>
+    <test name="Assert final min temperature" language="python">assert(abs((min_temp - 79.84)/79.84) &lt; 0.01)</test>
+    <test name="Assert final max temperature wells" language="python">assert(abs((max_temp_well - 31.8)/31.8) &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

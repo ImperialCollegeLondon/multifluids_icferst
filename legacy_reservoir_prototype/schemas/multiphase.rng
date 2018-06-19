@@ -34,6 +34,13 @@ characters in the simulation name should be avoided.</a:documentation>
             <a:documentation>Darcy flow simulator</a:documentation>
             <ref name="comment"/>
           </element>
+          <element name="poroelasticity">
+            <a:documentation>Poro-elasticity simulator:
+This requires to define through diamond the tensor field in phase 1 UAbsorB
+as an absorption term and also the RHS that should include the second time-derivative for the solid phase
+and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
+            <ref name="comment"/>
+          </element>
           <element name="magma">
             <a:documentation>Magma flow simulator</a:documentation>
             <ref name="comment"/>
@@ -174,12 +181,6 @@ interpolated for VTK output.</a:documentation>
         <optional>
           <element name="output_scalars_fem">
             <a:documentation>Output FE representation of scalar fields instead of the CV one.</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
-          <element name="output_darcy_vel">
-            <a:documentation>Calculates the Darcy velocity and is outputed in the vtu files.</a:documentation>
             <empty/>
           </element>
         </optional>
@@ -538,7 +539,7 @@ between two consecutive non-linear iterations.
 
 This can be used to control the number of non-linear interations dynamically.
 
-By default 0.03; Recommended between 0.05 and 0.005</a:documentation>
+By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
                     <ref name="real"/>
                     <group>
                       <optional>
@@ -631,9 +632,9 @@ This imposes that the temperature has to be between bounds.</a:documentation>
                 <optional>
                   <element name="Test_mass_consv">
                     <a:documentation>Convergence criterion based on the 
-conservation of mass for the Fixed Point Iteration solver
+conservation of volume of each phase for the non-linear solver
 
-By default the tolerance is 5e-3</a:documentation>
+By default the tolerance is 1e-2</a:documentation>
                     <ref name="real"/>
                   </element>
                 </optional>
@@ -2841,7 +2842,9 @@ The default value is 1e-2.</a:documentation>
           <optional>
             <element name="well_volume_ids">
               <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
-that the well trajectories are preserved.</a:documentation>
+that the well trajectories are preserved.
+
+***This is MANDATORY when using files to define wells***</a:documentation>
               <ref name="integer_vector"/>
               <optional>
                 <element name="Show_well_volumes_ids">
@@ -2854,9 +2857,10 @@ that the well trajectories are preserved.</a:documentation>
           <zeroOrMore>
             <element name="well_from_file">
               <a:documentation>Introduce here the relative path to the file defining a 1D well
-
 Note that the only accepted file format is NASTRAN, i.e. .bdf.
-Each file has to describe a continuous well touching an external boundary.</a:documentation>
+Each file has to describe a continuous well touching an external boundary.
+
+***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
               <attribute name="name">
                 <data type="string" datatypeLibrary=""/>
               </attribute>
@@ -2991,6 +2995,13 @@ the bigger it is the more P0DG the element becomes. The default values have been
 The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
 To disable it manually, set it to negative values. </a:documentation>
               <ref name="real"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="max_sat_its">
+              <a:documentation>Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
+By default this number is 9. Recommended range: 3 to 9.</a:documentation>
+              <ref name="integer"/>
             </element>
           </optional>
           <optional>
@@ -6180,6 +6191,21 @@ THIS OPTION IS USED TO SET TENSOR DIMENSIONS		</a:documentation>
       <element name="tensor_field">
         <attribute name="name">
           <value>a_xx</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+            <ref name="mesh_choice"/>
+            <ref name="diagnostic_tensor_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="tensor_field">
+        <attribute name="name">
+          <value>FractureMap</value>
         </attribute>
         <choice>
           <element name="diagnostic">

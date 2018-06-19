@@ -36,6 +36,7 @@ module Copy_Outof_State
     use fields
     use field_options
     use spud
+    use quicksort
     use populate_state_module
     use diagnostic_variables
     use diagnostic_fields
@@ -707,8 +708,35 @@ contains
         integer :: nphase,ncomp,ndim,stat,n_in_pres
 
 #ifdef USING_FEMDEM
-        if(have_option('/simulation_type/femdem_fracture')) then
-            if(have_option('/simulation_type/femdem_fracture/oneway_coupling_only')) then!This option do not exist
+        if(have_option('/blasting')) then
+            sfield=>extract_scalar_field(state(1),"SolidConcentration" )
+            call insert(packed_state,sfield,"SolidConcentration")
+            call add_new_memory(packed_state,sfield,"OldSolidConcentration")
+			!call add_new_memory(packed_state,sfield,"shell_volume_fraction")
+
+            vfield=>extract_vector_field(state(1),"delta_U")
+            call insert(packed_state,vfield,"delta_U")
+
+            vfield=>extract_vector_field(state(1),"solid_U")
+            call insert(packed_state,vfield,"solid_U")
+
+            vfield=>extract_vector_field(state(1),"f_x")
+            call insert(packed_state,vfield,"f_x")
+
+            tfield=>extract_tensor_field(state(1),"a_xx")
+            call insert(packed_state,tfield,"a_xx")
+
+            tfield=>extract_tensor_field(state(1),"Viscosity" )
+            call insert(packed_state,tfield,"Viscosity")
+
+!				sfield=>extract_scalar_field(state(1),"DummyT")
+ !           call insert(packed_state,sfield,"DummyT")
+
+!				sfield=>extract_scalar_field(state(1),"shell_volume_fraction")
+ !           call insert(packed_state,sfield,"shell_volume_fraction")
+
+        else if(have_option('/simulation_type/femdem_fracture')) then
+            if(have_option('/femdem_fracture/oneway_coupling_only')) then!This option do not exist
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
                 call insert(packed_state,sfield,"SolidConcentration")
                 call add_new_memory(packed_state,sfield,"OldSolidConcentration")
@@ -719,11 +747,14 @@ contains
                 sfield=>extract_scalar_field(state(1),"Dummy")
                 call insert(packed_state,sfield,"Dummy")
 
-                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
-                call insert(packed_state,vfield,"Darcy_Velocity")
+!                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
+!                call insert(packed_state,vfield,"Darcy_Velocity")
 
                 sfield=>extract_scalar_field(state(1),"TotalFlux")
                 call insert(packed_state,sfield,"TotalFlux")
+
+		       tfield=>extract_tensor_field(state(1),"FractureMap")
+            	call insert(packed_state,tfield,"FractureMap")
             else
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
                 call insert(packed_state,sfield,"SolidConcentration")
@@ -738,14 +769,14 @@ contains
                 sfield=>extract_scalar_field(state(1),"TotalFlux")
                 call insert(packed_state,sfield,"TotalFlux")
 
-                vfield=>extract_vector_field(state(1),"Darcy_Velocity")
-                call insert(packed_state,vfield,"Darcy_Velocity" )
+          	tfield=>extract_tensor_field(state(1),"FractureMap")
+            	call insert(packed_state,tfield,"FractureMap")
 
-                vfield=>extract_vector_field(state(1),"delta_U")
-                call insert(packed_state,vfield,"delta_U")
+  !              vfield=>extract_vector_field(state(1),"delta_U")
+  !              call insert(packed_state,vfield,"delta_U")
 
-                vfield=>extract_vector_field(state(1),"solid_U")
-                call insert(packed_state,vfield,"solid_U")
+  !              vfield=>extract_vector_field(state(1),"solid_U")
+  !              call insert(packed_state,vfield,"solid_U")
             end if
         end if
 #endif
@@ -1169,40 +1200,17 @@ contains
         end if
 
         !!$ memory allocation for darcy velocity
-        if(is_porous_media) then
-            if(have_option('/io/output_darcy_vel') .or. is_multifracture) then
-                ! allocate darcy velocity[in packed_state]
-                call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
-                call zero(ten_field)
-                call insert(packed_state,ten_field,"PackedDarcyVelocity")
-                call deallocate(ten_field)
-
-                do iphase = 1, n_in_pres
-                    call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
-                end do
-
-!                ! let velocity[in state] point to darcy velocity[packed_state]
-!                tfield=>extract_tensor_field(packed_state,"PackedDarcyVelocity")
+!        if(is_porous_media) then!Since this is created as a diagnostic, linking memory gives problems when deallocating the different states
+!            ! allocate darcy velocity[in packed_state]
+!            call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
+!            call zero(ten_field)
+!            call insert(packed_state,ten_field,"PackedDarcyVelocity")
+!            call deallocate(ten_field)
 !
-!                do iphase=1,size(state)
-!                    vfield=>extract_vector_field(state(iphase),"Velocity")
-!                    vfield%val=>tfield%val(:,iphase,:)
-!                end do
-
-                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                ! unfinished part -- still working on the field copy for when adaptivity is switched on
-                ! 3 places to be changed: here, Populate_State, Multiphase_TimeLoop
-                !
-                ! add velocity_int[in state] and point it to internal velocity[packed_state]
-                ! tfield=>extract_tensor_field(packed_state,"PackedVelocity")
-                !do iphase=1,size(state)
-                    ! call allocate_and_insert_vector_field('/material_phase['//int2str(size(state)-1)//']/vector_field::Velocity', &
-                    !   state(iphase), field_name = "Velocity_int", parent_mesh = "VelocityMesh", dont_assign_boundary_condition = .true.)
-                    !vfield=>extract_vector_field(state(iphase),"Velocity_bak")
-                    !vfield%val=>tfield%val(:,iphase,:)
-                !end do
-            end if
-        end if
+!            do iphase = 1, n_in_pres
+!                call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase)
+!            end do
+!        end if
 
 
         !! // How to add density as a dependant of olddensity,  as an example
@@ -1956,13 +1964,14 @@ end subroutine finalise_multistate
 
 
 subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
-    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order, adapt_mesh_in_FPI, calculate_mass_delta)
+    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, adapt_mesh_in_FPI, calculate_mass_delta)
     !This subroutine either store variables before the nonlinear timeloop starts, or checks
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
     Implicit none
     type(state_type), intent(inout) :: packed_state
     real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
+    real, intent(in) :: old_acctim
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
     integer, intent(inout) :: its!not to be modified unless VERY sure
     logical, intent(in) :: nonLinearAdaptTs
@@ -2012,7 +2021,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     if (tolerance_between_non_linear<0) return
     !Tolerance for the infinite norm
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',&
-        Infinite_norm_tol, default = 0.03 )
+        Infinite_norm_tol, default = 0.01 )
     !retrieve number of Fixed Point Iterations
     call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
@@ -2038,7 +2047,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
     call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
-            calculate_mass_tol, default = 5d-3)
+            calculate_mass_tol, default = 1d-2)
     PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
@@ -2049,6 +2058,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
         call get_option( '/timestepping/timestep', dt )
         stored_dt = dt
     end if
+
     !To ensure that we always create a vtu file at the desired time,
     !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
     if (have_option('/io/dump_period/constant')) then
@@ -2202,8 +2212,11 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                     case default
                         !For very tiny time-steps ts_ref_val may not be good as is it a relative value
-                        !So if the infinity norm is way better than the tolerance we consider that the convergence have been achieved
-                        if (inf_norm_val * 1e1 < Infinite_norm_tol) ts_ref_val = tolerance_between_non_linear/2.
+                        !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
+                        if (inf_norm_val * 5. < Infinite_norm_tol) then
+                            ts_ref_val = tolerance_between_non_linear/2.
+!                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
+                        end if
                         ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                 end select
@@ -2252,11 +2265,11 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     if (ExitNonLinearLoop.and..not.Repeat_time_step) then
                         !Modify time step
                         dt = stored_dt
-                        auxR = PID_time_controller()
+                        auxR = abs(PID_time_controller())
                         if (auxR < 1.0 )then!Reduce Ts
-                            dt = max(dt * max(abs(auxR), 1./(1.5*decreaseFactor)), min_ts)
+                            dt = max(dt * max(auxR, 1./(1.5*decreaseFactor)), min_ts)
                         else
-                            dt = dt * min(abs(auxR), 1.5*increaseFactor)
+                            dt = dt * min(auxR, 1.5*increaseFactor)
                         end if
                         auxR = stored_dt
                         call set_option( '/timestepping/timestep', dt )
@@ -2291,7 +2304,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 if (its >= NonLinearIteration .or. Repeat_time_step) then
                     !If it has not converged when reaching the maximum number of non-linear iterations,
                     !reduce ts and repeat
-                    dt = stored_dt!retrieve stored_dt
+                    call get_option( '/timestepping/timestep', dt )
                     if ( dt - min_ts < 1d-8) then
                         !Ensure that dt = min_ts
                         dt = min_ts
@@ -2310,19 +2323,22 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         return
                     end if
                     !Decrease time step, reset the time and repeat!
-                    call get_option( '/timestepping/current_time', acctim )
-                    acctim = acctim - dt
-                    call set_option( '/timestepping/current_time', acctim )
+                    call set_option( '/timestepping/current_time', old_acctim )
+                    if (PID_controller) auxR = PID_time_controller(reset=.true.)
+!
+!                    call get_option( '/timestepping/current_time', acctim )
+!                     acctim = acctim - dt
+!                    call set_option( '/timestepping/current_time', acctim )
 
-                    if (PID_controller) then
-                        auxR = PID_time_controller()
-                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
-                        dt = max(min(dt / decreaseFactor, max( auxR, 0.5*dt / decreaseFactor)), min_ts)
-                        !If PID_controller then update the status
-                        auxR = PID_time_controller(reset=.true.)
-                    else
-                        dt = max(dt / decreaseFactor,min_ts)
-                    end if
+
+!                    if (PID_controller) then
+!                        auxR = PID_time_controller()
+!                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
+!                        dt = max(min(dt / decreaseFactor, max( auxR*dt, 0.5*dt / decreaseFactor)), min_ts)
+!                        !If PID_controller then update the status
+!                        auxR = PID_time_controller(reset=.true.)
+!                    end if
+                    dt = max(dt / decreaseFactor,min_ts)
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
                     if (getprocno() == 1) then
@@ -2397,8 +2413,28 @@ contains
             PID_time_controller = (1./Cn(1))**1.0
         end if
 
+        !Check if there is a problem with the numbers, i.e. PID_time_controller is out of bounds due to division by almost zero
+        if (PID_time_controller > 10.) then
+            PID_time_controller = increaseFactor
+            !Reset the controller
+            Cn1 = -1; Cn2 = -1
+        else if (PID_time_controller < -10.) then
+            PID_time_controller = decreaseFactor
+            !Reset the controller
+            Cn1 = -1; Cn2 = -1
+        else if (PID_time_controller/=PID_time_controller) then
+            !If is NaN then do not modify the time-step
+            PID_time_controller = 1.0
+            !Reset the controller
+            Cn1 = -1; Cn2 = -1
+        end if
+
         !Store previous values
         Cn2 = Cn1; Cn1 = Cn(1)
+        !Ensure parallel stability
+        call allmin(Cn1); call allmin(Cn2)
+        call allmin(PID_time_controller)
+
     end function PID_time_controller
 
 end subroutine Adaptive_NonLinear
@@ -2437,6 +2473,26 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     integer :: cv_inod, modified_vals, iphase
     real, parameter :: tol = 1d-5
     real :: tmp ! Variable used for parallel consistency
+    !Functional considering the average of the inf norm of the 1% of the nodes!
+    real, dimension(size(phasevolumefraction,1), size(phasevolumefraction,2)) :: sat_diff
+    integer, dimension(size(phasevolumefraction,2)) :: sorted_list
+    integer :: k, i
+    logical :: Inf_potential = .false.
+
+    if (Inf_potential) then
+        !Considered just a sample of nodes, either the 1% or 1000 nodes
+        !and then do the average of the error of all of those nodes
+        sat_diff = abs(reference_sat - phasevolumefraction)
+        call qsort(sat_diff(1,:), sorted_list)
+        k = min(1000, nint(0.05* size(phasevolumefraction,2) ) )
+        get_Convergence_Functional = 0
+        do i = 1, k
+            get_Convergence_Functional = get_Convergence_Functional + sat_diff(1, sorted_list(size(sorted_list) - i+1))
+        end do
+        get_Convergence_Functional = get_Convergence_Functional/dble(k)
+        return
+    end if
+
 
     modified_vals = 0
     get_Convergence_Functional = 0.0
@@ -3009,27 +3065,31 @@ end function have_option_for_any_phase
 
 
 !!$ This subroutine calculates the actual Darcy velocity
-subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
+subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_absorp)
 
     implicit none
+    type( state_type ), dimension( : ), intent( inout ) :: state
     type(multi_ndgln), intent(in) :: ndgln
     type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(in) :: packed_state
     type (multi_field), intent(in) :: PorousMedia_absorp
 
     ! Local variables
-    type(tensor_field), pointer :: darcy_velocity, velocity, saturation
-    real, dimension(:,:), allocatable :: loc_absorp_matrix
-    real, dimension(:), allocatable :: sat_weight_velocity
+    type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
+    type(tensor_field), pointer :: velocity, saturation
+    real, dimension(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim) :: loc_absorp_matrix
+    real, dimension(Mdims%ndim) :: sat_weight_velocity
+    real :: auxR
     integer :: cv_iloc, u_iloc, ele, iphase, imat, u_inod, cv_loc, idim
     ! Initialisation
-    darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
+    do iphase = 1, Mdims%n_in_pres
+        darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
+        call zero(darcy_velocity(iphase)%ptr)
+    end do
+    !darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-    call zero(darcy_velocity)
-    allocate(loc_absorp_matrix(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim))
-    allocate(sat_weight_velocity(Mdims%ndim))
 
     ! Calculation
     do ele = 1, Mdims%totele
@@ -3040,29 +3100,19 @@ subroutine get_DarcyVelocity(Mdims, ndgln, packed_state, PorousMedia_absorp)
                 cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                 !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
                 call get_multi_field_inverse(PorousMedia_absorp, imat, loc_absorp_matrix)
-                do iphase = 1, Mdims%nphase
-                    !Inverse of sigma avoiding inversion
-                    !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = matmul(permeability%val(:,:,ele),&
-                    !    absorption_term%val(imat,ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim))
-                    !All the elements should be equal in the diagonal now
-                    !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = &
-                    !    permeability%val(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim,ele)/&
-                    !    loc_absorp_matrix(ndim*(iphase-1)+1,ndim*(iphase-1)+1)!Inverse
-
+                do iphase = 1, Mdims%n_in_pres
                     sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim, &
                         (iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim),velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
-                    darcy_velocity%val(:,iphase,u_inod) = darcy_velocity%val(:,iphase,u_inod)+ &
+                    darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
                         sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
                 end do
             end do
         end do
     end do
-    call halo_update(darcy_velocity)
-    ! Deallocation
-    deallocate(loc_absorp_matrix)
-    deallocate(sat_weight_velocity)
-
+    do iphase = 1, Mdims%n_in_pres
+        call halo_update(darcy_velocity(iphase)%ptr)
+    end do
 end subroutine get_DarcyVelocity
 
     subroutine Get_Scalar_SNdgln( sndgln, field  )

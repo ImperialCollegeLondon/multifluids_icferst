@@ -73,7 +73,6 @@
     </dump_period_in_timesteps>
     <PropertiesFromFile>substances_properties</PropertiesFromFile>
     <output_mesh name="PressureMesh"/>
-    <output_darcy_vel/>
     <stat/>
   </io>
   <timestepping>
@@ -91,7 +90,7 @@
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Infinite_norm_tol>
-          <real_value rank="0">0.02</real_value>
+          <real_value rank="0">0.01</real_value>
         </Infinite_norm_tol>
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>

@@ -31,6 +31,11 @@ start =
                 element inertia_dominated{comment}|
                 ## Darcy flow simulator
                 element porous_media{comment}|
+                ## Poro-elasticity simulator:
+                ## This requires to define through diamond the tensor field in phase 1 UAbsorB
+                ## as an absorption term and also the RHS that should include the second time-derivative for the solid phase
+                ## and also the coupling terms. The first phase is considered the solid phase.
+                element poroelasticity{comment}|
                 ## Magma flow simulator
                 element magma{comment}|
                 ## Flooding simulator
@@ -141,10 +146,6 @@ start =
             ),
             ## Output FE representation of scalar fields instead of the CV one.
             element output_scalars_fem {
-               empty
-            }?,
-            ## Calculates the Darcy velocity and is outputed in the vtu files.
-            element output_darcy_vel {
                empty
             }?,
             ## This option is used to calculate the amount of mass flux across a boundary id.
@@ -449,7 +450,7 @@ start =
                     ##
                     ## This can be used to control the number of non-linear interations dynamically.
                     ##
-                    ## By default 0.03; Recommended between 0.05 and 0.005
+                    ## By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005
                     element Infinite_norm_tol{
                     real,
                       (
@@ -532,9 +533,9 @@ start =
                   ),
                   (
                     ## Convergence criterion based on the 
-                    ## conservation of mass for the Fixed Point Iteration solver
+                    ## conservation of volume of each phase for the non-linear solver
 	            ## 
-		    ## By default the tolerance is 5e-3
+		    ## By default the tolerance is 1e-2
                     element Test_mass_consv{real}?
                   ),
                   (
@@ -2152,6 +2153,8 @@ start =
 
             ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
             ## that the well trajectories are preserved.
+            ##
+            ## ***This is MANDATORY when using files to define wells***
             element well_volume_ids {
               integer_vector,
                   (
@@ -2160,9 +2163,10 @@ start =
                   )
              }?,
              ## Introduce here the relative path to the file defining a 1D well
-             ##
              ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
              ## Each file has to describe a continuous well touching an external boundary.
+             ##
+             ## ***Well_volume_ids option is MANDATORY when using this method to define wells.***
              element well_from_file {
              attribute name { string },
              attribute file_path { string }                  
@@ -2252,6 +2256,11 @@ start =
             ## To disable it manually, set it to negative values. 
             element CV_press_homogenisation {
                real
+            }?,
+           ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
+           ## By default this number is 9. Recommended range: 3 to 9.
+            element max_sat_its {
+               integer
             }?,
             ## Look for bad elements to change its anisotropic permeability to improve their quality
             element Bad_element_fix {
@@ -4853,6 +4862,19 @@ tensor_field_choice =
         }|
         element tensor_field {
             attribute name { "a_xx" },
+            (
+               element diagnostic {
+                  internal_algorithm,
+                  mesh_choice,
+                  diagnostic_tensor_field
+               }|
+               element aliased {
+                  generic_aliased_field
+        }
+            )
+        }|
+        element tensor_field {
+            attribute name { "FractureMap" },
             (
                element diagnostic {
                   internal_algorithm,

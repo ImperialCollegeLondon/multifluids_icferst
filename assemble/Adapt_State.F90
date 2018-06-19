@@ -121,7 +121,6 @@ contains
       call incref(stripped_positions)
       call incref(stripped_metric)
     end if
-
     select case(stripped_positions%dim)
       case(1)
         call adapt_mesh_1d(stripped_positions, stripped_metric, new_positions, &
@@ -137,8 +136,8 @@ contains
                              force_preserve_regions=force_preserve_regions)
         else
           adapt_error = .false.
-          !We try a maximum of two times, otherwise the old mesh is kept
-          do i = 1, 2
+          !We try a maximum of three times, otherwise the old mesh is kept
+          do i = 1, 3
               call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
                   force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
               call allor(adapt_error)
@@ -150,26 +149,11 @@ contains
                   if (associated(new_positions%refcount)) call deallocate(new_positions)
 
                   select case (i)
-                      case (1)!First time, we retry with more conservative settings
-                              !imposed in Adapt_Integration.F90
-                          !Restart to original mesh
-                          if (getprocno() == 1) then
-                            ewrite(0,*) "##############################################################################################"
-                            ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
-                            ewrite(0,*) "##############################################################################################"
-                          end if
-                          if(isparallel()) then
-                              ! generate stripped versions of the position and metric fields
-                              call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
-                          else
-                              stripped_positions = old_positions
-                              stripped_metric = metric
-                          end if
-                      case default!Second time, back to original mesh...
+                      case (3)!Last time, back to original mesh...
                           !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
                           if (getprocno() == 1) then
                             ewrite(0,*) "##############################################################################################"
-                            ewrite(0,*) "WARNING: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
+                            ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
                             ewrite(0,*) "##############################################################################################"
                           end if
                           call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
@@ -179,6 +163,21 @@ contains
                           call deallocate(stripped_metric)
                           call deallocate(stripped_positions)
                           return
+                      case default!First and second time, we retry with more conservative settings
+                              !imposed in Adapt_Integration.F90
+                          !Restart to original mesh
+                          if (getprocno() == 1) then
+                            ewrite(0,*) "##############################################################################################"
+                            ewrite(0,*) "WARNING",i,": Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
+                            ewrite(0,*) "##############################################################################################"
+                          end if
+                          if(isparallel()) then
+                              ! generate stripped versions of the position and metric fields
+                              call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
+                          else
+                              stripped_positions = old_positions
+                              stripped_metric = metric
+                          end if
                   end select
               end if
               !###############################################################################

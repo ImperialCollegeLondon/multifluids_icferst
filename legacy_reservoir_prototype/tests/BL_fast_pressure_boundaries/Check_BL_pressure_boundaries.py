@@ -29,9 +29,9 @@ os.system(binpath + ' ' + path + '/BL_fast.mpml')
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
 #SINCE THIS IS NOT AN ANALYTICAL SOLUTION THE TOLERANCES ARE BIGGER
-Tolerance_L1_NORM = 0.0217
+Tolerance_L1_NORM = 0.022
 Tolerance_L2_NORM = 0.0009
-
+Tol = 0.04
 AutomaticLine = 0
 
 
@@ -215,9 +215,9 @@ L2_norm = L2_sum**0.5 / len(Experimental_X)
 
 Passed = True
 
-if (L1_norm > Tolerance_L1_NORM): Passed = False
-if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+if (abs(L1_norm-Tolerance_L1_NORM)/Tolerance_L1_NORM > Tol): Passed = False
+#if (abs(L2_norm-Tolerance_L2_NORM)/Tolerance_L2_NORM > Tol): Passed = False
+#print abs(L1_norm-Tolerance_L1_NORM)/Tolerance_L1_NORM#, abs(L2_norm-Tolerance_L2_NORM)/Tolerance_L2_NORM
 if (Passed): 
     print 'BL works OK'
 else:

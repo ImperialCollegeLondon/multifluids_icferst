@@ -89,10 +89,10 @@
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Backtracking_factor>
-          <real_value rank="0">-1</real_value>
+          <real_value rank="0">-10</real_value>
         </Backtracking_factor>
         <Vanishing_relaxation>
-          <real_value rank="0">0.1e-3</real_value>
+          <real_value rank="0">-1e2</real_value>
         </Vanishing_relaxation>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>

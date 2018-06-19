@@ -203,7 +203,7 @@ contains
 
     subroutine BoundedSolutionCorrections( state, packed_state, &
         Mdims, CV_funs, small_findrm, small_colm, &
-        for_sat)
+        for_sat, min_max_limits)
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
         ! The sparcity of the local CV connectivity is in: small_findrm, small_colm.
@@ -222,6 +222,7 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
+        real, optional, dimension(2) :: min_max_limits
         logical, optional, intent(in) :: for_sat
         ! local variables...
         type (multi_dev_shape_funs) :: DevFuns
@@ -307,6 +308,11 @@ contains
             end do
         else
             field_min = 0.0 ; field_max = 1.0
+        end if
+        if (present(min_max_limits)) then
+            !Over-write limits with the passed down values
+           field_min = min_max_limits(1)
+           field_max = min_max_limits(2)
         end if
         do gl_its = 1, ngl_its
             ! This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.

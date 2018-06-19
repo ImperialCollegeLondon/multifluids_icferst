@@ -103,33 +103,43 @@ contains
         INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase
         INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
         integer, dimension(:), pointer :: cv_neigh_ptr
-        integer, dimension(:), allocatable:: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, u_GL_LOC, u_GL_GL
-        INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE
-        real, dimension(:), allocatable:: xi_limit, cvweigh, cv_nodpos, u_nodpos, lcv_b, direction, direction_NORM, &
-            PIPE_DIAM_GI_vol, PIPE_DIAM_GI_suf, suf_detwei, vol_detwei, vol_detwei2, &
-            TUPWIND_OUT,  DUPWIND_OUT, TUPWIND_in,  DUPWIND_in, ndotq, income, income_j, &
-            FEMTGI, FEMdGI, T_CV_NODI, T_CV_NODJ, D_CV_NODI, D_CV_NODJ, limt, limd, bczero, fvt, limdt, LOC_CT_RHS_U_ILOC, INV_SIGMA_GI
-        real, dimension(:), allocatable:: CVN_VOL_ADJ
-        INTEGER, dimension(:), allocatable:: WIC_B_BC_ALL_NODS
-        INTEGER, dimension(:,:), allocatable:: WIC_T_BC_ALL_NODS, WIC_D_BC_ALL_NODS, WIC_U_BC_ALL_NODS
+        integer, dimension(:), allocatable:: CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, u_GL_LOC, u_GL_GL
+        integer, dimension(Mdims%ndim+1) :: CV_LOC_CORNER, U_LOC_CORNER!Allocate with number of corners; NCORNER
+        integer, dimension(Mdims%ndim+1, Mdims%ndim+1) :: CV_MID_SIDE, U_MID_SIDE
+        real, dimension(:), allocatable:: cvweigh, cv_nodpos, u_nodpos, lcv_b, &
+            PIPE_DIAM_GI_vol, PIPE_DIAM_GI_suf, suf_detwei, vol_detwei, vol_detwei2
+
+        real, dimension(Mdims%ndim) :: direction, direction_NORM
+        real, dimension(Mdims%nphase) :: INV_SIGMA_GI, TUPWIND_OUT,  DUPWIND_OUT, TUPWIND_in,  DUPWIND_in, ndotq, income, income_j,&
+            FEMTGI, FEMdGI, T_CV_NODI, T_CV_NODJ, D_CV_NODI, D_CV_NODJ, limt, limd, fvt, limdt, bczero, LOC_CT_RHS_U_ILOC, xi_limit
+        real, dimension(Mdims%ndim, Mdims%nphase) :: ct_con, UGI_ALL
+        !Variables for boundary conditions
+        INTEGER, dimension(Mdims%cv_nonods):: WIC_B_BC_ALL_NODS
+        INTEGER, dimension(Mdims%nphase,Mdims%cv_nonods):: WIC_T_BC_ALL_NODS, WIC_D_BC_ALL_NODS, WIC_U_BC_ALL_NODS
+        real, dimension(Mdims%nphase,Mdims%cv_nonods):: SUF_T_BC_ALL_NODS, SUF_D_BC_ALL_NODS, RVEC_SUM_T, RVEC_SUM_D, RVEC_SUM_U
+        real, dimension(Mdims%ndim, Mdims%nphase) :: MEAN_U
+        real, dimension(Mdims%ndim,Mdims%nphase,Mdims%cv_nonods):: SUF_U_BC_ALL_NODS
+
+        !Variables for shape functions
+        real, dimension(:), allocatable :: CVN_VOL_ADJ
         real, dimension(:,:), allocatable:: cvn, n, nlx, un, unlx, sbcvfen, sbcvfenslx, sbufen, L_CVFENX_ALL, L_UFENX_ALL,L_UFEN_REVERSED,L_UFEN,&
-            UGI_ALL, ct_con, x_all_corn
+            x_all_corn
         real, dimension(:,:), allocatable:: cvn_fem, cvn_femlx, cvnn_fem, cvnn_femlx
-        real, dimension(:,:), allocatable:: SUF_T_BC_ALL_NODS, SUF_D_BC_ALL_NODS, RVEC_SUM_T, RVEC_SUM_D, RVEC_SUM_U, MEAN_U
-        real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
         real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
         logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, ELE_HAS_PIPE, U_P0DG
-        logical :: IGNORE_DIAGONAL_PIPES, CALC_SIGMA_PIPE
-        real :: LOC_CV_RHS_I(Mdims%nphase)
-        real :: T1(Mdims%ndim), T2(Mdims%ndim), TT1(Mdims%ndim), TT2(Mdims%ndim), NN1(Mdims%ndim), T1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND
+        logical :: CALC_SIGMA_PIPE
+
+        real, dimension(Mdims%ndim) :: T1, T2, TT1, TT2, NN1
+        real, dimension(Mdims%nphase) :: LOC_CV_RHS_I
+        real :: T1TT1, TT1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND, MIN_INV_SIG
         real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, MIN_DIAM
-        real :: MIN_INV_SIG, R1(1), R2(1), RZ(1)
-        real :: TMAX(Mdims%nphase), TMIN(Mdims%nphase), DENMAX(Mdims%nphase), DENMIN(Mdims%nphase)
+        real, dimension(1) :: R1, R2, RZ
+        real, dimension(Mdims%nphase) :: TMAX, TMIN, DENMAX, DENMIN
         integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
             u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
             icorner1, icorner2, icorner3, icorner4, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
             U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k, iofluxes
-        real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
+        real, dimension(Mdims%nphase, Mdims%cv_nonods):: tmax_all, tmin_all, denmax_all, denmin_all
         type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2, t2_all, only_den_all
         type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
         type(vector_field), pointer :: X
@@ -137,11 +147,9 @@ contains
         logical :: conservative_advection
         !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
         !Parameters of the simulation
-        logical, parameter :: GET_C_PIPES = .FALSE.
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
         logical, parameter :: integrate_other_side_and_not_boundary = .FALSE.
         logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
-        logical, parameter :: SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         real, parameter :: INFINY=1.0E+20
         integer, parameter :: WIC_B_BC_DIRICHLET = 1
@@ -150,14 +158,10 @@ contains
 
         !if allocated then calculate outfluxes
 
-        IGNORE_DIAGONAL_PIPES = option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
         NCORNER = Mdims%ndim + 1
-        allocate( xi_limit(Mdims%nphase), &
-            CV_LOC_CORNER(NCORNER), CV_MID_SIDE(NCORNER, NCORNER), &
-            U_LOC_CORNER(NCORNER), U_MID_SIDE(NCORNER,NCORNER) )
         ! default limiting NVD diagram...
-        XI_LIMIT(:) = 2.0 ; ndiff=.false. ; diff=.true.
+        XI_LIMIT = 2.0 ; ndiff=.false. ; diff=.true.
         CV_QUADRATIC = (Mdims%cv_nloc==6.AND.Mdims%ndim==2) .OR. (Mdims%cv_nloc==10.AND.Mdims%ndim==3)
         U_QUADRATIC = (Mdims%u_nloc==6.AND.Mdims%ndim==2) .OR. (Mdims%u_nloc==10.AND.Mdims%ndim==3)
         U_P0DG = Mdims%u_nloc == 1
@@ -227,27 +231,10 @@ contains
         ENDIF
 
         ! SET UP THE SURFACE B.Mmat%C'S
-        allocate(WIC_B_BC_ALL_NODS(Mdims%cv_nonods))
-        allocate(WIC_T_BC_ALL_NODS(Mdims%nphase,Mdims%cv_nonods))
-        allocate(WIC_D_BC_ALL_NODS(Mdims%nphase,Mdims%cv_nonods))
-        allocate(WIC_U_BC_ALL_NODS(Mdims%nphase,Mdims%cv_nonods))
-        allocate(SUF_T_BC_ALL_NODS(Mdims%nphase,Mdims%cv_nonods))
-        allocate(SUF_D_BC_ALL_NODS(Mdims%nphase,Mdims%cv_nonods))
-        allocate(SUF_U_BC_ALL_NODS(Mdims%ndim,Mdims%nphase,Mdims%cv_nonods))
-        allocate(RVEC_SUM_T(Mdims%nphase,Mdims%cv_nonods))
-        allocate(RVEC_SUM_D(Mdims%nphase,Mdims%cv_nonods))
-        allocate(RVEC_SUM_U(Mdims%nphase,Mdims%cv_nonods))
-        allocate(MEAN_U(Mdims%ndim,Mdims%nphase))
-        WIC_B_BC_ALL_NODS=0
-        WIC_T_BC_ALL_NODS=0
-        WIC_D_BC_ALL_NODS=0
-        WIC_U_BC_ALL_NODS=0
-        RVEC_SUM_T=0.0
-        RVEC_SUM_D=0.0
-        RVEC_SUM_U=0.0
-        SUF_T_BC_ALL_NODS=0.0
-        SUF_D_BC_ALL_NODS=0.0
-        SUF_U_BC_ALL_NODS=0.0
+        WIC_B_BC_ALL_NODS=0; WIC_T_BC_ALL_NODS=0; WIC_D_BC_ALL_NODS=0
+        WIC_U_BC_ALL_NODS=0; RVEC_SUM_T=0.0; RVEC_SUM_D=0.0
+        RVEC_SUM_U=0.0; SUF_T_BC_ALL_NODS=0.0
+        SUF_D_BC_ALL_NODS=0.0; SUF_U_BC_ALL_NODS=0.0
         DO SELE = 1, Mdims%stotel
             DO CV_SILOC = 1, Mdims%cv_snloc
                 CV_NOD = ndgln%suf_cv( (SELE-1)*Mdims%cv_snloc + CV_SILOC )
@@ -293,8 +280,6 @@ contains
             END DO
         END DO
         ! END OF SET UP THE SURFACE B.C'S
-        allocate( tmax_all(Mdims%nphase, Mdims%cv_nonods), tmin_all(Mdims%nphase, Mdims%cv_nonods), &
-            denmax_all(Mdims%nphase, Mdims%cv_nonods), denmin_all(Mdims%nphase, Mdims%cv_nonods) )
         T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
 
@@ -349,20 +334,13 @@ contains
         IF ( GETCT ) THEN
             Mmat%CT( :, Mdims%n_in_pres+1:Mdims%nphase, : ) = 0.0
             Mmat%CT_RHS%val( 2:Mdims%npres, : ) = 0.0
-            IF ( GET_C_PIPES ) Mmat%C( :, Mdims%n_in_pres+1:Mdims%nphase, : ) = 0.0
         END IF
         allocate( CV_GL_LOC( cv_lnloc ), CV_GL_GL( cv_lnloc ), X_GL_GL( cv_lnloc ), MAT_GL_GL( cv_lnloc ), &
             U_GL_LOC( u_lnloc ), U_GL_GL( u_lnloc ) )
-        allocate( direction(Mdims%ndim), direction_NORM(Mdims%ndim)  )
         allocate( L_CVFENX_ALL(cv_lnloc, cv_lngi), L_UFENX_ALL(u_lnloc, cv_lngi) , PIPE_DIAM_GI_vol(cv_lngi) )
         allocate( PIPE_DIAM_GI_suf(cv_bngi) )
         allocate( L_CVFENX_ALL_REVERSED(Mdims%ndim, cv_lnloc, cv_lngi), L_UFEN_REVERSED(cv_lngi, u_lnloc), L_UFEN(u_lnloc, cv_lngi) )
-        allocate( suf_detwei(cv_bngi), vol_detwei(cv_lngi), vol_detwei2(cv_lngi), INV_SIGMA_GI(Mdims%nphase) )
-        allocate( TUPWIND_OUT(Mdims%nphase), DUPWIND_OUT(Mdims%nphase), TUPWIND_in(Mdims%nphase), DUPWIND_in(Mdims%nphase) )
-        allocate( UGI_ALL(Mdims%ndim, Mdims%nphase), ndotq(Mdims%nphase), income(Mdims%nphase), income_j(Mdims%nphase) )
-        allocate( FEMTGI(Mdims%nphase), FEMdGI(Mdims%nphase), T_CV_NODI(Mdims%nphase), T_CV_NODJ(Mdims%nphase), D_CV_NODI(Mdims%nphase), D_CV_NODJ(Mdims%nphase) )
-        allocate( limt(Mdims%nphase), limd(Mdims%nphase) )
-        allocate( ct_con(Mdims%ndim, Mdims%nphase), bczero(Mdims%nphase), fvt(Mdims%nphase), limdt(Mdims%nphase), LOC_CT_RHS_U_ILOC(Mdims%nphase) )
+        allocate( suf_detwei(cv_bngi), vol_detwei(cv_lngi), vol_detwei2(cv_lngi) )
         allocate( x_all_corn(Mdims%ndim, NCORNER) )
         mass_pipe = 0.0; MASS_PIPE_FOR_COUP = 0.0
         MASS_CVFEM2PIPE = 0.0; MASS_PIPE2CVFEM = 0.0; MASS_CVFEM2PIPE_TRUE = 0.0
@@ -417,30 +395,27 @@ contains
                     U_ILOC = U_GL_LOC( U_LILOC )
                     U_GL_GL( U_LILOC ) = ndgln%u( (ELE-1)*Mdims%u_nloc + U_ILOC )
                 END DO
-                DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
-                DX = SQRT( SUM( DIRECTION(:)**2 ) )
-                DIRECTION(:) = DIRECTION(:) / DX
-                IF ( IGNORE_DIAGONAL_PIPES ) THEN
-                    IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(Mdims%ndim))<0.99 ) CYCLE
-                END IF
+                DIRECTION = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
+                DX = SQRT( SUM( DIRECTION**2 ) )
+                DIRECTION = DIRECTION / DX
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 L_CVFENX_ALL(:,:) = 2.0 * cvn_femlx(:,:) / DX
                 L_UFENX_ALL(:,:) = 2.0 * UNLX(:,:) / DX
 
                 IF(PIPE_MIN_DIAM) THEN
                     MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
-                    PIPE_DIAM_GI_VOL(:) = MIN_DIAM
-                    PIPE_DIAM_GI_SUF(:) = MIN_DIAM
+                    PIPE_DIAM_GI_VOL = MIN_DIAM
+                    PIPE_DIAM_GI_SUF = MIN_DIAM
                 ELSE
-                    PIPE_DIAM_GI_VOL(:) = 0.0
-                    PIPE_DIAM_GI_SUF(:) = 0.0
+                    PIPE_DIAM_GI_VOL = 0.0
+                    PIPE_DIAM_GI_SUF = 0.0
                     DO CV_LILOC = 1, CV_LNLOC
                         CV_KNOD = CV_GL_GL( CV_LILOC )
-                        PIPE_DIAM_GI_VOL(:) = PIPE_DIAM_GI_VOL(:) + PIPE_diameter%val( CV_KNOD ) * cvn_fem( CV_LILOC, : )
-                        PIPE_DIAM_GI_SUF(:) = PIPE_DIAM_GI_SUF(:) + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )
+                        PIPE_DIAM_GI_VOL = PIPE_DIAM_GI_VOL + PIPE_diameter%val( CV_KNOD ) * cvn_fem( CV_LILOC, : )
+                        PIPE_DIAM_GI_SUF = PIPE_DIAM_GI_SUF + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )
                     END DO
-                    PIPE_DIAM_GI_VOL(:) = max( 0.0, PIPE_DIAM_GI_VOL(:) )
-                    PIPE_DIAM_GI_SUF(:) = max( 0.0, PIPE_DIAM_GI_SUF(:) )
+                    PIPE_DIAM_GI_VOL = max( 0.0, PIPE_DIAM_GI_VOL )
+                    PIPE_DIAM_GI_SUF = max( 0.0, PIPE_DIAM_GI_SUF )
                 ENDIF
                 DO IDIM = 1, Mdims%ndim
                     L_CVFENX_ALL_REVERSED(IDIM,:,:) = cvn_femlx(:,:) * DIRECTION(IDIM)
@@ -469,8 +444,8 @@ contains
                         &                         X_ALL_CORN(:, ICORNER3 ), X_ALL_CORN(:, ICORNER4) )
                 END IF
                 ! Adjust according to the volume of the pipe...
-                SUF_DETWEI( : )  = 1.0               * PI * ( ( 0.5*PIPE_DIAM_GI_suf(:) )**2 ) * ELE_ANGLE / ( 2.0 * PI )
-                VOL_DETWEI( : )  = cvweigh( : ) * DX * PI * ( ( 0.5*PIPE_DIAM_GI_vol(:) )**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                SUF_DETWEI( : )  = 1.0               * PI * ( ( 0.5*PIPE_DIAM_GI_suf )**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                VOL_DETWEI( : )  = cvweigh( : ) * DX * PI * ( ( 0.5*PIPE_DIAM_GI_vol )**2 ) * ELE_ANGLE / ( 2.0 * PI )
                 ! We do NOT multiply by r**2 here because we have not divided by r**2 in the mass transfer correlation (in cv_assemb)
                 VOL_DETWEI2( : ) = cvweigh( : ) * DX * PI *                                      ELE_ANGLE / ( 2.0 * PI )
                 DO IDIM = 1, Mdims%ndim
@@ -528,24 +503,24 @@ contains
                     CV_NODI = CV_GL_GL(CV_LILOC)
                     DO IPHASE = 1, Mdims%n_in_pres
                         if (is_porous_media) then
-                                TT1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1(:) )
-                                T1TT1 = SUM(T1(:)*TT1(:))
+                                TT1 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1 )
+                                T1TT1 = SUM(T1*TT1)
                             IF ( Mdims%ndim==3 ) THEN
-                                TT2(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2(:) )
-                                T1TT2 = SUM( T1(:)*TT2(:) )
-                                T2TT1 = SUM( T2(:)*TT1(:) )
-                                T2TT2 = SUM( T2(:)*TT2(:) )
+                                TT2 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2 )
+                                T1TT2 = SUM( T1*TT2 )
+                                T2TT1 = SUM( T2*TT1 )
+                                T2TT2 = SUM( T2*TT2 )
                             ELSE
                                 T1TT2 = 0.0
                                 T2TT1 = 0.0
                                 T2TT2 = T1TT1
                             END IF
                         else
-                            T1TT1 =SUM(T1(:)*T1(:))
+                            T1TT1 =SUM(T1*T1)
                             IF ( Mdims%ndim==3 ) THEN
-                                T1TT2 = SUM( T1(:)*T2(:) )
-                                T2TT1 = SUM( T2(:)*T1(:) )
-                                T2TT2 = SUM( T2(:)*T2(:) )
+                                T1TT2 = SUM( T1*T2 )
+                                T2TT1 = SUM( T2*T1 )
+                                T2TT2 = SUM( T2*T2 )
                             else
                                 T1TT2 = 0.0
                                 T2TT1 = 0.0
@@ -557,10 +532,10 @@ contains
                         INV_SIGMA(IPHASE,CV_NODI) = INV_SIGMA(IPHASE,CV_NODI) + INV_SIGMA_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                         ! For the nano laterals...
                         if (is_porous_media) then
-                            NN1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION(:) )
-                            N1NN1 = SUM( DIRECTION(:)*NN1(:) )
+                            NN1 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION )
+                            N1NN1 = SUM( DIRECTION*NN1 )
                         else
-                            N1NN1 = SUM( DIRECTION(:) )
+                            N1NN1 = SUM( DIRECTION )
                         end if
                         INV_SIGMA_NANO_ND = 1.0/MAX(1.E-25, N1NN1)
                         INV_SIGMA_NANO(IPHASE,CV_NODI) = INV_SIGMA_NANO(IPHASE,CV_NODI) + INV_SIGMA_NANO_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
@@ -609,27 +584,7 @@ contains
                             END IF
                         END DO
                         ! Value of sigma in the force balance eqn...
-                        IF ( SOLVE_ACTUAL_VEL .or. .not.is_porous_media ) THEN
-                            INV_SIGMA_GI = 1.0
-                        ELSE
-                            IF ( PIPE_MIN_DIAM ) THEN
-                                DO IPHASE = 1, Mdims%nphase
-                                    MIN_INV_SIG = MINVAL( INV_SIGMA(IPHASE,MAT_GL_GL( : ) ) )
-                                    INV_SIGMA_GI(IPHASE) = MIN_INV_SIG
-                                END DO
-                            ELSE
-                                INV_SIGMA_GI(:) = 0.0
-                                DO CV_LKLOC = 1, CV_LNLOC
-                                    MAT_KNOD = MAT_GL_GL(CV_LKLOC)
-                                    DO IPHASE = 1, Mdims%nphase
-                                        INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,MAT_KNOD)
-                                    END DO
-                                END DO
-                            END IF
-                            IF(CALC_SIGMA_PIPE) THEN
-                                STOP 'OPTION NOT READY YET AS WE NEED TO CALCULATE INV_SIGMA_GI WHICH IS A FUNCTION OF VELOCITY'
-                            END IF
-                        END IF
+                        INV_SIGMA_GI = 1.0
                         ! Velocity in the pipe
                         UGI_ALL(:,:) = 0.0
                         DO U_LKLOC = 1, U_LNLOC
@@ -640,7 +595,7 @@ contains
                             UGI_ALL(:,IPHASE) = UGI_ALL(:,IPHASE) * INV_SIGMA_GI(IPHASE)
                         END DO
                         DO IPHASE = 1, Mdims%nphase
-                            NDOTQ(IPHASE) = SUM( DIRECTION_norm(:) * UGI_all(:,IPHASE) )
+                            NDOTQ(IPHASE) = SUM( DIRECTION_norm * UGI_all(:,IPHASE) )
                         END DO
 
                         ! When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
@@ -654,35 +609,35 @@ contains
                         FEMTGI=0.0 ; FEMDGI=0.0
                         DO CV_LKLOC = 1, CV_LNLOC
                             CV_KNOD = CV_GL_GL(CV_LKLOC)
-                            FEMTGI(:) = FEMTGI(:) + CVN_FEM(CV_LJLOC,BGI) * T_ALL%val( 1, :, CV_KNOD)
-                            FEMDGI(:) = FEMDGI(:) + CVN_FEM(CV_LJLOC,BGI) * DEN_ALL%val( 1, :, CV_KNOD)
+                            FEMTGI = FEMTGI + CVN_FEM(CV_LJLOC,BGI) * T_ALL%val( 1, :, CV_KNOD)
+                            FEMDGI = FEMDGI + CVN_FEM(CV_LJLOC,BGI) * DEN_ALL%val( 1, :, CV_KNOD)
                         END DO
-                        FEMDGI(:) = max( 0.0,FEMDGI(:) )
-                        T_CV_NODI(:) = T_ALL%val( 1, :, CV_NODI)
-                        T_CV_NODJ(:) = T_ALL%val( 1, :, CV_NODJ)
-                        D_CV_NODI(:) = DEN_ALL%val( 1, :, CV_NODI)
-                        D_CV_NODJ(:) = DEN_ALL%val( 1, :, CV_NODJ)
+                        FEMDGI = max( 0.0,FEMDGI )
+                        T_CV_NODI = T_ALL%val( 1, :, CV_NODI)
+                        T_CV_NODJ = T_ALL%val( 1, :, CV_NODJ)
+                        D_CV_NODI = DEN_ALL%val( 1, :, CV_NODI)
+                        D_CV_NODJ = DEN_ALL%val( 1, :, CV_NODJ)
                         IF ( UPWIND_PIPES ) THEN ! Used for testing...
-                            LIMT(:) = T_CV_NODI(:)*(1.0-INCOME(:)) + T_CV_NODJ(:)*INCOME(:)
-                            LIMD(:) = D_CV_NODI(:)*(1.0-INCOME(:)) + D_CV_NODJ(:)*INCOME(:)
+                            LIMT = T_CV_NODI*(1.0-INCOME) + T_CV_NODJ*INCOME
+                            LIMD = D_CV_NODI*(1.0-INCOME) + D_CV_NODJ*INCOME
                         ELSE
                             ! Call the limiter for T...
                             CALL ONVDLIM_ANO_MANY( Mdims%nphase, &
-                                LIMT(:), FEMTGI(:), INCOME(:), &
-                                T_CV_NODI(:), T_CV_NODJ(:), XI_LIMIT(:), &
-                                TUPWIND_IN(:), TUPWIND_OUT(:) )
+                                LIMT, FEMTGI, INCOME, &
+                                T_CV_NODI, T_CV_NODJ, XI_LIMIT, &
+                                TUPWIND_IN, TUPWIND_OUT )
                             ! Call the limiter for D...
                             CALL ONVDLIM_ANO_MANY( Mdims%nphase, &
-                                LIMD(:), FEMDGI(:), INCOME(:), &
-                                D_CV_NODI(:), D_CV_NODJ(:), XI_LIMIT(:), &
-                                DUPWIND_IN(:), DUPWIND_OUT(:) )
+                                LIMD, FEMDGI, INCOME, &
+                                D_CV_NODI, D_CV_NODJ, XI_LIMIT, &
+                                DUPWIND_IN, DUPWIND_OUT )
                         END IF
-                        LIMDT(:) = LIMD(:) * LIMT(:)
+                        LIMDT = LIMD * LIMT
                         IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
                             DO U_LKLOC = 1, U_LNLOC
                                 U_KNOD = U_GL_GL(U_LKLOC)
                                 DO IDIM = 1, Mdims%ndim
-                                    CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:) / D_CV_NODI(:)
+                                    CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI / D_CV_NODI
                                 END DO
                                 ! Put into Mmat%CT matrix...
                                 DO COUNT = Mspars%CT%fin(CV_NODI), Mspars%CT%fin(CV_NODI+1)-1
@@ -692,23 +647,11 @@ contains
                                         exit
                                     end if
                                 END DO
-                                IF ( GET_C_PIPES ) THEN
-                                    DO COUNT = Mspars%C%fin(U_KNOD), Mspars%C%fin(U_KNOD+1)-1
-                                        IF ( Mspars%C%col(COUNT)==CV_NODI )  THEN
-                                            DO IDIM = 1, Mdims%ndim
-                                                Mmat%C( IDIM, Mdims%n_in_pres+1:Mdims%nphase, COUNT ) = &
-                                                    Mmat%C( IDIM, Mdims%n_in_pres+1:Mdims%nphase, COUNT ) + &
-                                                    SBUFEN( U_LKLOC, BGI ) * SUF_DETWEI( BGI ) * DIRECTION_NORM(IDIM)
-                                            END DO
-                                            exit
-                                        END IF
-                                    END DO
-                                END IF
                             END DO
                         END IF
                         IF ( GETCV_DISC ) THEN
 
-                            FVT(:) = T_CV_NODI(:)*(1.0-INCOME(:)) + T_CV_NODJ(:)*INCOME(:)
+                            FVT = T_CV_NODI*(1.0-INCOME) + T_CV_NODJ*INCOME
                             ! Put results into the RHS vector
                             LOC_CV_RHS_I = 0.0
                             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -758,20 +701,16 @@ contains
                     PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
                     NDOTQ = 0.0
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                        IF ( SOLVE_ACTUAL_VEL) THEN
-                            if (WIC_U_BC_ALL_NODS( iphase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
-                                NDOTQ(IPHASE) = dot_product( direction_norm(:), SUF_U_BC_ALL_NODS(:,IPHASE,JCV_NOD) )
-                            else
-                                NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) )
-                            end if
-                        ELSE
-                            NDOTQ(IPHASE) = dot_product( direction_norm(:), U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
-                        END IF
+                        if (WIC_U_BC_ALL_NODS( iphase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
+                            NDOTQ(IPHASE) = dot_product( direction_norm, SUF_U_BC_ALL_NODS(:,IPHASE,JCV_NOD) )
+                        else
+                            NDOTQ(IPHASE) = dot_product( direction_norm, U_ALL%val(:,IPHASE,JU_NOD) )
+                        end if
                     END DO
-                    INCOME(:) = 0.5 * ( 1. + SIGN( 1.0, -NDOTQ(:) ) )
-                    LIMT(:)=0.0
-                    LIMD(:)=0.0
-                    FVT(:) =0.0
+                    INCOME = 0.5 * ( 1. + SIGN( 1.0, -NDOTQ ) )
+                    LIMT=0.0
+                    LIMD=0.0
+                    FVT =0.0
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                         IF ( WIC_T_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_T_BC_DIRICHLET ) THEN
                             LIMT(IPHASE)=T_ALL%val(1,IPHASE,JCV_NOD)*(1.0-INCOME(IPHASE)) + SUF_T_BC_ALL_NODS(IPHASE,JCV_NOD)*INCOME(IPHASE)
@@ -816,19 +755,13 @@ contains
 
 
                         DO IDIM = 1, Mdims%ndim
-                            CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:) / DEN_ALL%val(1,:,JCV_NOD)
+                            CT_CON(IDIM,:) = LIMDT * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI / DEN_ALL%val(1,:,JCV_NOD)
                         END DO
                         ! Put into Mmat%CT matrix...
                         COUNT2=0
                         DO COUNT = Mspars%CT%fin(JCV_NOD), Mspars%CT%fin(JCV_NOD+1)-1
                             IF ( Mspars%CT%col(COUNT)==JU_NOD ) COUNT2=COUNT
                         END DO
-                        IF ( GET_C_PIPES ) THEN
-                            COUNT3=0
-                            DO COUNT = Mspars%C%fin(JU_NOD), Mspars%C%fin(JU_NOD+1)-1
-                                IF ( Mspars%C%col(COUNT)==JCV_NOD ) COUNT3=COUNT
-                            END DO
-                        END IF
                         LOC_CT_RHS_U_ILOC = 0.0
                         DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                             IF ( WIC_U_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_U_BC_DIRICHLET ) THEN
@@ -838,9 +771,6 @@ contains
                                 END DO
                             ELSE
                                 Mmat%CT( :, IPHASE, COUNT2 ) = Mmat%CT( :, IPHASE, COUNT2 ) + CT_CON( :, IPHASE )
-                                IF ( GET_C_PIPES ) THEN
-                                    Mmat%C( :, IPHASE, COUNT3 ) = Mmat%C( :, IPHASE, COUNT3 ) + suf_area * DIRECTION_NORM(:)
-                                END IF
                             END IF
                         END DO
                         DO IPRES = 2, Mdims%npres
@@ -873,10 +803,10 @@ contains
             END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
         END DO ! DO ELE = 1, Mdims%totele
         DO IPHASE = 1, Mdims%n_in_pres
-            INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
-            INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
+            INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
+            INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
             ! We divide by this so that we get the right source term for the nano laterals...
-            INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 )
+            INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP, 1.E-15 )
         END DO
         IF ( GETCV_DISC ) THEN
             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -994,13 +924,15 @@ contains
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
 
         !Local variables
-        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, U_P0DG
+        LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, U_P0DG
         LOGICAL :: CALC_SIGMA_PIPE, SWITCH_PIPES_ON_AND_OFF
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
             &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE
-        INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, U_GL_LOC, U_GL_GL
-        INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE, WIC_P_BC_ALL_NODS
+        integer, dimension(Mdims%ndim + 1) :: CV_LOC_CORNER, U_LOC_CORNER
+        INTEGER, DIMENSION(:), ALLOCATABLE :: CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, U_GL_LOC, U_GL_GL
+        INTEGER, DIMENSION(Mdims%npres, Mdims%cv_nonods) :: WIC_P_BC_ALL_NODS
+        INTEGER, DIMENSION(Mdims%ndim + 1, Mdims%ndim + 1) :: CV_MID_SIDE, U_MID_SIDE
         TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER, WD
         TYPE(VECTOR_FIELD), POINTER :: X
         TYPE(TENSOR_FIELD), POINTER :: WM, CV_VOL_FRAC
@@ -1011,13 +943,15 @@ contains
         REAL, DIMENSION( : ), ALLOCATABLE :: scvfeweigh
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
         REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
-        REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
+        REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN
+        REAL, DIMENSION(Mdims%ndim, Mdims%nphase) :: LOC_U_RHS_U_ILOC
+        REAL, DIMENSION(Mdims%npres, Mdims%cv_nonods) ::SUF_P_BC_ALL_NODS, RVEC_SUM
         REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL, WELL_DENSITY, WELL_VISCOSITY
         REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI, SIGMA_ON_OFF_GI
         TYPE( SCALAR_FIELD ), POINTER :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
         INTEGER :: PHASE_EXCLUDE
-        LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
-        REAL :: DIRECTION( Mdims%ndim ), DIRECTION_NORM( Mdims%ndim )
+        LOGICAL, DIMENSION( Mdims%ndim + 1 ) :: PIPE_INDEX_LOGICAL
+        REAL, dimension(Mdims%ndim) :: DIRECTION, DIRECTION_NORM
         REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
         REAL :: S_WATER, S_WATER_MIN, S_WATER_MAX, SIGMA_SWITCH_ON_OFF_PIPE_GI, PIPE_SWITCH
         INTEGER :: ncorner, scvngi, k, &
@@ -1026,8 +960,6 @@ contains
 
         ncorner = Mdims%ndim + 1
         PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
-        IGNORE_DIAGONAL_PIPES=option_count("/wells_and_pipes/well_from_file") <= 0!Ignore only if using python
-        SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
         CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
         call get_option("/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
@@ -1100,9 +1032,6 @@ contains
             l_cvfenx_all_reversed(Mdims%ndim, scvngi, cv_lnloc) , &
             l_ufen_reversed(scvngi, u_lnloc), &
             nmx_all( Mdims%ndim ), X_ALL_CORN(Mdims%ndim, ncorner) )
-        allocate(PIPE_INDEX_LOGICAL(ncorner))
-        allocate( cv_loc_corner(ncorner), cv_mid_side(ncorner, ncorner), &
-            u_loc_corner(ncorner), u_mid_side(ncorner, ncorner) )
         call fv_1d_quad( scvngi, cv_lnloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
             scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
         call fv_1d_quad( scvngi, u_lnloc, sufen, sufenslx, sufensly, scvfeweigh, &
@@ -1115,9 +1044,6 @@ contains
         allocate( CV_GL_LOC(cv_lnloc), CV_GL_GL(cv_lnloc), X_GL_GL(cv_lnloc), MAT_GL_GL(cv_lnloc) )
         allocate( U_GL_LOC(U_lnloc), U_GL_GL(U_lnloc) )
         ! set up the surface B.Mmat%C.'s
-        allocate( WIC_P_BC_ALL_NODS(Mdims%npres, Mdims%cv_nonods) )
-        allocate( SUF_P_BC_ALL_NODS(Mdims%npres, Mdims%cv_nonods), RVEC_SUM(Mdims%npres, Mdims%cv_nonods) )
-        allocate( LOC_U_RHS_U_ILOC(Mdims%ndim, Mdims%nphase) )
         WIC_P_BC_ALL_NODS=0 ; RVEC_SUM=0.0 ; SUF_P_BC_ALL_NODS=0.0
         DO SELE = 1, Mdims%stotel
             DO IPRES = 2, Mdims%npres
@@ -1154,8 +1080,8 @@ contains
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC
                 IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
-                CV_GL_GL( : ) = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_GL_LOC(:) )
-                MAT_GL_GL( : ) = ndgln%mat( (ELE-1)*Mdims%cv_nloc + CV_GL_LOC(:) )
+                CV_GL_GL( : ) = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_GL_LOC )
+                MAT_GL_GL( : ) = ndgln%mat( (ELE-1)*Mdims%cv_nloc + CV_GL_LOC )
                 ! DEFINE U_LILOC:
                 if (U_P0DG) then
                     U_GL_LOC = 1
@@ -1195,36 +1121,30 @@ contains
                     ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1), X_ALL_CORN(:, ICORNER2) , &
                         &                         X_ALL_CORN(:, ICORNER3), X_ALL_CORN(:, ICORNER4) )
                 END IF
-                DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
-                DX = SQRT( SUM( DIRECTION(:)**2 ) )
-                DIRECTION(:) = DIRECTION(:) / DX
-                IF ( IGNORE_DIAGONAL_PIPES ) THEN
-                    IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(Mdims%ndim))<0.99 ) CYCLE
-                END IF
+                DIRECTION = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
+                DX = SQRT( SUM( DIRECTION**2 ) )
+                DIRECTION = DIRECTION / DX
+
                 IF ( PIPE_MIN_DIAM ) THEN
                     MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
-                    PIPE_DIAM_GI(:) = MIN_DIAM
-                    IF ( SOLVE_ACTUAL_VEL ) THEN
-                        DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                            SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
-                        END DO
-                    END IF
+                    PIPE_DIAM_GI = MIN_DIAM
+                    DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
+                        SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
+                    END DO
                 ELSE
-                    PIPE_DIAM_GI(:) = 0.0
+                    PIPE_DIAM_GI = 0.0
                     DO CV_LILOC = 1, CV_LNLOC
                         CV_KNOD = CV_GL_GL( CV_LILOC )
-                        PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
+                        PIPE_DIAM_GI = PIPE_DIAM_GI + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
                     END DO
-                    PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
-                    IF ( SOLVE_ACTUAL_VEL ) THEN
-                        SIGMA_GI(:,:)=0.0
-                        DO IPHASE=Mdims%n_in_pres+1,Mdims%nphase
-                            DO CV_LILOC = 1, CV_LNLOC
-                                MAT_KNOD = MAT_GL_GL( CV_LILOC )
-                                SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:) + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
-                            END DO
+                    PIPE_DIAM_GI = MAX(PIPE_DIAM_GI, 0.0)
+                    SIGMA_GI(:,:)=0.0
+                    DO IPHASE=Mdims%n_in_pres+1,Mdims%nphase
+                        DO CV_LILOC = 1, CV_LNLOC
+                            MAT_KNOD = MAT_GL_GL( CV_LILOC )
+                            SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:) + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
                         END DO
-                    END IF
+                    END DO
                 END IF
                 ! Recalculate SIGMA if we need to...
                 IF ( CALC_SIGMA_PIPE ) THEN
@@ -1252,7 +1172,7 @@ contains
                 END IF
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
-                DETWEI(:) = SCVFEWEIGH(:) * 0.5* DX * PI * ( (0.5*PIPE_DIAM_GI(:))**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                DETWEI = SCVFEWEIGH * 0.5* DX * PI * ( (0.5*PIPE_DIAM_GI)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                 L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
                 L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
 
@@ -1297,13 +1217,8 @@ contains
                         U_JLOC = U_GL_LOC( U_LJLOC )
                         JU_NOD = U_GL_GL( U_LJLOC )
                         IF ( GET_PIVIT_MAT ) THEN
-                            IF ( .NOT.SOLVE_ACTUAL_VEL ) THEN
-                                NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
-                            END IF
                             DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                                IF ( SOLVE_ACTUAL_VEL ) THEN
-                                    NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI( IPHASE , : ) )
-                                END IF
+                                NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI( IPHASE , : ) )
                                 JPHASE = IPHASE
                                 DO IDIM = 1, Mdims%ndim
                                     DO JDIM = 1, Mdims%ndim
@@ -1316,9 +1231,7 @@ contains
                             END DO
                             IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
                                 DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                                    IF ( SOLVE_ACTUAL_VEL ) THEN
-                                        NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_ON_OFF_GI(IPHASE,:) )
-                                    END IF
+                                    NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_ON_OFF_GI(IPHASE,:) )
                                     JPHASE = IPHASE
                                     DO IDIM = 1, Mdims%ndim
                                         DO JDIM = 1, Mdims%ndim
@@ -1375,7 +1288,7 @@ contains
                         END DO
                         ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                         suf_area = PI * ( (0.5*PIPE_DIAM_END)**2. ) * ELE_ANGLE/ ( 2.0 * PI )
-                        NMX_ALL( : ) = direction_norm(:)* suf_area
+                        NMX_ALL( : ) = direction_norm* suf_area
                         LOC_U_RHS_U_ILOC = 0.0
                         DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
                             DO IDIM = 1, Mdims%ndim
@@ -1507,25 +1420,25 @@ contains
         X_PIPE4 = X_ALL_CORN_PIPE4 - X_ALL_CORN_PIPE1
 
         ! Rotate to be aligned with x-axis
-        Norm = X_PIPE2 / SQRT( SUM( X_PIPE2(:)**2 ) )
+        Norm = X_PIPE2 / SQRT( SUM( X_PIPE2**2 ) )
 
         ! Determine the tangent and bi-normal vectors from the normal NormX, NormY, NormZ
         CALL GET_TANG_BINORM( Norm(1), Norm(2), Norm(3), T1(1), T1(2), T1(3), T2(1), T2(2), T2(3), 1 )
 
-        A(1,:) = NORM(:)
-        A(2,:) = T1(:)
-        A(3,:) = T2(:)
+        A(1,:) = NORM
+        A(2,:) = T1
+        A(3,:) = T2
 
         DO IDIM = 1, 3
-            X_PIPE3_N(IDIM) = SUM( A(IDIM,:) * X_PIPE3(:) )
-            X_PIPE4_N(IDIM) = SUM( A(IDIM,:) * X_PIPE4(:) )
+            X_PIPE3_N(IDIM) = SUM( A(IDIM,:) * X_PIPE3 )
+            X_PIPE4_N(IDIM) = SUM( A(IDIM,:) * X_PIPE4 )
         END DO
 
         X_PIPE3_2D(1:2) = X_PIPE3_N(2:3)
         X_PIPE4_2D(1:2) = X_PIPE4_N(2:3)
 
         ! Use cosine rule....
-        CALC_ELE_ANGLE_3D = ACOS( SUM( X_PIPE3_2D(:) * X_PIPE4_2D(:) ) / ( SQRT( SUM( X_PIPE3_2D(:)**2 ) ) * SQRT( SUM( X_PIPE4_2D(:)**2 ) ) ) )
+        CALC_ELE_ANGLE_3D = ACOS( SUM( X_PIPE3_2D * X_PIPE4_2D ) / ( SQRT( SUM( X_PIPE3_2D**2 ) ) * SQRT( SUM( X_PIPE4_2D**2 ) ) ) )
 
         RETURN
     END FUNCTION CALC_ELE_ANGLE_3D
@@ -1549,13 +1462,14 @@ contains
         integer, dimension(Mdims%ndim + 1) :: CV_LOC_CORNER!NCORNER
         logical, dimension(Mdims%ndim + 1) :: PIPE_INDEX_LOGICAL!NCORNER
         !Variables to read from input files
-        integer :: number_well_files, edge
+        integer :: number_well_files, edge, stat
         real :: diam
         character( len = option_path_len ):: file_path
         real, dimension(:,:), allocatable :: nodes
         integer, dimension(:,:), allocatable :: edges
         integer, dimension(:), allocatable :: pipe_seeds
         type( tensor_field ), pointer:: tfield
+        type (scalar_field), pointer :: well_domains
         logical, save :: dump_vtu_zero = .true.
         !Initialise
         AUX_eles_with_pipe%ele = -1
@@ -1575,11 +1489,18 @@ contains
             !Clean eles_with_pipes before reading the files
             if (allocated(eles_with_pipe)) deallocate(eles_with_pipe)
             diameter_of_the_pipe_aux = 0.
+
+            well_domains =>  extract_scalar_field( state(1), "Well_domains" , stat)
+            if (stat /= 0) then
+                if (getprocno() == 1)then
+                    FLExit( "ERROR: Wells defined by a file requires the well_volumes_ids to be specified")
+                end if
+            end if
             do k = 1, number_well_files
                 !First identify the well trajectory
                 call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
-                call find_pipe_seeds(X%val, nodes, edges, pipe_seeds)
+                call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
                 call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
@@ -1685,8 +1606,10 @@ contains
         end function is_within_pipe
 
 
-        subroutine find_pipe_seeds(X, nodes, edges, pipe_seeds)
+        subroutine find_pipe_seeds(well_domains, X, nodes, edges, pipe_seeds)
+            !For a given NASTRAN file find a node that is within the pipe
             implicit none
+            type (scalar_field), pointer :: well_domains
             real, dimension(:,:), intent(in) :: X
             real, dimension(:,:), allocatable, intent(in) :: nodes
             integer, dimension(:,:), allocatable, intent(in) :: edges
@@ -1695,8 +1618,8 @@ contains
             logical, save :: first_time =.true.
             logical :: found
             integer :: i, j, l, count
-            integer :: sele, siloc, sinod
-            real, dimension(size(nodes,2)) :: aux_pipe_seeds
+            integer :: sele, siloc, sinod, ele, iloc, inod
+            real, dimension(Mdims%stotel) :: aux_pipe_seeds
             aux_pipe_seeds = -1
             !Initialise tolerancePipe just once per simulation
             if (first_time) then
@@ -1705,29 +1628,53 @@ contains
                     call get_option('/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
                 end if
             end if
-            !Use brute force through the surface of the domain. This should work in parallel and in serial
-            !as long as the well reaches a boundary of one of the domains. The cost is minimised by looping over the boundary of
-            !the domain only
-            l = 0; aux_pipe_seeds = -1
-            do sele = 1, Mdims%stotel
-                do siloc = 1, Mdims%p_snloc
-                    sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
-                    do edge = 1, size(edges,2)
-                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
 
+            !Use brute force through the whole mesh but selecting only elements that live within the wells region ids to find a seed
+            !This should definetively work in parallel and be cheap
+            l = 0; aux_pipe_seeds = -1
+            element_loop: do ele = 1, size(well_domains%val)
+                if (well_domains%val(ele) <= 1e-8) cycle!Only look at elements within the well regions, the rest is set to 0
+                do iloc  = 1, Mdims%cv_nloc
+                    inod = ndgln%p( ( ele - 1 ) * Mdims%cv_nloc + iloc )
+                    do edge = 1, size(edges,2)
+                        if (is_within_pipe(X(:,inod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
                             found = .false.
                             do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
-                                if (aux_pipe_seeds(j)==sinod) found = .true.
+                                if (aux_pipe_seeds(j)==inod) found = .true.
                                 if (aux_pipe_seeds(j) < 0 .or. found) exit
                             end do
                             if (.not.found) then
                                 l = l + 1
-                                aux_pipe_seeds(l) = sinod!Store the global node number
+                                aux_pipe_seeds(l) = inod!Store the global node number
+                                exit element_loop !just one seed per well
                             end if
                         end if
                     end do
                 end do
-            end do
+            end do element_loop
+            !OLD METHOD, June/2018. REMOVEME IF THIS DATE IS TOO OLD...
+!            !Use brute force through the surface of the domain. This only works in serial...
+!            !The cost is minimised by looping over the boundary of the domain only
+!            l = 0; aux_pipe_seeds = -1
+!            do sele = 1, Mdims%stotel
+!                do siloc = 1, Mdims%p_snloc
+!                    sinod = ndgln%suf_p( ( sele - 1 ) * Mdims%p_snloc + siloc )
+!                    do edge = 1, size(edges,2)
+!                        if (is_within_pipe(X(:,sinod), nodes(:,edges(1,edge)), nodes(:,edges(2,edge)), tolerancePipe)) then
+!
+!                            found = .false.
+!                            do j = 1, size(aux_pipe_seeds)!Make sure that we do not store the same position many times
+!                                if (aux_pipe_seeds(j)==sinod) found = .true.
+!                                if (aux_pipe_seeds(j) < 0 .or. found) exit
+!                            end do
+!                            if (.not.found) then
+!                                l = l + 1
+!                                aux_pipe_seeds(l) = sinod!Store the global node number
+!                            end if
+!                        end if
+!                    end do
+!                end do
+!            end do
 
             allocate(pipe_seeds(l))
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
@@ -2080,7 +2027,7 @@ contains
                     area_sqr(3) = sum( ( X_ALL_CORN(:,2) - X_ALL_CORN(:,3) )**2 )
                     ii(3)=i ; jj(3)=j
 
-                    kk(:)=0
+                    kk=0
 
                 ELSE ! ENDOF IF(NDIM==2) THEN...(THIS IS FOR 3D)
 
@@ -2096,7 +2043,7 @@ contains
                         IF ( PIPE_INDEX_LOGICAL(I) .AND. PIPE_INDEX_LOGICAL(J) .AND. PIPE_INDEX_LOGICAL(K) ) THEN
                             IFACE = IFACE+1
                             call CrossProduct( ndim, cp,  ( X_ALL_CORN(:,j) - X_ALL_CORN(:,i) ), ( X_ALL_CORN(:,k) - X_ALL_CORN(:,i) ) )
-                            area_sqr(IFACE) =  sum(cp(:)**2 )
+                            area_sqr(IFACE) =  sum(cp**2 )
                             ii(IFACE)=i ; jj(IFACE)=j ; kk(IFACE)=k
                         END IF
                     END DO ! ENDOF DO III=1,4

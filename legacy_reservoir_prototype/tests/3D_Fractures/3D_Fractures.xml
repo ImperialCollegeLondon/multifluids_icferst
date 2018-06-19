@@ -2,7 +2,7 @@
 <testproblem>
   <name>3D_Fractures</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml adaptivity adaptivity_within_FPI meow</tags>
+  <tags>porous mpml adaptivity adaptivity_within_FPI</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst Klive1by1_5mm_30.mpml</command_line>
   </problem_definition>
