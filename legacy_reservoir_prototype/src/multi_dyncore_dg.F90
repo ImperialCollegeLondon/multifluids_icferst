@@ -1183,7 +1183,7 @@ end if
         end if
 
         if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
-            call calculate_capillary_pressure(packed_state, ndgln, Mdims%totele, Mdims%cv_nloc)
+            call calculate_capillary_pressure(packed_state, ndgln, Mdims%totele, Mdims%cv_nloc, CV_funs)
         end if
 
         IF(got_free_surf) THEN
@@ -6065,7 +6065,7 @@ end if
              end if
 
              if (associated(Cap_exponent)) then
-                 Cap_exp = 2.0 !Quadratic exponent
+                 Cap_exp = 2 !Quadratic exponent
              else
                  Cap_exp = 1.!Linear exponent
              end if
