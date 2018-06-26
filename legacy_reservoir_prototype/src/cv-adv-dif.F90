@@ -841,7 +841,7 @@ contains
         else
             DEN_ALL_DIVID => DEN_ALL
         endif
-       
+
         ndotq = 0. ! ;         ndotqold = 0.
         ! variables for get_int_tden********************
         !      print *,'after allocate'
@@ -1053,7 +1053,7 @@ contains
 
         !Allocate derivatives of the shape functions
         call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
-        
+
         ! The above leads to CV_funs%NX_ALL equaling always to zero, which makes the negative diffusion ZERO (GET_INT_T_DEN_new( LIMF ))
         ! In order to fix this, we use FE_funs - only when we calculate negative diffusion coefficient (cv_disopt >= 8_. [INTRO_NX_ALL]
         IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
@@ -2012,7 +2012,7 @@ contains
                 bathymetry=>extract_tensor_field(packed_state,"PackedBathymetry")
                 depth_of_drain=>extract_scalar_field(state(1),"Drain_depth")
                 allocate(R_PEACMAN( Mdims%nphase ) )
-            endif 
+            endif
             DO CV_NODI = 1, Mdims%cv_nonods
 
                 !Only go through the nodes that have a well
@@ -2468,7 +2468,7 @@ contains
                             call addto(Mmat%petsc_ACV,iphase,iphase,&
                                 cv_nodi, cv_nodi,&
                                 + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                                * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )) 
+                                * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI ))
                                 !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                                     !we divide to remove that term and multiply by the correct term (1-porosity)
                             LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
@@ -3042,7 +3042,7 @@ end if
 
     END SUBROUTINE APPLY_ENO_2_T
 
-        
+
     SUBROUTINE TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
          !     The 3 corners of the tri...
          X_CORNERS_ALL, NDIM,CV_NLOC)
@@ -3242,7 +3242,7 @@ end if
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                     DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
                                                 case ( 9 )     ! accurate (simplified residual squared)...
-                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  ) 
+                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
                                                     RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*FSdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
@@ -7602,5 +7602,3 @@ end if
     end function shock_front_in_ele
 
 end module cv_advection
-
-

@@ -417,7 +417,7 @@ contains
              current_time < finish_time &! unless explicitly disabled
              .and. .not. have_option("/io/disable_dump_at_start") &
              ) then
-            
+
 !-------------------------------------------------------------------------------
 ! to allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
              if (do_checkpoint_simulation(dump_no)) then
@@ -718,7 +718,7 @@ contains
 
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
-            
+
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
@@ -762,8 +762,8 @@ contains
                 end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
                 !Make sure we finish at required time and we don't get dt = 0
-                dt = max(min(dt, finish_time - current_time), 1d-15)                    
-                
+                dt = max(min(dt, finish_time - current_time), 1d-15)
+
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
@@ -1230,7 +1230,7 @@ end if
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
                     call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
-                    call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)!<= just in case, cap unphysical values if there are still some
+                    call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 end if
                 if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,min_max_limits = min_max_limits_before)
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
@@ -1568,7 +1568,7 @@ subroutine BadElementTest(Quality_list, flag)
 
             ! Allocate memory for the quality_table to check the angles of each element and print out the diagnostics for the mesh
         case (1)
-            
+
 			bad_element = have_option('/numerical_methods/Bad_element_fix/')
 			if (have_option('/io/Mesh_Diagnostics_Angles')) then
 				mesh_diagnostics = .true.
@@ -1578,7 +1578,7 @@ subroutine BadElementTest(Quality_list, flag)
 				allocate(diagnostics(shape(1)))
 				diagnostics(:) = -1
 			end if
-           
+
 
         case default
             if (bad_element .or. mesh_diagnostics)  then

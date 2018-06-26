@@ -1319,8 +1319,9 @@ contains
              states(i), field_name='Gamma')
           call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Sigma', &
              states(i), field_name='Sigma')
+        !For diameter, we need to define meory over all the mesh
           call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::DiameterPipe', &
-             states(i), field_name='DiameterPipe')
+             states(i), field_name='DiameterPipe', dont_save_memory = .true. )
           if (have_option('/wells_and_pipes/thermal_well_properties'))then
              call allocate_and_insert_scalar_field('/wells_and_pipes/thermal_well_properties/scalar_field::Conductivity', &
                 states(i), field_name='Conductivity')
@@ -1869,14 +1870,14 @@ contains
 
   recursive subroutine allocate_and_insert_scalar_field(option_path, state, &
     parent_mesh, parent_name, field_name, &
-    dont_allocate_prognostic_value_spaces)
+    dont_allocate_prognostic_value_spaces, dont_save_memory)
 
     character(len=*), intent(in) :: option_path
     type(state_type), intent(inout) :: state
     character(len=*), intent(in), optional :: parent_mesh
     character(len=*), intent(in), optional :: parent_name
     character(len=*), optional, intent(in):: field_name
-    logical, optional, intent(in):: dont_allocate_prognostic_value_spaces
+    logical, optional, intent(in):: dont_allocate_prognostic_value_spaces, dont_save_memory
 
     logical :: is_prognostic, is_prescribed, is_diagnostic, is_aliased
     ! paths for options and child fields
@@ -1914,7 +1915,7 @@ contains
     ! modify constant fields. *Do not add to this list!* Construct an
     ! appropriate diagnostic algorithm instead (possibly an internal).
     backward_compatibility = .false.
-
+    if (present(dont_save_memory)) backward_compatibility = dont_save_memory
     ! Find out what kind of field we have
     is_prognostic=have_option(trim(path)//"/prognostic")
     is_prescribed=have_option(trim(path)//"/prescribed")

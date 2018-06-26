@@ -706,7 +706,7 @@ contains
         logical :: has_density, has_phase_volume_fraction
         integer :: i, iphase, icomp, idim, iele, ipres
         integer :: nphase,ncomp,ndim,stat,n_in_pres
-
+        real :: auxR
 #ifdef USING_FEMDEM
         if(have_option('/blasting')) then
             sfield=>extract_scalar_field(state(1),"SolidConcentration" )

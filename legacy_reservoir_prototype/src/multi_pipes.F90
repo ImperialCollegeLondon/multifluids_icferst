@@ -1017,7 +1017,7 @@ contains
             if (U_P0DG) u_lnloc = 1
         end if
 
-        PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe")
+        PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
         X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         allocate( PIPE_DIAM_GI(scvngi) )
         allocate( SIGMA_GI(Mdims%nphase,scvngi), SIGMA_ON_OFF_GI(Mdims%nphase,scvngi) )

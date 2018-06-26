@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -40,11 +40,11 @@ module solvers_module
     use state_module
     use halo_data_types
 #ifdef HAVE_PETSC_MODULES
-  use petsc 
+  use petsc
 #if PETSC_VERSION_MINOR==0
-  use petscvec 
-  use petscmat 
-  use petscksp 
+  use petscvec
+  use petscmat
+  use petscksp
   use petscpc
 #endif
 #endif
@@ -65,7 +65,7 @@ module solvers_module
     interface multi_solver
         module procedure solve_via_copy_to_petsc_csr_matrix
     end interface
-  
+
 contains
 
     ! -----------------------------------------------------------------------------
@@ -483,7 +483,7 @@ contains
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
         if (is_porous_media) then
-            call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)
+            call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
             sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
             Satura =>  sat_field%val(1,:,:)
             !Stablish minimum backtracking parameter
@@ -781,15 +781,15 @@ contains
 
     end subroutine FPI_backtracking
 
-    subroutine Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)
+    subroutine Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
-        type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent(inout) :: packed_state
+        type( state_type ), dimension(:), intent(in) :: state
         !Local variables
         type(scalar_field), pointer :: pipe_diameter
         integer :: iphase, cv_iloc, ele, cv_nod, i_start, i_end, ipres, stat
@@ -986,5 +986,3 @@ contains
     end subroutine auto_backtracking
 
 end module solvers_module
-
-
