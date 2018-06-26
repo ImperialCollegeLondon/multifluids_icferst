@@ -1183,7 +1183,7 @@ end if
         end if
 
         if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
-            call calculate_capillary_pressure(packed_state, ndgln, Mdims%totele, Mdims%cv_nloc)
+            call calculate_capillary_pressure(packed_state, ndgln, Mdims%totele, Mdims%cv_nloc, CV_funs)
         end if
 
         IF(got_free_surf) THEN
@@ -6065,6 +6065,7 @@ end if
                 call get_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
 
+<<<<<<< HEAD
             !Check if the capillary pressure introduced is important enough to actually trigger the VAD for Capillary pressure
              if ( associated(Cap_entry_pressure) .and. Cap_pressure_relevant < 0) then
                 Cap_pressure_relevant = 0
@@ -6073,6 +6074,10 @@ end if
 
              if (Cap_pressure_relevant > 0) then
                  Cap_exp = 2.0 !Quadratic exponent
+=======
+             if (associated(Cap_exponent)) then
+                 Cap_exp = 2 !Quadratic exponent
+>>>>>>> a7d210090e3d5949c2405fe9d8e5e2d8ab1bfafa
              else
                  Cap_exp = 1.!Linear exponent
              end if

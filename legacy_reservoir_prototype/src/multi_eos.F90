@@ -1366,7 +1366,7 @@ contains
 
 
     SUBROUTINE calculate_capillary_pressure( packed_state, &
-        NDGLN, totele, cv_nloc)
+        NDGLN, totele, cv_nloc, CV_funs)
 
             ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
             ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
@@ -1375,21 +1375,23 @@ contains
 
             IMPLICIT NONE
             type(state_type), intent(inout) :: packed_state
+            type(multi_shape_funs) :: CV_funs ! shape function of a reference control volume
             integer, intent(in) :: totele, cv_nloc
             type(multi_ndgln), intent(in) :: ndgln
             ! Local Variables
+            type(multi_dev_shape_funs) :: DevFuns ! derivative of the shape functions of the reference control volumes
             INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
             logical, save :: Cap_Brooks = .true., Cap_Power = .false.
             logical, save :: first_time = .true.
             !Working pointers
-            real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term
+            real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent, Imbibition_term, X_ALL
             real, dimension(:), allocatable :: Cont_correction
             !Get from packed_state
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
 
             call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
                 Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, &
-                    Cap_exponent = Cap_exponent, Imbibition_term = Imbibition_term)
+                    Cap_exponent = Cap_exponent, Imbibition_term = Imbibition_term, PressureCoordinate = X_ALL)
 
             nphase =size(Satura,1)
             allocate(Cont_correction(size(satura,2)))
@@ -1403,6 +1405,9 @@ contains
                 first_time = .false.
             end if
 
+            ! here we run multi_dev_shape_funs just to calculate element volumes
+            call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
+
             DO IPHASE = 1, NPHASE
 
                 if ( (Cap_Brooks) .or. (Cap_Power) ) then
@@ -1412,16 +1417,19 @@ contains
                         Cont_correction = 0
                         if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                             do ele = 1, totele
+
+                                call DETNLXR(ele, X_ALL, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+
                                 do cv_iloc = 1, cv_nloc
                                     cv_nod = ndgln%cv((ele-1)*cv_nloc + cv_iloc)
                                     CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
                                         Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, ele), &
                                         Cap_exponent(iphase, ele),Immobile_fraction(:,ele), &
-                                        Imbibition_term(iphase, ele), iphase)
-                                    Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
+                                        Imbibition_term(iphase, ele), iphase) * DevFuns%volume   ! volume weighted average of capillary pressure
+                                    Cont_correction(cv_nod) = Cont_correction(cv_nod) + DevFuns%volume
                                 end do
                             end do
-                            !In continuous formulation nodes are visited more than once, hence we need to average the values added here
+                            !In continuous formulation nodes are visited more than once, hence we need to find a volume weighted average
                             CapPressure(jphase, :) = CapPressure(jphase, :) / Cont_correction(:)
                         end if
                     end do
@@ -1789,7 +1797,7 @@ contains
 
                   tp_field => extract_tensor_field( state( iphase ), "Viscosity" )
                   call zero( tp_field )
-                  ndim1 = size( tp_field%val, 1 ) ; ndim2 = size( tp_field%val, 2 ) 
+                  ndim1 = size( tp_field%val, 1 ) ; ndim2 = size( tp_field%val, 2 )
 
                   do icomp = 1, Mdims%ncomp
                      component => extract_scalar_field( state( Mdims%nphase + icomp ), "ComponentMassFractionPhase" // int2str( iphase ) )
