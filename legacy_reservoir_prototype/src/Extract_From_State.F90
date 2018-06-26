@@ -2292,12 +2292,12 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     dt = dt * increaseFactor
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
+                    !Ensure that period_vtus or the final time are matched, controlled by max_ts
+                    dt = max(min(dt, max_ts), min_ts)
                     if (getprocno() == 1) then
                         ewrite(show_FPI_conv,*) "Time step increased to:", dt
                     end if
                     ExitNonLinearLoop = .true.
-                    !Ensure that period_vtus or the final time are matched, controlled by max_ts
-                    dt = max(min(dt, max_ts), min_ts)
                     call set_option( '/timestepping/timestep', dt )
                     return
                 end if
@@ -3244,7 +3244,3 @@ end subroutine get_DarcyVelocity
 
 
 end module Copy_Outof_State
-
-
-
-

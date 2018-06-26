@@ -6002,6 +6002,7 @@ end if
      logical, optional, intent(in) :: for_transport
      !Local variables
      real, save :: domain_length = -1
+     integer, save :: Cap_pressure_relevant = -1
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
      real :: Pe_aux, parl_max, parl_min
      real, dimension(:), pointer ::Pe, Cap_exp
@@ -6064,7 +6065,13 @@ end if
                 call get_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
 
-             if (associated(Cap_exponent)) then
+            !Check if the capillary pressure introduced is important enough to actually trigger the VAD for Capillary pressure
+             if ( associated(Cap_entry_pressure) .and. Cap_pressure_relevant < 0) then
+                Cap_pressure_relevant = 0
+                if (maxval(Cap_entry_pressure)/maxval(P) > 1e-2) Cap_pressure_relevant = 1
+            end if
+
+             if (Cap_pressure_relevant > 0) then
                  Cap_exp = 2.0 !Quadratic exponent
              else
                  Cap_exp = 1.!Linear exponent
