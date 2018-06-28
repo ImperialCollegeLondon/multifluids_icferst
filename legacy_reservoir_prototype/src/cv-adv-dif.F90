@@ -5099,6 +5099,14 @@ end if
                     if (NDIM >= 3) XSL( 3, X_SILOC ) = Z( X_INOD )
                 END DO
 
+                ! Calculation of the norms and determinant
+                CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
+                    XSL( 1, : ), XSL( 2, : ), XSL( 3, : ), &
+                    X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
+                    (NDIM==1), (NDIM==3), (NDIM==-2), &
+                    SNORMXN( 1, : ), SNORMXN( 2, : ), SNORMXN( 3, : ), &
+                    NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
 
