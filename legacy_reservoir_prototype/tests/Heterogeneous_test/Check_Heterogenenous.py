@@ -25,7 +25,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.075
+Tolerance_L1_NORM = 0.085
 Tolerance_L2_NORM = 0.005
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
@@ -207,7 +207,7 @@ Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 #Check that the experiment has run
 if (AutoNumber < 20): Passed = False
 
