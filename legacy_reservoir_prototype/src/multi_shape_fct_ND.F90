@@ -47,7 +47,6 @@ module shape_functions_Linear_Quadratic
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
   logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.!With this true it does not work...we need to fix it
 
-
     interface DETNLXR
         module procedure DETNLXR1
         module procedure DETNLXR2
@@ -1231,7 +1230,7 @@ contains
 !!$
              if( u_nloc == 6 ) then
                 GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             elseif( u_nloc == 10 .or. u_nloc == 4) then!Sixth order quadrature for bubble velocity element or P3
+            elseif( u_nloc == 10 .or. u_nloc == 4) then!Quintic order quadrature for bubble velocity element or P3
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
              end if
           else
@@ -5797,10 +5796,12 @@ contains
              nly( 2, gi ) = 1.
              nly( 3, gi ) = -1.
              ! nloc = 4
-             if( nloc == 4 ) then
-                n( 4, gi ) = l1( gi ) * l2( gi ) * l3( gi )
-                nlx( 4, gi ) = l2( gi ) * ( 1. - l2( gi )) - 2. * l1( gi ) * l2( gi )
-                nly( 4, gi ) = l1( gi ) * ( 1. - l1( gi )) - 2. * l1( gi ) * l2( gi )
+             if( nloc == 4 ) then!bubble element
+
+                 N(4,GI)  =27. * L1(GI)*L2(GI)*L3(GI)!Bubble done as (dim+1)**(dim+1) * Multiplier (L_i)
+                 NLX(4,GI)=27. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
+                 NLY(4,GI)=27. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
+
              end if
           end do
 
@@ -5870,13 +5871,12 @@ contains
              nlz( 3, gi ) = 1.
              nlz( 4, gi ) = -1.
              if( nloc == 5 ) then ! Bubble function
-                n( 5, gi ) = l1( gi ) * l2( gi ) * l3( gi ) * l4( gi )
-                nlx( 5, gi ) = l2( gi ) * l3( gi ) * ( 1. - l2( gi ) - l3( gi ))  &
-                     -2. * ( l1( gi ) * l2( gi ) * l3( gi ) )
-                nly( 5, gi ) = l1( gi ) * l3( gi ) * ( 1. - l1( gi ) - l3( gi ))  &
-                     -2. * ( l1( gi ) * l2( gi ) * l3( gi ) )
-                nlz( 5, gi ) = l1( gi ) * l2( gi ) * ( 1. - l2( gi ) - l2( gi ))  &
-                     -2. * ( l1( gi ) * l2( gi ) * l3( gi ) )
+
+                 N(5,GI)  = 256. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                 NLX(5,GI)= 256. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLY(5,GI)= 256. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLZ(5,GI)= 256. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+
              endif
           end do
 
@@ -8381,9 +8381,9 @@ contains
              NLY(3,GI)=-1.0
              IF(NLOC.EQ.4) THEN
                 ! Bubble function...
-                N(4,GI)  =L1(GI)*L2(GI)*L3(GI)
-                NLX(4,GI)=L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
-                NLY(4,GI)=L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
+                N(4,GI)  =27. * L1(GI)*L2(GI)*L3(GI)
+                NLX(4,GI)=27. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
+                NLY(4,GI)=27. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
              ENDIF
           end DO Loop_Gi_Nloc3_4
        ELSE IF((NLOC.EQ.6).OR.(NLOC.EQ.7)) THEN
@@ -8537,11 +8537,16 @@ contains
              NLZ(3,GI)=1.0
              NLZ(4,GI)=-1.0
              IF(NLOC.EQ.5) THEN
-                ! Bubble function...
-                N(5,GI)  =L1(GI)*L2(GI)*L3(GI)*L4(GI)
-                NLX(5,GI)=L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                NLY(5,GI)=L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                NLZ(5,GI)=L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                ! Bubble function ...
+                ! N(5,GI)  =L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                ! NLX(5,GI)=L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                ! NLY(5,GI)=L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                ! NLZ(5,GI)=L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+
+                N(5,GI)  = 256. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                NLX(5,GI)=256. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                NLY(5,GI)=256. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                NLZ(5,GI)=256. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
              ENDIF
           end DO Loop_Gi_Nloc_4_5
        ENDIF
@@ -10049,4 +10054,3 @@ contains
 
 
 end module shape_functions_NDim
-
