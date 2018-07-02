@@ -10,7 +10,7 @@ import numpy
 import pylab
 import fluidity_tools
 
-TOLERANCE_H=0.01
+TOLERANCE_H=0.05
 TOLERANCE_P=150
 plotting=False
 
@@ -138,7 +138,6 @@ Passed=True
 if H_check==False: Passed=False
 if P_check==False: Passed=False
 
-#print L1_norm, L2_norm
 if (Passed): 
     print 'CWC works OK'
 else:

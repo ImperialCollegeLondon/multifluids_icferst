@@ -11,8 +11,7 @@
 max_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
     <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat
 int_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
-    <variable name="min_P" language="python">from fluidity_tools import stat_parser as stat
-min_P = stat("mid_discontinuous.stat")["phase1"]["Pressure"]["min"][-1]</variable>
+
     <variable name="density_Sat1" language="python">from fluidity_tools import stat_parser as stat
 density_Sat1 = stat("mid_discontinuous.stat")["phase1"]["Density"]["max"][-1]</variable>
     <variable name="DarcyVel1" language="python">from fluidity_tools import stat_parser as stat
@@ -21,7 +20,6 @@ DarcyVel1 = stat("mid_discontinuous.stat")["phase1"]["DarcyVelocity%1"]["max"][-
   <pass_tests>
     <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.799) &lt; 0.01)</test>
     <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 0.227)/0.227 &lt; 0.01)</test>
-    <test name="Assert outlet pressure boundary condition" language="python">assert(abs(min_P - 1.43)/1.43 &lt; 0.05)</test>
     <test name="Assert density is introduced" language="python">assert(abs(density_Sat1 - 1.0) &lt; 0.01)</test>
     <test name="Assert final max Darcy velocity" language="python">assert(abs(DarcyVel1 - 1.28)/1.28 &lt; 0.05)</test>
   </pass_tests>
