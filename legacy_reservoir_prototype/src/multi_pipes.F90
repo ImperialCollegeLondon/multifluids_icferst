@@ -1501,14 +1501,16 @@ contains
                 call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
                 call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
-                call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
+                !Only if a seed is found then the well is constructed
+                if ( size(pipe_seeds)>0 ) call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
             end do
-
+            if (.not.allocated(eles_with_pipe))allocate(eles_with_pipe(0)) !This if is important for parallel so it exists and the loops are skipped
             !Re-populate properly PIPE_DIAMETER
             PIPE_DIAMETER%val = 0.
             !Copy values back to PIPE_DIAMETER from diameter_of_the_pipe_aux. This should go over less than 1% of the nodes
+
             do ele = 1, size(eles_with_pipe)
                 do k = 1, eles_with_pipe(ele)%npipes
                     x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(k)
@@ -1911,13 +1913,13 @@ contains
                 end do
             end if
 
-            !We have to ensure that the python prescribed field is not recalculated
-            !this needs to be removed once the memory is properly allocated
-            if (first_time) then
-                first_time = .false.
-                if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
-                    call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
-            end if
+            ! !We have to ensure that the python prescribed field is not recalculated
+            ! !this needs to be removed once the memory is properly allocated
+            ! if (first_time .and. getprocno() == 1) then
+            !     first_time = .false.
+            !     if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
+            !         call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
+            ! end if
             !#######################################################################
 !    !To test the results gnuplot and the run spl'test' w linesp
 !to compare with well plotted from multi_tools: spl'test'  using 1:2:3 with lines palette title "Eles", 'well_coords' with lines
