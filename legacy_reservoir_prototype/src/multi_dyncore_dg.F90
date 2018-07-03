@@ -7122,7 +7122,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
             !We are adding an extra node that adds extra velocity that needs to be compensated
             if ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or.&
                     (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) then
-                scaling_vel_nodes = scaling_vel_nodes - 1.0
+                scaling_vel_nodes = scaling_vel_nodes - dble(Mdims%u_nloc)/dble(Mdims%ndim+1)!1.0
                 lump_vol_factor = 0.!No velocity homogenisation for bubble elements
             end if
         end if

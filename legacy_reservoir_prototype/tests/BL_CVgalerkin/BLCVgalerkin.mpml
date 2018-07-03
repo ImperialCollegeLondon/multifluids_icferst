@@ -12,7 +12,7 @@
     </dimension>
     <mesh name="CoordinateMesh">
       <from_file file_name="mesh_structured">
-        <format name="exodusii"/>
+        <format name="gmsh"/>
         <stat>
           <include_in_stat/>
         </stat>
@@ -61,6 +61,7 @@
         <integer_value rank="0">5</integer_value>
       </degree>
     </quadrature>
+    <create_binary_msh/>
   </geometry>
   <io>
     <dump_format>
