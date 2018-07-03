@@ -888,13 +888,13 @@ END subroutine RotationMatrix
         end do
         i = 1!Read nodes
         do while (cadena(1:5)=="GRID")
-            !Nastran files from trellis seem to have a bug, not leaving a space between coordinate 1 and 2
+            !Nastran files from trellis have assigned a certain space for the different numbers so
             !we extract numbers by position as these are defined
             read(cadena(25:32),*) node(1,i)
             read(cadena(33:40),*) node(2,i)
             read(cadena(41:49),*) node(3,i)
             !Extract as well the number of the node
-            read(cadena(9:12),*) conversor(i)
+            read(cadena(9:16),*) conversor(i)
             read(89,'(A)') cadena; i = i + 1!read line and advance the counter
         end do
         !skip until reaching the edges
@@ -908,7 +908,6 @@ END subroutine RotationMatrix
             read(89,'(A)') cadena; i = i + 1!read line and advance the counter
         end do
         close(89)
-
         !Before leaving we normalize the edges list, making it to go from 1 to last edge instead of the numeration used
          do j = 1, size(edges,1)
              do i = 1, size(edges,2)
@@ -922,14 +921,14 @@ END subroutine RotationMatrix
          end do
         deallocate(conversor)
     !Print well to gnuplot format
-!print*, "WELL IN GNUPLOT"
-!do j = 1, size(edges,1)
-!do i = 1, size(edges,2)
-!print *, node(:,edges(j,i))
-!end do
-!end do
-!print *, "-----------------------"
-!read*
+! print*, "WELL IN GNUPLOT"
+! do j = 1, size(edges,1)
+! do i = 1, size(edges,2)
+! print *, node(:,edges(j,i))
+! end do
+! end do
+! print *, "-----------------------"
+! read*
     contains
         subroutine get_nodes_edges(Nnodes, Nedges)
             !Get the number of nodes and edges that conform the well
@@ -956,5 +955,3 @@ END subroutine RotationMatrix
     end subroutine read_nastran_file
 
 end module multi_tools
-
-
