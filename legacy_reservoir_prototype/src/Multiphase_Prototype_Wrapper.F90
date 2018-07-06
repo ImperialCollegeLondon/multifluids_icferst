@@ -163,7 +163,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     call run_diagnostics(state)
 
-    !     Determine the output format 
+    !     Determine the output format
     dump_format = "vtk"
 
     ! initialise the multimaterial fields
@@ -350,8 +350,7 @@ contains
             end if
         end if
         if (is_porous_media) then
-            !Create a copy of the velocity fields to store the DarcyVelocity in it
-            !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
+            !Create a field to store the DarcyVelocity in it
             do i = 1, nphase
                 option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity"
                 if (.not.have_option(option_path)) then
@@ -367,8 +366,14 @@ contains
                     call add_option(trim(option_path)//"/detectors",  stat=stat)
                     call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                     call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
-                end if
+                    !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
+                    !do_not_show velocity
 
+                    if (.not.have_option("/numerical_methods/porous_output_force_density") .and.&
+                    .not.have_option("/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu"))&
+                    call copy_option("/simulation_type/porous_media", &
+                        "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")
+                end if
 
 
 !                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"

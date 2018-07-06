@@ -1506,6 +1506,7 @@ contains
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
             end do
+            
             if (.not.allocated(eles_with_pipe))allocate(eles_with_pipe(0)) !This if is important for parallel so it exists and the loops are skipped
             !Re-populate properly PIPE_DIAMETER
             PIPE_DIAMETER%val = 0.

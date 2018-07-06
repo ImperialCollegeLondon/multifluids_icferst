@@ -3005,6 +3005,13 @@ By default this number is 9. Recommended range: 3 to 9.</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="porous_output_force_density">
+              <a:documentation>For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
+activate this to also output the force_density</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="Bad_element_fix">
               <a:documentation>Look for bad elements to change its anisotropic permeability to improve their quality</a:documentation>
               <optional>
@@ -3488,52 +3495,42 @@ If on the tangents vectors must also be specified.</a:documentation>
     </optional>
   </define>
   <define name="velocity_components_choice">
-    <choice>
-      <element name="align_bc_with_surface">
-        <optional>
-          <element name="normal_component">
-            <ref name="input_choice_real"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="tangent_component_1">
-            <ref name="input_choice_real"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="tangent_component_2">
-            <ref name="input_choice_real"/>
-          </element>
-        </optional>
-        <ref name="rotation_matrix_components"/>
-        <optional>
-          <element name="debugging_mode">
-            <a:documentation>this will calculate the determinant of the
-rotation matrix for every boundary node
-and dump a vtu with the node 
-normals and tangenials 1/2</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-      </element>
-      <element name="align_bc_with_cartesian">
-        <optional>
-          <element name="x_component">
-            <ref name="input_choice_real_bc_component"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="y_component">
-            <ref name="input_choice_real_bc_component"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="z_component">
-            <ref name="input_choice_real_bc_component"/>
-          </element>
-        </optional>
-      </element>
-    </choice>
+    <element name="align_bc_with_cartesian">
+      <optional>
+        <element name="x_component">
+          <ref name="input_choice_real_bc_component"/>
+        </element>
+      </optional>
+      <optional>
+        <element name="y_component">
+          <ref name="input_choice_real_bc_component"/>
+        </element>
+      </optional>
+      <optional>
+        <element name="z_component">
+          <ref name="input_choice_real_bc_component"/>
+        </element>
+      </optional>
+    </element>
+    <!--
+              element align_bc_with_surface {
+                 element normal_component {
+                    input_choice_real
+                 }?,
+                 element tangent_component_1 {
+                    input_choice_real
+                 }?,
+                 element tangent_component_2 {
+                    input_choice_real
+                 }?,
+                 rotation_matrix_components,
+                 ## this will calculate the determinant of the
+                 ## rotation matrix for every boundary node
+                 ## and dump a vtu with the node 
+                 ## normals and tangenials 1/2
+                 element debugging_mode{empty}?
+              }
+    -->
   </define>
   <define name="velocity_boundary_conditions">
     <choice>

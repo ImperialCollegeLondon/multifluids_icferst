@@ -2167,7 +2167,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                     !Analyse the difference
-                    ts_ref_val = inf_norm_scalar_normalised(temperature, reference_field(1,:,:), 1.0, totally_min_max)
+                    ts_ref_val = inf_norm_scalar_normalised(temperature(1:1,:), reference_field(1,1:1,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
 
