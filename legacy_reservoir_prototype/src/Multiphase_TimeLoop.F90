@@ -512,7 +512,7 @@ contains
             its = 1
 
             !Store backup to be able to repeat a timestep
-            if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
+            if (nonLinearAdaptTs) call Adaptive_NonLinear(mdims, packed_state, reference_field, its, &
                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
@@ -532,7 +532,7 @@ contains
                 if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
 
                 !Store the field we want to compare with to check how are the computations going
-                call Adaptive_NonLinear(packed_state, reference_field, its, &
+                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
@@ -654,7 +654,7 @@ contains
                     exit Loop_NonLinearIteration
                 end if
                 !Finally calculate if the time needs to be adapted or not
-                call Adaptive_NonLinear(packed_state, reference_field, its,&
+                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, adapt_mesh_in_FPI, calculate_mass_delta)
 
                 !Flag the matrices as already calculated (only the storable ones

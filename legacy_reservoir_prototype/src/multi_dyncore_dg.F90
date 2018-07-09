@@ -221,11 +221,6 @@ contains
                    !We control with the infinite norm of the difference the non-linear iterations done in this sub-cycle
                    !therefore the minimum/default value of nits_flux_lim is set to 9
                    nits_flux_lim = max(nits_flux_lim, 9)!Currently overriden as we are not updating the rhs or other fields so this is not useful
-                   if (inf_tolerance<0) then
-                       !Tolerance for the infinite norm
-                       call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/Temperature_solver_tol',&
-                           inf_tolerance, default = 0.05 )
-                   end if
                end if
                cv_disopt = Mdisopt%t_disopt
                cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt

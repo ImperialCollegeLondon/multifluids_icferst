@@ -541,28 +541,17 @@ This can be used to control the number of non-linear interations dynamically.
 
 By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
                     <ref name="real"/>
-                    <group>
-                      <optional>
-                        <element name="adaptive_non_linear_iterations">
-                          <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
+                    <optional>
+                      <element name="adaptive_non_linear_iterations">
+                        <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
 
 A Variable to check has to be chosen:
 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
 
 The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
-                          <ref name="integer"/>
-                        </element>
-                      </optional>
-                      <optional>
-                        <element name="Temperature_solver_tol">
-                          <a:documentation>Sets the infinite tolerance for the internal loop of the temperature transport equation.
-This is an internal solver, so a higher tolerance should be used.
-                   
-Default = 0.05</a:documentation>
-                          <ref name="real"/>
-                        </element>
-                      </optional>
-                    </group>
+                        <ref name="integer"/>
+                      </element>
+                    </optional>
                   </element>
                 </optional>
                 <optional>

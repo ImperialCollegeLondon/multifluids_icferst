@@ -1506,7 +1506,7 @@ contains
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
             end do
-            
+
             if (.not.allocated(eles_with_pipe))allocate(eles_with_pipe(0)) !This if is important for parallel so it exists and the loops are skipped
             !Re-populate properly PIPE_DIAMETER
             PIPE_DIAMETER%val = 0.
@@ -1522,6 +1522,7 @@ contains
                      diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
                 end do
             end do
+
         else
             do ele = 1, Mdims%totele
                 ! Look for pipe indicator in element:
@@ -1538,7 +1539,7 @@ contains
                 !If it has pipe, then store the element
                 if (PIPE_NOD_COUNT-1 >= 1) then
                     AUX_eles_with_pipe(k)%ele = ele
-                    AUX_eles_with_pipe(k)%npipes = PIPE_NOD_COUNT - 1
+                    AUX_eles_with_pipe(k)%npipes = 1!just one pipe !PIPE_NOD_COUNT - 1
                     allocate(AUX_eles_with_pipe(k)%pipe_index(NCORNER))
                     AUX_eles_with_pipe(k)%pipe_index = PIPE_INDEX_LOGICAL
                     k = k + 1

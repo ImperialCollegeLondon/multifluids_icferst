@@ -462,13 +462,6 @@ start =
                         ## The field selected in "adaptive_timestep_nonlinear" has preference over this
                         element adaptive_non_linear_iterations{
                         integer
-                        }?,
-                        ## Sets the infinite tolerance for the internal loop of the temperature transport equation.
-                        ## This is an internal solver, so a higher tolerance should be used.
-                        ##                    
-                        ## Default = 0.05
-                        element Temperature_solver_tol{
-                        real
                         }?
                       )
                     }?

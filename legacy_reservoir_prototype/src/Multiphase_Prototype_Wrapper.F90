@@ -278,6 +278,7 @@ contains
                 call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")
             end if
         end if
+        ewrite(1, *) "Create internally: PressureMesh_Continuous, PressureMesh_Discontinuous and P0DG mesh. Check multiphase_prototype_wrapper"
         if (.not. have_option("/geometry/mesh::PressureMesh_Continuous")) then
             call copy_option("/geometry/mesh::PressureMesh", "/geometry/mesh::PressureMesh_Continuous")
             call set_option("/geometry/mesh::PressureMesh_Continuous/from_mesh/mesh_continuity", "continuous")
@@ -296,6 +297,7 @@ contains
 
 
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+            ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"
             !Create necessary backups for storing the saturation (in a way that it is also adapted)
             do i = 1, nphase
                 option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_bak"
@@ -341,6 +343,7 @@ contains
 
 
         if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
+            ewrite(1, *) "Preserve regions MUST to be ON. Check multiphase_prototype_wrapper"
             !Ensure that preserve_mesh_regions is on, since otherwise it does not work
             !Don't know how to set exclude_from_vtu to true from the spud options, hence,
             !since Porous_media HAS to be true I copy it to obtain the same effect
@@ -350,6 +353,7 @@ contains
             end if
         end if
         if (is_porous_media) then
+            ewrite(1, *) "For porous media we output only the Darcy Velocity, not the velocity. Check multiphase_prototype_wrapper"
             !Create a field to store the DarcyVelocity in it
             do i = 1, nphase
                 option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity"
@@ -392,6 +396,7 @@ contains
         !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
         !or to show the wells in paraview
         if (npres>1 ) then
+            ewrite(1, *) "For wells we define dummy variables and we enforce options in Diamond. Check multiphase_prototype_wrapper"
             if (have_option('/wells_and_pipes/well_volume_ids')) then
                 !Introduce some dummy regions to ensure that mesh adaptivity keeps the wells in place
                 shape = option_shape('/wells_and_pipes/well_volume_ids')
@@ -413,6 +418,11 @@ contains
                     call set_option(trim(option_path)//"/prescribed/value["//int2str(i-1)//"]/constant", real(well_ids(i)), stat=stat)
                 end do
                 deallocate(well_ids)
+
+                !It is important that the DiameterPipe is not recalculated if wells are defined using files
+                if (have_option('/wells_and_pipes/well_from_file[0]') .and. &
+                    .not.have_option('/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate'))&
+                    call copy_option("/simulation_type/porous_media", '/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate')
 
                 if (.not.have_option('/wells_and_pipes/well_volume_ids/Show_well_volumes_ids'))&
                     call copy_option("/simulation_type/porous_media", trim(option_path)//"/prescribed/output/exclude_from_vtu")

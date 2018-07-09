@@ -1963,12 +1963,13 @@ end subroutine finalise_multistate
 
 
 
-subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
+subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, adapt_mesh_in_FPI, calculate_mass_delta)
     !This subroutine either store variables before the nonlinear timeloop starts, or checks
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
     Implicit none
+    type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(inout) :: packed_state
     real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
     real, intent(in) :: old_acctim
@@ -2151,10 +2152,10 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
                 case (3)!Phase volume fraction
-                    !Calculate infinite norm
-                    inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
+                    !Calculate infinite norm, not consider wells
+                    inf_norm_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
 
-                    !Calculate value of the functional
+                    !Calculate value of the functional (considering wells and reservoir)
                     ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
                     backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
 
@@ -2166,8 +2167,8 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                     totally_min_max(2)=maxval(reference_field)!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                    !Analyse the difference
-                    ts_ref_val = inf_norm_scalar_normalised(temperature(1:1,:), reference_field(1,1:1,:), 1.0, totally_min_max)
+                    !Analyse the difference !Calculate infinite norm, not consider wells
+                    ts_ref_val = inf_norm_scalar_normalised(temperature(1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
 
