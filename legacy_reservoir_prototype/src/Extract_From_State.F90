@@ -2171,7 +2171,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     ts_ref_val = inf_norm_scalar_normalised(temperature(1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
-
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
                     totally_min_max(1)=minval(reference_field)!use stored pressure
@@ -2193,6 +2192,13 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 call allmax(max_calculate_mass_delta)
                 call allmax(inf_norm_val)
             end if
+
+            !If single phase then no point in checking the saturation or mass conservation!
+            !Specially now that we are not solving the saturation equation unless it is multiphase!
+            if (Mdims%n_in_pres == 1) THEN
+                ts_ref_val = 0.0; max_calculate_mass_delta= 0.
+            end if
+            
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
@@ -2996,7 +3002,7 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
     integer, dimension(:), intent( in ) ::  cv_ndgln
     type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
     ! Local variables
-    type (tensor_field), pointer :: saturation
+    type (tensor_field), pointer :: saturation, density
     type (vector_field), pointer :: porosity
     integer  :: cv_knod
     integer :: cv_iloc
@@ -3006,7 +3012,8 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
     saturation => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
     ! Extract the Porosity
     porosity => extract_vector_field( packed_state, "Porosity" )
-
+    !Extract density
+    density => extract_tensor_field( packed_state, "PackedDensity" )
     ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
     ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes).
     ! Since the CV shape functions are 1 or 0, the value at Gauss point gi, is given by the value at the nearest CV_node. So
@@ -3022,7 +3029,7 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
                     cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
                     !     Porosity constant element-wise so simply extract that value associated to a given element ele
                     do i = Mdims%n_in_pres + 1, Mdims%nphase
-                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod)
+                        calculate_mass(i) = calculate_mass(i) + (Mass_ELE(cv_knod)) *saturation%val(1, i,cv_knod)*density%val(1, i,cv_knod)
                     enddo
                 ENDDO
             end if
@@ -3034,9 +3041,9 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
                 DO CV_ILOC =1, mdims%cv_nloc
                     cv_knod=cv_ndgln((ele-1)*mdims%cv_nloc+cv_iloc)
                     !     Porosity constant element-wise so simply extract that value associated to a given element ele
-                    do i = 1, size(calculate_mass)
+                    do i = 1, Mdims%n_in_pres!size(calculate_mass)
                         calculate_mass(i) = calculate_mass(i) + (Mass_ELE(ele)/mdims%cv_nloc)*&
-                            porosity%val(1, ele)*saturation%val(1, i,cv_knod)
+                            porosity%val(1, ele)*saturation%val(1, i,cv_knod) * density%val(1, i,cv_knod)
                     enddo
                 ENDDO
             end if

@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast_adapt_ts</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml wells wells_complex</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./Check_production.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="multiphase_wells" language="python">multiphase_wells = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: multiphase_wells = True
+
+assert(multiphase_wells)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

@@ -711,6 +711,7 @@ contains
                     LIMT=0.0
                     LIMD=0.0
                     FVT =0.0
+
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                         IF ( WIC_T_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_T_BC_DIRICHLET ) THEN
                             LIMT(IPHASE)=T_ALL%val(1,IPHASE,JCV_NOD)*(1.0-INCOME(IPHASE)) + SUF_T_BC_ALL_NODS(IPHASE,JCV_NOD)*INCOME(IPHASE)
@@ -736,22 +737,6 @@ contains
                     ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                     suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                     IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
-                        if (element_owned(T_ALL, ele)) then
-                            !Store total outflux for volume conservation check
-                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, 0) =  bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD,0) + &
-                                NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
-                            if (outfluxes%calculate_flux) then
-                                !If we want to output the outfluxes of the pipes we fill the array here with the information
-                                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
-                                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
-                                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
-                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) =  &
-                                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) + &
-                                            NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
-                                    end if
-                                end do
-                            end if
-                        end if
 
 
                         DO IDIM = 1, Mdims%ndim
@@ -778,6 +763,26 @@ contains
                                 sum( LOC_CT_RHS_U_ILOC( 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres ) ) )
                         END DO
                     END IF ! IF ( GETCT ) THEN
+
+                    !Calculate fluxes to check mass conservation and outflux
+                    IF ( GETCT ) THEN
+                        if (element_owned(T_ALL, ele)) then
+                            !Store total outflux for mass conservation check
+                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, 0) =  bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD,0) + &
+                            NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMDT(Mdims%n_in_pres+1:Mdims%nphase)
+                            if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
+                                !If we want to output the outfluxes of the pipes we fill the array here with the information
+                                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
+                                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
+                                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
+                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) =  &
+                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) + &
+                                        NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
+                                    end if
+                                end do
+                            end if
+                        end if
+                    end if
                     IF ( GETCV_DISC ) THEN ! this is on the boundary...
                         ! Put results into the RHS vector
                         LOC_CV_RHS_I = 0.0

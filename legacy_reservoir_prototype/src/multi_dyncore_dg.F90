@@ -524,11 +524,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
-         V_SOURCE, VOLFRA_PORE, &
-         igot_theta_flux, mass_ele_transp,&
-         nonlinear_iteration, &
-         Courant_number,&
-         option_path,&
+         V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
+         nonlinear_iteration, Courant_number,option_path,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, Quality_list)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
@@ -555,6 +552,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(:), intent(inout) :: Courant_number
              character(len= * ), intent(in), optional :: option_path
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+
              ! Local Variables
              LOGICAL, PARAMETER :: THERMAL= .false.
              integer :: igot_t2
@@ -598,11 +596,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              integer, save :: max_allowed_its = -1
              integer :: its_taken
 
-if (is_flooding) return!<== Temporary fix for flooding
+             if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
-            if(max_allowed_its < 0)  call get_option( &
+             if(max_allowed_its < 0)  call get_option( &
                 '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/solver/max_iterations',&
-                 max_allowed_its, default = 100000)
+                 max_allowed_its, default = 500)
 
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
@@ -624,22 +622,16 @@ if (is_flooding) return!<== Temporary fix for flooding
              call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
 
 
-             GET_THETA_FLUX = .FALSE.
-             IGOT_T2 = 0
-             deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-             !ALLOCATE( T2( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
-             !ALLOCATE( T2OLD( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
-             IF ( IGOT_T2 == 1 ) THEN
-                 ALLOCATE( T2( Mdims%nphase, Mdims%cv_nonods ))
-                 ALLOCATE( T2OLD( Mdims%nphase, Mdims%cv_nonods ))
-             END IF
-             ALLOCATE( THETA_GDIFF( Mdims%nphase * IGOT_T2, Mdims%cv_nonods * IGOT_T2 ))
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
-             ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
-             ALLOCATE( Mmat%CT( 0,0,0 ) )
-             ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
-             ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), INV_B( 0,0,0 ) )
+             GET_THETA_FLUX = .FALSE.
+             !####Create dummy variables required for_cv_assemb with no memory usage ####
+             IGOT_T2 = 0
+             ALLOCATE( THETA_GDIFF( 0, 0 )); ALLOCATE( Mmat%CT( 0,0,0 ) )
+             ALLOCATE( DIAG_SCALE_PRES( 0,0 ) ); ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), INV_B( 0,0,0 ) )
+             !#### Create dummy variables required for_cv_assemb with no memory usage ####
+             deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
              ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
+             ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
 
              IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
                  ! use DEN=1 because the density is already in the theta variables
@@ -803,14 +795,13 @@ if (is_flooding) return!<== Temporary fix for flooding
                 !Update halos with the new values
                 call halo_update(sat_field)
              end if
+
+
+             !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
+             deallocate( THETA_GDIFF, Mmat%CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
+             !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####     
+
              DEALLOCATE( mass_mn_pres )
-             DEALLOCATE( Mmat%CT )
-             DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP)
-             IF ( IGOT_T2 == 1 ) THEN
-                 DEALLOCATE( T2 )
-                 DEALLOCATE( T2OLD )
-             END IF
-             DEALLOCATE( THETA_GDIFF )
              call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
@@ -870,12 +861,9 @@ if (is_flooding) return!<== Temporary fix for flooding
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
-        DT, &
-        SUF_SIG_DIAGTEN_BC, &
-        V_SOURCE, VOLFRA_PORE, &
-        IGOT_THETA_FLUX, &
-        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        calculate_mass_delta, outfluxes )
+        DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
+        IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
+        calculate_mass_delta, outfluxes)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -899,9 +887,9 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         !REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
         REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
-        REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
-        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+        REAL, DIMENSION( : ,  :  ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         type (multi_outfluxes), intent(inout) :: outfluxes
+        real, dimension(:,:), intent(inout) :: calculate_mass_delta
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
@@ -919,7 +907,6 @@ if (is_flooding) return!<== Temporary fix for flooding
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
         real, dimension(:,:,:), allocatable :: velocity_absorption, U_SOURCE_CV_ALL
         real, dimension(:,:,:,:), allocatable :: UDIFFUSION_ALL
-        real, dimension(:,:) :: calculate_mass_delta
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
         type( multi_field ) :: UDIFFUSION_ALL2
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
@@ -1206,19 +1193,13 @@ end if
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
-            DT, &
-            MASS_MN_PRES, & ! pressure matrix for projection method
-            got_free_surf,  MASS_SUF, &
-            SUF_SIG_DIAGTEN_BC, &
+            DT, MASS_MN_PRES, & ! pressure matrix for projection method
+            got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-            JUST_BL_DIAG_MAT, &
-            UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
-            IGOT_THETA_FLUX, &
-            THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, &
-            IPLIKE_GRAD_SOU,&
-            symmetric_P, boussinesq, calculate_mass_delta, outfluxes)
+            JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
+            IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,symmetric_P, boussinesq, calculate_mass_delta, outfluxes)
 
         deallocate(UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -1334,7 +1315,7 @@ end if
                     rhs_p%val(IPRES,CV_NOD)= SUM( rhs_p2(1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres,CV_NOD) )
                 END DO
             END DO
-        ELSE!
+        ELSE
             if ( .not.symmetric_P ) then ! original
                 DO IPRES = 1, Mdims%npres
                     CALL CT_MULT2( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
@@ -1621,6 +1602,7 @@ end if
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL_ALL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         type (multi_outfluxes), intent(inout) :: outfluxes
+        real, dimension(:,:), intent(inout) :: calculate_mass_delta
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -1635,7 +1617,7 @@ end if
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
-        real, dimension(:,:) :: calculate_mass_delta
+
 
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
@@ -1697,8 +1679,8 @@ end if
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
-            calculate_mass_delta = calculate_mass_delta, eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux,&
-            outfluxes = outfluxes)
+            eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
+            calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
 
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
