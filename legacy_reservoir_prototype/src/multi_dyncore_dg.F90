@@ -799,7 +799,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
              !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
              deallocate( THETA_GDIFF, Mmat%CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
-             !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####     
+             !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
 
              DEALLOCATE( mass_mn_pres )
              call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)

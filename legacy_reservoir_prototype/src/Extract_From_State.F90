@@ -2168,7 +2168,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                     !Analyse the difference !Calculate infinite norm, not consider wells
-                    ts_ref_val = inf_norm_scalar_normalised(temperature(1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
+                    ts_ref_val = inf_norm_scalar_normalised(temperature(:,:), reference_field(1,:,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
                 case default!Pressure
@@ -2196,9 +2196,9 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             !If single phase then no point in checking the saturation or mass conservation!
             !Specially now that we are not solving the saturation equation unless it is multiphase!
             if (Mdims%n_in_pres == 1) THEN
-                ts_ref_val = 0.0; max_calculate_mass_delta= 0.
+                inf_norm_val = 0.0; max_calculate_mass_delta= 0.
             end if
-            
+
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta

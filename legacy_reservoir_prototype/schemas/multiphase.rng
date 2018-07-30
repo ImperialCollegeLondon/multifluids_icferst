@@ -6904,11 +6904,7 @@ This means the interpolation will not be conservative from the previous mesh so 
         <element name="incompressible">
           <a:documentation>Equations of state</a:documentation>
           <element name="linear">
-            <a:documentation>Incompressible linear equation of state
-
-(DEN = EOS_COEFS( 1 ) + EOS_COEFS( 2 ) * P + EOS_COEFS( 3 ) * T + EOS_COEFS( 4 ) * P * T
-+ EOS_COEFS( 5 ) * ( P **2 )     + EOS_COEFS( 6 ) * ( T **2 ) + EOS_COEFS( 7 ) * ( P **2 ) * T 
-+ EOS_COEFS( 8 ) * P * ( T **2 ) + EOS_COEFS( 9 ) * (( P * T ) **2 )</a:documentation>
+            <a:documentation>Incompressible linear equation of state</a:documentation>
             <choice>
               <element name="all_equal">
                 <a:documentation>All eos_coefficients equal as in most of

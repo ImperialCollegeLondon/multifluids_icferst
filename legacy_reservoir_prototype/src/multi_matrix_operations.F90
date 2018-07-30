@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -115,7 +115,7 @@ contains
         end interface
 
         LWORK=N*N
-      
+
         mat=a
 
         call dgetrf(N,N,A,NMAX,IPIV,INFO)
@@ -254,7 +254,7 @@ contains
         end if
 
         !COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
-        !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
+        !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage       
         IF ( Mdims%npres==1 .and.( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1 )) THEN
             ! Fast but memory intensive... (wells not yet implemented here)
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
@@ -1051,7 +1051,7 @@ contains
                 real, dimension(M) :: Y
             end subroutine dgemv
         end interface
-           
+
 
         N=U_NLOC * NDIM * NPHASE
 
@@ -1099,7 +1099,7 @@ contains
         real, dimension(U_NLOC*NDIM*NPHASE) :: lcdp, lu
         integer, dimension(U_NLOC*NDIM*NPHASE) :: u_nodi
         integer :: N
-      
+
         interface
             subroutine dgemv(T,M,N,alpha,MAT,NMAX,X,Xinc,beta,Y,yinc)
                 implicit none
@@ -1111,7 +1111,7 @@ contains
                 real, dimension(M) :: Y
             end subroutine dgemv
         end interface
-           
+
 
         N=U_NLOC * NDIM * NPHASE
 
@@ -1168,7 +1168,7 @@ contains
         INTEGER :: ELE, N
         INTEGER, DIMENSION( U_NLOC ) :: U_NOD
         REAL, DIMENSION( NDIM * NPHASE * U_NLOC ) :: LCDP, LU
-      
+
         interface
             subroutine dgemv(T,M,N,alpha,MAT,NMAX,X,Xinc,beta,Y,yinc)
                 implicit none
@@ -1180,7 +1180,7 @@ contains
                 real, dimension(M) :: Y
             end subroutine dgemv
         end interface
-           
+
         N = U_NLOC * NDIM * NPHASE
 
         if (size(BLOCK_MAT,1) == 1) then
@@ -1220,7 +1220,7 @@ contains
         real, dimension(U_NLOC*NDIM*NPHASE) :: lcdp, lu
         integer, dimension(U_NLOC*NDIM*NPHASE) :: u_nodi
         integer :: N
-      
+
         interface
             subroutine dgemv(T,M,N,alpha,MAT,NMAX,X,Xinc,beta,Y,yinc)
                 implicit none
@@ -1265,7 +1265,7 @@ contains
     END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY2
 
 
- 
+
 
     SUBROUTINE PHA_BLOCK_MAT_VEC_MANY( U, BLOCK_MAT, CDP, NDIM, NPHASE, NBLOCK, &
         TOTELE, U_NLOC, U_NDGLN )
@@ -1281,7 +1281,7 @@ contains
 
         real, dimension(:,:,:,:), pointer, contiguous :: lcdp, lu
         integer :: N
-       
+
         interface
             subroutine dgemm(TA,TB,M,N,K,alpha,A,LDA,B,LDB,beta,C,LDC)
                 implicit none
@@ -1302,7 +1302,7 @@ contains
             lu=>u(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
             lcdp=>cdp(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
             call dgemm('N','T',NBLOCK,N,N,1.0,LCDP,NBLOCK,Block_mat(:,:,ele),N,1.0,LU,NBLOCK)
-       
+
         END DO Loop_Elements
 
         RETURN
@@ -1800,5 +1800,3 @@ contains
     end function allocate_momentum_matrix
 
 end module matrix_operations
-
-

@@ -5507,10 +5507,6 @@ element equation_of_state{
                      element incompressible {
                         (
                            ## Incompressible linear equation of state
-                           ## 
-                           ## (DEN = EOS_COEFS( 1 ) + EOS_COEFS( 2 ) * P + EOS_COEFS( 3 ) * T + EOS_COEFS( 4 ) * P * T
-                           ## + EOS_COEFS( 5 ) * ( P **2 )     + EOS_COEFS( 6 ) * ( T **2 ) + EOS_COEFS( 7 ) * ( P **2 ) * T 
-                           ## + EOS_COEFS( 8 ) * P * ( T **2 ) + EOS_COEFS( 9 ) * (( P * T ) **2 )
                            element linear {
                               (
                                  ## All eos_coefficients equal as in most of
