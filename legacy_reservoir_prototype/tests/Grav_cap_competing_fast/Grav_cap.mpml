@@ -137,9 +137,6 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
-        <reference_node>
-          <integer_value rank="0">10</integer_value>
-        </reference_node>
         <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
@@ -159,6 +156,7 @@
           <max_iterations>
             <integer_value rank="0">500</integer_value>
           </max_iterations>
+          <remove_null_space/>
           <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
