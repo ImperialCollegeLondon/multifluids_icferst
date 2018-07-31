@@ -1888,7 +1888,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
        if (size(petsc_numbering%gnn2unn,2)==1) then
           null_space = create_null_space_from_options_scalar(mat, trim(solver_option_path)//"/remove_null_space")
        else
-          ewrite(0,*) "WARNING: if solving for pressure and you are receiving this message is probably because you should not use this option."
+          ewrite(0,*) "WARNING: null space not yet implemented for pipe modelling."
           null_space = create_null_space_from_options_vector(mat, trim(solver_option_path)//"/remove_null_space", &
              petsc_numbering, positions=positions, rotation_matrix=rotation_matrix)
        end if
