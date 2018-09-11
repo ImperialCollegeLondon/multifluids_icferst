@@ -39,6 +39,7 @@ module multi_data_types
     use fields
     use spud
     use multi_tools
+    use futils
 
 
     interface allocate_multi_dev_shape_funs

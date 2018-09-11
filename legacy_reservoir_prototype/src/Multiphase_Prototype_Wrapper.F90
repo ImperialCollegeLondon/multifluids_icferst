@@ -33,6 +33,8 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use elements
     use fields
     use state_module
+    use futils
+    use transform_elements
     use populate_state_module
     use reserve_state_module
     use diagnostic_variables
@@ -90,7 +92,6 @@ subroutine multiphase_prototype_wrapper() bind(C)
     ! this is to make sure the option /io/log_output/memory_diagnostics is read
     call reset_memory_logs()
 #endif
-
     call initialise_write_state
 
 
@@ -98,6 +99,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call get_simulation_type()
     !Flag the first time step
     first_time_step = .true.
+
     ! Read state from .mpml file
     call populate_multi_state(state)
 !    call populate_state(state)
@@ -294,7 +296,6 @@ contains
             call set_option("/geometry/mesh::P0DG/from_mesh/mesh_shape/polynomial_degree", 0)
             call set_option("/geometry/mesh::P0DG/from_mesh/mesh_continuity", "discontinuous")
         end if
-
 
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
             ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"

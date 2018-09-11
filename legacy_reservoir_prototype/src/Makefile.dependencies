@@ -138,7 +138,7 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
 	@true
 
 multi_eos.o ../include/multiphase_eos.mod: multi_eos.F90 \
-   ../../include/arbitrary_function.mod ../../include/boundary_conditions.mod \
+   ../../include/boundary_conditions.mod \
    ../../include/confdefs.h ../../include/fdebug.h \
    ../../include/field_options.mod ../../include/fields.mod \
    ../../include/fldebug.mod ../../include/futils.mod \

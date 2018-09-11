@@ -32,10 +32,13 @@ module solvers_module
     use fldebug
     use fields
     use Petsc_tools
+    use parallel_tools
     use sparse_tools_petsc
     use solvers
     use global_parameters, only: OPTION_PATH_LEN, FPI_have_converged
     use spud
+    use parallel_tools, only : allmax, allmin, isparallel, getprocno
+    use parallel_fields 
 
     use state_module
     use halo_data_types
@@ -149,7 +152,7 @@ contains
 
         solver_option_path = complete_solver_option_path( option_path )
 
-        call SetupKSP( ksp, matrix%M, matrix%M, solver_option_path, .false., &
+        call create_ksp_from_options( ksp, matrix%M, matrix%M, solver_option_path, .false., &
             matrix%column_numbering, .true. )
 
         b = PetscNumberingCreateVec( matrix%column_numbering )

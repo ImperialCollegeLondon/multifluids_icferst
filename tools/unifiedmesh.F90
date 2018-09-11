@@ -1,10 +1,11 @@
 #include "confdefs.h"
 #include "fdebug.h"
 
-subroutine unifiedmesh(filename1, filename1_len, &
-                        filename2, filename2_len, &
-                        output, output_len)
+subroutine unifiedmesh(filename1_, filename1_len, &
+                       filename2_, filename2_len, &
+                       output_, output_len) bind(c)
 
+  use quadrature
   use mpi_interfaces
   use fldebug
   use mesh_files
@@ -16,13 +17,16 @@ subroutine unifiedmesh(filename1, filename1_len, &
   use supermesh_construction
   use vtk_interfaces
   use unify_meshes_module
+  use iso_c_binding
 
   implicit none
   
-  integer, intent(in) :: filename1_len, filename2_len, output_len
-  character(len=filename1_len), intent(in) :: filename1
-  character(len=filename2_len), intent(in) :: filename2
-  character(len=output_len), intent(in) :: output
+  integer(kind=c_size_t), value :: filename1_len, filename2_len, output_len
+  character(kind=c_char, len=1) :: filename1_(*), filename2_(*), output_(*)
+
+  character(len=filename1_len) :: filename1
+  character(len=filename2_len) :: filename2
+  character(len=output_len) :: output
 
   type(vector_field) :: positionsA, positionsB
   type(ilist), dimension(:), allocatable :: map_BA
@@ -32,10 +36,20 @@ subroutine unifiedmesh(filename1, filename1_len, &
   type(vector_field) :: intersection
   type(element_type) :: supermesh_shape
   type(quadrature_type) :: supermesh_quad
-  integer :: dim
+  integer :: i, dim
 
   type(mesh_type) :: accum_mesh
   type(vector_field) :: accum_positions, accum_positions_tmp
+
+  do i=1, filename1_len
+    filename1(i:i)=filename1_(i)
+  end do
+  do i=1, filename2_len
+    filename2(i:i)=filename2_(i)
+  end do
+  do i=1, output_len
+    output(i:i)=output_(i)
+  end do
   
   call set_global_debug_level(0)
 
@@ -99,6 +113,7 @@ subroutine unifiedmesh(filename1, filename1_len, &
 
     integer :: ele_A, ele_B
     integer :: new_start, new_end, step
+    logical :: empty_intersection
 
     call allocate(supermesh_mesh, 0, 0, supermesh_shape, "AccumulatedMesh")
     call allocate(supermesh, positionsA%dim, supermesh_mesh, "AccumulatedPositions")
@@ -109,11 +124,13 @@ subroutine unifiedmesh(filename1, filename1_len, &
         llnode => map_BA(ele_B)%firstnode
         do while(associated(llnode))
           ele_A = llnode%value
-          supermesh_tmp = intersect_elements(positionsA, ele_A, ele_val(positionsB, ele_B), supermesh_shape)
-          call unify_meshes_quadratic(supermesh, supermesh_tmp, supermesh_accum)
-          call deallocate(supermesh)
-          call deallocate(supermesh_tmp)
-          supermesh = supermesh_accum
+          supermesh_tmp = intersect_elements(positionsA, ele_A, ele_val(positionsB, ele_B), supermesh_shape, empty_intersection=empty_intersection)
+          if (.not. empty_intersection) then
+            call unify_meshes_quadratic(supermesh, supermesh_tmp, supermesh_accum)
+            call deallocate(supermesh)
+            call deallocate(supermesh_tmp)
+            supermesh = supermesh_accum
+          end if
           llnode => llnode%next
         end do
       end do

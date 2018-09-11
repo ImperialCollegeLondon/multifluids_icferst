@@ -1273,6 +1273,7 @@ end if
             U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             deallocate(U_RHS_CDP2)
         ELSE
+            !SPRINT_TO_DO: THIS BUSSINES OF RESHAPING IS AWFUL...
             call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
             rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
             call zero_non_owned(rhs)
@@ -6336,9 +6337,9 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
       end do
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
-      call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
-      call zero( matrix )
 
+          call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
+          call zero( matrix )
       call allocate( rhs, phmesh, "rhs" )
       call zero ( rhs )
       call allocate( ph_sol, phmesh, "ph_sol" )
@@ -6565,7 +6566,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
             end do
 
          end if
-
+        
       end do
 
       ! deallocate

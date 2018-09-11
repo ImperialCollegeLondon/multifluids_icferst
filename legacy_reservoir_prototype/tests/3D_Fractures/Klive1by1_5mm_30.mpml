@@ -88,8 +88,11 @@
       <integer_value rank="0">25</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
+        <Infinite_norm_tol>
+          <real_value rank="0">0.005</real_value>
+        </Infinite_norm_tol>
         <Backtracking_factor>
-          <real_value rank="0">-0.1</real_value>
+          <real_value rank="0">-10</real_value>
         </Backtracking_factor>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
@@ -124,7 +127,7 @@
             <real_value rank="0">1e-10</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">300</integer_value>
           </max_iterations>
           <ignore_all_solver_failures/>
           <diagnostics>
@@ -166,15 +169,21 @@
               </boundedness_iterations>
             </bounded>
             <solver>
-              <iterative_method name="cg"/>
-              <preconditioner name="sor"/>
+              <iterative_method name="gmres">
+                <restart>
+                  <integer_value rank="0">30</integer_value>
+                </restart>
+              </iterative_method>
+              <preconditioner name="hypre">
+                <hypre_type name="boomeramg"/>
+              </preconditioner>
               <relative_error>
                 <real_value rank="0">1e-10</real_value>
               </relative_error>
               <max_iterations>
                 <integer_value rank="0">300</integer_value>
               </max_iterations>
-              <never_ignore_solver_failures/>
+              <ignore_all_solver_failures/>
               <diagnostics>
                 <monitors/>
               </diagnostics>
@@ -201,7 +210,7 @@
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0</real_value>
+            <real_value rank="0">1</real_value>
           </constant>
         </initial_condition>
         <output/>
@@ -260,7 +269,7 @@
             <real_value rank="0">1e-10</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">300</integer_value>
           </max_iterations>
           <ignore_all_solver_failures/>
           <diagnostics>
@@ -391,7 +400,7 @@
             <real_value rank="0">1e-10</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">100</integer_value>
+            <integer_value rank="0">300</integer_value>
           </max_iterations>
           <ignore_all_solver_failures/>
           <diagnostics>
@@ -448,15 +457,21 @@
               </boundedness_iterations>
             </bounded>
             <solver>
-              <iterative_method name="cg"/>
-              <preconditioner name="sor"/>
+              <iterative_method name="gmres">
+                <restart>
+                  <integer_value rank="0">30</integer_value>
+                </restart>
+              </iterative_method>
+              <preconditioner name="hypre">
+                <hypre_type name="boomeramg"/>
+              </preconditioner>
               <relative_error>
                 <real_value rank="0">1e-10</real_value>
               </relative_error>
               <max_iterations>
                 <integer_value rank="0">300</integer_value>
               </max_iterations>
-              <never_ignore_solver_failures/>
+              <ignore_all_solver_failures/>
               <diagnostics>
                 <monitors/>
               </diagnostics>
@@ -498,7 +513,7 @@
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0</real_value>
+            <real_value rank="0">1</real_value>
           </constant>
         </initial_condition>
         <output/>
@@ -557,7 +572,7 @@
             <real_value rank="0">1e-10</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">300</integer_value>
           </max_iterations>
           <ignore_all_solver_failures/>
           <diagnostics>
@@ -663,7 +678,7 @@
             <real_value rank="0">1e-10</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">1000</integer_value>
+            <integer_value rank="0">300</integer_value>
           </max_iterations>
           <ignore_all_solver_failures/>
           <diagnostics>
@@ -702,15 +717,21 @@
               </boundedness_iterations>
             </bounded>
             <solver>
-              <iterative_method name="cg"/>
-              <preconditioner name="sor"/>
+              <iterative_method name="gmres">
+                <restart>
+                  <integer_value rank="0">30</integer_value>
+                </restart>
+              </iterative_method>
+              <preconditioner name="hypre">
+                <hypre_type name="boomeramg"/>
+              </preconditioner>
               <relative_error>
                 <real_value rank="0">1e-10</real_value>
               </relative_error>
               <max_iterations>
                 <integer_value rank="0">300</integer_value>
               </max_iterations>
-              <never_ignore_solver_failures/>
+              <ignore_all_solver_failures/>
               <diagnostics>
                 <monitors/>
               </diagnostics>
@@ -730,48 +751,18 @@
       </maximum_number_of_nodes>
       <disable_gradation/>
       <tensor_field name="MinimumEdgeLengths">
-        <value name="Matrix">
-          <region_ids>
-            <integer_value shape="1" rank="1">17</integer_value>
-          </region_ids>
-          <anisotropic_symmetric>
-            <constant>
-              <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">0.005 0 0 0 0.005 0 0 0 0.005</real_value>
-            </constant>
-          </anisotropic_symmetric>
-        </value>
-        <value name="Fracture">
-          <region_ids>
-            <integer_value shape="17" rank="1">1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18</integer_value>
-          </region_ids>
-          <anisotropic_symmetric>
-            <constant>
-              <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">0.001 0 0 0 0.001 0 0 0 0.001</real_value>
-            </constant>
-          </anisotropic_symmetric>
-        </value>
+        <anisotropic_symmetric>
+          <constant>
+            <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">0.0005 0 0 0 0.0005 0 0 0 0.0005</real_value>
+          </constant>
+        </anisotropic_symmetric>
       </tensor_field>
       <tensor_field name="MaximumEdgeLengths">
-        <value name="Matrix">
-          <region_ids>
-            <integer_value shape="1" rank="1">17</integer_value>
-          </region_ids>
-          <anisotropic_symmetric>
-            <constant>
-              <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">0.1 0 0 0 0.1 0 0 0 0.1</real_value>
-            </constant>
-          </anisotropic_symmetric>
-        </value>
-        <value name="Fracture">
-          <region_ids>
-            <integer_value shape="17" rank="1">1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 18</integer_value>
-          </region_ids>
-          <anisotropic_symmetric>
-            <constant>
-              <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">0.05 0 0 0 0.05 0 0 0 0.05</real_value>
-            </constant>
-          </anisotropic_symmetric>
-        </value>
+        <anisotropic_symmetric>
+          <constant>
+            <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">0.08 0 0 0 0.08 0 0 0 0.08</real_value>
+          </constant>
+        </anisotropic_symmetric>
       </tensor_field>
       <aspect_ratio_bound>
         <real_value rank="0">20</real_value>

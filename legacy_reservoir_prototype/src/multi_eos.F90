@@ -46,7 +46,6 @@ module multiphase_EOS
     use sparse_tools
     use Multiphase_module
     use sparsity_patterns_meshes, only: get_csr_sparsity_firstorder
-    use arbitrary_function
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field

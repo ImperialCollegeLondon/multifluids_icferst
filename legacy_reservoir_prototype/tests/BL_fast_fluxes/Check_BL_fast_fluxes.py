@@ -100,6 +100,7 @@ InjectedMass = 0.008
 #print totalMass - InjectedMass
 #print  L1_sum1, L1_sum2, L1_sum3, L1_sum4, L1_sum5, L1_sum6, L1_sum7, L1_sum8
 
+
 #First and most important thing of this test is to check if we conserve Mass
 if (abs(totalMass-InjectedMass) < toleranceMass):
     print "BL with fluxes conserves mass OK"

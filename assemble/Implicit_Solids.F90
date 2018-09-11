@@ -35,7 +35,10 @@ module implicit_solids
   use elements
   use sparse_tools
   use fields
+  use field_options
   use state_module
+  use element_numbering
+  use parallel_fields
 !
   use vtk_interfaces
   use linked_lists
@@ -186,7 +189,7 @@ contains
        one_way_coupling = have_option("/implicit_solids/one_way_coupling/")
        two_way_coupling = have_option("/implicit_solids/two_way_coupling/")
 
-       viscosity => extract_tensor_field(state, "Viscosity", stat)
+       viscosity => extract_tensor_field(state, "Vi35scosity", stat)
        have_viscosity = stat == 0
        ! Initialisation according to 1-way or 2-way coupling:
        if (one_way_coupling) then
@@ -497,7 +500,7 @@ contains
     call bound_concentration()
 
     call finalise_tet_intersector
-    call rtree_intersection_finder_reset(ntests)
+    call rtree_intersection_finder_reset()
 
     call deallocate(external_positions_local)
 
@@ -892,7 +895,7 @@ contains
     deallocate(boundary_ids)
 
     call deallocate(mesh)
-    call deallocate_element(shape)
+    call deallocate(shape)
     call deallocate(quad)
 
     external_positions%dim=3
@@ -2472,7 +2475,7 @@ contains
     deallocate(little_rhs)
 
     call finalise_tet_intersector
-    call rtree_intersection_finder_reset(ntests)
+    call rtree_intersection_finder_reset()
 
     ewrite(1, *) "Exiting interpolation_galerkin_scalars"
     

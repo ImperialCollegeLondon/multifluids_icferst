@@ -2,7 +2,7 @@
 <testproblem>
   <name>Buckley-Leverett Checkpointing</name>
   <owner userid="aga06"/>
-  <tags>mpml Checkpointing meow</tags>
+  <tags>mpml Checkpointing</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst BL_Checkpointing_P1DGP1.mpml
 ../../../bin/icferst BL_Checkpointing_P1DGP1_1_checkpoint.mpml</command_line>

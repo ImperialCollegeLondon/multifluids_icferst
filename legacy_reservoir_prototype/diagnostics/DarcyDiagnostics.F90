@@ -44,6 +44,7 @@ module darcy_diagnostics
   use solvers
   use initialise_fields_module
   use multiphase_EOS
+  use fetools
   
   implicit none
   

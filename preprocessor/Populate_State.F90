@@ -1,5 +1,5 @@
 !    Copyright (C) 2007 Imperial College London and others.
-!
+!    
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!
+!    
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -27,10 +27,25 @@
 
 #include "fdebug.h"
 module populate_state_module
+
+  use fldebug
+  use global_parameters, only: OPTION_PATH_LEN, is_active_process, pi, &
+no_active_processes, topology_mesh_name, adaptivity_mesh_name, &
+periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
+  use futils, only: int2str, present_and_true, starts_with
+  use quadrature
+  use element_numbering
   use elements
-  use state_module
-  use FLDebug
   use spud
+  use mpi_interfaces, only: MPI_bcast
+  use parallel_tools
+  use data_structures
+  use metric_tools
+  use transform_elements
+  use fields
+  use profiler
+  use state_module
+  use boundary_conditions, only: set_dirichlet_consistent
   use mesh_files
   use vtk_cache_module
   use global_parameters, only: OPTION_PATH_LEN, is_active_process, pi, &
@@ -38,22 +53,17 @@ module populate_state_module
     periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius, is_porous_media
   use field_options
   use reserve_state_module
-  use fields_manipulation
-  use diagnostic_variables, only: convergence_field, steady_state_field
   use field_options
-  use surfacelabels
-  use climatology
-  use metric_tools
-  use coordinates
   use halos
+  use surfacelabels
+  use diagnostic_variables, only: convergence_field, steady_state_field
+  use climatology
+  use coordinates
   use tictoc
   use hadapt_extrude
-  use initialise_fields_module
-  use transform_elements
-  use parallel_tools
-  use boundary_conditions_from_options
   use nemo_states_module
-  use data_structures
+  use initialise_fields_module
+  use boundary_conditions_from_options
   use fields_halos
   use read_triangle
   use initialise_ocean_forcing_module
@@ -68,36 +78,34 @@ module populate_state_module
        allocate_field_as_constant, allocate_and_insert_fields, &
        initialise_prognostic_fields, set_prescribed_field_values, &
        alias_fields, mesh_name, &
-       allocate_and_insert_auxilliary_fields, allocate_and_insert_vector_field, &
-       allocate_and_insert_tensor_field, allocate_and_insert_scalar_field, &
+       allocate_and_insert_auxilliary_fields, &
        initialise_field, allocate_metric_limits, &
        make_mesh_periodic_from_options, make_mesh_unperiodic_from_options, &
        compute_domain_statistics
 
   interface allocate_field_as_constant
-
+    
     module procedure allocate_field_as_constant_scalar, allocate_field_as_constant_vector, &
           allocate_field_as_constant_tensor
 
   end interface allocate_field_as_constant
-
+    
   !! A list of locations in which additional scalar/vector/tensor fields
   !! are to be found. These are absolute paths in the schema.
-  character(len=OPTION_PATH_LEN), dimension(8) :: additional_fields_absolute=&
+  character(len=OPTION_PATH_LEN), dimension(7) :: additional_fields_absolute=&
        (/ &
        "/ocean_biology/pznd                                                                                                   ", &
        "/ocean_biology/six_component                                                                                          ", &
        "/ocean_forcing/iceshelf_meltrate/Holland08                                                                            ", &
        "/ocean_forcing/bulk_formulae/output_fluxes_diagnostics                                                                ", &
-       "/porous_media                                                                                                         ", &
        "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/continuous_galerkin/les_model/dynamic_les ", &
        "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/continuous_galerkin/les_model/second_order", &
        "/material_phase[0]/sediment/                                                                                          " &
        /)
-
+       
   !! A list of relative paths under /material_phase[i]
   !! that are searched for additional fields to be added.
-  character(len=OPTION_PATH_LEN), dimension(15) :: additional_fields_relative=&
+  character(len=OPTION_PATH_LEN), dimension(20) :: additional_fields_relative=&
        (/ &
        "/subgridscale_parameterisations/Mellor_Yamada                                                       ", &
        "/subgridscale_parameterisations/prescribed_diffusivity                                              ", &
@@ -113,7 +121,12 @@ module populate_state_module
        "/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/les_model/debug/   ", &
        "/vector_field::Velocity/prognostic/equation::ShallowWater                                           ", &
        "/vector_field::Velocity/prognostic/equation::ShallowWater/bottom_drag                               ", &
-       "/vector_field::BedShearStress/diagnostic/calculation_method/velocity_gradient                       " &
+       "/vector_field::BedShearStress/diagnostic/calculation_method/velocity_gradient                       ", &
+       "/population_balance[#]/abscissa/                                                                    ", &
+       "/population_balance[#]/weights/                                                                     ", &
+       "/population_balance[#]/weighted_abscissa/                                                           ", &
+       "/population_balance[#]/moments/                                                                     ", &
+       "/population_balance[#]/statistics/                                                                  "  &
        /)
 
   !! Relative paths under a field that are searched for grandchildren
@@ -123,11 +136,25 @@ module populate_state_module
          &    "/spatial_discretisation/inner_element" &
          /)
 
+
+  !! Dynamic paths that are searched for fields
+  !! This allows for searching for field within paths that may branch several times
+  !! The index of any particular path should be replaced with #
+  character(len=OPTION_PATH_LEN), dimension(6):: &
+         dynamic_paths = (/&
+         &    "/material_phase[#]/equation_of_state/fluids/linear/        ", &
+         &    "/material_phase[#]/population_balance[#]/abscissa/         ", &
+         &    "/material_phase[#]/population_balance[#]/weights/          ", &
+         &    "/material_phase[#]/population_balance[#]/weighted_abscissa/", &
+         &    "/material_phase[#]/population_balance[#]/moments/          ", &
+         &    "/material_phase[#]/population_balance[#]/statistics/       " &
+         /)
+
+  character(len=OPTION_PATH_LEN), dimension(:), allocatable :: field_locations
+
 contains
 
-
   subroutine populate_state(states)
-    use Profiler
     type(state_type), pointer, dimension(:) :: states
 
     integer :: nstates ! number of states
@@ -200,7 +227,7 @@ contains
     logical :: from_file, extruded
     integer :: dim, mdim, loc, column_ids
     integer :: quad_family
-
+    
     call tic(TICTOC_ID_IO_READ)
 
     ! Find out how many states there are
@@ -342,10 +369,10 @@ contains
             call MPI_bcast(dim, 1, getpinteger(), 0, MPI_COMM_FEMTOOLS, stat)
           end if
 
-
+          
           if (.not. is_active_process) then
             ! is_active_process records whether we have data on disk or not
-            ! see the comment in Global_Parameters. In this block,
+            ! see the comment in Global_Parameters. In this block, 
             ! we want to allocate an empty mesh and positions.
 
             mdim=mesh_dims(1)
@@ -374,13 +401,13 @@ contains
             call deallocate(mesh)
             call deallocate(quad)
             call deallocate(shape)
-
+            
             deallocate(quad)
             deallocate(shape)
 
           end if
 
-          ! if there is a derived mesh which specifies periodic bcs
+          ! if there is a derived mesh which specifies periodic bcs 
           ! to be *removed*, we assume the external mesh is periodic
           mesh%periodic = option_count("/geometry/mesh/from_mesh/&
              &periodic_boundary_conditions/remove_periodicity")>0
@@ -389,16 +416,16 @@ contains
           ! been read otherwise the filename is automatically inserted
           ! as the mesh name.
           call get_option(trim(mesh_path)//"/name", mesh%name)
-
+          
           ! Set mesh option path.
           mesh%option_path = mesh_path
-
+          
           ! Copy those changes back to the descriptor under position%mesh
           position%mesh=mesh
 
           if (mesh%name/="CoordinateMesh") then
              position%name=trim(mesh%name)//"Coordinate"
-          else
+          else 
              position%name="Coordinate"
           end if
 
@@ -407,7 +434,7 @@ contains
             if (no_active_processes == 1) then
               call create_empty_halo(position)
             else
-              call read_halos(mesh_file_name, position)
+              call read_halos(mesh_file_name, position)              
             end if
             ! Local element ordering needs to be consistent between processes, otherwise
             ! code in Halos_Repair (used in halo construction of derived meshes) will fail
@@ -422,15 +449,15 @@ contains
             end if
             mesh = position%mesh
           end if
-
-          ! coplanar ids are create here already and stored on the mesh,
+          
+          ! coplanar ids are create here already and stored on the mesh, 
           ! so its derived meshes get the same coplanar ids
           ! (must be done after halo registration)
           if (.not. mesh_periodic(mesh)) then
             ! for periodic meshes, we postpone till we've derived the non-periodic mesh
             call get_coplanar_ids(mesh, position, coplanar_ids)
           end if
-
+          
           if (.not. have_option(trim(mesh_path)//'/exclude_from_mesh_adaptivity')) then
             ! We register this as the topology mesh
             ! this is the mesh used by adaptivity for error measures and such
@@ -440,30 +467,30 @@ contains
             ! (this gets replaced in case adding periodicity but not by extrusion)
             adaptivity_mesh_name = mesh%name
           end if
-
+                    
           call surface_id_stats(mesh, position)
-
+          
         end if
-
+        
         if (from_file) then
-
+          
           ! Insert mesh and position field into states(1) and
           ! alias it to all the others
           call insert(states, mesh, mesh%name)
           call insert(states, position, position%name)
           call deallocate(position)
-
+          
         else if (extruded) then
-
+          
           ! This will be picked up by insert_derived_meshes and changed
           ! appropriately
           call insert(states, position, "AdaptedExtrudedPositions")
           call deallocate(position)
-
+          
         end if
 
     end do external_mesh_loop
-
+    
     if(.not. present_and_true(save_vtk_cache)) then
        ! Flush the cache
        call vtk_cache_finalise()
@@ -472,20 +499,20 @@ contains
     call toc(TICTOC_ID_IO_READ)
 
   end subroutine insert_external_mesh
-
+    
   subroutine insert_derived_meshes(states, skip_extrusion)
     ! Insert derived meshes in state
     type(state_type), intent(inout), dimension(:) :: states
-    ! if present and true: skip extrusion of meshes, and insert 0 node dummy meshes
+    ! if present and true: skip extrusion of meshes, and insert 0 node dummy meshes 
     ! instead (will have correct shape and dimension)
     logical, optional, intent(in):: skip_extrusion
-
-    character(len=FIELD_NAME_LEN) :: mesh_name
+    
+    character(len=FIELD_NAME_LEN) :: mesh_name    
     character(len=OPTION_PATH_LEN) :: mesh_path
     logical :: incomplete, updated
     integer :: i
     integer :: nmeshes
-
+    
     ! Get number of meshes
     nmeshes=option_count("/geometry/mesh")
     periodic_boundary_option_path=""
@@ -499,10 +526,10 @@ contains
        incomplete=.false.
 
        derived_mesh_loop: do i=0, nmeshes-1
-
+          
           ! Save mesh path
           mesh_path="/geometry/mesh["//int2str(i)//"]"
-
+              
           ! Get mesh name.
           call get_option(trim(mesh_path)//"/name", mesh_name)
 
@@ -512,7 +539,7 @@ contains
                                    updated, &
                                    states, &
                                    skip_extrusion = skip_extrusion)
-
+          
        end do derived_mesh_loop
 
        ! If we didn't skip any fields then we are done.
@@ -534,20 +561,20 @@ contains
     end if
 
   end subroutine insert_derived_meshes
-
+           
   subroutine insert_derived_mesh(mesh_path, mesh_name, incomplete, updated, states, skip_extrusion)
-
+          
     ! Insert one derived mesh given by mesh path and mesh_name
-
+       
     character(len=*), intent(in) :: mesh_path
-    character(len=*), intent(in) :: mesh_name
+    character(len=*), intent(in) :: mesh_name    
     logical, intent(inout) :: incomplete
     logical, intent(inout) :: updated
     type(state_type), intent(inout), dimension(:) :: states
-    ! if present and true: skip extrusion of meshes, and insert 0 node dummy meshes
+    ! if present and true: skip extrusion of meshes, and insert 0 node dummy meshes 
     ! instead (will have correct shape and dimension)
     logical, optional, intent(in):: skip_extrusion
-
+   
     type(mesh_type) :: mesh, model_mesh
     type(vector_field), pointer :: position, modelposition
     type(vector_field) :: periodic_position, nonperiodic_position, extrudedposition, coordinateposition
@@ -566,12 +593,12 @@ contains
        ! We already did this one.
        return
     end if
-
+      
     if(have_option(trim(mesh_path)//"/from_mesh")) then
-
+             
        ! Get model mesh name
        call get_option(trim(mesh_path)//"/from_mesh/mesh[0]/name", model_mesh_name)
-
+             
        ! Extract model mesh
        model_mesh=extract_mesh(states(1), trim(model_mesh_name), stat=stat)
        if (stat/=0) then
@@ -580,7 +607,7 @@ contains
           incomplete=.true.
           return
        end if
-
+             
        ! Find out if the new mesh is different from the old mesh and if
        ! so, find out how it differs - in the options check
        ! we've made sure only one of those (or both new_shape and new_cont) are .true.
@@ -669,32 +696,32 @@ contains
            end if
          end if
        end if
-
+             
        ! We added at least one mesh on this pass.
        updated=.true.
-
+                
        if (extrusion) then
 
          ! see if adaptivity has left us something:
          extrudedposition=extract_vector_field(states(1), &
               "AdaptedExtrudedPositions", stat=stat)
-
+                    
          if (stat==0) then
 
             ! extrusion has already done by adaptivity
-
+                 
             ! we remove them here, as we want to insert them under different names
             call incref(extrudedposition)
             do j=1, size(states)
                call remove_vector_field(states(j), "AdaptedExtrudedPositions")
             end do
-
+                  
          else
-
+                  
             ! extrusion by user specifed layer depths
-
+                  
             modelposition => extract_vector_field(states(1), trim(model_mesh_name)//"Coordinate")
-
+             
             if (present_and_true(skip_extrusion)) then
 
               ! the dummy mesh does need a shape of the right dimension
@@ -715,12 +742,12 @@ contains
             else
               call extrude(modelposition, mesh_path, extrudedposition)
             end if
-
+                
          end if
-
+               
          mesh = extrudedposition%mesh
-
-         ! the positions of this mesh have to be stored now
+               
+         ! the positions of this mesh have to be stored now 
          ! as it cannot be interpolated later.
          if (mesh_name=="CoordinateMesh") then
             extrudedposition%name = "Coordinate"
@@ -729,22 +756,22 @@ contains
          end if
          call insert(states, extrudedposition, extrudedposition%name)
          call deallocate(extrudedposition)
-
+               
          call incref(mesh)
-
+               
        else if (make_new_mesh) then
 
          mesh = make_mesh_from_options(model_mesh, mesh_path)
-
+             
        else if (periodic) then
-
+                
          if (remove_periodicity) then
            ! model mesh can't be the CoordinateMesh:
            periodic_position=extract_vector_field(states(1), trim(model_mesh_name)//"Coordinate")
            nonperiodic_position = make_mesh_unperiodic_from_options( &
              periodic_position, mesh_path)
-
-           ! the positions of this mesh have to be stored now
+                
+           ! the positions of this mesh have to be stored now 
            ! as it cannot be interpolated later.
            if (mesh_name=="CoordinateMesh") then
               nonperiodic_position%name = "Coordinate"
@@ -753,10 +780,10 @@ contains
            end if
            call insert(states, nonperiodic_position, nonperiodic_position%name)
            call deallocate(nonperiodic_position)
-
+                 
            mesh=nonperiodic_position%mesh
            call incref(mesh)
-
+                 
          else
            ! this means we can only periodise a mesh with an associated position field
            if (trim(model_mesh_name) == "CoordinateMesh") then
@@ -775,19 +802,19 @@ contains
            call insert(states, periodic_position, trim(periodic_position%name))
            call deallocate(periodic_position)
          end if
-
+               
        else
           ! copy mesh unchanged, new reference
-          mesh=model_mesh
+          mesh=model_mesh                
           call incref(mesh)
-
+                
        end if
-
+             
        mesh%name = mesh_name
-
+                
        ! Set mesh option path.
        mesh%option_path = trim(mesh_path)
-
+             
        ! if this is the coordinate mesh then we should insert the coordinate field
        ! also meshes excluded from adaptivity all have their own coordinate field
        ! for extrusion and periodic: the coordinate field has already been inserted above
@@ -799,17 +826,17 @@ contains
           else
              modelposition => extract_vector_field(states(1), trim(model_mesh_name)//"Coordinate")
           end if
-
+                
           if (mesh_name=="CoordinateMesh") then
             call allocate(coordinateposition, modelposition%dim, mesh, "Coordinate")
           else
             call allocate(coordinateposition, modelposition%dim, mesh, trim(mesh_name)//"Coordinate")
           end if
-
+                
           ! remap the external mesh positions onto the CoordinateMesh... this requires that the space
           ! of the coordinates spans that of the external mesh
           call remap_field(from_field=modelposition, to_field=coordinateposition)
-
+                
           if (mesh_name=="CoordinateMesh" .and. have_option('/geometry/spherical_earth/')) then
 
             if (have_option('/geometry/spherical_earth/superparametric_mapping/')) then
@@ -825,19 +852,19 @@ contains
        end if
        if (trim(mesh_name)=="CoordinateMesh" .and. mesh_periodic(mesh)) then
          FLExit("CoordinateMesh may not be periodic")
-       end if
+       end if             
 
        ! Insert mesh into all states
        call insert(states, mesh, mesh%name)
 
        if (.not. have_option(trim(mesh_path)//'/exclude_from_mesh_adaptivity')) then
          ! update info for adaptivity/error metric code:
-
+               
          if (extrusion .or. (periodic .and. .not. remove_periodicity)) then
            ! this is the name of the mesh to be used by the error metric for adaptivity
            topology_mesh_name=mesh%name
          end if
-
+               
          if ((extrusion.and..not.have_option('/mesh_adaptivity/hr_adaptivity/vertically_structured_adaptivity')) &
              .or.(periodic .and. .not. remove_periodicity)) then
            ! this is the name of the mesh to be adapted by adaptivity
@@ -848,11 +875,11 @@ contains
            periodic_boundary_option_path(mesh%shape%dim) = trim(mesh_path)
          end if
        end if
-
+             
        call deallocate(mesh)
-
+             
     end if
-
+       
   end subroutine insert_derived_mesh
 
   subroutine insert_trace_meshes(states)
@@ -891,10 +918,10 @@ contains
              call get_option("/geometry/mesh["//int2str(mesh_no)//&
                   &"]/from_mesh/mesh[0]/name",&
                   &model_mesh_name)
-
+             
              ! Extract model mesh
              model_mesh=extract_mesh(states(1), trim(model_mesh_name))
-
+             
              !Make quadrature
              call get_option("/geometry/quadrature/degree",&
                   & quad_degree)
@@ -925,7 +952,7 @@ contains
     type(mesh_type):: mesh
     type(mesh_type), intent(in):: from_mesh
     character(len=*), intent(in):: mesh_path
-
+    
     character(len=FIELD_NAME_LEN) :: mesh_name
     character(len=OPTION_PATH_LEN) :: continuity_option, element_option, constraint_option_string
     type(quadrature_type):: quad
@@ -933,9 +960,9 @@ contains
     integer :: constraint_choice
     integer:: loc, dim, poly_degree, continuity, new_shape_type, quad_degree, stat
     logical :: new_shape
-
+    
     ! Get new mesh shape information
-
+    
     new_shape = have_option(trim(mesh_path)//"/from_mesh/mesh_shape")
     if(new_shape) then
       ! Get new mesh element type
@@ -952,11 +979,11 @@ contains
       else
         new_shape_type=from_mesh%shape%numbering%type
       end if
-
+      
       ! degree is the degree of the Lagrange polynomials (even if you add in a bubble function)
       call get_option(trim(mesh_path)//"/from_mesh/mesh_shape/polynomial_degree", &
                       poly_degree, default=from_mesh%shape%degree)
-
+    
       ! loc is the number of vertices of the element
       loc=from_mesh%shape%loc
       ! dim is the dimension
@@ -981,7 +1008,7 @@ contains
       else
          constraint_choice = CONSTRAINT_NONE
       end if
-
+      
       ! Make new mesh shape
       shape=make_element_shape(loc, dim, poly_degree, quad,&
            &type=new_shape_type,constraint_type_choice=constraint_choice)
@@ -1014,16 +1041,16 @@ contains
 
     ! Drop one reference to shape
     call deallocate(shape)
-
+               
   end function make_mesh_from_options
-
+  
   function make_mesh_periodic_from_options(position, mesh_path) result (position_out)
     ! make a periodic mesh as specified by options
     type(vector_field):: position_out
     type(vector_field), intent(in):: position
     character(len=*), intent(in):: mesh_path
 
-
+    
     type(vector_field):: from_position
     type(integer_hash_table):: periodic_face_map
     character(len=FIELD_NAME_LEN):: bc_name, mesh_name
@@ -1033,19 +1060,19 @@ contains
     integer:: n_periodic_bcs
     integer:: j
     logical :: fiddled_with_faces
-
+    
     assert(has_faces(position%mesh))
-
+    
     from_position=position
-
+    
     ! builds up a map from aliased to physical faces
     call allocate(periodic_face_map)
-
+    
     n_periodic_bcs=option_count(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions")
     ewrite(2,*) "n_periodic_bcs=", n_periodic_bcs
     call incref(from_position)
     do j=0, n_periodic_bcs-1
-
+       
        ! get some options
        call get_option(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions["//int2str(j)//"]/name", bc_name)
        ewrite(1,*) "applying boundary condition: ", trim(bc_name)
@@ -1056,9 +1083,9 @@ contains
        allocate( aliased_boundary_ids(shape_option(1)) )
        call get_option(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions["//int2str(j)//"]/aliased_boundary_ids",aliased_boundary_ids)
        call get_option(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions["//int2str(j)//"]/coordinate_map",periodic_mapping_python)
-
+       
        ewrite(2,*) 'Making periodic mesh'
-
+       
 
        fiddled_with_faces = .false.
        if (.not. has_faces(from_position%mesh)) then
@@ -1073,14 +1100,14 @@ contains
        end if
        call deallocate(from_position)
        from_position=position_out
-
+       
        deallocate( physical_boundary_ids, aliased_boundary_ids )
     end do
-
+    
     call add_faces(position_out%mesh, model=position%mesh, periodic_face_map=periodic_face_map)
-
+    
     call deallocate(periodic_face_map)
-
+    
     ! finally fix the name of the produced mesh and its coordinate field
     call get_option(trim(mesh_path)//'/name', mesh_name)
     position_out%mesh%name=mesh_name
@@ -1089,7 +1116,7 @@ contains
     else
       position_out%name=trim(mesh_name)//"Coordinate"
     end if
-
+    
   end function make_mesh_periodic_from_options
 
   function make_mesh_unperiodic_from_options(from_position, mesh_path, aliased_to_new_node_number, stat) result (position)
@@ -1117,11 +1144,11 @@ contains
 
     ! Get mesh name.
     call get_option(trim(mesh_path)//"/name", mesh_name)
-
+    
     ! get our own reference of from_position, that we can throw away again
     lfrom_position=from_position
     call incref(lfrom_position)
-
+    
     n_periodic_bcs=option_count(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions")
     ewrite(2,*) "n_periodic_bcs=", n_periodic_bcs
     if (n_periodic_bcs == 0) then
@@ -1147,7 +1174,7 @@ contains
     end do
 
     do j=0, n_periodic_bcs-1
-
+       
        ! get some options
        call get_option(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions["//int2str(j)//"]/name", bc_name)
        ewrite(1,*) "applying boundary condition: ", trim(bc_name)
@@ -1158,9 +1185,9 @@ contains
        allocate( aliased_boundary_ids(shape_option(1)) )
        call get_option(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions["//int2str(j)//"]/aliased_boundary_ids",aliased_boundary_ids)
        call get_option(trim(mesh_path)//"/from_mesh/periodic_boundary_conditions["//int2str(j)//"]/coordinate_map",periodic_mapping_python)
-
+       
        ewrite(2,*) 'Removing periodicity from mesh'
-
+       
        fiddled_with_faces = .false.
        if (.not. has_faces(lfrom_position%mesh)) then
          lfrom_position%mesh%faces => from_position%mesh%faces
@@ -1186,27 +1213,27 @@ contains
          call deallocate(laliased_to_new_node_number)
        end if
        lfrom_position=nonperiodic_position
-
+       
        deallocate( physical_boundary_ids, aliased_boundary_ids )
     end do
-
+      
     ! assumes all periodic bcs have been removed
     ! this is checked for in add_faces
     ! this flag needs setting before the call to add_faces
     nonperiodic_position%mesh%periodic=.false.
 
     assert(associated(nonperiodic_position%mesh%shape%numbering))
-
+    
     if (has_faces(from_position%mesh)) then
       call add_faces(nonperiodic_position%mesh, model=from_position%mesh, stat=stat)
     end if
-
+    
     position=nonperiodic_position
 
     call deallocate(all_periodic_bc_ids)
-
+    
   end function make_mesh_unperiodic_from_options
-
+  
   subroutine allocate_and_insert_fields(states, dont_allocate_prognostic_value_spaces)
     !!< allocates and inserts all fields present in the options tree
     !!< zeros field, but does not yet set initial conditions
@@ -1214,7 +1241,7 @@ contains
     !! If provided and true will not allocate a full value space
     !! for those fields for which defer_allocation(option_path, mesh) is .true.
     !! but instead allocate them as constant fields. This is used
-    !! for fields that are passed down to SAM in which case we want to be
+    !! for fields that are passed down to SAM in which case we want to be 
     !! able to one by one allocate them as we get them back from SAM.
     logical, optional, intent(in):: dont_allocate_prognostic_value_spaces
 
@@ -1223,8 +1250,8 @@ contains
     integer :: nstates ! number of states
     character(len=255) :: tmp ! temporary string to make life a little easier
     type(scalar_field), pointer :: fshistory_sfield
-    integer :: fshistory_levels
-
+    integer :: fshistory_levels 
+    
     nstates=option_count("/material_phase")
 
     ! Loop over states for the first time to get prognostic, prescribed and diagnostic fields.
@@ -1236,7 +1263,7 @@ contains
        call allocate_and_insert_one_phase(&
             '/material_phase['//int2str(i)//']', states(i+1), &
             dont_allocate_prognostic_value_spaces=dont_allocate_prognostic_value_spaces)
-
+       
     end do state_loop
 
     ! special case fields outside material_phases:
@@ -1264,11 +1291,11 @@ contains
     if (have_option('/flredecomp/field_weighted_partitions')) then
        call allocate_and_insert_scalar_field('/flredecomp/field_weighted_partitions/scalar_field::FieldWeightedPartitionValues', states(1))
     end if
-
+    
     if (have_option('/mesh_adaptivity/hr_adaptivity/zoltan_options/field_weighted_partitions')) then
        call allocate_and_insert_scalar_field('/mesh_adaptivity/hr_adaptivity/zoltan_options/field_weighted_partitions/scalar_field::FieldWeightedPartitionValues', states(1))
     end if
-
+    
     ! grid velocity
     if (have_option('/mesh_adaptivity/mesh_movement/vector_field::GridVelocity')) then
        call allocate_and_insert_vector_field('/mesh_adaptivity/mesh_movement/vector_field::GridVelocity', &
@@ -1276,7 +1303,7 @@ contains
     end if
 
     ! solar irradiance submodel (hyperlight)
-    if (have_option("/ocean_biology/lagrangian_ensemble/hyperlight")) then
+    if (have_option("/ocean_biology/lagrangian_ensemble/hyperlight")) then 
        call allocate_and_insert_irradiance(states(1))
     end if
 
@@ -1381,10 +1408,10 @@ contains
 
           call allocate_and_insert_one_phase(additional_fields_absolute(i), states(1), &
              dont_allocate_prognostic_value_spaces=dont_allocate_prognostic_value_spaces)
-
+          
        end if
     end do
-
+    
     do i=1, size(additional_fields_relative)
        do istate = 1, size(states)
          absolute_path = "/material_phase["//int2str(istate-1)//"]/"//trim(additional_fields_relative(i))
@@ -1392,15 +1419,15 @@ contains
 
             call allocate_and_insert_one_phase(absolute_path, states(istate), &
                dont_allocate_prognostic_value_spaces=dont_allocate_prognostic_value_spaces)
-
+            
          end if
        end do
     end do
 
     call allocate_metric_limits(states(1))
-
+    
   contains
-
+    
     subroutine allocate_and_insert_one_phase(state_path, state, dont_allocate_prognostic_value_spaces)
       !! Perform the allocation and insertion of the fields found under
       !! state_path into state.
@@ -1408,10 +1435,10 @@ contains
       type(state_type), intent(inout) :: state
       logical, optional, intent(in):: dont_allocate_prognostic_value_spaces
 
-      character(len=OPTION_PATH_LEN) :: path
+      character(len=OPTION_PATH_LEN) :: path      
       integer :: nfields ! number of fields
       logical :: is_aliased
-
+      
       integer :: j
 
       ! Get number of scalar fields that are children of this state
@@ -1490,8 +1517,8 @@ contains
       character(len=OPTION_PATH_LEN) :: light_path, field_name
 
       ! Replicate irradiance template field for all wavebands
-      light_path = "/ocean_biology/lagrangian_ensemble/hyperlight"
-      frequency_field_loop: do j=0,35
+      light_path = "/ocean_biology/lagrangian_ensemble/hyperlight"      
+      frequency_field_loop: do j=0,35         
          lambda = 350.0 + (j * 10.0)
          field_name="Irradiance_"//int2str(NINT(lambda))
          call allocate_and_insert_scalar_field(&
@@ -1503,7 +1530,7 @@ contains
       end do frequency_field_loop
 
       ! Create PAR irradiance field
-      if (have_option("/ocean_biology/lagrangian_ensemble/hyperlight/scalar_field::IrradiancePAR")) then
+      if (have_option("/ocean_biology/lagrangian_ensemble/hyperlight/scalar_field::IrradiancePAR")) then 
          call allocate_and_insert_scalar_field(&
                   trim(light_path)&
                   //"/scalar_field::IrradiancePAR", &
@@ -1620,13 +1647,13 @@ contains
     ! special case fields outside material_phases:
     ! distance to top and bottom
     if (have_option('/geometry/ocean_boundaries')) then
-
+    
        sfield = extract_scalar_field(states(1), 'DistanceToTop')
        sfield%aliased = .true.
        do i = 1,nstates-1
           call insert(states(i+1), sfield, 'DistanceToTop')
        end do
-
+       
        sfield = extract_scalar_field(states(1), 'DistanceToBottom')
        sfield%aliased = .true.
        do i = 1,nstates-1
@@ -1648,7 +1675,7 @@ contains
 
     ! grid velocity
     if (have_option('/mesh_adaptivity/mesh_movement/vector_field::GridVelocity')) then
-
+    
        ! Save path to field
        path="/mesh_adaptivity/mesh_movement/vector_field::GridVelocity"
 
@@ -1666,7 +1693,7 @@ contains
            call insert(states(1), vfield, trim(field_name))
 
        end if
-
+    
        vfield=extract_vector_field(states(1), 'GridVelocity')
        vfield%aliased = .true.
        do i = 1,nstates-1
@@ -1678,7 +1705,7 @@ contains
 
     ! Deal with subgridscale parameterisations.
     call alias_diffusivity(states)
-
+    
     ! Porous media fields
     have_porous_media: if (have_option('/porous_media')) then
 
@@ -1728,7 +1755,7 @@ contains
 
     ! Prescribed diffusivity
     do i = 1, size(states)
-
+       
        tfield=extract_tensor_field(states(i), "PrescribedDiffusivity", stat)
 
        if (stat/=0) cycle
@@ -1738,23 +1765,23 @@ contains
        do s = 1, scalar_field_count(states(i))
 
           sfield => extract_scalar_field(states(i), s)
-
+          
           if (have_option(trim(sfield%option_path)//&
                "/prognostic/subgridscale_parameterisation&
                &::prescribed_diffusivity")) then
-
+             
              tfield%name=trim(sfield%name)//"Diffusivity"
              call insert(states(i), tfield, tfield%name)
 
           end if
 
        end do
-
+       
     end do
 
     ! Eddy diffusivity from Generic Length Scale Ocean model
     do i = 1, size(states)
-
+       
        tfield=extract_tensor_field(states(i), "GLSEddyDiffusivityKH", stat)
 
        if (stat/=0) cycle
@@ -1764,18 +1791,18 @@ contains
        do s = 1, scalar_field_count(states(i))
 
           sfield => extract_scalar_field(states(i), s)
-
+          
           if (have_option(trim(sfield%option_path)//&
                "/prognostic/subgridscale_parameterisation&
                &::GLS")) then
-
+             
              tfield%name=trim(sfield%name)//"Diffusivity"
              call insert(states(i), tfield, tfield%name)
 
           end if
 
        end do
-
+       
     end do
 
   end subroutine alias_diffusivity
@@ -1794,7 +1821,7 @@ contains
     end if
 
   end function allocate_scalar_field_as_constant
-
+  
   function allocate_vector_field_as_constant(option_path) result(is_constant)
     !!< Return whether the supplied option path signals a constant
     !!< field
@@ -1809,7 +1836,7 @@ contains
     end if
 
   end function allocate_vector_field_as_constant
-
+  
   function allocate_tensor_field_as_constant(option_path) result(is_constant)
     !!< Return whether the supplied option path signals a constant
     !!< field
@@ -1817,6 +1844,7 @@ contains
     character(len = *), intent(in) :: option_path
 
     logical :: is_constant
+
     if(option_count(trim(option_path) // "/prescribed/value") == 1) then
       is_constant = have_option(trim(option_path) // "/prescribed/value/isotropic/constant") .or. &
         & have_option(trim(option_path) // "/prescribed/value/anisotropic_symmetric/constant") .or. &
@@ -1824,6 +1852,7 @@ contains
     else
       is_constant = .false.
     end if
+
   end function allocate_tensor_field_as_constant
 
   function allocate_field_as_constant_scalar(s_field) result(is_constant)
@@ -1899,7 +1928,7 @@ contains
     else
        call get_option(trim(path)//"/name", lfield_name)
     end if
-
+    
     if(present(parent_name)) then
        lfield_name=trim(parent_name)//trim(lfield_name)
     end if
@@ -1958,11 +1987,11 @@ contains
        call allocate(field, mesh, name=trim(lfield_name), &
           field_type=FIELD_TYPE_DEFERRED)
     else if(is_constant .and. .not. backward_compatibility) then
-
+         
        ! Allocate as constant field if possible (and we don't need backward compatibility)
        call allocate(field, mesh, name=trim(lfield_name), &
           field_type=FIELD_TYPE_CONSTANT)
-
+       
        call zero(field)
     else
        ! If we have to keep backward compatibility, then
@@ -2016,7 +2045,7 @@ contains
     character(len=*), intent(in), optional :: parent_name
     character(len=*), optional, intent(in):: field_name
     logical, intent(in), optional :: dont_allocate_prognostic_value_spaces
-
+    
     integer :: dim
     logical :: is_prognostic, is_prescribed, is_diagnostic, is_aliased
     ! paths for options and child fields
@@ -2029,7 +2058,7 @@ contains
 
     is_aliased=have_option(trim(option_path)//"/aliased")
     if(is_aliased) return
-
+    
     ! Save option_path
     path=trim(option_path)
 
@@ -2093,12 +2122,12 @@ contains
        call allocate(field, dim, mesh, name=trim(lfield_name), &
           field_type=FIELD_TYPE_DEFERRED)
     else if(is_constant .and. .not. backward_compatibility) then
-
+         
        ! Allocate as constant field if possible (and we don't need backward compatibility)
        call allocate(field, dim, mesh, name=trim(lfield_name), &
           field_type=FIELD_TYPE_CONSTANT)
        call zero(field)
-
+       
     else
        ! If we have to keep backward compatibility, then
        ! just allocate the value space as normal,
@@ -2108,7 +2137,7 @@ contains
        call allocate(field, dim, mesh, trim(lfield_name))
        call zero(field)
     end if
-
+    
     ewrite(2,*) trim(lfield_name), " is on mesh ", trim(mesh%name)
 
     ! Set field%option_path
@@ -2141,7 +2170,7 @@ contains
   recursive subroutine allocate_and_insert_tensor_field(option_path, state, parent_mesh, parent_name, &
       dont_allocate_prognostic_value_spaces)
     !!< This subroutine sets up the initial condition of a tensor field.
-    !!< Note that the tensor dimensions are set to be the dimension of the
+    !!< Note that the tensor dimensions are set to be the dimension of the 
     !!< problem.
 
     character(len=*), intent(in) :: option_path
@@ -2219,21 +2248,21 @@ contains
     end if
 
     if (defer_allocation(option_path, mesh, dont_allocate_prognostic_value_spaces=dont_allocate_prognostic_value_spaces)) then
-
+         
        ! If we want to defer allocation (for sam), don't allocate the value space yet
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_DEFERRED,dim=[ndim_tensor,ndim_tensor])
-
+          field_type=FIELD_TYPE_DEFERRED)
+       
     else if(is_constant .and. .not. backward_compatibility) then
-
+         
        ! Allocate as constant field if possible (and we don't need backward compatibility)
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_CONSTANT,dim=[ndim_tensor,ndim_tensor])
+          field_type=FIELD_TYPE_CONSTANT)
        call zero(field)
     else
 
        ! Allocate field
-       call allocate(field, mesh, trim(field_name),dim=[ndim_tensor,ndim_tensor])
+       call allocate(field, mesh, trim(field_name))
        call zero(field)
     end if
 
@@ -2276,7 +2305,7 @@ contains
     character(len=OPTION_PATH_LEN) child_path, child_name
     character(len=FIELD_NAME_LEN) :: mesh_name
     integer i
-
+    
     ewrite(2,*) "    Inserting children of: ",trim(path)
     do i=0, option_count(trim(path)//"/scalar_field")-1
        child_path=trim(path)//"/scalar_field["//int2str(i)//"]"
@@ -2317,14 +2346,14 @@ contains
   subroutine allocate_and_insert_grandchildren(path, state,&
        & parent_mesh, parent_name, dont_allocate_prognostic_value_spaces)
     !!< Allocate those fields contained in a field which are not direct
-    !!< children.
+    !!< children. 
     character(len=*), intent(in) :: path !! option_path including prescribed/prognostic
     type(state_type), intent(inout) :: state
     character(len=*), intent(in) :: parent_mesh
     character(len=*), intent(in) :: parent_name
     logical, optional, intent(in) :: dont_allocate_prognostic_value_spaces
 
-
+    
     integer :: i
 
     ! This is necessarily somewhat more sui generis than
@@ -2337,10 +2366,10 @@ contains
     end do
 
   end subroutine allocate_and_insert_grandchildren
-
+    
   logical function defer_allocation(option_path, mesh, &
      dont_allocate_prognostic_value_spaces)
-    !!< Determines whether allocation of %val is deferred.
+    !!< Determines whether allocation of %val is deferred. 
     !!< This is used for fields that have been passed to SAM and
     !!< only are allocate one by one when we get them back from SAM.
     !!< Currently this is for all prognostic fields that are on a mesh
@@ -2348,13 +2377,13 @@ contains
     character(len=*), intent(in):: option_path
     type(mesh_type), intent(in):: mesh
     logical, optional, intent(in):: dont_allocate_prognostic_value_spaces
-
+    
        defer_allocation=present_and_true(dont_allocate_prognostic_value_spaces) &
           .and. have_option(trim(option_path)//'/prognostic') &
           .and. .not. have_option(trim(mesh%option_path)//'/exclude_from_mesh_adaptivity')
-
+  
   end function defer_allocation
-
+  
   subroutine set_prescribed_field_values(states, &
     exclude_interpolated, exclude_nonreprescribed, initial_mesh, time)
 
@@ -2381,7 +2410,7 @@ contains
     ewrite(1,*) "In set_prescribed_field_values"
 
     mesh_changed = .not. present_and_true(initial_mesh)
-
+    
     nphases = option_count('/material_phase')
     do p = 0, nphases-1
 
@@ -2392,16 +2421,16 @@ contains
        do f = 1, nsfields
           sfield => extract_scalar_field(states(p+1),f)
           if (have_option(trim(sfield%option_path)//'/prescribed') .and. &
-              .not. aliased(sfield) .and. &
+              .not. aliased(sfield) .and. &              
               .not. (present_and_true(exclude_interpolated) .and. &
                      interpolate_field(sfield)) .and. &
               .not. (present_and_true(exclude_nonreprescribed) .and. &
                      do_not_recalculate(sfield%option_path)) .and. &
               .not. (mesh_changed .and. needs_initial_mesh(sfield)) &
                      ) then
-
+             
              position => get_external_coordinate_field(states(p+1), sfield%mesh)
-
+             
              call zero(sfield)
              call initialise_field_over_regions(sfield, &
                 trim(sfield%option_path)//'/prescribed/value', &
@@ -2413,35 +2442,35 @@ contains
        do f = 1, nvfields
           vfield => extract_vector_field(states(p+1), f)
           if (have_option(trim(vfield%option_path)//'/prescribed') .and. &
-              .not. aliased(vfield) .and. &
+              .not. aliased(vfield) .and. &              
               .not. (present_and_true(exclude_interpolated) .and. &
                      interpolate_field(vfield)) .and. &
               .not. (present_and_true(exclude_nonreprescribed) .and. &
                      do_not_recalculate(vfield%option_path)) .and. &
               .not. (mesh_changed .and. needs_initial_mesh(vfield)) &
                      ) then
-
+                     
              position => get_external_coordinate_field(states(p+1), vfield%mesh)
-
+             
              call zero(vfield)
              call initialise_field_over_regions(vfield, &
                 trim(vfield%option_path)//'/prescribed/value', &
                 position, time=time)
           end if
        end do
-
+         
        ntfields = tensor_field_count(states(p+1))
        do f = 1, ntfields
           tfield => extract_tensor_field(states(p+1), f)
           if (have_option(trim(tfield%option_path)//'/prescribed') .and. &
-              .not. aliased(tfield) .and. &
+              .not. aliased(tfield) .and. &              
               .not. (present_and_true(exclude_interpolated) .and. &
                      interpolate_field(tfield)) .and. &
               .not. (present_and_true(exclude_nonreprescribed) .and. &
                      do_not_recalculate(tfield%option_path)) .and. &
               .not. (mesh_changed .and. needs_initial_mesh(tfield)) &
                      ) then
-
+                     
              position => get_external_coordinate_field(states(p+1), tfield%mesh)
 
              call zero(tfield)
@@ -2450,7 +2479,7 @@ contains
                 position, time=time)
           end if
        end do
-
+       
     end do
 
     if(have_option('/ocean_forcing/external_data_boundary_conditions')) then
@@ -2458,12 +2487,12 @@ contains
       call set_nemo_fields(states(1))
 
     endif
-
+      
     ! flush the cache
     call vtk_cache_finalise()
 
   end subroutine set_prescribed_field_values
-
+  
   subroutine initialise_prognostic_fields(states, save_vtk_cache, &
     initial_mesh)
     !!< Set the values of prognostic fields with their initial conditions
@@ -2487,7 +2516,7 @@ contains
     logical:: mesh_changed
 
     ewrite(1,*) "In initialise_prognostic_fields"
-
+    
     mesh_changed = .not. present_and_true(initial_mesh)
 
     nphases = option_count('/material_phase')
@@ -2496,7 +2525,7 @@ contains
        phase_path = '/material_phase['//int2str(p)//']'
 
        position => extract_vector_field(states(p+1), "Coordinate")
-
+       
        ! Scalar fields:
        nsfields = scalar_field_count(states(p+1))
        do f = 1, nsfields
@@ -2525,7 +2554,7 @@ contains
        end do
 
     end do
-
+      
     if (.not. present_and_true(save_vtk_cache)) then
        ! flush the cache
        call vtk_cache_finalise()
@@ -2576,7 +2605,7 @@ contains
 
         ! Get field name - this checks if the field has an option_path
         call get_option(trim(field_path)//"/name", field_name, stat)
-
+                
         if((stat==0).and.(.not.aliased(sfield))) then
 
           prognostic=have_option(trim(sfield%option_path)//"/prognostic")
@@ -2597,8 +2626,8 @@ contains
 
             aux_sfield = extract_scalar_field(states(p), trim(sfield%name))
             aux_sfield%name = "Old"//trim(sfield%name)
-            aux_sfield%option_path=""  ! blank the option path so that it
-                                       ! doesn't get picked up in the next
+            aux_sfield%option_path=""  ! blank the option path so that it 
+                                       ! doesn't get picked up in the next 
                                        ! aliased field loop
             aux_sfield%aliased=.true.
             call insert(states(p), aux_sfield, trim(aux_sfield%name))
@@ -2617,8 +2646,8 @@ contains
 
             aux_sfield = extract_scalar_field(states(p), trim(sfield%name))
             aux_sfield%name = "Iterated"//trim(sfield%name)
-            aux_sfield%option_path=""  ! blank the option path so that it
-                                       ! doesn't get picked up in the next
+            aux_sfield%option_path=""  ! blank the option path so that it 
+                                       ! doesn't get picked up in the next 
                                        ! aliased field loop
             aux_sfield%aliased=.true.
             call insert(states(p), aux_sfield, trim(aux_sfield%name))
@@ -2657,12 +2686,19 @@ contains
             call insert(states(p), aux_vfield, trim(aux_vfield%name))
             call deallocate(aux_vfield)
 
+          else if((prescribed).and.(trim(vfield%name)=="Velocity")) then 
+
+            call allocate(aux_vfield, vfield%dim, vfield%mesh, "Old"//trim(vfield%name), field_type = vfield%field_type)
+            call zero(aux_vfield)
+            call insert(states(p), aux_vfield, trim(aux_vfield%name))
+            call deallocate(aux_vfield)
+
           else
 
             aux_vfield = extract_vector_field(states(p), trim(vfield%name))
             aux_vfield%name = "Old"//trim(vfield%name)
-            aux_vfield%option_path=""  ! blank the option path so that it
-                                       ! doesn't get picked up in the next
+            aux_vfield%option_path=""  ! blank the option path so that it 
+                                       ! doesn't get picked up in the next 
                                        ! aliased field loop
             aux_vfield%aliased=.true.
             call insert(states(p), aux_vfield, trim(aux_vfield%name))
@@ -2677,12 +2713,19 @@ contains
             call insert(states(p), aux_vfield, trim(aux_vfield%name))
             call deallocate(aux_vfield)
 
+          else if((prescribed).and.((trim(vfield%name)=="Velocity"))) then 
+
+            call allocate(aux_vfield, vfield%dim, vfield%mesh, "Iterated"//trim(vfield%name))
+            call zero(aux_vfield)
+            call insert(states(p), aux_vfield, trim(aux_vfield%name))
+            call deallocate(aux_vfield)
+
           else
 
             aux_vfield = extract_vector_field(states(p), trim(vfield%name))
             aux_vfield%name = "Iterated"//trim(vfield%name)
-            aux_vfield%option_path=""  ! blank the option path so that it
-                                       ! doesn't get picked up in the next
+            aux_vfield%option_path=""  ! blank the option path so that it 
+                                       ! doesn't get picked up in the next 
                                        ! aliased field loop
             aux_vfield%aliased=.true.
             call insert(states(p), aux_vfield, trim(aux_vfield%name))
@@ -2691,7 +2734,7 @@ contains
 
           if(trim(vfield%name)=="Velocity") then
 
-            if(iterations>1) then
+            if(iterations>1 .or. prescribed) then
 
               call allocate(aux_vfield, vfield%dim, vfield%mesh, "Nonlinear"//trim(vfield%name))
               call zero(aux_vfield)
@@ -2723,7 +2766,7 @@ contains
                 call deallocate(aux_sfield)
               end if
             end if
-
+            
           end if
 
           if(trim(vfield%name)=="VelocityInnerElement") then
@@ -2877,14 +2920,14 @@ contains
       end do
 
     end do
-
-
-    ! for mesh movement we need a "OriginalCoordinate",
+      
+    
+    ! for mesh movement we need a "OriginalCoordinate", 
     ! "OldCoordinate" and "IteratedCoordinate" fields
     ! inserted in each state similar to "Coordinate"
-    if (have_option('/mesh_adaptivity/mesh_movement')) then
+    if (have_option('/mesh_adaptivity/mesh_movement')) then 
        vfield => extract_vector_field(states(1), name="Coordinate")
-
+       
       ! first original coordinate field:
       call allocate(aux_vfield, vfield%dim, vfield%mesh, &
         name="Original"//trim(vfield%name))
@@ -2893,7 +2936,7 @@ contains
       ! insert into states(1) and alias it to all other states.
       call insert(states, aux_vfield, trim(aux_vfield%name))
       call deallocate(aux_vfield)
-
+       
       ! exactly the same for old coordinate field:
       call allocate(aux_vfield, vfield%dim, vfield%mesh, &
         name="Old"//trim(vfield%name))
@@ -2902,7 +2945,7 @@ contains
       ! insert into states(1) and alias it to all other states.
       call insert(states, aux_vfield, trim(aux_vfield%name))
       call deallocate(aux_vfield)
-
+        
       ! and again for the iterated coordinate field (the most up to date one):
       call allocate(aux_vfield, vfield%dim, vfield%mesh, &
         name="Iterated"//trim(vfield%name))
@@ -2911,30 +2954,30 @@ contains
       ! insert into states(1) and alias it to all other states.
       call insert(states, aux_vfield, trim(aux_vfield%name))
       call deallocate(aux_vfield)
-
+       
     else
-
+    
       aux_vfield=extract_vector_field(states(1), name="Coordinate")
       aux_vfield%name = "Original"//trim(aux_vfield%name)
       aux_vfield%aliased = .true.
       aux_vfield%option_path = ""
       ! insert into states(1) and alias it to all other states.
       call insert(states, aux_vfield, trim(aux_vfield%name))
-
+        
       aux_vfield=extract_vector_field(states(1), name="Coordinate")
       aux_vfield%name = "Old"//trim(aux_vfield%name)
       aux_vfield%aliased = .true.
       aux_vfield%option_path = ""
       ! insert into states(1) and alias it to all other states.
       call insert(states, aux_vfield, trim(aux_vfield%name))
-
+        
       aux_vfield=extract_vector_field(states(1), name="Coordinate")
       aux_vfield%name = "Iterated"//trim(aux_vfield%name)
       aux_vfield%aliased = .true.
       aux_vfield%option_path = ""
       ! insert into states(1) and alias it to all other states.
       call insert(states, aux_vfield, trim(aux_vfield%name))
-
+        
     end if
 
     x_mesh => extract_mesh(states(1), "CoordinateMesh")
@@ -2955,75 +2998,11 @@ contains
     aux_sfield%option_path = ""
     call insert(states, aux_sfield, trim(aux_sfield%name))
     call deallocate(aux_sfield)
-
-    ! Porous media fields
-    have_porous_media: if (have_option('/porous_media')) then
-
-       ! alias the OldPorosity field
-       aux_sfield=extract_scalar_field(states(1), 'OldPorosity')
-       aux_sfield%aliased = .true.
-       aux_sfield%option_path = ""
-       do p = 1,size(states)-1
-          call insert(states(p+1), aux_sfield, 'OldPorosity')
-       end do
-
-       ! alias the OldPermeability field which may be
-       ! either scalar or vector (if present)
-
-       aux_sfield=extract_scalar_field(states(1), 'OldPermeability', stat = stat)
-       if (stat == 0) then
-          aux_sfield%aliased = .true.
-          aux_sfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_sfield, 'OldPermeability')
-          end do
-       end if
-
-       aux_vfield=extract_vector_field(states(1), 'OldPermeability', stat = stat)
-       if (stat == 0) then
-          aux_vfield%aliased = .true.
-          aux_vfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_vfield, 'OldPermeability')
-          end do
-       end if
-
-       ! alias the IteratedPorosity field
-       aux_sfield=extract_scalar_field(states(1), 'IteratedPorosity')
-       aux_sfield%aliased = .true.
-       aux_sfield%option_path = ""
-       do p = 1,size(states)-1
-          call insert(states(p+1), aux_sfield, 'IteratedPorosity')
-       end do
-
-       ! alias the IteratedPermeability field which may be
-       ! either scalar or vector (if present)
-
-       aux_sfield=extract_scalar_field(states(1), 'IteratedPermeability', stat = stat)
-       if (stat == 0) then
-          aux_sfield%aliased = .true.
-          aux_sfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_sfield, 'IteratedPermeability')
-          end do
-       end if
-
-       aux_vfield=extract_vector_field(states(1), 'IteratedPermeability', stat = stat)
-       if (stat == 0) then
-          aux_vfield%aliased = .true.
-          aux_vfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_vfield, 'IteratedPermeability')
-          end do
-       end if
-
-    end if have_porous_media
-
+    
   end subroutine allocate_and_insert_auxilliary_fields
 
   function mesh_name(field_path)
     !!< given a field path, establish the mesh that the field is on.
-    use global_parameters, only: FIELD_NAME_LEN
     character(len=FIELD_NAME_LEN) :: mesh_name
     character(len=*), intent(in) :: field_path
 
@@ -3044,53 +3023,53 @@ contains
     end if
 
   end function mesh_name
-
+    
   subroutine surface_id_stats(mesh, positions)
   type(mesh_type), target, intent(in):: mesh
   type(vector_field), intent(in):: positions
-
+    
     real, dimension(1:face_ngi(mesh,1)):: detwei
     integer, dimension(:), pointer:: surface_ids
     real, dimension(:), allocatable:: area
     integer, dimension(:), allocatable:: no_elements
     integer i, sid, sidmin, sidmax
-
+    
     if (current_debug_level<=1) return
-
+    
     ewrite(2,*) "Surface id stats for mesh ", trim(mesh%name)
-
+    
     surface_ids => mesh%faces%boundary_ids
     sidmin=minval(surface_ids)
     sidmax=maxval(surface_ids)
-
+    
     allocate( no_elements(sidmin:sidmax), &
       area(sidmin:sidmax))
     no_elements=0
     area=0.0
-
+    
     do i=1, surface_element_count(mesh)
        sid=surface_ids(i)
        no_elements(sid)=no_elements(sid)+1
        call transform_facet_to_physical(positions, i, detwei_f=detwei)
        area(sid)=area(sid)+sum(detwei)
     end do
-
+      
     ewrite(2, *) 'Surface id,  n/o surface elements,       surface area'
     do i=sidmin, sidmax
        ewrite(2, "(i10,i23,es20.9)") i, no_elements(i), area(i)
     end do
-
+      
     ewrite(2,*) 'Total number of surface elements:', surface_element_count(mesh)
     ewrite(2,'(a,es20.9)') 'Total surface area:', sum(area)
-
+    
   end subroutine surface_id_stats
-
+    
   subroutine create_empty_halo(position)
     !!< Auxilary subroutine that creates node and element halos for position with no sends or receives
     type(vector_field), intent(inout):: position
-
+    
     integer:: nprocs, j
-
+    
     nprocs = getnprocs()
     allocate(position%mesh%halos(2))
     allocate(position%mesh%element_halos(2))
@@ -3115,7 +3094,7 @@ contains
       call create_global_to_universal_numbering(position%mesh%element_halos(j))
       call create_ownership(position%mesh%element_halos(j))
     end do
-
+    
   end subroutine create_empty_halo
 
 
@@ -3125,7 +3104,7 @@ contains
     type(tensor_field) :: min_eigen, max_eigen
     character(len=*), parameter :: path = &
     & "/mesh_adaptivity/hr_adaptivity/"
-    logical :: is_constant, have_regions
+    logical :: is_constant
     type(mesh_type), pointer :: mesh
     type(vector_field), pointer :: X
     integer :: node
@@ -3146,32 +3125,25 @@ contains
     end if
 
     is_constant = (have_option(path // "/tensor_field::MinimumEdgeLengths/anisotropic_symmetric/constant"))
-    have_regions = (have_option(path // "/tensor_field::MinimumEdgeLengths/value"))
     if (is_constant) then
       call allocate(min_edge, mesh, "MinimumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
-         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
       call allocate(max_eigen, mesh, "MaxMetricEigenbound", field_type=FIELD_TYPE_CONSTANT)
       call set(max_eigen, eigenvalue_from_edge_length(node_val(min_edge, 1)))
     else
       call allocate(min_edge, mesh, "MinimumEdgeLengths")
-      if (have_regions) then
-         call initialise_field_over_regions(min_edge, path // "/tensor_field::MinimumEdgeLengths/value", X)
-      else
-         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
-      end if
+      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
       call allocate(max_eigen, mesh, "MaxMetricEigenbound")
       do node=1,node_count(mesh)
         call set(max_eigen, node, eigenvalue_from_edge_length(node_val(min_edge, node)))
       end do
     end if
-
+      
     call insert(state, max_eigen, "MaxMetricEigenbound")
     call deallocate(min_edge)
     call deallocate(max_eigen)
 
     is_constant = (have_option(path // "/tensor_field::MaximumEdgeLengths/anisotropic_symmetric/constant"))
-    have_regions = (have_option(path // "/tensor_field::MaximumEdgeLengths/value"))
-
     if (is_constant) then
       call allocate(max_edge, mesh, "MaximumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
       call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
@@ -3179,17 +3151,13 @@ contains
       call set(min_eigen, eigenvalue_from_edge_length(node_val(max_edge, 1)))
     else
       call allocate(max_edge, mesh, "MaximumEdgeLengths")
-      if (have_regions) then
-         call initialise_field_over_regions(max_edge, path // "/tensor_field::MaximumEdgeLengths/value", X)
-      else
-         call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
-      end if
+      call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
       call allocate(min_eigen, mesh, "MinMetricEigenbound")
       do node=1,node_count(mesh)
         call set(min_eigen, node, eigenvalue_from_edge_length(node_val(max_edge, node)))
       end do
     end if
-
+      
     call insert(state, min_eigen, "MinMetricEigenbound")
     call deallocate(max_edge)
     call deallocate(min_eigen)
@@ -3255,7 +3223,7 @@ contains
 
 
   end subroutine compute_domain_statistics
-
+  
   subroutine populate_state_module_check_options
 
     character(len=OPTION_PATH_LEN) :: problem_type
@@ -3275,8 +3243,6 @@ contains
        call check_large_scale_ocean_options
     case ("multimaterial")
        call check_multimaterial_options
-    case ("porous_media")
-       call check_porous_media_options
     case ("stokes")
        call check_stokes_options
     case ("foams")
@@ -3350,7 +3316,7 @@ contains
        if(have_option(trim(path)//"/from_file")) then
 
           n_external_meshes=n_external_meshes+1
-
+          
           if (have_option(trim(path)//"/exclude_from_mesh_adaptivity")) then
             n_external_meshes_excluded_from_mesh_adaptivity=n_external_meshes_excluded_from_mesh_adaptivity+1
           end if
@@ -3398,7 +3364,7 @@ contains
              FLExit("Error in /geometry/mesh: unknown mesh.")
 
           end if
-
+          
           if (have_option("/geometry/mesh::"//trim(from_mesh_name)//&
              "/exclude_from_mesh_adaptivity") .and. .not. &
              have_option(trim(path)//"/exclude_from_mesh_adaptivity") .and. .not. &
@@ -3408,62 +3374,62 @@ contains
              ewrite(-1,*) "A mesh derived from a mesh with exclude_from_mesh_adaptivity needs to have this options as well."
              FLExit("Missing exclude_from_mesh_adaptivity option")
           end if
-
+          
           if (have_option(trim(path)//"/from_mesh/extrude") .and. ( &
-
+             
              have_option(trim(path)//"/from_mesh/mesh_shape") .or. &
              have_option(trim(path)//"/from_mesh/mesh_continuity") .or. &
              have_option(trim(path)//"/from_mesh/periodic_boundary_conditions") &
              ) ) then
-
+             
              ewrite(-1,*) "In derivation of mesh ", trim(mesh_name), " from ", trim(from_mesh_name)
              ewrite(-1,*) "When extruding a mesh, you cannot at the same time"
              ewrite(-1,*) "change its shape, continuity or add periodic bcs."
              ewrite(-1,*) "Need to do this in seperate step (derivation)."
              FLExit("Error in /geometry/mesh with extrude option")
-
+             
           end if
 
           if (have_option(trim(path)//"/from_mesh/periodic_boundary_conditions")) then
-
+            
              ! can't combine with anything else
              if ( &
-
+             
                 have_option(trim(path)//"/from_mesh/mesh_shape") .or. &
                 have_option(trim(path)//"/from_mesh/mesh_continuity") .or. &
                 have_option(trim(path)//"/from_mesh/extrude") &
              ) then
-
+             
                 ewrite(-1,*) "In derivation of mesh ", trim(mesh_name), " from ", trim(from_mesh_name)
                 ewrite(-1,*) "When adding or removing periodicity to a mesh, you cannot at the same time"
                 ewrite(-1,*) "change its shape, continuity or extrude a mesh."
                 ewrite(-1,*) "Need to do this in seperate step (derivation)."
                 FLExit("Error in /geometry/mesh with extrude option")
-
+                
              end if
-
+             
              if (have_option(trim(path)//"/from_mesh/periodic_boundary_conditions/remove_periodicity")) then
-
+               
                 ! check to see the from_mesh is not non-periodic is done above
-
+                
                 ! check that all periodic bcs have remove_periodicity
                 if (option_count(trim(path)//"/from_mesh/periodic_boundary_conditions")/= &
                         option_count(trim(path)//"/from_mesh/periodic_boundary_conditions/remove_periodicity")) then
                    ewrite(-1,*) "In derivation of mesh ", trim(mesh_name), " from ", trim(from_mesh_name)
                    FLExit("All or none of the periodic_boundary_conditions need to have the option remove_periodicity.")
                 end if
-
+                
              else
-
+             
                 ! really periodic
-
+                
                 if (mesh_name=="CoordinateMesh") then
                   ewrite(-1,*) "In derivation of mesh ", trim(mesh_name), " from ", trim(from_mesh_name)
                   FLExit("CoordinateMesh may not be made periodic.")
                 end if
-
+                
                 periodic_mesh_count=periodic_mesh_count+1
-
+                
                 if (periodic_mesh_count>1) then
                   ewrite(-1,*) "In the derivation of periodic meshes, all periodic boundary conditions"
                   ewrite(-1,*) "have to be applied at once. Thus only one mesh may have periodic_boundary_conditions"
@@ -3471,7 +3437,7 @@ contains
                   ewrite(-1,*) "should be derived from this mesh."
                   FLExit("More than one mesh with periodic_boundary_conditions")
                 end if
-
+                
                 if (.not. have_option("/geometry/mesh::"//trim(from_mesh_name)// &
                   "/from_file")) then
                   ewrite(-1,*) "In derivation of mesh ", trim(mesh_name), " from ", trim(from_mesh_name)
@@ -3481,9 +3447,9 @@ contains
                   FLExit("Periodic mesh not from from_file mesh")
                 end if
              end if
-
+             
           end if
-
+          
        end if
 
     end do mesh_loop2
@@ -3595,17 +3561,17 @@ contains
     end do state_loop
 
   end subroutine check_mesh_options
-
+  
   subroutine check_ocean_options
 
     character(len=OPTION_PATH_LEN) str, velocity_path, pressure_path, tmpstring
     logical on_sphere, constant_gravity, new_navsto
-
+    
     if (option_count('/material_phase')/=1) then
        FLExit("The checks for problem_type oceans only work for single phase.")
     endif
-
-    ! from now on we may assume single material/phase
+       
+    ! from now on we may assume single material/phase    
     velocity_path="/material_phase[0]/vector_field::Velocity/prognostic"
     if (have_option(trim(velocity_path))) then
        new_navsto=have_option(trim(velocity_path)//'/spatial_discretisation/continuous_galerkin') .or. &
@@ -3627,13 +3593,13 @@ contains
           ewrite(0,*) "under the prognostic velocity field."
           FLExit("For ocean problems you need to lump the mass matrix.")
        end if
-
+       
        ! check we have the right equation type for velocity
        if (.not. have_option(trim(velocity_path)//'/equation::Boussinesq')) then
           ewrite(0,*) "For ocean problems you need to set the equation type"
           ewrite(0,*) "for velocity to Boussinesq."
           FLExit("Wrong Velocity equation type")
-       end if
+       end if          
 
     end if
 
@@ -3672,15 +3638,15 @@ contains
   end subroutine check_ocean_options
 
   subroutine check_large_scale_ocean_options
-
+  
     character(len=OPTION_PATH_LEN) str, velocity_path, pressure_path, tmpstring, temperature_path, salinity_path,continuity2, continuity1, velmesh, pressuremesh, preconditioner
     logical on_sphere, constant_gravity
     integer iterations, poly
     if (option_count('/material_phase')/=1) then
        FLExit("The checks for problem_type oceans only work for single phase.")
     endif
-
-    ! Velocity options checks
+    
+    ! Velocity options checks   
     velocity_path="/material_phase[0]/vector_field::Velocity/prognostic"
     if (have_option(trim(velocity_path))) then
        str=trim(velocity_path)//'/spatial_discretisation/continuous_galerkin'
@@ -3689,12 +3655,12 @@ contains
        end if
        if (.not. have_option(trim(velocity_path)//'/equation::Boussinesq')) then
           FLExit("Wrong Velocity equation type - should be Boussinesq")
-       end if
+       end if  
        if(.not.(have_option(trim(velocity_path)//"/spatial_discretisation/discontinuous_galerkin/advection_scheme/upwind")).and. &
          (.not.(have_option("timestepping/steady_state")))) then
           ewrite(0,*)("WARNING: You should probably have advection_scheme/upwind under velocity")
-       end if
-       if(.not.(have_option(trim(velocity_path)//"/spatial_discretisation/discontinuous_galerkin/advection_scheme/integrate_advection_by_parts/twice"))) then
+       end if  
+       if(.not.(have_option(trim(velocity_path)//"/spatial_discretisation/discontinuous_galerkin/advection_scheme/integrate_advection_by_parts/twice"))) then 
           FLExit("Should have Velocity/spatial_discretisation/advection_scheme/integrate_advection_by_parts/twice")
        end if
        if(have_option(trim(velocity_path)//"/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix")) then
@@ -3715,9 +3681,9 @@ contains
        if (.not.have_option(trim(velocity_path)//"/spatial_discretisation/discontinuous_galerkin/advection_scheme/project_velocity_to_continuous")) then
          FLExit("You need to switch on velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/project_velocity_to_continuous ")
        end if
-
+  
   end if
-
+  
 !Timestepping options
   if(.not.(have_option("/timestepping/nonlinear_iterations"))) then
      FLExit("You should turn on timestepping/nonlinear_iterations and set to a number greater than 1")
@@ -3779,7 +3745,7 @@ contains
          .and.(.not.(have_option("/material_phase[0]/equation_of_state/fluids/linear/temperature_dependency") ))) then
        ewrite(0,*) "WARNING: You have a temperature field but it will not affect the density of the fluid."
     end if
-
+   
     ! Check that the gravity field is not constant for spherical problems
     on_sphere=have_option("/geometry/spherical_earth")
     constant_gravity=have_option("/physical_parameters/gravity/vector_field::GravityDirection/prescribed/value[0]/constant")
@@ -3790,12 +3756,12 @@ contains
 ! Check velocity mesh continuity
   call get_option("/material_phase[0]/vector_field::Velocity/prognostic/mesh/name",velmesh)
   call get_option("/geometry/mesh::"//trim(velmesh)//"/from_mesh/mesh_continuity",continuity2)
-
+    
   if (trim(continuity2).ne."discontinuous") then
     FLExit("The velocity mesh is not discontinuous")
   end if
 
-  ! Check pressure mesh continuity
+  ! Check pressure mesh continuity 
   call get_option("/material_phase[0]/scalar_field::Pressure/prognostic/mesh/name",pressuremesh)
   if (have_option("/geometry/mesh::"//trim(pressuremesh)//"/from_mesh/mesh_continuity"))then
     call get_option("/geometry/mesh::"//trim(pressuremesh)//"/from_mesh/mesh_continuity",continuity1)
@@ -3811,7 +3777,7 @@ contains
     call get_option("/geometry/mesh::"//trim(pressuremesh)//"/from_mesh/mesh_shape/polynomial_degree",poly)
     if (poly.ne.2) then
       ewrite (0,*)"WARNING: You should have the pressure mesh shape set to polynomial order 2"
-    end if
+    end if 
   end if
 
     !Check for viscosity field
@@ -3841,7 +3807,7 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
 
     integer :: neos, nmat, i
     logical :: have_vfrac, have_dens
-
+    
     integer :: diagnosticvolumefraction_count, density_count, &
                viscosity_count, surfacetension_count
 
@@ -3865,7 +3831,7 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
           FLExit("All material_phases need a MaterialVolumeFraction and either a MaterialDensity or an eos.")
        end if
     end do
-
+    
     diagnosticvolumefraction_count = option_count(&
                 &'/material_phase/scalar_field::MaterialVolumeFraction/diagnostic')
     if(diagnosticvolumefraction_count>1) then
@@ -3898,36 +3864,6 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
 
   end subroutine check_multimaterial_options
 
-  subroutine check_porous_media_options
-
-    integer :: nmat, i
-    logical :: have_vfrac, have_viscosity, have_porosity, have_permeability
-
-    nmat = option_count("/material_phase")
-    ewrite(2,*) 'nmat:',nmat
-
-    have_porosity = have_option("/porous_media/scalar_field::Porosity")
-    have_permeability = have_option("/porous_media/scalar_field::Permeability").or.&
-                       &have_option("/porous_media/vector_field::Permeability").or.&
-                       &have_option("/porous_media/tensor_field::Permeability")
-    if((.not.have_porosity).or.(.not.have_permeability)) then
-       FLExit("For porous media problems we need porosity and permeability.")
-    end if
-! Need to sort this out for multiphase!!!
-    do i = 0, nmat-1
-       if(have_option("/porous_media/multiphase_parameters")) then
-          have_vfrac = have_option("/material_phase["//int2str(i)//&
-               "]/scalar_field::PhaseVolumeFraction")
-          have_viscosity = have_option("/materical_phase["//int2str(i)//&
-               "]/tensor_field::MaterialViscosity")
-          if((.not.have_vfrac).or.(.not.have_viscosity)) then
-             FLExit("Need volume fractions and viscosities for each material phase.")
-          endif
-       endif
-    end do
-
-  end subroutine check_porous_media_options
-
   subroutine check_stokes_options
 
     ! Check options for Stokes flow simulations.
@@ -3944,7 +3880,7 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
        velocity_path="/material_phase["//int2str(i)//"]/vector_field::Velocity/prognostic"
 
        if (have_option(trim(velocity_path))) then
-
+         
           ! Check that mass and advective terms are excluded:
           exclude_mass = have_option(trim(velocity_path)//&
                "/spatial_discretisation/continuous_galerkin/mass_terms"//&
@@ -3952,13 +3888,13 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
                have_option(trim(velocity_path)//&
                "/spatial_discretisation/discontinuous_galerkin/mass_terms"//&
                &"/exclude_mass_terms")
-
+          
           exclude_advection = have_option(trim(velocity_path)//&
                "/spatial_discretisation/continuous_galerkin/advection_terms"//&
                &"/exclude_advection_terms").or.&
                have_option(trim(velocity_path)//&
-               "/spatial_discretisation/discontinuous_galerkin/advection_scheme/none")
-
+               "/spatial_discretisation/discontinuous_galerkin/advection_scheme/none") 
+          
           if(.not.(exclude_mass) .OR. .not.(exclude_advection)) then
              FLExit("For Stokes problems you need to exclude the mass and advection terms.")
           end if
@@ -3973,15 +3909,15 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
 
        pressure_path="/material_phase["//int2str(i)//"]/scalar_field::Pressure/prognostic"
 
-       if (have_option(trim(pressure_path))) then
+       if (have_option(trim(pressure_path))) then  
 
           schur_path = "/material_phase["//int2str(i)//"]/scalar_field::Pressure/prognostic/"//&
                &"scheme/use_projection_method/full_schur_complement"
 
           if(have_option(trim(schur_path))) then
-
+             
              call get_option(trim(schur_path)//"/preconditioner_matrix[0]/name", schur_preconditioner)
-
+             
              select case(schur_preconditioner)
              case("ScaledPressureMassMatrix")
                 ! Check pressure_mass_matrix preconditioner is compatible with viscosity tensor:
@@ -4001,11 +3937,11 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
                      "]/scalar_field::Pressure/prognostic/solver/preconditioner/name", pc_type)
                 if(pc_type /= 'none') FLExit("If no preconditioner is desired, set pctype='none'.")
              end select
-
+             
              ! Check inner matrix is valid for Stokes - must have full viscous terms
              ! included. Stokes does not have a mass matrix.
              call get_option(trim(schur_path)//"/inner_matrix[0]/name", inner_matrix)
-
+             
              if(trim(inner_matrix)/="FullMomentumMatrix") then
                 ewrite(-1,*) "For Stokes problems, FullMomentumMatrix must be specified under:"
                 ewrite(-1,*) "scalar_field::Pressure/prognostic/scheme/use_projection_method& "
@@ -4014,38 +3950,12 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
              end if
 
           end if
-
+          
        end if
-
+       
     end do
 
   end subroutine check_stokes_options
-
-  subroutine check_implicit_solids_options
-
-    integer :: nmat, i
-    logical :: have_scon, have_spha, have_oneway, have_twoway
-
-    nmat = option_count("/material_phase")
-
-    do i = 0, nmat-1
-       have_scon = have_option("/material_phase["//int2str(i)//&
-            "]/scalar_field::SolidConcentration")
-       have_spha = have_option("/material_phase["//int2str(i)//&
-            "]/scalar_field::SolidPhase")
-       if((.not.have_scon).or.(.not.have_spha)) then
-          FLExit("An implicit solid needs a SolidConcentration and a SolidPhase.")
-       end if
-    end do
-
-    have_oneway = have_option("/material_phase/one_way_coupling")
-    have_twoway = have_option("/material_phase/two_way_coupling")
-
-    if((.not.have_oneway).or.(.not.have_twoway)) then
-       FLExit("Implicit_solids should be run with either a one-way coupling or a two-way coupling.")
-    end if
-
-  end subroutine check_implicit_solids_options
 
   subroutine check_foams_options
     ! Check options for liquid drainage in foam simulations.
@@ -4151,7 +4061,7 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
     end if
 
   end subroutine check_foams_options
-
+  
   subroutine check_multiphase_options
     !!< Options checking for multi-phase flow simulations.
     ! This currently assumes that all phases have prognostic velocity fields;
@@ -4159,7 +4069,7 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
 
     integer :: nmat, i
     logical :: have_vfrac, prognostic_velocity
-
+    
     integer :: diagnostic_vfrac_count
 
     nmat = option_count("/material_phase")
@@ -4173,7 +4083,7 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
           FLExit("All phases need a PhaseVolumeFraction.")
        end if
     end do
-
+    
     diagnostic_vfrac_count = option_count(&
                 &'/material_phase/scalar_field::PhaseVolumeFraction/diagnostic')
     if(diagnostic_vfrac_count > 1) then

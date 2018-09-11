@@ -221,7 +221,9 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-10</real_value>
           </relative_error>
@@ -361,7 +363,7 @@
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">10000</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -513,7 +515,9 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="mg"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1.0e-10</real_value>
           </relative_error>
@@ -521,9 +525,9 @@
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">0</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
-          <ignore_all_solver_failures/>
+          <never_ignore_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -579,15 +583,20 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">2</integer_value>
+              <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">2</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1.0e-15</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -641,13 +650,22 @@ for i in range (field.node_count):
       <diagnostic>
         <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_galerkin_projection" source_field_name="Ph">
           <solver>
-            <iterative_method name="cg"/>
-            <preconditioner name="sor"/>
+            <iterative_method name="gmres">
+              <restart>
+                <integer_value rank="0">30</integer_value>
+              </restart>
+            </iterative_method>
+            <preconditioner name="hypre">
+              <hypre_type name="boomeramg"/>
+            </preconditioner>
             <relative_error>
-              <real_value rank="0">1.0e-7</real_value>
+              <real_value rank="0">1.0e-10</real_value>
             </relative_error>
+            <absolute_error>
+              <real_value rank="0">1.0e-15</real_value>
+            </absolute_error>
             <max_iterations>
-              <integer_value rank="0">200</integer_value>
+              <integer_value rank="0">5504</integer_value>
             </max_iterations>
             <never_ignore_solver_failures/>
             <diagnostics>
@@ -729,12 +747,17 @@ for i in range (field.node_count):
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1.0e-15</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">200</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -861,12 +884,17 @@ for i in range (field.node_count):
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1.0e-15</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">200</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -993,12 +1021,17 @@ for i in range (field.node_count):
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1.0e-15</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">200</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1125,12 +1158,17 @@ for i in range (field.node_count):
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1.0e-15</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">200</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -1257,12 +1295,17 @@ for i in range (field.node_count):
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="sor"/>
+          <preconditioner name="hypre">
+            <hypre_type name="boomeramg"/>
+          </preconditioner>
           <relative_error>
-            <real_value rank="0">1.0e-7</real_value>
+            <real_value rank="0">1.0e-10</real_value>
           </relative_error>
+          <absolute_error>
+            <real_value rank="0">1.0e-15</real_value>
+          </absolute_error>
           <max_iterations>
-            <integer_value rank="0">200</integer_value>
+            <integer_value rank="0">5504</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>

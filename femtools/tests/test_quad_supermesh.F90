@@ -3,8 +3,10 @@
 
 subroutine test_quad_supermesh
 
+  use fldebug
   use unittest_tools
   use mesh_files
+  use quadrature
   use fields
   use linked_lists
   use intersection_finder_module
@@ -18,7 +20,7 @@ subroutine test_quad_supermesh
   real, dimension(:), allocatable :: quad_detwei, tri_detwei
   integer :: ele_A, ele_B, ele_C
   real :: vol_B, vols_C, total_B, total_C
-  logical :: fail
+  logical :: fail, empty_intersection
   type(element_type), pointer :: shape
   type(inode), pointer :: llnode
   type(vector_field) :: intersection
@@ -56,7 +58,11 @@ subroutine test_quad_supermesh
     vols_C = 0.0
     do while(associated(llnode))
       ele_A = llnode%value
-      intersection = intersect_elements(positionsA, ele_A, ele_val(positionsB, ele_B), supermesh_shape)
+      intersection = intersect_elements(positionsA, ele_A, ele_val(positionsB, ele_B), supermesh_shape, empty_intersection=empty_intersection)
+      if (empty_intersection) then
+         llnode => llnode%next
+         cycle
+      end if
 #define DUMP_SUPERMESH_INTERSECTIONS
 #ifdef DUMP_SUPERMESH_INTERSECTIONS
       if (ele_count(intersection) /= 0) then

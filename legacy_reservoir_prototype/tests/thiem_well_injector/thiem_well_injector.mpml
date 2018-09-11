@@ -118,7 +118,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">0</integer_value>
+              <integer_value rank="0">1</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -235,7 +235,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">0</integer_value>
+              <integer_value rank="0">1</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -344,7 +344,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">0</integer_value>
+              <integer_value rank="0">1</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -411,7 +411,7 @@
             <solver>
               <iterative_method name="gmres">
                 <restart>
-                  <integer_value rank="0">0</integer_value>
+                  <integer_value rank="0">1</integer_value>
                 </restart>
               </iterative_method>
               <preconditioner name="hypre">
@@ -573,7 +573,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">0</integer_value>
+              <integer_value rank="0">1</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -657,7 +657,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">0</integer_value>
+              <integer_value rank="0">1</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -724,7 +724,7 @@
             <solver>
               <iterative_method name="gmres">
                 <restart>
-                  <integer_value rank="0">0</integer_value>
+                  <integer_value rank="0">1</integer_value>
                 </restart>
               </iterative_method>
               <preconditioner name="hypre">

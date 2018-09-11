@@ -44,7 +44,7 @@ module matrix_operations
         entries,  &
         zero, addto, addto_diag, scale, &
         extract_diagonal, assemble, incref_petsc_csr_matrix, &
-        addref_petsc_csr_matrix, &
+        !addref_petsc_csr_matrix, &!Removed with last fluidity merge
         mult_T, dump_matrix, &
         csr2petsc_csr, dump_petsc_csr_matrix
     use parallel_tools
@@ -57,7 +57,7 @@ module matrix_operations
     use multi_data_types
     use multi_tools
     implicit none
-
+#include "petsc_legacy.h"
 contains
 
 
@@ -1749,11 +1749,11 @@ contains
 
     end subroutine allocate_global_multiphase_petsc_csr
 
-    function allocate_momentum_matrix(sparsity,velocity) result(Mat)
+    function allocate_momentum_matrix(sparsity,velocity) result(matrix)
         type(csr_sparsity), intent (inout) :: sparsity
         type(tensor_field), intent (inout) :: velocity
         type(halo_type), pointer:: halo
-        type(petsc_csr_matrix) :: mat
+        type(petsc_csr_matrix) :: matrix
         integer :: ierr
 
 
@@ -1763,39 +1763,41 @@ contains
             nullify(halo)
         end if
 
-        mat%name="MomentumMatrix"
+        matrix%name="MomentumMatrix"
 
         if (associated(halo)) then
-            allocate(mat%row_halo)
-            mat%row_halo = halo
-            call incref(mat%row_halo)
-            allocate(mat%column_halo)
-            mat%column_halo = halo
-            call incref(mat%column_halo)
+            allocate(matrix%row_halo)
+            matrix%row_halo = halo
+            call incref(matrix%row_halo)
+            allocate(matrix%column_halo)
+            matrix%column_halo = halo
+            call incref(matrix%column_halo)
         else
-            nullify(mat%row_halo)
-            nullify(mat%column_halo)
+            nullify(matrix%row_halo)
+            nullify(matrix%column_halo)
         end if
 
-        call allocate(mat%row_numbering,node_count(velocity),&
-            product(velocity%dim),halo)
-        call allocate(mat%column_numbering,node_count(velocity),&
-            product(velocity%dim),halo)
+        call allocate(matrix%row_numbering,node_count(velocity),&
+            product(velocity%dim),halo = halo)
+        call allocate(matrix%column_numbering,node_count(velocity),&
+            product(velocity%dim),halo = halo)
 
         if (.not. IsParallel()) then
-            mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
-                mat%column_numbering,.false.)
+            matrix%M=full_CreateSeqAIJ(sparsity, matrix%row_numbering, &
+                matrix%column_numbering,.false.)
         else
-            mat%M=full_CreateMPIAIJ(sparsity, mat%row_numbering, &
-                mat%column_numbering,.false.)
+            matrix%M=full_CreateMPIAIJ(sparsity, matrix%row_numbering, &
+                matrix%column_numbering,.false.)
         end if
 
-        call MatSetOption(mat%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
-        call MatSetOption(mat%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
-        call MatSetOption(mat%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
-        nullify(mat%refcount)
-        call addref_petsc_csr_matrix(mat)
+        call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
+        nullify(matrix%refcount)
+        !call addref_petsc_csr_matrix(matrix)!Removed with last fluidity merge
 
+        allocate(matrix%ksp)
+        matrix%ksp = PETSC_NULL_KSP
 
     end function allocate_momentum_matrix
 

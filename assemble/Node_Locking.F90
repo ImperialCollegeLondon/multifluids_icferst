@@ -29,11 +29,11 @@
 
 module node_locking
 
-  use embed_python
-  use fields
   use fldebug
-  use global_parameters, only : PYTHON_FUNC_LEN, OPTION_PATH_LEN
+  use global_parameters, only : PYTHON_FUNC_LEN
+  use embed_python
   use spud
+  use fields
   
   implicit none
   
@@ -53,54 +53,29 @@ contains
   
     character(len = *), parameter :: base_path = "/mesh_adaptivity/hr_adaptivity/node_locking"
     character(len = PYTHON_FUNC_LEN) :: func
-    integer :: i, index, stat, iphase, iscalars
+    integer :: i, index, stat
     integer, dimension(:), allocatable :: is_node_locked
     real :: lcurrent_time
-    !Variables for wells node locking
-    real, dimension(:), allocatable  :: is_node_locked_scalar
-    character(len = OPTION_PATH_LEN) :: well_path
-
-!    if(.not. have_option(base_path)) then
-!      allocate(locked_nodes(0))
-!      ewrite(2, *) "Number of locked nodes = 0"
-!      return
-!    end if
     
-    stat = 0
+    if(.not. have_option(base_path)) then
+      allocate(locked_nodes(0))
+      ewrite(2, *) "Number of locked nodes = 0"
+      return
+    end if
+    
     if(present(current_time)) then
       lcurrent_time = current_time
     else
       call get_option("/timestepping/current_time", lcurrent_time, default = 0.0)
     end if
-    allocate(is_node_locked(node_count(positions))); is_node_locked = 0
-    if( have_option(base_path)) then
-        call get_option(base_path // "/python", func)
-        call set_integer_array_from_python(func, len_trim(func), positions%dim, node_count(positions), &
-              & positions%val(1,:), positions%val(2,:), positions%val(3,:), lcurrent_time, &
-              & is_node_locked, stat)
-    end if
-
-    !Section to add the nodes locked by the wells
-    do iphase = 1, option_count('/material_phase')
-        well_path ='/wells_and_pipes/scalar_field::DiameterPipe/prescribed/value/python'
-        !Only lock nodes if wells are defined only using pu
-        if (have_option(well_path) .and. option_count('/wells_and_pipes/well_from_file') == 0) then
-            call get_option(well_path, func)
-
-            allocate(is_node_locked_scalar(node_count(positions)));is_node_locked_scalar = 0.0
-            call set_scalar_field_from_python(func, len_trim(func), positions%dim, node_count(positions), &
-              & positions%val(1,:), positions%val(2,:), positions%val(3,:), lcurrent_time, &
-              & is_node_locked_scalar, stat)
-
-            !We add the nodes introduced by the wells
-            do i = 1, size(is_node_locked_scalar)
-                if(abs(is_node_locked_scalar(i)) >= 1e-8) is_node_locked(i) = 1
-            end do
-            deallocate(is_node_locked_scalar)
-        end if
-    end do
-    !End of section to add the nodes locked by the wells
-
+    
+    call get_option(base_path // "/python", func)
+    
+    allocate(is_node_locked(node_count(positions)))
+    
+    call set_integer_array_from_python(func, len_trim(func), positions%dim, node_count(positions), &
+      & positions%val(1,:), positions%val(2,:), positions%val(3,:), lcurrent_time, &
+      & is_node_locked, stat)
     if(stat /= 0) then
        ewrite(-1, *) "Python error, Python string was:"
        ewrite(-1, *) trim(func)
@@ -118,7 +93,7 @@ contains
       end if
     end do
     assert(index == size(locked_nodes))
-
+    
     deallocate(is_node_locked)
   
   end subroutine get_locked_nodes

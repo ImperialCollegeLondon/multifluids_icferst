@@ -5,35 +5,38 @@
 module conservative_interpolation_module
 
   use FLDebug
+  use vector_tools
+  use global_parameters, only : FIELD_NAME_LEN, OPTION_PATH_LEN
   use quadrature
-  use elements
-  use fields
-  use sparse_tools
-  use supermesh_construction
   use futils
+  use element_numbering, only: FAMILY_SIMPLEX
+  use elements
+  use spud
+  use data_structures
+  use sparse_tools
+  use tensors
   use transform_elements
+  use adjacency_lists
+  use unittest_tools
+  use linked_lists
+  use tetrahedron_intersection_module
+  use supermesh_construction
+  use fetools
+  use parallel_fields, only: node_owned
+  use intersection_finder_module
+  use fields
+  use state_module
+  use field_options, only: complete_field_path
   use meshdiagnostics
   use sparsity_patterns
-  use vector_tools
-  use tensors
-  use fetools
-  use sparse_tools
-  use interpolation_module
-  use solvers
-  use adjacency_lists
   use vtk_interfaces
-  use unittest_tools
-  use spud
-  use global_parameters, only : FIELD_NAME_LEN, OPTION_PATH_LEN
-  use intersection_finder_module
-  use linked_lists
-  use sparse_matrices_fields
-  use bound_field_module
   use halos
-  use diagnostic_fields
-  use tetrahedron_intersection_module
   use boundary_conditions
-  use data_structures
+  use interpolation_module
+  use sparse_matrices_fields
+  use solvers
+  use bound_field_module
+  use diagnostic_fields
   implicit none
 
   interface interpolation_galerkin
@@ -99,6 +102,7 @@ module conservative_interpolation_module
     type(plane_type), dimension(4) :: planes_B
     type(tet_type) :: tet_A, tet_B
     integer :: lstat
+    logical :: empty_intersection
 
     real, dimension(size(local_rhs, 3)) :: tmp_local_rhs, tmp_ele_val
 
@@ -147,7 +151,11 @@ module conservative_interpolation_module
           cycle
         end if
       else
-        intersection = intersect_elements(old_position, ele_A, pos_B, supermesh_shape)
+        intersection = intersect_elements(old_position, ele_A, pos_B, supermesh_shape, empty_intersection=empty_intersection)
+        if (empty_intersection) then
+           llnode => llnode%next
+           cycle
+        end if
       end if
 
 #ifdef DUMP_SUPERMESH_INTERSECTIONS
@@ -640,6 +648,7 @@ module conservative_interpolation_module
           if(any(bounded(mesh,:)).or.any(lumped(mesh,:))) then
             call allocate(inverse_M_B_L, M_B_L(mesh)%mesh, "InverseLumpedMass")
             call invert(M_B_L(mesh), inverse_M_B_L)
+            call halo_update(inverse_M_B_L)
           end if
           
           do field=1,field_counts(mesh)
@@ -1008,6 +1017,7 @@ module conservative_interpolation_module
     character(len=OPTION_PATH_LEN) :: old_path
     integer :: stat
     real, dimension(new_position%dim, ele_loc(new_position, 1)) :: pos_B
+    logical :: empty_intersection
 
     field_cnt = size(old_fields)
     dim = mesh_dim(new_position)
@@ -1050,7 +1060,12 @@ module conservative_interpolation_module
           integral_A(field) = dot_product(ele_val_at_quad(old_fields(field), ele_A), detwei_A)
         end do
 
-        intersection = intersect_elements(old_position, ele_A, pos_B, supermesh_shape)
+        intersection = intersect_elements(old_position, ele_A, pos_B, supermesh_shape, empty_intersection=empty_intersection)
+        if (empty_intersection) then
+           llnode => llnode%next
+           cycle
+        end if
+
         do ele_C=1,ele_count(intersection)
           vol_C = simplex_volume(intersection, ele_C)
           do field=1,field_cnt

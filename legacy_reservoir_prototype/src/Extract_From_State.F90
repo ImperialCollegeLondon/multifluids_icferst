@@ -36,6 +36,7 @@ module Copy_Outof_State
     use fields
     use field_options
     use spud
+    use parallel_tools
     use quicksort
     use populate_state_module
     use diagnostic_variables
@@ -49,7 +50,7 @@ module Copy_Outof_State
     use boundary_conditions
     use futils, only: int2str
     use boundary_conditions_from_options
-    use parallel_tools, only : allmax, allmin, isparallel
+    use parallel_tools, only : allmax, allmin, isparallel, getprocno
     use parallel_fields
     use memory_diagnostics
     use initialise_fields_module, only: initialise_field_over_regions
