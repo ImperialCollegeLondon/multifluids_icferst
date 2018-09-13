@@ -231,9 +231,9 @@
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -363,9 +363,9 @@
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -525,9 +525,9 @@
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -586,9 +586,7 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
-          </preconditioner>
+          <preconditioner name="gamg"/>
           <relative_error>
             <real_value rank="0">1.0e-10</real_value>
           </relative_error>
@@ -596,9 +594,9 @@
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -665,9 +663,9 @@ for i in range (field.node_count):
               <real_value rank="0">1.0e-15</real_value>
             </absolute_error>
             <max_iterations>
-              <integer_value rank="0">5504</integer_value>
+              <integer_value rank="0">1500</integer_value>
             </max_iterations>
-            <never_ignore_solver_failures/>
+            <ignore_all_solver_failures/>
             <diagnostics>
               <monitors/>
             </diagnostics>
@@ -757,9 +755,9 @@ for i in range (field.node_count):
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -894,9 +892,9 @@ for i in range (field.node_count):
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -1031,9 +1029,9 @@ for i in range (field.node_count):
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -1168,9 +1166,9 @@ for i in range (field.node_count):
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
@@ -1305,9 +1303,9 @@ for i in range (field.node_count):
             <real_value rank="0">1.0e-15</real_value>
           </absolute_error>
           <max_iterations>
-            <integer_value rank="0">5504</integer_value>
+            <integer_value rank="0">1500</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>
