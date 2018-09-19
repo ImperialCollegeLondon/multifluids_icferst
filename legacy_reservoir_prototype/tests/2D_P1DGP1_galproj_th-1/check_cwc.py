@@ -110,9 +110,10 @@ for p in range(len(parray)):
 # We need to calculate pressures at dump file steps
   data_o2=[]
   data_2=[]
+  tol=0.01
   for i in ts:
-      io2=list(time).index(round(i,2))
-      i2=list(experiment.item(0)["ElapsedTime"]["value"]).index(round(i,2))
+      io2=next(j for j, _ in enumerate(time) if numpy.isclose(_, i, tol))
+      i2=next(j for j, _ in enumerate(experiment.item(0)["ElapsedTime"]["value"]) if numpy.isclose(_, i, tol))
       data_o2.append(data_o[io2])
       data_2.append(data[i2])
       
