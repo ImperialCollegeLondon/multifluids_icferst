@@ -160,9 +160,6 @@ contains
                           !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
                           if (getprocno() == 1) then
                             ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin."
-                            if(isparallel()) then
-                                ewrite(0,*) "Only the domains that have failed to create a new mesh will re-use the old mesh."
-                            end if
                           end if
                           if (adapt_error) then !For the sections that this failed, re-use old mesh
                             ewrite(1,*) "Domain associated to processor number", getprocno()," has failed to adapt the mesh"
