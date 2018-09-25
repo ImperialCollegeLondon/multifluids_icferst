@@ -339,7 +339,7 @@ contains
         !sprint_to_do for this to work with wells we need to change the sparsity, but that still needs to be done!
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', i )
             call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', k )
-            Mmat%compact_PIVIT_MAT = (i == (k - 1))
+            Mmat%compact_PIVIT_MAT = (i == (k - 1))!This does not include the P1DG(BL)P1DG(CV) element pair...maybe we should include it as well
         end if
         !!$ Defining problem to be solved:
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &

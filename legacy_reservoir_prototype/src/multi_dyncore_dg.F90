@@ -1777,7 +1777,13 @@ end if
                         !Assemble lumped mass matrix (only necessary at the beggining and after adapt)
                         !this has to go, the mass matrix should not be assembled at all as it can be done on-the-fly so long
                         !we have the mass of each element
-                        if (.not.Mmat%Stored) call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
+                        if (.not.Mmat%Stored) then
+                          ! if (Mmat%compact_PIVIT_MAT) then
+                          call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)!
+                          ! else
+                          !   call get_row_sum_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)!prepared to be used for P1DG(BL)P1DG(CV)
+                          ! end if                                                                        !other flags maybe? also a compacted verison?
+                        end if
                         !Introduce gravity right-hand-side
                         do U_ILOC = 1, Mdims%u_nloc
                             U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
@@ -1877,6 +1883,50 @@ end if
                 end if
                 call deallocate_multi_dev_shape_funs(Devfuns)
             END SUBROUTINE porous_assemb_force_cty
+
+            subroutine get_row_sum_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
+              !This subroutine creates a diagonal mass matrix using the row-sum approach
+              !Here no homogenisation can be performed. This approach is intended to be used for the P1DG(BL)P1DG(CV) approach
+              implicit none
+              integer, intent(in) :: ELE
+              type(multi_dimensions), intent(in) :: Mdims
+              type(multi_dev_shape_funs), intent(in) :: Devfuns
+              type (multi_matrices), intent(inout) :: Mmat
+              REAL, DIMENSION( :, : ), intent( in ) :: X_ALL, UFEN_REVERSED
+              !Local variables
+              integer:: I, J, U_JLOC, U_ILOC, GI, JPHASE, JDIM, IPHASE, idim, JPHA_JDIM, IPHA_IDIM
+              REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc ) :: NN_SIGMAGI_ELE
+
+              !Initialise
+              NN_SIGMAGI_ELE = 0.
+              DO U_JLOC = 1, Mdims%u_nloc
+                  DO U_ILOC = 1, Mdims%u_nloc
+                      DO GI = 1, FE_GIdims%cv_ngi
+                            NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) = NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) &
+                            + UFEN_REVERSED(GI, U_ILOC) * UFEN_REVERSED(GI, U_JLOC) * DevFuns%DETWEI( GI )
+                      END DO
+                  END DO
+              END DO
+
+              DO U_JLOC = 1, Mdims%u_nloc
+                  DO U_ILOC = 1, Mdims%u_nloc
+                      DO JPHASE = 1, Mdims%nphase
+                          DO JDIM = 1, Mdims%ndim
+                              JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                              DO IPHASE = 1, Mdims%nphase
+                                  DO IDIM = 1, Mdims%ndim
+                                      IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
+                                      I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                                      Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
+                                          NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                  END DO
+                              END DO
+                          END DO
+                      END DO
+                  END DO
+              END DO
+
+            end subroutine
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
 
@@ -6566,7 +6616,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
             end do
 
          end if
-        
+
       end do
 
       ! deallocate
@@ -7077,6 +7127,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
     END SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
     subroutine get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
+      !A diagonal mass matrix is obtained using the direct lump process
         implicit none
         integer, intent(in) :: ELE
         type(multi_dimensions), intent(in) :: Mdims
