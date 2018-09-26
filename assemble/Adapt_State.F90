@@ -162,7 +162,9 @@ contains
                             ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin."
                           end if
                           if (adapt_error) then !For the sections that this failed, re-use old mesh
-                            ewrite(1,*) "Domain associated to processor number", getprocno()," has failed to adapt the mesh"
+                            if(isparallel()) then
+                              ewrite(0,*) "Domain associated to processor number", getprocno()," has failed to adapt the mesh"
+                            end if
                             call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
                             call set(new_positions,old_positions)
                             call incref(new_positions)
