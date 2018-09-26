@@ -3911,10 +3911,10 @@ end if
 
                !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
                !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
-               !to failures to obtain the sign (perpendicular vectors in a flat boundary)
-               IF ( on_domain_boundary) then
+               !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
+               IF ( on_domain_boundary .or. between_elements) then!sprint_to_do between elements use both barycentres?
                  POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
-               else
+               else !Use centres of the continuous control volumes, i.e. corners of the elements
                  POSVGI = X_ALL(1:Mdims%ndim, X_NODJ) - X_ALL(1:Mdims%ndim, X_NOD)
                end if
                ! POSVGI = POSVGI - (0.898*X_ALL(1:Mdims%ndim, X_NOD) + 0.102*XC_ALL(1:Mdims%ndim))!Magic weights...
