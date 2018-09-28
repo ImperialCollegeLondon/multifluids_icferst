@@ -10031,10 +10031,10 @@ contains
        Select Case ( nloc )
        case (1)  ! Constant triangle
           nwicel = 0
-       case( 3 ) ! Linear triangle
+       case( 3, 4 ) ! Linear triangle
           nwicel = 4
-       case( 4 ) ! Linear quad
-          nwicel = 1
+       ! case( 4 ) ! Linear quad
+       !    nwicel = 1
        case( 6 ) ! Quadratic triangle
           nwicel = 5
        case( 9 ) ! Quadratic quad
@@ -10047,6 +10047,9 @@ contains
 !!$
     end if Conditional_Dimensionality
 
+    if (nwicel >= 1 .and. nwicel <= 3) then
+      FLAbort("ERROR: code not tested for Quads/Tetrahedra")
+    end if
     Get_NwiCel = nwicel
 
     return
