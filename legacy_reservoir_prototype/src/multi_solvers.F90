@@ -38,7 +38,7 @@ module solvers_module
     use global_parameters, only: OPTION_PATH_LEN, FPI_have_converged
     use spud
     use parallel_tools, only : allmax, allmin, isparallel, getprocno
-    use parallel_fields 
+    use parallel_fields
 
     use state_module
     use halo_data_types
@@ -485,19 +485,11 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        if (is_porous_media) then
-            call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
-            sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-            Satura =>  sat_field%val(1,:,:)
-            !Stablish minimum backtracking parameter
-            min_backtrack = 0.1
-        else
-            !Use the pressure as it is in this case the field of interest
-            sat_field => extract_tensor_field( packed_state, "PackedFEPressure" )
-            Satura =>  sat_field%val(1,:,:)
-            !Stablish minimum backtracking parameter
-            min_backtrack = 0.05
-        end if
+        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        Satura =>  sat_field%val(1,:,:)
+        !Stablish minimum backtracking parameter
+        min_backtrack = 0.1
 
         !Automatic method based on the history of convergence
         if (backtrack_par_from_schema < 0.0) then
@@ -590,23 +582,21 @@ contains
             call allmin(Convergences(1))
         end if
         !***Calculate new saturation***
-        if (is_porous_media) then
-            !Obtain new saturation using the backtracking method
-            if (useful_sats < 2 .or. satisfactory_convergence) then
-                !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
-                Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
-            else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
+        !Obtain new saturation using the backtracking method
+        if (useful_sats < 2 .or. satisfactory_convergence) then
+            !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
+            Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
+        else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
 
-                !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
-                !The highest value of backtrack_sat is displaced to low values of alpha
-                aux = 1.0 - backtrack_pars(1)
-                Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
-                    aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
+            !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
+            !The highest value of backtrack_sat is displaced to low values of alpha
+            aux = 1.0 - backtrack_pars(1)
+            Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
+                aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
-            end if
-            !Update halos with the new values
-            if (IsParallel()) call halo_update(sat_field)
         end if
+        !Update halos with the new values
+        !if (IsParallel()) call halo_update(sat_field)!Not needed as it happens later on
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
 

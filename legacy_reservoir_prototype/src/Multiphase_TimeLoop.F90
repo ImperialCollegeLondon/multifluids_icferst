@@ -411,13 +411,10 @@ contains
 
         !!$ Starting Time Loop
         itime = 0
-        if( &
-             ! if this is not a zero timestep simulation (otherwise, there would
-             ! be two identical dump files)
-             current_time < finish_time &! unless explicitly disabled
-             .and. .not. have_option("/io/disable_dump_at_start") &
-             ) then
-
+        ! if this is not a zero timestep simulation (otherwise, there would
+        ! be two identical dump files)! unless explicitly disabled
+        if( current_time < finish_time .and. &
+         .not. have_option("/io/disable_dump_at_start") ) then
 !-------------------------------------------------------------------------------
 ! to allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
              if (do_checkpoint_simulation(dump_no)) then
