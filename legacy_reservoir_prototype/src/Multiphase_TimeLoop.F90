@@ -142,11 +142,11 @@ contains
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
-        real :: c, rc, minc, maxc, ic
+        real :: c, rc, minc, maxc, ic, FPI_eq_taken
         !Variables for adaptive time stepping based on non-linear iterations
         logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
         real, dimension(:,:,:), allocatable  :: reference_field
@@ -432,9 +432,11 @@ contains
               call write_state(dump_no, state)
 
         end if
+        !Initialise FPI_eq_taken
+        FPI_eq_taken = 0
         if(have_option("/io/stat/output_at_start")) then
             call write_diagnostics(state, current_time, dt,&
-                timestep, not_to_move_det_yet=.true.)
+                timestep, not_to_move_det_yet=.true., non_linear_iterations = FPI_eq_taken)
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
         ! If calculating boundary fluxes, allocate and initialise to zero outfluxes variables
@@ -522,6 +524,8 @@ contains
             !since for consistency, (later it is called as well) it uses the old values of pressure,
             !however, they have to be the most updated at this point
             if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
+            !Initialise to zero the SFPI counter
+            SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
@@ -597,7 +601,7 @@ contains
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, Courant_number, &
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
@@ -669,6 +673,9 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+            !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
+            if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
+            FPI_eq_taken = dble(its) + dble(SFPI_taken)/3.!SFPI cost 1/3 roughly, this needs to be revisited when solving for nphases-1
 
             ! If calculating boundary fluxes, dump them to outfluxes.txt
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
@@ -691,7 +698,7 @@ contains
             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
+            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
@@ -1019,7 +1026,7 @@ contains
                         call set(pressure_field,CV_Pressure)
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
 
                     call write_state( dump_no, state ) ! Now writing into the vtu files
@@ -1037,7 +1044,7 @@ contains
                         checkpoint_number=checkpoint_number+1
                         call set(pressure_field,CV_Pressure)
                     end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
@@ -1114,7 +1121,7 @@ contains
                             call qmesh( state, metric_tensor )
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
-                            itime, not_to_move_det_yet = .true. )
+                            itime, not_to_move_det_yet = .true. , non_linear_iterations = FPI_eq_taken)
                         call run_diagnostics( state )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
                         ! Copy U memory

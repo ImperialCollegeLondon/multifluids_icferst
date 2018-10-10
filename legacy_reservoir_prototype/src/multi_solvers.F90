@@ -467,7 +467,7 @@ contains
         real, save :: anders_exp!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
         !Local variables        !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak
         real, dimension(:, :), pointer :: Satura
-        logical :: new_time_step, new_FPI
+        logical :: new_time_step, new_FPI, Undo_update
         real :: aux
         integer :: i
         !Parameters for the automatic backtrack_par
@@ -511,7 +511,7 @@ contains
                 anders_exp = max(anders_exp, 0.)
             end if
 
-            if (new_time_step .and.is_porous_media) then
+            if (new_time_step) then
                 !Store last convergence to use it as a reference
                 Previous_convergence = Convergences(1)
                 !restart all the storage
@@ -531,7 +531,9 @@ contains
                     maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
-                if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
+                Undo_update = its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.
+                if (IsParallel()) call allor(Undo_update)!Consistently repeat an update if required
+                if (Undo_update) then
                     Satura = backtrack_sat
                     !We do not allow two consecutive undos
                     allow_undo = .false.
@@ -557,7 +559,12 @@ contains
                         !Calculate the new optimal backtrack_par parameter
                         backtrack_pars(1) = get_optimal_backtrack_par(backtrack_pars(2:), Convergences, Coefficients)
                 end select
-
+                !If it is parallel then we want to be consistent between cpus
+                !we use the smallest value, since it is more conservative
+                if (IsParallel()) then
+                    call allmin(backtrack_pars(1))
+                    call allmin(Convergences(1))
+                end if
                 !Update history, 1 => newest
                 do i = size(backtrack_pars), 2, -1
                     backtrack_pars(i) = backtrack_pars(i-1)
@@ -568,6 +575,7 @@ contains
 
             end if
         else!Use the value introduced by the user
+
             backtrack_pars(1) = backtrack_par_from_schema
             !Just one local saturation iteration
             satisfactory_convergence = .true.
@@ -575,12 +583,7 @@ contains
 
         ewrite(1,*) "backtrack_par factor",backtrack_pars(1)
 
-        !If it is parallel then we want to be consistent between cpus
-        !we use the smallest value, since it is more conservative
-        if (IsParallel()) then
-            call allmin(backtrack_pars(1))
-            call allmin(Convergences(1))
-        end if
+
         !***Calculate new saturation***
         !Obtain new saturation using the backtracking method
         if (useful_sats < 2 .or. satisfactory_convergence) then
@@ -595,8 +598,6 @@ contains
                 aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
         end if
-        !Update halos with the new values
-        !if (IsParallel()) call halo_update(sat_field)!Not needed as it happens later on
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
 

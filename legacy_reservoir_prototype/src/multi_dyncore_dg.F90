@@ -525,7 +525,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
-         nonlinear_iteration, Courant_number,option_path,&
+         nonlinear_iteration, SFPI_taken, Courant_number,option_path,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, Quality_list)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
@@ -549,6 +549,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
+             integer, intent(inout) :: SFPI_taken
              real, dimension(:), intent(inout) :: Courant_number
              character(len= * ), intent(in), optional :: option_path
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -777,6 +778,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  its = its + 1
                  useful_sats = useful_sats + 1
              END DO Loop_NonLinearFlux
+             !Store the number of Saturation Fixed_Point iterations
+             SFPI_taken = SFPI_taken + its
              !Store the final accumulated backtrack_par_factor to properly calculate the convergence functional
              if (backtrack_par_factor < 1.01) then
                  !Final effective backtrack_par to calculate properly the non linear convergence is:
