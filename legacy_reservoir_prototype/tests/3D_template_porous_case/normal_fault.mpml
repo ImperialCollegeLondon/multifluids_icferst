@@ -128,7 +128,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">5</integer_value>
+              <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -191,7 +191,7 @@
             <solver>
               <iterative_method name="gmres">
                 <restart>
-                  <integer_value rank="0">5</integer_value>
+                  <integer_value rank="0">30</integer_value>
                 </restart>
               </iterative_method>
               <preconditioner name="hypre">
@@ -283,7 +283,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">5</integer_value>
+              <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -394,7 +394,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">5</integer_value>
+              <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -461,7 +461,7 @@
             <solver>
               <iterative_method name="gmres">
                 <restart>
-                  <integer_value rank="0">5</integer_value>
+                  <integer_value rank="0">30</integer_value>
                 </restart>
               </iterative_method>
               <preconditioner name="hypre">
@@ -624,7 +624,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">5</integer_value>
+              <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -735,7 +735,7 @@
         <solver>
           <iterative_method name="gmres">
             <restart>
-              <integer_value rank="0">5</integer_value>
+              <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
           <preconditioner name="hypre">
@@ -784,7 +784,7 @@
             <solver>
               <iterative_method name="gmres">
                 <restart>
-                  <integer_value rank="0">5</integer_value>
+                  <integer_value rank="0">30</integer_value>
                 </restart>
               </iterative_method>
               <preconditioner name="hypre">
