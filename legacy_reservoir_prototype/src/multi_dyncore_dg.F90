@@ -706,6 +706,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  end if
                  !Solve the system
                  vtracer=as_vector(tracer,dim=2)
+                 if (IsParallel()) call halo_update(vtracer)!Important for the non-linear solver to work consistently in parallel
                  !If using FPI with backtracking
                  if (backtrack_par_factor < 1.01) then
                      !Backup of the saturation field, to adjust the solution
@@ -720,6 +721,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          call mult(residual, Mmat%petsc_ACV, vtracer)
                          !Calculate residual
                          residual%val = Mmat%CV_RHS%val - residual%val
+                         if (IsParallel()) call halo_update(residual)
                          resold = res; res = 0
                          do iphase = 1, Mdims%nphase
                              aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
@@ -727,6 +729,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          end do
                          !We use the highest residual across the domain
                          if (IsParallel()) call allmax(res)
+
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
                  end if
@@ -5987,7 +5990,7 @@ end if
      real, save :: domain_length = -1
      integer, save :: Cap_pressure_relevant = -1
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
-     real :: Pe_aux, parl_max, parl_min
+     real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe
      real, dimension(:,:,:), pointer :: p
@@ -6090,8 +6093,14 @@ end if
                          end do
                      end do
                  end do
+                 Pe_max = maxval(Pe)
+                 Pe_min = minval(Pe)
+                 if (IsParallel()) then
+                     call allmax(Pe_max)
+                     call allmin(Pe_min)
+                 end if
                  !Homogenise the value, this seems to be better to avoid problems
-                 Pe = (maxval(Pe)+minval(Pe))/2.
+                 Pe = (Pe_max+Pe_min)/2.
              else
                  Pe = Pe_aux
              end if

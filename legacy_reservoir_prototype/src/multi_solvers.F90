@@ -813,7 +813,7 @@ contains
                         if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
                     end if
                     moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
-                    !Work in normalize saturation here
+                    !Work in normalized saturation here
                     Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
                         Immobile_fraction(i_start:i_end, ele))/moveable_sat
                     sum_of_phases = sum(Normalized_sat(i_start:i_end))
@@ -975,7 +975,7 @@ contains
         !For the first calculation, the Courant number is usually zero, hence we force a safe value here
         if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
         !Use the most restrictive value across all the processors
-        if (IsParallel()) call allmin(backtrack_par_factor)
+        if (IsParallel()) call allmin(backtrack_par_factor)!Should not be necessary as the Courant numbers are already parallel safe
 
     end subroutine auto_backtracking
 
