@@ -786,14 +786,16 @@ contains
         type( state_type ), dimension(:), intent(in) :: state
         !Local variables
         type(scalar_field), pointer :: pipe_diameter
+        type(tensor_field), pointer :: sat_field
         integer :: iphase, cv_iloc, ele, cv_nod, i_start, i_end, ipres, stat
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
 
-
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+        !Obtain saturation field from packed_state
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        satura =>  sat_field%val(1,:,:)
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
@@ -809,6 +811,7 @@ contains
             do ele = 1, Mdims%totele
                 do cv_iloc = 1, Mdims%cv_nloc
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                    if ( .not. node_owned( sat_field, cv_nod ) ) cycle
                     if (ipres>1 .and. stat == 0) then
                         if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
                     end if
@@ -831,6 +834,8 @@ contains
                 end do
             end do
         end do
+        !Update halos
+        call halo_update(sat_field)!Ensure consistency across CPUs
         !Deallocate
         deallocate(Normalized_sat)
 
