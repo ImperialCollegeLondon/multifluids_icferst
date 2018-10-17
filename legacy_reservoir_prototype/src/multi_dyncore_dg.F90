@@ -706,7 +706,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  end if
                  !Solve the system
                  vtracer=as_vector(tracer,dim=2)
-                 if (IsParallel()) call halo_update(vtracer)!Important for the non-linear solver to work consistently in parallel
+                 if (IsParallel()) call zero_non_owned(vtracer)!Important for the non-linear solver to work consistently in parallel
                  !If using FPI with backtracking
                  if (backtrack_par_factor < 1.01) then
                      !Backup of the saturation field, to adjust the solution
@@ -720,8 +720,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          !Calculate the actual residual using a previous backtrack_par
                          call mult(residual, Mmat%petsc_ACV, vtracer)
                          !Calculate residual
+                         if (IsParallel()) THEN
+                          call zero_non_owned(residual)
+                          call zero_non_owned(Mmat%CV_RHS)
+                         end if
                          residual%val = Mmat%CV_RHS%val - residual%val
-                         if (IsParallel()) call halo_update(residual)
                          resold = res; res = 0
                          do iphase = 1, Mdims%nphase
                              aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
@@ -763,6 +766,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (IsParallel())  call alland(satisfactory_convergence)
                          !If looping again, recalculate
                          if (.not. satisfactory_convergence) then
+                             !Update halos with the new values
+                             if (IsParallel()) call halo_update(sat_field)!Otherwise we update this later on
+                                !we do not update inside the FPI solver just in case someone is not running with that option on
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
@@ -1298,7 +1304,7 @@ end if
             call deallocate(rhs)
             U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
         END IF
-        !            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
+!            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
         deallocate( UP_VEL )
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN

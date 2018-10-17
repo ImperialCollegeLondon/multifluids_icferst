@@ -835,7 +835,9 @@ contains
             end do
         end do
         !Update halos
-        call halo_update(sat_field)!Ensure consistency across CPUs
+        if (IsParallel()) call zero_non_owned(sat_field) !Use zero_non_owned because this is part
+                                                    !of the FPI solver, otherwise halo_update should be used
+         !call halo_update(sat_field)!Ensure consistency across CPUs
         !Deallocate
         deallocate(Normalized_sat)
 
@@ -854,10 +856,12 @@ contains
         real :: maxsat, minsat, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
+        type(tensor_field), pointer :: sat_field
         real, dimension(:, :), pointer :: Immobile_fraction
 
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
-        !Get Immobile_fractions
+        !Obtain saturation field from packed_state
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        satura =>  sat_field%val(1,:,:)        !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
         !Allocate
@@ -898,6 +902,8 @@ contains
                 end do
             end do
         end do
+        !Update halos
+        call halo_update(sat_field)!Ensure consistency across CPUs
         !Deallocate
         deallocate(Normalized_sat)
 
