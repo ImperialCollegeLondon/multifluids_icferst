@@ -835,7 +835,7 @@ contains
             end do
         end do
         !Update halos
-        if (IsParallel()) call zero_non_owned(sat_field) !Use zero_non_owned because this is part
+        ! if (IsParallel()) call zero_non_owned(sat_field) !Use zero_non_owned because this is part
                                                     !of the FPI solver, otherwise halo_update should be used
          !call halo_update(sat_field)!Ensure consistency across CPUs
         !Deallocate

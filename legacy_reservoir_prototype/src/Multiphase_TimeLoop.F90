@@ -1007,7 +1007,7 @@ contains
         subroutine create_dump_vtu_and_checkpoints()
 
             if (is_porous_media) then!Calculate Darcy velocity to output in the vtu files
-                !Do not recalculate for "is_multifracture"
+                !Do not recalculate for "is_multifracture" because it has been calculated already
                 if(.not.is_multifracture) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
             end if
 

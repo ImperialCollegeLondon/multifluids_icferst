@@ -351,12 +351,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                ELSE
                    vtracer=as_vector(tracer,dim=2)
                    IF ( IGOT_T2 == 1) THEN
-                       call zero_non_owned(Mmat%CV_RHS)
+                       ! call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
                         '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
                    ELSE
-                       call zero_non_owned(Mmat%CV_RHS)
+                       ! call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
                         call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
@@ -372,7 +372,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-!                   call clone_deallocate_PETSC_ACV_matrix()
+                  !Update halo communications
+
+                  call halo_update(tracer)
 
                    repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
                    call allor(repeat_assemb_solve)
@@ -397,35 +399,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
-
-
-      subroutine clone_deallocate_PETSC_ACV_matrix()!REMOVEME AS SOON AS i AM NOT NEEDED!
-        !This subroutine was created to avoid a bug with Ubuntu 16.04 happening when compiling in non-debugging
-          implicit none
-
-          integer :: ierr
-
-          ierr=0
-          !call decref(Mmat%petsc_ACV)!<= this seems to be the problem; with debugging everything works. This creates a deallocation error when finishing a run
-          if (associated(Mmat%petsc_ACV%refcount)) nullify(Mmat%petsc_ACV%refcount)!do this by hand
-          call MatDestroy(Mmat%petsc_ACV%M, ierr)
-
-          call deallocate(Mmat%petsc_ACV%row_numbering)
-
-          call deallocate(Mmat%petsc_ACV%column_numbering)
-
-          if (associated(Mmat%petsc_ACV%row_halo)) then
-              call deallocate(Mmat%petsc_ACV%row_halo)
-              deallocate(Mmat%petsc_ACV%row_halo)
-          end if
-
-          if (associated(Mmat%petsc_ACV%column_halo)) then
-              call deallocate(Mmat%petsc_ACV%column_halo)
-              deallocate(Mmat%petsc_ACV%column_halo)
-          end if
-
-      end subroutine clone_deallocate_PETSC_ACV_matrix
-
 
       real function convergence_check(temperature, reference_temp)
           implicit none
@@ -737,7 +710,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      end if
                  end if
                  call zero(vtracer)
-                 call zero_non_owned(Mmat%CV_RHS)
+                 ! call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
                  !Set to zero the fields
@@ -1288,7 +1261,7 @@ end if
             !SPRINT_TO_DO: THIS BUSSINES OF RESHAPING IS AWFUL...
             call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
             rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
-            call zero_non_owned(rhs)
+            ! call zero_non_owned(rhs)
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                 call zero(velocity)
                 packed_vel=as_packed_vector(velocity)
@@ -1400,18 +1373,15 @@ end if
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
         end if
-        call zero(deltaP);call zero_non_owned(rhs_p)
+        call zero(deltaP)!;call zero_non_owned(rhs_p)
         !Solve the system to obtain dP (difference of pressure)
         call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
         if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-        if (isParallel()) call halo_update(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
+        ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
 
         P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
-        if (isParallel())then!sprint_to_do need to rethink these parallel communications
-            call zero_non_owned(P_all)
-            call halo_update(P_all)
-        end if
+        if (isParallel()) call halo_update(P_all)
 
         call deallocate(rhs_p)
         call deallocate(cmc_petsc)
@@ -1424,25 +1394,20 @@ end if
                 Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         END DO
         call deallocate(deltaP)
-        if (isParallel()) then!sprint_to_do need to rethink these parallel communications
-            call zero_non_owned(cdp_tensor)
-            call halo_update(cdp_tensor)
-        end if
+        ! if (isParallel()) call zero_non_owned(cdp_tensor)
         ! Correct velocity...
         ! DU = BLOCK_MAT * CDP
         ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
         CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
         U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
+        if (isParallel()) call halo_update(U_ALL2)
 
         DEALLOCATE( DU_VEL )
         if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
-        if (isParallel()) then!sprint_to_do need to rethink these parallel communications
-            call zero_non_owned(U_ALL2)
-            call halo_update(U_ALL2)
-        end if
         call DEALLOCATE( CDP_tensor )
         ! Calculate control volume averaged pressure CV_P from fem pressure P
+        !Ensure that prior to comming here the halos have been updated
         call calc_CVPres_from_FEPres()
 !
         DEALLOCATE( Mmat%CT )
@@ -1456,6 +1421,7 @@ end if
         end if
 
         ! Copy back memory
+        !(Pablo)WHAT IS THIS?? SEEMS RUBBISH TO ME...
         do iphase=1,Mdims%nphase
            U=>extract_vector_field(state(iphase),"U",stat)
            if(stat==0)then
@@ -1541,7 +1507,8 @@ end if
                     END DO
                 ENDIF
             end if
-            call halo_update(CVP_all)
+            !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
+            ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
 
             cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
             if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
@@ -6572,7 +6539,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
             ph_sol % option_path = path
 
-            call zero(ph_sol) ; call zero_non_owned(rhs)
+            call zero(ph_sol) !; call zero_non_owned(rhs)
 
             call petsc_solve( ph_sol, matrix, rhs )
 
