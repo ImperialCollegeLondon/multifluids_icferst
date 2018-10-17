@@ -1500,7 +1500,9 @@ subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
     !a file and just give a small message to the user
     if ( abs(reason) == 3 .and. &
        have_option(trim(solver_option_path)//'/ignore_all_solver_failures'))  then
-       ewrite(-1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+       if (getprocno() == 1) then
+         ewrite(-1,*) 'Maximum number of iterations reached for '// trim(name)// ' solver, moving on.'
+       end if
        return
      end if
      if(present_and_true(nomatrixdump)) matrixdumped = .true.

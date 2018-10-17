@@ -159,7 +159,7 @@ contains
                       case (3)!Last time, back to original mesh...
                           !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
                           if (getprocno() == 1) then
-                            ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin."
+                            ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used."
                           end if
                           if (adapt_error) then !For the sections that this failed, re-use old mesh
                             if(isparallel()) then
