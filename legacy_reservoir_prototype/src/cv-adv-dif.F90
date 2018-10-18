@@ -432,7 +432,7 @@ contains
         real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
         type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
         type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-        type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field
+        type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field !Arash
 
         ! variables for pipes, allocatable because they are big and barely used
         type( scalar_field ), pointer :: pipe_Diameter, pipe_Diameter_nano, pipe_Length_nano, conductivity_pipes, well_thickness
@@ -623,6 +623,11 @@ contains
                 temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
                 if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
             end if
+            !Arash
+            if (has_salt) then
+                salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+                if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
+            end if
         end if
         !! Get boundary conditions from field
         call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
@@ -645,7 +650,8 @@ contains
             SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
             SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
         end if
-         if (tracer%name == "PackedTemperature" )  then
+         if (tracer%name == "PackedTemperature" &
+            .or. tracer%name == "PackedSoluteMassFraction")  then
             allocate( suf_t_bc( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
                 suf_t_bc_rob2( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
             call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, Mdims%nphase, &
@@ -654,6 +660,17 @@ contains
             SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
             SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
         end if
+        ! Arash
+       !  if (tracer%name == "PackedSoluteMassFraction" )  then
+       !     allocate( suf_t_bc( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
+       !         suf_t_bc_rob2( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
+       !     call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, Mdims%nphase, &
+       !         suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
+       !     SUF_T_BC_ALL=>suf_t_bc
+       !     SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
+       !     SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
+       ! end if
+
         IDUM = 0
         ewrite(3,*) 'In CV_ASSEMB'
         GOT_DIFFUS = .false.
@@ -1756,6 +1773,13 @@ contains
                                                             outfluxes%totout(2, iphase, k)   )
                                                         end do
                                                     end if
+                                                    !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                                                    if (has_salt) then
+                                                        do iphase = 1, Mdims%nphase
+                                                            outfluxes%totout(3, iphase, k) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                                                            outfluxes%totout(3, iphase, k)   )
+                                                        end do
+                                                    end if
                                                 end if
                                             end do
                                         end if
@@ -2161,6 +2185,10 @@ contains
          if (tracer%name == "PackedTemperature" )  then
             deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
         end if
+        ! Arash
+        if (tracer%name == "PackedSoluteMassFraction" )  then
+           deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
+       end if
         if (VAD_activated) deallocate(CAP_DIFFUSION)
         ewrite(3,*) 'Leaving CV_ASSEMB'
         if (is_flooding) deallocate(DEN_ALL_DIVID)
@@ -4219,6 +4247,8 @@ end if
                                 do iphase = 1, Mdims%nphase
                                     call allsum(outfluxes%totout(1, iphase, k))
                                     if (has_temperature) call allsum(outfluxes%totout(2, iphase, k))
+                                    !Arash
+                                    if (has_salt) call allsum(outfluxes%totout(3, iphase, k))
                                 end do
                             end do
                         end if
