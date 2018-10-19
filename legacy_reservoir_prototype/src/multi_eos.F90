@@ -214,7 +214,7 @@ contains
                  !Cp_s => extract_scalar_field( state( iphase ), 'SoluteMassFractionHeatCapacity', stat )
                  if ( stat == 0 ) call assign_val(Cp,Cp_s % val)
                  DensityCp_Bulk( sp : ep ) = Rho * Cp
-                 
+
                  !Arash
                  if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
                  DensityCp_Bulk( sp : ep ) = Rho
@@ -1748,6 +1748,7 @@ contains
             if (is_porous_media) then
                 sfield=>extract_scalar_field(state(1),"Porosity")
                 tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+
                 ScalarAdvectionField_Diffusion = 0.
                 ! Calculation of the averaged thermal diffusivity as
                 ! lambda = porosity * lambda_f + (1-porosity) * lambda_p
@@ -1763,10 +1764,10 @@ contains
                             mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                             cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                             do idim = 1, Mdims%ndim
-                                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                                    (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
-                                    +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
+                                    !Arash
+                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ))
                             end do
                         end do
                     end do

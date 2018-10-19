@@ -38,7 +38,7 @@ module solvers_module
     use global_parameters, only: OPTION_PATH_LEN, FPI_have_converged
     use spud
     use parallel_tools, only : allmax, allmin, isparallel, getprocno
-    use parallel_fields 
+    use parallel_fields
 
     use state_module
     use halo_data_types
@@ -205,7 +205,7 @@ contains
 
 
     subroutine BoundedSolutionCorrections( state, packed_state, &
-        Mdims, CV_funs, small_findrm, small_colm, &
+        Mdims, CV_funs, small_findrm, small_colm, Field_name, &
         for_sat, min_max_limits)
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
@@ -225,6 +225,7 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
+        character( len=* ), intent(in) :: Field_name
         real, optional, dimension(2) :: min_max_limits
         logical, optional, intent(in) :: for_sat
         ! local variables...
@@ -247,7 +248,8 @@ contains
         if (present_and_true(for_sat)) then
             field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         else
-            field => extract_tensor_field( packed_state, "PackedTemperature" )
+            field => extract_tensor_field( packed_state, trim(Field_name) )
+
         end if
         ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ;
         ewrite(3,*) 'Bounding correction input: iphase, icomp, min, max:'

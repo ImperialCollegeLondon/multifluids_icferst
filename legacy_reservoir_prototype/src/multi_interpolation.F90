@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -286,9 +286,9 @@ contains
     ! This section needs to be generalised to work for multi-fields (I think the boundedness subroutine may need generalisation)
     !print *, nfields
     if (have_option('/material_phase[0]/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv)
+       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv, "PackedTemperature")
     else if(have_option('/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv,.true.)
+       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv,"PackedPhaseVolumeFraction" ,.true.)
     endif
     ! DEALLOCATIONS
     deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)
