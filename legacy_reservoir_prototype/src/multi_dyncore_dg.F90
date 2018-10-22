@@ -351,12 +351,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                ELSE
                    vtracer=as_vector(tracer,dim=2)
                    IF ( IGOT_T2 == 1) THEN
-                       call zero_non_owned(Mmat%CV_RHS)
+                       ! call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
                         '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
                    ELSE
-                       call zero_non_owned(Mmat%CV_RHS)
+                       ! call zero_non_owned(Mmat%CV_RHS)
                        call zero(vtracer)
                         call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
@@ -372,7 +372,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-!                   call clone_deallocate_PETSC_ACV_matrix()
+                  !Update halo communications
+
+                  call halo_update(tracer)
 
                    repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
                    call allor(repeat_assemb_solve)
@@ -397,35 +399,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
-
-
-      subroutine clone_deallocate_PETSC_ACV_matrix()!REMOVEME AS SOON AS i AM NOT NEEDED!
-        !This subroutine was created to avoid a bug with Ubuntu 16.04 happening when compiling in non-debugging
-          implicit none
-
-          integer :: ierr
-
-          ierr=0
-          !call decref(Mmat%petsc_ACV)!<= this seems to be the problem; with debugging everything works. This creates a deallocation error when finishing a run
-          if (associated(Mmat%petsc_ACV%refcount)) nullify(Mmat%petsc_ACV%refcount)!do this by hand
-          call MatDestroy(Mmat%petsc_ACV%M, ierr)
-
-          call deallocate(Mmat%petsc_ACV%row_numbering)
-
-          call deallocate(Mmat%petsc_ACV%column_numbering)
-
-          if (associated(Mmat%petsc_ACV%row_halo)) then
-              call deallocate(Mmat%petsc_ACV%row_halo)
-              deallocate(Mmat%petsc_ACV%row_halo)
-          end if
-
-          if (associated(Mmat%petsc_ACV%column_halo)) then
-              call deallocate(Mmat%petsc_ACV%column_halo)
-              deallocate(Mmat%petsc_ACV%column_halo)
-          end if
-
-      end subroutine clone_deallocate_PETSC_ACV_matrix
-
 
       real function convergence_check(temperature, reference_temp)
           implicit none
@@ -754,7 +727,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
-         nonlinear_iteration, Courant_number,option_path,&
+         nonlinear_iteration, SFPI_taken, Courant_number,option_path,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, Quality_list)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
@@ -778,6 +751,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
+             integer, intent(inout) :: SFPI_taken
              real, dimension(:), intent(inout) :: Courant_number
              character(len= * ), intent(in), optional :: option_path
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -934,6 +908,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  end if
                  !Solve the system
                  vtracer=as_vector(tracer,dim=2)
+                 if (IsParallel()) call zero_non_owned(vtracer)!Important for the non-linear solver to work consistently in parallel
                  !If using FPI with backtracking
                  if (backtrack_par_factor < 1.01) then
                      !Backup of the saturation field, to adjust the solution
@@ -947,6 +922,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          !Calculate the actual residual using a previous backtrack_par
                          call mult(residual, Mmat%petsc_ACV, vtracer)
                          !Calculate residual
+                         if (IsParallel()) THEN
+                          call zero_non_owned(residual)
+                          call zero_non_owned(Mmat%CV_RHS)
+                         end if
                          residual%val = Mmat%CV_RHS%val - residual%val
                          resold = res; res = 0
                          do iphase = 1, Mdims%nphase
@@ -955,11 +934,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          end do
                          !We use the highest residual across the domain
                          if (IsParallel()) call allmax(res)
+
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
                  end if
                  call zero(vtracer)
-                 call zero_non_owned(Mmat%CV_RHS)
+                 ! call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
                  !Set to zero the fields
@@ -988,6 +968,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (IsParallel())  call alland(satisfactory_convergence)
                          !If looping again, recalculate
                          if (.not. satisfactory_convergence) then
+                             !Update halos with the new values
+                             if (IsParallel()) call halo_update(sat_field)!Otherwise we update this later on
+                                !we do not update inside the FPI solver just in case someone is not running with that option on
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
@@ -1006,6 +989,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  its = its + 1
                  useful_sats = useful_sats + 1
              END DO Loop_NonLinearFlux
+             !Store the number of Saturation Fixed_Point iterations
+             SFPI_taken = SFPI_taken + its
              !Store the final accumulated backtrack_par_factor to properly calculate the convergence functional
              if (backtrack_par_factor < 1.01) then
                  !Final effective backtrack_par to calculate properly the non linear convergence is:
@@ -1506,7 +1491,7 @@ end if
             !SPRINT_TO_DO: THIS BUSSINES OF RESHAPING IS AWFUL...
             call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
             rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
-            call zero_non_owned(rhs)
+            ! call zero_non_owned(rhs)
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                 call zero(velocity)
                 packed_vel=as_packed_vector(velocity)
@@ -1522,7 +1507,7 @@ end if
             call deallocate(rhs)
             U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
         END IF
-        !            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
+!            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
         deallocate( UP_VEL )
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
@@ -1618,18 +1603,15 @@ end if
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
         end if
-        call zero(deltaP);call zero_non_owned(rhs_p)
+        call zero(deltaP)!;call zero_non_owned(rhs_p)
         !Solve the system to obtain dP (difference of pressure)
         call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
         if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-        if (isParallel()) call halo_update(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
+        ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
 
         P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
-        if (isParallel())then!sprint_to_do need to rethink these parallel communications
-            call zero_non_owned(P_all)
-            call halo_update(P_all)
-        end if
+        if (isParallel()) call halo_update(P_all)
 
         call deallocate(rhs_p)
         call deallocate(cmc_petsc)
@@ -1642,25 +1624,20 @@ end if
                 Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         END DO
         call deallocate(deltaP)
-        if (isParallel()) then!sprint_to_do need to rethink these parallel communications
-            call zero_non_owned(cdp_tensor)
-            call halo_update(cdp_tensor)
-        end if
+        ! if (isParallel()) call zero_non_owned(cdp_tensor)
         ! Correct velocity...
         ! DU = BLOCK_MAT * CDP
         ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
         CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
         U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
+        if (isParallel()) call halo_update(U_ALL2)
 
         DEALLOCATE( DU_VEL )
         if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
-        if (isParallel()) then!sprint_to_do need to rethink these parallel communications
-            call zero_non_owned(U_ALL2)
-            call halo_update(U_ALL2)
-        end if
         call DEALLOCATE( CDP_tensor )
         ! Calculate control volume averaged pressure CV_P from fem pressure P
+        !Ensure that prior to comming here the halos have been updated
         call calc_CVPres_from_FEPres()
 !
         DEALLOCATE( Mmat%CT )
@@ -1674,6 +1651,7 @@ end if
         end if
 
         ! Copy back memory
+        !(Pablo)WHAT IS THIS?? SEEMS RUBBISH TO ME...
         do iphase=1,Mdims%nphase
            U=>extract_vector_field(state(iphase),"U",stat)
            if(stat==0)then
@@ -1759,7 +1737,8 @@ end if
                     END DO
                 ENDIF
             end if
-            call halo_update(CVP_all)
+            !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
+            ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
 
             cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
             if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
@@ -2009,11 +1988,7 @@ end if
                         !this has to go, the mass matrix should not be assembled at all as it can be done on-the-fly so long
                         !we have the mass of each element
                         if (.not.Mmat%Stored) then
-                          ! if (Mmat%compact_PIVIT_MAT) then
                           call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)!
-                          ! else
-                          !   call get_row_sum_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)!prepared to be used for P1DG(BL)P1DG(CV)
-                          ! end if                                                                        !other flags maybe? also a compacted verison?
                         end if
                         !Introduce gravity right-hand-side
                         do U_ILOC = 1, Mdims%u_nloc
@@ -2114,50 +2089,6 @@ end if
                 end if
                 call deallocate_multi_dev_shape_funs(Devfuns)
             END SUBROUTINE porous_assemb_force_cty
-
-            subroutine get_row_sum_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
-              !This subroutine creates a diagonal mass matrix using the row-sum approach
-              !Here no homogenisation can be performed. This approach is intended to be used for the P1DG(BL)P1DG(CV) approach
-              implicit none
-              integer, intent(in) :: ELE
-              type(multi_dimensions), intent(in) :: Mdims
-              type(multi_dev_shape_funs), intent(in) :: Devfuns
-              type (multi_matrices), intent(inout) :: Mmat
-              REAL, DIMENSION( :, : ), intent( in ) :: X_ALL, UFEN_REVERSED
-              !Local variables
-              integer:: I, J, U_JLOC, U_ILOC, GI, JPHASE, JDIM, IPHASE, idim, JPHA_JDIM, IPHA_IDIM
-              REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc ) :: NN_SIGMAGI_ELE
-
-              !Initialise
-              NN_SIGMAGI_ELE = 0.
-              DO U_JLOC = 1, Mdims%u_nloc
-                  DO U_ILOC = 1, Mdims%u_nloc
-                      DO GI = 1, FE_GIdims%cv_ngi
-                            NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) = NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) &
-                            + UFEN_REVERSED(GI, U_ILOC) * UFEN_REVERSED(GI, U_JLOC) * DevFuns%DETWEI( GI )
-                      END DO
-                  END DO
-              END DO
-
-              DO U_JLOC = 1, Mdims%u_nloc
-                  DO U_ILOC = 1, Mdims%u_nloc
-                      DO JPHASE = 1, Mdims%nphase
-                          DO JDIM = 1, Mdims%ndim
-                              JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                              DO IPHASE = 1, Mdims%nphase
-                                  DO IDIM = 1, Mdims%ndim
-                                      IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
-                                      I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
-                                      Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
-                                          NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
-                                  END DO
-                              END DO
-                          END DO
-                      END DO
-                  END DO
-              END DO
-
-            end subroutine
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
 
@@ -6263,7 +6194,7 @@ end if
      real, save :: domain_length = -1
      integer, save :: Cap_pressure_relevant = -1
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
-     real :: Pe_aux, parl_max, parl_min
+     real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe
      real, dimension(:,:,:), pointer :: p
@@ -6366,8 +6297,14 @@ end if
                          end do
                      end do
                  end do
+                 Pe_max = maxval(Pe)
+                 Pe_min = minval(Pe)
+                 if (IsParallel()) then
+                     call allmax(Pe_max)
+                     call allmin(Pe_min)
+                 end if
                  !Homogenise the value, this seems to be better to avoid problems
-                 Pe = (maxval(Pe)+minval(Pe))/2.
+                 Pe = (Pe_max+Pe_min)/2.
              else
                  Pe = Pe_aux
              end if
@@ -6833,7 +6770,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
             ph_sol % option_path = path
 
-            call zero(ph_sol) ; call zero_non_owned(rhs)
+            call zero(ph_sol) !; call zero_non_owned(rhs)
 
             call petsc_solve( ph_sol, matrix, rhs )
 
@@ -7372,20 +7309,31 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
         real :: factor, factor_default
         real, save :: lump_vol_factor =-1d25
         real, save :: scaling_vel_nodes = -1
+
         !Weights for lumping taken from Zienkiewicz vol 1 page 475
         real, parameter :: corner = 3./57.
         real, parameter :: midpoint = 16./57.
-        !Obtain the scaling factor to spread the volume of the mass matrix
-        if (scaling_vel_nodes<0) then
-            scaling_vel_nodes = dble(Mdims%u_nloc)
-            !Adjust for linear bubble functions, P1(BL)DG
-            !We are adding an extra node that adds extra velocity that needs to be compensated
-            if ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or.&
-                    (Mdims%ndim==3 .and. Mdims%u_nloc == 5)) then
-                scaling_vel_nodes = scaling_vel_nodes - dble(Mdims%u_nloc)/dble(Mdims%ndim+1)!1.0
-                lump_vol_factor = 0.!No velocity homogenisation for bubble elements
-            end if
-        end if
+
+
+        !Weights for direct mass lumping scaling for bubble elements
+         real, parameter :: Tau2D = 1.5 !Number obtained in Osman et al. 2019
+         real, parameter :: Tau3D = 1.4 !Number obtained in Osman et al. 2019
+
+         !Obtain the scaling factor to spread the volume of the mass matrix
+         if (scaling_vel_nodes<0) then
+             scaling_vel_nodes = dble(Mdims%u_nloc)
+             !Adjust for linear bubble functions, P1(BL)DG
+             !We are adding an extra node that adds extra velocity that needs to be compensated
+             if (Mdims%ndim==2 .and. Mdims%u_nloc == 4) then
+                 scaling_vel_nodes = scaling_vel_nodes/Tau2D
+                 lump_vol_factor = 0.!No velocity homogenisation for bubble elements
+             end if
+             if (Mdims%ndim==3 .and. Mdims%u_nloc == 5) then
+                 scaling_vel_nodes = scaling_vel_nodes/Tau3D
+                 lump_vol_factor = 0.!No velocity homogenisation for bubble elements
+             end if
+
+         end if
 
         !No homogenisation for Pressure discontinuous formulations
         if (Mdims%mat_nonods == Mdims%p_nonods) lump_vol_factor = 0.
@@ -7405,7 +7353,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                         end do
                     end do
                 end do
-            case default !Create the mass matrix normally by distributting the mass evenly between the nodes
+            case default !Create the mass matrix normally by distributing the mass evenly between the nodes
                 do i=1,size(Mmat%PIVIT_MAT,1)
                     Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/scaling_vel_nodes
                 END DO

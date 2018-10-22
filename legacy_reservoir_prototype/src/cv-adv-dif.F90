@@ -4751,7 +4751,7 @@ end if
                 end if
             end if
             do it = 1, size(fempsi)
-                call zero_non_owned(fempsi_rhs(it))
+                ! call zero_non_owned(fempsi_rhs(it))
                 call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = option_path)
             end do
         end if

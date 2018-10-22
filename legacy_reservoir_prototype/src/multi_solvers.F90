@@ -469,7 +469,7 @@ contains
         real, save :: anders_exp!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
         !Local variables        !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak
         real, dimension(:, :), pointer :: Satura
-        logical :: new_time_step, new_FPI
+        logical :: new_time_step, new_FPI, Undo_update
         real :: aux
         integer :: i
         !Parameters for the automatic backtrack_par
@@ -487,19 +487,11 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        if (is_porous_media) then
-            call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
-            sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-            Satura =>  sat_field%val(1,:,:)
-            !Stablish minimum backtracking parameter
-            min_backtrack = 0.1
-        else
-            !Use the pressure as it is in this case the field of interest
-            sat_field => extract_tensor_field( packed_state, "PackedFEPressure" )
-            Satura =>  sat_field%val(1,:,:)
-            !Stablish minimum backtracking parameter
-            min_backtrack = 0.05
-        end if
+        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        Satura =>  sat_field%val(1,:,:)
+        !Stablish minimum backtracking parameter
+        min_backtrack = 0.1
 
         !Automatic method based on the history of convergence
         if (backtrack_par_from_schema < 0.0) then
@@ -521,7 +513,7 @@ contains
                 anders_exp = max(anders_exp, 0.)
             end if
 
-            if (new_time_step .and.is_porous_media) then
+            if (new_time_step) then
                 !Store last convergence to use it as a reference
                 Previous_convergence = Convergences(1)
                 !restart all the storage
@@ -541,7 +533,9 @@ contains
                     maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
-                if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
+                Undo_update = its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.
+                if (IsParallel()) call allor(Undo_update)!Consistently repeat an update if required
+                if (Undo_update) then
                     Satura = backtrack_sat
                     !We do not allow two consecutive undos
                     allow_undo = .false.
@@ -567,7 +561,12 @@ contains
                         !Calculate the new optimal backtrack_par parameter
                         backtrack_pars(1) = get_optimal_backtrack_par(backtrack_pars(2:), Convergences, Coefficients)
                 end select
-
+                !If it is parallel then we want to be consistent between cpus
+                !we use the smallest value, since it is more conservative
+                if (IsParallel()) then
+                    call allmin(backtrack_pars(1))
+                    call allmin(Convergences(1))
+                end if
                 !Update history, 1 => newest
                 do i = size(backtrack_pars), 2, -1
                     backtrack_pars(i) = backtrack_pars(i-1)
@@ -578,6 +577,7 @@ contains
 
             end if
         else!Use the value introduced by the user
+
             backtrack_pars(1) = backtrack_par_from_schema
             !Just one local saturation iteration
             satisfactory_convergence = .true.
@@ -585,29 +585,20 @@ contains
 
         ewrite(1,*) "backtrack_par factor",backtrack_pars(1)
 
-        !If it is parallel then we want to be consistent between cpus
-        !we use the smallest value, since it is more conservative
-        if (IsParallel()) then
-            call allmin(backtrack_pars(1))
-            call allmin(Convergences(1))
-        end if
+
         !***Calculate new saturation***
-        if (is_porous_media) then
-            !Obtain new saturation using the backtracking method
-            if (useful_sats < 2 .or. satisfactory_convergence) then
-                !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
-                Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
-            else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
+        !Obtain new saturation using the backtracking method
+        if (useful_sats < 2 .or. satisfactory_convergence) then
+            !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
+            Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
+        else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
 
-                !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
-                !The highest value of backtrack_sat is displaced to low values of alpha
-                aux = 1.0 - backtrack_pars(1)
-                Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
-                    aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
+            !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
+            !The highest value of backtrack_sat is displaced to low values of alpha
+            aux = 1.0 - backtrack_pars(1)
+            Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
+                aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
-            end if
-            !Update halos with the new values
-            if (IsParallel()) call halo_update(sat_field)
         end if
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
@@ -797,14 +788,16 @@ contains
         type( state_type ), dimension(:), intent(in) :: state
         !Local variables
         type(scalar_field), pointer :: pipe_diameter
+        type(tensor_field), pointer :: sat_field
         integer :: iphase, cv_iloc, ele, cv_nod, i_start, i_end, ipres, stat
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
 
-
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+        !Obtain saturation field from packed_state
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        satura =>  sat_field%val(1,:,:)
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
@@ -820,11 +813,12 @@ contains
             do ele = 1, Mdims%totele
                 do cv_iloc = 1, Mdims%cv_nloc
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                    if ( .not. node_owned( sat_field, cv_nod ) ) cycle
                     if (ipres>1 .and. stat == 0) then
                         if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
                     end if
                     moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
-                    !Work in normalize saturation here
+                    !Work in normalized saturation here
                     Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
                         Immobile_fraction(i_start:i_end, ele))/moveable_sat
                     sum_of_phases = sum(Normalized_sat(i_start:i_end))
@@ -842,6 +836,10 @@ contains
                 end do
             end do
         end do
+        !Update halos
+        ! if (IsParallel()) call zero_non_owned(sat_field) !Use zero_non_owned because this is part
+                                                    !of the FPI solver, otherwise halo_update should be used
+         !call halo_update(sat_field)!Ensure consistency across CPUs
         !Deallocate
         deallocate(Normalized_sat)
 
@@ -860,10 +858,12 @@ contains
         real :: maxsat, minsat, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
+        type(tensor_field), pointer :: sat_field
         real, dimension(:, :), pointer :: Immobile_fraction
 
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
-        !Get Immobile_fractions
+        !Obtain saturation field from packed_state
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        satura =>  sat_field%val(1,:,:)        !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
         !Allocate
@@ -904,6 +904,8 @@ contains
                 end do
             end do
         end do
+        !Update halos
+        call halo_update(sat_field)!Ensure consistency across CPUs
         !Deallocate
         deallocate(Normalized_sat)
 
@@ -986,7 +988,7 @@ contains
         !For the first calculation, the Courant number is usually zero, hence we force a safe value here
         if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
         !Use the most restrictive value across all the processors
-        if (IsParallel()) call allmin(backtrack_par_factor)
+        if (IsParallel()) call allmin(backtrack_par_factor)!Should not be necessary as the Courant numbers are already parallel safe
 
     end subroutine auto_backtracking
 

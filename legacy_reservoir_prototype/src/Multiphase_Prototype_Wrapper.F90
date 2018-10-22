@@ -132,7 +132,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call get_option("/timestepping/finish_time", finish_time)
 
     call get_option('/simulation_name',simulation_name)
-    call initialise_diagnostics(trim(simulation_name),state)
+    call initialise_diagnostics(trim(simulation_name),state, ICFERST = .true.)
 
     ! Calculate the number of scalar fields to solve for and their correct
     ! solve order taking into account dependencies.
