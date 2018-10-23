@@ -704,6 +704,9 @@ contains
 
         deallocate( perturbation_pressure, RhoPlus, RhoMinus )
 
+        !No need to update halos as all the operations are local, and all the
+        !input fields have to be updated already
+        ! if (IsParallel()) call halo_update(density)
     end subroutine Calculate_Rho_dRhodP
 
 
@@ -1783,7 +1786,7 @@ contains
       else
 
          ! return here as code below untested
-         return
+         return!sprint_to_do remove code below
 
          t_field => extract_tensor_field( state( 1 ), "Viscosity", stat ) ! need to set dimensions in diamond - Populate_State.F90:2164
          if ( stat == 0 ) then

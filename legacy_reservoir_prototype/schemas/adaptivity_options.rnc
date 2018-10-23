@@ -1004,6 +1004,7 @@ hr_adaptivity =
             ## Elements with a quality greater than this will be liable to be
             ## on the parition boundary. Below this, they will be free to be adapted
             ## and improved. Range is 0 to 1, with default 0.6
+            ## Nonetheless, for CV pressure the default is 0.05 as it is a much more robust formulation
             element element_quality_cutoff {
                 real
             }?,

@@ -373,7 +373,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                   !Update halo communications
-
                   call halo_update(tracer)
 
                    repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
@@ -547,8 +546,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !Working pointers
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
-             type(tensor_field), pointer :: tracer, velocity, density, deriv
-             type(scalar_field), pointer :: gamma, A
+             type(tensor_field), pointer :: velocity, density, deriv, sat_field
+             type(scalar_field), pointer :: gamma
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
              !Variables for global convergence method
@@ -559,13 +558,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
-             integer :: Max_sat_its
+             integer :: Max_sat_its, total_cv_nodes
              real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
-             type (tensor_field), pointer :: sat_field
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1
              integer :: its_taken
@@ -631,7 +629,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  end if
              END IF
              Mdisopt%v_beta = 1.0
-             tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
              velocity=>extract_tensor_field(packed_state,"PackedVelocity")
              density=>extract_tensor_field(packed_state,"PackedDensity")
              sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
@@ -643,19 +640,22 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !We store the convergence of the previous FPI to compare with
              Previous_convergence = backtrack_or_convergence!<== deprecated?
              its = 1; useful_sats = 1;
+             total_cv_nodes = Mdims%cv_nonods
+             call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
+             !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
              if (resold < 0 ) res = huge(res)!<=initialize res once
-             call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+             call allocate(Mmat%CV_RHS,Mdims%nphase,sat_field%mesh,"RHS")
              !Allocate residual, to compute the residual
-             if (backtrack_par_factor < 1.01) call allocate(residual,Mdims%nphase,tracer%mesh,"residual")
+             if (backtrack_par_factor < 1.01) call allocate(residual,Mdims%nphase,sat_field%mesh,"residual")
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
                  !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
                  !it works, but it complains...
-                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
+                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field)
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                     tracer, velocity, density, multi_absorp, &
+                     sat_field, velocity, density, multi_absorp, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
                      Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
@@ -678,8 +678,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     call allmax(Courant_number(1)); call allmax(Courant_number(2))
                  end if
                  !Solve the system
-                 vtracer=as_vector(tracer,dim=2)
-                 if (IsParallel()) call zero_non_owned(vtracer)!Important for the non-linear solver to work consistently in parallel
+                 vtracer=as_vector(sat_field,dim=2)
                  !If using FPI with backtracking
                  if (backtrack_par_factor < 1.01) then
                      !Backup of the saturation field, to adjust the solution
@@ -689,28 +688,25 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                          end if
-
                          !Calculate the actual residual using a previous backtrack_par
                          call mult(residual, Mmat%petsc_ACV, vtracer)
-                         !Calculate residual
-                         if (IsParallel()) THEN
-                          call zero_non_owned(residual)
-                          call zero_non_owned(Mmat%CV_RHS)
-                         end if
+                         !Now residual is calculated as Residual = RHS - A*X0
                          residual%val = Mmat%CV_RHS%val - residual%val
+                         if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
                          resold = res; res = 0
                          do iphase = 1, Mdims%nphase
-                             aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
+                            !L2 norm of the resodal; needs to be done in steps to ensure cosistency in parallel
+                             aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
+                             call allsum(aux)
+                             aux = sqrt(aux)/ dble(total_cv_nodes)
                              if (aux > res) res = aux
                          end do
                          !We use the highest residual across the domain
                          if (IsParallel()) call allmax(res)
-
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
                  end if
                  call zero(vtracer)
-                 ! call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
                  !Set to zero the fields
@@ -727,7 +723,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
                          call FPI_backtracking(Mdims, ndgln, state,packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
-                             useful_sats,res, res/resold, first_res)
+                             useful_sats,res, res/resold, first_res)!halos are updated within this subroutine
                          !Store the accumulated updated done
                          updating = updating + new_backtrack_par
                          !If the backtrack_par factor is not adaptive, then, just one iteration
@@ -739,9 +735,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (IsParallel())  call alland(satisfactory_convergence)
                          !If looping again, recalculate
                          if (.not. satisfactory_convergence) then
-                             !Update halos with the new values
-                             if (IsParallel()) call halo_update(sat_field)!Otherwise we update this later on
-                                !we do not update inside the FPI solver just in case someone is not running with that option on
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
@@ -754,7 +747,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                              exit Loop_NonLinearFlux
                          end if
                      end if
-                 else!Just one iteration
+                 else !Just one iteration
+                     if (IsParallel()) call halo_update(sat_field)
                      exit Loop_NonLinearFlux
                  end if
                  its = its + 1
@@ -774,13 +768,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
              if (its_taken >= max_allowed_its  .or. its_taken == 0 ) solver_not_converged = .true.
 
-             if (IsParallel()) then
-                !Make sure the parameter is consistent between cpus
-                call allmin(backtrack_or_convergence)
-                !Update halos with the new values
-                call halo_update(sat_field)
-             end if
-
+             !Make sure the parameter is consistent between cpus
+             if (IsParallel()) call allmin(backtrack_or_convergence)
 
              !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
              deallocate( THETA_GDIFF, Mmat%CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
@@ -794,12 +783,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
-
-             ! Copy back memory
-             do iphase=1,Mdims%nphase
-                A=>extract_scalar_field(state(iphase),"PhaseVolumeFraction")
-                A%val=tracer%val(1,iphase,:)
-             end do
 
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
@@ -1277,7 +1260,7 @@ end if
             call deallocate(rhs)
             U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
         END IF
-!            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
+        ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
         deallocate( UP_VEL )
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
@@ -1508,7 +1491,7 @@ end if
                 ENDIF
             end if
             !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
-            ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
+             ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
 
             cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
             if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
@@ -1598,7 +1581,6 @@ end if
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
 
-
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
@@ -1611,6 +1593,7 @@ end if
             CALL porous_assemb_force_cty( packed_state, pressure, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
         else!Normal and more general method
+
             CALL ASSEMB_FORCE_CTY( state, packed_state, &
                 Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
                 velocity, pressure, &
@@ -1642,7 +1625,6 @@ end if
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
 
-        call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
             tracer, velocity, density, multi_absorp, &

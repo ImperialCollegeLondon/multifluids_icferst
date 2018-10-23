@@ -241,7 +241,6 @@ contains
         integer :: ele, iloc, jloc
         real :: mm
         integer, dimension( : ), pointer ::  x_ndgln, cv_ndgln
-        type(scalar_field) :: mass_cv_sur_halo
         type( vector_field ), pointer :: x
         real, dimension(:,:), pointer :: Immobile_fraction
         if (present_and_true(for_sat)) then
@@ -262,7 +261,6 @@ contains
         allocate( r_min( ndim1, ndim2 ), r_max( ndim1, ndim2 ) )
         allocate( ii_min( ndim1, ndim2 ), ii_max( ndim1, ndim2 ) )
         allocate( mass_cv( Mdims%cv_nonods ), mass_cv_sur( Mdims%cv_nonods ) )
-        call allocate(mass_cv_sur_halo,field%mesh,'mass_cv_sur_halo')
         ufield => extract_tensor_field( packed_state, "PackedVelocity" )
 
         x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -284,16 +282,13 @@ contains
         end do
         mass_cv_sur = 0.0
         do inod = 1, Mdims%cv_nonods
-            if ( .not. node_owned( field, inod ) ) cycle
+            !Since everything is local, we overcycle and then we can avoid halo_updates
+            ! if ( .not. node_owned( field, inod ) ) cycle
             do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                 jnod = small_colm( count )
                 mass_cv_sur(inod) = mass_cv_sur(inod) + mass_cv( jnod )
             end do
         end do
-        ! Obtain the halos of mass_cv_sur:
-        mass_cv_sur_halo%val(:)=mass_cv_sur(:)
-        call halo_update(mass_cv_sur_halo)
-        mass_cv_sur(:)=mass_cv_sur_halo%val(:)
         !Establish bounds
         if (present_and_true(for_sat)) then
             !Define the immobile fractions for each phase
@@ -382,7 +377,9 @@ contains
                 end do ! do knod = 1, Mdims%cv_nonods
                 if ( .not. changed_something ) exit ! stop iterating and move onto next stage of iteration...
             end do ! do loc_its=1,nloc_its
-            call halo_update( field )
+            !We are potentially calling halo_update 500 times...
+            ! call halo_update( field )!For principles this should not even exist here in this loop
+
             ! This iteration is very good at avoiding stagnating but does spread the modifcations far.
             ! use a single iteration because of this as default...
             do loc_its2 = 1, nloc_its2
@@ -418,7 +415,8 @@ contains
                 ! adjust the values...
                 error_changed = maxval( abs( -field_dev_val + field_alt_val ) )
                 field%val( :, :, : ) = field%val( :, :, : ) - field_dev_val( :, :, : ) + field_alt_val( :, :, : )
-                call halo_update( field )
+                !We are potentially calling halo_update 500 times...
+                ! call halo_update( field )!For principles this should not even exist here in this loop
             end do ! loc_its2
             ! communicate the errors ( max_change, error_changed ) ...
             ! this could be more efficient sending a vector...
@@ -426,6 +424,9 @@ contains
             call allmax( max_max_error )
             if ( max_max_error < error_tol ) exit
         end do ! gl_its
+        !After performing everything update halos only once...
+        if (IsParallel()) call halo_update( field )
+
         ewrite(3,*) 'Bounding correction output: iphase, icomp, min, max:'
         do j = 1, ndim2
             do i = 1, ndim1
@@ -438,7 +439,6 @@ contains
         deallocate( r_min, r_max )
         deallocate( ii_min, ii_max )
         deallocate( mass_cv, mass_cv_sur )
-        call deallocate(mass_cv_sur_halo)
         call deallocate_multi_dev_shape_funs(DevFuns)
         return
     end subroutine BoundedSolutionCorrections
@@ -485,7 +485,7 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
+        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!halos are updated within this subroutine
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         Satura =>  sat_field%val(1,:,:)
         !Stablish minimum backtracking parameter
@@ -834,11 +834,8 @@ contains
                 end do
             end do
         end do
-        !Update halos
-        ! if (IsParallel()) call zero_non_owned(sat_field) !Use zero_non_owned because this is part
-                                                    !of the FPI solver, otherwise halo_update should be used
-         !call halo_update(sat_field)!Ensure consistency across CPUs
-        !Deallocate
+        !Ensure cosistency across CPUs
+        if (IsParallel())call halo_update(sat_field)
         deallocate(Normalized_sat)
 
     end subroutine Set_Saturation_to_sum_one

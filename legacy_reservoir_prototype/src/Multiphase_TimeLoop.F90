@@ -1230,8 +1230,10 @@ end if
                         call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
-                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
-                    call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    if (Mdims%n_in_pres > 1) then !Adjust saturation if multiphase only...
+                      call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
+                      call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    end if
                 end if
                 if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,min_max_limits = min_max_limits_before)
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************

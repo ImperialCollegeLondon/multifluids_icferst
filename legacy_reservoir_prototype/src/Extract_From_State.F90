@@ -2484,7 +2484,7 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     !Functional considering the average of the inf norm of the 1% of the nodes!
     real, dimension(size(phasevolumefraction,1), size(phasevolumefraction,2)) :: sat_diff
     integer, dimension(size(phasevolumefraction,2)) :: sorted_list
-    integer :: k, i
+    integer :: k, i, total_cv_nodes
     logical :: Inf_potential = .false.
 
     if (Inf_potential) then
@@ -2504,13 +2504,15 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
 
     modified_vals = 0
     get_Convergence_Functional = 0.0
-
+    total_cv_nodes = size(phasevolumefraction,2)
+    call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
+    !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
     !(L2)**2 norm of all the elements
     do iphase = 1, size(phasevolumefraction,1)
 
-        tmp = sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))/size(phasevolumefraction,2))**2.0)
+        tmp = sum(abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:)))
         call allsum(tmp)
-
+        tmp = (tmp/dble(total_cv_nodes))**2.0
         get_Convergence_Functional = max(tmp, get_Convergence_Functional)
     end do
 
@@ -3119,9 +3121,9 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_abso
             end do
         end do
     end do
-    do iphase = 1, Mdims%n_in_pres
-        call halo_update(darcy_velocity(iphase)%ptr)
-    end do
+    ! do iphase = 1, Mdims%n_in_pres!No need to update halos if the velocity is already updated
+    !     call halo_update(darcy_velocity(iphase)%ptr)
+    ! end do
 end subroutine get_DarcyVelocity
 
     subroutine Get_Scalar_SNdgln( sndgln, field  )
