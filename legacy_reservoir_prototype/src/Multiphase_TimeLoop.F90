@@ -1114,6 +1114,9 @@ contains
                 saltfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
                 solute_min_max_limits_before(1) = minval(saltfield%val); call allmin(solute_min_max_limits_before(1))
                 solute_min_max_limits_before(2) = maxval(saltfield%val); call allmax(solute_min_max_limits_before(2))
+                !sprint_to_do: check the boundedness of the mass fraction (and also the temperature) field
+                !solute_min_max_limits_before(1) = 0.; call allmin(solute_min_max_limits_before(1))
+                !solute_min_max_limits_before(2) = 1.0; call allmax(solute_min_max_limits_before(2))
             end if
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then

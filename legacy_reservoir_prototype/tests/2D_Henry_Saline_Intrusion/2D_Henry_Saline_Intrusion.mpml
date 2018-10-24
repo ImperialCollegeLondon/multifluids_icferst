@@ -599,12 +599,12 @@
                 <hypre_type name="boomeramg"/>
               </preconditioner>
               <relative_error>
-                <real_value rank="0">0.01</real_value>
+                <real_value rank="0">1e-10</real_value>
               </relative_error>
               <max_iterations>
                 <integer_value rank="0">1000</integer_value>
               </max_iterations>
-              <ignore_all_solver_failures/>
+              <never_ignore_solver_failures/>
               <diagnostics>
                 <monitors/>
               </diagnostics>
@@ -702,12 +702,12 @@
                 <hypre_type name="boomeramg"/>
               </preconditioner>
               <relative_error>
-                <real_value rank="0">0.01</real_value>
+                <real_value rank="0">1e-10</real_value>
               </relative_error>
               <max_iterations>
                 <integer_value rank="0">1000</integer_value>
               </max_iterations>
-              <ignore_all_solver_failures/>
+              <never_ignore_solver_failures/>
               <diagnostics>
                 <monitors/>
               </diagnostics>
