@@ -906,7 +906,7 @@ contains
             kv_kh_ratio = abs(kv_kh_ratio)
         end if
 
-        if ( present(Quality_list) .and. kv_kh_ratio > 1d-8 ) then
+        if ( present(Quality_list) .and. kv_kh_ratio > 1d-8 ) then!sprint_to_do remove everything related to quality list
             if (allocated(Quality_list)) then
             ! create transformation matrix with Kv/kh ratio
             ! |1    0    0    |  |1    0     |
@@ -949,7 +949,7 @@ contains
 
        !For simple Black-Oil modelling the viscosity is calculated using the PVT tables
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
-           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
+           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))!sprint_to_do remove extended_Black_Oil
            call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 3, viscosities = viscosities)
        else
             allocate(viscosities(Mdims%nphase, 1))

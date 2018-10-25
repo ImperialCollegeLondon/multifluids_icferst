@@ -485,7 +485,6 @@ contains
         real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
         real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
 
-
         !Check vanishing artificial diffusion options
         VAD_activated = .false.
         if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
@@ -1547,7 +1546,6 @@ contains
                             ELSE
                                 CAP_DIFF_COEF_DIVDX( : ) = 0.0
                             END IF If_GOT_CAPDIFFUS
-
                             ! Pack ndotq information:
                             IPT=1
                             CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) ) ! t
