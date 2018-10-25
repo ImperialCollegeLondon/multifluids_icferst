@@ -503,6 +503,25 @@ contains
         call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
         call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
             Mdisopt%t_theta, default = 1. )
+        !! Arash
+        !!$ Solving Advection Field: Salt
+        option_path = '/material_phase[0]/scalar_field::SoluteMassFraction'
+        option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
+        option_path3 = trim( option_path ) //  '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
+        Mdisopt%t_disopt = 1
+        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_c, default = 3 )
+        Conditional_CDISOPT: if( have_option( trim( option_path2 ) ) ) then
+            if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value/' // &
+                'limiter::CompressiveAdvection' ) ) then
+                Mdisopt%t_disopt = 9
+            else
+                if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value' ) ) &
+                    Mdisopt%t_disopt = 5
+            end if
+        end if Conditional_CDISOPT
+        call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
+        call get_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/temporal_discretisation/theta', &
+            Mdisopt%t_theta, default = 1. )
         !!$ Solving Advection Field: Volume fraction
         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction'
         option_path2 = trim( option_path ) // '/prognostic/spatial_discretisation/control_volumes/face_value'
@@ -574,8 +593,11 @@ contains
         pmesh => extract_mesh( state, 'PressureMesh' )
 
         do iphase = 1, nphase
-
-            field_name = 'Temperature'
+            !Because the tracer comes from packed state, all the names have attached
+            !packed before the name field: PackedTemperature for example
+            !However here we want to extract the information from state and Therefore
+            !we get the name without the packed in front.
+            field_name = trim(tracer%name(7:))!'Temperature'
             field => extract_scalar_field( state( iphase ), trim( field_name ) )
 
             option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
@@ -681,7 +703,6 @@ contains
             end do Loop_BC
 
         end do
-
     end subroutine update_boundary_conditions
 
     subroutine pack_multistate(npres, state, packed_state, &
@@ -896,6 +917,13 @@ contains
             call insert_sfield(packed_state,"Temperature",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
             call insert_sfield(packed_state,"FETemperature",1,nphase)
+        end if
+
+        !! Arash
+        if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
+            call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
+                add_source=.true.,add_absorption=.true.)
+            call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
         end if
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
@@ -1142,6 +1170,20 @@ contains
                     call unpack_sfield(state(i),packed_state,"Temperature",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
+                !! Arash
+                if(have_option(trim(state(i)%option_path)&
+                    //'/scalar_field::SoluteMassFraction')) then
+                    call unpack_sfield(state(i),packed_state,"OldSoluteMassFraction",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"SoluteMassFraction"),&
+                        extract_scalar_field(state(i),"OldSoluteMassFraction")))
+                    call unpack_sfield(state(i),packed_state,"IteratedSoluteMassFraction",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"SoluteMassFraction"),&
+                        extract_scalar_field(state(i),"IteratedSoluteMassFraction")))
+                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionSource",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionAbsorption",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"SoluteMassFraction",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"SoluteMassFraction"),"SoluteMassFraction")
+                end if
 
                 if(has_phase_volume_fraction) then
                     call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
@@ -1180,6 +1222,11 @@ contains
 
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
+        end if
+
+        !! Arash
+        if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"SoluteMassFraction")
         end if
 
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
@@ -1991,7 +2038,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
-    real, dimension(:,:), pointer :: phasevolumefraction, temperature
+    real, dimension(:,:), pointer :: phasevolumefraction, temperature, solutemassfraction
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message =''
     !Variables for automatic non-linear iterations
@@ -2127,6 +2174,22 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     end if
                     reference_field(1,:,:) = temperature
                     reference_field(2,:,:) = phasevolumefraction
+                    !! Arash
+                  case (5)!Salt
+                      call get_var_from_packed_state(packed_state, solutemassfraction = solutemassfraction)
+                      if (allocated(reference_field)) then
+                          if (size(reference_field,2) /= size(solutemassfraction,1) .or. &
+                              size(reference_field,3) /= size(solutemassfraction,2) ) then
+                              deallocate(reference_field)
+                              !If temperature, also keep and eye on saturation with the other convergence criterion
+                              allocate (reference_field(2,size(solutemassfraction,1),size(solutemassfraction,2) ))
+                          end if
+                      else
+                          allocate (reference_field(2,size(solutemassfraction,1),size(solutemassfraction,2) ))
+                      end if
+                      reference_field(1,:,:) = solutemassfraction
+                      reference_field(2,:,:) = phasevolumefraction
+
                 case default !Default as pressure is always defined and changes more smoothly than velocity
                     if (allocated(reference_field)) then
                         if (size(reference_field,3) /= size(pressure,3) ) then
@@ -2172,6 +2235,27 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     ts_ref_val = inf_norm_scalar_normalised(temperature(:,:), reference_field(1,:,:), 1.0, totally_min_max)
                     !Calculate value of the l infinitum for the saturation as well
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+                    !! Arash
+                case (5)!Salt
+                  ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
+                  !Calculate value of the l infinitum for the saturation as well
+                  inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+
+                  ! !Calculate value of the functional (considering wells and reservoir)
+                  ! ts_ref_val = get_Convergence_Functional(tracer, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
+                  ! backtrack_or_convergence = get_Convergence_Functional(tracer, reference_field(1,:,:), backtrack_or_convergence)
+                  ! !call get_var_from_packed_state(packed_state, tracer = tracer)
+                  !Calculate normalized infinite norm of the difference
+                                                          !This Mask is important because otherwise it gets the lowest saturation value
+                  !totally_min_max(1)=minval(reference_field, MASK = reference_field > 0.000001)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
+                  !totally_min_max(2)=maxval(reference_field)!use stored temperature
+                  !For parallel
+                  !call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+                  !Analyse the difference !Calculate infinite norm, not consider wells
+                  !ts_ref_val = inf_norm_scalar_normalised(tracer(:,:), reference_field(1,:,:), 1.0, totally_min_max)
+                  !Calculate value of the l infinitum for the saturation as well
+                  !inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
                     totally_min_max(1)=minval(reference_field)!use stored pressure
@@ -2203,7 +2287,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection == 4) then
+            else if (is_porous_media .and. variable_selection >= 4) then!temperature or concentration
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", its
@@ -2215,7 +2299,11 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             !Automatic non-linear iteration checking
             if (is_porous_media) then
                 select case (variable_selection)
-                    case (4)!For temperature only infinite norms for saturation and temperature
+                case (4)!For temperature only infinite norms for saturation and temperature
+                        ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
+                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                !Arash
+                case (5)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                     case default
@@ -2610,7 +2698,8 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
-    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term)
+    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, SoluteMassFraction,&
+    OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction)
     !This subroutine returns a pointer to the desired values of a variable stored in packed state
     !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
     !and also all of them are optional, hence you can obtaine whichever you want
@@ -2633,7 +2722,8 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
-        Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
+        SoluteMassFraction, OldSoluteMassFraction, IteratedSoluteMassFraction, FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
+        Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
     real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
@@ -2759,6 +2849,32 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
         IteratedFETemperature =>  tfield%val(1,:,:)
     end if
+    !Arash
+    if (present(SoluteMassFraction)) then
+        tfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+        SoluteMassFraction =>  tfield%val(1,:,:)
+    end if
+    if (present(OldSoluteMassFraction)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldSoluteMassFraction" )
+        OldSoluteMassFraction =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedSoluteMassFraction)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedSoluteMassFraction" )
+        IteratedSoluteMassFraction =>  tfield%val(1,:,:)
+    end if
+    if (present(FESoluteMassFraction)) then
+        tfield => extract_tensor_field( packed_state, "PackedFESoluteMassFraction" )
+        FESoluteMassFraction =>  tfield%val(1,:,:)
+    end if
+    if (present(OldFESoluteMassFraction)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldFESoluteMassFraction" )
+        OldFESoluteMassFraction =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedFESoluteMassFraction)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedFESoluteMassFraction" )
+        IteratedFESoluteMassFraction =>  tfield%val(1,:,:)
+    end if
+
 
     if (present(Velocity)) then
         tfield => extract_tensor_field( packed_state, "PackedVelocity" )
@@ -3225,6 +3341,13 @@ end subroutine get_DarcyVelocity
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
+                !Arash
+                if (has_salt) then
+                    do iphase = 1, size(outfluxes%intflux,1)
+                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum solutemassfraction"
+                        whole_line = trim(whole_line) //","// trim(tempstring(iphase))
+                    enddo
+                end if
             end do
              ! Write out the line
             write(89,*), trim(whole_line)
@@ -3244,6 +3367,13 @@ end subroutine get_DarcyVelocity
             if (has_temperature) then
                 do iphase = 1, size(outfluxes%intflux,1)
                     write(tempstring(iphase),'(E17.11)') outfluxes%totout(2, iphase,ioutlet)
+                    whole_line = trim(whole_line) //","// trim(tempstring(iphase))
+                enddo
+            end if
+            !Arash
+            if (has_salt) then
+                do iphase = 1, size(outfluxes%intflux,1)
+                    write(tempstring(iphase),'(E17.11)') outfluxes%totout(3, iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
             end if

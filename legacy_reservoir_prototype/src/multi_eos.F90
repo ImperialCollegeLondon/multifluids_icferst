@@ -54,6 +54,7 @@ module multiphase_EOS
 
     real, parameter :: flooding_hmin = 1e-5
 
+
 contains
 
     subroutine Calculate_All_Rhos( state, packed_state, Mdims )
@@ -210,8 +211,13 @@ contains
                  PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP
 
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
+                 !Cp_s => extract_scalar_field( state( iphase ), 'SoluteMassFractionHeatCapacity', stat )
                  if ( stat == 0 ) call assign_val(Cp,Cp_s % val)
                  DensityCp_Bulk( sp : ep ) = Rho * Cp
+
+                 !Arash
+                 if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
+                 DensityCp_Bulk( sp : ep ) = Rho
 
               end if
 
@@ -245,7 +251,7 @@ contains
         end do ! iphase
 
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
-        if ( boussinesq ) field2 % val = 1.0
+        !if ( boussinesq ) field2 % val = 1.0
 
         deallocate( Rho, dRhodP, Cp, Component_l)
         deallocate( Density_Component, Density_Bulk, DensityCp_Bulk )
@@ -370,11 +376,13 @@ contains
         real, dimension( : ), allocatable :: ro0
 
         type( tensor_field ), pointer :: pressure
-        type( scalar_field ), pointer :: temperature, density
+        type( scalar_field ), pointer :: temperature, density, salt_concentration
         character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python, buffer
         character( len = python_func_len ) :: pycode
         logical, save :: initialised = .false.
         logical :: have_temperature_field
+        !! Arash
+        logical :: have_salt_field
         real, parameter :: toler = 1.e-10
         real, dimension( : ), allocatable, save :: reference_pressure
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
@@ -395,6 +403,9 @@ contains
         pressure => extract_tensor_field( packed_state, 'PackedCVPressure' )
         temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
         have_temperature_field = ( stat == 0 )
+        !! Arash
+        salt_concentration => extract_scalar_field( state( iphase ), 'SoluteMassFraction', stat )
+        have_salt_field = ( stat == 0 )
 
         assert( node_count( pressure ) == size( rho ) )
         assert( node_count( pressure ) == size( drhodp ) )
@@ -545,13 +556,23 @@ contains
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
             call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
             call get_option( trim( eos_option_path ) // '/coefficient_B', eos_coefs( 2 ) )
-            Rho = eos_coefs( 1 ) * pressure % val(1,1,:) ** eos_coefs( 2 )
-            perturbation_pressure = 1.
-            RhoPlus = eos_coefs( 1 ) * ( pressure % val(1,1,:) + perturbation_pressure ) ** eos_coefs( 2 )
-            RhoMinus = eos_coefs( 1 ) * ( pressure % val(1,1,:) - perturbation_pressure ) ** eos_coefs( 2 )
-            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+             Rho = eos_coefs( 1 ) * pressure % val(1,1,:) ** eos_coefs( 2 )
+             perturbation_pressure = 1.
+             RhoPlus = eos_coefs( 1 ) * ( pressure % val(1,1,:) + perturbation_pressure ) ** eos_coefs( 2 )
+             RhoMinus = eos_coefs( 1 ) * ( pressure % val(1,1,:) - perturbation_pressure ) ** eos_coefs( 2 )
+             dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( eos_coefs )
 
+            !!$ Arash
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
+              !!$ Den = den0 * ( 1 + alpha * solute mass fraction )
+
+              allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
+              call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 1 ) )
+              call get_option( trim( eos_option_path ) // '/alpha', eos_coefs( 2 ) )
+              Rho = eos_coefs( 1 ) * ( 1 + ( salt_concentration % val * eos_coefs( 2 ) ) )
+                dRhodP = 0.0
+              deallocate( eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_incomp ) // '/linear' ) then
             !!$ Polynomial representation
             allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
@@ -751,6 +772,9 @@ contains
 
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
+
+              elseif( have_option( trim( eos_option_path_out ) // '/concentration_dependant' ) ) then
+                  eos_option_path_out = trim( eos_option_path_out ) // '/concentration_dependant'
 
             elseif( have_option( trim( eos_option_path_out ) // '/Temperature_Pressure_correlation' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/Temperature_Pressure_correlation'
@@ -1672,6 +1696,151 @@ contains
       end do
       return
     end subroutine calculate_diffusivity
+
+    !Arash
+    subroutine calculate_solute_diffusivity(state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer)
+      type(state_type), dimension(:), intent(in) :: state
+      type(multi_dimensions), intent(in) :: Mdims
+      type(multi_ndgln), intent(in) :: ndgln
+      real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
+      !Local variables
+      type(scalar_field), pointer :: component, sfield, solid_concentration
+      type(tensor_field), pointer :: diffusivity, tfield
+      integer :: icomp, iphase, idim, stat, ele
+      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
+      logical, parameter :: harmonic_average=.false.
+      type(tensor_field), intent(inout) :: tracer
+
+      ScalarAdvectionField_Diffusion = 0.0
+      if ( Mdims%ncomp > 1 ) then
+         do icomp = 1, Mdims%ncomp
+            do iphase = 1, Mdims%nphase
+               component => extract_scalar_field( state(Mdims%nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
+               diffusivity => extract_tensor_field( state(Mdims%nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) // 'Diffusivity', stat )
+               if ( stat == 0 ) then
+                  do ele = 1, Mdims%totele
+                     do iloc = 1, Mdims%mat_nloc
+                        mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                        cv_inod = ndgln%cv( (ele-1)*Mdims%mat_nloc + iloc )
+                        if ( .not.harmonic_average ) then
+                           do idim = 1, Mdims%ndim
+                              ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                   ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
+                                   node_val( component, cv_inod ) * node_val( diffusivity, idim, idim, mat_inod )
+                           end do
+                        else
+                           do idim = 1, Mdims%ndim
+                              if (  node_val( diffusivity, idim, idim, mat_inod ) > 0.0 ) then
+                                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
+                                      node_val( component, cv_inod ) / node_val( diffusivity, idim, idim, mat_inod )
+                              end if
+                           end do
+                        end if
+                     end do
+                  end do
+               end if
+            end do
+         end do
+      else
+
+        diffusivity => extract_tensor_field( state(1), 'SoluteMassFractionDiffusivity', stat )
+        !Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
+        if ( stat == 0 ) then
+
+            if (is_porous_media) then
+                sfield=>extract_scalar_field(state(1),"Porosity")
+                tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+
+                ScalarAdvectionField_Diffusion = 0.
+                ! Calculation of the averaged thermal diffusivity as
+                ! lambda = porosity * lambda_f + (1-porosity) * lambda_p
+                ! Since lambda_p is defined element-wise and lambda_f CV-wise we perform an average
+                ! as it is stored cv-wise
+                ! NOTE: that we are considering a unified lambda for all the phases
+                do iphase = 1, Mdims%nphase
+                    diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                    do ele = 1, Mdims%totele
+                        ele_nod = min(size(sfield%val), ele)
+                        t_ele_nod = min(size(tfield%val, 3), ele)
+                         do iloc = 1, Mdims%mat_nloc
+                            mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                            cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                            do idim = 1, Mdims%ndim
+                                    !Arash
+                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ))
+                            end do
+                        end do
+                    end do
+                end do
+			else if (have_option( '/simulation_type/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/simulation_type/femdem_thermal/coupling/volume_relaxation') ) then
+					 sfield=> extract_scalar_field( state(1), "SolidConcentration" )
+                !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+                ScalarAdvectionField_Diffusion = 0.
+                do iphase = 1, Mdims%nphase
+                    diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                    do ele = 1, Mdims%totele
+                        ele_nod = min(size(sfield%val), ele)
+                        !t_ele_nod = min(size(tfield%val, 3), ele)
+                         do iloc = 1, Mdims%mat_nloc
+                            mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                            cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                            do idim = 1, Mdims%ndim
+                                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                                    ( 1.0 - sfield%val(ele_nod)) * node_val( diffusivity, idim, idim, mat_inod )
+                            end do
+                        end do
+                    end do
+                end do
+          else
+				 ScalarAdvectionField_Diffusion = 0.
+             do iphase = 1, Mdims%nphase
+                 diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                 do ele = 1, Mdims%totele
+!                     ele_nod = min(size(sfield%val), ele)
+                     !t_ele_nod = min(size(tfield%val, 3), ele)
+                      do iloc = 1, Mdims%mat_nloc
+                         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                         do idim = 1, Mdims%ndim
+                             ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                                 node_val( diffusivity, idim, idim, mat_inod )
+                         end do
+                     end do
+                 end do
+             end do
+             !do iphase = 1, Mdims%nphase
+             !    diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+             !    do idim = 1, Mdims%ndim
+             !        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
+             !    end do
+             !end do
+          end if
+        end if
+      end if
+      if ( harmonic_average ) then
+         ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
+         do iphase = 1, Mdims%nphase
+            do idim = 1, Mdims%ndim
+               do mat_inod = 1, Mdims%mat_nonods
+                  if ( ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) > 0.0 ) &
+                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                       1.0 / ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )
+               end do
+            end do
+         end do
+      end if
+      do iphase = 1, Mdims%nphase
+         ewrite(3,*) 'Thermal conductivity min_max', iphase, &
+              minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
+              maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
+      end do
+      return
+    end subroutine calculate_solute_diffusivity
 
     subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
       implicit none

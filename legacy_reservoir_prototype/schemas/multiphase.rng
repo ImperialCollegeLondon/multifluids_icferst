@@ -4489,6 +4489,28 @@ i.e. excluding the components</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
+        <a:documentation>Mass Fraction of Solute</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>SoluteMassFraction</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="velocity_mesh_choice"/>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="velocity_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
         <a:documentation>CopiedField - This field copies the previous timesteps
 values from another (specified) field at every iteration
 and then solves the field using different (again, specified)
@@ -7105,6 +7127,20 @@ DEN = A * P ^ B
                 <ref name="real"/>
               </element>
               <element name="coefficient_B">
+                <ref name="real"/>
+              </element>
+            </element>
+            <element name="concentration_dependant">
+              <a:documentation>Concentration-dependant EOS
+
+DEN = DEN0 * ( 1 + Alpha * w )
+
+w is the solute mass fraction and DEN0 is the reference density corresponding to w = 0
+</a:documentation>
+              <element name="reference_density">
+                <ref name="real"/>
+              </element>
+              <element name="alpha">
                 <ref name="real"/>
               </element>
             </element>

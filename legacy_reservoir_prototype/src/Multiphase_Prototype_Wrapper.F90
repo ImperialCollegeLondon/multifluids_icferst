@@ -875,6 +875,8 @@ contains
         is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
+        !Arash
+        has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
         !Check if it is P0DGP1
         if (.not. have_option("/is_porous_media")) then!This is to check if the input file is mpml or else, i.e. frst
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', &

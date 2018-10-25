@@ -3515,6 +3515,24 @@ scalar_field_choice =
                }
             )
          }|
+         ## Mass Fraction of Solute
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "SoluteMassFraction" },
+            (
+               element prognostic {
+                  velocity_mesh_choice,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  velocity_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+         }|
          ## CopiedField - This field copies the previous timesteps
          ## values from another (specified) field at every iteration
          ## and then solves the field using different (again, specified)
@@ -5671,6 +5689,20 @@ element equation_of_state{
                               real 
                            },
                            element coefficient_B {
+                              real
+                           }
+                        }|
+                        ## Concentration-dependant EOS
+                        ## 
+                        ## DEN = DEN0 * ( 1 + Alpha * w )
+                        ##
+                        ## w is the solute mass fraction and DEN0 is the reference density corresponding to w = 0
+                        ##
+                        element concentration_dependant {
+                           element reference_density { 
+                              real 
+                           },
+                           element alpha {
                               real
                            }
                         }|

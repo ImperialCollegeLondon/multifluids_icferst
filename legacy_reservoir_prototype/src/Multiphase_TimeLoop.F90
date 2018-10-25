@@ -121,7 +121,8 @@ contains
             NonLinearIteration, NonLinearIteration_Components
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
-        logical :: have_temperature_field, have_component_field, have_extra_DiffusionLikeTerm, &
+        !! Arash
+        logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
         !!$ Defining solver options
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
@@ -164,7 +165,7 @@ contains
         !Array to map nodes to region ids
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         !Working pointers
-        type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
+        type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
@@ -366,6 +367,9 @@ contains
         do istate = 1, Mdims%nstate
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::Temperature' ) ) &
                 have_temperature_field = .true.
+            !! Arash
+            if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::SoluteMassFraction' ) ) &
+                have_salt_field = .true.
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
@@ -633,13 +637,43 @@ contains
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                     ! Copy back memory
-                    do iphase=1,Mdims%nphase
+                    do iphase=1,Mdims%nphase!sprint_to_do remove this
                        T=>extract_scalar_field(state(iphase),"Temperature")
                        T%val=tracer_field%val(1,iphase,:)
                     end do
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
+
+               sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+
+               !!$ Arash
+               !!$ Solve advection of the scalar 'SoluteMassFraction':
+               Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
+                   have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
+                   ewrite(3,*)'Now advecting SoluteMassFraction Field'
+                   call set_nu_to_u( packed_state )
+                   !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                   tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                   call SOLUTE_ASSEM_SOLVE( state, packed_state, &
+                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                       suf_sig_diagten_bc, &
+                       Porosity_field%val, &
+                       !!$
+                       0, igot_theta_flux, &
+                       Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                       option_path = '/material_phase[0]/scalar_field::SoluteMassFraction', &
+                       thermal = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/equation::InternalEnergy'),&
+                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+
+                   nullify(tracer_field)
+
+                end if Conditional_ScalarAdvectionField2
 
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
@@ -1059,8 +1093,9 @@ contains
             type( scalar_field ), pointer ::  s_field, s_field2, s_field3
             type( vector_field ), pointer ::  U_x1, U_x2
             integer :: U_x1_stat, idim
-            real, dimension(2) :: min_max_limits_before
+            real, dimension(2) :: min_max_limits_before, solute_min_max_limits_before
             type (tensor_field), pointer :: tempfield
+            type (tensor_field), pointer :: saltfield
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1073,6 +1108,15 @@ contains
                 tempfield => extract_tensor_field( packed_state, "PackedTemperature" )
                 min_max_limits_before(1) = minval(tempfield%val); call allmin(min_max_limits_before(1))
                 min_max_limits_before(2) = maxval(tempfield%val); call allmax(min_max_limits_before(2))
+            end if
+            !Arash
+            if (has_salt) then
+                saltfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+                solute_min_max_limits_before(1) = minval(saltfield%val); call allmin(solute_min_max_limits_before(1))
+                solute_min_max_limits_before(2) = maxval(saltfield%val); call allmax(solute_min_max_limits_before(2))
+                !sprint_to_do: check the boundedness of the mass fraction (and also the temperature) field
+                !solute_min_max_limits_before(1) = 0.; call allmin(solute_min_max_limits_before(1))
+                !solute_min_max_limits_before(2) = 1.0; call allmax(solute_min_max_limits_before(2))
             end if
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
@@ -1230,12 +1274,11 @@ end if
                         call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
-                    if (Mdims%n_in_pres > 1) then !Adjust saturation if multiphase only...
-                      call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
-                      call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
-                    end if
+                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
+                    call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 end if
-                if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,min_max_limits = min_max_limits_before)
+                if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
+                if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields_CVGalerkin_interp > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
@@ -1394,6 +1437,7 @@ end if
                     thermal = .false.,& ! the false means that we don't add an extra source term
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                     icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
+
                 tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
             end do Loop_NonLinearIteration_Components
 
