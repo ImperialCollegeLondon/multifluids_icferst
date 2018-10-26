@@ -1971,6 +1971,7 @@ end if
                     !we have the mass of each element
                     if (.not.Mmat%Stored) then
                       call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)!
+                      !call get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
                     end if
                     !Introduce gravity right-hand-side
                     do U_ILOC = 1, Mdims%u_nloc
@@ -2071,7 +2072,91 @@ end if
             call deallocate_multi_dev_shape_funs(Devfuns)
         END SUBROUTINE porous_assemb_force_cty
 
+        subroutine get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
+              !This subroutine creates a mass matrix using various approaches
+              !Here no homogenisation can be performed.
 
+              implicit none
+              integer, intent(in) :: ELE
+              type(multi_dimensions), intent(in) :: Mdims
+              type(multi_dev_shape_funs), intent(in) :: Devfuns
+              type (multi_matrices), intent(inout) :: Mmat
+              REAL, DIMENSION( :, : ), intent( in ) :: X_ALL, UFEN_REVERSED
+              !Local variables
+              integer:: I, J, U_JLOC, U_ILOC, GI, JPHASE, JDIM, IPHASE, idim, JPHA_JDIM, IPHA_IDIM
+              REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc ) :: NN_SIGMAGI_ELE ! element mass matrix
+              REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, FE_GIdims%cv_ngi ) :: SIGMAGI
+
+
+              character (len=150) :: mass_lumping_type = 'Diagonal_scaling' !Row_sum or Diagonal_scaling or Consistent_mass
+              REAL, SAVE :: scaling_vel_nodes = -1.
+              REAL, SAVE :: Tau = -1.
+
+                SIGMAGI = 0.
+                DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
+                    SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
+                end do
+
+                  !Initialise
+                  NN_SIGMAGI_ELE = 0.
+                  DO U_JLOC = 1, Mdims%u_nloc
+                      DO U_ILOC = 1, Mdims%u_nloc
+                          DO GI = 1, FE_GIdims%cv_ngi
+                                NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) = NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) &
+                                + UFEN_REVERSED(GI, U_ILOC) * UFEN_REVERSED(GI, U_JLOC) * DevFuns%DETWEI( GI ) * SIGMAGI( :, :, GI )
+                          END DO
+                      END DO
+                  END DO
+
+            ! create the PIVIT matrix
+            if (mass_lumping_type=='Diagonal_scaling') then
+                        if (scaling_vel_nodes<0) then
+                        scaling_vel_nodes = dble(Mdims%u_nloc)
+                        !Adjust for linear bubble functions, P1(BL)DG
+                            if ((Mdims%ndim==2 .and. Mdims%u_nloc==4)) then
+                                Tau = 1.5
+                            elseif ((Mdims%ndim==3 .and. Mdims%u_nloc==5)) then
+                                Tau = 1.4
+                            end if
+                        end if
+
+                        do i=1,size(Mmat%PIVIT_MAT,1)
+                            Mmat%PIVIT_MAT(I,I,ELE) = (DevFuns%VOLUME*Tau)/scaling_vel_nodes
+                        end do
+
+            else
+
+                DO U_JLOC = 1, Mdims%u_nloc
+                    DO U_ILOC = 1, Mdims%u_nloc
+                        DO JPHASE = 1, Mdims%nphase
+                            DO JDIM = 1, Mdims%ndim
+                                JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                DO IPHASE = 1, Mdims%nphase
+                                    DO IDIM = 1, Mdims%ndim
+                                        IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
+                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                                        !Assemble
+                                        Select Case ( mass_lumping_type )
+                                            case ("Row_sum" )
+                                            Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
+                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                            case ("Consistent_mass")
+                                                Mmat%PIVIT_MAT( I, J, ELE ) =  &
+                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                        end select
+
+                                    END DO
+                                END DO
+                            END DO
+                        END DO
+                    END DO
+                END DO
+
+
+            end if
+
+            end subroutine
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
 
