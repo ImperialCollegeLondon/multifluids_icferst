@@ -1130,6 +1130,7 @@ contains
     integer :: ierr
     type(detector_list_ptr), dimension(:), pointer :: detector_list_array => null()
     type(detector_type), pointer :: detector => null()
+    real, save :: cutoff_tol = -1
 
     ! Node locking variable
     type(integer_set) :: lock_faces
@@ -1168,9 +1169,14 @@ contains
     if (zoltan_additional_adapt_iterations < 0) then
        FLExit("Zoltan additional adapt iterations must not be negative.")
     end if
-
+    !get cutoff_tol just once
+    if (cutoff_tol<0) then
+      cutoff_tol = 0.6
+      !For CV Pressure things are much more robust and we can relax this safety setting
+      if (have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )) cutoff_tol = 0.05
+    end if
     call get_option("/mesh_adaptivity/hr_adaptivity/zoltan_options/element_quality_cutoff", &
-       & quality_tolerance, default = 0.6)
+       & quality_tolerance, default = cutoff_tol)
 
     zoltan_min_adapt_iterations = adapt_iterations()
     zoltan_max_adapt_iterations = zoltan_min_adapt_iterations + zoltan_additional_adapt_iterations

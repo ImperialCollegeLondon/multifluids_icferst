@@ -373,7 +373,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                   !Update halo communications
-
                   call halo_update(tracer)
 
                    repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
@@ -784,8 +783,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !Working pointers
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
-             type(tensor_field), pointer :: tracer, velocity, density, deriv
-             type(scalar_field), pointer :: gamma, A
+             type(tensor_field), pointer :: velocity, density, deriv, sat_field
+             type(scalar_field), pointer :: gamma
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
              !Variables for global convergence method
@@ -796,13 +795,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
-             integer :: Max_sat_its
+             integer :: Max_sat_its, total_cv_nodes
              real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
-             type (tensor_field), pointer :: sat_field
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1
              integer :: its_taken
@@ -820,6 +818,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              Satura =>  sat_field%val(1,:,:)
              !Get information for capillary pressure to be use in CV_ASSEMB
              call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+
              !Get variable for global convergence method
              if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
                  backtrack_par_factor = 1.1
@@ -868,7 +867,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  end if
              END IF
              Mdisopt%v_beta = 1.0
-             tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
              velocity=>extract_tensor_field(packed_state,"PackedVelocity")
              density=>extract_tensor_field(packed_state,"PackedDensity")
              sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
@@ -880,19 +878,22 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !We store the convergence of the previous FPI to compare with
              Previous_convergence = backtrack_or_convergence!<== deprecated?
              its = 1; useful_sats = 1;
+             total_cv_nodes = Mdims%cv_nonods
+             call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
+             !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
              if (resold < 0 ) res = huge(res)!<=initialize res once
-             call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+             call allocate(Mmat%CV_RHS,Mdims%nphase,sat_field%mesh,"RHS")
              !Allocate residual, to compute the residual
-             if (backtrack_par_factor < 1.01) call allocate(residual,Mdims%nphase,tracer%mesh,"residual")
+             if (backtrack_par_factor < 1.01) call allocate(residual,Mdims%nphase,sat_field%mesh,"residual")
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
                  !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
                  !it works, but it complains...
-                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,tracer)
+                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field)
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                     tracer, velocity, density, multi_absorp, &
+                     sat_field, velocity, density, multi_absorp, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
                      Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, Mdisopt%v_beta, &
@@ -915,8 +916,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     call allmax(Courant_number(1)); call allmax(Courant_number(2))
                  end if
                  !Solve the system
-                 vtracer=as_vector(tracer,dim=2)
-                 if (IsParallel()) call zero_non_owned(vtracer)!Important for the non-linear solver to work consistently in parallel
+                 vtracer=as_vector(sat_field,dim=2)
                  !If using FPI with backtracking
                  if (backtrack_par_factor < 1.01) then
                      !Backup of the saturation field, to adjust the solution
@@ -926,28 +926,25 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                          end if
-
                          !Calculate the actual residual using a previous backtrack_par
                          call mult(residual, Mmat%petsc_ACV, vtracer)
-                         !Calculate residual
-                         if (IsParallel()) THEN
-                          call zero_non_owned(residual)
-                          call zero_non_owned(Mmat%CV_RHS)
-                         end if
+                         !Now residual is calculated as Residual = RHS - A*X0
                          residual%val = Mmat%CV_RHS%val - residual%val
+                         if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
                          resold = res; res = 0
                          do iphase = 1, Mdims%nphase
-                             aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
+                            !L2 norm of the resodal; needs to be done in steps to ensure cosistency in parallel
+                             aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
+                             call allsum(aux)
+                             aux = sqrt(aux)/ dble(total_cv_nodes)
                              if (aux > res) res = aux
                          end do
                          !We use the highest residual across the domain
                          if (IsParallel()) call allmax(res)
-
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
                  end if
                  call zero(vtracer)
-                 ! call zero_non_owned(Mmat%CV_RHS)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
 
                  !Set to zero the fields
@@ -964,7 +961,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
                          call FPI_backtracking(Mdims, ndgln, state,packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
-                             useful_sats,res, res/resold, first_res)
+                             useful_sats,res, res/resold, first_res)!halos are updated within this subroutine
                          !Store the accumulated updated done
                          updating = updating + new_backtrack_par
                          !If the backtrack_par factor is not adaptive, then, just one iteration
@@ -976,9 +973,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (IsParallel())  call alland(satisfactory_convergence)
                          !If looping again, recalculate
                          if (.not. satisfactory_convergence) then
-                             !Update halos with the new values
-                             if (IsParallel()) call halo_update(sat_field)!Otherwise we update this later on
-                                !we do not update inside the FPI solver just in case someone is not running with that option on
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
@@ -991,7 +985,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                              exit Loop_NonLinearFlux
                          end if
                      end if
-                 else!Just one iteration
+                 else !Just one iteration
+                     if (IsParallel()) call halo_update(sat_field)
                      exit Loop_NonLinearFlux
                  end if
                  its = its + 1
@@ -1011,13 +1006,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !if using adaptive time-stepping of some sort, the loop will be repeated. In all the cases a Warning message will show up
              if (its_taken >= max_allowed_its  .or. its_taken == 0 ) solver_not_converged = .true.
 
-             if (IsParallel()) then
-                !Make sure the parameter is consistent between cpus
-                call allmin(backtrack_or_convergence)
-                !Update halos with the new values
-                call halo_update(sat_field)
-             end if
-
+             !Make sure the parameter is consistent between cpus
+             if (IsParallel()) call allmin(backtrack_or_convergence)
 
              !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
              deallocate( THETA_GDIFF, Mmat%CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
@@ -1031,12 +1021,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
-
-             ! Copy back memory
-             do iphase=1,Mdims%nphase
-                A=>extract_scalar_field(state(iphase),"PhaseVolumeFraction")
-                A%val=tracer%val(1,iphase,:)
-             end do
 
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
@@ -1200,7 +1184,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
         ALLOCATE( Mmat%CT( Mdims%ndim, Mdims%nphase, Mspars%CT%ncol )) ; Mmat%CT=0.
         call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
-        ALLOCATE( Mmat%U_RHS( Mdims%ndim, Mdims%nphase, Mdims%u_nonods )) ; Mmat%U_RHS=0.
+        ALLOCATE( Mmat%U_RHS( Mdims%ndim, Mdims%nphase, Mdims%u_nonods )) ; !initialised inside the subroutines
         ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
         ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),INV_B(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods))
         ALLOCATE( CMC_PRECON( Mdims%npres, Mdims%npres, Mspars%CMC%ncol*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
@@ -1234,7 +1218,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
-           UDEN_ALL=0.0; UDENOLD_ALL=0.0!This is to disable the time-derivative that inertia has
+           UDEN_ALL=0.0; UDENOLD_ALL=0.0!This is to disable the time-derivative that inertia has; !sprint_to_do is this still needed?
            call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_SOURCE_CV_ALL )
         else
            if ( linearise_density ) then
@@ -1350,13 +1334,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           call update_velocity_source( state, Mdims, u_source_all )
         end if
 !Temporary conversion
-if (associated(multi_absorp%PorousMedia%val))then
+if (associated(multi_absorp%PorousMedia%val))then!sprint_to_do AVOID THESE CONVERSIONS...
     do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)
         call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
 end if
 !Temporary conversion
-if (associated(multi_absorp%Flooding%val))then
+if (associated(multi_absorp%Flooding%val))then!sprint_to_do AVOID THESE CONVERSIONS...
     do cv_nod = 1, size(multi_absorp%Flooding%val,4)
         call add_multi_field_to_array(multi_absorp%Flooding, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
@@ -1369,7 +1353,7 @@ end if
         if (.not.Mmat%Stored) then
             if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
-            else!allocate C
+            else !allocate C
                 allocate(Mmat%C(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C = 0.
             end if
             if (Mmat%compact_PIVIT_MAT) then!Use a compacted and lumped version of the mass matrix
@@ -1515,7 +1499,7 @@ end if
             call deallocate(rhs)
             U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
         END IF
-!            if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
+        ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
         deallocate( UP_VEL )
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
@@ -1658,7 +1642,7 @@ end if
             nullify(Mmat%PIVIT_MAT)
         end if
 
-        ! Copy back memory
+        ! Copy back memory; sprint_to_do remove this...
         !(Pablo)WHAT IS THIS?? SEEMS RUBBISH TO ME...
         do iphase=1,Mdims%nphase
            U=>extract_vector_field(state(iphase),"U",stat)
@@ -1746,7 +1730,7 @@ end if
                 ENDIF
             end if
             !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
-            ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
+             ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
 
             cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
             if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
@@ -1836,7 +1820,6 @@ end if
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
 
-
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
@@ -1849,6 +1832,7 @@ end if
             CALL porous_assemb_force_cty( packed_state, pressure, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
         else!Normal and more general method
+
             CALL ASSEMB_FORCE_CTY( state, packed_state, &
                 Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
                 velocity, pressure, &
@@ -1881,7 +1865,6 @@ end if
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
 
-        call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
             tracer, velocity, density, multi_absorp, &
@@ -1907,198 +1890,284 @@ end if
         DEALLOCATE( MEAN_PORE_CV )
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
-
-        contains
-
-
-            SUBROUTINE porous_assemb_force_cty( packed_state, pressure,&
-                Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
-                implicit none
-                type( state_type ), intent( inout ) :: packed_state
-                type(multi_dimensions), intent(in) :: Mdims
-                type(multi_GI_dimensions), intent(in) :: FE_GIdims
-                type(multi_shape_funs), intent(in) :: FE_funs
-                type (multi_sparsities), intent(in) :: Mspars
-                type(multi_ndgln), intent(in) :: ndgln
-                type (multi_matrices), intent(inout) :: Mmat
-                REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
-                real, dimension(:,:,:), intent(in) :: U_SOURCE_CV_ALL
-                type( tensor_field ), intent(in) :: pressure
-                ! Local Variables
-                integer :: CV_ILOC, CV_JLOC, GI, ELE, U_ILOC, U_INOD, CV_INOD
-                real, dimension(FE_GIdims%cv_ngi, Mdims%u_nloc) :: UFEN_REVERSED
-                real, dimension(FE_GIdims%cv_ngi, Mdims%cv_nloc) :: CVN_REVERSED
-                !Variables for capillary pressure
-                integer :: MAT_ILOC, MAT_ILOC2, CV_SILOC, iface, mat_inod, mat_inod2, mat_siloc, x_inod, ele2
-                integer, dimension(Mdims%mat_nloc) :: MAT_OTHER_LOC
-                integer, dimension(:,:), allocatable :: FACE_ELE
-                real :: sarea
-                real, dimension(:), allocatable :: NORMX_ALL, sdetwe
-                real, dimension(:, :), allocatable ::  XL_ALL, XSL_ALL, SNORMXN_ALL!should remove all local conversions
-                real, dimension(:, :, :), allocatable :: LOC_U_RHS !should remove all local conversions
-                !Diamond options
-                logical, save :: options_read = .false., capillary_pressure_activated, Diffusive_cap_only, gravity_on
-                real, save :: gravty = 0.0
-                !###Shape function calculation###
-                type(multi_dev_shape_funs) :: Devfuns
-                !Parallel variables
-                logical :: skip
-                integer :: nb
-                integer, dimension(:), pointer :: neighbours
+      contains
 
 
-                !Prepare Devfuns
-                call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
-                !Read options from diamond, only once
-                if (.not.options_read) then
-                    gravity_on = have_option("/physical_parameters/gravity/magnitude")
-                    call get_option( "/physical_parameters/gravity/magnitude", gravty, default = 0. )
-                    !Check capillary options
-                    capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
-                    Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
-                end if
+        SUBROUTINE porous_assemb_force_cty( packed_state, pressure,&
+            Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
+            implicit none
+            type( state_type ), intent( inout ) :: packed_state
+            type(multi_dimensions), intent(in) :: Mdims
+            type(multi_GI_dimensions), intent(in) :: FE_GIdims
+            type(multi_shape_funs), intent(in) :: FE_funs
+            type (multi_sparsities), intent(in) :: Mspars
+            type(multi_ndgln), intent(in) :: ndgln
+            type (multi_matrices), intent(inout) :: Mmat
+            REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
+            real, dimension(:,:,:), intent(in) :: U_SOURCE_CV_ALL
+            type( tensor_field ), intent(in) :: pressure
+            ! Local Variables
+            integer :: CV_ILOC, CV_JLOC, GI, ELE, U_ILOC, U_INOD, CV_INOD
+            real, dimension(FE_GIdims%cv_ngi, Mdims%u_nloc) :: UFEN_REVERSED
+            real, dimension(FE_GIdims%cv_ngi, Mdims%cv_nloc) :: CVN_REVERSED
+            !Variables for capillary pressure
+            integer :: MAT_ILOC, MAT_ILOC2, CV_SILOC, iface, mat_inod, mat_inod2, mat_siloc, x_inod, ele2
+            integer, dimension(Mdims%mat_nloc) :: MAT_OTHER_LOC
+            integer, dimension(:,:), allocatable :: FACE_ELE
+            real :: sarea
+            real, dimension(:), allocatable :: NORMX_ALL, sdetwe
+            real, dimension(:, :), allocatable ::  XL_ALL, XSL_ALL, SNORMXN_ALL!should remove all local conversions
+            real, dimension(:, :, :), allocatable :: LOC_U_RHS !should remove all local conversions
+            !Diamond options
+            logical, save :: options_read = .false., capillary_pressure_activated, Diffusive_cap_only, gravity_on
+            real, save :: gravty = 0.0
+            !###Shape function calculation###
+            type(multi_dev_shape_funs) :: Devfuns
+            !Parallel variables
+            logical :: skip
+            integer :: nb
+            integer, dimension(:), pointer :: neighbours
 
 
-                DO U_ILOC=1,Mdims%u_nloc
-                    DO GI=1,FE_GIdims%cv_ngi
-                        UFEN_REVERSED(GI,U_ILOC) = FE_funs%ufen(U_ILOC,GI)
-                    END DO
+            !Prepare Devfuns
+            call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
+            !Read options from diamond, only once
+            if (.not.options_read) then
+                gravity_on = have_option("/physical_parameters/gravity/magnitude")
+                call get_option( "/physical_parameters/gravity/magnitude", gravty, default = 0. )
+                !Check capillary options
+                capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
+                Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+            end if
+
+
+            DO U_ILOC=1,Mdims%u_nloc
+                DO GI=1,FE_GIdims%cv_ngi
+                    UFEN_REVERSED(GI,U_ILOC) = FE_funs%ufen(U_ILOC,GI)
                 END DO
-                DO CV_ILOC=1,Mdims%cv_nloc
-                    DO GI=1,FE_GIdims%cv_ngi
-                        !############THIS IS A FIX FOR GRAVITY######################
-                        CVN_REVERSED(GI,CV_ILOC)  = FE_funs%cvfen(CV_ILOC,GI)
-                    END DO
+            END DO
+            DO CV_ILOC=1,Mdims%cv_nloc
+                DO GI=1,FE_GIdims%cv_ngi
+                    !############THIS IS A FIX FOR GRAVITY######################
+                    CVN_REVERSED(GI,CV_ILOC)  = FE_funs%cvfen(CV_ILOC,GI)
                 END DO
+            END DO
 
-                !Initialise RHS
-                Mmat%U_RHS = 0.0
+            !Initialise RHS
+            Mmat%U_RHS = 0.0
 
-                if (gravity_on .or. .not.Mmat%Stored) then
-                    DO ELE = 1, Mdims%totele ! VOLUME integral
-                        if (IsParallel()) then
-                            if (.not. assemble_ele(pressure,ele)) then
-                                skip=.true.
-                                neighbours=>ele_neigh(pressure,ele)
-                                do nb=1,size(neighbours)
-                                    if (neighbours(nb)<=0) cycle
-                                    if (assemble_ele(pressure,neighbours(nb))) then
-                                        skip=.false.
-                                        exit
-                                    end if
-                                end do
-                            end if
-                        end if
-                        ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-                        call DETNLXR_PLUS_U(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
-                            FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
-                        !Assemble lumped mass matrix (only necessary at the beggining and after adapt)
-                        !this has to go, the mass matrix should not be assembled at all as it can be done on-the-fly so long
-                        !we have the mass of each element
-                        if (.not.Mmat%Stored) then
-                          call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)!
-                        end if
-                        !Introduce gravity right-hand-side
-                        do U_ILOC = 1, Mdims%u_nloc
-                            U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                            do CV_JLOC = 1, Mdims%cv_nloc
-                                CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-
-                                Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + &
-                                    SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )*&!shape functions
-                                    U_SOURCE_CV_ALL( :, :, CV_INOD )!gravity term
+            if (gravity_on .or. .not.Mmat%Stored) then
+                DO ELE = 1, Mdims%totele ! VOLUME integral
+                    if (IsParallel()) then
+                        if (.not. assemble_ele(pressure,ele)) then
+                            skip=.true.
+                            neighbours=>ele_neigh(pressure,ele)
+                            do nb=1,size(neighbours)
+                                if (neighbours(nb)<=0) cycle
+                                if (assemble_ele(pressure,neighbours(nb))) then
+                                    skip=.false.
+                                    exit
+                                end if
                             end do
+                        end if
+                    end if
+                    ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
+                    call DETNLXR_PLUS_U(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
+                        FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
+                    !Assemble lumped mass matrix (only necessary at the beggining and after adapt)
+                    !this has to go, the mass matrix should not be assembled at all as it can be done on-the-fly so long
+                    !we have the mass of each element
+                    if (.not.Mmat%Stored) then
+                      call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)!
+                      !call get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
+                    end if
+                    !Introduce gravity right-hand-side
+                    do U_ILOC = 1, Mdims%u_nloc
+                        U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                        do CV_JLOC = 1, Mdims%cv_nloc
+                            CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                            Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + &
+                                SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )*&!shape functions
+                                U_SOURCE_CV_ALL( :, :, CV_INOD )!gravity term
                         end do
-                    END DO
-                end if
+                    end do
+                END DO
+            end if
 
-                !! *************************loop over surfaces*********************************************
-                ! at some pt we need to merge these 2 loops but there is a bug when doing that!!!!!
-                !it does not work because some things, like MASS_ELE(ele2) require to have gone through all the elements first
-                if (capillary_pressure_activated.and..not. Diffusive_cap_only)  then
-                    allocate( FACE_ELE( FE_GIdims%nface, Mdims%totele ), sdetwe(FE_GIdims%sbcvngi))
-                    allocate( XL_ALL(Mdims%ndim,Mdims%cv_nloc), XSL_ALL(Mdims%ndim,Mdims%cv_snloc) )
-                    allocate( NORMX_ALL(Mdims%ndim), SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi) )
-                    allocate(LOC_U_RHS(Mdims%ndim, Mdims%nphase, Mdims%u_nloc))
-                    ! Calculate FACE_ELE
-                    CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, FE_GIdims%nface, &
-                        Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
-                        FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
-                    !This has to go once the new method to implement capillary pressure in the saturation equation is done
-                    Loop_Elements2: DO ELE = 1, Mdims%totele
-                        if (IsParallel()) then
-                            if (.not. assemble_ele(pressure,ele)) then
-                                skip=.true.
-                                neighbours=>ele_neigh(pressure,ele)
-                                do nb=1,size(neighbours)
-                                    if (neighbours(nb)<=0) cycle
-                                    if (assemble_ele(pressure,neighbours(nb))) then
-                                        skip=.false.
+            !! *************************loop over surfaces*********************************************
+            ! at some pt we need to merge these 2 loops but there is a bug when doing that!!!!!
+            !it does not work because some things, like MASS_ELE(ele2) require to have gone through all the elements first
+            if (capillary_pressure_activated.and..not. Diffusive_cap_only)  then
+                allocate( FACE_ELE( FE_GIdims%nface, Mdims%totele ), sdetwe(FE_GIdims%sbcvngi))
+                allocate( XL_ALL(Mdims%ndim,Mdims%cv_nloc), XSL_ALL(Mdims%ndim,Mdims%cv_snloc) )
+                allocate( NORMX_ALL(Mdims%ndim), SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi) )
+                allocate(LOC_U_RHS(Mdims%ndim, Mdims%nphase, Mdims%u_nloc))
+                ! Calculate FACE_ELE
+                CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, FE_GIdims%nface, &
+                    Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+                    FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+                !This has to go once the new method to implement capillary pressure in the saturation equation is done
+                Loop_Elements2: DO ELE = 1, Mdims%totele
+                    if (IsParallel()) then
+                        if (.not. assemble_ele(pressure,ele)) then
+                            skip=.true.
+                            neighbours=>ele_neigh(pressure,ele)
+                            do nb=1,size(neighbours)
+                                if (neighbours(nb)<=0) cycle
+                                if (assemble_ele(pressure,neighbours(nb))) then
+                                    skip=.false.
+                                    exit
+                                end if
+                            end do
+                            if (skip) cycle
+                        end if
+                    end if
+                    ! for copy local memory copying...
+                    LOC_U_RHS = 0.0
+                    Between_Elements_And_Boundary: DO IFACE = 1, FE_GIdims%nface
+                        ELE2  =MAX( 0, FACE_ELE( IFACE, ELE ))
+                        ! Create local copy of X_ALL
+                        DO CV_ILOC = 1, Mdims%cv_nloc
+                            X_INOD = ndgln%x( (ELE-1)*Mdims%x_nloc + CV_ILOC )
+                            XL_ALL(:,CV_ILOC) = X_ALL( :, X_INOD )
+                        END DO
+                        ! Create local copy of X_ALL for surface nodes
+                        DO CV_SILOC = 1, Mdims%cv_snloc
+                            CV_ILOC = FE_funs%cv_sloclist( IFACE, CV_SILOC )
+                            X_INOD = ndgln%x( (ELE-1)*Mdims%x_nloc + CV_ILOC )
+                            XSL_ALL( :, CV_SILOC ) = X_ALL( :, X_INOD )
+                        END DO
+                        !Obtain normal
+                        CALL DGSIMPLNORM_ALL( Mdims%cv_nloc, Mdims%cv_snloc, Mdims%ndim, &
+                            XL_ALL, XSL_ALL, NORMX_ALL )
+                        CALL DGSDETNXLOC2_ALL( Mdims%cv_snloc, FE_GIdims%sbcvngi, Mdims%ndim, XSL_ALL,&
+                            FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, &
+                            FE_funs%sbcvfeweigh, SDETWE, SAREA, SNORMXN_ALL, NORMX_ALL )
+
+
+                        !Surface integral along an element
+                        IF(ELE2 > 0) THEN
+                            ! ***********SUBROUTINE DETERMINE_OTHER_SIDE_FACE - START************
+                            MAT_OTHER_LOC=0
+                            DO MAT_SILOC = 1, Mdims%cv_snloc
+                                MAT_ILOC = FE_funs%cv_sloclist( IFACE, MAT_SILOC )
+                                MAT_INOD = ndgln%x(( ELE - 1 ) * Mdims%mat_nloc + MAT_ILOC )
+                                DO MAT_ILOC2 = 1, Mdims%mat_nloc
+                                    MAT_INOD2 = ndgln%x(( ELE2 - 1 ) * Mdims%mat_nloc + MAT_ILOC2 )
+                                    IF ( MAT_INOD2 == MAT_INOD ) THEN
+                                        MAT_OTHER_LOC( MAT_ILOC )=MAT_ILOC2
                                         exit
-                                    end if
-                                end do
-                                if (skip) cycle
+                                    END IF
+                                END DO
+                            END DO
+                           ! ***********SUBROUTINE DETERMINE_OTHER_SIDE_FACE - END************
+                        END IF
+                        !Calculate all the necessary stuff and introduce the CapPressure in the RHS
+                        call Introduce_Cap_press_term(&
+                            packed_state, Mdims, Mmat, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
+                            ndgln%cv, ndgln%x, ele2, iface,&
+                            sdetwe, SNORMXN_ALL, FE_funs%u_sloclist( IFACE, : ), FE_funs%cv_sloclist( IFACE, : ), MAT_OTHER_LOC )
+                    END DO Between_Elements_And_Boundary
+                    !! *************************end loop over surfaces*********************************************
+                    ! copy local memory
+                    DO U_ILOC = 1, Mdims%u_nloc
+                        U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                        Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
+                    END DO
+                END DO Loop_Elements2
+                deallocate (FACE_ELE, XL_ALL, XSL_ALL, NORMX_ALL, SNORMXN_ALL, LOC_U_RHS)
+            end if
+            call deallocate_multi_dev_shape_funs(Devfuns)
+        END SUBROUTINE porous_assemb_force_cty
+
+        subroutine get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
+              !This subroutine creates a mass matrix using various approaches
+              !Here no homogenisation can be performed.
+
+              implicit none
+              integer, intent(in) :: ELE
+              type(multi_dimensions), intent(in) :: Mdims
+              type(multi_dev_shape_funs), intent(in) :: Devfuns
+              type (multi_matrices), intent(inout) :: Mmat
+              REAL, DIMENSION( :, : ), intent( in ) :: X_ALL, UFEN_REVERSED
+              !Local variables
+              integer:: I, J, U_JLOC, U_ILOC, GI, JPHASE, JDIM, IPHASE, idim, JPHA_JDIM, IPHA_IDIM
+              REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc ) :: NN_SIGMAGI_ELE ! element mass matrix
+              REAL, DIMENSION ( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, FE_GIdims%cv_ngi ) :: SIGMAGI
+
+
+              character (len=150) :: mass_lumping_type = 'Diagonal_scaling' !Row_sum or Diagonal_scaling or Consistent_mass
+              REAL, SAVE :: scaling_vel_nodes = -1.
+              REAL, SAVE :: Tau = -1.
+
+                SIGMAGI = 0.
+                DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
+                    SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
+                end do
+
+                  !Initialise
+                  NN_SIGMAGI_ELE = 0.
+                  DO U_JLOC = 1, Mdims%u_nloc
+                      DO U_ILOC = 1, Mdims%u_nloc
+                          DO GI = 1, FE_GIdims%cv_ngi
+                                NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) = NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) &
+                                + UFEN_REVERSED(GI, U_ILOC) * UFEN_REVERSED(GI, U_JLOC) * DevFuns%DETWEI( GI ) * SIGMAGI( :, :, GI )
+                          END DO
+                      END DO
+                  END DO
+
+            ! create the PIVIT matrix
+            if (mass_lumping_type=='Diagonal_scaling') then
+                        if (scaling_vel_nodes<0) then
+                        scaling_vel_nodes = dble(Mdims%u_nloc)
+                        !Adjust for linear bubble functions, P1(BL)DG
+                            if ((Mdims%ndim==2 .and. Mdims%u_nloc==4)) then
+                                Tau = 1.5
+                            elseif ((Mdims%ndim==3 .and. Mdims%u_nloc==5)) then
+                                Tau = 1.4
                             end if
                         end if
-                        ! for copy local memory copying...
-                        LOC_U_RHS = 0.0
-                        Between_Elements_And_Boundary: DO IFACE = 1, FE_GIdims%nface
-                            ELE2  =MAX( 0, FACE_ELE( IFACE, ELE ))
-                            ! Create local copy of X_ALL
-                            DO CV_ILOC = 1, Mdims%cv_nloc
-                                X_INOD = ndgln%x( (ELE-1)*Mdims%x_nloc + CV_ILOC )
-                                XL_ALL(:,CV_ILOC) = X_ALL( :, X_INOD )
-                            END DO
-                            ! Create local copy of X_ALL for surface nodes
-                            DO CV_SILOC = 1, Mdims%cv_snloc
-                                CV_ILOC = FE_funs%cv_sloclist( IFACE, CV_SILOC )
-                                X_INOD = ndgln%x( (ELE-1)*Mdims%x_nloc + CV_ILOC )
-                                XSL_ALL( :, CV_SILOC ) = X_ALL( :, X_INOD )
-                            END DO
-                            !Obtain normal
-                            CALL DGSIMPLNORM_ALL( Mdims%cv_nloc, Mdims%cv_snloc, Mdims%ndim, &
-                                XL_ALL, XSL_ALL, NORMX_ALL )
-                            CALL DGSDETNXLOC2_ALL( Mdims%cv_snloc, FE_GIdims%sbcvngi, Mdims%ndim, XSL_ALL,&
-                                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, &
-                                FE_funs%sbcvfeweigh, SDETWE, SAREA, SNORMXN_ALL, NORMX_ALL )
 
+                        do i=1,size(Mmat%PIVIT_MAT,1)
+                            Mmat%PIVIT_MAT(I,I,ELE) = (DevFuns%VOLUME*Tau)/scaling_vel_nodes
+                        end do
 
-                            !Surface integral along an element
-                            IF(ELE2 > 0) THEN
-                                ! ***********SUBROUTINE DETERMINE_OTHER_SIDE_FACE - START************
-                                MAT_OTHER_LOC=0
-                                DO MAT_SILOC = 1, Mdims%cv_snloc
-                                    MAT_ILOC = FE_funs%cv_sloclist( IFACE, MAT_SILOC )
-                                    MAT_INOD = ndgln%x(( ELE - 1 ) * Mdims%mat_nloc + MAT_ILOC )
-                                    DO MAT_ILOC2 = 1, Mdims%mat_nloc
-                                        MAT_INOD2 = ndgln%x(( ELE2 - 1 ) * Mdims%mat_nloc + MAT_ILOC2 )
-                                        IF ( MAT_INOD2 == MAT_INOD ) THEN
-                                            MAT_OTHER_LOC( MAT_ILOC )=MAT_ILOC2
-                                            exit
-                                        END IF
+            else
+
+                DO U_JLOC = 1, Mdims%u_nloc
+                    DO U_ILOC = 1, Mdims%u_nloc
+                        DO JPHASE = 1, Mdims%nphase
+                            DO JDIM = 1, Mdims%ndim
+                                JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                                DO IPHASE = 1, Mdims%nphase
+                                    DO IDIM = 1, Mdims%ndim
+                                        IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
+                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                                        !Assemble
+                                        Select Case ( mass_lumping_type )
+                                            case ("Row_sum" )
+                                            Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
+                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                            case ("Consistent_mass")
+                                                Mmat%PIVIT_MAT( I, J, ELE ) =  &
+                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                        end select
+
                                     END DO
                                 END DO
-                               ! ***********SUBROUTINE DETERMINE_OTHER_SIDE_FACE - END************
-                            END IF
-                            !Calculate all the necessary stuff and introduce the CapPressure in the RHS
-                            call Introduce_Cap_press_term(&
-                                packed_state, Mdims, Mmat, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
-                                ndgln%cv, ndgln%x, ele2, iface,&
-                                sdetwe, SNORMXN_ALL, FE_funs%u_sloclist( IFACE, : ), FE_funs%cv_sloclist( IFACE, : ), MAT_OTHER_LOC )
-                        END DO Between_Elements_And_Boundary
-                        !! *************************end loop over surfaces*********************************************
-                        ! copy local memory
-                        DO U_ILOC = 1, Mdims%u_nloc
-                            U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                            Mmat%U_RHS( :, :, U_INOD ) = Mmat%U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
+                            END DO
                         END DO
-                    END DO Loop_Elements2
-                    deallocate (FACE_ELE, XL_ALL, XSL_ALL, NORMX_ALL, SNORMXN_ALL, LOC_U_RHS)
-                end if
-                call deallocate_multi_dev_shape_funs(Devfuns)
-            END SUBROUTINE porous_assemb_force_cty
+                    END DO
+                END DO
+
+
+            end if
+
+            end subroutine
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
+
 
 
 
@@ -6353,13 +6422,6 @@ end if
      nullify(Pe, Cap_exp)
 
  end subroutine getOverrelaxation_parameter
-
-
-
-
-
-
-
 
 subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase, u_absorbin )
 

@@ -726,6 +726,9 @@ contains
 
         deallocate( perturbation_pressure, RhoPlus, RhoMinus )
 
+        !No need to update halos as all the operations are local, and all the
+        !input fields have to be updated already
+        ! if (IsParallel()) call halo_update(density)
     end subroutine Calculate_Rho_dRhodP
 
 
@@ -928,7 +931,7 @@ contains
             kv_kh_ratio = abs(kv_kh_ratio)
         end if
 
-        if ( present(Quality_list) .and. kv_kh_ratio > 1d-8 ) then
+        if ( present(Quality_list) .and. kv_kh_ratio > 1d-8 ) then!sprint_to_do remove everything related to quality list
             if (allocated(Quality_list)) then
             ! create transformation matrix with Kv/kh ratio
             ! |1    0    0    |  |1    0     |
@@ -971,7 +974,7 @@ contains
 
        !For simple Black-Oil modelling the viscosity is calculated using the PVT tables
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
-           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
+           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))!sprint_to_do remove extended_Black_Oil
            call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 3, viscosities = viscosities)
        else
             allocate(viscosities(Mdims%nphase, 1))
@@ -2047,7 +2050,7 @@ contains
       else
 
          ! return here as code below untested
-         return
+         return!sprint_to_do remove code below
 
          t_field => extract_tensor_field( state( 1 ), "Viscosity", stat ) ! need to set dimensions in diamond - Populate_State.F90:2164
          if ( stat == 0 ) then

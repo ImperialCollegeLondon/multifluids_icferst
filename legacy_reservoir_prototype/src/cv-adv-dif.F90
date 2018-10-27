@@ -485,7 +485,6 @@ contains
         real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
         real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
 
-
         !Check vanishing artificial diffusion options
         VAD_activated = .false.
         if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
@@ -903,7 +902,7 @@ contains
         end do
         psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
         psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
-        call PROJ_CV_TO_FEM(packed_state, &
+        call PROJ_CV_TO_FEM(packed_state, &!sprint_to_do is it always necessary to have a Finite element representation of the Tracer?
             FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
             IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
@@ -952,7 +951,7 @@ contains
         IF (PRESENT(MASS_ELE_TRANSP)) &
             MASS_ELE_TRANSP = MASS_ELE
         NORMALISE = .FALSE.
-        IF ( NORMALISE ) THEN
+        IF ( NORMALISE ) THEN!sprint_to_do remove?
             ! Make sure the FEM representation sums to unity so we don't get surprising results...
             DO CV_INOD = 1, Mdims%cv_nonods
                 RSUM = SUM( FEMT_ALL( :, CV_INOD ) )
@@ -1564,7 +1563,6 @@ contains
                             ELSE
                                 CAP_DIFF_COEF_DIVDX( : ) = 0.0
                             END IF If_GOT_CAPDIFFUS
-
                             ! Pack ndotq information:
                             IPT=1
                             CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) ) ! t
@@ -4612,13 +4610,13 @@ end if
         !---------------------------------
         do_not_project = have_option(projection_options//'/do_not_project') .or. is_porous_media!<=DISABLED FOR POROUS MEDIA TEMPORARILY, BUT ACTUALLY THE DIFFERENCE IS SMALL
         cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')  !AND IT SHOULD BE SLIGTHLY FASTER; DISABLED FOR THE PETSC MEMORY PROBLEM
-        is_to_update = .not.associated(CV_funs%CV2FE%refcount)
+        is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
 
         do it=1,size(fempsi)
             call zero(fempsi(it)%ptr)
             call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",dim=psi(it)%ptr%dim)
             call zero(fempsi_rhs(it))
-            call halo_update(psi(it)%ptr)
+            ! call halo_update(psi(it)%ptr)!Fields should get here already updated
         end do
         tfield=>psi(1)%ptr
 
@@ -4657,9 +4655,10 @@ end if
 
         Loop_Elements: do iele = 1, Mdims%totele
             ! check parallelisation
-            if(isParallel()) then
-                if(.not.assemble_ele(psi_int(1)%ptr,iele)) cycle ! IS THIS A PROBLEM?
-            end if
+            ! if(isParallel()) then!we can avoid halo_updates by over-looping here in parallel
+                                    !because these matrices are local
+                ! if(.not.assemble_ele(psi_int(1)%ptr,iele)) cycle
+            ! end if
 
             ! calculate detwei,RA,NX,NY,NZ for the ith element
             call DETNLXR(iele, X, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
@@ -4668,7 +4667,8 @@ end if
 
             Loop_CV_iLoc: do cv_iloc = 1, Mdims%cv_nloc
                 cv_nodi = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_iloc)
-                if(.not.node_owned(psi(1)%ptr,cv_nodi)) cycle
+                !we can avoid halo_updates by over-looping here in parallel because these matrices are local
+                ! if(.not.node_owned(psi(1)%ptr,cv_nodi)) cycle
 
                 Loop_CV_jLoc: do cv_jloc = 1, Mdims%cv_nloc
                     cv_nodj = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_jloc)
@@ -4722,15 +4722,15 @@ end if
         !---------------------------------
         ! update the halo information
         if(is_to_update) then
-            call halo_update(cv_mass)
+            ! call halo_update(cv_mass)!no need to update halos as these matrices are local
             call invert(cv_mass)
             do it = 1, size(psi_ave)
-                call halo_update(psi_ave(it)%ptr)
+              ! call halo_update(psi_ave(it)%ptr)!no need to update halos as these matrices are local
                 call scale(psi_ave(it)%ptr,cv_mass)
             end do
-            do it = 1, size(psi_int) ! this seems a really bad way to do halo updates.
-                call halo_update(psi_int(it)%ptr)
-            end do
+            ! do it = 1, size(psi_int) !no need to update halos as these matrices are local
+                ! call halo_update(psi_int(it)%ptr)
+            ! end do
         end if
 
         ! solve the petsc matrix
