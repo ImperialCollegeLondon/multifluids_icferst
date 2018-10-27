@@ -503,7 +503,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        thermal, &
        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
-           ! Solve for internal energy using a control volume method.
+
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
            type( state_type ), intent( inout ) :: packed_state
@@ -540,7 +540,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            logical :: lump_eqns
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -627,8 +627,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0
-
+           CDISPERSION=0.0
            call calculate_solute_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer)
+           !Arash
+           !Calculates solute dispersion with specific longitudinal and transverse dispersion coefficients
+           call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 0.001, 0.0001, CDISPERSION, tracer)
+           !Correction for the diffusivity for dispersion
+           !TDIFFUSION = TDIFFUSION + (CDISPERSION)* 1000.
+           !TDIFFUSION = TDIFFUSION + (CDISPERSION)
+
+
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated

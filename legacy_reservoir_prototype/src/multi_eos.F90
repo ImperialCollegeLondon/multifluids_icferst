@@ -30,6 +30,7 @@
 module multiphase_EOS
 
     use fldebug
+    use unittest_tools
     use state_module
     use fields
     use state_module
@@ -1749,6 +1750,7 @@ contains
                 sfield=>extract_scalar_field(state(1),"Porosity")
                 tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
 
+
                 ScalarAdvectionField_Diffusion = 0.
                 ! Calculation of the averaged thermal diffusivity as
                 ! lambda = porosity * lambda_f + (1-porosity) * lambda_p
@@ -1838,6 +1840,99 @@ contains
       end do
       return
     end subroutine calculate_solute_diffusivity
+
+    !Arash
+    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, LongitudinalDispersion, TransverseDispersion, SoluteDispersion, tracer)
+      type(state_type), dimension(:), intent(in) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_dimensions), intent(in) :: Mdims
+      type(multi_ndgln), intent(in) :: ndgln
+      real, intent(in) :: LongitudinalDispersion, TransverseDispersion
+      real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
+      !Local variables
+      type(scalar_field), pointer :: component, sfield, solid_concentration
+      type(vector_field), pointer :: coordinate
+      type(tensor_field), pointer :: diffusivity, Tvelocity
+      integer :: icomp, iphase, idim, stat, ele, idim2
+      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc
+      real :: vel_av
+      logical, parameter :: harmonic_average=.false.
+      type(tensor_field), intent(inout) :: tracer
+
+      SoluteDispersion = 0.0
+
+                coordinate => extract_vector_field(state, "Coordinate")
+                sfield=>extract_scalar_field(state(1),"Porosity")
+                SoluteDispersion = 0.
+                do iphase = 1, Mdims%nphase
+                    Tvelocity => extract_tensor_field( packed_state, "PackedVelocity" )
+                    diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                    do ele = 1, Mdims%totele
+                        ele_nod = min(size(sfield%val), ele)
+                         do u_iloc = 1, mdims%u_nloc
+                            u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
+
+                            vel_av = 0
+                            do idim2 = 1, Mdims%ndim
+
+                            vel_av = ((sfield%val(ele_nod)*Tvelocity%val(idim2, 1, u_nod))**2)+&
+                            ((sfield%val(ele_nod)*Tvelocity%val(idim2, 1, u_nod))**2)+&
+                            ((sfield%val(ele_nod)*Tvelocity%val(idim2, 1, u_nod))**2)
+                            end do
+                            vel_av = SQRT(vel_av)
+
+
+                            !do idim = 1, Mdims%ndim
+
+
+                                    !SoluteDispersion( u_nod, idim, idim, iphase ) =&
+                                    !sfield%val(ele_nod)*Tvelocity%val(idim, 1, u_nod) *&
+                                    !sfield%val(ele_nod)*Tvelocity%val(idim, 1, u_nod)
+
+                                    !SoluteDispersion( u_nod, idim, idim, iphase ) =&
+                                    !SoluteDispersion( u_nod, idim, idim, iphase ) *&
+                                    !(LongitudinalDispersion - TransverseDispersion) / vel_av
+
+                                    !SoluteDispersion( u_nod, idim, idim, iphase ) =&
+                                    !SoluteDispersion( u_nod, idim, idim, iphase ) +&
+                                    !(TransverseDispersion * vel_av)
+
+                                    !!!!!!!!
+                                    SoluteDispersion( u_nod, 1, 1, iphase ) =&
+                                    sfield%val(ele_nod)*Tvelocity%val(1, 1, u_nod) *&
+                                    sfield%val(ele_nod)*Tvelocity%val(2, 1, u_nod)
+
+                                    SoluteDispersion( u_nod, 1, 1, iphase ) =&
+                                    SoluteDispersion( u_nod, 1, 1, iphase ) *&
+                                    (LongitudinalDispersion - TransverseDispersion) / vel_av
+
+                                    SoluteDispersion( u_nod, 1, 1, iphase ) =&
+                                    SoluteDispersion( u_nod, 1, 1, iphase ) +&
+                                    (TransverseDispersion * vel_av)
+
+                                    !!!!!!!!
+                                    SoluteDispersion( u_nod, 2, 2, iphase ) =&
+                                    sfield%val(ele_nod)*Tvelocity%val(1, 1, u_nod) *&
+                                    sfield%val(ele_nod)*Tvelocity%val(2, 1, u_nod)
+
+                                    SoluteDispersion( u_nod, 2, 2, iphase ) =&
+                                    SoluteDispersion( u_nod, 2, 2, iphase ) *&
+                                    (LongitudinalDispersion - TransverseDispersion) / vel_av
+
+                                    SoluteDispersion( u_nod, 2, 2, iphase ) =&
+                                    SoluteDispersion( u_nod, 2, 2, iphase ) +&
+                                    (TransverseDispersion * vel_av)
+
+                                    if (coordinate%dim == 3) then
+                                        SoluteDispersion( u_nod, 3, 3, iphase ) = 0
+                                    end if
+                            !end do
+                        end do
+                    end do
+                end do
+
+      return
+  end subroutine calculate_solute_dispersity
 
     subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
       implicit none
