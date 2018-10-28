@@ -634,8 +634,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Correction for the diffusivity for dispersion
            !TDIFFUSION = TDIFFUSION + (CDISPERSION)* 1000.
            !TDIFFUSION = TDIFFUSION + (CDISPERSION)
-
-
+           !TDIFFUSION = CDISPERSION
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
