@@ -2280,7 +2280,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
             !If single phase then no point in checking the saturation or mass conservation!
             !Specially now that we are not solving the saturation equation unless it is multiphase!
-            if (Mdims%n_in_pres == 1) THEN
+            if (Mdims%n_in_pres == 1 .and. Mdims%ncomp.le.1) THEN
                 inf_norm_val = 0.0; max_calculate_mass_delta= 0.
             end if
 
