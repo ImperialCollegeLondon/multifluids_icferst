@@ -1409,10 +1409,10 @@ contains
              if( u_nloc == 10 .or. u_nloc == 5) then! or P1 bubble with direct mass lumping
                   GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end if
-             ! Use a degree of precision of 8 for bubble tets (Not necessary for direct mass lumping, use the above instead)
-             ! if( u_nloc == 5) then !THIS IS VERY EXPENSIVE! only use this if not using direct mass lumping and bubble elements are required
-             !    GIdims%cv_ngi = 45 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
-             ! end if
+             ! Use a degree of precision of 8 for bubble tets!sprint_to_do this needs to be optional, to use different options for bubble elements
+             if( u_nloc == 5) then !THIS IS VERY EXPENSIVE! only use this if not using direct mass lumping and bubble elements are required
+                GIdims%cv_ngi = 45 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+             end if
           else
              Select Case( volume_order )
              case( 1 )
@@ -5797,10 +5797,10 @@ contains
              nly( 3, gi ) = -1.
              ! nloc = 4
              if( nloc == 4 ) then!bubble element
-
-                 N(4,GI)  =27. * L1(GI)*L2(GI)*L3(GI)!Bubble done as (dim+1)**(dim+1) * Multiplier (L_i)
-                 NLX(4,GI)=27. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
-                 NLY(4,GI)=27. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
+                !alpha == 1 behaves better than the correct value of 27. See Osman et al. 2019
+                 N(4,GI)  =1. * L1(GI)*L2(GI)*L3(GI)!Bubble done as (dim+1)**(dim+1) * Multiplier (L_i)
+                 NLX(4,GI)=1. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
+                 NLY(4,GI)=1. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
 
              end if
           end do
@@ -5871,11 +5871,11 @@ contains
              nlz( 3, gi ) = 1.
              nlz( 4, gi ) = -1.
              if( nloc == 5 ) then ! Bubble function
-
-                 N(5,GI)  = 256. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
-                 NLX(5,GI)= 256. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                 NLY(5,GI)= 256. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                 NLZ(5,GI)= 256. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                !alpha == 50 behaves better than the correct value of 256. See Osman et al. 2019
+                 N(5,GI)  = 50. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                 NLX(5,GI)= 50. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLY(5,GI)= 50. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLZ(5,GI)= 50. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
 
              endif
           end do
@@ -8381,9 +8381,10 @@ contains
              NLY(3,GI)=-1.0
              IF(NLOC.EQ.4) THEN
                 ! Bubble function...
-                N(4,GI)  =27. * L1(GI)*L2(GI)*L3(GI)
-                NLX(4,GI)=27. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
-                NLY(4,GI)=27. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
+                !alpha == 1 behaves better than the correct value of 27. See Osman et al. 2019
+                N(4,GI)  =1. * L1(GI)*L2(GI)*L3(GI)
+                NLX(4,GI)=1. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
+                NLY(4,GI)=1. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
              ENDIF
           end DO Loop_Gi_Nloc3_4
        ELSE IF((NLOC.EQ.6).OR.(NLOC.EQ.7)) THEN
@@ -8538,15 +8539,11 @@ contains
              NLZ(4,GI)=-1.0
              IF(NLOC.EQ.5) THEN
                 ! Bubble function ...
-                ! N(5,GI)  =L1(GI)*L2(GI)*L3(GI)*L4(GI)
-                ! NLX(5,GI)=L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                ! NLY(5,GI)=L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                ! NLZ(5,GI)=L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-
-                N(5,GI)  = 256. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
-                NLX(5,GI)=256. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                NLY(5,GI)=256. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                NLZ(5,GI)=256. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                !alpha == 50 behaves better than the correct value of 256. See Osman et al. 2019
+                N(5,GI)  = 50. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                NLX(5,GI)= 50. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                NLY(5,GI)= 50. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                NLZ(5,GI)= 50. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
              ENDIF
           end DO Loop_Gi_Nloc_4_5
        ENDIF

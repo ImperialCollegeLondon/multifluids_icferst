@@ -254,7 +254,7 @@ contains
         end if
 
         !COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
-        !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage       
+        !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
         IF ( Mdims%npres==1 .and.( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1 )) THEN
             ! Fast but memory intensive... (wells not yet implemented here)
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
@@ -985,44 +985,16 @@ contains
                 end do
              end do
             return
-        end if
-
-
-        if (is_porous_media) then !No coupling between phases nor dimensions, inverse can be done faster
-             allocate(mat(Mdims%u_nloc, Mdims%u_nloc))
-             DO ELE = 1, Mdims%TOTELE
-                k = 1
-                !Compress into a mini matrix
-                do u_iloc = 1, Mdims%u_nloc
-                    do u_jloc = 1, Mdims%u_nloc
-                        mat(u_iloc, u_jloc) = PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
-                                 k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele )
-                    end do
-                end do
-                !Invert
-                mat = inverse(mat)
-                !Populate PIVIT_MAT. Since the matrix is repeated mdims%nphase * mdims%ndim times we don't need to
-                !invert it that many times
-                do i = 1, mdims%nphase * mdims%ndim
-                    do u_iloc = 1, Mdims%u_nloc
-                        do u_jloc = 1, Mdims%u_nloc
-                            PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
-                                     k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele ) = mat(u_iloc, u_jloc)
-                        end do
-                    end do
-                    k = k + 1
-                end do
-            END DO
         else
-            allocate(MAT( Mdims%u_nloc * Mdims%nphase * Mdims%ndim , Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
-            allocate(B( Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
-            DO ELE = 1, Mdims%TOTELE
-                CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
-            END DO
-            deallocate(b)
+          allocate(MAT( Mdims%u_nloc * Mdims%nphase * Mdims%ndim , Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+          allocate(B( Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+          DO ELE = 1, Mdims%TOTELE
+              CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
+          END DO
+          deallocate(b)
+          deallocate(MAT)
         end if
-        deallocate(MAT)
-        RETURN
+
     END SUBROUTINE PHA_BLOCK_INV
 
     SUBROUTINE PHA_BLOCK_MAT_VEC_old( U, BLOCK_MAT, CDP, NDIM, NPHASE, &

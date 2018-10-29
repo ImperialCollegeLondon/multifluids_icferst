@@ -61,9 +61,6 @@
         <integer_value rank="0">5</integer_value>
       </degree>
     </quadrature>
-    <Bubble_function_test>
-      <Mass_lumping_type>Direct_mass_lumping1</Mass_lumping_type>
-    </Bubble_function_test>
   </geometry>
   <io>
     <dump_format>
@@ -97,7 +94,9 @@
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>
         </Backtracking_factor>
-        <Show_Convergence/>
+        <Vanishing_relaxation>
+          <real_value rank="0">-1e2</real_value>
+        </Vanishing_relaxation>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
