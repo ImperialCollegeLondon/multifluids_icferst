@@ -592,7 +592,8 @@ contains
                     !!$ Calculate Darcy velocity
                     if(is_porous_media) then
                         !Do not calculate unless necessary, this is not specially efficient...
-                        if(is_multifracture) then
+                        !Arash
+                        if(is_multifracture .OR. has_salt) then
                             call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
                         end if
                     end if
@@ -1044,7 +1045,8 @@ contains
 
             if (is_porous_media) then!Calculate Darcy velocity to output in the vtu files
                 !Do not recalculate for "is_multifracture" because it has been calculated already
-                if(.not.is_multifracture) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
+                !Arash
+                if(.not.is_multifracture .OR. .not.has_salt) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
             end if
 
 

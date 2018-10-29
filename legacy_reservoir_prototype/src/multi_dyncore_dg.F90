@@ -632,8 +632,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Calculates solute dispersion with specific longitudinal and transverse dispersion coefficients
            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 0.001, 0.0001, CDISPERSION, tracer)
            !Correction for the diffusivity for dispersion
-           !TDIFFUSION = TDIFFUSION + (CDISPERSION)* 1000.
-           !TDIFFUSION = TDIFFUSION + (CDISPERSION)
+           TDIFFUSION = TDIFFUSION + (CDISPERSION * 1000.)
            !TDIFFUSION = CDISPERSION
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")

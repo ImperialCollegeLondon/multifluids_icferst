@@ -1855,20 +1855,24 @@ contains
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
       type(vector_field), pointer :: coordinate
-      type(tensor_field), pointer :: diffusivity, Tvelocity
+      type(tensor_field), pointer :: diffusivity
+      type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc
       real :: vel_av
       logical, parameter :: harmonic_average=.false.
       type(tensor_field), intent(inout) :: tracer
 
-      SoluteDispersion = 0.0
+      SoluteDispersion = 0.
+
+
 
                 coordinate => extract_vector_field(state, "Coordinate")
                 sfield=>extract_scalar_field(state(1),"Porosity")
-                SoluteDispersion = 0.
+
                 do iphase = 1, Mdims%nphase
-                    Tvelocity => extract_tensor_field( packed_state, "PackedVelocity" )
+                    darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
+
                     diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
                     do ele = 1, Mdims%totele
                         ele_nod = min(size(sfield%val), ele)
@@ -1877,46 +1881,36 @@ contains
 
                             vel_av = 0
                             do idim2 = 1, Mdims%ndim
-                            vel_av = vel_av + ((Tvelocity%val(idim2, 1, u_nod))**2)
+                            vel_av = vel_av + (((darcy_velocity(iphase)%ptr%val(idim2,u_nod))/(sfield%val(ele_nod)))**2)
                             end do
                             vel_av = SQRT(vel_av)
 
-
                             !do idim = 1, Mdims%ndim
-
-
-                                    !SoluteDispersion( u_nod, idim, idim, iphase ) =&
-                                    !sfield%val(ele_nod)*Tvelocity%val(idim, 1, u_nod) *&
-                                    !sfield%val(ele_nod)*Tvelocity%val(idim, 1, u_nod)
-
-                                    !SoluteDispersion( u_nod, idim, idim, iphase ) =&
-                                    !SoluteDispersion( u_nod, idim, idim, iphase ) *&
-                                    !(LongitudinalDispersion - TransverseDispersion) / vel_av
-
-                                    !SoluteDispersion( u_nod, idim, idim, iphase ) =&
-                                    !SoluteDispersion( u_nod, idim, idim, iphase ) +&
-                                    !(TransverseDispersion * vel_av)
 
                                     !Component Dxx of the dispersion tensor
                                     SoluteDispersion( u_nod, 1, 1, iphase ) =&
-                                    (LongitudinalDispersion*(Tvelocity%val(1, 1, u_nod)**2)) +&
-                                    (TransverseDispersion*(Tvelocity%val(2, 1, u_nod)**2))
+                                    (LongitudinalDispersion*(((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod)))**2)) +&
+                                    (TransverseDispersion*(((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod)))**2))
 
                                     SoluteDispersion( u_nod, 1, 1, iphase ) =&
-                                    SoluteDispersion( u_nod, 1, 1, iphase )/vel_av
+                                    sfield%val(ele_nod)*SoluteDispersion( u_nod, 1, 1, iphase )/vel_av
+
 
                                     !Component Dyy of the dispersion tensor
                                     SoluteDispersion( u_nod, 2, 2, iphase ) =&
-                                    (TransverseDispersion*(Tvelocity%val(1, 1, u_nod)**2)) +&
-                                    (LongitudinalDispersion*(Tvelocity%val(2, 1, u_nod)**2))
+                                    (TransverseDispersion*(((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod)))**2)) +&
+                                    (LongitudinalDispersion*(((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod)))**2))
 
                                     SoluteDispersion( u_nod, 2, 2, iphase ) =&
-                                    SoluteDispersion( u_nod, 2, 2, iphase )/vel_av
+                                    sfield%val(ele_nod)*SoluteDispersion( u_nod, 2, 2, iphase )/vel_av
+
 
                                     !Components Dxy and Dyx of the dispersion tensor
 
                                     SoluteDispersion( u_nod, 1, 2, iphase ) =&
-                                    (Tvelocity%val(1, 1, u_nod))*(Tvelocity%val(2, 1, u_nod)) *&
+                                    sfield%val(ele_nod) *&
+                                    ((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod))) *&
+                                    ((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod))) *&
                                     (LongitudinalDispersion - TransverseDispersion)/vel_av
 
                                     SoluteDispersion( u_nod, 2, 1, iphase ) =&
