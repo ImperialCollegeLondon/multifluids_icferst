@@ -1850,7 +1850,7 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
-      real, intent(in) :: LongitudinalDispersion, TransverseDispersion, TransverseDispersion2
+      real, intent(in) :: LongitudinalDispersion, TransverseDispersion, TransverseDispersion2 !Disperison coefficients in x, y and z directions
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
@@ -1864,8 +1864,6 @@ contains
       type(tensor_field), intent(inout) :: tracer
 
       SoluteDispersion = 0.
-
-
 
                 coordinate => extract_vector_field(state, "Coordinate")
                 sfield=>extract_scalar_field(state(1),"Porosity")
@@ -1900,7 +1898,6 @@ contains
 
                                     SoluteDispersion( u_nod, 1, 1, iphase ) =&
                                     sfield%val(ele_nod)*SoluteDispersion( u_nod, 1, 1, iphase )/vel_av
-
 
                                     !Component Dyy of the dispersion tensor
                                     if (coordinate%dim < 3) then
@@ -1958,7 +1955,7 @@ contains
                                         !Dzy
                                         SoluteDispersion( u_nod, 3, 2, iphase ) =&
                                         SoluteDispersion( u_nod, 2, 3, iphase )
-        
+
                                     end if
                         end do
                     end do
