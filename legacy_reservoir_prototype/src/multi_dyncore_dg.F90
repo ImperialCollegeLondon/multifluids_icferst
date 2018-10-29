@@ -630,10 +630,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call calculate_solute_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer)
            !Arash
            !Calculates solute dispersion with specific longitudinal and transverse dispersion coefficients
-           call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 0.001, 0.0001, CDISPERSION, tracer)
+           call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 0.001, 0.0001, 0.0, CDISPERSION, tracer)
            !Correction for the diffusivity for dispersion
            TDIFFUSION = TDIFFUSION + (CDISPERSION * 1000.)
-           !TDIFFUSION = CDISPERSION
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
