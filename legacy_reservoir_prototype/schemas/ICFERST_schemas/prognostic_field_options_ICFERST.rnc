@@ -147,6 +147,62 @@ prognostic_scalar_field =
       )+,
       scalar_boundary_conditions*,
 
+      ## Here you can provide a source term for the corresponding field or
+      ## an absorption.
+      element Sources_and_absorptions{
+        (
+            ## Source term
+          element scalar_field {
+             attribute name { "Source" },
+             attribute rank { "0" },
+             (
+                element prescribed {
+                   prescribed_scalar_field_no_adapt
+                }|
+                ## This only works for traffic modelling
+                element diagnostic {
+                   (
+                      scalar_python_diagnostic_algorithm |
+                      internal_algorithm
+                   ),
+                   diagnostic_scalar_field_no_adapt
+                } 
+             )
+          }?,
+          ## Absorption term
+          element scalar_field {
+             attribute name { "Absorption" },
+             attribute rank { "0" },
+             (
+                element prescribed {
+                   prescribed_scalar_field_no_adapt
+                }|
+                element diagnostic {
+                   (
+                      scalar_python_diagnostic_algorithm |
+                      internal_algorithm
+                   ),
+                   diagnostic_scalar_field_no_adapt
+                }
+             )
+          }?,
+          ## Absorption term
+          element tensor_field {
+             attribute name { "Absorption" },
+             attribute rank { "0" },
+             (
+                element diagnostic {
+                   (
+                      tensor_python_diagnostic_algorithm
+                   ),
+                   diagnostic_tensor_field_no_adapt
+                }
+             )
+          }?
+        )
+        }?,
+ 
+      
       
       prognostic_scalar_output_options,
 #      prognostic_scalar_stat_options,
@@ -208,10 +264,9 @@ prognostic_velocity_field =
          },
          velocity_boundary_conditions
       }*,
-     ## For a Newtonian fluid this is the shear viscosity.
-     element viscosity {
-        real
-     },
+
+
+
 #      ## Source
 #      element vector_field {
 #         attribute name { "Source" },

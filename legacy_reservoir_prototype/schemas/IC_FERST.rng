@@ -80,23 +80,9 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
           </element>
         </choice>
         <optional>
-          <element name="output_darcy_vel">
-            <a:documentation>Output the Darcy velocity</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-        <optional>
           <element name="Courant_number">
             <a:documentation>If porous_media, printout the Courant number every time-step</a:documentation>
             <ref name="comment"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="Mesh_Diagnostics_Angles">
-            <a:documentation>Printout the number of elements and percentage that contain an angle
-equal or bigger than the ones specified here
-Note: This may slow down your simulation should be used as a diagnostic tool </a:documentation>
-            <ref name="real_vector"/>
           </element>
         </optional>
         <optional>
@@ -156,15 +142,20 @@ then this is the initial time step size.</a:documentation>
         </element>
         <optional>
           <element name="nonlinear_iterations">
-            <a:documentation>maximum number of non-linear iterations.
+            <a:documentation>Maximum number of non-linear iterations for the Fixed-Point iteration solver.
 
-Manual suggests 2
+Manual suggests 2 for problems that are not very non-linear
 
-If using Fixed_Point_Iteration the recommendation is 25</a:documentation>
+If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
+
+If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of 
+non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.</a:documentation>
             <ref name="integer"/>
             <optional>
               <element name="Fixed_Point_Iteration">
-                <a:documentation>This is the convergence criterion for the Fixed Point Iteration solver.
+                <a:documentation>NOTE: For multiphase porous media only. Otherwise this value is ignored.  
+
+This is the convergence criterion for the Fixed Point Iteration solver.
 The functional to compare is: 
 
 f = L2norm(S*-So)/L2norm(S1-So)
@@ -175,6 +166,101 @@ of saturation is tested
 
 Recommended value: 5e-2</a:documentation>
                 <ref name="real"/>
+                <optional>
+                  <element name="Infinite_norm_tol">
+                    <a:documentation>Tolerance for the infinite norm of the variation of the normalized selected field
+between two consecutive non-linear iterations.
+
+This can be used to control the number of non-linear interations dynamically.
+
+By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
+                    <ref name="real"/>
+                    <optional>
+                      <element name="adaptive_non_linear_iterations">
+                        <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
+
+A Variable to check has to be chosen:
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+
+The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
+                        <ref name="integer"/>
+                      </element>
+                    </optional>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Backtracking_factor">
+                    <a:documentation>
+Recommended settings: Non-linear iterations ~ 20
+Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+
+The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
+
+Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
+Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
+
+The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Vanishing_relaxation">
+                    <a:documentation>Introduce over-relaxation in the saturation equation. 
+This severely HELPS to reduce the number of FPI.
+
+If positive, the input value is the entry pressure.
+
+If negative, the input value is Peclet number desired.
+
+Recommended value for Saturation =&gt; -1e2
+
+Tip: If running with temperature and single phase disable this setting it to 0.</a:documentation>
+                    <ref name="real"/>
+                    <optional>
+                      <element name="Vanishing_for_transport">
+                        <a:documentation>This method can also be applied for a transport equation.
+
+Recommended value for Temperature =&gt; -1e0</a:documentation>
+                        <ref name="real"/>
+                      </element>
+                    </optional>
+                  </element>
+                </optional>
+                <!--
+                                   (
+                                     ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
+                                     ##
+                                     ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
+                                     ## 
+                                     ## 100 => Only the previous saturation is used (more conservative); 
+                                     ## 0.4 => Recommended (default); 
+                                     ## 0.3 => Older saturation is at some points as important as the old saturation;
+                                     ## 0 => Older saturation is more important than old saturation
+                                     ## 
+                                     ## If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)
+                                     element Acceleration_exp{
+                                     real
+                                     }?
+                                   ),
+                -->
+                <optional>
+                  <element name="Impose_min_max">
+                    <a:documentation>For TEMPERATURE ONLY, if there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+
+This imposes that the temperature has to be between bounds.</a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Test_mass_consv">
+                    <a:documentation>Convergence criterion based on the 
+conservation of volume of each phase for the non-linear solver
+
+By default the tolerance is 1e-2</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
                 <optional>
                   <element name="Show_Convergence">
                     <a:documentation>Prints the number of iterations and
@@ -187,7 +273,7 @@ the final convergence achieved by the FPI solver</a:documentation>
                     <a:documentation>Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (Default)</a:documentation>
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature </a:documentation>
                     <ref name="integer"/>
                     <group>
                       <optional>
@@ -321,13 +407,79 @@ at the first timestep or not.</a:documentation>
           <attribute name="name">
             <data type="string"/>
           </attribute>
-          <ref name="phase_density">
-            <a:documentation>Phase density</a:documentation>
-          </ref>
+          <element name="Fluid_properties">
+            <a:documentation>Options to provide properties of the fluid for the given phase.</a:documentation>
+            <ref name="phase_density">
+              <a:documentation>Phase density</a:documentation>
+            </ref>
+            <element name="tensor_field">
+              <a:documentation>Viscosity of the current phase</a:documentation>
+              <attribute name="name">
+                <value>Viscosity</value>
+              </attribute>
+              <attribute name="rank">
+                <value>2</value>
+              </attribute>
+              <element name="prescribed">
+                <ref name="prescribed_tensor_field_no_adapt"/>
+              </element>
+            </element>
+            <optional>
+              <element name="tensor_field">
+                <a:documentation>Diffusivity for field.
+
+Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin =&gt; W/(m·K) ).</a:documentation>
+                <attribute name="name">
+                  <value>Diffusivity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                  </element>
+                  <element name="diagnostic">
+                    <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
+                    <choice>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="internal_algorithm"/>
+                    </choice>
+                    <ref name="diagnostic_tensor_field"/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
+            <optional>
+              <element name="scalar_field">
+                <a:documentation>Specific heat capacity for compositional field</a:documentation>
+                <attribute name="name">
+                  <value>HeatCapacity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>0</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="prescribed_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="diagnostic">
+                    <a:documentation>This only works for traffic modelling</a:documentation>
+                    <choice>
+                      <ref name="scalar_python_diagnostic_algorithm"/>
+                      <ref name="internal_algorithm"/>
+                    </choice>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
+          </element>
           <optional>
             <element name="scalar_field">
-              <a:documentation>## Equation of State
-equation_of_state?,</a:documentation>
               <a:documentation>Pressure</a:documentation>
               <attribute name="rank">
                 <value>0</value>
@@ -417,73 +569,69 @@ via a compressible equation of state.</a:documentation>
 Corey relperm:
 
 relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent</a:documentation>
-                  <optional>
-                    <element name="relperm_max">
-                      <a:documentation>Relative permeability end point
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability end point
 
 Value between 0 and 1. Default value 1.0</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>End-point relative permeability</a:documentation>
-                        <attribute name="name">
-                          <value>relperm_max</value>
-                        </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                      </element>
+                    <attribute name="name">
+                      <value>relperm_max</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                  </optional>
-                  <optional>
-                    <element name="relperm_exponent">
-                      <a:documentation>Relative permeability exponent
+                  </element>
+                  <element name="scalar_field">
+                    <a:documentation>Relative permeability exponent
 
 Default value 2.0</a:documentation>
-                      <element name="scalar_field">
-                        <a:documentation>Exponent of the formula</a:documentation>
-                        <attribute name="name">
-                          <value>relperm_exponent</value>
-                        </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                      </element>
+                    <attribute name="name">
+                      <value>relperm_exponent</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
                     </element>
-                  </optional>
+                  </element>
                 </element>
               </optional>
               <optional>
                 <element name="capillary_pressure">
                   <a:documentation>Option for capillary pressure				 </a:documentation>
                   <optional>
-                    <element name="Diffusive_cap_only">
-                      <a:documentation>Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
-The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. </a:documentation>
-                      <ref name="comment"/>
-                    </element>
-                  </optional>
-                  <optional>
                     <element name="type_Brooks_Corey">
                       <a:documentation>Brooks-Corey equation
 
-Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a
+Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
+
+For imbibition swith the formula is:
+
+## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure 
+
 You should specify this ONLY for the wetting phase</a:documentation>
                       <element name="scalar_field">
                         <a:documentation>Entry pressure of the formula</a:documentation>
                         <attribute name="name">
                           <value>C</value>
                         </attribute>
-                        <choice>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
+                      </element>
+                      <optional>
+                        <element name="scalar_field">
+                          <a:documentation>Imbibition term. if on, entry pressure = C - B;
+By default this value is set to zero.</a:documentation>
+                          <attribute name="name">
+                            <value>B</value>
+                          </attribute>
                           <element name="prescribed">
                             <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
                           </element>
-                          <element name="aliased">
-                            <ref name="generic_aliased_field"/>
-                          </element>
-                        </choice>
-                      </element>
+                        </element>
+                      </optional>
                       <element name="scalar_field">
                         <a:documentation>exponent -a</a:documentation>
                         <attribute name="name">
@@ -502,10 +650,20 @@ You should specify this ONLY for the wetting phase</a:documentation>
                     </element>
                   </optional>
                   <optional>
-                    <element name="type_TOTALCapillary">
-                      <a:documentation>Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)</a:documentation>
+                    <element name="type_Power_Law">
+                      <a:documentation>Power Law equation
+
+Pc = c*(1-s_eff)**a
+
+where s_eff = (S_w-Swir)/(1-Swir-Sor)
+
+c = maximum pc pressure; a = pc exponent
+
+(no entry pressure) 
+
+ONLY specify for the wetting phase</a:documentation>
                       <element name="scalar_field">
-                        <a:documentation>Overall coefficient scaling the capillary pressure</a:documentation>
+                        <a:documentation>Maximum pressure</a:documentation>
                         <attribute name="name">
                           <value>C</value>
                         </attribute>
@@ -520,7 +678,7 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </choice>
                       </element>
                       <element name="scalar_field">
-                        <a:documentation>Exponent in the capillary pressure formula</a:documentation>
+                        <a:documentation>exponent a</a:documentation>
                         <attribute name="name">
                           <value>a</value>
                         </attribute>
@@ -551,22 +709,6 @@ You should specify this ONLY for the wetting phase</a:documentation>
                       <ref name="prescribed_scalar_field"/>
                     </element>
                   </element>
-                </element>
-              </optional>
-              <optional>
-                <element name="Sat_overRelax">
-                  <a:documentation>Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
-This helps to increase the convergence rate of the FPI solver.
-You MUST specify this ONLY for the wetting phase.
-
-If positive, the input value is the entry pressure.
-
-If negative, the input value is Peclet number desired.
-
-Recommended value =&gt; -1e1
-
-Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.</a:documentation>
-                  <ref name="real"/>
                 </element>
               </optional>
             </element>
@@ -638,6 +780,189 @@ Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.</a:documentati
             </element>
           </choice>
           <optional>
+            <element name="thermal_porous">
+              <a:documentation>Parameters for thermal porous media simulations</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field density of the porous media</a:documentation>
+                <attribute name="name">
+                  <value>porous_density</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field heat capacity of the porous media</a:documentation>
+                <attribute name="name">
+                  <value>porous_heat_capacity</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="tensor_field">
+                <a:documentation>Specify field Thermal conductivity of the porous media</a:documentation>
+                <attribute name="name">
+                  <value>porous_thermal_conductivity</value>
+                </attribute>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_tensor_field"/>
+                </element>
+              </element>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="wells_and_pipes">
+          <a:documentation>Options to specify the wells/pipes</a:documentation>
+          <element name="scalar_field">
+            <a:documentation>Option to define laterals from diamond
+if in doubt set it to 1.</a:documentation>
+            <attribute name="name">
+              <value>Pipe</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="material_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
+          <element name="scalar_field">
+            <a:documentation>Specify where and how much the well/pipes are opened
+It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
+            <attribute name="name">
+              <value>Gamma</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
+          <element name="scalar_field">
+            <a:documentation>Absorption in the pipes.
+If none, set it to 1.
+
+Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+/wells_and_pipes/well_options/calculate_sigma_pipe </a:documentation>
+            <attribute name="name">
+              <value>Sigma</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="subcv_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
+          <element name="scalar_field">
+            <a:documentation>Specify the diameter of the pipe.
+This effectively defines where and where not there is a pipe.
+If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
+            <attribute name="name">
+              <value>DiameterPipe</value>
+            </attribute>
+            <choice>
+              <element name="prescribed">
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prescribed_scalar_field"/>
+              </element>
+              <element name="diagnostic">
+                <ref name="vector_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_scalar_field_no_adapt"/>
+              </element>
+              <element name="aliased">
+                <ref name="generic_aliased_field"/>
+              </element>
+            </choice>
+          </element>
+          <optional>
+            <element name="thermal_well_properties">
+              <a:documentation>Specify thermal well-related options</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Specify the conductivity of the well/pipe material.
+If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
+the reservoir.
+This is only required for heat transport</a:documentation>
+                <attribute name="name">
+                  <value>Conductivity</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
+              <element name="scalar_field">
+                <a:documentation>Specify the thickness of the well/pipe.
+If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
+the reservoir.
+This is only required for heat transport</a:documentation>
+                <attribute name="name">
+                  <value>well_thickness</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
+            </element>
+          </optional>
+          <optional>
             <element name="well_options">
               <a:documentation>Specify well-related options</a:documentation>
               <optional>
@@ -667,6 +992,99 @@ This will over-write the field specified in Sigma1.</a:documentation>
                   </element>
                 </element>
               </optional>
+              <optional>
+                <element name="wells_bdf_tolerance">
+                  <a:documentation>If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+.bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+the other way round for values below 100.
+The default value is 1e-2.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
+            <element name="well_volume_ids">
+              <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+that the well trajectories are preserved.
+
+***This is MANDATORY when using files to define wells***</a:documentation>
+              <ref name="integer_vector"/>
+              <optional>
+                <element name="Show_well_volumes_ids">
+                  <a:documentation>Output the ids of the wells</a:documentation>
+                  <ref name="comment"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <zeroOrMore>
+            <element name="well_from_file">
+              <a:documentation>Introduce here the relative path to the file defining a 1D well
+Note that the only accepted file format is NASTRAN, i.e. .bdf.
+Each file has to describe a continuous well touching an external boundary.
+
+***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
+              <attribute name="name">
+                <data type="string" datatypeLibrary=""/>
+              </attribute>
+              <attribute name="file_path">
+                <data type="string" datatypeLibrary=""/>
+              </attribute>
+            </element>
+          </zeroOrMore>
+        </element>
+      </optional>
+      <optional>
+        <element name="numerical_methods">
+          <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
+          <optional>
+            <element name="use_reflect_method">
+              <a:documentation>Use a method to avoid distortion due to boundaries</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="local_upwinding">
+              <a:documentation>Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
+Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="simple_mass_matrix">
+              <a:documentation>Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
+This is os by default for the CV pressure formulation </a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="CV_press_homogenisation">
+              <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
+the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
+The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
+To disable it manually, set it to negative values. </a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="max_sat_its">
+              <a:documentation>Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
+By default this number is 9. Recommended range: 3 to 9.</a:documentation>
+              <ref name="integer"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="porous_output_force_density">
+              <a:documentation>For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
+activate this to also output the force_density</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="create_P_mat_fast">
+              <a:documentation>Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method</a:documentation>
+              <empty/>
             </element>
           </optional>
         </element>
@@ -716,6 +1134,50 @@ discontinuous_pressure =&gt; P2DGP1DG. High order advection scheme and adaptive 
           </choice>
         </element>
       </element>
+      <optional>
+        <element name="Advance_mesh_options">
+          <a:documentation>Settings to change the values specified in simulation_quality.
+Only the activated options will overwrite the values decided in simulation_quality</a:documentation>
+          <optional>
+            <element name="mesh">
+              <a:documentation>The velocity mesh</a:documentation>
+              <attribute name="name">
+                <value>VelocityMesh</value>
+              </attribute>
+              <ref name="mesh_info"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="mesh">
+              <a:documentation>The pressure mesh</a:documentation>
+              <attribute name="name">
+                <value>PressureMesh</value>
+              </attribute>
+              <ref name="mesh_info"/>
+            </element>
+          </optional>
+          <zeroOrMore>
+            <element name="mesh">
+              <attribute name="name">
+                <data type="string"/>
+              </attribute>
+              <ref name="mesh_info"/>
+              <optional>
+                <element name="exclude_from_mesh_adaptivity">
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </zeroOrMore>
+          <optional>
+            <element name="FE_Pressure">
+              <a:documentation>By default ICFERST uses a DCVFEM because it is more robust (Salinas et al. 2018),
+nonetheless the classical CVFEM can also be used.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+        </element>
+      </optional>
       <optional>
         <element name="create_binary_msh">
           <a:documentation>Use Fluidity to overwrite the input .msh file into a binary .msh file. 
@@ -2681,23 +3143,116 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
   </define>
   <define name="phase_density">
     <element name="Density">
-      <a:documentation>Specify the density of the current material phase (can also specify density for each component)</a:documentation>
-      <ref name="real"/>
-    </element>
-  </define>
-  <define name="equation_of_state">
-    <element name="equation_of_state">
       <a:documentation>Use this option to specify the density of fluids</a:documentation>
-      <element name="incompressible">
-        <a:documentation>Equations of state</a:documentation>
-        <element name="linear">
-          <element name="all_equal">
-            <a:documentation>All eos_coefficients equal as in most of
-the test cases (=1)</a:documentation>
-            <ref name="real"/>
-          </element>
+      <choice>
+        <element name="incompressible">
+          <a:documentation>Equations of state</a:documentation>
+          <ref name="real"/>
         </element>
-      </element>
+        <element name="compressible">
+          <a:documentation>Equations of state for compressible applications</a:documentation>
+          <choice>
+            <element name="linear_in_pressure">
+              <a:documentation>Linear in Pressure EOS 
+
+DEN = A * P + B
+
+Use this option for flooding, being A = 1/gravity and B the bathymetry</a:documentation>
+              <element name="coefficient_A">
+                <ref name="real"/>
+              </element>
+              <element name="coefficient_B">
+                <choice>
+                  <element name="constant">
+                    <a:documentation>list of bin bounds</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <element name="python">
+                    <a:documentation>Python function prescribing real input. Functions should be of the form:
+   def val(X, t):
+   # Function code
+   return # Return value
+
+   where X is a tuple of length geometry dimension.</a:documentation>
+                    <ref name="python_code"/>
+                  </element>
+                </choice>
+              </element>
+              <optional>
+                <element name="include_internal_energy">
+                  <a:documentation>If chosen: DEN = A * P / T + B</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+            <element name="exponential_in_pressure">
+              <a:documentation>Exponential in Pressure EOS 
+
+DEN = A * P ^ B
+</a:documentation>
+              <element name="coefficient_A">
+                <ref name="real"/>
+              </element>
+              <element name="coefficient_B">
+                <ref name="real"/>
+              </element>
+            </element>
+            <element name="concentration_dependant">
+              <a:documentation>Concentration-dependant EOS
+
+DEN = DEN0 * ( 1 + Alpha * w )
+
+w is the solute mass fraction and DEN0 is the reference density corresponding to w = 0
+</a:documentation>
+              <element name="reference_density">
+                <ref name="real"/>
+              </element>
+              <element name="alpha">
+                <ref name="real"/>
+              </element>
+            </element>
+            <element name="Temperature_Pressure_correlation">
+              <a:documentation>Temperature-Pressure correlation for liquids ONLY.
+
+Range of applicability: 0 to 2*10^9 Pa.
+
+rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
+
+where rho0 is the reference density at temperature T0 and pressure P0;
+
+Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
+                       
+E is the liquid elasticity bulk modulus (N/m^2)
+
+NOTE: if temperature is not defined the temperature is defined as zero.</a:documentation>
+              <element name="rho0">
+                <a:documentation>Reference density</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="T0">
+                <a:documentation>Reference temperature</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="P0">
+                <a:documentation>Reference Pressure</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="coefficient_Beta">
+                <a:documentation>volumetric expansion coefficient (m^3/m^3 Celsius)</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="coefficient_E">
+                <a:documentation>liquid elasticity bulk modulus (N/m^2)</a:documentation>
+                <ref name="real"/>
+              </element>
+            </element>
+          </choice>
+        </element>
+        <element name="python_state">
+          <a:documentation>The "Dummy" diagnotic field on the pressure mesh is required for this option</a:documentation>
+          <ref name="scalar_python_diagnostic_algorithm"/>
+        </element>
+      </choice>
     </element>
   </define>
 </grammar>

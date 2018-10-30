@@ -10,9 +10,11 @@ gravity_options =
       element magnitude {
          real
       },
+      ## Solve the gravity component indendently from the pressure general solver
+      ## this is to have higher precision when using P1DG for the velocity. For inertia dominated only.
       element hydrostatic_pressure_solver { empty }?,
-      element fem_buoyancy { empty }?,
-      element fem_density_buoyancy { empty }?,
+      ## Use the boussinesq approximation. Useful for small variations of density.
+      element Boussinesq_approxiomation { empty }?,
       ## The direction of the gravity vector.
       element vector_field {
          attribute name { "GravityDirection" },

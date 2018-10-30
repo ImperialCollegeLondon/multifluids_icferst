@@ -601,18 +601,6 @@ All other algorithms require construction of a supermesh.</a:documentation>
       <empty/>
     </element>
   </define>
-  <define name="pseudo_consistent_interpolation">
-    <element name="pseudo_consistent_interpolation">
-      <a:documentation>Basis function pseudo-interpolation, with averaging for nodes on
-element boundaries. This can accept a discontinuous input, but always
-gives a continuous output. It is strong recommended that you &lt;b&gt;use
-interpolation_galerkin&lt;/b&gt; instead of this interpolation method.
-
-The distance in ideal space from the boundary where averaging is
-applied is currently hard coded to 1.0e3 * epsilon(0.0).</a:documentation>
-      <ref name="comment"/>
-    </element>
-  </define>
   <define name="grandy_interpolation">
     <element name="grandy_interpolation">
       <a:documentation>Grandy interpolation. Conservative, but highly diffusive.

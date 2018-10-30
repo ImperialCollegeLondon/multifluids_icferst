@@ -191,6 +191,74 @@ requires a distinct name for the options dictionary.</a:documentation>
       <zeroOrMore>
         <ref name="scalar_boundary_conditions"/>
       </zeroOrMore>
+      <optional>
+        <element name="Sources_and_absorptions">
+          <a:documentation>Here you can provide a source term for the corresponding field or
+an absorption.</a:documentation>
+          <optional>
+            <element name="scalar_field">
+              <a:documentation>Source term</a:documentation>
+              <attribute name="name">
+                <value>Source</value>
+              </attribute>
+              <attribute name="rank">
+                <value>0</value>
+              </attribute>
+              <choice>
+                <element name="prescribed">
+                  <ref name="prescribed_scalar_field_no_adapt"/>
+                </element>
+                <element name="diagnostic">
+                  <a:documentation>This only works for traffic modelling</a:documentation>
+                  <choice>
+                    <ref name="scalar_python_diagnostic_algorithm"/>
+                    <ref name="internal_algorithm"/>
+                  </choice>
+                  <ref name="diagnostic_scalar_field_no_adapt"/>
+                </element>
+              </choice>
+            </element>
+          </optional>
+          <optional>
+            <element name="scalar_field">
+              <a:documentation>Absorption term</a:documentation>
+              <attribute name="name">
+                <value>Absorption</value>
+              </attribute>
+              <attribute name="rank">
+                <value>0</value>
+              </attribute>
+              <choice>
+                <element name="prescribed">
+                  <ref name="prescribed_scalar_field_no_adapt"/>
+                </element>
+                <element name="diagnostic">
+                  <choice>
+                    <ref name="scalar_python_diagnostic_algorithm"/>
+                    <ref name="internal_algorithm"/>
+                  </choice>
+                  <ref name="diagnostic_scalar_field_no_adapt"/>
+                </element>
+              </choice>
+            </element>
+          </optional>
+          <optional>
+            <element name="tensor_field">
+              <a:documentation>Absorption term</a:documentation>
+              <attribute name="name">
+                <value>Absorption</value>
+              </attribute>
+              <attribute name="rank">
+                <value>0</value>
+              </attribute>
+              <element name="diagnostic">
+                <ref name="tensor_python_diagnostic_algorithm"/>
+                <ref name="diagnostic_tensor_field_no_adapt"/>
+              </element>
+            </element>
+          </optional>
+        </element>
+      </optional>
       <ref name="prognostic_scalar_output_options"/>
       <!--
              prognostic_scalar_stat_options,
@@ -267,10 +335,6 @@ requires a distinct name for the options dictionary.</a:documentation>
         <ref name="velocity_boundary_conditions"/>
       </element>
     </zeroOrMore>
-    <element name="viscosity">
-      <a:documentation>For a Newtonian fluid this is the shear viscosity.</a:documentation>
-      <ref name="real"/>
-    </element>
     <!--
            ## Source
            element vector_field {

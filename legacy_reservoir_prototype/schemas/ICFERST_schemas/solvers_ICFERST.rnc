@@ -388,12 +388,6 @@ generic_solver_options =
       element max_iterations {
          integer
       },
-      ## Switch on to not use an initial guess from a previous solve but
-      ## start with a zero vector. Note that some of the solves always
-      ## start at zero in which case this switch will have no effect (see the log output).
-      element start_from_zero {
-         empty
-      }?,
       ## Remove Null-space from residual after applying preconditioner.
       ## This often leads to better convergence rates, when compared to
       ## imposing a reference_node to pin the solution.
@@ -413,37 +407,6 @@ generic_solver_options =
             empty
          }
       ),
-      ## Retain the data created during the setup phase of the solve.
-      ## This may give some speedup, in particular in combination with
-      ## a multigrid preconditioner, as the data doesn't have to be
-      ## recreated every solve, but at the cost of increased memory usage.
-      ## This option is only useful for solves where the matrix doesn't
-      ## change between time steps, e.g. the pressure solve (only for 
-      ## incompressible flow and without mesh movement) or solving
-      ## balance pressure.
-      element cache_solver_context {
-         empty
-      }?,
-      (
-         ## Use Reverse Cuthill-McKee reordering to improve cache performance
-         element reordering {
-           attribute name { "rcm" }
-         }|
-         ## Use one way dissecting reordering to improve cache performance
-         element reordering {
-           attribute name { "1wd" }
-         }|
-         ## Use natural ordering as reordering, i.e. change nothing.
-         ## Only useful for debugging purposes.
-         element reordering {
-           attribute name { "natural" }
-         }|
-         ## Specify any other reordering mechanism supported by PETSc
-         ## see http://www-unix.mcs.anl.gov/petsc/petsc-as/snapshots/petsc-current/docs/manualpages/MatOrderings/MatGetOrdering.html
-         element reordering {
-           attribute name { xsd:string }
-         }
-      )?,
       ## Extra diagnostics to help debug solver problems
       element diagnostics {
          ## Print out the norm of vectors and matrices before the

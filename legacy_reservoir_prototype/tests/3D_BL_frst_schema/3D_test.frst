@@ -44,13 +44,31 @@
       <integer_value rank="0">15</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">1e-2</real_value>
+        <Vanishing_relaxation>
+          <real_value rank="0">-1e2</real_value>
+        </Vanishing_relaxation>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
   <material_phase name="phase1">
-    <Density>
-      <real_value rank="0">1</real_value>
-    </Density>
+    <Fluid_properties>
+      <Density>
+        <incompressible>
+          <real_value rank="0">1</real_value>
+        </incompressible>
+      </Density>
+      <tensor_field name="Viscosity" rank="2">
+        <prescribed>
+          <value name="WholeMesh">
+            <isotropic>
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </isotropic>
+          </value>
+        </prescribed>
+      </tensor_field>
+    </Fluid_properties>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
@@ -143,9 +161,6 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <viscosity>
-          <real_value rank="0">1</real_value>
-        </viscosity>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -200,15 +215,27 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Sat_overRelax>
-        <real_value rank="0">-1e2</real_value>
-      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
-    <Density>
-      <real_value rank="0">0.711</real_value>
-    </Density>
+    <Fluid_properties>
+      <Density>
+        <incompressible>
+          <real_value rank="0">0.711</real_value>
+        </incompressible>
+      </Density>
+      <tensor_field name="Viscosity" rank="2">
+        <prescribed>
+          <value name="WholeMesh">
+            <isotropic>
+              <constant>
+                <real_value rank="0">10</real_value>
+              </constant>
+            </isotropic>
+          </value>
+        </prescribed>
+      </tensor_field>
+    </Fluid_properties>
     <scalar_field name="Pressure" rank="0">
       <aliased material_phase_name="phase1" field_name="Pressure"/>
     </scalar_field>
@@ -245,9 +272,6 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <viscosity>
-          <real_value rank="0">10</real_value>
-        </viscosity>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
