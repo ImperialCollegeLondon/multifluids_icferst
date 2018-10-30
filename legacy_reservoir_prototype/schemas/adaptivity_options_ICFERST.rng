@@ -576,20 +576,6 @@ without waiting for the first timestep adapt</a:documentation>
           </optional>
         </element>
       </optional>
-      <optional>
-        <element name="preserve_mesh_regions">
-          <a:documentation>Enable this option to preserve any regions in your
-mesh (i.e. those specified by region_ids).
-Also, any prescribed fields using region_ids will be
-reinitialised using them on the new mesh.
-
-Therefore this is a required option if you want your
-prescribed region_id fields to survive adapts!
-Obviously this does not apply to initial conditions
-set using region_ids.</a:documentation>
-          <ref name="comment"/>
-        </element>
-      </optional>
     </element>
   </define>
   <define name="consistent_interpolation">

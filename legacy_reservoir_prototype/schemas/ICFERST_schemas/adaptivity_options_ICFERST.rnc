@@ -489,18 +489,6 @@ hr_adaptivity =
             element output_adapted_mesh {
                comment
             }?
-         }?,
-         ## Enable this option to preserve any regions in your
-         ## mesh (i.e. those specified by region_ids).
-         ## Also, any prescribed fields using region_ids will be
-         ## reinitialised using them on the new mesh.
-         ##
-         ## Therefore this is a required option if you want your
-         ## prescribed region_id fields to survive adapts!
-         ## Obviously this does not apply to initial conditions
-         ## set using region_ids.
-         element preserve_mesh_regions {
-            comment
          }?
 
       }
