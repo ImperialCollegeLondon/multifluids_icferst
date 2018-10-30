@@ -825,215 +825,276 @@ ONLY specify for the wetting phase</a:documentation>
               </element>
             </element>
           </optional>
-        </element>
-      </optional>
-      <optional>
-        <element name="wells_and_pipes">
-          <a:documentation>Options to specify the wells/pipes</a:documentation>
-          <element name="scalar_field">
-            <a:documentation>Option to define laterals from diamond
+          <optional>
+            <element name="wells_and_pipes">
+              <a:documentation>Options to specify the wells/pipes</a:documentation>
+              <element name="scalar_field">
+                <a:documentation>Option to define laterals from diamond
 if in doubt set it to 1.</a:documentation>
-            <attribute name="name">
-              <value>Pipe</value>
-            </attribute>
-            <choice>
-              <element name="prescribed">
-                <ref name="material_mesh_choice"/>
-                <ref name="prescribed_scalar_field"/>
+                <attribute name="name">
+                  <value>Pipe</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
               </element>
-              <element name="diagnostic">
-                <ref name="vector_python_diagnostic_algorithm"/>
-                <ref name="diagnostic_scalar_field_no_adapt"/>
-              </element>
-              <element name="aliased">
-                <ref name="generic_aliased_field"/>
-              </element>
-            </choice>
-          </element>
-          <element name="scalar_field">
-            <a:documentation>Specify where and how much the well/pipes are opened
+              <element name="scalar_field">
+                <a:documentation>Specify where and how much the well/pipes are opened
 It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
-            <attribute name="name">
-              <value>Gamma</value>
-            </attribute>
-            <choice>
-              <element name="prescribed">
-                <ref name="pressure_mesh_choice"/>
-                <ref name="prescribed_scalar_field"/>
+                <attribute name="name">
+                  <value>Gamma</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
               </element>
-              <element name="diagnostic">
-                <ref name="vector_python_diagnostic_algorithm"/>
-                <ref name="diagnostic_scalar_field_no_adapt"/>
-              </element>
-              <element name="aliased">
-                <ref name="generic_aliased_field"/>
-              </element>
-            </choice>
-          </element>
-          <element name="scalar_field">
-            <a:documentation>Absorption in the pipes.
+              <element name="scalar_field">
+                <a:documentation>Absorption in the pipes.
 If none, set it to 1.
 
 Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
 /wells_and_pipes/well_options/calculate_sigma_pipe </a:documentation>
-            <attribute name="name">
-              <value>Sigma</value>
-            </attribute>
-            <choice>
-              <element name="prescribed">
-                <ref name="subcv_mesh_choice"/>
-                <ref name="prescribed_scalar_field"/>
+                <attribute name="name">
+                  <value>Sigma</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="subcv_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
               </element>
-              <element name="diagnostic">
-                <ref name="vector_python_diagnostic_algorithm"/>
-                <ref name="diagnostic_scalar_field_no_adapt"/>
-              </element>
-              <element name="aliased">
-                <ref name="generic_aliased_field"/>
-              </element>
-            </choice>
-          </element>
-          <element name="scalar_field">
-            <a:documentation>Specify the diameter of the pipe.
+              <element name="scalar_field">
+                <a:documentation>Specify the diameter of the pipe.
 This effectively defines where and where not there is a pipe.
 If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
-            <attribute name="name">
-              <value>DiameterPipe</value>
-            </attribute>
-            <choice>
-              <element name="prescribed">
-                <ref name="pressure_mesh_choice"/>
-                <ref name="prescribed_scalar_field"/>
+                <attribute name="name">
+                  <value>DiameterPipe</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="pressure_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="vector_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
               </element>
-              <element name="diagnostic">
-                <ref name="vector_python_diagnostic_algorithm"/>
-                <ref name="diagnostic_scalar_field_no_adapt"/>
-              </element>
-              <element name="aliased">
-                <ref name="generic_aliased_field"/>
-              </element>
-            </choice>
-          </element>
-          <optional>
-            <element name="thermal_well_properties">
-              <a:documentation>Specify thermal well-related options</a:documentation>
-              <element name="scalar_field">
-                <a:documentation>Specify the conductivity of the well/pipe material.
+              <optional>
+                <element name="thermal_well_properties">
+                  <a:documentation>Specify thermal well-related options</a:documentation>
+                  <element name="scalar_field">
+                    <a:documentation>Specify the conductivity of the well/pipe material.
 If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
 the reservoir.
 This is only required for heat transport</a:documentation>
-                <attribute name="name">
-                  <value>Conductivity</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="pressure_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
+                    <attribute name="name">
+                      <value>Conductivity</value>
+                    </attribute>
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="pressure_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
+                      <element name="diagnostic">
+                        <ref name="vector_python_diagnostic_algorithm"/>
+                        <ref name="diagnostic_scalar_field_no_adapt"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                      </element>
+                    </choice>
                   </element>
-                  <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="scalar_field">
-                <a:documentation>Specify the thickness of the well/pipe.
+                  <element name="scalar_field">
+                    <a:documentation>Specify the thickness of the well/pipe.
 If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
 the reservoir.
 This is only required for heat transport</a:documentation>
-                <attribute name="name">
-                  <value>well_thickness</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="pressure_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
+                    <attribute name="name">
+                      <value>well_thickness</value>
+                    </attribute>
+                    <choice>
+                      <element name="prescribed">
+                        <ref name="pressure_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
+                      <element name="diagnostic">
+                        <ref name="vector_python_diagnostic_algorithm"/>
+                        <ref name="diagnostic_scalar_field_no_adapt"/>
+                      </element>
+                      <element name="aliased">
+                        <ref name="generic_aliased_field"/>
+                      </element>
+                    </choice>
                   </element>
-                  <element name="diagnostic">
-                    <ref name="vector_python_diagnostic_algorithm"/>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                  </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                  </element>
-                </choice>
-              </element>
-            </element>
-          </optional>
-          <optional>
-            <element name="well_options">
-              <a:documentation>Specify well-related options</a:documentation>
+                </element>
+              </optional>
               <optional>
-                <element name="calculate_sigma_pipe">
-                  <a:documentation>Calculate the well \sigma field internally
+                <element name="well_options">
+                  <a:documentation>Specify well-related options</a:documentation>
+                  <optional>
+                    <element name="calculate_sigma_pipe">
+                      <a:documentation>Calculate the well \sigma field internally
 using a non-linear friction factor.
 This will over-write the field specified in Sigma1.</a:documentation>
+                      <optional>
+                        <!-- Defaults to 1.0e-6. -->
+                        <element name="pipe_roughness">
+                          <ref name="real"/>
+                        </element>
+                      </optional>
+                    </element>
+                  </optional>
                   <optional>
-                    <!-- Defaults to 1.0e-6. -->
-                    <element name="pipe_roughness">
+                    <element name="dt_pipe_factor">
+                      <a:documentation>Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}</a:documentation>
+                      <ref name="real"/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="switch_wells_on_and_off">
+                      <a:documentation>Switches wells on and off to optimise production</a:documentation>
+                      <element name="phase_exclude">
+                        <ref name="integer"/>
+                      </element>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="wells_bdf_tolerance">
+                      <a:documentation>If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+.bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+the other way round for values below 100.
+The default value is 1e-2.</a:documentation>
                       <ref name="real"/>
                     </element>
                   </optional>
                 </element>
               </optional>
               <optional>
-                <element name="dt_pipe_factor">
-                  <a:documentation>Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="switch_wells_on_and_off">
-                  <a:documentation>Switches wells on and off to optimise production</a:documentation>
-                  <element name="phase_exclude">
-                    <ref name="integer"/>
-                  </element>
-                </element>
-              </optional>
-              <optional>
-                <element name="wells_bdf_tolerance">
-                  <a:documentation>If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
-.bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
-the other way round for values below 100.
-The default value is 1e-2.</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
-            </element>
-          </optional>
-          <optional>
-            <element name="well_volume_ids">
-              <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+                <element name="well_volume_ids">
+                  <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.
 
 ***This is MANDATORY when using files to define wells***</a:documentation>
-              <ref name="integer_vector"/>
-              <optional>
-                <element name="Show_well_volumes_ids">
-                  <a:documentation>Output the ids of the wells</a:documentation>
-                  <ref name="comment"/>
+                  <ref name="integer_vector"/>
+                  <optional>
+                    <element name="Show_well_volumes_ids">
+                      <a:documentation>Output the ids of the wells</a:documentation>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
                 </element>
               </optional>
-            </element>
-          </optional>
-          <zeroOrMore>
-            <element name="well_from_file">
-              <a:documentation>Introduce here the relative path to the file defining a 1D well
+              <zeroOrMore>
+                <element name="well_from_file">
+                  <a:documentation>Introduce here the relative path to the file defining a 1D well
 Note that the only accepted file format is NASTRAN, i.e. .bdf.
 Each file has to describe a continuous well touching an external boundary.
 
 ***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
+                  <attribute name="name">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                  <attribute name="file_path">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                </element>
+              </zeroOrMore>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="femdem_fracture">
+          <a:documentation>Fracking options</a:documentation>
+          <optional>
+            <element name="femdem_file">
+              <a:documentation>Specify FEMDEM input file</a:documentation>
               <attribute name="name">
-                <data type="string" datatypeLibrary=""/>
-              </attribute>
-              <attribute name="file_path">
-                <data type="string" datatypeLibrary=""/>
+                <data type="string"/>
               </attribute>
             </element>
-          </zeroOrMore>
+          </optional>
+          <optional>
+            <element name="oneway_coupling_only">
+              <attribute name="rank">
+                <value>0</value>
+              </attribute>
+              <choice>
+                <value>1way</value>
+                <value>p2way</value>
+              </choice>
+            </element>
+          </optional>
+          <optional>
+            <element name="include_pore_pressure">
+              <empty/>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="flooding">
+          <a:documentation>Flooding parameters</a:documentation>
+          <element name="scalar_field">
+            <a:documentation>This is the term Nm of the manning formula:
+b = Nm^2*g * |u|/h^1.33; 
+Nm is the manning coefficent. Values between [0.01 and 0.025];
+Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
+For no friction set this to zero or do not activate it.</a:documentation>
+            <attribute name="name">
+              <value>manning_coef</value>
+            </attribute>
+            <element name="prescribed">
+              <ref name="material_mesh_choice"/>
+              <ref name="prescribed_scalar_field"/>
+            </element>
+          </element>
+          <optional>
+            <element name="averaging">
+              <a:documentation>Perform the mean of the bathymetry when calculating the Manning formula;</a:documentation>
+              <ref name="comment"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="shallow_drag">
+              <a:documentation>Factor that controls the strenght of the drag introduced in the dry areas;
+it has a simmilar effect as the artificial diffusion. Default value = 1e-1.</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>

@@ -683,95 +683,32 @@ start =
                      prescribed_tensor_field
                   }
                }
-             }?
-         }?,
-         ## Options to specify the wells/pipes
-         element wells_and_pipes {
-            ## Option to define laterals from diamond
-            ## if in doubt set it to 1.
-            element scalar_field {
-               attribute name { "Pipe" },
-               (
-                  element prescribed {
-                     material_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                element diagnostic {
-                  vector_python_diagnostic_algorithm,
-                  diagnostic_scalar_field_no_adapt
-                }| 
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
-            },
-            ## Specify where and how much the well/pipes are opened
-            ## It goes from 0 to 1. If completely opened, set it to 1.
-            element scalar_field {
-               attribute name { "Gamma" },
-               (
-                  element prescribed {
-                     pressure_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                element diagnostic {
-                  vector_python_diagnostic_algorithm,
-                  diagnostic_scalar_field_no_adapt
-                }| 
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
-            },
-            ## Absorption in the pipes.
-            ## If none, set it to 1.
-            ##
-            ## Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
-            ## /wells_and_pipes/well_options/calculate_sigma_pipe 
+             }?,
 
-            element scalar_field {
-               attribute name { "Sigma" },
-               (
-                  element prescribed {
-                     subcv_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                element diagnostic {
-                  vector_python_diagnostic_algorithm,
-                  diagnostic_scalar_field_no_adapt
-                }| 
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
-            },
-            ## Specify the diameter of the pipe.
-            ## This effectively defines where and where not there is a pipe.
-            ## If the diameter is <=0 no pipe, else there is pipe.
-            element scalar_field {
-               attribute name { "DiameterPipe" },
-               (
-                  element prescribed {
-                     pressure_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                element diagnostic {
-                  vector_python_diagnostic_algorithm,
-                  diagnostic_scalar_field_no_adapt
-                }| 
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
-            },
-            ## Specify thermal well-related options
-            element thermal_well_properties {
-                ## Specify the conductivity of the well/pipe material.
-                ## If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
-                ## the reservoir.
-                ## This is only required for heat transport
+             ## Options to specify the wells/pipes
+             element wells_and_pipes {
+                ## Option to define laterals from diamond
+                ## if in doubt set it to 1.
                 element scalar_field {
-                   attribute name { "Conductivity" },
+                   attribute name { "Pipe" },
+                   (
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify where and how much the well/pipes are opened
+                ## It goes from 0 to 1. If completely opened, set it to 1.
+                element scalar_field {
+                   attribute name { "Gamma" },
                    (
                       element prescribed {
                          pressure_mesh_choice,
@@ -786,12 +723,33 @@ start =
                       }
                    )
                 },
-                ## Specify the thickness of the well/pipe.
-                ## If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
-                ## the reservoir.
-                ## This is only required for heat transport
+                ## Absorption in the pipes.
+                ## If none, set it to 1.
+                ##
+                ## Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+                ## /wells_and_pipes/well_options/calculate_sigma_pipe 
+
                 element scalar_field {
-                   attribute name { "well_thickness" },
+                   attribute name { "Sigma" },
+                   (
+                      element prescribed {
+                         subcv_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify the diameter of the pipe.
+                ## This effectively defines where and where not there is a pipe.
+                ## If the diameter is <=0 no pipe, else there is pipe.
+                element scalar_field {
+                   attribute name { "DiameterPipe" },
                    (
                       element prescribed {
                          pressure_mesh_choice,
@@ -805,53 +763,141 @@ start =
                          generic_aliased_field
                       }
                    )
-                }
-            }?,
-            ## Specify well-related options
-            element well_options {
-               ## Calculate the well \sigma field internally
-               ## using a non-linear friction factor.
-               ## This will over-write the field specified in Sigma1.
-               element calculate_sigma_pipe{
-                  # Defaults to 1.0e-6.
-                  element pipe_roughness{ real }?
-               }?,
-               ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
-               element dt_pipe_factor{ real }?,
-               ## Switches wells on and off to optimise production
-               element switch_wells_on_and_off{
-                  element phase_exclude{ integer }
-               }?,
-                ## If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
-                ## .bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
-                ## the other way round for values below 100.
-                ## The default value is 1e-2.
-                element wells_bdf_tolerance {
-                  real
-                 }?
-            }?,
+                },
+                ## Specify thermal well-related options
+                element thermal_well_properties {
+                    ## Specify the conductivity of the well/pipe material.
+                    ## If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
+                    ## the reservoir.
+                    ## This is only required for heat transport
+                    element scalar_field {
+                       attribute name { "Conductivity" },
+                       (
+                          element prescribed {
+                             pressure_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                        element diagnostic {
+                          vector_python_diagnostic_algorithm,
+                          diagnostic_scalar_field_no_adapt
+                        }| 
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    },
+                    ## Specify the thickness of the well/pipe.
+                    ## If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
+                    ## the reservoir.
+                    ## This is only required for heat transport
+                    element scalar_field {
+                       attribute name { "well_thickness" },
+                       (
+                          element prescribed {
+                             pressure_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                        element diagnostic {
+                          vector_python_diagnostic_algorithm,
+                          diagnostic_scalar_field_no_adapt
+                        }| 
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    }
+                }?,
+                ## Specify well-related options
+                element well_options {
+                   ## Calculate the well \sigma field internally
+                   ## using a non-linear friction factor.
+                   ## This will over-write the field specified in Sigma1.
+                   element calculate_sigma_pipe{
+                      # Defaults to 1.0e-6.
+                      element pipe_roughness{ real }?
+                   }?,
+                   ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
+                   element dt_pipe_factor{ real }?,
+                   ## Switches wells on and off to optimise production
+                   element switch_wells_on_and_off{
+                      element phase_exclude{ integer }
+                   }?,
+                    ## If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+                    ## .bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+                    ## the other way round for values below 100.
+                    ## The default value is 1e-2.
+                    element wells_bdf_tolerance {
+                      real
+                     }?
+                }?,
 
-            ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
-            ## that the well trajectories are preserved.
-            ##
-            ## ***This is MANDATORY when using files to define wells***
-            element well_volume_ids {
-              integer_vector,
-                  (
-                    ## Output the ids of the wells
-                    element Show_well_volumes_ids{comment}?
-                  )
-             }?,
-             ## Introduce here the relative path to the file defining a 1D well
-             ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
-             ## Each file has to describe a continuous well touching an external boundary.
-             ##
-             ## ***Well_volume_ids option is MANDATORY when using this method to define wells.***
-             element well_from_file {
-             attribute name { string },
-             attribute file_path { string }                  
-            }*
+                ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+                ## that the well trajectories are preserved.
+                ##
+                ## ***This is MANDATORY when using files to define wells***
+                element well_volume_ids {
+                  integer_vector,
+                      (
+                        ## Output the ids of the wells
+                        element Show_well_volumes_ids{comment}?
+                      )
+                 }?,
+                 ## Introduce here the relative path to the file defining a 1D well
+                 ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
+                 ## Each file has to describe a continuous well touching an external boundary.
+                 ##
+                 ## ***Well_volume_ids option is MANDATORY when using this method to define wells.***
+                 element well_from_file {
+                 attribute name { string },
+                 attribute file_path { string }                  
+                }*
+             }?
+
          }?,
+
+        ## Fracking options
+         element femdem_fracture {
+         (
+            ## Specify FEMDEM input file
+            element femdem_file {
+               attribute name { xsd:string }
+            }?,
+	    element oneway_coupling_only {
+	       attribute rank {"0"},
+               ("1way"|"p2way")
+	    }?,
+            element include_pore_pressure {
+               empty
+	    }?
+         )
+         }?,
+         ## Flooding parameters
+            element flooding{
+             ## This is the term Nm of the manning formula:
+             ## b = Nm^2*g * |u|/h^1.33; 
+             ## Nm is the manning coefficent. Values between [0.01 and 0.025];
+             ## Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
+             ## For no friction set this to zero or do not activate it.
+                 element scalar_field {
+                    attribute name { "manning_coef" },
+                    (
+                       element prescribed {
+                          material_mesh_choice,
+                          prescribed_scalar_field
+              }
+                    )
+                 },
+               ##Perform the mean of the bathymetry when calculating the Manning formula;
+               element averaging {
+               comment
+            }?,
+               ##Factor that controls the strenght of the drag introduced in the dry areas;
+               ## it has a simmilar effect as the artificial diffusion. Default value = 1e-1.
+               element shallow_drag {
+               real
+            }?
+         }?,
+
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
             ## Use a method to avoid distortion due to boundaries
