@@ -967,30 +967,20 @@ solver =
    (
       ## Default Options for all the solvers
       element solvers {
-      	linear_solver_options_asym,
-      	## Advanced options for the main fields
-      	element advanced{
-			## Options for pressure solver      	
-			element Pressure{
-				linear_solver_options_asym,
-				element Advanced_Options{
-					advanced_solver_options_asym
-				}
-			}?,
-			## Options for velocity solver
-	      	element Velocity{
-				linear_solver_options_asym,
-				element Advanced_Options{
-					advanced_solver_options_asym
-				}
-			}?,
-			## Options for velocity solver
-	      	element PhaseVolumeFraction{
-				linear_solver_options_asym,
-				element Advanced_Options{
-					advanced_solver_options_asym
-				}
-			}?
+	## Options for pressure solver      	
+	element Pressure{
+		advanced_solver_options_sym,
+		linear_solver_options_sym	
+		}?,
+	## Options for velocity solver
+	element Velocity{
+		advanced_solver_options_asym,
+		linear_solver_options_asym	
+		}?,
+	## Options for Transport solver
+	element Transport{
+		advanced_solver_options_asym,
+		linear_solver_options_asym	
 		}?
       }?
    )
