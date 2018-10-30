@@ -730,21 +730,40 @@ Useful to convert your ASCII msh files into binary to be able to decompose the m
   <define name="solver">
     <optional>
       <element name="solvers">
-        <a:documentation>Options dealing with the specification of the solvers</a:documentation>
-        <element name="pressure">
-          <a:documentation>Options for pressure solver      	</a:documentation>
-          <ref name="linear_solver_options_sym"/>
+        <a:documentation>Default Options for all the solvers</a:documentation>
+        <ref name="linear_solver_options_asym"/>
+        <optional>
           <element name="advanced">
-            <ref name="advanced_solver_options_sym"/>
+            <a:documentation>Advanced options for the main fields</a:documentation>
+            <optional>
+              <element name="Pressure">
+                <a:documentation>Options for pressure solver      	</a:documentation>
+                <ref name="linear_solver_options_asym"/>
+                <element name="Advanced_Options">
+                  <ref name="advanced_solver_options_asym"/>
+                </element>
+              </element>
+            </optional>
+            <optional>
+              <element name="Velocity">
+                <a:documentation>Options for velocity solver</a:documentation>
+                <ref name="linear_solver_options_asym"/>
+                <element name="Advanced_Options">
+                  <ref name="advanced_solver_options_asym"/>
+                </element>
+              </element>
+            </optional>
+            <optional>
+              <element name="PhaseVolumeFraction">
+                <a:documentation>Options for velocity solver</a:documentation>
+                <ref name="linear_solver_options_asym"/>
+                <element name="Advanced_Options">
+                  <ref name="advanced_solver_options_asym"/>
+                </element>
+              </element>
+            </optional>
           </element>
-        </element>
-        <element name="velocity">
-          <a:documentation>Options for velocity solver</a:documentation>
-          <ref name="linear_solver_options_asym"/>
-          <element name="advanced">
-            <ref name="advanced_solver_options_asym"/>
-          </element>
-        </element>
+        </optional>
       </element>
     </optional>
   </define>

@@ -577,22 +577,33 @@ geometry =
 
 solver = 
    (
-      ## Options dealing with the specification of the solvers
+      ## Default Options for all the solvers
       element solvers {
-		## Options for pressure solver      	
-		element pressure{
-			linear_solver_options_sym,
-			element advanced{
-				advanced_solver_options_sym
-			}
-		},
-		## Options for velocity solver
-      	element velocity{
-			linear_solver_options_asym,
-			element advanced{
-				advanced_solver_options_asym
-			}
-		}
+      	linear_solver_options_asym,
+      	## Advanced options for the main fields
+      	element advanced{
+			## Options for pressure solver      	
+			element Pressure{
+				linear_solver_options_asym,
+				element Advanced_Options{
+					advanced_solver_options_asym
+				}
+			}?,
+			## Options for velocity solver
+	      	element Velocity{
+				linear_solver_options_asym,
+				element Advanced_Options{
+					advanced_solver_options_asym
+				}
+			}?,
+			## Options for velocity solver
+	      	element PhaseVolumeFraction{
+				linear_solver_options_asym,
+				element Advanced_Options{
+					advanced_solver_options_asym
+				}
+			}?
+		}?
       }?
    )
 
