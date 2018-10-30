@@ -17,6 +17,64 @@ Given are the most frequently used methods. The solution is done
 by the PETSc library. Many more methods are provided.</a:documentation>
     </ref>
   </define>
+  <define name="advanced_solver_options_asym">
+    <choice>
+      <a:documentation>Iterative (Krylov) method to solve the linear discretised equation
+Given are the most frequently used methods. The solution is done
+by the PETSc library. Many more methods are provided.
+</a:documentation>
+      <ref name="kspgmres_options"/>
+      <ref name="kspcg_options"/>
+      <ref name="ksppreonly_options"/>
+      <ref name="ksprichardson_options"/>
+      <ref name="kspother_options"/>
+    </choice>
+    <choice>
+      <a:documentation>Preconditioner to be used in combination with the iterative method.</a:documentation>
+      <ref name="pchypre_options"/>
+      <ref name="pcgamg_options"/>
+      <ref name="pcsor_options"/>
+      <ref name="pceisenstat_options"/>
+      <ref name="pcilu_options"/>
+      <ref name="pcicc_options"/>
+      <ref name="pclu_options"/>
+      <ref name="pcmg_options"/>
+      <ref name="pcbjacobi_options"/>
+      <ref name="pcpbjacobi_options"/>
+      <ref name="pcasm_options"/>
+      <ref name="pcksp_options"/>
+      <ref name="pcother_options"/>
+    </choice>
+  </define>
+  <define name="advanced_solver_options_sym">
+    <choice>
+      <a:documentation>Iterative (Krylov) method to solve the linear discretised equation
+Given are the most frequently used methods. The solution is done
+by the PETSc library. Many more methods are provided.
+</a:documentation>
+      <ref name="kspcg_options"/>
+      <ref name="kspgmres_options"/>
+      <ref name="ksppreonly_options"/>
+      <ref name="ksprichardson_options"/>
+      <ref name="kspother_options"/>
+    </choice>
+    <choice>
+      <a:documentation>Preconditioner to be used in combination with the iterative method.</a:documentation>
+      <ref name="pchypre_options"/>
+      <ref name="pcgamg_options"/>
+      <ref name="pcsor_options"/>
+      <ref name="pceisenstat_options"/>
+      <ref name="pcilu_options"/>
+      <ref name="pcicc_options"/>
+      <ref name="pclu_options"/>
+      <ref name="pcmg_options"/>
+      <ref name="pcbjacobi_options"/>
+      <ref name="pcpbjacobi_options"/>
+      <ref name="pcasm_options"/>
+      <ref name="pcksp_options"/>
+      <ref name="pcother_options"/>
+    </choice>
+  </define>
   <!--
     ####################################################################
     
