@@ -409,9 +409,9 @@ at the first timestep or not.</a:documentation>
           </attribute>
           <element name="Fluid_properties">
             <a:documentation>Options to provide properties of the fluid for the given phase.</a:documentation>
-            <ref name="phase_density">
-              <a:documentation>Phase density</a:documentation>
-            </ref>
+          <ref name="phase_density">
+            <a:documentation>Phase density</a:documentation>
+          </ref>
             <element name="tensor_field">
               <a:documentation>Viscosity of the current phase</a:documentation>
               <attribute name="name">
@@ -453,8 +453,8 @@ Note that for the temperature field this is actually the thermal conductivity (i
                 </choice>
               </element>
             </optional>
-            <optional>
-              <element name="scalar_field">
+          <optional>
+            <element name="scalar_field">
                 <a:documentation>Specific heat capacity for compositional field</a:documentation>
                 <attribute name="name">
                   <value>HeatCapacity</value>
@@ -570,31 +570,31 @@ Corey relperm:
 
 relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent</a:documentation>
                   <element name="scalar_field">
-                    <a:documentation>Relative permeability end point
+                      <a:documentation>Relative permeability end point
 
 Value between 0 and 1. Default value 1.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_max</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
-                    </element>
-                  </element>
+                        <attribute name="name">
+                          <value>relperm_max</value>
+                        </attribute>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
+                      </element>
                   <element name="scalar_field">
-                    <a:documentation>Relative permeability exponent
+                      <a:documentation>Relative permeability exponent
 
 Default value 2.0</a:documentation>
-                    <attribute name="name">
-                      <value>relperm_exponent</value>
-                    </attribute>
-                    <element name="prescribed">
-                      <ref name="material_mesh_choice"/>
-                      <ref name="prescribed_scalar_field"/>
+                        <attribute name="name">
+                          <value>relperm_exponent</value>
+                        </attribute>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
+                      </element>
                     </element>
-                  </element>
-                </element>
-              </optional>
+                  </optional>
               <optional>
                 <element name="capillary_pressure">
                   <a:documentation>Option for capillary pressure				 </a:documentation>
@@ -614,11 +614,11 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         <attribute name="name">
                           <value>C</value>
                         </attribute>
-                        <element name="prescribed">
-                          <ref name="material_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                      </element>
+                          <element name="prescribed">
+                            <ref name="material_mesh_choice"/>
+                            <ref name="prescribed_scalar_field"/>
+                          </element>
+                          </element>
                       <optional>
                         <element name="scalar_field">
                           <a:documentation>Imbibition term. if on, entry pressure = C - B;
@@ -629,7 +629,7 @@ By default this value is set to zero.</a:documentation>
                           <element name="prescribed">
                             <ref name="material_mesh_choice"/>
                             <ref name="prescribed_scalar_field"/>
-                          </element>
+                      </element>
                         </element>
                       </optional>
                       <element name="scalar_field">
@@ -3145,10 +3145,10 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
     <element name="Density">
       <a:documentation>Use this option to specify the density of fluids</a:documentation>
       <choice>
-        <element name="incompressible">
-          <a:documentation>Equations of state</a:documentation>
-          <ref name="real"/>
-        </element>
+      <element name="incompressible">
+        <a:documentation>Equations of state</a:documentation>
+            <ref name="real"/>
+          </element>
         <element name="compressible">
           <a:documentation>Equations of state for compressible applications</a:documentation>
           <choice>
@@ -3160,13 +3160,13 @@ DEN = A * P + B
 Use this option for flooding, being A = 1/gravity and B the bathymetry</a:documentation>
               <element name="coefficient_A">
                 <ref name="real"/>
-              </element>
+        </element>
               <element name="coefficient_B">
                 <choice>
                   <element name="constant">
                     <a:documentation>list of bin bounds</a:documentation>
                     <ref name="real"/>
-                  </element>
+      </element>
                   <element name="python">
                     <a:documentation>Python function prescribing real input. Functions should be of the form:
    def val(X, t):

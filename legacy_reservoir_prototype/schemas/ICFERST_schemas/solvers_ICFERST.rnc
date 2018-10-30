@@ -17,6 +17,68 @@ linear_solver_options_sym =
       generic_solver_options
    )
 
+advanced_solver_options_asym =
+   (
+      ## Iterative (Krylov) method to solve the linear discretised equation
+      ## Given are the most frequently used methods. The solution is done
+      ## by the PETSc library. Many more methods are provided.
+      ##
+      (
+         kspgmres_options|
+         kspcg_options|
+         ksppreonly_options|
+         ksprichardson_options|
+         kspother_options
+      ),
+      ## Preconditioner to be used in combination with the iterative method.
+      (
+         pchypre_options|
+         pcgamg_options|
+         pcsor_options|
+         pceisenstat_options|
+         pcilu_options|
+         pcicc_options|
+         pclu_options|
+         pcmg_options|
+         pcbjacobi_options|
+         pcpbjacobi_options|
+         pcasm_options|
+         pcksp_options|
+         pcother_options
+      )
+   )
+
+advanced_solver_options_sym =
+   (
+      ## Iterative (Krylov) method to solve the linear discretised equation
+      ## Given are the most frequently used methods. The solution is done
+      ## by the PETSc library. Many more methods are provided.
+      ##
+      (
+         kspcg_options|
+         kspgmres_options|
+         ksppreonly_options|
+         ksprichardson_options|
+         kspother_options 
+      ),
+      ## Preconditioner to be used in combination with the iterative method.
+      (
+         pchypre_options|
+         pcgamg_options|
+         pcsor_options|
+         pceisenstat_options|
+         pcilu_options|
+         pcicc_options|
+         pclu_options|
+         pcmg_options|
+         pcbjacobi_options|
+         pcpbjacobi_options|
+         pcasm_options|
+         pcksp_options|
+         pcother_options
+      )
+   )
+
 # ####################################################################
 #
 # options for the different iterative ksp methods
