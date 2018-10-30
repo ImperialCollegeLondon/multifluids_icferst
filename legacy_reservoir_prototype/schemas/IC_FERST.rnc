@@ -28,6 +28,7 @@ start =
              empty
          },
          geometry,
+	 solver,
          ## Input/output options
          element io {
             ## Format for dump files. Only vtk for now.
@@ -572,6 +573,27 @@ geometry =
            empty
         }? 
       }
+   )
+
+solver = 
+   (
+      ## Options dealing with the specification of the solvers
+      element solvers {
+		## Options for pressure solver      	
+		element pressure{
+			linear_solver_options_sym,
+			element advanced{
+				advanced_solver_options_sym
+			}
+		},
+		## Options for velocity solver
+      	element velocity{
+			linear_solver_options_asym,
+			element advanced{
+				advanced_solver_options_asym
+			}
+		}
+      }?
    )
 
 

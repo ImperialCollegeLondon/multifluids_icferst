@@ -27,6 +27,7 @@ characters in the simulation name should be avoided.</a:documentation>
         <empty/>
       </element>
       <ref name="geometry"/>
+      <ref name="solver"/>
       <element name="io">
         <a:documentation>Input/output options</a:documentation>
         <element name="dump_format">
@@ -555,8 +556,8 @@ You should specify this ONLY for the wetting phase</a:documentation>
               </optional>
               <optional>
                 <element name="Sat_overRelax">
-                  <a:documentation>Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
-This helps to increase the convergence rate of the FPI solver.
+                  <a:documentation>Introduce over-relaxation in the saturation equation. 
+This severely HELPS to increase the convergence rate of the FPI solver.
 You MUST specify this ONLY for the wetting phase.
 
 If positive, the input value is the entry pressure.
@@ -725,6 +726,27 @@ Useful to convert your ASCII msh files into binary to be able to decompose the m
         </element>
       </optional>
     </element>
+  </define>
+  <define name="solver">
+    <optional>
+      <element name="solvers">
+        <a:documentation>Options dealing with the specification of the solvers</a:documentation>
+        <element name="pressure">
+          <a:documentation>Options for pressure solver      	</a:documentation>
+          <ref name="linear_solver_options_sym"/>
+          <element name="advanced">
+            <ref name="advanced_solver_options_sym"/>
+          </element>
+        </element>
+        <element name="velocity">
+          <a:documentation>Options for velocity solver</a:documentation>
+          <ref name="linear_solver_options_asym"/>
+          <element name="advanced">
+            <ref name="advanced_solver_options_asym"/>
+          </element>
+        </element>
+      </element>
+    </optional>
   </define>
   <!-- Default child of diagnostic scalar field -->
   <define name="diagnostic_scalar_field">
