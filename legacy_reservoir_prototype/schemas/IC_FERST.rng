@@ -232,6 +232,17 @@ at the first timestep or not.</a:documentation>
           <attribute name="name">
             <data type="string"/>
           </attribute>
+          <optional>
+            <element name="is_multiphase_component">
+              <a:documentation>Specify whether this phase is actually a component</a:documentation>
+              <optional>
+                <element name="linearise_component">
+                  <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
           <element name="Fluid_properties">
             <a:documentation>Options to provide properties of the fluid for the given phase.</a:documentation>
             <ref name="phase_density">
@@ -239,15 +250,23 @@ at the first timestep or not.</a:documentation>
             </ref>
             <element name="tensor_field">
               <a:documentation>Viscosity of the current phase</a:documentation>
-              <attribute name="name">
-                <value>Viscosity</value>
-              </attribute>
-              <attribute name="rank">
-                <value>2</value>
-              </attribute>
-              <element name="prescribed">
-                <ref name="prescribed_tensor_field_no_adapt"/>
-              </element>
+              <group>
+                <attribute name="name">
+                  <value>Viscosity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <element name="prescribed">
+                  <ref name="prescribed_tensor_field_no_adapt"/>
+                </element>
+              </group>
+              <optional>
+                <element name="linearise_viscosity">
+                  <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
             <optional>
               <element name="tensor_field">
@@ -3349,6 +3368,12 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
           <ref name="scalar_python_diagnostic_algorithm"/>
         </element>
       </choice>
+      <optional>
+        <element name="linearise_density">
+          <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
+          <empty/>
+        </element>
+      </optional>
     </element>
   </define>
 </grammar>

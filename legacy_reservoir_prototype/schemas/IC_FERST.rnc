@@ -195,7 +195,11 @@ start =
          ## The material or phase options
          element material_phase {
             attribute name { xsd:string },
-            
+            ## Specify whether this phase is actually a component
+            element is_multiphase_component{(
+                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
+                    element linearise_component {empty}?
+            )}?,            
               ## Options to provide properties of the fluid for the given phase.
               element Fluid_properties{
                 (
@@ -203,12 +207,15 @@ start =
                 phase_density,
 
                 ## Viscosity of the current phase
-                element tensor_field {
+                element tensor_field {(
                    attribute name { "Viscosity" },
                    attribute rank { "2" },
                       element prescribed {
                           prescribed_tensor_field_no_adapt
                       }
+                ),
+                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
+                    element linearise_viscosity {empty}?
                 },
                  ## Diffusivity for field.
                   ##
@@ -251,8 +258,6 @@ start =
                   }?
                )
               },
-
-
 
             ## Pressure
             element scalar_field {
@@ -2721,8 +2726,8 @@ phase_density =
                (
                   (
 ## Use this option to specify the density of fluids
-element Density{
-
+element Density{(
+                    
                      ## Equations of state
                      element incompressible {
                         real}|
@@ -2825,7 +2830,10 @@ element Density{
                      element python_state{
                        scalar_python_diagnostic_algorithm
                      }
-}
+                    ),
+                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
+                    element linearise_density {empty}?}
+                    
                   )
                )
 

@@ -49,7 +49,7 @@
           <real_value rank="0">1</real_value>
         </incompressible>
       </Density>
-      <tensor_field name="Viscosity" rank="2">
+      <tensor_field>
         <prescribed>
           <value name="WholeMesh">
             <isotropic>
@@ -216,7 +216,7 @@
           <real_value rank="0">0.711</real_value>
         </incompressible>
       </Density>
-      <tensor_field name="Viscosity" rank="2">
+      <tensor_field>
         <prescribed>
           <value name="WholeMesh">
             <isotropic>
