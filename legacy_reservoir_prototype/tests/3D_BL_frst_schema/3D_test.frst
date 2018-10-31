@@ -20,6 +20,7 @@
       <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
+  <solver_options/>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
@@ -40,15 +41,6 @@
     <finish_time>
       <real_value rank="0">0.2</real_value>
     </finish_time>
-    <nonlinear_iterations>
-      <integer_value rank="0">15</integer_value>
-      <Fixed_Point_Iteration>
-        <real_value rank="0">1e-2</real_value>
-        <Vanishing_relaxation>
-          <real_value rank="0">-1e2</real_value>
-        </Vanishing_relaxation>
-      </Fixed_Point_Iteration>
-    </nonlinear_iterations>
   </timestepping>
   <material_phase name="phase1">
     <Fluid_properties>

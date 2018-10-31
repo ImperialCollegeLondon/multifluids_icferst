@@ -28,7 +28,7 @@ start =
              empty
          },
          geometry,
-	 solver,
+	     solver_options,
          ## Input/output options
          element io {
             ## Format for dump files. Only vtk for now.
@@ -172,182 +172,6 @@ start =
                }?
             }?
          },
-
-        ## Maximum number of non-linear iterations for the Fixed-Point iteration solver.
-        ## 
-        ## Manual suggests 2 for problems that are not very non-linear
-        ##
-        ## If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
-        ## 
-        ## If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of 
-        ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
-		element Non_Linear_Solver {
-           integer,
-           ##NOTE: For multiphase porous media only. Otherwise this value is ignored.  
-           ##
-           ## This is the convergence criterion for the Fixed Point Iteration solver.
-           ## The functional to compare is: 
-           ##
-           ## f = L2norm(S*-So)/L2norm(S1-So)
-           ##
-           ## S* is the latest saturation; So is the saturation at the previous FPI
-           ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
-           ## of saturation is tested
-           ##
-           ## Recommended value: 5e-2
-           element Fixed_Point_Iteration{
-              real,
-              (
-                ## Tolerance for the infinite norm of the variation of the normalized selected field
-                ## between two consecutive non-linear iterations.
-                ##
-                ## This can be used to control the number of non-linear interations dynamically.
-                ##
-                ## By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005
-                element Infinite_norm_tol{
-                real,
-                  (
-                    ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
-                    ##
-                    ## A Variable to check has to be chosen:
-                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
-                    ##
-                    ## The field selected in "adaptive_timestep_nonlinear" has preference over this
-                    element adaptive_non_linear_iterations{
-                    integer
-                    }?
-                  )
-                }?
-              ),
-              (
-                ##
-                ## Recommended settings: Non-linear iterations ~ 20
-                ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
-                ##
-                ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
-                ##
-                ## Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
-                ## Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
-                ##
-                ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
-                element Backtracking_factor{
-                real
-                }?
-              ),
-                ## Introduce over-relaxation in the saturation equation. 
-                ## This severely HELPS to reduce the number of FPI.
-                ##
-                ## If positive, the input value is the entry pressure.
-                ##
-                ## If negative, the input value is Peclet number desired.
-                ##
-                ## Recommended value for Saturation => -1e2
-                ##
-                ## Tip: If running with temperature and single phase disable this setting it to 0.
-                element Vanishing_relaxation{
-                real,
-                  (
-                    ## This method can also be applied for a transport equation.
-                    ##
-                    ## Recommended value for Temperature => -1e0
-                    element Vanishing_for_transport{
-                    real
-                    }?
-                  )
-                }?,
-#                  (
-#                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
-#                    ##
-#                    ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
-#                    ## 
-#                    ## 100 => Only the previous saturation is used (more conservative); 
-#                    ## 0.4 => Recommended (default); 
-#                    ## 0.3 => Older saturation is at some points as important as the old saturation;
-#                    ## 0 => Older saturation is more important than old saturation
-#                    ## 
-#                    ## If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)
-#                    element Acceleration_exp{
-#                    real
-#                    }?
-#                  ),
-              (
-                ## For TEMPERATURE ONLY, if there are no sources nor sinks
-                ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
-                ## 
-	            ## This imposes that the temperature has to be between bounds.
-                element Impose_min_max{empty}?
-              ),
-              (
-                ## Convergence criterion based on the 
-                ## conservation of volume of each phase for the non-linear solver
-            ## 
-	    ## By default the tolerance is 1e-2
-                element Test_mass_consv{real}?
-              ),
-              (
-                ## Prints the number of iterations and
-                ## the final convergence achieved by the FPI solver
-                element Show_Convergence{comment}?
-              ),
-              (
-                ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
-                ##
-                ## A Variable to check has to be chosen:
-                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
-                element adaptive_timestep_nonlinear{
-                    integer,
-                  (
-                    ## Time-step size controlled using a PID approach.
-                    ## By default this method only controls the errors, and based on that increases or decreases the time-step size.
-                    ## The default aim of number of FPI is the 20% of the maximum number of non-linear iterations.
-                    ## The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
-                    ## 
-                    ## If this is off, a classical method based on the number of FPI performed is used instead.
-                    element PID_controller {
-                      empty,
-                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced
-                        ## here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
-                        ## By default this is the 20% of the maximum number of non-linear iterations.
-                        element Aim_num_FPI {
-                          integer
-                        }?
-                    }?,
-                    ## If any of the solvers failt to achieve convergence the time-step size is 
-                    ## reduced and the time-level repeated without waiting to reach the maximum number of FPI.
-                    ## Note: For the saturation for porous media it allows to diverge inside the saturation FPI.
-                    element ensure_solvers_convergence {
-                      empty
-                    }?,
-                    ## Number of FPI below which the time-step size is increased
-                    ## by default it is the 25% of the maximum allowed FPIs
-                    element increase_threshold{
-                    integer
-                    }?,
-                    ## Multiply present timestep by this factor when increasing it.
-                    ## By default 1.1
-                    element increase_factor{
-                    real
-                    }?,
-                    ## Multiply present timestep by this factor when decreasing it.
-                    ## By default 2.0
-                    element decrease_factor{
-                    real
-                    }?,
-                    ## Maximum timestep. Beyond this value the timestep will not be increased.
-                    ## By default unlimmited.
-                    element max_timestep{
-                    real
-                    }?,
-                    ## Minimum timestep. Beyond this value the timestep will not be decreased.
-                    ## By default dt*1e-3.
-                    element min_timestep{
-                    real
-                    }?
-                  )
-                }?
-              )
-           }?
-        }?,
 
          physical_parameter_options?,
          ## The material or phase options
@@ -1007,10 +831,13 @@ geometry =
       }
    )
 
-solver = 
+solver_options = 
    (
+    element solver_options{
+    (
       ## Default Options for all the solvers
-      element solvers {
+      element Linear_solver {
+(
 	## Options for pressure solver      	
 	element Pressure{
 		advanced_solver_options_sym,
@@ -1026,7 +853,170 @@ solver =
 		advanced_solver_options_asym,
 		linear_solver_options_asym	
 		}?
-      }?
+      )}?,
+    
+
+        ## Maximum number of non-linear iterations for the Fixed-Point iteration solver.
+        ## 
+        ## Manual suggests 2 for problems that are not very non-linear
+        ##
+        ## If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
+        ## 
+        ## If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of 
+        ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
+		element Non_Linear_Solver {
+           integer,
+           ##NOTE: For multiphase porous media only. Otherwise this value is ignored.  
+           ##
+           ## This is the convergence criterion for the Fixed Point Iteration solver.
+           ## The functional to compare is: 
+           ##
+           ## f = L2norm(S*-So)/L2norm(S1-So)
+           ##
+           ## S* is the latest saturation; So is the saturation at the previous FPI
+           ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
+           ## of saturation is tested
+           ##
+           ## Recommended value: 5e-2
+           element Fixed_Point_Iteration{
+              real,
+              (
+                ## Tolerance for the infinite norm of the variation of the normalized selected field
+                ## between two consecutive non-linear iterations.
+                ##
+                ## This can be used to control the number of non-linear interations dynamically.
+                ##
+                ## By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005
+                element Infinite_norm_tol{
+                real,
+                  (
+                    ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
+                    ##
+                    ## A Variable to check has to be chosen:
+                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+                    ##
+                    ## The field selected in "adaptive_timestep_nonlinear" has preference over this
+                    element adaptive_non_linear_iterations{
+                    integer
+                    }?
+                  )
+                }?
+              ),
+              (
+                ##
+                ## Recommended settings: Non-linear iterations ~ 20
+                ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+                ##
+                ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
+                ##
+                ## Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
+                ## Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
+                ##
+                ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
+                element Backtracking_factor{
+                real
+                }?
+              ),
+                ## Introduce over-relaxation in the saturation equation. 
+                ## This severely HELPS to reduce the number of FPI.
+                ##
+                ## If positive, the input value is the entry pressure.
+                ##
+                ## If negative, the input value is Peclet number desired.
+                ##
+                ## Recommended value for Saturation => -1e2
+                ##
+                ## Tip: If running with temperature and single phase disable this setting it to 0.
+                element Vanishing_relaxation{
+                real,
+                  (
+                    ## This method can also be applied for a transport equation.
+                    ##
+                    ## Recommended value for Temperature => -1e0
+                    element Vanishing_for_transport{
+                    real
+                    }?
+                  )
+                }?,
+              (
+                ## For TEMPERATURE ONLY, if there are no sources nor sinks
+                ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+                ## 
+	            ## This imposes that the temperature has to be between bounds.
+                element Impose_min_max{empty}?
+              ),
+              (
+                ## Convergence criterion based on the 
+                ## conservation of volume of each phase for the non-linear solver
+            ## 
+	    ## By default the tolerance is 1e-2
+                element Test_mass_consv{real}?
+              ),
+              (
+                ## Prints the number of iterations and
+                ## the final convergence achieved by the FPI solver
+                element Show_Convergence{comment}?
+              ),
+              (
+                ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
+                ##
+                ## A Variable to check has to be chosen:
+                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+                element adaptive_timestep_nonlinear{
+                    integer,
+                  (
+                    ## Time-step size controlled using a PID approach.
+                    ## By default this method only controls the errors, and based on that increases or decreases the time-step size.
+                    ## The default aim of number of FPI is the 20% of the maximum number of non-linear iterations.
+                    ## The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
+                    ## 
+                    ## If this is off, a classical method based on the number of FPI performed is used instead.
+                    element PID_controller {
+                      empty,
+                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced
+                        ## here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
+                        ## By default this is the 20% of the maximum number of non-linear iterations.
+                        element Aim_num_FPI {
+                          integer
+                        }?
+                    }?,
+                    ## If any of the solvers failt to achieve convergence the time-step size is 
+                    ## reduced and the time-level repeated without waiting to reach the maximum number of FPI.
+                    ## Note: For the saturation for porous media it allows to diverge inside the saturation FPI.
+                    element ensure_solvers_convergence {
+                      empty
+                    }?,
+                    ## Number of FPI below which the time-step size is increased
+                    ## by default it is the 25% of the maximum allowed FPIs
+                    element increase_threshold{
+                    integer
+                    }?,
+                    ## Multiply present timestep by this factor when increasing it.
+                    ## By default 1.1
+                    element increase_factor{
+                    real
+                    }?,
+                    ## Multiply present timestep by this factor when decreasing it.
+                    ## By default 2.0
+                    element decrease_factor{
+                    real
+                    }?,
+                    ## Maximum timestep. Beyond this value the timestep will not be increased.
+                    ## By default unlimmited.
+                    element max_timestep{
+                    real
+                    }?,
+                    ## Minimum timestep. Beyond this value the timestep will not be decreased.
+                    ## By default dt*1e-3.
+                    element min_timestep{
+                    real
+                    }?
+                  )
+                }?
+              )
+           }?
+        }?
+      )}
    )
 
 
