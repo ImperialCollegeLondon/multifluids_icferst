@@ -22,9 +22,15 @@ name, e.g. [simulation_name]_0.vtu. Non-standard
 characters in the simulation name should be avoided.</a:documentation>
         <ref name="anystring"/>
       </element>
-      <element name="is_porous_media">
+      <element name="Simulation_Type">
         <a:documentation>Select the simulation type</a:documentation>
-        <empty/>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <choice>
+          <value>Porous Media</value>
+          <value>Inertial Flow</value>
+        </choice>
       </element>
       <ref name="geometry"/>
       <ref name="solver"/>
