@@ -22,16 +22,31 @@ name, e.g. [simulation_name]_0.vtu. Non-standard
 characters in the simulation name should be avoided.</a:documentation>
         <ref name="anystring"/>
       </element>
-      <element name="Simulation_Type">
-        <a:documentation>Select the simulation type</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <choice>
-          <value>Porous Media</value>
-          <value>Inertial Flow</value>
-        </choice>
-      </element>
+      <choice>
+        <element name="inertia_dominated">
+          <a:documentation>Navier-stokes simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="porous_media">
+          <a:documentation>Darcy flow simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="poroelasticity">
+          <a:documentation>Poro-elasticity simulator:
+This requires to define through diamond the tensor field in phase 1 UAbsorB
+as an absorption term and also the RHS that should include the second time-derivative for the solid phase
+and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="magma">
+          <a:documentation>Magma flow simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
+        <element name="flooding">
+          <a:documentation>Flooding simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
+      </choice>
       <ref name="geometry"/>
       <ref name="solver_options"/>
       <element name="io">
