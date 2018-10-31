@@ -589,15 +589,6 @@ contains
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes)
 
-                    !!$ Calculate Darcy velocity
-                    if(is_porous_media) then
-                        !Do not calculate unless necessary, this is not specially efficient...
-                        !Arash
-                        if(is_multifracture .OR. has_salt) then
-                            call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
-                        end if
-                    end if
-
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
 
@@ -613,6 +604,9 @@ contains
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
                 end if Conditional_PhaseVolumeFraction
+
+                !!$ Calculate Darcy velocity with the most up-to-date information
+                if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
@@ -1042,13 +1036,6 @@ contains
         end subroutine linearise_components
 
         subroutine create_dump_vtu_and_checkpoints()
-
-            if (is_porous_media) then!Calculate Darcy velocity to output in the vtu files
-                !Do not recalculate for "is_multifracture" because it has been calculated already
-                !Arash
-                if(.not.is_multifracture .OR. .not.has_salt) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
-            end if
-
 
             !!$ Write outputs (vtu and checkpoint files)
             if (have_option('/io/dump_period_in_timesteps')) then

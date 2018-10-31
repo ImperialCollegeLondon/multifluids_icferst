@@ -1080,8 +1080,8 @@ contains
                                    end if
                                END DO
                            !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
-                           upwnd%inv_adv_coef(:, :, IPHASE, IMAT) = inverse(upwnd%adv_coef(:, :, IPHASE, IMAT))
-                           END DO
+                           upwnd%inv_adv_coef(:, :, IPHASE, IMAT) = inverse(upwnd%adv_coef(:, :, IPHASE, IMAT))!sprint_to_do: use
+                         END DO                                                                           !get_multi_field_inverse or think of a faster method
                        END DO
                    END DO
                END DO

@@ -3,7 +3,7 @@
   <simulation_name>
     <string_value lines="1">Test</string_value>
   </simulation_name>
-  <is_porous_media/>
+  <porous_media/>
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
@@ -335,19 +335,17 @@
         </detectors>
       </prescribed>
     </scalar_field>
-    <scalar_field name="Permeability">
+    <tensor_field name="Permeability">
       <prescribed>
         <mesh name="P0DG"/>
         <value name="WholeMesh">
-          <constant>
-            <real_value rank="0">1</real_value>
-          </constant>
+          <isotropic>
+            <constant>
+              <real_value rank="0"/>
+            </constant>
+          </isotropic>
         </value>
-        <stat/>
-        <detectors>
-          <exclude_from_detectors/>
-        </detectors>
       </prescribed>
-    </scalar_field>
+    </tensor_field>
   </porous_media>
 </multiphase_options>

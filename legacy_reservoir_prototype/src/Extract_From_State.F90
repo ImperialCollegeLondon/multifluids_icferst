@@ -3191,15 +3191,15 @@ logical function have_option_for_any_phase(path, nphase)
 end function have_option_for_any_phase
 
 
-!!$ This subroutine calculates the actual Darcy velocity
-subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_absorp)
+!!$ This subroutine calculates the actual Darcy velocity, but with P0DG precision
+subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
 
     implicit none
     type( state_type ), dimension( : ), intent( inout ) :: state
     type(multi_ndgln), intent(in) :: ndgln
     type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(in) :: packed_state
-    type (multi_field), intent(in) :: PorousMedia_absorp
+    type (porous_adv_coefs), intent(inout) :: upwnd
 
     ! Local variables
     type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
@@ -3225,11 +3225,8 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, PorousMedia_abso
             do cv_iloc = 1, Mdims%cv_nloc
                 imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                 cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
-                call get_multi_field_inverse(PorousMedia_absorp, imat, loc_absorp_matrix)
                 do iphase = 1, Mdims%n_in_pres
-                    sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim, &
-                        (iphase-1)*Mdims%ndim+1:iphase*Mdims%ndim),velocity%val(:,iphase,u_inod))
+                    sat_weight_velocity = matmul(upwnd%inv_adv_coef(:,:,iphase,imat), velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
                     darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
                         sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)
