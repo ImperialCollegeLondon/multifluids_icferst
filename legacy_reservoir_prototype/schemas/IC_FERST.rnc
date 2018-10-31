@@ -82,6 +82,18 @@ start =
                 )   
                }
             ),
+            ## Path (without the extension) to the .csv file containing the fluid and porous media properties.
+            ## NOTE: Properties in the .csv file will overwrite the input from diamond.
+            ##
+            ## The information is stored as:
+            ##
+            ## Property, phase, region_ids(0= if all), value (values separated by _ for region ids and tensors)
+            ##
+            ## You can find an example in the Proous_media_general test case
+            ##
+            ## If using this, all the modifiable fields need to have the option to read from a csv file
+          element PropertiesFromFile {xsd:string
+          }?,
             ## If porous_media, printout the Courant number every time-step
             element Courant_number {
                comment
