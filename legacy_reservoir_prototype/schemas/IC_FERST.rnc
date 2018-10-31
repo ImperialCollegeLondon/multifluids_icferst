@@ -23,10 +23,11 @@ start =
          element simulation_name {
             anystring
          },
-         ## Select the simulation type
-         element is_porous_media {
-             empty
-         },
+          ## Select the simulation type
+	  element Simulation_Type {
+	       attribute rank {"0"},
+               ("Porous Media"|"Inertial Flow")
+	    },
          geometry,
 	     solver_options,
          ## Input/output options
