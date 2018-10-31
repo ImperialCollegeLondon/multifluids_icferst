@@ -1239,12 +1239,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
 
            end if
-            if (is_poroelasticity) then
-                !We disable the first order time derivative of the first phase (solid phase)
-                !phase1 is considered the solid phase and we solve for displacement
-                !The second order time derivative for the first phase, and the coupling terms need to be added from diamond
-                UDEN_ALL(1,:)=0.0; UDENOLD_ALL(1,:)=0.0
-            end if
         end if
 
         if ( have_option( '/blasting' ) ) then
@@ -2911,13 +2905,6 @@ end if
             Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
-        !For poroelasticity we need to modify the absorption term, disable the inertia terms,
-        !phase1 is considered the solid phase and we solve for displacement
-        !The second order time derivative for the first phase, and the coupling terms need to be added from diamond
-        if (is_poroelasticity) then
-            GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
-            GOT_UDEN = .false.!Disable inertia terms
-        end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &

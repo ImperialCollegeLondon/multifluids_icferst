@@ -31,11 +31,6 @@ start =
                 element inertia_dominated{comment}|
                 ## Darcy flow simulator
                 element porous_media{comment}|
-                ## Poro-elasticity simulator:
-                ## This requires to define through diamond the tensor field in phase 1 UAbsorB
-                ## as an absorption term and also the RHS that should include the second time-derivative for the solid phase
-                ## and also the coupling terms. The first phase is considered the solid phase.
-                element poroelasticity{comment}|
                 ## Magma flow simulator
                 element magma{comment}|
                 ## Flooding simulator

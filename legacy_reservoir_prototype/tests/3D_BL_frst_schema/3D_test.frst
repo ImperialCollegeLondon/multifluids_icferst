@@ -335,17 +335,19 @@
         </detectors>
       </prescribed>
     </scalar_field>
-    <tensor_field name="Permeability">
+    <scalar_field name="Permeability">
       <prescribed>
         <mesh name="P0DG"/>
         <value name="WholeMesh">
-          <isotropic>
-            <constant>
-              <real_value rank="0"/>
-            </constant>
-          </isotropic>
+          <constant>
+            <real_value rank="0">1</real_value>
+          </constant>
         </value>
+        <stat/>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
       </prescribed>
-    </tensor_field>
+    </scalar_field>
   </porous_media>
 </multiphase_options>
