@@ -166,8 +166,6 @@ module global_parameters
   logical :: is_flooding = .false.
   !! Multiphase prototype, magma simulator
   logical :: is_magma = .false.
-  !! Multiphase prototype, poro-elasticity simulator
-  logical :: is_poroelasticity = .false.
   !! Checking multifracture
   logical :: is_multifracture = .false.
     !! Checking to see if fracturing is occuring in FEMDEM

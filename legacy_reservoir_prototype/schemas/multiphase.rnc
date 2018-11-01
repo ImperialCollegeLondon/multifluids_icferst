@@ -656,6 +656,8 @@ start =
 	##
 	## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
 	##
+	## Once the system has equilbrated the simulation will exit, producing checkpoints to be used for later simulations. 
+	##
 	## The following must be specified:
 	## 
 	## - Densities of water (phase 1) and oil (phase 2)
