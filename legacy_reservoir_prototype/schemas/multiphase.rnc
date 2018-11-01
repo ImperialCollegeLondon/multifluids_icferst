@@ -652,6 +652,20 @@ start =
 	    }?
 	 }?,
          physical_parameter_options?,
+	## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil. 
+	##
+	## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
+	##
+	## The following must be specified:
+	## 
+	## - Densities of water (phase 1) and oil (phase 2)
+	##
+	## - Gravity
+	##
+	## - Capillary pressure curve
+	 element FWL {
+	 	real
+		}?,
          ## The material or phase options
          element material_phase {
             attribute name { xsd:string },
