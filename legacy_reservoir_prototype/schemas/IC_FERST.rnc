@@ -996,6 +996,9 @@ solver_options =
     (
       ## Default Options for all the solvers
       element Linear_solver {
+		advanced_solver_options_sym,
+		linear_solver_options_sym,
+        element Custom_solver_configuration{
 (
 	## Options for pressure solver      	
 	element Pressure{
@@ -1008,11 +1011,14 @@ solver_options =
 		linear_solver_options_asym	
 		}?,
 	## Options for Transport solver
-	element Transport{
-		advanced_solver_options_asym,
-		linear_solver_options_asym	
-		}?
-      )}?,
+	element field {
+		attribute name { xsd:string },
+		advanced_solver_options_sym,
+		linear_solver_options_sym	
+		}*
+      )
+}
+}?,
     
 
         ## Maximum number of non-linear iterations for the Fixed-Point iteration solver.

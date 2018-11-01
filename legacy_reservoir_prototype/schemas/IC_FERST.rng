@@ -1253,27 +1253,34 @@ Useful to convert your ASCII msh files into binary to be able to decompose the m
       <optional>
         <element name="Linear_solver">
           <a:documentation>Default Options for all the solvers</a:documentation>
-          <optional>
-            <element name="Pressure">
-              <a:documentation>Options for pressure solver      	</a:documentation>
-              <ref name="advanced_solver_options_sym"/>
-              <ref name="linear_solver_options_sym"/>
-            </element>
-          </optional>
-          <optional>
-            <element name="Velocity">
-              <a:documentation>Options for velocity solver</a:documentation>
-              <ref name="advanced_solver_options_asym"/>
-              <ref name="linear_solver_options_asym"/>
-            </element>
-          </optional>
-          <optional>
-            <element name="Transport">
-              <a:documentation>Options for Transport solver</a:documentation>
-              <ref name="advanced_solver_options_asym"/>
-              <ref name="linear_solver_options_asym"/>
-            </element>
-          </optional>
+          <ref name="advanced_solver_options_sym"/>
+          <ref name="linear_solver_options_sym"/>
+          <element name="Custom_solver_configuration">
+            <optional>
+              <element name="Pressure">
+                <a:documentation>Options for pressure solver      	</a:documentation>
+                <ref name="advanced_solver_options_sym"/>
+                <ref name="linear_solver_options_sym"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="Velocity">
+                <a:documentation>Options for velocity solver</a:documentation>
+                <ref name="advanced_solver_options_asym"/>
+                <ref name="linear_solver_options_asym"/>
+              </element>
+            </optional>
+            <zeroOrMore>
+              <element name="field">
+                <a:documentation>Options for Transport solver</a:documentation>
+                <attribute name="name">
+                  <data type="string"/>
+                </attribute>
+                <ref name="advanced_solver_options_sym"/>
+                <ref name="linear_solver_options_sym"/>
+              </element>
+            </zeroOrMore>
+          </element>
         </element>
       </optional>
       <optional>
