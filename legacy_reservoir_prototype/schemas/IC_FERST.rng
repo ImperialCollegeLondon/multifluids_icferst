@@ -1194,7 +1194,7 @@ discontinuous_pressure =&gt; P2DGP1DG. High order advection scheme and adaptive 
         </element>
       </element>
       <optional>
-        <element name="Advance_mesh_options">
+        <element name="Advance_options">
           <a:documentation>Settings to change the values specified in simulation_quality.
 Only the activated options will overwrite the values decided in simulation_quality</a:documentation>
           <optional>
@@ -1226,6 +1226,62 @@ Only the activated options will overwrite the values decided in simulation_quali
                   <empty/>
                 </element>
               </optional>
+            </element>
+          </zeroOrMore>
+          <zeroOrMore>
+            <element name="Time_Discretisation">
+              <a:documentation>Specify a different time discretisation method for different fields</a:documentation>
+              <attribute name="name">
+                <a:documentation>Name of the Field</a:documentation>
+                <data type="string"/>
+              </attribute>
+              <element name="Theta">
+                <a:documentation>Implicit/explicit control (THETA)
+ =0.  -- explicit
+ =0.5 -- Crank-Nicolson
+ =1.  -- implicit
+ =-1. -- Automatic based on a NVD criterion.</a:documentation>
+                <ref name="real"/>
+              </element>
+            </element>
+          </zeroOrMore>
+          <zeroOrMore>
+            <element name="Space_Discretisation">
+              <a:documentation>Specify a different flux calculation for different fields</a:documentation>
+              <attribute name="name">
+                <a:documentation>Name of the Field</a:documentation>
+                <data type="string"/>
+              </attribute>
+              <element name="advection_scheme">
+                <choice>
+                  <element name="upwind">
+                    <a:documentation>Straightforward upwinding of the nonlinear velocity.</a:documentation>
+                    <empty/>
+                  </element>
+                  <element name="High_order">
+                    <a:documentation>High order method based on a TVD criteria to ensure stability.</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+              </element>
+            </element>
+          </zeroOrMore>
+          <zeroOrMore>
+            <element name="Conservative_formulation_settings">
+              <a:documentation>Conservative discretisation options
+Note that non-conservative does NOT mean that we do not conserve mass
+For transport equations this is recommended to be zero. 
+For PhaseVolumeFraction the recommendation is one.</a:documentation>
+              <attribute name="name">
+                <a:documentation>Name of the Field</a:documentation>
+                <data type="string"/>
+              </attribute>
+              <element name="conservative_advection">
+                <a:documentation> BETA=1. -- conservative (divergence form)
+ BETA=0. -- non-conservative
+ 0. &lt; BETA &lt; 1.</a:documentation>
+                <ref name="real"/>
+              </element>
             </element>
           </zeroOrMore>
           <optional>

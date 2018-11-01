@@ -953,7 +953,7 @@ geometry =
 
         ## Settings to change the values specified in simulation_quality.
         ## Only the activated options will overwrite the values decided in simulation_quality
-        element Advance_mesh_options{
+        element Advance_options{
              ## The velocity mesh
              element mesh {
                 attribute name { "VelocityMesh" },
@@ -969,13 +969,53 @@ geometry =
                 mesh_info,
                 element exclude_from_mesh_adaptivity{empty}?
              }*,
+             ## Specify a different time discretisation method for different fields
+             element Time_Discretisation {
+                ##Name of the Field
+                attribute name { xsd:string },
+                 ## Implicit/explicit control (THETA)
+                 ##  =0.  -- explicit
+                 ##  =0.5 -- Crank-Nicolson
+                 ##  =1.  -- implicit
+                 ##  =-1. -- Automatic based on a NVD criterion.
+                element Theta{real}
+             }*,
+             ## Specify a different flux calculation for different fields
+             element Space_Discretisation {
+                ##Name of the Field
+                attribute name { xsd:string },
+                element advection_scheme {
+                  (
+                     ## Straightforward upwinding of the nonlinear velocity.
+                     element upwind {
+                        empty
+                     }|
+                     ## High order method based on a TVD criteria to ensure stability.
+                     element High_order {
+                        empty
+                     }
+                  )}
+             }*,
 
+             ## Conservative discretisation options
+             ## Note that non-conservative does NOT mean that we do not conserve mass
+             ## For transport equations this is recommended to be zero. 
+             ## For PhaseVolumeFraction the recommendation is one.
+             element Conservative_formulation_settings {
+                ##Name of the Field
+                attribute name { xsd:string },
+                 ##  BETA=1. -- conservative (divergence form)
+                 ##  BETA=0. -- non-conservative
+                 ##  0. < BETA < 1.
+                 element conservative_advection {
+                    real
+                 }
+             }*,
             ## By default ICFERST uses a DCVFEM because it is more robust (Salinas et al. 2018),
             ## nonetheless the classical CVFEM can also be used.
             element FE_Pressure {
                empty
             }?
-
         }?,
 
 
