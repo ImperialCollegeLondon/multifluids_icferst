@@ -5,6 +5,9 @@
       <optional>
         <ref name="gravity_options"/>
       </optional>
+      <optional>
+        <ref name="coriolis_options"/>
+      </optional>
     </element>
   </define>
   <define name="gravity_options">
@@ -17,7 +20,10 @@
       <optional>
         <element name="hydrostatic_pressure_solver">
           <a:documentation>Solve the gravity component indendently from the pressure general solver
-this is to have higher precision when using P1DG for the velocity. For inertia dominated only.</a:documentation>
+this is to have higher precision when using P1DG for the velocity. For inertia dominated only.
+
+IMPORTANT: for this to work a mesh and a field ph needs to be created. Check the test 
+Collapsing_Water_Column_hydrostatic_pressure for an example</a:documentation>
           <empty/>
         </element>
       </optional>

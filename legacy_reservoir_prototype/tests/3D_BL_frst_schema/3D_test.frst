@@ -20,7 +20,14 @@
       <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
-  <solver_options/>
+  <solver_options>
+    <Non_Linear_Solver>
+      <integer_value rank="0">25</integer_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">5e-2</real_value>
+      </Fixed_Point_Iteration>
+    </Non_Linear_Solver>
+  </solver_options>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
@@ -43,13 +50,13 @@
     </finish_time>
   </timestepping>
   <material_phase name="phase1">
-    <Fluid_properties>
+    <phase_properties>
       <Density>
         <incompressible>
           <real_value rank="0">1</real_value>
         </incompressible>
       </Density>
-      <tensor_field>
+      <Viscosity>
         <prescribed>
           <value name="WholeMesh">
             <isotropic>
@@ -59,8 +66,12 @@
             </isotropic>
           </value>
         </prescribed>
-      </tensor_field>
-    </Fluid_properties>
+        <viscosity_scheme>
+          <tensor_form/>
+          <nonlinear_scheme/>
+        </viscosity_scheme>
+      </Viscosity>
+    </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
@@ -210,24 +221,28 @@
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
-    <Fluid_properties>
+    <phase_properties>
       <Density>
         <incompressible>
-          <real_value rank="0">0.711</real_value>
+          <real_value rank="0">1</real_value>
         </incompressible>
       </Density>
-      <tensor_field>
+      <Viscosity>
         <prescribed>
           <value name="WholeMesh">
             <isotropic>
               <constant>
-                <real_value rank="0">10</real_value>
+                <real_value rank="0">1</real_value>
               </constant>
             </isotropic>
           </value>
         </prescribed>
-      </tensor_field>
-    </Fluid_properties>
+        <viscosity_scheme>
+          <tensor_form/>
+          <nonlinear_scheme/>
+        </viscosity_scheme>
+      </Viscosity>
+    </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <aliased material_phase_name="phase1" field_name="Pressure"/>
     </scalar_field>

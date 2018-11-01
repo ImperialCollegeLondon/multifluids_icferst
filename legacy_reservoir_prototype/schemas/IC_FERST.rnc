@@ -201,22 +201,140 @@ start =
                     element linearise_component {empty}?
             )}?,            
               ## Options to provide properties of the fluid for the given phase.
-              element Fluid_properties{
+              element phase_properties{
                 (
                 ## Phase density
                 phase_density,
 
-                ## Viscosity of the current phase
-                element tensor_field {(
-                   attribute name { "Viscosity" },
-                   attribute rank { "2" },
+                ## Viscosity of the current phase (tensor field)
+                element Viscosity {(
                       element prescribed {
                           prescribed_tensor_field_no_adapt
                       }
                 ),
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
-                    element linearise_viscosity {empty}?
+                    element linearise_viscosity {empty}?,
+               element viscosity_scheme {
+                  (
+                     ## Tensor form
+                     element tensor_form {
+                        empty
+                     }|
+                     ## Stress form
+                     element stress_form {
+                        empty
+                     }|
+                     ## Compact discontinuous Galerkin scheme.
+                     ## (Peraire and Persson SIAM J. Sci. Comput. 30, p1806)
+                     element compact_discontinuous_galerkin {
+                        ## Penalty_parameter
+                        ## Add penalty term Int [u][v] dS on element boundaries
+                        ## scaled by C_0
+                        element penalty_parameter {
+                           real
+                        }?
+                     }|
+                     ## Classical scheme from Bassi and Rebay 
+                     ## (JCP 131 267-179 1997)
+                     element bassi_rebay {
+                        empty
+                     }|
+                     ## Scheme in which upwinding is applied in
+                     ## alternating directions. Devised by C.Pain.
+                     element arbitrary_upwind {
+                        empty
+                     }
+                    
+                  ),
+                  (   
+                     ## Non-linear scheme
+                     element nonlinear_scheme {
+                        element beta_viscosity_min{ real }?,
+                        element beta_viscosity_max{ real }?
+                     }|
+                     ## Linear scheme
+                     element linear_scheme {
+                        element high_order { empty } ?
+                     }
+                  ),
+                  ## defaults to 0.
+                  element zero_or_two_thirds {
+                     real
+                  }?
+               }
                 },
+
+                ## Stabilisation for Inertia dominated flow. 
+                ## LES and Petrov-Galerkin stabilisation are available.
+                element Stabilisation{(
+                   ## Usual LES modeling
+                   element les_model {
+                      ## =0 No LES, 
+                      ## =1 Anisotropic element length scale, 
+                      ## =2 Take the average length scale h, 
+                      ## =3 Take the min length scale h, 
+                      ## =4 Take the max length scale h
+                      element model {
+                         integer
+                      },
+                      ## literature sybol: Cs
+                      ##
+                      ## defaults to 0.1
+                      element smagorinsky_coefficient {
+                         real
+                      }?,
+                      (
+                         ## Tensor form
+                         element tensor_form {
+                            empty
+                         }|
+                         ## Stress form
+                         element stress_form {
+                            empty
+                         }
+                      ),
+                      ## defaults to 1.0
+                      element les_theta { real }?
+                   }?,
+                   ## This applies a non-linear shock capturing scheme which 
+                   ## may be used to reduce oscillations in velocity or
+                   ## perform implicit LES modelling of turbulence.
+                   element Petrov_Galerkin_stabilisation {
+                      ## What type of Petrov-Galerkin method to use:
+                      ## =1 is the residual squared approach, 
+                      ## =2 is max(0, A . grad U * residual ),
+                      ## =3 is the max of 1 and 2 (the most dissipative). 
+                      element method {
+                         integer
+                      },
+                      ## [0,1] is the magnitude of the non-linear dissipation. 
+                      ## =0.25 is small,
+                      ## =1.0 is large.
+                      ## Defaults to 1.
+                      element nonlinear_velocity_coefficient {
+                         real
+                      }?,
+                      ## [0,1] decides if we include the pressure term in A . grad soln if 
+                      ## =0.0 don't include pressure term,
+                      ## =1.0 include the pressure term.
+                      ## Defaults to 1.
+                      element  include_pressure{
+                         real
+                      }?,
+                      (
+                         ## Tensor form
+                         element tensor_form {
+                            empty
+                         }|
+                         ## Stress form
+                         element stress_form {
+                            empty
+                         }
+                   )
+                   }?
+
+
+                )}?,
                  ## Diffusivity for field.
                   ##
                   ## Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
@@ -694,8 +812,21 @@ start =
                  attribute name { string },
                  attribute file_path { string }                  
                 }*
-             }?
-
+             }?,
+	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil. 
+	        ##
+	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
+	        ##
+	        ## The following must be specified:
+	        ## 
+	        ## - Densities of water (phase 1) and oil (phase 2)
+	        ##
+	        ## - Gravity
+	        ##
+	        ## - Capillary pressure curve
+	         element FWL {
+	         	real
+		        }?
          }?,
 
         ## Fracking options
@@ -752,11 +883,15 @@ start =
             element local_upwinding {
                empty
             }?,     
-            ## Use the diagonal simple version of the mass matrix. M_ii=(Vol/U_NLOC)
-            ## This is os by default for the CV pressure formulation 
-            element simple_mass_matrix {
+            ## Use the row-sum method to create a lumped mass matrix. 
+            ## For porous media this will not have an effect.
+            element lump_mass_matrix {
                empty
-            }?,  
+            }?, 
+            ## Introduce in the pivit matrix the temporal terms
+            element get_all_in_mass_matrix {
+               empty
+            }?,
             ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
             ## the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
             ## The default value for P1DGP1 => 1e4 and disabled for other element types.
@@ -856,6 +991,7 @@ geometry =
 
 solver_options = 
    (
+    ## Options related to the linear and non-linear solvers.
     element solver_options{
     (
       ## Default Options for all the solvers
@@ -1887,6 +2023,24 @@ scalar_field_choice =
                   prognostic_scalar_field
                }
             )
+         }|
+         ## Mass Fraction of Solute
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "SoluteMassFraction" },
+            (
+               element prognostic {
+                  velocity_mesh_choice,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  velocity_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
          }|         
          ## PhaseVolumeFraction
          ## Required in porous_media and multiphase problem types
@@ -2039,6 +2193,25 @@ scalar_field_choice =
                   element solver {
                     linear_solver_options_sym
                   },
+                  diagnostic_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+         }|
+         ## CFLNumber
+         ##
+         ## See http://amcg.ese.ic.ac.uk/index.php?title=Local:Diagnostics#CFL_Number
+         ##
+         ## Adapting to this field is not recommended
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "CFLNumber" },
+            (
+               element diagnostic {
+                  internal_algorithm,
+                  velocity_mesh_choice,
                   diagnostic_scalar_field
                }|
                element aliased {
