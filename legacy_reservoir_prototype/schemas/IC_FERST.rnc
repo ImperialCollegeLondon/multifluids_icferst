@@ -23,11 +23,18 @@ start =
          element simulation_name {
             anystring
          },
-         ## Select the simulation type
-         element is_porous_media {
-             empty
-         },
+             (
+                ## Navier-stokes simulator
+                element inertia_dominated{comment}|
+                ## Darcy flow simulator
+                element porous_media{comment}|
+                ## Magma flow simulator
+                element magma{comment}|
+                ## Flooding simulator
+                element flooding{comment}
+             ),
          geometry,
+	     solver_options,
          ## Input/output options
          element io {
             ## Format for dump files. Only vtk for now.
@@ -80,19 +87,21 @@ start =
                 )   
                }
             ),
-            ## Output the Darcy velocity
-            element output_darcy_vel {
-               empty
-            }?,
+            ## Path (without the extension) to the .csv file containing the fluid and porous media properties.
+            ## NOTE: Properties in the .csv file will overwrite the input from diamond.
+            ##
+            ## The information is stored as:
+            ##
+            ## Property, phase, region_ids(0= if all), value (values separated by _ for region ids and tensors)
+            ##
+            ## You can find an example in the Proous_media_general test case
+            ##
+            ## If using this, all the modifiable fields need to have the option to read from a csv file
+          element PropertiesFromFile {xsd:string
+          }?,
             ## If porous_media, printout the Courant number every time-step
             element Courant_number {
                comment
-            }?,
-            ## Printout the number of elements and percentage that contain an angle
-            ## equal or bigger than the ones specified here
-	        ## Note: This may slow down your simulation should be used as a diagnostic tool 
-            element Mesh_Diagnostics_Angles {
-               real_vector
             }?,
             ## Surface to Integrate Over
             element dump_boundaryflux {
@@ -140,89 +149,6 @@ start =
             element finish_time {
                real
             },
-            ## maximum number of non-linear iterations.
-            ## 
-            ## Manual suggests 2
-            ## 
-            ## If using Fixed_Point_Iteration the recommendation is 25
-			element nonlinear_iterations {
-               integer,
-               ## This is the convergence criterion for the Fixed Point Iteration solver.
-               ## The functional to compare is: 
-               ##
-               ## f = L2norm(S*-So)/L2norm(S1-So)
-               ##
-               ## S* is the latest saturation; So is the saturation at the previous FPI
-               ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
-               ## of saturation is tested
-               ##
-               ## Recommended value: 5e-2
-               element Fixed_Point_Iteration{
-                  real,
-                  (
-                    ## Prints the number of iterations and
-                    ## the final convergence achieved by the FPI solver
-                    element Show_Convergence{comment}?
-                  ),
-                  (
-                    ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
-                    ##
-                    ## A Variable to check has to be chosen:
-                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (Default)
-                    element adaptive_timestep_nonlinear{
-                        integer,
-                      (
-                        ## Time-step size controlled using a PID approach.
-                        ## By default this method only controls the errors, and based on that increases or decreases the time-step size.
-                        ## The default aim of number of FPI is the 20% of the maximum number of non-linear iterations.
-                        ## The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
-                        ## 
-                        ## If this is off, a classical method based on the number of FPI performed is used instead.
-                        element PID_controller {
-                          empty,
-                            ## Time-step size is controlled to try to always perform the specified number of FPI introduced
-                            ## here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
-                            ## By default this is the 20% of the maximum number of non-linear iterations.
-                            element Aim_num_FPI {
-                              integer
-                            }?
-                        }?,
-                        ## If any of the solvers failt to achieve convergence the time-step size is 
-                        ## reduced and the time-level repeated without waiting to reach the maximum number of FPI.
-                        ## Note: For the saturation for porous media it allows to diverge inside the saturation FPI.
-                        element ensure_solvers_convergence {
-                          empty
-                        }?,
-                        ## Number of FPI below which the time-step size is increased
-                        ## by default it is the 25% of the maximum allowed FPIs
-                        element increase_threshold{
-                        integer
-                        }?,
-                        ## Multiply present timestep by this factor when increasing it.
-                        ## By default 1.1
-                        element increase_factor{
-                        real
-                        }?,
-                        ## Multiply present timestep by this factor when decreasing it.
-                        ## By default 2.0
-                        element decrease_factor{
-                        real
-                        }?,
-                        ## Maximum timestep. Beyond this value the timestep will not be increased.
-                        ## By default unlimmited.
-                        element max_timestep{
-                        real
-                        }?,
-                        ## Minimum timestep. Beyond this value the timestep will not be decreased.
-                        ## By default dt*1e-3.
-                        element min_timestep{
-                        real
-                        }?
-                      )
-                    }?
-                  )
-               }?
-            }?,
             ## Vary the timestep according to the courant number.
             element adaptive_timestep {
                ## The timestep will be adjusted (within the tolerance
@@ -264,16 +190,192 @@ start =
                }?
             }?
          },
+
          physical_parameter_options?,
          ## The material or phase options
          element material_phase {
             attribute name { xsd:string },
-            
-            ## Phase density
-            phase_density,
+            ## Specify whether this phase is actually a component
+            element is_multiphase_component{(
+                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
+                    element linearise_component {empty}?
+            )}?,            
+              ## Options to provide properties of the fluid for the given phase.
+              element phase_properties{
+                (
+                ## Phase density
+                phase_density,
 
-            ### ## Equation of State
-            ###equation_of_state?,
+                ## Viscosity of the current phase (tensor field)
+                element Viscosity {(
+                      element prescribed {
+                          prescribed_tensor_field_no_adapt
+                      }
+                ),
+                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
+                    element linearise_viscosity {empty}?,
+               element viscosity_scheme {
+                  (
+                     ## Tensor form
+                     element tensor_form {
+                        empty
+                     }|
+                     ## Stress form
+                     element stress_form {
+                        empty
+                     }|
+                     ## Compact discontinuous Galerkin scheme.
+                     ## (Peraire and Persson SIAM J. Sci. Comput. 30, p1806)
+                     element compact_discontinuous_galerkin {
+                        ## Penalty_parameter
+                        ## Add penalty term Int [u][v] dS on element boundaries
+                        ## scaled by C_0
+                        element penalty_parameter {
+                           real
+                        }?
+                     }|
+                     ## Classical scheme from Bassi and Rebay 
+                     ## (JCP 131 267-179 1997)
+                     element bassi_rebay {
+                        empty
+                     }|
+                     ## Scheme in which upwinding is applied in
+                     ## alternating directions. Devised by C.Pain.
+                     element arbitrary_upwind {
+                        empty
+                     }
+                    
+                  ),
+                  (   
+                     ## Non-linear scheme
+                     element nonlinear_scheme {
+                        element beta_viscosity_min{ real }?,
+                        element beta_viscosity_max{ real }?
+                     }|
+                     ## Linear scheme
+                     element linear_scheme {
+                        element high_order { empty } ?
+                     }
+                  ),
+                  ## defaults to 0.
+                  element zero_or_two_thirds {
+                     real
+                  }?
+               }
+                },
+
+                ## Stabilisation for Inertia dominated flow. 
+                ## LES and Petrov-Galerkin stabilisation are available.
+                element Stabilisation{(
+                   ## Usual LES modeling
+                   element les_model {
+                      ## =0 No LES, 
+                      ## =1 Anisotropic element length scale, 
+                      ## =2 Take the average length scale h, 
+                      ## =3 Take the min length scale h, 
+                      ## =4 Take the max length scale h
+                      element model {
+                         integer
+                      },
+                      ## literature sybol: Cs
+                      ##
+                      ## defaults to 0.1
+                      element smagorinsky_coefficient {
+                         real
+                      }?,
+                      (
+                         ## Tensor form
+                         element tensor_form {
+                            empty
+                         }|
+                         ## Stress form
+                         element stress_form {
+                            empty
+                         }
+                      ),
+                      ## defaults to 1.0
+                      element les_theta { real }?
+                   }?,
+                   ## This applies a non-linear shock capturing scheme which 
+                   ## may be used to reduce oscillations in velocity or
+                   ## perform implicit LES modelling of turbulence.
+                   element Petrov_Galerkin_stabilisation {
+                      ## What type of Petrov-Galerkin method to use:
+                      ## =1 is the residual squared approach, 
+                      ## =2 is max(0, A . grad U * residual ),
+                      ## =3 is the max of 1 and 2 (the most dissipative). 
+                      element method {
+                         integer
+                      },
+                      ## [0,1] is the magnitude of the non-linear dissipation. 
+                      ## =0.25 is small,
+                      ## =1.0 is large.
+                      ## Defaults to 1.
+                      element nonlinear_velocity_coefficient {
+                         real
+                      }?,
+                      ## [0,1] decides if we include the pressure term in A . grad soln if 
+                      ## =0.0 don't include pressure term,
+                      ## =1.0 include the pressure term.
+                      ## Defaults to 1.
+                      element  include_pressure{
+                         real
+                      }?,
+                      (
+                         ## Tensor form
+                         element tensor_form {
+                            empty
+                         }|
+                         ## Stress form
+                         element stress_form {
+                            empty
+                         }
+                   )
+                   }?
+
+
+                )}?,
+                 ## Diffusivity for field.
+                  ##
+                  ## Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt
+                        }|
+                        ## For electrical modelling only - holds electrical conductivity
+                        element diagnostic {
+                           (
+                              tensor_python_diagnostic_algorithm |
+                              internal_algorithm
+                           ),
+                           diagnostic_tensor_field
+                        }
+                     )
+                  }?,
+                  ## Specific heat capacity for compositional field
+                  element scalar_field {
+                     attribute name { "HeatCapacity" },
+                     attribute rank { "0" },
+                     (
+                        element prescribed {
+                           prescribed_scalar_field_no_adapt
+                        }|
+                        ## This only works for traffic modelling
+                        element diagnostic {
+                           (
+                              scalar_python_diagnostic_algorithm |
+                              internal_algorithm
+                           ),
+                           diagnostic_scalar_field_no_adapt
+                        } 
+                     )
+                  }?
+               )
+              },
 
             ## Pressure
             element scalar_field {
@@ -343,8 +445,6 @@ start =
                      ## Relative permeability end point
                      ##
                      ## Value between 0 and 1. Default value 1.0
-                 element relperm_max {
-                 ## End-point relative permeability
                     element scalar_field {
                        attribute name { "relperm_max" },
                        (
@@ -353,13 +453,10 @@ start =
                              prescribed_scalar_field
                           }
                        )
-                    }
-                 }?,
+                    },
                      ## Relative permeability exponent
                      ##
                      ## Default value 2.0
-                 element relperm_exponent {
-                 ## Exponent of the formula
                      element scalar_field {
                         attribute name { "relperm_exponent" },
                         (
@@ -369,31 +466,36 @@ start =
                   }
                         )
                      }
-                }?
-                }?,	      
+                }?,      
                ## Option for capillary pressure				 
                element capillary_pressure {
-            ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
-            ## The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. 
-            element Diffusive_cap_only { comment }?,
                   ## Brooks-Corey equation
                   ##
-                  ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a
+                  ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
+                  ##
+                  ## For imbibition swith the formula is:
+                  ##
+                  ## ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure 
+                  ##
                   ## You should specify this ONLY for the wetting phase
                   element type_Brooks_Corey {
                     ## Entry pressure of the formula
                     element scalar_field {
                        attribute name { "C" },
-                       (
-                          element prescribed {
-                             material_mesh_choice,
-                             prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
-                          }
-                       )
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      } 
                     },
+                    ## Imbibition term. if on, entry pressure = C - B;
+                    ## By default this value is set to zero.
+                    element scalar_field {
+                       attribute name { "B" },
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      } 
+                    }?,
                     ## exponent -a
                     element scalar_field {
                        attribute name { "a" },
@@ -407,9 +509,19 @@ start =
                           }
                        )
                     }}?,
-                  ## Implements capillary pressure curve of Jaure et. al (http://dx.doi.org/10.2118/172989-MS)
-                  element type_TOTALCapillary {
-                    ## Overall coefficient scaling the capillary pressure
+	          ## Power Law equation
+                  ## 
+                  ## Pc = c*(1-s_eff)**a
+		  ##
+		  ## where s_eff = (S_w-Swir)/(1-Swir-Sor)
+		  ##
+		  ## c = maximum pc pressure; a = pc exponent
+		  ## 
+		  ## (no entry pressure) 
+                  ## 
+                  ## ONLY specify for the wetting phase
+		  element type_Power_Law {
+                    ## Maximum pressure
                     element scalar_field {
                        attribute name { "C" },
                        (
@@ -422,7 +534,7 @@ start =
                           }
                        )
                     },
-                    ## Exponent in the capillary pressure formula
+                    ## exponent a
                     element scalar_field {
                        attribute name { "a" },
                        (
@@ -448,19 +560,7 @@ start =
                           }
                        )
                     }
-               }?,
-               ## Introduce over-relaxation in the saturation equation. 
-               ## This severely HELPS to increase the convergence rate of the FPI solver.
-               ## You MUST specify this ONLY for the wetting phase.
-               ##
-               ## If positive, the input value is the entry pressure.
-               ##
-               ## If negative, the input value is Peclet number desired.
-               ##
-               ## Recommended value => -1e1
-               ##
-               ## Tip: if Diffusive_cap_only is activated Sat_overRelax is ignored.
-               element Sat_overRelax {real}?
+               }?
             }?
          }+,
          mesh_adaptivity_options?,
@@ -506,27 +606,312 @@ start =
                      material_mesh_choice,
                      prescribed_tensor_field
                   }
-               }|
-               element Permeability_from_femdem {
-                  attribute name { xsd:string },
-                  element background_permeability { real }
                }
             ),
-            ## Specify well-related options
-            element well_options {
-               ## Calculate the well \sigma field internally
-               ## using a non-linear friction factor.
-               ## This will over-write the field specified in Sigma1.
-               element calculate_sigma_pipe{
-                  # Defaults to 1.0e-6.
-                  element pipe_roughness{ real }?
-               }?,
-               ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
-               element dt_pipe_factor{ real }?,
-               ## Switches wells on and off to optimise production
-               element switch_wells_on_and_off{
-                  element phase_exclude{ integer }
-               }?
+            ## Parameters for thermal porous media simulations
+            element thermal_porous{
+                ## Specify scalar field density of the porous media
+                element scalar_field {
+                   attribute name { "porous_density" },
+                   (
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify scalar field heat capacity of the porous media
+                element scalar_field {
+                   attribute name { "porous_heat_capacity" },
+                   (
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify field Thermal conductivity of the porous media
+               element tensor_field {
+                  attribute name { "porous_thermal_conductivity" },
+                  element prescribed { 
+                     material_mesh_choice,
+                     prescribed_tensor_field
+                  }
+               }
+             }?,
+
+             ## Options to specify the wells/pipes
+             element wells_and_pipes {
+                ## Option to define laterals from diamond
+                ## if in doubt set it to 1.
+                element scalar_field {
+                   attribute name { "Pipe" },
+                   (
+                      element prescribed {
+                         material_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify where and how much the well/pipes are opened
+                ## It goes from 0 to 1. If completely opened, set it to 1.
+                element scalar_field {
+                   attribute name { "Gamma" },
+                   (
+                      element prescribed {
+                         pressure_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Absorption in the pipes.
+                ## If none, set it to 1.
+                ##
+                ## Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+                ## /wells_and_pipes/well_options/calculate_sigma_pipe 
+
+                element scalar_field {
+                   attribute name { "Sigma" },
+                   (
+                      element prescribed {
+                         subcv_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify the diameter of the pipe.
+                ## This effectively defines where and where not there is a pipe.
+                ## If the diameter is <=0 no pipe, else there is pipe.
+                element scalar_field {
+                   attribute name { "DiameterPipe" },
+                   (
+                      element prescribed {
+                         pressure_mesh_choice,
+                         prescribed_scalar_field
+                      }|
+                    element diagnostic {
+                      vector_python_diagnostic_algorithm,
+                      diagnostic_scalar_field_no_adapt
+                    }| 
+                      element aliased {
+                         generic_aliased_field
+                      }
+                   )
+                },
+                ## Specify thermal well-related options
+                element thermal_well_properties {
+                    ## Specify the conductivity of the well/pipe material.
+                    ## If there are several layers this, it has to be the equivalent conductivity from inside the well/pipe to
+                    ## the reservoir.
+                    ## This is only required for heat transport
+                    element scalar_field {
+                       attribute name { "Conductivity" },
+                       (
+                          element prescribed {
+                             pressure_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                        element diagnostic {
+                          vector_python_diagnostic_algorithm,
+                          diagnostic_scalar_field_no_adapt
+                        }| 
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    },
+                    ## Specify the thickness of the well/pipe.
+                    ## If there are several layers this, it has to be the equivalent thiness from inside the well/pipe to
+                    ## the reservoir.
+                    ## This is only required for heat transport
+                    element scalar_field {
+                       attribute name { "well_thickness" },
+                       (
+                          element prescribed {
+                             pressure_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                        element diagnostic {
+                          vector_python_diagnostic_algorithm,
+                          diagnostic_scalar_field_no_adapt
+                        }| 
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    }
+                }?,
+                ## Specify well-related options
+                element well_options {
+                   ## Calculate the well \sigma field internally
+                   ## using a non-linear friction factor.
+                   ## This will over-write the field specified in Sigma1.
+                   element calculate_sigma_pipe{
+                      # Defaults to 1.0e-6.
+                      element pipe_roughness{ real }?
+                   }?,
+                   ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
+                   element dt_pipe_factor{ real }?,
+                   ## Switches wells on and off to optimise production
+                   element switch_wells_on_and_off{
+                      element phase_exclude{ integer }
+                   }?,
+                    ## If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
+                    ## .bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+                    ## the other way round for values below 100.
+                    ## The default value is 1e-2.
+                    element wells_bdf_tolerance {
+                      real
+                     }?
+                }?,
+
+                ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+                ## that the well trajectories are preserved.
+                ##
+                ## ***This is MANDATORY when using files to define wells***
+                element well_volume_ids {
+                  integer_vector,
+                      (
+                        ## Output the ids of the wells
+                        element Show_well_volumes_ids{comment}?
+                      )
+                 }?,
+                 ## Introduce here the relative path to the file defining a 1D well
+                 ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
+                 ## Each file has to describe a continuous well touching an external boundary.
+                 ##
+                 ## ***Well_volume_ids option is MANDATORY when using this method to define wells.***
+                 element well_from_file {
+                 attribute name { string },
+                 attribute file_path { string }                  
+                }*
+             }?,
+	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil. 
+	        ##
+	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
+	        ##
+	        ## The following must be specified:
+	        ## 
+	        ## - Densities of water (phase 1) and oil (phase 2)
+	        ##
+	        ## - Gravity
+	        ##
+	        ## - Capillary pressure curve
+	         element FWL {
+	         	real
+		        }?
+         }?,
+
+        ## Fracking options
+         element femdem_fracture {
+         (
+            ## Specify FEMDEM input file
+            element femdem_file {
+               attribute name { xsd:string }
+            }?,
+	    element oneway_coupling_only {
+	       attribute rank {"0"},
+               ("1way"|"p2way")
+	    }?,
+            element include_pore_pressure {
+               empty
+	    }?
+         )
+         }?,
+         ## Flooding parameters
+            element flooding{
+             ## This is the term Nm of the manning formula:
+             ## b = Nm^2*g * |u|/h^1.33; 
+             ## Nm is the manning coefficent. Values between [0.01 and 0.025];
+             ## Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
+             ## For no friction set this to zero or do not activate it.
+                 element scalar_field {
+                    attribute name { "manning_coef" },
+                    (
+                       element prescribed {
+                          material_mesh_choice,
+                          prescribed_scalar_field
+              }
+                    )
+                 },
+               ##Perform the mean of the bathymetry when calculating the Manning formula;
+               element averaging {
+               comment
+            }?,
+               ##Factor that controls the strenght of the drag introduced in the dry areas;
+               ## it has a simmilar effect as the artificial diffusion. Default value = 1e-1.
+               element shallow_drag {
+               real
+            }?
+         }?,
+
+         ## Advanced options that are kept for debugging purposes
+         element numerical_methods {
+            ## Use a method to avoid distortion due to boundaries
+            element use_reflect_method {
+               empty
+            }?,     
+            ## Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
+            ## Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.
+            element local_upwinding {
+               empty
+            }?,     
+            ## Use the row-sum method to create a lumped mass matrix. 
+            ## For porous media this will not have an effect.
+            element lump_mass_matrix {
+               empty
+            }?, 
+            ## Introduce in the pivit matrix the temporal terms
+            element get_all_in_mass_matrix {
+               empty
+            }?,
+            ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
+            ## the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
+            ## The default value for P1DGP1 => 1e4 and disabled for other element types.
+            ## To disable it manually, set it to negative values. 
+            element CV_press_homogenisation {
+               real
+            }?,
+           ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
+           ## By default this number is 9. Recommended range: 3 to 9.
+            element max_sat_its {
+               integer
+            }?,
+            ## For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
+            ## activate this to also output the force_density
+            element porous_output_force_density{
+               empty
+            }?, 
+            ## Use the fast method to create the pressure matrix. Be aware that some methods only work with the slow method
+            element create_P_mat_fast {
+               empty
             }?
          }?
       }
@@ -565,6 +950,76 @@ geometry =
                  "fast" | "balanced" | "precision"|"discontinuous_pressure"
               }
             },
+
+        ## Settings to change the values specified in simulation_quality.
+        ## Only the activated options will overwrite the values decided in simulation_quality
+        element Advance_options{
+             ## The velocity mesh
+             element mesh {
+                attribute name { "VelocityMesh" },
+                mesh_info
+             }?,
+             ## The pressure mesh
+             element mesh {
+                attribute name { "PressureMesh" },
+                mesh_info
+             }?,
+             element mesh {
+                attribute name { xsd:string },
+                mesh_info,
+                element exclude_from_mesh_adaptivity{empty}?
+             }*,
+             ## Specify a different time discretisation method for different fields
+             element Time_Discretisation {
+                ##Name of the Field
+                attribute name { xsd:string },
+                 ## Implicit/explicit control (THETA)
+                 ##  =0.  -- explicit
+                 ##  =0.5 -- Crank-Nicolson
+                 ##  =1.  -- implicit
+                 ##  =-1. -- Automatic based on a NVD criterion.
+                element Theta{real}
+             }*,
+             ## Specify a different flux calculation for different fields
+             element Space_Discretisation {
+                ##Name of the Field
+                attribute name { xsd:string },
+                element advection_scheme {
+                  (
+                     ## Straightforward upwinding of the nonlinear velocity.
+                     element upwind {
+                        empty
+                     }|
+                     ## High order method based on a TVD criteria to ensure stability.
+                     element High_order {
+                        empty
+                     }
+                  )}
+             }*,
+
+             ## Conservative discretisation options
+             ## Note that non-conservative does NOT mean that we do not conserve mass
+             ## For transport equations this is recommended to be zero. 
+             ## For PhaseVolumeFraction the recommendation is one.
+             element Conservative_formulation_settings {
+                ##Name of the Field
+                attribute name { xsd:string },
+                 ##  BETA=1. -- conservative (divergence form)
+                 ##  BETA=0. -- non-conservative
+                 ##  0. < BETA < 1.
+                 element conservative_advection {
+                    real
+                 }
+             }*,
+            ## By default ICFERST uses a DCVFEM because it is more robust (Salinas et al. 2018),
+            ## nonetheless the classical CVFEM can also be used.
+            element FE_Pressure {
+               empty
+            }?
+        }?,
+
+
+ 
         ## Use Fluidity to overwrite the input .msh file into a binary .msh file. 
         ##
         ## Useful to convert your ASCII msh files into binary to be able to decompose the mesh.
@@ -572,6 +1027,201 @@ geometry =
            empty
         }? 
       }
+   )
+
+solver_options = 
+   (
+    ## Options related to the linear and non-linear solvers.
+    element solver_options{
+    (
+      ## Default Options for all the solvers
+      element Linear_solver {
+		advanced_solver_options_sym,
+		linear_solver_options_sym,
+        element Custom_solver_configuration{
+(
+	## Options for pressure solver      	
+	element Pressure{
+		advanced_solver_options_sym,
+		linear_solver_options_sym	
+		}?,
+	## Options for velocity solver
+	element Velocity{
+		advanced_solver_options_asym,
+		linear_solver_options_asym	
+		}?,
+	## Options for Transport solver
+	element field {
+		attribute name { xsd:string },
+		advanced_solver_options_sym,
+		linear_solver_options_sym	
+		}*
+      )
+}
+}?,
+    
+
+        ## Maximum number of non-linear iterations for the Fixed-Point iteration solver.
+        ## 
+        ## Manual suggests 2 for problems that are not very non-linear
+        ##
+        ## If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
+        ## 
+        ## If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of 
+        ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
+		element Non_Linear_Solver {
+           integer,
+           ##NOTE: For multiphase porous media only. Otherwise this value is ignored.  
+           ##
+           ## This is the convergence criterion for the Fixed Point Iteration solver.
+           ## The functional to compare is: 
+           ##
+           ## f = L2norm(S*-So)/L2norm(S1-So)
+           ##
+           ## S* is the latest saturation; So is the saturation at the previous FPI
+           ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
+           ## of saturation is tested
+           ##
+           ## Recommended value: 5e-2
+           element Fixed_Point_Iteration{
+              real,
+              (
+                ## Tolerance for the infinite norm of the variation of the normalized selected field
+                ## between two consecutive non-linear iterations.
+                ##
+                ## This can be used to control the number of non-linear interations dynamically.
+                ##
+                ## By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005
+                element Infinite_norm_tol{
+                real,
+                  (
+                    ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
+                    ##
+                    ## A Variable to check has to be chosen:
+                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+                    ##
+                    ## The field selected in "adaptive_timestep_nonlinear" has preference over this
+                    element adaptive_non_linear_iterations{
+                    integer
+                    }?
+                  )
+                }?
+              ),
+              (
+                ##
+                ## Recommended settings: Non-linear iterations ~ 20
+                ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+                ##
+                ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
+                ##
+                ## Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
+                ## Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
+                ##
+                ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
+                element Backtracking_factor{
+                real
+                }?
+              ),
+                ## Introduce over-relaxation in the saturation equation. 
+                ## This severely HELPS to reduce the number of FPI.
+                ##
+                ## If positive, the input value is the entry pressure.
+                ##
+                ## If negative, the input value is Peclet number desired.
+                ##
+                ## Recommended value for Saturation => -1e2
+                ##
+                ## Tip: If running with temperature and single phase disable this setting it to 0.
+                element Vanishing_relaxation{
+                real,
+                  (
+                    ## This method can also be applied for a transport equation.
+                    ##
+                    ## Recommended value for Temperature => -1e0
+                    element Vanishing_for_transport{
+                    real
+                    }?
+                  )
+                }?,
+              (
+                ## For TEMPERATURE ONLY, if there are no sources nor sinks
+                ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+                ## 
+	            ## This imposes that the temperature has to be between bounds.
+                element Impose_min_max{empty}?
+              ),
+              (
+                ## Convergence criterion based on the 
+                ## conservation of volume of each phase for the non-linear solver
+            ## 
+	    ## By default the tolerance is 1e-2
+                element Test_mass_consv{real}?
+              ),
+              (
+                ## Prints the number of iterations and
+                ## the final convergence achieved by the FPI solver
+                element Show_Convergence{comment}?
+              ),
+              (
+                ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
+                ##
+                ## A Variable to check has to be chosen:
+                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+                element adaptive_timestep_nonlinear{
+                    integer,
+                  (
+                    ## Time-step size controlled using a PID approach.
+                    ## By default this method only controls the errors, and based on that increases or decreases the time-step size.
+                    ## The default aim of number of FPI is the 20% of the maximum number of non-linear iterations.
+                    ## The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
+                    ## 
+                    ## If this is off, a classical method based on the number of FPI performed is used instead.
+                    element PID_controller {
+                      empty,
+                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced
+                        ## here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
+                        ## By default this is the 20% of the maximum number of non-linear iterations.
+                        element Aim_num_FPI {
+                          integer
+                        }?
+                    }?,
+                    ## If any of the solvers failt to achieve convergence the time-step size is 
+                    ## reduced and the time-level repeated without waiting to reach the maximum number of FPI.
+                    ## Note: For the saturation for porous media it allows to diverge inside the saturation FPI.
+                    element ensure_solvers_convergence {
+                      empty
+                    }?,
+                    ## Number of FPI below which the time-step size is increased
+                    ## by default it is the 25% of the maximum allowed FPIs
+                    element increase_threshold{
+                    integer
+                    }?,
+                    ## Multiply present timestep by this factor when increasing it.
+                    ## By default 1.1
+                    element increase_factor{
+                    real
+                    }?,
+                    ## Multiply present timestep by this factor when decreasing it.
+                    ## By default 2.0
+                    element decrease_factor{
+                    real
+                    }?,
+                    ## Maximum timestep. Beyond this value the timestep will not be increased.
+                    ## By default unlimmited.
+                    element max_timestep{
+                    real
+                    }?,
+                    ## Minimum timestep. Beyond this value the timestep will not be decreased.
+                    ## By default dt*1e-3.
+                    element min_timestep{
+                    real
+                    }?
+                  )
+                }?
+              )
+           }?
+        }?
+      )}
    )
 
 
@@ -1419,6 +2069,24 @@ scalar_field_choice =
                   prognostic_scalar_field
                }
             )
+         }|
+         ## Mass Fraction of Solute
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "SoluteMassFraction" },
+            (
+               element prognostic {
+                  velocity_mesh_choice,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  velocity_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
          }|         
          ## PhaseVolumeFraction
          ## Required in porous_media and multiphase problem types
@@ -1571,6 +2239,25 @@ scalar_field_choice =
                   element solver {
                     linear_solver_options_sym
                   },
+                  diagnostic_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+         }|
+         ## CFLNumber
+         ##
+         ## See http://amcg.ese.ic.ac.uk/index.php?title=Local:Diagnostics#CFL_Number
+         ##
+         ## Adapting to this field is not recommended
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "CFLNumber" },
+            (
+               element diagnostic {
+                  internal_algorithm,
+                  velocity_mesh_choice,
                   diagnostic_scalar_field
                }|
                element aliased {
@@ -2254,39 +2941,120 @@ surface_integral_stats_vector.surface_integral &=
    )
 
 
-phase_density = 
-	(
-## Specify the density of the current material phase (can also specify density for each component)
-        element Density {
-            real
-         }
-        )
-
-
-equation_of_state =
+phase_density =
                (
                   (
 ## Use this option to specify the density of fluids
-element equation_of_state{
-
+element Density{(
+                    
                      ## Equations of state
                      element incompressible {
-                        (
-                           element linear {
-                              (
-                                 ## All eos_coefficients equal as in most of
-                                 ## the test cases (=1)
-                                 element all_equal {
-                                    real
-                                 }
+                        real}|
+                     ## Equations of state for compressible applications
+                     element compressible {
+                        ## Linear in Pressure EOS 
+                        ##
+                        ## DEN = A * P + B
+                        ##
+                        ## Use this option for flooding, being A = 1/gravity and B the bathymetry
+                        element linear_in_pressure {
+                           element coefficient_A { 
+                              real 
+                           },
+                           element coefficient_B {
+                            (
+                                 ## list of bin bounds
+                                 element constant { 
+                                     real
+                                 }|
+                                ## Python function prescribing real input. Functions should be of the form:
+                                ##    def val(X, t):
+                                ##    # Function code
+                                ##    return # Return value
+                                ##
+                                ##    where X is a tuple of length geometry dimension.
+                                 element python {
+                                     python_code
+                                   }
                               )
+                           },
+                           ## If chosen: DEN = A * P / T + B
+                           element include_internal_energy {
+                              empty
+                           }?
+                        }|
+                        ## Exponential in Pressure EOS 
+                        ##
+                        ## DEN = A * P ^ B
+                        ##
+                        element exponential_in_pressure {
+                           element coefficient_A { 
+                              real 
+                           },
+                           element coefficient_B {
+                              real
                            }
-                        )
+                        }|
+                        ## Concentration-dependant EOS
+                        ## 
+                        ## DEN = DEN0 * ( 1 + Alpha * w )
+                        ##
+                        ## w is the solute mass fraction and DEN0 is the reference density corresponding to w = 0
+                        ##
+                        element concentration_dependant {
+                           element reference_density { 
+                              real 
+                           },
+                           element alpha {
+                              real
+                           }
+                        }|
+                        ## Temperature-Pressure correlation for liquids ONLY.
+                        ##
+                        ## Range of applicability: 0 to 2*10^9 Pa.
+                        ##
+                        ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
+                        ##
+                        ## where rho0 is the reference density at temperature T0 and pressure P0;
+                        ##
+                        ## Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
+                        ##                        
+                        ## E is the liquid elasticity bulk modulus (N/m^2)
+                        ##
+                        ## NOTE: if temperature is not defined the temperature is defined as zero.
+                        element Temperature_Pressure_correlation {
+                           ## Reference density
+                           element rho0 { 
+                              real 
+                           },
+                           ## Reference temperature
+                           element T0 { 
+                              real 
+                           },
+                           ## Reference Pressure
+                           element P0 { 
+                              real 
+                           },
+                           ## volumetric expansion coefficient (m^3/m^3 Celsius)
+                           element coefficient_Beta { 
+                              real 
+                           },
+                           ## liquid elasticity bulk modulus (N/m^2)
+                           element coefficient_E {
+                              real
+                           }
+                        }  
+                      }|
+                     ## The "Dummy" diagnotic field on the pressure mesh is required for this option
+                     element python_state{
+                       scalar_python_diagnostic_algorithm
                      }
-
-         }
-)
-)
+                    ),
+                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
+                    element linearise_density {empty}?}
+                    
+                  )
+               )
 
 		  
 

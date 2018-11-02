@@ -196,9 +196,14 @@ contains
         integer, dimension(2) :: shape
         logical :: mesh_diagnostics = .false., bad_element = .false. ! print out mesh diagnostics / change properties of bad elements to improve deltaP calculations for bad meshes (with large angles)
 
-!!-Variable to keep track of dt reduction for meeting dump_period requirements
+        !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
         real :: old_acctim
+
+        !! Variables to initialise porous media models
+        logical :: exit_initialise_porous_media = .false.
+
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -206,14 +211,17 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
+
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
         if (numberfields_CVGalerkin_interp > 0 .and. isParallel()) then
           ewrite(1,*) "WARNING: CVGalerkin projection not well tested for parallel."
         end if
+
         ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
         call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold, default = 0.0 )
+
 
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
@@ -456,6 +464,7 @@ contains
         ! Reading options for bad_element test
         call BadElementTest(Quality_list, 1)
 
+
         !Prepapre the pipes
         if (Mdims%npres > 1) then
            !Retrieve the elements with pipes and the corresponding coordinates
@@ -463,13 +472,16 @@ contains
            call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
-!!$ Time loop
+
+        !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
             ! Tests bad elements and creates table of angles for model elements
             call BadElementTest(Quality_list, 2)
 
-
+            ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
+            call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
+            if (exit_initialise_porous_media) exit Loop_Time
 
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
@@ -589,15 +601,6 @@ contains
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes)
 
-                    !!$ Calculate Darcy velocity
-                    if(is_porous_media) then
-                        !Do not calculate unless necessary, this is not specially efficient...
-                        !Arash
-                        if(is_multifracture .OR. has_salt) then
-                            call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
-                        end if
-                    end if
-
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
 
@@ -605,6 +608,7 @@ contains
 
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
+
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
@@ -612,7 +616,11 @@ contains
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
+
                 end if Conditional_PhaseVolumeFraction
+
+                !!$ Calculate Darcy velocity with the most up-to-date information
+                if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
@@ -710,6 +718,7 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
             if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
             FPI_eq_taken = dble(its) + dble(SFPI_taken)/3.!SFPI cost 1/3 roughly, this needs to be revisited when solving for nphases-1
@@ -1043,13 +1052,7 @@ contains
 
         subroutine create_dump_vtu_and_checkpoints()
 
-            if (is_porous_media) then!Calculate Darcy velocity to output in the vtu files
-                !Do not recalculate for "is_multifracture" because it has been calculated already
-                !Arash
-                if(.not.is_multifracture .OR. .not.has_salt) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
-            end if
-
-
+            ! sprint to do: check this routine - why are we swapping pressure fields??
             !!$ Write outputs (vtu and checkpoint files)
             if (have_option('/io/dump_period_in_timesteps')) then
                 ! dump based on the prescribed period of time steps
@@ -1648,7 +1651,6 @@ subroutine BadElementTest(Quality_list, flag)
                         do i=1, size(quality_table)
                             call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1 ,quality_table(i), Quality_list, bad_element, diagnostics(i))
                         end do
-
 
 
                         if (getprocno() == 1) then

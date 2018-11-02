@@ -31,11 +31,6 @@ start =
                 element inertia_dominated{comment}|
                 ## Darcy flow simulator
                 element porous_media{comment}|
-                ## Poro-elasticity simulator:
-                ## This requires to define through diamond the tensor field in phase 1 UAbsorB
-                ## as an absorption term and also the RHS that should include the second time-derivative for the solid phase
-                ## and also the coupling terms. The first phase is considered the solid phase.
-                element poroelasticity{comment}|
                 ## Magma flow simulator
                 element magma{comment}|
                 ## Flooding simulator
@@ -657,6 +652,22 @@ start =
 	    }?
 	 }?,
          physical_parameter_options?,
+	## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil. 
+	##
+	## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
+	##
+	## Once the system has equilbrated the simulation will exit, producing checkpoints to be used for later simulations. 
+	##
+	## The following must be specified:
+	## 
+	## - Densities of water (phase 1) and oil (phase 2)
+	##
+	## - Gravity
+	##
+	## - Capillary pressure curve
+	 element FWL {
+	 	real
+		}?,
          ## The material or phase options
          element material_phase {
             attribute name { xsd:string },

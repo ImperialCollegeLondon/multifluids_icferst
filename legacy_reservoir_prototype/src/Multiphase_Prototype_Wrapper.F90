@@ -94,9 +94,9 @@ subroutine multiphase_prototype_wrapper() bind(C)
 #endif
     call initialise_write_state
 
-
     !!Retrieve what type of simulation are we doing
     call get_simulation_type()
+
     !Flag the first time step
     first_time_step = .true.
 
@@ -165,7 +165,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     call run_diagnostics(state)
 
-    !     Determine the output format
+    ! Determine the output format
     dump_format = "vtk"
 
     ! initialise the multimaterial fields
@@ -868,7 +868,6 @@ contains
         is_porous_media = have_option('/simulation_type/porous_media') .or. have_option('/is_porous_media')
         is_magma = have_option('/simulation_type/magma')
         is_flooding = have_option('/simulation_type/flooding')
-        is_poroelasticity = have_option('/simulation_type/poroelasticity')
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/simulation_type/femdem_fracture' )
         !Flag to set up blasting
@@ -877,6 +876,10 @@ contains
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         !Arash
         has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
+
+        ! Check if Porous media model initialisation
+        is_porous_initialisation =  (have_option("/simulation_type/porous_media") .and. have_option("/FWL"))
+
         !Check if it is P0DGP1
         if (.not. have_option("/is_porous_media")) then!This is to check if the input file is mpml or else, i.e. frst
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', &

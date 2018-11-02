@@ -160,14 +160,12 @@ module global_parameters
 
   !! Multiphase prototype, reservoir simulator
   logical :: is_porous_media = .false.
+  !! Porous media model initialisation (Gravity capillary equilibration)
+  logical :: is_porous_initialisation = .false.
   !! Multiphase prototype, flooding simulator
   logical :: is_flooding = .false.
   !! Multiphase prototype, magma simulator
   logical :: is_magma = .false.
-  !! Multiphase prototype, poro-elasticity simulator
-  logical :: is_poroelasticity = .false.
-
-
   !! Checking multifracture
   logical :: is_multifracture = .false.
     !! Checking to see if fracturing is occuring in FEMDEM

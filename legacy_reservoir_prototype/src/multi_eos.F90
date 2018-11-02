@@ -51,6 +51,7 @@ module multiphase_EOS
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
+    use checkpoint
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5
@@ -1080,8 +1081,8 @@ contains
                                    end if
                                END DO
                            !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
-                           upwnd%inv_adv_coef(:, :, IPHASE, IMAT) = inverse(upwnd%adv_coef(:, :, IPHASE, IMAT))
-                           END DO
+                           upwnd%inv_adv_coef(:, :, IPHASE, IMAT) = inverse(upwnd%adv_coef(:, :, IPHASE, IMAT))!sprint_to_do: use
+                         END DO                                                                           !get_multi_field_inverse or think of a faster method
                        END DO
                    END DO
                END DO
@@ -2964,5 +2965,119 @@ contains
         end if
 
     end subroutine calculate_flooding_height
+
+
+    subroutine initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
+        !! Initialising porous media models
+        !! Given a free water level (FWL) we simulate capillary gravity equilibration,
+        !! control volumes below FWL is kept at residual lighter phase saturation
+        !! This subroutine is called after each timestep and saturations overidden
+        !! below FWL with the heavier phase
+
+        implicit none
+        type(multi_dimensions), optional        :: Mdims
+        type(multi_ndgln), optional             :: ndgln
+        type(state_type), optional              :: packed_state
+        type(state_type), dimension(:), optional:: state
+        logical, intent(inout)                  :: exit_initialise_porous_media
+
+        ! local
+        real, save                      :: FWL = -1
+        type(vector_field)              :: grav_vector
+        integer, save                   :: grav_direc = 99, grav_sign=99, heavier_phase, lighter_phase ! down depends on gravity direction
+        logical, save                   :: message = .true. ! user messages
+        real, dimension(:,:), pointer   :: x_all, immobile_fraction, saturation_field, old_saturation_field, density
+        integer                         :: cv_iloc, iphase, ele, xnod, cv_nod, i
+        real                            :: inf_norm ! check saturation inf norm, dump checkpoint exit
+
+        if (is_porous_initialisation) then
+            if (message) then
+                message = .false. ! only write at the start of simulation
+                ewrite(0,*) "MODEL INITIALISATION: POROUS MEDIA EQUILIBRIATION WILL NOW BE CONDUCTED."
+                ewrite(0,*) "At the end of equilibration a checkpoint will be produced"
+                ewrite(0,*) "User must have the following:"
+                ewrite(0,*) "- Free water level - height where capillary pressure is zero"
+                ewrite(0,*) "- Capillary pressure for wetting phase"
+                ewrite(0,*) "- Density of wetting phase and non-wetting phase"
+                ewrite(0,*) "- Gravity magnitude and direction"
+
+                ! check we have gravity parameters
+                if (.not. have_option("/physical_parameters/gravity/magnitude") ) then
+                    FLAbort(" *** GRAVITY MAGNITUDE AND DIRECTION ARE NEEDED ***")
+                end if
+                ! gravity can only point in one of the principle directions
+                if (grav_direc == 99) then
+                    grav_vector = extract_vector_field(state(1), 'GravityDirection')
+                    do i = 1, size(grav_vector%val(:,1))
+                        if (abs(grav_vector%val(i,1)) == 1 ) then
+                            grav_direc = i
+                            grav_sign = sign(1, int(grav_vector%val(i,1)))
+                            if (sum(abs(grav_vector%val(:,1))) > 1.) then
+                                FLAbort(" *** FOR NOW GRAVITY HAS TO POINT IN ONE OF THE PRINCIPLE DIRECTIONS ***")
+                            end if
+                        end if
+                    end do
+                end if
+
+                ! check which phase is heavier - only works for constant density for now
+                call get_var_from_packed_state(packed_state, Density = density)
+                if (Mdims%nphase > 2) then
+                    FLAbort(" *** ONLY WORKS FOR 2 PHASES ***")
+                end if
+                do i = 1, Mdims%nphase
+                    if (.not. minval(density(i,:)) == maxval(density(i,:)) ) then
+                        FLAbort(" *** ONLY WORKS FOR CONSTANT DENSITY ***")
+                    end if
+                end do
+
+                heavier_phase = maxloc(density(:,1), DIM=1)
+                lighter_phase = minloc(density(:,1), DIM=1)
+
+                ! make sure we have the capillary pressure curve for this phase
+                if (.not. have_option("/material_phase[" // int2str(heavier_phase-1) // "]/multiphase_properties/capillary_pressure")) then
+                    FLAbort(" *** HEAVIER PHASE IS MISSING CAPILLARY CURVE ***")
+                end if
+
+                ! Get free water level from diamond
+                if (FWL<0) then
+                    call get_option("/FWL", FWL, default = 0.0)
+                end if
+
+            else
+
+                call get_var_from_packed_state(packed_state, Immobile_fraction = immobile_fraction, &
+                    PressureCoordinate = x_all, PhaseVolumeFraction = saturation_field, OldPhaseVolumeFraction = old_saturation_field)
+
+                ! override all saturations in control volumes below FWL with the maximum heavier phase saturation
+                do ele = 1, Mdims%totele
+                    do cv_iloc = 1, Mdims%cv_nloc
+                        cv_nod = ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+                        xnod = ndgln%x((ele-1)*Mdims%x_nloc + cv_iloc)
+                        if (grav_sign*x_all(grav_direc, xnod) > grav_sign*FWL) then
+                        saturation_field(heavier_phase, cv_nod) = 1 -  immobile_fraction(lighter_phase,ele) ! below FWL saturation at max water saturation
+                        saturation_field(lighter_phase, cv_nod) = immobile_fraction(lighter_phase,ele) ! below FWL saturation at min oil saturation
+                        end if
+                    end do
+
+                end do
+
+                ! check if saturation has converged
+                inf_norm = maxval(abs(saturation_field(heavier_phase,:) - old_saturation_field(heavier_phase,:)))
+                if (inf_norm < 1.e-4) then
+                    ewrite(0,*) 'initialisation porous media convergence reached'
+                    ewrite(0,*) '... exiting'
+                    call delete_option("/FWL")
+                    call checkpoint_simulation(state, prefix='Initialisation', protect_simulation_name=.true.,file_type='.mpml')
+                    exit_initialise_porous_media = .true.
+                end if
+
+            end if
+        end if
+
+    end subroutine initialise_porous_media
+
+
+
+
 
 end module multiphase_EOS

@@ -3,7 +3,7 @@
   <simulation_name>
     <string_value lines="1">Test</string_value>
   </simulation_name>
-  <is_porous_media/>
+  <porous_media/>
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
@@ -20,6 +20,14 @@
       <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
+  <solver_options>
+    <Non_Linear_Solver>
+      <integer_value rank="0">25</integer_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">5e-2</real_value>
+      </Fixed_Point_Iteration>
+    </Non_Linear_Solver>
+  </solver_options>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
@@ -40,17 +48,30 @@
     <finish_time>
       <real_value rank="0">0.2</real_value>
     </finish_time>
-    <nonlinear_iterations>
-      <integer_value rank="0">15</integer_value>
-      <Fixed_Point_Iteration>
-        <real_value rank="0">1e-2</real_value>
-      </Fixed_Point_Iteration>
-    </nonlinear_iterations>
   </timestepping>
   <material_phase name="phase1">
-    <Density>
-      <real_value rank="0">1</real_value>
-    </Density>
+    <phase_properties>
+      <Density>
+        <incompressible>
+          <real_value rank="0">1</real_value>
+        </incompressible>
+      </Density>
+      <Viscosity>
+        <prescribed>
+          <value name="WholeMesh">
+            <isotropic>
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </isotropic>
+          </value>
+        </prescribed>
+        <viscosity_scheme>
+          <tensor_form/>
+          <nonlinear_scheme/>
+        </viscosity_scheme>
+      </Viscosity>
+    </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
@@ -143,9 +164,6 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <viscosity>
-          <real_value rank="0">1</real_value>
-        </viscosity>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -200,15 +218,31 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Sat_overRelax>
-        <real_value rank="0">-1e2</real_value>
-      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
-    <Density>
-      <real_value rank="0">0.711</real_value>
-    </Density>
+    <phase_properties>
+      <Density>
+        <incompressible>
+          <real_value rank="0">1</real_value>
+        </incompressible>
+      </Density>
+      <Viscosity>
+        <prescribed>
+          <value name="WholeMesh">
+            <isotropic>
+              <constant>
+                <real_value rank="0">1</real_value>
+              </constant>
+            </isotropic>
+          </value>
+        </prescribed>
+        <viscosity_scheme>
+          <tensor_form/>
+          <nonlinear_scheme/>
+        </viscosity_scheme>
+      </Viscosity>
+    </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <aliased material_phase_name="phase1" field_name="Pressure"/>
     </scalar_field>
@@ -245,9 +279,6 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <viscosity>
-          <real_value rank="0">10</real_value>
-        </viscosity>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -304,6 +335,31 @@
       </immobile_fraction>
     </multiphase_properties>
   </material_phase>
+  <mesh_adaptivity>
+    <hr_adaptivity>
+      <period_in_timesteps>
+        <integer_value rank="0">100000</integer_value>
+      </period_in_timesteps>
+      <maximum_number_of_nodes>
+        <integer_value rank="0">1000000</integer_value>
+      </maximum_number_of_nodes>
+      <enable_gradation/>
+      <tensor_field name="MinimumEdgeLengths">
+        <anisotropic_symmetric>
+          <constant>
+            <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">1 0 0 0 1 0 0 0 1</real_value>
+          </constant>
+        </anisotropic_symmetric>
+      </tensor_field>
+      <tensor_field name="MaximumEdgeLengths">
+        <anisotropic_symmetric>
+          <constant>
+            <real_value symmetric="true" dim2="dim" shape="3 3" dim1="dim" rank="2">1 0 0 0 1 0 0 0 1</real_value>
+          </constant>
+        </anisotropic_symmetric>
+      </tensor_field>
+    </hr_adaptivity>
+  </mesh_adaptivity>
   <porous_media>
     <scalar_field name="Porosity">
       <prescribed>

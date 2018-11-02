@@ -2228,9 +2228,6 @@ contains
                 DO CV_NODI = 1, Mdims%cv_nonods
                     SIGMA_INV_APPROX(:, CV_NODI)=1.0/multi_absorp%Flooding%val( 1, 1, :, CV_NODI )!Only has the friction inside the pipes
                 end do
-            else if (is_poroelasticity) then!For poroelasticity ensure that the first phase is immobile
-                SIGMA_INV_APPROX(1, :) = huge(1.0)
-                if (Mdims%nphase > 1) SIGMA_INV_APPROX(2:Mdims%nphase, :) = 1.0
             else
                 SIGMA_INV_APPROX = 1.0
             end if
