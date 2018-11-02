@@ -28,7 +28,7 @@ Collapsing_Water_Column_hydrostatic_pressure for an example</a:documentation>
         </element>
       </optional>
       <optional>
-        <element name="Boussinesq_approxiomation">
+        <element name="Boussinesq_approximation">
           <a:documentation>Use the boussinesq approximation. Useful for small variations of density.</a:documentation>
           <empty/>
         </element>

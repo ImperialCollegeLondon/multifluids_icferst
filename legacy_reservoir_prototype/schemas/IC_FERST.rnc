@@ -2999,7 +2999,7 @@ element Density{(
                      element incompressible {
                         real}|
                      ## Equations of state for compressible applications
-                     element compressible {
+                     element compressible {(
                         ## Linear in Pressure EOS 
                         ##
                         ## DEN = A * P + B
@@ -3092,7 +3092,8 @@ element Density{(
                               real
                            }
                         }  
-                      }|
+                      ),      ## Use the boussinesq approximation. Useful for small variations of density.
+                        element Boussinesq_approximation { empty }?}|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
                      element python_state{
                        scalar_python_diagnostic_algorithm

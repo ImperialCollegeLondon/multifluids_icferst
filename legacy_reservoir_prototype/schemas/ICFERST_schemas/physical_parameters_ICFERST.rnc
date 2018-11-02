@@ -17,8 +17,6 @@ gravity_options =
       ## IMPORTANT: for this to work a mesh and a field ph needs to be created. Check the test 
       ## Collapsing_Water_Column_hydrostatic_pressure for an example
       element hydrostatic_pressure_solver { empty }?,
-      ## Use the boussinesq approximation. Useful for small variations of density.
-      element Boussinesq_approxiomation { empty }?,
       ## The direction of the gravity vector.
       element vector_field {
          attribute name { "GravityDirection" },

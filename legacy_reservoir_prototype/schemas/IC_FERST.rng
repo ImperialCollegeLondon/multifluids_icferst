@@ -3685,6 +3685,12 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
               </element>
             </element>
           </choice>
+          <optional>
+            <element name="Boussinesq_approximation">
+              <a:documentation>Use the boussinesq approximation. Useful for small variations of density.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
         </element>
         <element name="python_state">
           <a:documentation>The "Dummy" diagnotic field on the pressure mesh is required for this option</a:documentation>
