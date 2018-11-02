@@ -324,6 +324,54 @@ alternating directions. Devised by C.Pain.</a:documentation>
               </element>
             </element>
             <optional>
+              <element name="Velocity_Absorption">
+                <a:documentation>Absorption
+
+Note: When in spherical geometry the absorption is now automatically rotated.
+The input values below correspond to setting the diagonal of the absorption matrix
+in the rotated frame of reference. The columns correspond to phi, theta and r 
+respectively.</a:documentation>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="prescribed_vector_field_no_adapt"/>
+                  </element>
+                  <element name="diagnostic">
+                    <choice>
+                      <ref name="vector_python_diagnostic_algorithm"/>
+                      <ref name="imposed_material_velocity_absorption_algorithm"/>
+                      <ref name="internal_velocity_absorption_algorithm"/>
+                    </choice>
+                    <ref name="diagnostic_vector_field"/>
+                  </element>
+                </choice>
+                <choice>
+                  <element name="default_absorption">
+                    <a:documentation>Default absorption: no lumping, is fully evaluated before the
+the pressure correction.</a:documentation>
+                    <empty/>
+                  </element>
+                  <element name="lump_absorption">
+                    <a:documentation>Lump the inclusion of absorbtion terms.</a:documentation>
+                    <optional>
+                      <element name="use_submesh">
+                        <a:documentation>Lump on the submesh.
+This only works for simplex meshes and is only
+strictly valid on 2d meshes.</a:documentation>
+                        <empty/>
+                      </element>
+                    </optional>
+                  </element>
+                  <element name="include_pressure_correction">
+                    <a:documentation>Includes the pressure correction to the velocity in the
+absorption term (for theta&gt;0). This makes the absorption
+term more implicit. The absorption term is lumped if and
+only if the mass matrix is lumped (lump_mass_matrix).</a:documentation>
+                    <empty/>
+                  </element>
+                </choice>
+              </element>
+            </optional>
+            <optional>
               <element name="Stabilisation">
                 <a:documentation>Stabilisation for Inertia dominated flow. 
 LES and Petrov-Galerkin stabilisation are available.</a:documentation>

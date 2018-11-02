@@ -263,6 +263,50 @@ start =
                   }?
                }
                 },
+	      ## Absorption
+	      ##
+	      ## Note: When in spherical geometry the absorption is now automatically rotated.
+	      ## The input values below correspond to setting the diagonal of the absorption matrix
+	      ## in the rotated frame of reference. The columns correspond to phi, theta and r 
+	      ## respectively.
+	      element Velocity_Absorption {
+		 (
+		    element prescribed {
+		       prescribed_vector_field_no_adapt
+		    }|
+		    element diagnostic { 
+		       (
+		          vector_python_diagnostic_algorithm |
+		          imposed_material_velocity_absorption_algorithm |
+		          internal_velocity_absorption_algorithm
+		       ),
+		       diagnostic_vector_field
+		    }
+		 ),
+		 (
+		   ## Default absorption: no lumping, is fully evaluated before the
+		   ## the pressure correction.
+		   element default_absorption {
+		      empty
+		   }|
+		   ## Lump the inclusion of absorbtion terms.
+		   element lump_absorption {
+		      ## Lump on the submesh.
+		      ## This only works for simplex meshes and is only
+		      ## strictly valid on 2d meshes.
+		      element use_submesh {
+		        empty
+		      }?
+		   }|
+		   ## Includes the pressure correction to the velocity in the
+		   ## absorption term (for theta>0). This makes the absorption
+		   ## term more implicit. The absorption term is lumped if and
+		   ## only if the mass matrix is lumped (lump_mass_matrix).
+		   element include_pressure_correction {
+		      empty
+		   }
+		 )
+	      }?,
 
                 ## Stabilisation for Inertia dominated flow. 
                 ## LES and Petrov-Galerkin stabilisation are available.
