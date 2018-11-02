@@ -23,7 +23,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Lifetime = 21
+Lifetime = 20
 
 showPlot = False
 ################################AUTOMATIC STUFF###############################
