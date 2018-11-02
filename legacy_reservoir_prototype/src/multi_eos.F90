@@ -1844,28 +1844,30 @@ contains
       return
     end subroutine calculate_solute_diffusivity
 
-    !Arash
-    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, LongitudinalDispersion, TransverseDispersion, TransverseDispersion2, SoluteDispersion, tracer)
+    !! Arash
+    !! Dispersion for isotropic porous media
+    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, &
+        LongDisp, TransDisp, SoluteDispersion, tracer)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
-      real, intent(in) :: LongitudinalDispersion, TransverseDispersion, TransverseDispersion2 !Disperison coefficients in x, y and z directions
+      real, intent(in) :: LongDisp, TransDisp !Longitudinal and transverse dispersivity
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
-      type(scalar_field), pointer :: component, sfield, solid_concentration
-      type(vector_field), pointer :: coordinate
+      type(scalar_field), pointer :: component, sfield
       type(tensor_field), pointer :: diffusivity
       type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
-      integer :: icomp, iphase, idim, stat, ele, idim2
+      integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc
-      real :: vel_av
-      logical, parameter :: harmonic_average=.false.
+      real :: vel_av, LongDispCoeff, TransDispCoeff
+      real, dimension(3, 3) :: DispCoeffMat
+      real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
       type(tensor_field), intent(inout) :: tracer
 
       SoluteDispersion = 0.
+      DispCoeffMat = 0.
 
-                coordinate => extract_vector_field(state, "Coordinate")
                 sfield=>extract_scalar_field(state(1),"Porosity")
 
                 do iphase = 1, Mdims%nphase
@@ -1878,85 +1880,50 @@ contains
                             u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
 
                             vel_av = 0
-                            do idim2 = 1, Mdims%ndim
-                            vel_av = vel_av + (((darcy_velocity(iphase)%ptr%val(idim2,u_nod))/(sfield%val(ele_nod)))**2)
+
+                            do idim1 = 1, Mdims%ndim
+                                vel_comp2(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
+                                (sfield%val(ele_nod)))**2
+
+                                vel_comp(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
+                                (sfield%val(ele_nod)))
+
+                                vel_av = vel_av + vel_comp2(idim1)
                             end do
+
                             vel_av = SQRT(vel_av)
 
+                            LongDispCoeff = vel_av * LongDisp
+                            TransDispCoeff = vel_av * TransDisp
 
-                                    !Component Dxx of the dispersion tensor
-                                    if (coordinate%dim < 3) then
-                                       SoluteDispersion( u_nod, 1, 1, iphase ) =&
-                                       (LongitudinalDispersion*(((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                       (TransverseDispersion*(((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod)))**2))
-                                   else
-                                        SoluteDispersion( u_nod, 1, 1, iphase ) =&
-                                        (LongitudinalDispersion*(((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                        (TransverseDispersion*(((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                        (TransverseDispersion2*(((darcy_velocity(iphase)%ptr%val(3,u_nod))/(sfield%val(ele_nod)))**2))
-                                   end if
-
-                                    SoluteDispersion( u_nod, 1, 1, iphase ) =&
-                                    sfield%val(ele_nod)*SoluteDispersion( u_nod, 1, 1, iphase )/vel_av
-
-                                    !Component Dyy of the dispersion tensor
-                                    if (coordinate%dim < 3) then
-                                       SoluteDispersion( u_nod, 2, 2, iphase ) =&
-                                       (TransverseDispersion*(((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                       (LongitudinalDispersion*(((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod)))**2))
+                            do idim1 = 1, Mdims%ndim
+                                do idim2 = 1, Mdims%ndim
+                                    if (idim1 == idim2) then
+                                        DispCoeffMat(idim1, idim2) = LongDispCoeff
                                     else
-                                        SoluteDispersion( u_nod, 2, 2, iphase ) =&
-                                        (TransverseDispersion*(((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                        (LongitudinalDispersion*(((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                        (TransverseDispersion2*(((darcy_velocity(iphase)%ptr%val(3,u_nod))/(sfield%val(ele_nod)))**2))
-                                    end if
+                                        DispCoeffMat(idim1, idim2) = TransDispCoeff
+                                    endif
+                                end do
+                            end do
 
-                                    SoluteDispersion( u_nod, 2, 2, iphase ) =&
-                                    sfield%val(ele_nod)*SoluteDispersion( u_nod, 2, 2, iphase )/vel_av
+                            !! Diagonal components of the dispersion tensor
+                            DispDiaComp = (1/(vel_av**2))*matmul(DispCoeffMat, vel_comp2)
 
-                                    !Components Dxy and Dyx of the dispersion tensor
+                            !! Off-diaginal components of the dispersion tensor
+                            do idim1 = 1, Mdims%ndim
+                                do idim2 = 1, Mdims%ndim
+                                    if (idim1 .NE. idim2) then
+                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
+                                        sfield%val(ele_nod)*(1/(vel_av**2)) *&
+                                        (LongDispCoeff - TransDispCoeff) *&
+                                        (vel_comp(idim1) * vel_comp(idim2))
+                                    else
+                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
+                                        sfield%val(ele_nod)*DispDiaComp(idim1)
+                                    endif
+                                end do
+                            end do
 
-                                    SoluteDispersion( u_nod, 1, 2, iphase ) =&
-                                    sfield%val(ele_nod) *&
-                                    ((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod))) *&
-                                    ((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod))) *&
-                                    (LongitudinalDispersion - TransverseDispersion)/vel_av
-
-                                    SoluteDispersion( u_nod, 2, 1, iphase ) =&
-                                    SoluteDispersion( u_nod, 1, 2, iphase )
-
-                                    !Component Dzz of the dispersion tensor
-                                    if (coordinate%dim == 3) then
-                                        SoluteDispersion( u_nod, 3, 3, iphase ) =&
-                                        (TransverseDispersion2*(((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                        (TransverseDispersion2*(((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod)))**2)) +&
-                                        (LongitudinalDispersion*(((darcy_velocity(iphase)%ptr%val(3,u_nod))/(sfield%val(ele_nod)))**2))
-                                    end if
-
-                                    !Components Dxz, Dzx, Dyz and Dzy of the dispersion tensor
-
-                                    if (coordinate%dim == 3) then
-                                        !Dxz
-                                        SoluteDispersion( u_nod, 1, 3, iphase ) =&
-                                        sfield%val(ele_nod) *&
-                                        ((darcy_velocity(iphase)%ptr%val(1,u_nod))/(sfield%val(ele_nod))) *&
-                                        ((darcy_velocity(iphase)%ptr%val(3,u_nod))/(sfield%val(ele_nod))) *&
-                                        (LongitudinalDispersion - TransverseDispersion2)/vel_av
-                                        !Dzx
-                                        SoluteDispersion( u_nod, 3, 1, iphase ) =&
-                                        SoluteDispersion( u_nod, 1, 3, iphase )
-
-                                        !Dyz
-                                        SoluteDispersion( u_nod, 2, 3, iphase ) =&
-                                        sfield%val(ele_nod) *&
-                                        ((darcy_velocity(iphase)%ptr%val(2,u_nod))/(sfield%val(ele_nod))) *&
-                                        ((darcy_velocity(iphase)%ptr%val(3,u_nod))/(sfield%val(ele_nod))) *&
-                                        (LongitudinalDispersion - TransverseDispersion2)/vel_av
-                                        !Dzy
-                                        SoluteDispersion( u_nod, 3, 2, iphase ) =&
-                                        SoluteDispersion( u_nod, 2, 3, iphase )
-
-                                    end if
                         end do
                     end do
                 end do
