@@ -13,8 +13,12 @@
   <include href="spatial_discretisation.rng"/>
   <include href="temporal_discretisation.rng"/>
   <start>
-    <element name="multiphase_options">
-      <a:documentation>The root node of the options dictionary.</a:documentation>
+    <element name="icferst_options">
+      <a:documentation>IC-FERST is a next generation simulator based on Double-Control-Volume 
+Finite Element methods and dynamic unstructured mesh optimisation.
+
+IC-FERST is licensed under the LGPL. For more information
+please visit: http://multifluids.github.io/</a:documentation>
       <ref name="comment"/>
       <element name="simulation_name">
         <a:documentation>Model output files are named according to the simulation
