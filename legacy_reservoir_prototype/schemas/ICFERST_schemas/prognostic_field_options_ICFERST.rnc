@@ -147,60 +147,55 @@ prognostic_scalar_field =
       )+,
       scalar_boundary_conditions*,
 
-      ## Here you can provide a source term for the corresponding field or
-      ## an absorption.
-      element Sources_and_absorptions{
-        (
-            ## Source term
-          element scalar_field {
-             attribute name { "Source" },
-             attribute rank { "0" },
-             (
-                element prescribed {
-                   prescribed_scalar_field_no_adapt
-                }|
-                ## This only works for traffic modelling
-                element diagnostic {
-                   (
-                      scalar_python_diagnostic_algorithm |
-                      internal_algorithm
-                   ),
-                   diagnostic_scalar_field_no_adapt
-                } 
-             )
-          }?,
-          ## Absorption term
-          element scalar_field {
-             attribute name { "Absorption" },
-             attribute rank { "0" },
-             (
-                element prescribed {
-                   prescribed_scalar_field_no_adapt
-                }|
-                element diagnostic {
-                   (
-                      scalar_python_diagnostic_algorithm |
-                      internal_algorithm
-                   ),
-                   diagnostic_scalar_field_no_adapt
-                }
-             )
-          }?,
-          ## Absorption term
-          element tensor_field {
-             attribute name { "Absorption" },
-             attribute rank { "0" },
-             (
-                element diagnostic {
-                   (
-                      tensor_python_diagnostic_algorithm
-                   ),
-                   diagnostic_tensor_field_no_adapt
-                }
-             )
-          }?
-        )
-        }?,
+        ## Source term
+      element scalar_field {
+         attribute name { "Source" },
+         attribute rank { "0" },
+         (
+            element prescribed {
+               prescribed_scalar_field_no_adapt
+            }|
+            ## This only works for traffic modelling
+            element diagnostic {
+               (
+                  scalar_python_diagnostic_algorithm |
+                  internal_algorithm
+               ),
+               diagnostic_scalar_field_no_adapt
+            } 
+         )
+      }?,
+      ## Absorption term
+      element scalar_field {
+         attribute name { "Absorption" },
+         attribute rank { "0" },
+         (
+            element prescribed {
+               prescribed_scalar_field_no_adapt
+            }|
+            element diagnostic {
+               (
+                  scalar_python_diagnostic_algorithm |
+                  internal_algorithm
+               ),
+               diagnostic_scalar_field_no_adapt
+            }
+         )
+      }?,
+      ## Absorption term
+      element tensor_field {
+         attribute name { "Absorption" },
+         attribute rank { "0" },
+         (
+            element diagnostic {
+               (
+                  tensor_python_diagnostic_algorithm
+               ),
+               diagnostic_tensor_field_no_adapt
+            }
+         )
+      }?,
+
  
       
       
@@ -267,164 +262,77 @@ prognostic_velocity_field =
 
 
 
-#      ## Source
-#      element vector_field {
-#         attribute name { "Source" },
-#         attribute rank { "1" },
-#         (
-#            element prescribed {
-#               mesh_choice?,
-#               prescribed_vector_field_no_adapt
-#            }|
-#            element diagnostic {
-#               mesh_choice?,
-#               (
-#                  vector_python_diagnostic_algorithm |
-#                  imposed_material_velocity_source_algorithm |
-#                  internal_velocity_source_algorithm
-#               ),
-#               diagnostic_vector_field
-#            }
-#         ),
-#         element lump_source {
-#            empty
-#         }?
-#      }?,
-#      ## Absorption
-#      ##
-#      ## Note: When in spherical geometry the absorption is now automatically rotated.
-#      ## The input values below correspond to setting the diagonal of the absorption matrix
-#      ## in the rotated frame of reference. The columns correspond to phi, theta and r 
-#      ## respectively.
- #     element vector_field {
-#         attribute name { "Absorption" },
-#         attribute rank { "1" },
-#         (
-#            element prescribed {
-#               mesh_choice?,
-#               prescribed_vector_field_no_adapt
-#            }|
-#            element diagnostic { 
-#               mesh_choice?,
-#               (
-#                  vector_python_diagnostic_algorithm |
- #                 imposed_material_velocity_absorption_algorithm |
-#                  internal_velocity_absorption_algorithm
-#               ),
-#               diagnostic_vector_field
-#            }
-#         ),
-#         (
-#           ## Default absorption: no lumping, is fully evaluated before the
-#           ## the pressure correction.
-#           element default_absorption {
-#              empty
-#           }|
-#           ## Lump the inclusion of absorbtion terms.
-#           element lump_absorption {
-#              ## Lump on the submesh.
-#              ## This only works for simplex meshes and is only
-#              ## strictly valid on 2d meshes.
-#              element use_submesh {
-#                empty
-#              }?
- #          }|
-#           ## Includes the pressure correction to the velocity in the
-#           ## absorption term (for theta>0). This makes the absorption
-#           ## term more implicit. The absorption term is lumped if and
-#           ## only if the mass matrix is lumped (lump_mass_matrix).
-#           element include_pressure_correction {
-#              empty
-#           }
-#         )
-#      }?,
-#      ## Vertical stabilization options
-#      ##
-#      ## Note: Switching on one of these options will result in all
-#      ## absorption terms being included in the pressure correction
-#      ## if running a planar simulation.
-#      element vertical_stabilization {
-#         ## A depth dependent absorption term to
-#         ## increase stability in shallow regions 
-#         ## given by n_grav*g*dt*rho/d
-#         element vertical_velocity_relaxation{
-#            ## This option scales the vertical velocity
-#            ## relaxation absorption by the chosen factor.
-#            ## (Note: Typical value for a time step of 100s
-#            ##  is ~ 0.0001. i.e. it probably needs to be small.)
-#            element scale_factor{
-#              real
-#            }
-#         }?,
-#         ## Implicit buoyancy, calculated via
-#         ## theta*g*dt*drho/dr_grav
-#         element implicit_buoyancy{
-#            ## Use this option to set a 'minimum' drho/dr_grav
-#            ## to be used in the implicit buoyancy calculation.
-#            ## Note that the default value is zero. 
-#            element min_gradient{
-#              real
-#            }?
-#         }?
-#      }?,
-#      ## SurfaceTension
-#      element tensor_field {
-#         attribute name { "SurfaceTension" },
-#         attribute rank { "2" },
-#         (
-#            element diagnostic {
-#                internal_algorithm,
-#                attribute field_name { "MaterialVolumeFraction" },
-#                ## Choose whether the mass matrix is lumped or not for the calculation of the gradient
-#                element lump_mass_matrix {
-#                  empty
-#                }?,
-#                ## Solver options are necessary if you're not lumping your mass or if you're field isn't dg
-#                element solver {
-#                  linear_solver_options_sym
-#                }?,
-#                ## Choose whether the surface tension term in the momentum equation is integrated by parts or not
-#                element integrate_by_parts {
-#                  empty
-#                }?,
-#                diagnostic_tensor_field
-#            }
-#         )
-#      }?,
-#      ## DrainageK1
-#      ## Used for calculating drainage for foams.
-#      ## It is based on the properties of the liquid within the Plateau borders.
-#      ## K1 = (0.0, -density*gravity/3*drag_coefficient*viscosity, 0.0)
-#      element vector_field {
-#         attribute name { "DrainageK1" },
-#         attribute rank { "1" },
-#         (
-#            element prescribed {
-#               mesh_choice?,
-#               prescribed_vector_field_no_adapt
-#            }|
-#            element diagnostic {
-#               diagnostic_vector_field
-#            }
-#         )
-#      }?,
-#      ## DrainageK2
-#      ## Used for calculating drainage for foams
-#      ## It is based on the properties of the liquid within the Plateau borders#.
-#      ## K2 = sqrt(sqrt(3)-pi/2)*surface_tension/(6*drag_coefficient*viscosity)
-#      element scalar_field {
-#         attribute name { "DrainageK2" },
-#         attribute rank { "1" },
-#         (
-#            element prescribed {
-#               mesh_choice?,
-#               prescribed_scalar_field_no_adapt
-#            }|
-#            element diagnostic { 
-#               diagnostic_scalar_field
-#            }
-#         )
-#      }?,
+      ## Source
+      element vector_field {
+         attribute name { "Source" },
+         attribute rank { "1" },
+         (
+            element prescribed {
+               mesh_choice?,
+               prescribed_vector_field_no_adapt
+            }|
+            element diagnostic {
+               mesh_choice?,
+               (
+                  vector_python_diagnostic_algorithm |
+                  imposed_material_velocity_source_algorithm |
+                  internal_velocity_source_algorithm
+               ),
+               diagnostic_vector_field
+            }
+         ),
+         element lump_source {
+            empty
+         }?
+      }?,
+      ## Absorption
+      ##
+      ## Note: When in spherical geometry the absorption is now automatically rotated.
+      ## The input values below correspond to setting the diagonal of the absorption matrix
+      ## in the rotated frame of reference. The columns correspond to phi, theta and r 
+      ## respectively.
+      element vector_field {
+         attribute name { "Absorption" },
+         attribute rank { "1" },
+         (
+            element prescribed {
+               mesh_choice?,
+               prescribed_vector_field_no_adapt
+            }|
+            element diagnostic { 
+               mesh_choice?,
+               (
+                  vector_python_diagnostic_algorithm |
+                  imposed_material_velocity_absorption_algorithm |
+                  internal_velocity_absorption_algorithm
+               ),
+               diagnostic_vector_field
+            }
+         ),
+         (
+           ## Default absorption: no lumping, is fully evaluated before the
+           ## the pressure correction.
+           element default_absorption {
+              empty
+           }|
+           ## Lump the inclusion of absorbtion terms.
+           element lump_absorption {
+              ## Lump on the submesh.
+              ## This only works for simplex meshes and is only
+              ## strictly valid on 2d meshes.
+              element use_submesh {
+                empty
+              }?
+           }|
+           ## Includes the pressure correction to the velocity in the
+           ## absorption term (for theta>0). This makes the absorption
+           ## term more implicit. The absorption term is lumped if and
+           ## only if the mass matrix is lumped (lump_mass_matrix).
+           element include_pressure_correction {
+              empty
+           }
+         )
+      }?,
       prognostic_vector_output_options,
       adaptivity_options_prognostic_vector_field,
       interpolation_algorithm_vector
