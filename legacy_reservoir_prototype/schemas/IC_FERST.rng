@@ -324,7 +324,7 @@ alternating directions. Devised by C.Pain.</a:documentation>
               </element>
             </element>
             <optional>
-              <element name="Absorption">
+              <element name="Velocity_Absorption">
                 <a:documentation>Absorption
 
 Note: When in spherical geometry the absorption is now automatically rotated.

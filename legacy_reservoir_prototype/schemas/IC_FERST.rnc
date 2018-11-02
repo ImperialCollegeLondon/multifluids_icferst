@@ -269,7 +269,7 @@ start =
 	      ## The input values below correspond to setting the diagonal of the absorption matrix
 	      ## in the rotated frame of reference. The columns correspond to phi, theta and r 
 	      ## respectively.
-	      element Absorption {
+	      element Velocity_Absorption {
 		 (
 		    element prescribed {
 		       prescribed_vector_field_no_adapt
