@@ -107,16 +107,16 @@ contains
         if( ncomp > 1 ) then
            do icomp =1, ncomp
               do iphase =1, nphase
-                 eos_option_path( ( icomp - 1 ) * nphase + iphase ) = &
+                 eos_option_path( ( icomp - 1 ) * nphase + iphase ) = &!sprint_to_do this currently does nothing?
                       trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
                       ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                      '/prognostic/equation_of_state' )
+                      '/prognostic/Density' )
                  call Assign_Equation_of_State( eos_option_path( ( icomp - 1 ) * nphase + iphase ) )
               end do
            end do
         else
            do iphase = 1, nphase
-              eos_option_path( iphase ) = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/equation_of_state' )
+              eos_option_path( iphase ) = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/phase_properties/Density/' )
               call Assign_Equation_of_State( eos_option_path( iphase ) )
            end do
         end if
@@ -419,102 +419,23 @@ contains
         if ( ncomp > 0 ) then
             option_path_comp = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                '/prognostic/equation_of_state/compressible' )
+                '/prognostic/Density/compressible' )!sprint_to_do this does not make sense
             option_path_incomp = trim( '/material_phase[' // int2str(nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                '/prognostic/equation_of_state/incompressible' )
+                '/prognostic/Density/incompressible' )!sprint_to_do this does not make sense
             option_path_python = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                '/prognostic/equation_of_state/python_state' )
+                '/prognostic/Density/python_state' )!sprint_to_do this does not make sense
         else
             option_path_comp = trim( '/material_phase[' // int2str( iphase - 1 ) // &
-                ']/equation_of_state/compressible' )
+                ']/phase_properties/Density/compressible' )
             option_path_incomp = trim( '/material_phase[' // int2str( iphase - 1 ) // &
-                ']/equation_of_state/incompressible' )
+                ']/phase_properties/Density/incompressible' )
             option_path_python = trim( '/material_phase[' // int2str( iphase - 1 ) // &
-                ']/equation_of_state/python_state' )
+                ']/phase_properties/Density/python_state' )
         end if
 
-        Conditional_EOS_Option: if( trim( eos_option_path ) == trim( option_path_comp ) // '/stiffened_gas' ) then
-            !!$ Den = C0 / T * ( P - C1 )
-            if( .not. have_temperature_field ) FLAbort( 'Temperature Field not defined' )
-            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
-            call get_option( trim( eos_option_path) // '/eos_option1' , eos_coefs( 1 ) )
-            call get_option( trim( eos_option_path )// '/eos_option2' , eos_coefs( 2 ) )
-            Rho = ( pressure%val(1, 1, :) + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
-            perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure%val(1, 1, :) ) + eos_coefs( 1 ) ) )
-            RhoPlus = ( pressure%val(1, 1, :) + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
-                temperature % val
-            RhoMinus = ( pressure%val(1 , 1, :) - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
-                temperature % val
-            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-            deallocate( eos_coefs )
-
-
-
-        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/JWL_equation' ) then
-            !!P=A*(1-w/(R1*V))*exp(-R1*V)+B*(1-w/(R2*V))*exp(-R2/V)+w*E0/V;
-            !!The ratio V =roe/ro is defined by using roe = density of the explosive (solid part) and ro = density of the detonation products.
-            allocate( eos_coefs( 7 ) ) ; eos_coefs = 0.
-            !! eos_coefs(1): density_of_explosive_roe,
-            !! eos_coefs(2): A,
-            !! eos_coefs(3): B,
-            !! eos_coefs(4): R1,
-            !! eos_coefs(5): R2,
-            !! eos_coefs(6): E0,
-            !! eos_coefs(7): w,
-
-            call get_option( trim( eos_option_path ) // '/density_of_explosive_roe', eos_coefs( 1 ) )
-            call get_option( trim( eos_option_path ) // '/A', eos_coefs( 2 ) )
-            call get_option( trim( eos_option_path ) // '/B', eos_coefs( 3 ) )
-            call get_option( trim( eos_option_path ) // '/R1', eos_coefs( 4 ) )
-            call get_option( trim( eos_option_path ) // '/R2', eos_coefs( 5 ) )
-            call get_option( trim( eos_option_path ) // '/E0', eos_coefs( 6 ) )
-            call get_option( trim( eos_option_path ) // '/w', eos_coefs( 7 ) )
-            JWLn=size(pressure%val(1, 1, :));
-
-            allocate(ro0(JWLn))
-            ro0=eos_coefs(1)
-
-            Rho=JWLdensity(eos_coefs, pressure%val(1, 1, :), ro0, JWLn)
-
-            perturbation_pressure = max( toler, 1.e-2 * abs( pressure%val(1, 1, :) ) )
-
-            RhoPlus=JWLdensity(eos_coefs, pressure%val(1, 1, :) + perturbation_pressure, ro0, JWLn)
-            RhoMinus=JWLdensity(eos_coefs, pressure%val(1, 1, :) - perturbation_pressure, ro0, JWLn)
-
-            dRhodP = 0.5 * (  RhoPlus - RhoMinus ) / perturbation_pressure
-
-            do JWLi=1, JWLn
-                if (pressure%val(1, 1, JWLi)<JWL(eos_coefs( 2 ), eos_coefs( 3 ), eos_coefs( 7 ), eos_coefs( 4 ), eos_coefs( 5 ), eos_coefs( 6 ), 0.0,  eos_coefs( 1 ), 1.205)) then
-                    perturbation_pressure(JWLi)=1.
-                    dRhodP(JWLi)=2.5
-                else
-                      ! perturbation_pressure(JWLi)=1.
-                      ! dRhodP(JWLi)=1000.
-                end if
-            end do
-
-            temperature %val=pressure %val(1, 1, :) /(Rho*278.0)
-            deallocate( eos_coefs )
-
-
-
-        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
-            !!$ Den = C0 * P/T +C1
-            if( .not. have_temperature_field ) FLAbort( 'Temperature Field not defined' )
-            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
-            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_A', eos_coefs( 1 ) )
-            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', eos_coefs( 2 ) )
-            Rho = eos_coefs( 1 ) * pressure % val(1,1,:) / temperature % val + eos_coefs( 2 )
-            perturbation_pressure = 1.
-            !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) / &
-            !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
-            !RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) / &
-            !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
-            dRhodP =  eos_coefs( 1 ) / temperature % val !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
-            deallocate( eos_coefs )
-        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
+        Conditional_EOS_Option: if( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
             !!$ Den = C0 * P +C1
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
             !By default the pressure mesh (position 1)
@@ -534,24 +455,6 @@ contains
             dRhodP = eos_coefs( 1 ) !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
             deallocate( eos_coefs )
             call deallocate(sfield)
-        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_oil_gas' ) then
-            !!$ Den = Den0 * Exp[ C0 * ( P - P0 ) ]
-            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
-            call get_option( trim( eos_option_path ) // '/compressibility', eos_coefs( 1 ) )   ! compressibility_factor
-            call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 2 ) ) ! reference_density
-            if ( .not. initialised ) then
-                allocate( reference_pressure( node_count( pressure ) ) )
-                reference_pressure = pressure % val(1,1,:)
-                initialised = .true.
-            end if
-            Rho = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( pressure % val(1,1,:) - reference_pressure ) )
-            perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val(1,1,:) ) ) )
-            RhoPlus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) + perturbation_pressure ) - &
-                reference_pressure ) )
-            RhoMinus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) - perturbation_pressure ) - &
-                reference_pressure ) )
-            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-            deallocate( eos_coefs )
 
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
             !!$ Den = C0 * ( P ^ C1 )
@@ -575,29 +478,7 @@ contains
               Rho = eos_coefs( 1 ) * ( 1 + ( salt_concentration % val * eos_coefs( 2 ) ) )
                 dRhodP = 0.0
               deallocate( eos_coefs )
-        elseif( trim( eos_option_path ) == trim( option_path_incomp ) // '/linear' ) then
-            !!$ Polynomial representation
-            allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
-            if ( have_temperature_field ) temperature_local = temperature % val
-            ncoef = 10 ; allocate( eos_coefs( ncoef ) ) ; eos_coefs = 0.
-            if( have_option( trim( eos_option_path ) // '/all_equal' ) ) then
-                call get_option( trim( eos_option_path ) // '/all_equal', eos_coefs( 1 ) )
-                eos_coefs( 2 : 10 ) = 0.
-            elseif( have_option( trim( eos_option_path ) // '/specify_all' ) ) then
-                call get_option( trim( eos_option_path ) // '/specify_all', eos_coefs )
-            else
-                FLAbort('Unknown incompressible linear equation of state')
-            end if
-            call Density_Polynomial( eos_coefs, pressure % val(1,1,:), temperature_local, &
-                Rho )
-            perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
-            call Density_Polynomial( eos_coefs, pressure % val(1,1,:) + perturbation_pressure, temperature_local, &
-                RhoPlus )
-            call Density_Polynomial( eos_coefs, pressure % val(1,1,:) - perturbation_pressure, temperature_local, &
-                RhoMinus )
-            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-            deallocate( temperature_local, eos_coefs )
-        elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
+        if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
             !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
             allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
             if ( have_temperature_field ) temperature_local = max(temperature % val,1e-8)!avoid possible oscillations introduced by unphysical values of temperature
@@ -1632,7 +1513,7 @@ contains
                         end do
                     end do
                 end do
-			else if (have_option( '/simulation_type/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/simulation_type/femdem_thermal/coupling/volume_relaxation') ) then
+			else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
 					 sfield=> extract_scalar_field( state(1), "SolidConcentration" )
                 !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
                 ScalarAdvectionField_Diffusion = 0.
@@ -1778,7 +1659,7 @@ contains
                         end do
                     end do
                 end do
-			else if (have_option( '/simulation_type/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/simulation_type/femdem_thermal/coupling/volume_relaxation') ) then
+			else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
 					 sfield=> extract_scalar_field( state(1), "SolidConcentration" )
                 !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
                 ScalarAdvectionField_Diffusion = 0.
@@ -3040,7 +2921,7 @@ contains
 
                 ! Get free water level from diamond
                 if (FWL<0) then
-                    call get_option("/FWL", FWL, default = 0.0)
+                    call get_option("/porous_media/FWL", FWL, default = 0.0)
                 end if
 
             else
@@ -3066,7 +2947,7 @@ contains
                 if (inf_norm < 1.e-4) then
                     ewrite(0,*) 'initialisation porous media convergence reached'
                     ewrite(0,*) '... exiting'
-                    call delete_option("/FWL")
+                    call delete_option("/porous_media/FWL")
                     call checkpoint_simulation(state, prefix='Initialisation', protect_simulation_name=.true.,file_type='.mpml')
                     exit_initialise_porous_media = .true.
                 end if

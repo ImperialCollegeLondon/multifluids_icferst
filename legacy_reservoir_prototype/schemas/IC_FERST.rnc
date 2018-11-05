@@ -200,10 +200,46 @@ start =
          element material_phase {
             attribute name { xsd:string },
             ## Specify whether this phase is actually a component
-            element is_multiphase_component{(
+            element is_multiphase_component {
+               (
+                  ## Specify the weighting for the component equation
+                  ## between 0 and 1. Test cases have 1.
+                  element alpha_beta { real },
+                  ## Enable this option to use sigmoid method for finding equilibrium
+                  element KComp_Sigmoid {
+                     (
+                        ## KComp value for this component
+                        element K_Comp { real }
+                     )
+                  }?,
+                  ## Enable this option to force component mass fractions
+                  ## to sum to 1 by adding constraint into compositional source term.
+                  element Comp_Sum2One { 
+                     (
+                        ## Relaxation coefficient to summation constraint [0,1]. 
+                        ## --> 0: under-relaxation ; --> 1: over-relaxation
+                        element Relaxation_Coefficient { real },
+                        ## Ensure that this constraint acts only as a positive absorption term
+                        element Ensure_Positive { empty }?,
+                        ## Explicitly enforce components to sum to one
+                        element Enforce_Comp_Sum2One { empty }?			
+                     )
+                  }?,
+                  ## Surface tension
+                  element surface_tension { 
+                     (
+                        ## Surface tension coefficient. 
+                        element coefficient { real },
+                        ## Contact angle. 
+                        element angle { real } ?,
+                        ##  Smoothing.
+                       element smooth { empty } ?
+                     )
+                  }?,
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
                     element linearise_component {empty}?
-            )}?,            
+               )               
+            }?,         
               ## Options to provide properties of the fluid for the given phase.
               element phase_properties{
                 (
@@ -267,51 +303,6 @@ start =
                   }?
                }
                 },
-	      ## Absorption
-	      ##
-	      ## Note: When in spherical geometry the absorption is now automatically rotated.
-	      ## The input values below correspond to setting the diagonal of the absorption matrix
-	      ## in the rotated frame of reference. The columns correspond to phi, theta and r 
-	      ## respectively.
-	      element Velocity_Absorption {
-		 (
-		    element prescribed {
-		       prescribed_vector_field_no_adapt
-		    }|
-		    element diagnostic { 
-		       (
-		          vector_python_diagnostic_algorithm |
-		          imposed_material_velocity_absorption_algorithm |
-		          internal_velocity_absorption_algorithm
-		       ),
-		       diagnostic_vector_field
-		    }
-		 ),
-		 (
-		   ## Default absorption: no lumping, is fully evaluated before the
-		   ## the pressure correction.
-		   element default_absorption {
-		      empty
-		   }|
-		   ## Lump the inclusion of absorbtion terms.
-		   element lump_absorption {
-		      ## Lump on the submesh.
-		      ## This only works for simplex meshes and is only
-		      ## strictly valid on 2d meshes.
-		      element use_submesh {
-		        empty
-		      }?
-		   }|
-		   ## Includes the pressure correction to the velocity in the
-		   ## absorption term (for theta>0). This makes the absorption
-		   ## term more implicit. The absorption term is lumped if and
-		   ## only if the mass matrix is lumped (lump_mass_matrix).
-		   element include_pressure_correction {
-		      empty
-		   }
-		 )
-	      }?,
-
                 ## Stabilisation for Inertia dominated flow. 
                 ## LES and Petrov-Galerkin stabilisation are available.
                 element Stabilisation{(
@@ -382,46 +373,7 @@ start =
                    }?
 
 
-                )}?,
-                 ## Diffusivity for field.
-                  ##
-                  ## Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
-                  element tensor_field {
-                     attribute name { "Diffusivity" },
-                     attribute rank { "2" },
-                     (
-                        element prescribed {
-                            mesh_choice?,
-                            prescribed_tensor_field_no_adapt
-                        }|
-                        ## For electrical modelling only - holds electrical conductivity
-                        element diagnostic {
-                           (
-                              tensor_python_diagnostic_algorithm |
-                              internal_algorithm
-                           ),
-                           diagnostic_tensor_field
-                        }
-                     )
-                  }?,
-                  ## Specific heat capacity for compositional field
-                  element scalar_field {
-                     attribute name { "HeatCapacity" },
-                     attribute rank { "0" },
-                     (
-                        element prescribed {
-                           prescribed_scalar_field_no_adapt
-                        }|
-                        ## This only works for traffic modelling
-                        element diagnostic {
-                           (
-                              scalar_python_diagnostic_algorithm |
-                              internal_algorithm
-                           ),
-                           diagnostic_scalar_field_no_adapt
-                        } 
-                     )
-                  }?
+                )}?
                )
               },
 
@@ -933,20 +885,17 @@ start =
             }?,     
             ## Use the row-sum method to create a lumped mass matrix. 
             ## For porous media this will not have an effect.
+            ## Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix
             element lump_mass_matrix {
-               empty
-            }?, 
+                ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
+                ## the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
+                ## The default value for P1DGP1 => 1e4 and disabled for other element types.
+                ## To disable it manually, set it to negative values. 
+               element lump_weight{real}?,
             ## Introduce in the pivit matrix the temporal terms
             element get_all_in_mass_matrix {
-               empty
-            }?,
-            ## For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
-            ## the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
-            ## The default value for P1DGP1 => 1e4 and disabled for other element types.
-            ## To disable it manually, set it to negative values. 
-            element CV_press_homogenisation {
-               real
-            }?,
+               empty}?
+            }?, 
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {
@@ -1018,6 +967,8 @@ geometry =
                 element exclude_from_mesh_adaptivity{empty}?
              }*,
              ## Specify a different time discretisation method for different fields
+             ## You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
+             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
              element Time_Discretisation {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1029,6 +980,8 @@ geometry =
                 element Theta{real}
              }*,
              ## Specify a different flux calculation for different fields
+             ## You can use as inputs here: PhaseVolumeFraction or Tracer.
+             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
              element Space_Discretisation {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1040,16 +993,19 @@ geometry =
                      }|
                      ## High order method based on a TVD criteria to ensure stability.
                      element High_order {
-                        empty
+                        limiter_options
                      }
-                  )},
-                limiter_options
+                  )}
+                
              }*,
 
              ## Conservative discretisation options
              ## Note that non-conservative does NOT mean that we do not conserve mass
              ## For transport equations this is recommended to be zero. 
              ## For PhaseVolumeFraction the recommendation is one.
+             ##
+             ## You can use as inputs here: PhaseVolumeFraction or Tracer.
+             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
              element Conservative_formulation_settings {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -2148,13 +2104,138 @@ scalar_field_choice =
                   prognostic_scalar_field
                }|
                element prescribed {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prescribed_scalar_field
                }|
                element diagnostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   internal_algorithm,
                   diagnostic_scalar_field_no_adapt
+               }
+            )
+         }|
+         ## ComponentMassFractionPhase1
+         ## Optional in multiphase problem types
+         ##
+         ## attribute material_phase_name associates this
+         ## mass fraction with a particular phase
+         ##
+         ## Do not forget to set boundary conditions for the PhaseVolumeFraction
+         ## even if the problem is one-phase
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "ComponentMassFractionPhase1" },
+            ## Specify the phase to which this component fraction relates
+            attribute material_phase_name { xsd:string },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                  equation_of_state,
+                  prognostic_scalar_field,
+                  cap_option?
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element diagnostic {
+                  pressure_mesh_choice,
+                  internal_algorithm,
+                  diagnostic_scalar_field_no_adapt,
+                  cap_option?
+               }
+            )
+         }|
+         ## ComponentMassFractionPhase2
+         ## Optional in multiphase problem types
+         ##
+         ## attribute material_phase_name associates this
+         ## mass fraction with a particular phase
+         ##
+         ## Do not forget to set boundary conditions for the PhaseVolumeFraction
+         ## even if the problem is one-phase
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "ComponentMassFractionPhase2" },
+            ## Specify the phase to which this component fraction relates
+            attribute material_phase_name { xsd:string },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                  equation_of_state,
+                  prognostic_scalar_field,
+                  cap_option?
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element diagnostic {
+                  pressure_mesh_choice,
+                  internal_algorithm,
+                  diagnostic_scalar_field_no_adapt,
+                  cap_option?
+               }
+            )
+         }|
+         ## ComponentMassFractionPhase3
+         ## Optional in multiphase problem types
+         ##
+         ## attribute material_phase_name associates this
+         ## mass fraction with a particular phase
+         ##
+         ## Do not forget to set boundary conditions for the PhaseVolumeFraction
+         ## even if the problem is one-phase
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "ComponentMassFractionPhase3" },
+            ## Specify the phase to which this component fraction relates
+            attribute material_phase_name { xsd:string },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                  equation_of_state,
+                  prognostic_scalar_field,
+                  cap_option?
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element diagnostic {
+                  pressure_mesh_choice,
+                  internal_algorithm,
+                  diagnostic_scalar_field_no_adapt,
+                  cap_option?
+               }
+            )
+         }|
+         ## ComponentMassFractionPhase4
+         ## Optional in multiphase problem types
+         ##
+         ## attribute material_phase_name associates this
+         ## mass fraction with a particular phase
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "ComponentMassFractionPhase4" },
+            ## Specify the phase to which this component fraction relates
+            attribute material_phase_name { xsd:string },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                  equation_of_state,
+                  prognostic_scalar_field,
+                  cap_option?
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element diagnostic {
+                  pressure_mesh_choice,
+                  internal_algorithm,
+                  diagnostic_scalar_field_no_adapt,
+                  cap_option?
                }
             )
          }|

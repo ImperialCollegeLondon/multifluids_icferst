@@ -527,7 +527,7 @@ contains
         !For thermal retrieve, if present, the conductivity of the pipes to calculate the heat loss
         has_conductivity_pipes = .false.
         if (thermal .and. is_porous_media) then
-            has_conductivity_pipes = have_option('/wells_and_pipes/thermal_well_properties')
+            has_conductivity_pipes = have_option('/porous_media/wells_and_pipes/thermal_well_properties')
             if (has_conductivity_pipes) then
                 conductivity_pipes => extract_scalar_field( state(1), "Conductivity" )
                 well_thickness => extract_scalar_field( state(1), "well_thickness" )
@@ -677,7 +677,7 @@ contains
             GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 )!<=I hate this thing...
             call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
         end if
-        call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
+        call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
         ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
             CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
         ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
@@ -4598,14 +4598,14 @@ end if
         type(tensor_field), pointer :: tfield
         type(csr_sparsity), pointer :: sparsity
         logical :: do_not_project, cv_test_space, is_to_update
-        character(len=*), parameter :: projection_options = '/projections/control_volume_projections'
         character(len=option_path_len) :: option_path
 
         !---------------------------------
         ! initialisation and allocation
         !---------------------------------
-        do_not_project = have_option(projection_options//'/do_not_project') .or. is_porous_media!<=DISABLED FOR POROUS MEDIA TEMPORARILY, BUT ACTUALLY THE DIFFERENCE IS SMALL
-        cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')  !AND IT SHOULD BE SLIGTHLY FASTER; DISABLED FOR THE PETSC MEMORY PROBLEM
+        !Currently hard-coded. This is not used for porous_media but it is used otherwise
+        do_not_project =  is_porous_media! .or. have_option(projection_options//'/do_not_project')!<=DISABLED FOR POROUS MEDIA TEMPORARILY, BUT ACTUALLY THE DIFFERENCE IS SMALL
+        cv_test_space = .false.!have_option(projection_options//'/test_function_space::ControlVolume')  !AND IT SHOULD BE SLIGTHLY FASTER; DISABLED FOR THE PETSC MEMORY PROBLEM
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
 
         do it=1,size(fempsi)
@@ -4735,20 +4735,9 @@ end if
                 call set(fempsi(it)%ptr,psi(it)%ptr)
             end do
         else
-            if(have_option(projection_options//'/solver')) then
-                option_path=projection_options//'/solver'
-            else
-                call get_option(trim(psi(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
-                    max_iterations,default=500)
-                if(max_iterations==0) then
-                    option_path="/material_phase[0]/scalar_field::Pressure/prognostic"
-                else
-                    option_path=trim(psi(1)%ptr%option_path)//"/prognostic"
-                end if
-            end if
             do it = 1, size(fempsi)
-                ! call zero_non_owned(fempsi_rhs(it))
-                call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = option_path)
+                ! call zero_non_owned(fempsi_rhs(it))!Use default solver for this
+                call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = 'solver_options/Linear_solver')
             end do
         end if
 

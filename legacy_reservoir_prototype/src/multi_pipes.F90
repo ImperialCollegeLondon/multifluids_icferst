@@ -158,7 +158,7 @@ contains
 
         !if allocated then calculate outfluxes
 
-        CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
+        CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
         NCORNER = Mdims%ndim + 1
         ! default limiting NVD diagram...
         XI_LIMIT = 2.0 ; ndiff=.false. ; diff=.true.
@@ -965,10 +965,10 @@ contains
 
         ncorner = Mdims%ndim + 1
         PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
-        CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
-        call get_option("/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
+        CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe")
+        call get_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
-        SWITCH_PIPES_ON_AND_OFF= have_option("/wells_and_pipes/well_options/switch_wells_on_and_off")
+        SWITCH_PIPES_ON_AND_OFF= have_option("/porous_media/wells_and_pipes/well_options/switch_wells_on_and_off")
         if ( CALC_SIGMA_PIPE ) then
             allocate( well_density(Mdims%nphase), well_viscosity(Mdims%nphase) )
             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -980,7 +980,7 @@ contains
         end if
         if ( SWITCH_PIPES_ON_AND_OFF ) then
             ! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-            call get_option( "/wells_and_pipes/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
+            call get_option( "/porous_media/wells_and_pipes/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
             phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
             phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
             sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
@@ -1484,7 +1484,7 @@ contains
         !Create list of corners
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
         !Retrieve, if there are any number of input .bdf files
-        number_well_files = option_count("/wells_and_pipes/well_from_file")
+        number_well_files = option_count("/porous_media/wells_and_pipes/well_from_file")
         if (number_well_files > 0) then
             !Need the mesh to get neighbouring elements
             tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
@@ -1503,7 +1503,7 @@ contains
             end if
             do k = 1, number_well_files
                 !First identify the well trajectory
-                call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
+                call get_option("/porous_media/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
                 call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
                 !Only if a seed is found then the well is constructed
@@ -1633,8 +1633,8 @@ contains
             !Initialise tolerancePipe just once per simulation
             if (first_time) then
                 first_time = .false.
-                if (have_option('/wells_and_pipes/well_options/wells_bdf_tolerance')) then
-                    call get_option('/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
+                if (have_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance')) then
+                    call get_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
                 end if
             end if
 
@@ -1924,8 +1924,8 @@ contains
             ! !this needs to be removed once the memory is properly allocated
             ! if (first_time .and. getprocno() == 1) then
             !     first_time = .false.
-            !     if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
-            !         call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
+            !     if (have_option("porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
+            !         call add_option("porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
             ! end if
             !#######################################################################
 !    !To test the results gnuplot and the run spl'test' w linesp

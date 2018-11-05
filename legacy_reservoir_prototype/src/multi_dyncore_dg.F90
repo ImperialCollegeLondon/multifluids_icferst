@@ -139,6 +139,7 @@ contains
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef
+           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
            real :: aux
@@ -151,10 +152,6 @@ contains
            !temperature backup for the petsc bug
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve
-
-           if(max_allowed_its < 0)  call get_option( &
-               '/material_phase[0]/scalar_field::Temperature/prognostic/solver/max_iterations',&
-               max_allowed_its, default = 100000)
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -192,7 +189,7 @@ contains
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-			   	if(have_option( '/simulation_type/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/simulation_type/femdem_thermal/coupling/volume_relaxation') ) then
+			   	if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
                    solid_concentration => extract_scalar_field( packed_state, "SolidConcentration" )
                    den_all( 1, : ) = den_all ( 1, : ) * (1.0 - solid_concentration % val)
                end if
@@ -238,8 +235,7 @@ contains
                cv_beta = Mdisopt%v_beta
            end if
 
-           lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
-               'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
+           lump_eqns = have_option( '/numerical_methods/lump_mass_matrix' )
 
            RETRIEVE_SOLID_CTY = .false.
            if ( have_option( '/blasting' ) ) RETRIEVE_SOLID_CTY = .true.
@@ -290,7 +286,7 @@ NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS an
                 !we set up 5 iterations but if it converges => we exit straigth away
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
 
-		     if ( have_option( '/simulation_type/femdem_thermal/coupling') ) then
+		     if ( have_option( '/femdem_thermal/coupling') ) then
 				Component_Absorption => extract_tensor_field( packed_state, "PackedTemperatureAbsorption")
 				T_ABSORB(1:1,1:1,1:Mdims%cv_nonods)=> Component_Absorption%val (1,1,1:Mdims%cv_nonods)
 
@@ -299,6 +295,23 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 				!Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
 				!T_source( :, : ) = 0.0! Q % val( 1, 1, : )
            end if
+
+           !Select solver options
+           solver_option_path = "/solver_options/Linear_solver"
+           IF ( IGOT_T2 == 1) THEN
+             if (have_option('/solver_options/Custom_solver_configuration/field::Compositional')) then
+               solver_option_path = '/solver_options/Custom_solver_configuration/field::Compositional'
+             end if
+           else
+             if (have_option('/solver_options/Custom_solver_configuration/field::Temperature')) then
+               solver_option_path = '/solver_options/Custom_solver_configuration/field::Temperature'
+             end if
+           end if
+           if(max_allowed_its < 0)  then
+               call get_option( trim(solver_option_path)//"max_iterations",&
+                max_allowed_its, default = 500)
+           end if
+
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -350,22 +363,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    END DO
                ELSE
                    vtracer=as_vector(tracer,dim=2)
-                   IF ( IGOT_T2 == 1) THEN
-                       ! call zero_non_owned(Mmat%CV_RHS)
-                       call zero(vtracer)
-                       call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
-                        '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
-                   ELSE
-                       ! call zero_non_owned(Mmat%CV_RHS)
-                       call zero(vtracer)
-                        call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
-
-                       do iphase = 1, Mdims%nphase
-                           ewrite(2,*) 'T phase min_max:', iphase, &
-                               minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
-                       end do
-                   END IF
-
+                   call zero(vtracer)
+                   call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
                     !Control how it is converging and decide
                    if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
@@ -430,7 +429,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 if (first_time) then
                     first_time = .false.
                     !Check diamond
-                    apply_minmax_principle = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Impose_min_max')
+                    apply_minmax_principle = have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')
                 end if
                 if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
                     allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
@@ -562,6 +561,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef
+           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
            real :: aux
@@ -575,9 +575,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve
 
-           if(max_allowed_its < 0)  call get_option( &
-               '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/solver/max_iterations',&
-               max_allowed_its, default = 100000)
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -604,6 +601,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            IGOT_T2_loc = 1
 
+           !What is this? rethink this it is not necessary extracting the temporal discretisation
            if( present( option_path ) ) then ! solving for Solute Mass Fraction
 
                if( trim( option_path ) == '/material_phase[0]/scalar_field::SoluteMassFraction' ) then
@@ -614,6 +612,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    T_source( :, : ) = Q % val( 1, :, : )
                end if
 
+               !sprint to do, just pass down the other values...
                cv_disopt = Mdisopt%t_disopt
                cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
                cv_theta = Mdisopt%t_theta
@@ -637,6 +636,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
 
+           solver_option_path = "/solver_options/Linear_solver"
+           if (have_option('/solver_options/Custom_solver_configuration/field::SoluteMassFraction')) then
+             solver_option_path = '/solver_options/Custom_solver_configuration/field::SoluteMassFraction'
+           end if
+           if(max_allowed_its < 0)  then
+               call get_option( trim(solver_option_path)//"max_iterations",&
+                max_allowed_its, default = 500)
+           end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                 Phase_with_Ovrel = -1
@@ -667,40 +674,28 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel)
-                   !Arash
-                       vtracer=as_vector(tracer,dim=2)
-                       IF ( IGOT_T2 == 1) THEN
-                           call zero_non_owned(Mmat%CV_RHS)
-                           call zero(vtracer)
-                           call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,&
-                            '/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic', iterations_taken = its_taken)
-                       ELSE
-                           call zero_non_owned(Mmat%CV_RHS)
-                           call zero(vtracer)
-                            call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+                   vtracer=as_vector(tracer,dim=2)
 
-                           do iphase = 1, Mdims%nphase
-                               ewrite(2,*) 'T phase min_max:', iphase, &
-                                   minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
-                           end do
-                       END IF
+                   call zero_non_owned(Mmat%CV_RHS)
+                   call zero(vtracer)
+                   call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
-                       !Just after the solvers
-                       call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-          !                   call clone_deallocate_PETSC_ACV_matrix()
 
-                       repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
-                       call allor(repeat_assemb_solve)
-                       !Checking solver not fully implemented
-                       if (repeat_assemb_solve ) then
-                           solver_not_converged = .true.
-                           tracer%val(1,:,:) = temp_bak!recover backup
-                           cycle!repeat
-                       else
-                           solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
-                           call allor(solver_not_converged)
-                           exit!good to go!
-                       end if
+                   !Just after the solvers
+                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+
+                   repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
+                   call allor(repeat_assemb_solve)
+                   !Checking solver not fully implemented
+                   if (repeat_assemb_solve ) then
+                       solver_not_converged = .true.
+                       tracer%val(1,:,:) = temp_bak!recover backup!sprint_to_do this seems now fixed, remove this for this and temperature
+                       cycle!repeat
+                   else
+                       solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                       call allor(solver_not_converged)
+                       exit!good to go!
+                   end if
 
            END DO Loop_NonLinearFlux
 
@@ -774,9 +769,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
              type( tensor_field ), pointer :: den_all2, denold_all2
+             character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+
              ! Element quality fix
              type(bad_elements), allocatable, dimension(:), optional :: Quality_list
-
              !Working pointers
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
@@ -804,9 +800,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
-             if(max_allowed_its < 0)  call get_option( &
-                '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/solver/max_iterations',&
-                 max_allowed_its, default = 500)
+             solver_option_path = "/solver_options/Linear_solver"
+             if (have_option('/solver_options/Custom_solver_configuration/field::PhaseVolumeFraction')) then
+               solver_option_path = '/solver_options/Custom_solver_configuration/field::PhaseVolumeFraction'
+             end if
+             if(max_allowed_its < 0)  then
+                 call get_option( trim(solver_option_path)//"max_iterations",&
+                  max_allowed_its, default = 500)
+             end if
+
+
 
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
@@ -817,10 +820,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
              !Get variable for global convergence method
-             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
+             if (.not. have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration')) then
                  backtrack_par_factor = 1.1
              else !Get value with the default value of 1.
-                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
+                 call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Backtracking_factor',&
                      backtrack_par_factor, default = 1.0)
              end if
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
@@ -880,6 +883,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
              if (resold < 0 ) res = huge(res)!<=initialize res once
              call allocate(Mmat%CV_RHS,Mdims%nphase,sat_field%mesh,"RHS")
+
              !Allocate residual, to compute the residual
              if (backtrack_par_factor < 1.01) call allocate(residual,Mdims%nphase,sat_field%mesh,"residual")
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
@@ -943,7 +947,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      end if
                  end if
                  call zero(vtracer)
-                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(option_path), iterations_taken = its_taken)
+                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
@@ -1095,6 +1099,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
         ! Local Variables
+        character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
+        character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
+
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER :: IGOT_CMC_PRECON
@@ -1153,11 +1160,20 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
 
+        !Retrieve solver setting configurations
+        solver_option_pressure = "/solver_options/Linear_solver"
+        solver_option_velocity = "/solver_options/Linear_solver"
+        if (have_option('/solver_options/Custom_solver_configuration/field::Pressure')) then
+          solver_option_pressure = '/solver_options/Custom_solver_configuration/field::Pressure'
+        end if
+        if (have_option('/solver_options/Custom_solver_configuration/field::Velocity')) then
+          solver_option_velocity = '/solver_options/Custom_solver_configuration/field::Velocity'
+        end if
         if(max_allowed_P_its < 0)  then
-            call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/solver/max_iterations',&
-             max_allowed_P_its, default = 100000)
-            call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations',&
-             max_allowed_V_its, default = 100000)
+            call get_option( trim(solver_option_pressure)//'/max_iterations',&
+             max_allowed_P_its, default = 10000)
+             call get_option( trim(solver_option_velocity)//'/max_iterations',&
+             max_allowed_V_its, default = 10000)
         end if
 
         deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
@@ -1195,7 +1211,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
 
-        linearise_density = have_option( '/material_phase[0]/linearise_density' )
+        linearise_density = have_option_for_any_phase('phase_properties/Density/linearise_density', Mdims%n_in_pres))
 
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
@@ -1479,7 +1495,7 @@ end if
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                 call zero(velocity)
                 packed_vel=as_packed_vector(velocity)
-                call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , iterations_taken = its_taken)
+                call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
                 if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
 #ifndef USING_GFORTRAN
                 velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
@@ -1589,7 +1605,7 @@ end if
         end if
         call zero(deltaP)!;call zero_non_owned(rhs_p)
         !Solve the system to obtain dP (difference of pressure)
-        call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path), iterations_taken = its_taken)
+        call petsc_solve(deltap,cmc_petsc,rhs_p,option_path = trim(solver_option_pressure), iterations_taken = its_taken)
         if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
         ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
 
@@ -2459,11 +2475,11 @@ end if
         Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
-        call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
+        call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
         ! Stress form for the fluid viscocity
-        STRESS_FORM = have_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/viscosity_scheme/stress_form' )
+        STRESS_FORM = have_option( '/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/stress_form' )
         ! Stress form for the Petrov-Galerkin viscocity
-        STRESS_FORM_STAB = have_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/stabilisation/stress_form' )
+        STRESS_FORM_STAB = have_option( '/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/stress_form' )
         ! Use Q-scheme ...
         Q_SCHEME = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/spatial_discretisation/control_volumes/q_scheme' )
         ! Put the fluid viscocity in the thermal energy eqn...
@@ -2473,10 +2489,10 @@ end if
         ! Put the LES viscocity in the thermal energy eqn...
         THERMAL_LES_VISC = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/spatial_discretisation/control_volumes/q_scheme/include_les_viscosity' )
         ! Put the LES theta value for time stepping (LES_THETA=1 is default)...
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/les_model/les_theta', LES_THETA, default=1.0 )
+        call get_option( '/material_phase[0]/phase_properties/Stabilisation/les_model/les_theta', LES_THETA, default=1.0 )
         ! Put the LES viscocity in the thermal energy eqn...
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/les_model/model' , les_disopt, default=0 )
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/les_model/smagorinsky_coefficient', les_Cs , default=0.1 )
+        call get_option( '/material_phase[0]/phase_properties/Stabilisation/les_model/model' , les_disopt, default=0 )
+        call get_option( '/material_phase[0]/phase_properties/Stabilisation/les_model/smagorinsky_coefficient', les_Cs , default=0.1 )
         !
         ! bc for solid-fluid viscous drag coupling...
         include_viscous_solid_fluid_drag_force = have_option( '/blasting/include_viscous_drag_force' )
@@ -2488,12 +2504,12 @@ end if
         !         DIFF_MIN_FRAC = 0.2
         !         DIFF_MAX_FRAC = 100.0
         !         SIMPLE_DIFF_CALC = .FALSE. ! Need switches for this
-        SIMPLE_DIFF_CALC = have_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/viscosity_scheme/linear_scheme' )
-        LINEAR_HIGHORDER_DIFFUSION=have_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/viscosity_scheme/linear_scheme/high_order' )
+        SIMPLE_DIFF_CALC = have_option( '/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/linear_scheme' )
+        LINEAR_HIGHORDER_DIFFUSION=have_option( '/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/linear_scheme/high_order' )
         if (LINEAR_HIGHORDER_DIFFUSION) SIMPLE_DIFF_CALC=.false.
         if ( .not. SIMPLE_DIFF_CALC ) then
-            call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/viscosity_scheme/nonlinear_scheme/beta_viscosity_min', DIFF_MIN_FRAC, default=0.2 )
-            call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/viscosity_scheme/nonlinear_scheme/beta_viscosity_max', DIFF_MAX_FRAC, default=100. )
+            call get_option( '/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/nonlinear_scheme/beta_viscosity_min', DIFF_MIN_FRAC, default=0.2 )
+            call get_option( '/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/nonlinear_scheme/beta_viscosity_max', DIFF_MAX_FRAC, default=100. )
         end if
         !If we have calculated already the Mmat%PIVIT_MAT and stored then we don't need to calculate it again
         Porous_media_PIVIT_not_stored_yet = (.not.Mmat%Stored .or. .not.is_porous_media)
@@ -2536,11 +2552,9 @@ end if
         if (beta>=.999) mom_conserv=.true.
         ewrite(3,*) 'mom_conserv:', mom_conserv
 
-        lump_mass = have_option( &
-            '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix')
+        lump_mass = have_option( '/numerical_methods/lump_mass_matrix')
         !retrieve lump_weight parameter
-        call get_option( &
-            '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix/lump_weight', &
+        call get_option( '/numerical_methods/lump_mass_matrix/lump_weight', &
             lump_weight, default = -1. )
         !Act only if the parameter is above zero
         homogenize_mass_matrix = (lump_weight > 0)
@@ -2585,15 +2599,12 @@ end if
         ! A . grad soln if
         ! =0.0 dont include pressure term.
         ! =1.0 include the pressure term.
-        call get_option('/material_phase[0]/vector_field::Velocity/prognostic/' // &
-            'spatial_discretisation/discontinuous_galerkin/stabilisation/method', &
+        call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/method', &
             RESID_BASED_STAB_DIF, default=0 )
         BETWEEN_ELE_STAB = RESID_BASED_STAB_DIF/=0 .and..not.is_flooding! Always switch on between element diffusion if using non-linear
-        call get_option('/material_phase[0]/vector_field::Velocity/prognostic/' // &
-            'spatial_discretisation/discontinuous_galerkin/stabilisation/nonlinear_velocity_coefficient', &
+        call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/nonlinear_velocity_coefficient', &
             U_NONLIN_SHOCK_COEF, default=1.)
-        call get_option('/material_phase[0]/vector_field::Velocity/prognostic/' // &
-            'spatial_discretisation/discontinuous_galerkin/stabilisation/include_pressure', &
+        call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/include_pressure', &
             RNO_P_IN_A_DOT, default=1.)
         ewrite(3,*) 'RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT:', &
             RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
@@ -5072,7 +5083,7 @@ end if
             CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
                 Mmat%DGM_petsc, &
                 Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
-                IF(have_option("/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix/get_all_in_mass_matrix"))  &
+                IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
                     call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS) !This subroutine introduces in the pivit matrix the temporal terms
             DEALLOCATE( DIAG_BIGM_CON )
             DEALLOCATE( BIGM_CON)
@@ -6282,13 +6293,13 @@ end if
      !#######Only apply this method if it has been explicitly invoked through Pe_stab or
      !non-consistent capillary pressure!######
      Phase_with_Pc = -1
-     if (.not. have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation') ) then
+     if (.not. have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
          Overrelaxation = 0.0; Phase_with_Pc = -10
          return
      end if
      !If this is for transport, check if we want to apply it
      if (present_and_true(for_transport)) then
-        if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport')) then
+        if (.not.have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport')) then
             Overrelaxation = 0.0; Phase_with_Pc = -10
             return
         end if
@@ -6315,13 +6326,13 @@ end if
          end if
          !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
          !Unless we are using the non-consistent form of the capillary pressure
-         if ( have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation') ) then
+         if ( have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
              allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
              Artificial_Pe = .true.
              if (present_and_true(for_transport)) then
-                call get_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
+                call get_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
              else
-                call get_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
+                call get_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
 
 
@@ -6428,6 +6439,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
       real, dimension( :, :, : ), intent( in ) :: u_absorbin
 
       ! local variables...
+
       type ( tensor_field ), pointer :: ufield
       integer :: ndim, ph_ngi, ph_nloc, ph_snloc, &
                 u_nloc, u_snloc, stat, &
@@ -6483,6 +6495,17 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
       type( multi_GI_dimensions ) :: phGIdims
       type( multi_dimensions ) :: phdims
       type( multi_shape_funs ) :: ph_funs
+      character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+
+
+      solver_option_path = "/solver_options/Linear_solver"
+      if (have_option('/solver_options/Custom_solver_configuration/field::HydrostaticPressure')) then
+        solver_option_path = '/solver_options/Custom_solver_configuration/field::HydrostaticPressure'
+      end if
+      if(max_allowed_its < 0)  then
+          call get_option( trim(solver_option_path)//"max_iterations",&
+           max_allowed_its, default = 500)
+      end if
 
 
       ewrite(3,*) "inside high_order_pressure_solve"
@@ -6834,7 +6857,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
             call zero(ph_sol) !; call zero_non_owned(rhs)
 
-            call petsc_solve( ph_sol, matrix, rhs )
+            call petsc_solve( ph_sol, matrix, rhs, option_path = trim(solver_option_path) )
 
             if (IsParallel()) call halo_update(ph_sol)
 

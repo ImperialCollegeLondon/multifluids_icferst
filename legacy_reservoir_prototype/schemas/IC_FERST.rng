@@ -239,6 +239,64 @@ at the first timestep or not.</a:documentation>
           <optional>
             <element name="is_multiphase_component">
               <a:documentation>Specify whether this phase is actually a component</a:documentation>
+              <element name="alpha_beta">
+                <a:documentation>Specify the weighting for the component equation
+between 0 and 1. Test cases have 1.</a:documentation>
+                <ref name="real"/>
+              </element>
+              <optional>
+                <element name="KComp_Sigmoid">
+                  <a:documentation>Enable this option to use sigmoid method for finding equilibrium</a:documentation>
+                  <element name="K_Comp">
+                    <a:documentation>KComp value for this component</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </element>
+              </optional>
+              <optional>
+                <element name="Comp_Sum2One">
+                  <a:documentation>Enable this option to force component mass fractions
+to sum to 1 by adding constraint into compositional source term.</a:documentation>
+                  <element name="Relaxation_Coefficient">
+                    <a:documentation>Relaxation coefficient to summation constraint [0,1]. 
+--&gt; 0: under-relaxation ; --&gt; 1: over-relaxation</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <optional>
+                    <element name="Ensure_Positive">
+                      <a:documentation>Ensure that this constraint acts only as a positive absorption term</a:documentation>
+                      <empty/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="Enforce_Comp_Sum2One">
+                      <a:documentation>Explicitly enforce components to sum to one</a:documentation>
+                      <empty/>
+                    </element>
+                  </optional>
+                </element>
+              </optional>
+              <optional>
+                <element name="surface_tension">
+                  <a:documentation>Surface tension</a:documentation>
+                  <element name="coefficient">
+                    <a:documentation>Surface tension coefficient. </a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <optional>
+                    <element name="angle">
+                      <a:documentation>Contact angle. </a:documentation>
+                      <ref name="real"/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="smooth">
+                      <a:documentation> Smoothing.</a:documentation>
+                      <empty/>
+                    </element>
+                  </optional>
+                </element>
+              </optional>
               <optional>
                 <element name="linearise_component">
                   <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
@@ -328,54 +386,6 @@ alternating directions. Devised by C.Pain.</a:documentation>
               </element>
             </element>
             <optional>
-              <element name="Velocity_Absorption">
-                <a:documentation>Absorption
-
-Note: When in spherical geometry the absorption is now automatically rotated.
-The input values below correspond to setting the diagonal of the absorption matrix
-in the rotated frame of reference. The columns correspond to phi, theta and r 
-respectively.</a:documentation>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="prescribed_vector_field_no_adapt"/>
-                  </element>
-                  <element name="diagnostic">
-                    <choice>
-                      <ref name="vector_python_diagnostic_algorithm"/>
-                      <ref name="imposed_material_velocity_absorption_algorithm"/>
-                      <ref name="internal_velocity_absorption_algorithm"/>
-                    </choice>
-                    <ref name="diagnostic_vector_field"/>
-                  </element>
-                </choice>
-                <choice>
-                  <element name="default_absorption">
-                    <a:documentation>Default absorption: no lumping, is fully evaluated before the
-the pressure correction.</a:documentation>
-                    <empty/>
-                  </element>
-                  <element name="lump_absorption">
-                    <a:documentation>Lump the inclusion of absorbtion terms.</a:documentation>
-                    <optional>
-                      <element name="use_submesh">
-                        <a:documentation>Lump on the submesh.
-This only works for simplex meshes and is only
-strictly valid on 2d meshes.</a:documentation>
-                        <empty/>
-                      </element>
-                    </optional>
-                  </element>
-                  <element name="include_pressure_correction">
-                    <a:documentation>Includes the pressure correction to the velocity in the
-absorption term (for theta&gt;0). This makes the absorption
-term more implicit. The absorption term is lumped if and
-only if the mass matrix is lumped (lump_mass_matrix).</a:documentation>
-                    <empty/>
-                  </element>
-                </choice>
-              </element>
-            </optional>
-            <optional>
               <element name="Stabilisation">
                 <a:documentation>Stabilisation for Inertia dominated flow. 
 LES and Petrov-Galerkin stabilisation are available.</a:documentation>
@@ -458,59 +468,6 @@ Defaults to 1.</a:documentation>
                     </choice>
                   </element>
                 </optional>
-              </element>
-            </optional>
-            <optional>
-              <element name="tensor_field">
-                <a:documentation>Diffusivity for field.
-
-Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin =&gt; W/(m·K) ).</a:documentation>
-                <attribute name="name">
-                  <value>Diffusivity</value>
-                </attribute>
-                <attribute name="rank">
-                  <value>2</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <optional>
-                      <ref name="mesh_choice"/>
-                    </optional>
-                    <ref name="prescribed_tensor_field_no_adapt"/>
-                  </element>
-                  <element name="diagnostic">
-                    <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
-                    <choice>
-                      <ref name="tensor_python_diagnostic_algorithm"/>
-                      <ref name="internal_algorithm"/>
-                    </choice>
-                    <ref name="diagnostic_tensor_field"/>
-                  </element>
-                </choice>
-              </element>
-            </optional>
-            <optional>
-              <element name="scalar_field">
-                <a:documentation>Specific heat capacity for compositional field</a:documentation>
-                <attribute name="name">
-                  <value>HeatCapacity</value>
-                </attribute>
-                <attribute name="rank">
-                  <value>0</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <ref name="prescribed_scalar_field_no_adapt"/>
-                  </element>
-                  <element name="diagnostic">
-                    <a:documentation>This only works for traffic modelling</a:documentation>
-                    <choice>
-                      <ref name="scalar_python_diagnostic_algorithm"/>
-                      <ref name="internal_algorithm"/>
-                    </choice>
-                    <ref name="diagnostic_scalar_field_no_adapt"/>
-                  </element>
-                </choice>
               </element>
             </optional>
           </element>
@@ -1159,23 +1116,23 @@ Elsewhere a high-order advection scheme is used. This should increase the speed 
           <optional>
             <element name="lump_mass_matrix">
               <a:documentation>Use the row-sum method to create a lumped mass matrix. 
-For porous media this will not have an effect.</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="get_all_in_mass_matrix">
-              <a:documentation>Introduce in the pivit matrix the temporal terms</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="CV_press_homogenisation">
-              <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
+For porous media this will not have an effect.
+Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix</a:documentation>
+              <optional>
+                <element name="lump_weight">
+                  <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
 the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
 The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
 To disable it manually, set it to negative values. </a:documentation>
-              <ref name="real"/>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="get_all_in_mass_matrix">
+                  <a:documentation>Introduce in the pivit matrix the temporal terms</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
@@ -1282,7 +1239,9 @@ Only the activated options will overwrite the values decided in simulation_quali
           </zeroOrMore>
           <zeroOrMore>
             <element name="Time_Discretisation">
-              <a:documentation>Specify a different time discretisation method for different fields</a:documentation>
+              <a:documentation>Specify a different time discretisation method for different fields
+You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
+Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1299,7 +1258,9 @@ Only the activated options will overwrite the values decided in simulation_quali
           </zeroOrMore>
           <zeroOrMore>
             <element name="Space_Discretisation">
-              <a:documentation>Specify a different flux calculation for different fields</a:documentation>
+              <a:documentation>Specify a different flux calculation for different fields
+You can use as inputs here: PhaseVolumeFraction or Tracer.
+Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1312,11 +1273,10 @@ Only the activated options will overwrite the values decided in simulation_quali
                   </element>
                   <element name="High_order">
                     <a:documentation>High order method based on a TVD criteria to ensure stability.</a:documentation>
-                    <empty/>
+                    <ref name="limiter_options"/>
                   </element>
                 </choice>
               </element>
-              <ref name="limiter_options"/>
             </element>
           </zeroOrMore>
           <zeroOrMore>
@@ -1324,7 +1284,10 @@ Only the activated options will overwrite the values decided in simulation_quali
               <a:documentation>Conservative discretisation options
 Note that non-conservative does NOT mean that we do not conserve mass
 For transport equations this is recommended to be zero. 
-For PhaseVolumeFraction the recommendation is one.</a:documentation>
+For PhaseVolumeFraction the recommendation is one.
+
+You can use as inputs here: PhaseVolumeFraction or Tracer.
+Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -2595,13 +2558,178 @@ Required in porous_media and multiphase problem types</a:documentation>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
           </element>
           <element name="diagnostic">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>ComponentMassFractionPhase1
+Optional in multiphase problem types
+
+attribute material_phase_name associates this
+mass fraction with a particular phase
+
+Do not forget to set boundary conditions for the PhaseVolumeFraction
+even if the problem is one-phase</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>ComponentMassFractionPhase1</value>
+        </attribute>
+        <attribute name="material_phase_name">
+          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
+          <data type="string"/>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="equation_of_state"/>
+            <ref name="prognostic_scalar_field"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="diagnostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="internal_algorithm"/>
+            <ref name="diagnostic_scalar_field_no_adapt"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>ComponentMassFractionPhase2
+Optional in multiphase problem types
+
+attribute material_phase_name associates this
+mass fraction with a particular phase
+
+Do not forget to set boundary conditions for the PhaseVolumeFraction
+even if the problem is one-phase</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>ComponentMassFractionPhase2</value>
+        </attribute>
+        <attribute name="material_phase_name">
+          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
+          <data type="string"/>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="equation_of_state"/>
+            <ref name="prognostic_scalar_field"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="diagnostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="internal_algorithm"/>
+            <ref name="diagnostic_scalar_field_no_adapt"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>ComponentMassFractionPhase3
+Optional in multiphase problem types
+
+attribute material_phase_name associates this
+mass fraction with a particular phase
+
+Do not forget to set boundary conditions for the PhaseVolumeFraction
+even if the problem is one-phase</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>ComponentMassFractionPhase3</value>
+        </attribute>
+        <attribute name="material_phase_name">
+          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
+          <data type="string"/>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="equation_of_state"/>
+            <ref name="prognostic_scalar_field"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="diagnostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="internal_algorithm"/>
+            <ref name="diagnostic_scalar_field_no_adapt"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>ComponentMassFractionPhase4
+Optional in multiphase problem types
+
+attribute material_phase_name associates this
+mass fraction with a particular phase</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>ComponentMassFractionPhase4</value>
+        </attribute>
+        <attribute name="material_phase_name">
+          <a:documentation>Specify the phase to which this component fraction relates</a:documentation>
+          <data type="string"/>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="equation_of_state"/>
+            <ref name="prognostic_scalar_field"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="diagnostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="internal_algorithm"/>
+            <ref name="diagnostic_scalar_field_no_adapt"/>
+            <optional>
+              <ref name="cap_option"/>
+            </optional>
           </element>
         </choice>
       </element>

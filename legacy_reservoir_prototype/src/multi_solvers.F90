@@ -499,15 +499,15 @@ contains
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
             !backtrack_par_parameter
             if (backtrack_pars(1) < 0) then!retrieve it just once
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration',&
+                call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration',&
                     convergence_tol, default = 0. )
                 convergence_tol =  convergence_tol
                 !Tolerance for the infinite norm
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',&
+                call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
                     Infinite_norm_tol, default = 0.03 )
                 backtrack_pars(1) = max(min(abs(backtrack_par_from_schema), 1.0), min_backtrack)
                 !Retrieve the shape of the function to use to weight the importance of previous saturations
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
+                call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Acceleration_exp',&
                     anders_exp, default = 0.4 )!0.4 the best option, based on experience
                 !Should not be negative
                 anders_exp = max(anders_exp, 0.)
@@ -942,7 +942,7 @@ contains
             many_phases = Mdims%n_in_pres > 2
             black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
             !Positive effects on the convergence !Need to check for shock fronts...
-            ov_relaxation = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation')
+            ov_relaxation = have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
 
             one_phase = (Mdims%n_in_pres == 1)
             readed_options = .true.

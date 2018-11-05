@@ -114,25 +114,18 @@ contains
 
         !!$ Get the vel element type.
         if (is_porous_media) then!Check that the FPI method is on
-            if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
+            if (.not. have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow."
-            else!Check that the user is allowing the linear solver to fail
-                if (.not. have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/'//&
-                'solver/ignore_all_solver_failures') .and. .not.warning_displayed) then
-                    ewrite(0,*) "WARNING: The option <PhaseVolumeFraction/prognostic/solver/ignore_all_solver_failures>"//&
-                    " is HIGHLY recommended for multiphase porous media flow to allow the FPI method to find a solution."
-                    warning_displayed = .true.
-                end if
             end if
             !Don't use for single phase porous media flows
-            if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%nphase < 2) then
+            if (have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%nphase < 2) then
                 !Unless we are using dynamic control of the non-linear iterations in which case it does not matter
-                if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
+                if (.not.have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
                     ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows without wells."
                 end if
             end if
         end if
-        is_multifracture = have_option( '/simulation_type/femdem_fracture' ) .or. is_multifracture
+        is_multifracture = have_option( '/femdem_fracture' ) .or. is_multifracture
 
         positions => extract_vector_field( state, 'Coordinate' )
         pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -471,8 +464,8 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_discretization_opts) :: Mdisopt
         !!$ Local variables:
-        integer :: iphase
-        character( len = option_path_len ) :: option_path, option_path2, option_path3
+        integer :: iphase, i
+        character( len = option_path_len ) :: option_path, option_path2
         !!$ DISOPT Options:
         !!$ =0      1st order in space          Theta=specified    UNIVERSAL
         !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
@@ -485,72 +478,55 @@ contains
         !!$ =7      Finite elements in space    Theta=non-linear   NONE
         !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
         !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
-        !!$ Solving Advection Field: Temperature
-        option_path = '/material_phase[0]/scalar_field::Temperature'
-        option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
-        option_path3 = trim( option_path ) //  '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        Mdisopt%t_disopt = 1
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_t, default = 3 )
-        Conditional_TDISOPT: if( have_option( trim( option_path2 ) ) ) then
-            if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value/' // &
-                'limiter::CompressiveAdvection' ) ) then
+        option_path = '/geometry/Advance_options/'
+        !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####
+        !!$ SoluteMassFraction and temperature have the same settings for the time being
+        option_path2 = trim(option_path)//'Space_Discretisation::Tracer/advection_scheme'
+        Mdisopt%t_disopt = 5!<= default is high order with safest limiter !;Mdisopt%t_disopt = 1
+        if( have_option( trim( option_path2 ) ) ) then
+            if( have_option( trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection') ) then
                 Mdisopt%t_disopt = 9
             else
-                if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value' ) ) &
-                    Mdisopt%t_disopt = 5
+                if( have_option( trim( option_path2 ) // 'upwind' ) ) &
+                    Mdisopt%t_disopt = 1
             end if
-        end if Conditional_TDISOPT
-        call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
-        call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
-            Mdisopt%t_theta, default = 1. )
-        !! Arash
-        !!$ Solving Advection Field: Salt
-        option_path = '/material_phase[0]/scalar_field::SoluteMassFraction'
-        option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
-        option_path3 = trim( option_path ) //  '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        Mdisopt%t_disopt = 1
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_c, default = 3 )
-        Conditional_CDISOPT: if( have_option( trim( option_path2 ) ) ) then
-            if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value/' // &
-                'limiter::CompressiveAdvection' ) ) then
-                Mdisopt%t_disopt = 9
-            else
-                if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value' ) ) &
-                    Mdisopt%t_disopt = 5
-            end if
-        end if Conditional_CDISOPT
-        call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
-        call get_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/temporal_discretisation/theta', &
-            Mdisopt%t_theta, default = 1. )
-        !!$ Solving Advection Field: Volume fraction
-        option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction'
-        option_path2 = trim( option_path ) // '/prognostic/spatial_discretisation/control_volumes/face_value'
-        option_path3 = trim( option_path ) // '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        Mdisopt%v_disopt = 8
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_volfra, default = 3 )
-        Conditional_VDISOPT: if( have_option( trim( option_path ) ) ) then
-            if( have_option( trim( option_path2 ) // '::FirstOrderUpwind' ) ) Mdisopt%v_disopt = 0
-            if( have_option( trim( option_path2 ) // '::Trapezoidal' ) ) Mdisopt%v_disopt = 2
-            if( have_option( trim( option_path2 ) // '::FiniteElement/do_not_limit_face_value' ) ) Mdisopt%v_disopt = 6
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) Mdisopt%v_disopt = 5
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) Mdisopt%v_disopt = 9
-        end if Conditional_VDISOPT
+        end if
+        call get_option( trim(option_path)// '/Conservative_formulation_settings::Tracer/conservative_advection',&
+                Mdisopt%t_beta, default = 0.0 )!Default for temperature non-conservative
+        call get_option( trim(option_path)// '/Time_Discretisation::Tracer/Theta', &
+            Mdisopt%t_theta, default = -1. )!By default adaptive
+        !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####
 
-        call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', Mdisopt%v_beta )
-        call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', Mdisopt%v_theta )
-        !!$ Solving Velocity Field
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/temporal_discretisation/theta', Mdisopt%u_theta )
+
+
+        !!$ Solving Advection Field: Volume fraction
+        option_path2 = trim(option_path)//'Space_Discretisation::PhaseVolumeFraction/advection_scheme'
+        Mdisopt%v_disopt = 8!<= default is high order with safest limiter !;Mdisopt%t_disopt = 1
+        if( have_option( trim( option_path2 ) ) ) then
+            if( have_option( trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection') ) then
+                Mdisopt%v_disopt = 9
+            else
+                if( have_option( trim( option_path2 ) // 'upwind' ) ) &
+                    Mdisopt%v_disopt = 0
+            end if
+        end if
+        call get_option( trim(option_path)// '/Conservative_formulation_settings::PhaseVolumeFraction/conservative_advection',&
+                Mdisopt%v_beta, default = 1.0 )!Default conservative
+
+        call get_option( trim(option_path)// '/Time_Discretisation::PhaseVolumeFraction/Theta', &
+            Mdisopt%v_theta, default = -1. )!By default adaptive
+
+        !!$ Velocity Field theta options
+        call get_option( trim(option_path)// '/Time_Discretisation::Velocity/Theta', Mdisopt%u_theta , default = -1. )
         !!$ Solving Component Field
-        option_path3 = '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-            'temporal_discretisation/control_volumes/number_advection_iterations'
-        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_comp, default = 3 )
         !!$ Scaling factor for the momentum equation
         Mdisopt%scale_momentum_by_volume_fraction = .false.
-        do iphase = 1, Mdims%nphase
-            option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/Mdisopt%scale_momentum_by_volume_fraction'
-            if( have_option( trim( option_path ) ) ) Mdisopt%scale_momentum_by_volume_fraction = .true.
-        end do
-        !!$ Options below are hardcoded and need to be added into the schema
+        !We leave this with the default value and we will see in the future what to do with this option
+        ! do iphase = 1, Mdims%nphase
+        !     option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/Mdisopt%scale_momentum_by_volume_fraction'
+        !     if( have_option( trim( option_path ) ) ) Mdisopt%scale_momentum_by_volume_fraction = .true.
+        ! end do
+        !!$ Options below are hardcoded and need to be added into the schema (have been hard-coded for years and no one cared...)
         Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
         if(.not.is_porous_media) Mdisopt%v_dg_vel_int_opt = 1
         Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
@@ -560,9 +536,9 @@ contains
         !!$ formulation. The data structure and options for this formulation need to be added later.
         Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
         if (is_porous_media) Mdisopt%in_ele_upwind = Mdisopt%v_disopt
-
-
-
+        !number_advection_iterations are hard coded but I think this is unused and should be removed
+        Mdisopt%nits_flux_lim_c = 3; Mdisopt%nits_flux_lim_t = 3
+        Mdisopt%nits_flux_lim_comp = 3; Mdisopt%nits_flux_lim_volfra = 3
         return
     end subroutine Get_Discretisation_Options
 
@@ -757,7 +733,7 @@ contains
 !				sfield=>extract_scalar_field(state(1),"shell_volume_fraction")
  !           call insert(packed_state,sfield,"shell_volume_fraction")
 
-        else if(have_option('/simulation_type/femdem_fracture')) then
+        else if(have_option('/femdem_fracture')) then
             if(have_option('/femdem_fracture/oneway_coupling_only')) then!This option do not exist
                 sfield=>extract_scalar_field(state(1),"SolidConcentration")
                 call insert(packed_state,sfield,"SolidConcentration")
@@ -2066,38 +2042,38 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     end if
     !ewrite(0,*) "entering"
     !First of all, check if the user wants to do something
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
     if (tolerance_between_non_linear<0) return
     !Tolerance for the infinite norm
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',&
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
         Infinite_norm_tol, default = 0.01 )
     !retrieve number of Fixed Point Iterations
-    call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
+    call get_option( '/solver_option/Non_Linear_Solver', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
     !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation), 4 (Temperature)
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations', &
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations', &
         variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
-    if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
-        call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
+    if (have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
+        call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
             variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
     end if
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
         increaseFactor, default = 1.1 )
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
         decreaseFactor, default = 2.0 )
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
         max_ts, default = huge(min_ts) )
     if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
         min_ts, default = dt_by_user*1d-3 )
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
-    show_FPI_conv = .not.have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
+    show_FPI_conv = .not.have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Show_Convergence')
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
-    call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Test_mass_consv', &
+    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 1d-2)
-    PID_controller = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
+    PID_controller = have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
     call get_option( '/timestepping/finish_time', finish_time )
@@ -2334,7 +2310,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 !If any solver fails to converge (and the user care), we may want to repeat the time-level
                 !without waiting for the last non-linear iteration
                 if (solver_not_converged .and.have_option(&
-                  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/ensure_solvers_convergence')) then
+                  '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/ensure_solvers_convergence')) then
                     Repeat_time_step = .true.
                     solver_not_converged = .false.
                     if (getprocno() == 1) then

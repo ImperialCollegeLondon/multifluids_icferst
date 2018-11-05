@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<multiphase_options>
+<icferst_options>
   <simulation_name>
     <string_value lines="1">Test</string_value>
   </simulation_name>
@@ -19,6 +19,13 @@
     <simulation_quality>
       <string_value>balanced</string_value>
     </simulation_quality>
+    <Advance_options>
+      <Time_Discretisation name="PhaseVolumeFraction">
+        <Theta>
+          <real_value rank="0">-1</real_value>
+        </Theta>
+      </Time_Discretisation>
+    </Advance_options>
   </geometry>
   <solver_options>
     <Non_Linear_Solver>
@@ -75,18 +82,6 @@
     <scalar_field name="Pressure" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <solver>
-          <relative_error>
-            <real_value rank="0">1e-10</real_value>
-          </relative_error>
-          <max_iterations>
-            <integer_value rank="0">150</integer_value>
-          </max_iterations>
-          <ignore_all_solver_failures/>
-          <diagnostics>
-            <monitors/>
-          </diagnostics>
-        </solver>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0</real_value>
@@ -170,18 +165,7 @@
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <solver>
-          <relative_error>
-            <real_value rank="0">1e-10</real_value>
-          </relative_error>
-          <max_iterations>
-            <integer_value rank="0">150</integer_value>
-          </max_iterations>
-          <ignore_all_solver_failures/>
-          <diagnostics>
-            <monitors/>
-          </diagnostics>
-        </solver>
+        <explicit/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.2</real_value>
@@ -285,18 +269,7 @@
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <solver>
-          <relative_error>
-            <real_value rank="0">1e-10</real_value>
-          </relative_error>
-          <max_iterations>
-            <integer_value rank="0">150</integer_value>
-          </max_iterations>
-          <ignore_all_solver_failures/>
-          <diagnostics>
-            <monitors/>
-          </diagnostics>
-        </solver>
+        <explicit/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.8</real_value>
@@ -390,4 +363,4 @@
       </prescribed>
     </scalar_field>
   </porous_media>
-</multiphase_options>
+</icferst_options>
