@@ -478,7 +478,7 @@ contains
               Rho = eos_coefs( 1 ) * ( 1 + ( salt_concentration % val * eos_coefs( 2 ) ) )
                 dRhodP = 0.0
               deallocate( eos_coefs )
-        if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
+          else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
             !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
             allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
             if ( have_temperature_field ) temperature_local = max(temperature % val,1e-8)!avoid possible oscillations introduced by unphysical values of temperature

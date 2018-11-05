@@ -1211,7 +1211,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
 
-        linearise_density = have_option_for_any_phase('phase_properties/Density/linearise_density', Mdims%n_in_pres))
+        linearise_density = have_option_for_any_phase('phase_properties/Density/linearise_density', Mdims%n_in_pres)
 
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
@@ -6442,7 +6442,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
       type ( tensor_field ), pointer :: ufield
       integer :: ndim, ph_ngi, ph_nloc, ph_snloc, &
-                u_nloc, u_snloc, stat, &
+                u_nloc, u_snloc, stat, max_allowed_its,&
                 totele, x_nonods, ele, x_nloc, &
                 ph_ele_type, iloop, u_nonods, cv_nonods, &
                 cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &

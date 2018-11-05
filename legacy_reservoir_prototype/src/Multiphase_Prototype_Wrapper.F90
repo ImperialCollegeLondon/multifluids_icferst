@@ -702,7 +702,7 @@ contains
           call add_option(trim(option_path), stat = stat)
           call set_option(trim(option_path), 5e-2)
           call add_option(trim(option_path)//"Infinite_norm_tol", stat = stat)
-          call set_option(trim(option_path)/"Infinite_norm_tol", 0.01)
+          call set_option(trim(option_path)//"Infinite_norm_tol", 0.01)
           if (have_option("\porous_media")) then
             !If multiphase then the important thing is saturation!
             if (dble(nphase)/dble(npres) > 1.) then
@@ -714,11 +714,11 @@ contains
             else !single phase
               call add_option(trim(option_path)//"Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
               if (have_option("/material_phase[0]::scalar_field::Temperature")) then
-                call set_option(trim(option_path)/"Infinite_norm_tol/adaptive_non_linear_iterations", 4)
+                call set_option(trim(option_path)//"Infinite_norm_tol/adaptive_non_linear_iterations", 4)
               elseif (have_option("/material_phase[0]::scalar_field::SoluteMassFraction")) then
-                call set_option(trim(option_path)/"Infinite_norm_tol/adaptive_non_linear_iterations", 5)
+                call set_option(trim(option_path)//"Infinite_norm_tol/adaptive_non_linear_iterations", 5)
               else !If nothing, then pressure
-                call set_option(trim(option_path)/"Infinite_norm_tol/adaptive_non_linear_iterations", 1)
+                call set_option(trim(option_path)//"Infinite_norm_tol/adaptive_non_linear_iterations", 1)
               end if
               call add_option(trim(option_path)//"Vanishing_relaxation/Vanishing_for_transport", stat=stat)
               call set_option(trim(option_path),-1e1)
@@ -730,7 +730,7 @@ contains
               call add_option("/solver_options/Linear_solver/relative_error", stat = stat)
               call set_option("/solver_options/Linear_solver/relative_error", 1e-10)
               !Use pressure to decide when to stop the non_linear iteration process
-              call set_option(trim(option_path)/"Infinite_norm_tol/adaptive_non_linear_iterations", 1)
+              call set_option(trim(option_path)//"Infinite_norm_tol/adaptive_non_linear_iterations", 1)
           end if
 
         end if
