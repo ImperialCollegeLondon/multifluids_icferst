@@ -29,13 +29,13 @@ start =
          },
              (
                 ## Navier-stokes simulator
-                element inertia_dominated{comment}|
+                element inertia_dominated_simulator{comment}|
                 ## Darcy flow simulator
-                element porous_media{comment}|
+                element porous_media_simulator{comment}|
                 ## Magma flow simulator
-                element magma{comment}|
+                element magma_simulator{comment}|
                 ## Flooding simulator
-                element flooding{comment}
+                element flooding_simulator{comment}
              ),
          geometry,
 	     solver_options,
@@ -246,11 +246,29 @@ start =
                 ## Phase density
                 phase_density,
 
+
                 ## Viscosity of the current phase (tensor field)
                 element Viscosity {(
-                      element prescribed {
-                          prescribed_tensor_field_no_adapt
-                      }
+                  ## Viscosity for compositional field
+                  element tensor_field {
+                     attribute name { "Viscosity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            velocity_mesh_choice?,
+                            prescribed_tensor_field_no_adapt
+                        }|
+                        ## For electrical modelling only - holds electrical conductivity
+                        element diagnostic {
+                           (
+                              tensor_python_diagnostic_algorithm |
+                              internal_algorithm
+                           ),
+                           velocity_mesh_choice,
+                           diagnostic_tensor_field
+                        }
+                     )
+                  }
                 ),
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
                     element linearise_viscosity {empty}?,
@@ -935,13 +953,13 @@ geometry =
 
            ## Selects the quality configuration of the experiment
            ##
-           ## Fast => Element pair = P0DGP1CV. Upwinding and implicit Euler; 
+           ## Fast => Element pair = P0DGP1(CV). Upwinding and implicit Euler; 
            ##
-           ## Balanced (recommended) => Element pair = P0DGP1CV. Local decision whether upwinding or high order advection scheme and adaptive theta; 
+           ## Balanced (recommended) => Element pair = P0DGP1(CV). Local decision whether upwinding or high order advection scheme and adaptive theta; 
            ##
-           ## Precision => Element pair = P1DGP2CV. High order advection scheme and adaptive theta
+           ## Precision => Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
            ##
-           ## discontinuous_pressure => P2DGP1DG. High order advection scheme and adaptive theta
+           ## Discontinuous_pressure => P1DG(BL)P1DG(CV). High order advection scheme and adaptive theta
             element simulation_quality {
               element string_value{
                  "fast" | "balanced" | "precision"|"discontinuous_pressure"
@@ -1004,7 +1022,7 @@ geometry =
              ## For transport equations this is recommended to be zero. 
              ## For PhaseVolumeFraction the recommendation is one.
              ##
-             ## You can use as inputs here: PhaseVolumeFraction or Tracer.
+             ## You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
              ## Tracer accounts for Temperature, SoluteMassFraction, etc.
              element Conservative_formulation_settings {
                 ##Name of the Field

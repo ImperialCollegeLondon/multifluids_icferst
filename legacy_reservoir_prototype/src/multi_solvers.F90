@@ -62,146 +62,11 @@ module solvers_module
 
     private
 
-    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
+    public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Ensure_initial_Saturation_to_sum_one, auto_backtracking
 
-    interface multi_solver
-        module procedure solve_via_copy_to_petsc_csr_matrix
-    end interface
 
 contains
-
-    ! -----------------------------------------------------------------------------
-    subroutine solve_via_copy_to_petsc_csr_matrix( A, &
-        x, b, findfe, colfe, option_path, block_size )
-
-        !!< Solve a matrix Ax = b system via copying over to the
-        !!< petsc_csr_matrix type and calling the femtools solver
-        !!< using the spud options given by the field options path
-
-        integer, dimension( : ), intent(in) :: findfe
-        integer, dimension( : ), intent(in) :: colfe
-        real, dimension( : ), intent(in) :: a, b
-        real, dimension( : ), intent(inout) :: x
-        character( len=* ), intent(in) :: option_path
-        !This optional argument is to create a block-diagonal matrix
-        !and therefore to use block-solvers
-        integer, optional, intent(in) :: block_size
-
-        ! local variables
-        integer :: i, j, k, rows
-        integer, dimension( : ), allocatable :: dnnz
-        type(petsc_csr_matrix) :: matrix
-        integer :: size_of_block
-
-        size_of_block = 1
-        if (present(block_size)) size_of_block = block_size
-
-        rows = size( x )
-        assert( size( x ) == size( b ) )
-        assert( size( a ) == size( colfe ) )
-        assert( size( x ) + 1 == size( findfe ) )
-        ewrite(3,*) rows+1, size(findfe)
-
-        allocate( dnnz( rows/size_of_block ) ) ; dnnz = 0
-        ! find the number of non zeros per row
-        do i = 1, size( dnnz )
-            dnnz( i ) =(findfe( i+1 ) - findfe( i ))
-        end do
-        call allocate( matrix, rows/size_of_block, rows/size_of_block, dnnz, dnnz,&
-            (/1, 1/), name = 'dummy', element_size=size_of_block)
-
-        call zero( matrix )
-        ! add in the entries to petsc matrix
-        do i = 1, rows
-            do j = findfe( i ), findfe( i+1 ) - 1
-                k = colfe( j )
-                call addto( matrix, blocki = 1, blockj = 1, i = i, j = k, val = a( j ) )
-            end do
-        end do
-
-        call assemble( matrix )
-
-        call petsc_solve_scalar_petsc_csr_mp( x, matrix, b, rows, trim( option_path ) )
-
-        ! deallocate as needed
-        deallocate( dnnz )
-        call deallocate( matrix )
-
-        return
-    end subroutine solve_via_copy_to_petsc_csr_matrix
-
-
-    subroutine petsc_solve_scalar_petsc_csr_mp( x, matrix, rhs, rows, option_path )
-
-        real, dimension( : ), intent(inout) :: x
-        type( petsc_csr_matrix ), intent(inout) :: matrix
-        real, dimension( : ), intent(in) :: rhs
-        integer, intent(in) :: rows
-        character( len=* ), intent(in) :: option_path
-
-        KSP :: ksp
-        Vec :: y, b
-
-        character(len=OPTION_PATH_LEN) :: solver_option_path
-        integer :: ierr
-
-        assert( size( x ) == size( rhs ) )
-        assert( size( x ) == size( matrix, 2 ) )
-        assert( size( rhs ) == size( matrix, 1 ) )
-
-        solver_option_path = complete_solver_option_path( option_path )
-
-        call create_ksp_from_options( ksp, matrix%M, matrix%M, solver_option_path, .false., &
-            matrix%column_numbering, .true. )
-
-        b = PetscNumberingCreateVec( matrix%column_numbering )
-        call VecDuplicate( b, y, ierr )
-
-
-        ! copy array into PETSc vecs
-        call VecSetValues( y, rows, &
-            matrix%row_numbering%gnn2unn( 1:rows, 1 ), &
-            x, INSERT_VALUES, ierr )
-        call VecAssemblyBegin( y, ierr )
-        call VecAssemblyEnd( y, ierr )
-
-        call VecSetValues( b, rows, &
-            matrix%row_numbering%gnn2unn( 1:rows, 1 ), &
-            rhs, INSERT_VALUES, ierr )
-        call VecAssemblyBegin( b, ierr )
-        call VecAssemblyEnd( b, ierr )
-
-        call KSPSolve( ksp, b, y, ierr )
-
-        ! copy back the result
-        call VecGetValues( y, rows, &
-            matrix%row_numbering%gnn2unn( 1:rows, 1 ), &
-            x, ierr )
-
-        ! destroy all PETSc objects and the petsc_numbering
-        call multi_petsc_solve_destroy_petsc_csr( y, b, ksp )
-
-
-        return
-        contains
-        !Clone of the same subroutine in femtools/Solvers.F90
-        subroutine multi_petsc_solve_destroy_petsc_csr( y, b, ksp )
-
-            type(Vec), intent(inout):: y
-            type(Vec), intent(inout):: b
-            type(KSP), intent(inout):: ksp
-
-            type(PC) :: pc
-            integer ierr
-
-            call VecDestroy(y, ierr)
-            call VecDestroy(b, ierr)
-            call KSPGetPC(ksp, pc, ierr)
-            call KSPDestroy(ksp, ierr)
-
-        end subroutine multi_petsc_solve_destroy_petsc_csr
-    end subroutine petsc_solve_scalar_petsc_csr_mp
 
 
     subroutine BoundedSolutionCorrections( state, packed_state, &
@@ -499,15 +364,15 @@ contains
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
             !backtrack_par_parameter
             if (backtrack_pars(1) < 0) then!retrieve it just once
-                call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration',&
+                call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration',&
                     convergence_tol, default = 0. )
                 convergence_tol =  convergence_tol
                 !Tolerance for the infinite norm
-                call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
+                call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
                     Infinite_norm_tol, default = 0.03 )
                 backtrack_pars(1) = max(min(abs(backtrack_par_from_schema), 1.0), min_backtrack)
                 !Retrieve the shape of the function to use to weight the importance of previous saturations
-                call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Acceleration_exp',&
+                call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Acceleration_exp',&
                     anders_exp, default = 0.4 )!0.4 the best option, based on experience
                 !Should not be negative
                 anders_exp = max(anders_exp, 0.)
@@ -942,7 +807,7 @@ contains
             many_phases = Mdims%n_in_pres > 2
             black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
             !Positive effects on the convergence !Need to check for shock fronts...
-            ov_relaxation = have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
+            ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
 
             one_phase = (Mdims%n_in_pres == 1)
             readed_options = .true.

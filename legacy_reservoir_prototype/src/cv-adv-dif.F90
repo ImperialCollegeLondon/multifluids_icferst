@@ -312,7 +312,7 @@ contains
         ! if APPLY_ENO then apply ENO method to T and TOLD
         LOGICAL :: APPLY_ENO
         ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
-        ! if RECAL_C_CV_RHS, calculate the RHS forr the Mmat%C_CV matrix
+        ! if RECAL_C_CV_RHS, calculate the RHS for the Mmat%C_CV matrix
         logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
         LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
         !Logical to check if we using a conservative method or not, to save cpu time
@@ -540,9 +540,9 @@ contains
         else
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
         end if
-        symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
+        symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )!not added yet in the new schema
 
-        option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"
+        option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"!not added yet linked with the new schema
         apply_eno = have_option( option_path2 )
 
         !THETA_VEL_HAT has to be zero for porous media flow
@@ -727,7 +727,7 @@ contains
             perm=>extract_tensor_field(packed_state,"Permeability")
             end if
             !Check if the permeability is not isotropic and the method is DG
-            anisotropic_perm = .not.have_option('porous_media/scalar_field::Permeability') .and. DISTCONTINUOUS_METHOD
+            anisotropic_perm = .not.have_option('/porous_media/scalar_field::Permeability') .and. DISTCONTINUOUS_METHOD
         end if
         !Initialize Courant number for porous media
         if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
@@ -4605,7 +4605,7 @@ end if
         !---------------------------------
         !Currently hard-coded. This is not used for porous_media but it is used otherwise
         do_not_project =  is_porous_media! .or. have_option(projection_options//'/do_not_project')!<=DISABLED FOR POROUS MEDIA TEMPORARILY, BUT ACTUALLY THE DIFFERENCE IS SMALL
-        cv_test_space = .false.!have_option(projection_options//'/test_function_space::ControlVolume')  !AND IT SHOULD BE SLIGTHLY FASTER; DISABLED FOR THE PETSC MEMORY PROBLEM
+        cv_test_space = .false. !have_option(projection_options//'/test_function_space::ControlVolume')  !AND IT SHOULD BE SLIGTHLY FASTER; DISABLED FOR THE PETSC MEMORY PROBLEM
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)!I think this is only true after adapt and at the beginning
 
         do it=1,size(fempsi)
@@ -4737,7 +4737,7 @@ end if
         else
             do it = 1, size(fempsi)
                 ! call zero_non_owned(fempsi_rhs(it))!Use default solver for this
-                call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = 'solver_options/Linear_solver')
+                call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = '/solver_options/Linear_solver')
             end do
         end if
 

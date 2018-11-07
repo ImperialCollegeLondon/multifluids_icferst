@@ -138,24 +138,12 @@ e.g. use a Dirichlet BC on inlets and k_epsilon on walls.</a:documentation>
   </define>
   <define name="prognostic_scalar_field">
     <group>
-      <!--
-             scalar_equation_choice,
-             spatial_discretisation_options,
-             temporal_discretisation_options,
-      -->
-      <group>
-        <element name="explicit">
-          <a:documentation>Assume this field is being solved explicitly and skip the solver.
-
-ONLY AVAILABLE FOR PURE CONTROL VOLUME SPATIAL DISCRETISATIONS.
-
-Assumes lhs matrix only has diagonal lumped mass (times
-density if appropriate for equation)
-and divides the rhs by this.</a:documentation>
-          <empty/>
-        </element>
-      </group>
       <oneOrMore>
+        <!--
+               scalar_equation_choice,
+               spatial_discretisation_options,
+               temporal_discretisation_options,
+        -->
         <choice>
           <element name="initial_condition">
             <a:documentation>Initial condition for WholeMesh

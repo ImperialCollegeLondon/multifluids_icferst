@@ -582,7 +582,6 @@ contains
        ! There are still references to this field so we don't deallocate.
        return
     end if
-
     select case(field%field_type)
     case(FIELD_TYPE_NORMAL)
       if (.not.field%wrapped) then
@@ -765,7 +764,7 @@ contains
 
     integer :: i
     if (associated(scalar_ptr)) then
-    print *, size(scalar_ptr)
+    ! print *, size(scalar_ptr)
        do i=1,size(scalar_ptr)
           nullify(scalar_ptr(i)%ptr)
        end do

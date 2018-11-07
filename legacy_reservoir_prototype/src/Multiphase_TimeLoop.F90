@@ -225,8 +225,8 @@ contains
 
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
-            if(have_option("/solver_option/Non_Linear_Solver/nonlinear_iterations_at_adapt")) then
-                call get_option('/solver_option/Non_Linear_Solver/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
+            if(have_option("/solver_options/Non_Linear_Solver/nonlinear_iterations_at_adapt")) then
+                call get_option('/solver_options/Non_Linear_Solver/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
                 nonlinear_iterations = nonlinear_iterations_adapt
             end if
             call adapt_state_first_timestep(state)
@@ -277,7 +277,7 @@ contains
         !  A deallocate tfield when finished!!
 
         Repeat_time_step = .false.
-        nonLinearAdaptTs = have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
+        nonLinearAdaptTs = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
 
         !!$ Calculating Global Node Numbers
         call allocate_multi_ndgln(ndgln, Mdims)
@@ -369,7 +369,7 @@ contains
         elseif ( have_option('/io/dump_period') ) then
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
-        call get_option( '/solver_option/Non_Linear_Solver', NonLinearIteration, default = 3 )
+        call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
@@ -823,7 +823,7 @@ contains
             if ( after_adapt .and. have_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt' ) ) then
                 call get_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt', NonLinearIteration )
             else
-                call get_option( '/solver_option/Non_Linear_Solver', NonLinearIteration, default = 3 )
+                call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
             end if
             call set_boundary_conditions_values(state, shift_time=.true.)
             if (sig_hup .or. sig_int) then
@@ -1545,8 +1545,8 @@ end if
                 return
             end if
             !Store the settings selected by the user
-            call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
-            call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol, default = 0.03)
+            call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
+            call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol, default = 0.03)
         end if
 
 
@@ -1554,14 +1554,14 @@ end if
             case (1)
                 !Relax the convergence criteria since we don't need much precision at this stage
                 !Since non_linear_tol is they key convergence criterion, we use a relative value and we reduce it half-order
-                call set_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration', min(non_linear_tol*10., 1e-1))
-                if (.not.have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol'))then
+                call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', min(non_linear_tol*10., 1e-1))
+                if (.not.have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol'))then
                     !Create the option
                     call copy_option( '/timestepping/timestep/', &
-                        '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol')
+                        '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol')
                 end if
                 !10% tolerance provides a good enough result
-                call set_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',min(Inf_tol*5.,0.1))
+                call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',min(Inf_tol*5.,0.1))
         case default
 
             !Four steps
@@ -1599,8 +1599,8 @@ end if
             adapt_mesh_in_FPI = .false.
 
             !Set the original convergence criteria since we are now solving the equations
-            call set_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol)
-            call set_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol)
+            call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol)
+            call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol)
             !Do not re-adapt the mesh
             t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
         end select

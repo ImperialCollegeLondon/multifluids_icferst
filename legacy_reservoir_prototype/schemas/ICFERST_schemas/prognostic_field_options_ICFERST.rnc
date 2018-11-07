@@ -109,18 +109,6 @@ prognostic_scalar_field =
 #      spatial_discretisation_options,
 #      temporal_discretisation_options,
       (
-         ## Assume this field is being solved explicitly and skip the solver.
-         ##
-         ## ONLY AVAILABLE FOR PURE CONTROL VOLUME SPATIAL DISCRETISATIONS.
-         ##
-         ## Assumes lhs matrix only has diagonal lumped mass (times
-         ## density if appropriate for equation)
-         ## and divides the rhs by this.
-         element explicit {
-            empty
-         }
-      ),
-      (
          ## Initial condition for WholeMesh
          ##
          ## Only specify one condition if not using mesh regions.

@@ -3,7 +3,7 @@
   <simulation_name>
     <string_value lines="1">Test</string_value>
   </simulation_name>
-  <porous_media/>
+  <porous_media_simulator/>
   <geometry>
     <dimension>
       <integer_value rank="0">3</integer_value>
@@ -19,22 +19,8 @@
     <simulation_quality>
       <string_value>balanced</string_value>
     </simulation_quality>
-    <Advance_options>
-      <Time_Discretisation name="PhaseVolumeFraction">
-        <Theta>
-          <real_value rank="0">-1</real_value>
-        </Theta>
-      </Time_Discretisation>
-    </Advance_options>
   </geometry>
-  <solver_options>
-    <Non_Linear_Solver>
-      <integer_value rank="0">25</integer_value>
-      <Fixed_Point_Iteration>
-        <real_value rank="0">5e-2</real_value>
-      </Fixed_Point_Iteration>
-    </Non_Linear_Solver>
-  </solver_options>
+  <solver_options/>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
@@ -64,15 +50,17 @@
         </incompressible>
       </Density>
       <Viscosity>
-        <prescribed>
-          <value name="WholeMesh">
-            <isotropic>
-              <constant>
-                <real_value rank="0">1</real_value>
-              </constant>
-            </isotropic>
-          </value>
-        </prescribed>
+        <tensor_field name="Viscosity" rank="2">
+          <prescribed>
+            <value name="WholeMesh">
+              <isotropic>
+                <constant>
+                  <real_value rank="0">1</real_value>
+                </constant>
+              </isotropic>
+            </value>
+          </prescribed>
+        </tensor_field>
         <viscosity_scheme>
           <tensor_form/>
           <nonlinear_scheme/>
@@ -165,7 +153,6 @@
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <explicit/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.2</real_value>
@@ -208,19 +195,21 @@
     <phase_properties>
       <Density>
         <incompressible>
-          <real_value rank="0">1</real_value>
+          <real_value rank="0">0.711</real_value>
         </incompressible>
       </Density>
       <Viscosity>
-        <prescribed>
-          <value name="WholeMesh">
-            <isotropic>
-              <constant>
-                <real_value rank="0">1</real_value>
-              </constant>
-            </isotropic>
-          </value>
-        </prescribed>
+        <tensor_field name="Viscosity" rank="2">
+          <prescribed>
+            <value name="WholeMesh">
+              <isotropic>
+                <constant>
+                  <real_value rank="0">10</real_value>
+                </constant>
+              </isotropic>
+            </value>
+          </prescribed>
+        </tensor_field>
         <viscosity_scheme>
           <tensor_form/>
           <nonlinear_scheme/>
@@ -269,7 +258,6 @@
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
-        <explicit/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.8</real_value>

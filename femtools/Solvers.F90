@@ -701,6 +701,8 @@ character(len=OPTION_PATH_LEN):: complete_solver_option_path
     complete_solver_option_path=trim(option_path)//'/diagnostic/solver'
   else if (have_option(trim(option_path)//'/solver')) then
     complete_solver_option_path=trim(option_path)//'/solver'
+  else if (option_path(1:15) == "/solver_options") then
+    complete_solver_option_path = trim(option_path)
   else
     ewrite(-1,*) 'option_path: ', trim(option_path)
     FLAbort("Missing solver element in provided option_path.")
@@ -790,8 +792,7 @@ type(vector_field), intent(in), optional :: positions
     call cpu_time(time1)
   end if
 
-
-    if (present(option_path)) then
+  if (present(option_path)) then
       solver_option_path=complete_solver_option_path(option_path)
   else if (present(sfield)) then
       solver_option_path=complete_solver_option_path(sfield%option_path)
@@ -837,7 +838,6 @@ type(vector_field), intent(in), optional :: positions
     ! no cache - we just have to do it all over again
     have_cache=.false.
   end if
-
   ewrite(1, *) 'Assembling matrix.'
 
   ! Note the explicitly-described options rcm, 1wd and natural are now not
@@ -943,7 +943,7 @@ type(vector_field), intent(in), optional :: positions
   call attach_null_space_from_options(A, solver_option_path, pmat=pmat, &
     positions=positions, petsc_numbering=petsc_numbering)
 
-    call create_ksp_from_options(ksp, A, pmat, solver_option_path, parallel, &
+  call create_ksp_from_options(ksp, A, pmat, solver_option_path, parallel, &
     petsc_numbering, &
     startfromzero_in=startfromzero_in, &
     prolongators=prolongators, surface_node_list=surface_node_list, &
@@ -1097,7 +1097,6 @@ Mat, intent(in), optional:: rotation_matrix
   else
     parallel= .false.
   end if
-
   ewrite(2, *) 'Using solver options defined at: ', trim(solver_option_path)
 
   if (matrix%ksp==PETSC_NULL_KSP) then
@@ -1692,16 +1691,15 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
     ewrite(1,*) "Inside setup_ksp_from_options"
 
-
     ! first set pc options
     ! =========================================================
     call KSPGetPC(ksp, pc, ierr)
+
     call setup_pc_from_options(pc, pmat, &
        trim(solver_option_path)//'/preconditioner[0]', &
        petsc_numbering=petsc_numbering, &
        prolongators=prolongators, surface_node_list=surface_node_list, &
        matrix_csr=matrix_csr, internal_smoothing_option=internal_smoothing_option)
-
     ! then ksp type
     ! =========================================================
     call get_option(trim(solver_option_path)//'/iterative_method[0]/name', &

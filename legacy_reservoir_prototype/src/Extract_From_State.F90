@@ -114,13 +114,13 @@ contains
 
         !!$ Get the vel element type.
         if (is_porous_media) then!Check that the FPI method is on
-            if (.not. have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
+            if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow."
             end if
             !Don't use for single phase porous media flows
-            if (have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%nphase < 2) then
+            if (have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration') .and. Mdims%nphase < 2) then
                 !Unless we are using dynamic control of the non-linear iterations in which case it does not matter
-                if (.not.have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
+                if (.not.have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations')) then
                     ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows without wells."
                 end if
             end if
@@ -229,8 +229,7 @@ contains
 
         call get_option( '/geometry/dimension', ndim)
 
-        call get_option( &
-            '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
+        call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
             degree )
 
         Select Case( ndim )
@@ -377,8 +376,7 @@ contains
         !!$ Local variables
         integer :: ndim, degree
         call get_option( '/geometry/dimension', ndim)
-        call get_option( &
-            '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
+        call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
             degree )
         Select Case( ndim )
             case( 1 ) ! ndim
@@ -464,8 +462,10 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_discretization_opts) :: Mdisopt
         !!$ Local variables:
-        integer :: iphase, i
+        integer :: iphase, i, simulation_quality
         character( len = option_path_len ) :: option_path, option_path2
+        integer :: default_flux_scheme
+        real :: default_theta
         !!$ DISOPT Options:
         !!$ =0      1st order in space          Theta=specified    UNIVERSAL
         !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
@@ -478,11 +478,32 @@ contains
         !!$ =7      Finite elements in space    Theta=non-linear   NONE
         !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
         !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
-        option_path = '/geometry/Advance_options/'
-        !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####
+
+        !Check quality option to decide mesh type, theta and advection schemes
+        option_path = "/geometry/simulation_quality"
+        call get_option(trim(option_path), option_path2, stat=i)
+        if (trim(option_path2) == "fast") then
+            simulation_quality = 1
+        else if (trim(option_path2) == "precision") then
+            simulation_quality = 100
+        else if (trim(option_path2) == "discontinuous_pressure") then
+            simulation_quality = 1000
+        else !balanced, the recommended one
+            simulation_quality = 10
+        end if
+        !Is high order flux with the safest limiter and adaptive Theta
+        if (simulation_quality>=10) then
+          default_flux_scheme = 5
+          default_theta  = -1.
+        else !Unlest fast method secified
+          default_flux_scheme = 1
+          default_theta  = 1.
+        end if
+
+        !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####!SPRINT_TO_DO THESE DEFAULT OPTIONS SHOULD DEPEND ON SIMULATION QUALITY
         !!$ SoluteMassFraction and temperature have the same settings for the time being
         option_path2 = trim(option_path)//'Space_Discretisation::Tracer/advection_scheme'
-        Mdisopt%t_disopt = 5!<= default is high order with safest limiter !;Mdisopt%t_disopt = 1
+        Mdisopt%t_disopt = default_flux_scheme
         if( have_option( trim( option_path2 ) ) ) then
             if( have_option( trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection') ) then
                 Mdisopt%t_disopt = 9
@@ -494,14 +515,12 @@ contains
         call get_option( trim(option_path)// '/Conservative_formulation_settings::Tracer/conservative_advection',&
                 Mdisopt%t_beta, default = 0.0 )!Default for temperature non-conservative
         call get_option( trim(option_path)// '/Time_Discretisation::Tracer/Theta', &
-            Mdisopt%t_theta, default = -1. )!By default adaptive
+            Mdisopt%t_theta, default = default_theta )!By default adaptive !SPRINT_TO_DO THIS HAS TO DEPEND ON THE SIMULATION_QUALITY
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####
-
-
 
         !!$ Solving Advection Field: Volume fraction
         option_path2 = trim(option_path)//'Space_Discretisation::PhaseVolumeFraction/advection_scheme'
-        Mdisopt%v_disopt = 8!<= default is high order with safest limiter !;Mdisopt%t_disopt = 1
+        Mdisopt%v_disopt = default_flux_scheme
         if( have_option( trim( option_path2 ) ) ) then
             if( have_option( trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection') ) then
                 Mdisopt%v_disopt = 9
@@ -514,10 +533,11 @@ contains
                 Mdisopt%v_beta, default = 1.0 )!Default conservative
 
         call get_option( trim(option_path)// '/Time_Discretisation::PhaseVolumeFraction/Theta', &
-            Mdisopt%v_theta, default = -1. )!By default adaptive
+            Mdisopt%v_theta, default = default_theta )
 
-        !!$ Velocity Field theta options
-        call get_option( trim(option_path)// '/Time_Discretisation::Velocity/Theta', Mdisopt%u_theta , default = -1. )
+        !!$ Velocity Field options
+        call get_option( trim(option_path)// '/Time_Discretisation::Velocity/Theta', Mdisopt%u_theta , default = default_theta )
+        call get_option( trim(option_path)// '/Conservative_formulation_settings::Velocity/conservative_advection', Mdisopt%u_beta , default = 1. )
         !!$ Solving Component Field
         !!$ Scaling factor for the momentum equation
         Mdisopt%scale_momentum_by_volume_fraction = .false.
@@ -683,7 +703,8 @@ contains
 
     subroutine pack_multistate(npres, state, packed_state, &
         multiphase_state, multicomponent_state, pmulti_state)
-
+        !This subroutine creates packed_state from state(:) and links the appropiate memory
+        !so it is acessible from both states
         integer, intent(in) :: npres
         type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(inout) :: packed_state
@@ -2042,38 +2063,38 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     end if
     !ewrite(0,*) "entering"
     !First of all, check if the user wants to do something
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
     if (tolerance_between_non_linear<0) return
     !Tolerance for the infinite norm
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
         Infinite_norm_tol, default = 0.01 )
     !retrieve number of Fixed Point Iterations
-    call get_option( '/solver_option/Non_Linear_Solver', NonLinearIteration, default = 3 )
+    call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
     !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation), 4 (Temperature)
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations', &
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations', &
         variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
-    if (have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
-        call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
+    if (have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
+        call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
             variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
     end if
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
         increaseFactor, default = 1.1 )
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
         decreaseFactor, default = 2.0 )
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
         max_ts, default = huge(min_ts) )
     if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
         min_ts, default = dt_by_user*1d-3 )
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
-    show_FPI_conv = .not.have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Show_Convergence')
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
+    show_FPI_conv = .not.have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Show_Convergence')
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
-    call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv', &
+    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 1d-2)
-    PID_controller = have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
+    PID_controller = have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
     call get_option( '/timestepping/finish_time', finish_time )
@@ -2310,7 +2331,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 !If any solver fails to converge (and the user care), we may want to repeat the time-level
                 !without waiting for the last non-linear iteration
                 if (solver_not_converged .and.have_option(&
-                  '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/ensure_solvers_convergence')) then
+                  '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/ensure_solvers_convergence')) then
                     Repeat_time_step = .true.
                     solver_not_converged = .false.
                     if (getprocno() == 1) then

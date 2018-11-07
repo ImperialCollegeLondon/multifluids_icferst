@@ -429,7 +429,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 if (first_time) then
                     first_time = .false.
                     !Check diamond
-                    apply_minmax_principle = have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')
+                    apply_minmax_principle = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')
                 end if
                 if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
                     allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
@@ -820,12 +820,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
              !Get variable for global convergence method
-             if (.not. have_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration')) then
+             if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration')) then
                  backtrack_par_factor = 1.1
              else !Get value with the default value of 1.
-                 call get_option( '/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Backtracking_factor',&
+                 call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Backtracking_factor',&
                      backtrack_par_factor, default = 1.0)
              end if
+
              !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
              Auto_max_backtrack = (backtrack_par_factor == -10)
              !Retrieve number of saturation fixed point iterations from diamond, by default 9
@@ -946,6 +947,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
                  end if
+
                  call zero(vtracer)
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
@@ -980,6 +982,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                              !Velocity is recalculated through updating the sigmas
                              call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, Quality_list )
+
                              !Also recalculate the Over-relaxation parameter
                             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
@@ -1457,6 +1460,7 @@ end if
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, symmetric_P )
+
 !call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
@@ -1842,7 +1846,7 @@ end if
         else!Normal and more general method
 
             CALL ASSEMB_FORCE_CTY( state, packed_state, &
-                Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
+                Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
                 velocity, pressure, &
                 X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
                 U_ALL, UOLD_ALL, &
@@ -2188,7 +2192,7 @@ end if
 
 
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
-        Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
+        Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
         X_ALL, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
         U_ALL, UOLD_ALL, &
@@ -2207,6 +2211,7 @@ end if
         type(multi_shape_funs), intent(in) :: FE_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
+        type(multi_discretization_opts) :: Mdisopt
         type (multi_matrices), intent(inout) :: Mmat
         type( tensor_field ), intent( in ) :: velocity
         type( tensor_field ), intent( in ) :: pressure
@@ -2546,9 +2551,9 @@ end if
         SUF_U_ROB1_BC_ALL=>velocity_BCs%val
         SUF_U_ROB2_BC_ALL=>velocity_BCs_robin2%val
         mom_conserv=.false.
-        call get_option( &
-            '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/conservative_advection', &
-            beta )
+
+
+        beta = Mdisopt%u_beta
         if (beta>=.999) mom_conserv=.true.
         ewrite(3,*) 'mom_conserv:', mom_conserv
 
@@ -6293,13 +6298,13 @@ end if
      !#######Only apply this method if it has been explicitly invoked through Pe_stab or
      !non-consistent capillary pressure!######
      Phase_with_Pc = -1
-     if (.not. have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
+     if (.not. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
          Overrelaxation = 0.0; Phase_with_Pc = -10
          return
      end if
      !If this is for transport, check if we want to apply it
      if (present_and_true(for_transport)) then
-        if (.not.have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport')) then
+        if (.not.have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport')) then
             Overrelaxation = 0.0; Phase_with_Pc = -10
             return
         end if
@@ -6326,13 +6331,13 @@ end if
          end if
          !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
          !Unless we are using the non-consistent form of the capillary pressure
-         if ( have_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
+         if ( have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation') ) then
              allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
              Artificial_Pe = .true.
              if (present_and_true(for_transport)) then
-                call get_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
+                call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
              else
-                call get_option('/solver_option/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
+                call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if
 
 

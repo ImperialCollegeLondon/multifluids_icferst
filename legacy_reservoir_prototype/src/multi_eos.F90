@@ -116,7 +116,7 @@ contains
            end do
         else
            do iphase = 1, nphase
-              eos_option_path( iphase ) = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/phase_properties/Density/' )
+              eos_option_path( iphase ) = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/phase_properties/Density' )
               call Assign_Equation_of_State( eos_option_path( iphase ) )
            end do
         end if
@@ -254,11 +254,11 @@ contains
 
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         !if ( boussinesq ) field2 % val = 1.0
-
         deallocate( Rho, dRhodP, Cp, Component_l)
         deallocate( Density_Component, Density_Bulk, DensityCp_Bulk )
         deallocate( eos_option_path )
 
+        !sprint_to_do copying meory to itself...
         do iphase = 1, nphase
            Density => extract_scalar_field( state( iphase ), "Density" )
            Density % val = field1 % val( 1, iphase, : )
@@ -419,7 +419,7 @@ contains
         if ( ncomp > 0 ) then
             option_path_comp = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                '/prognostic/Density/compressible' )!sprint_to_do this does not make sense
+                '/prognostic/Density/compressible' )!sprint_to_do this does not make sense, what it is actually used is the flag is_multiphase_component
             option_path_incomp = trim( '/material_phase[' // int2str(nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
                 '/prognostic/Density/incompressible' )!sprint_to_do this does not make sense
@@ -435,7 +435,24 @@ contains
                 ']/phase_properties/Density/python_state' )
         end if
 
-        Conditional_EOS_Option: if( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
+        Conditional_EOS_Option: if( trim( eos_option_path ) == trim( option_path_incomp ) ) then
+            !!$ Constant representation
+            allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
+            if ( have_temperature_field ) temperature_local = temperature % val
+            ncoef = 10 ; allocate( eos_coefs( ncoef ) ) ; eos_coefs = 0.
+            call get_option( trim( eos_option_path ), eos_coefs( 1 ) )
+            eos_coefs( 2 : 10 ) = 0.
+            call Density_Polynomial( eos_coefs, pressure % val(1,1,:), temperature_local, &
+                Rho )
+            perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
+            call Density_Polynomial( eos_coefs, pressure % val(1,1,:) + perturbation_pressure, temperature_local, &
+                RhoPlus )
+            call Density_Polynomial( eos_coefs, pressure % val(1,1,:) - perturbation_pressure, temperature_local, &
+                RhoMinus )
+            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+            deallocate( temperature_local, eos_coefs )
+
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
             !!$ Den = C0 * P +C1
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
             !By default the pressure mesh (position 1)
@@ -636,22 +653,8 @@ contains
         Conditional_for_Compressibility: if( have_option( trim( eos_option_path_out ) // '/compressible' ) ) then
             eos_option_path_out = trim( eos_option_path_out ) // '/compressible'
 
-            Conditional_for_Compressibility_Option: if( have_option( trim( eos_option_path_out ) // '/stiffened_gas' ) ) then
-                eos_option_path_out = trim( eos_option_path_out ) // '/stiffened_gas'
-
-
-            elseif( have_option( trim( eos_option_path_out ) // '/JWL_equation' ) ) then
-                eos_option_path_out = trim( eos_option_path_out ) // '/JWL_equation'
-
-
-            elseif( have_option( trim( eos_option_path_out ) // '/exponential_oil_gas' ) ) then
-                eos_option_path_out = trim( eos_option_path_out ) // '/exponential_oil_gas'
-
-            elseif( have_option( trim( eos_option_path_out ) // '/linear_in_pressure' ) ) then
+            Conditional_for_Compressibility_Option: if( have_option( trim( eos_option_path_out ) // '/linear_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/linear_in_pressure'
-
-                if( have_option( trim( eos_option_path_out ) // '/include_internal_energy' ) ) &
-                    eos_option_path_out = trim( eos_option_path_out ) // '/include_internal_energy'
 
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
@@ -669,14 +672,6 @@ contains
 
         elseif( have_option( trim( eos_option_path_out ) // '/incompressible' ) )then
             eos_option_path_out = trim( eos_option_path_out ) // '/incompressible'
-
-            Conditional_for_Incompressibility_Option: if( have_option( trim( eos_option_path_out ) // '/linear' ) ) then
-                eos_option_path_out = trim( eos_option_path_out ) // '/linear'
-
-            else
-                FLAbort( 'No option given for choice of EOS - incompressible fluid' )
-
-            end if Conditional_for_Incompressibility_Option
 
         elseif( have_option( trim( eos_option_path_out ) // '/python_state' ) ) then
             eos_option_path_out = trim( eos_option_path_out ) // '/python_state'
@@ -1087,20 +1082,10 @@ contains
             real :: mobility
             type(tensor_field), pointer :: viscosity_ph
 
-            if( have_option( '/physical_parameters/mobility' ) )then!This option is misleading, it should be removed
-                call get_option( '/physical_parameters/mobility', mobility )
-                visc_phases(1) = 1
-                visc_phases(2) = mobility
-            elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
-                '/prescribed/value::WholeMesh/isotropic' ) ) then
-                DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
-                    viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
-                    visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
-                end do
-            elseif( Mdims%n_in_pres == 1 ) then
-                viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
-                visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
-            end if
+            DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
+                viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
+                visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
+            end do
 
 
         end subroutine set_viscosity

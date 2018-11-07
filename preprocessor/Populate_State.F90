@@ -140,9 +140,10 @@ periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
   !! Dynamic paths that are searched for fields
   !! This allows for searching for field within paths that may branch several times
   !! The index of any particular path should be replaced with #
-  character(len=OPTION_PATH_LEN), dimension(6):: &
+  character(len=OPTION_PATH_LEN), dimension(7):: &
          dynamic_paths = (/&
          &    "/material_phase[#]/equation_of_state/fluids/linear/        ", &
+         &    "/material_phase[#]/phase_properties/Density                ", &
          &    "/material_phase[#]/population_balance[#]/abscissa/         ", &
          &    "/material_phase[#]/population_balance[#]/weights/          ", &
          &    "/material_phase[#]/population_balance[#]/weighted_abscissa/", &
@@ -1307,6 +1308,15 @@ contains
        call allocate_and_insert_irradiance(states(1))
     end if
 
+    !Insert density and viscosity fields, required for the new schema
+    ! if (have_option('/material_phase[0]/phase_properties' )) then
+    !   do i=1, nstates
+    !     !Insert Viscosity
+    !      call allocate_and_insert_tensor_field('/material_phase['//int2str(i)//']phase_properties/Viscosity/tensor_field::Viscosity', &
+    !      states(i), parent_mesh = "VelocityMesh")
+    !
+    !    end do
+    ! end if
     ! insert porous media fields
     if (have_option('/porous_media')) then
        do i=1, nstates
@@ -2586,8 +2596,14 @@ contains
 
     ewrite(1,*) "In allocate_and_insert_auxilliary_fields"
 
-    call get_option("/timestepping/nonlinear_iterations", iterations, default=1)
-    steady_state_global = have_option("/timestepping/steady_state")
+    if (have_option('/solver_options')) then !New schema for ICFERST
+      !By default ensure that it does not think this is a steady state case (since the default is not a steady state case)
+      call get_option("/solver_options/Non_Linear_Solver", iterations, default=2)
+      steady_state_global = .false.
+    else !usual options for fluidty
+      call get_option("/timestepping/nonlinear_iterations", iterations, default=1)
+      steady_state_global = have_option("/timestepping/steady_state")
+    end if
 
     ! old and iterated fields
     do p = 1, size(states)
