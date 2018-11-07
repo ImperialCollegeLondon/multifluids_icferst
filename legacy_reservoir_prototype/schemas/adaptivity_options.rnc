@@ -401,17 +401,6 @@ hr_adaptivity =
    ## Anisotropic mesh hr-adaptivity
       element hr_adaptivity {
          (
-            ## Time interval (in simulation time) when mesh adaptivity performed.
-            ##
-            ## DO NOT SET THIS EQUAL TO OR LESS THAN ONE TIME-STEP SMALLER
-            ## THAN YOUR DUMP PERIOD BECAUSE ALL YOUR DIAGNOSTIC FIELDS WILL
-            ## APPEAR AS ZERO OR JUNK
-            ## DIAGNOSTIC FIELDS GET ZEROED AFTER AN ADAPT
-            ##
-            ## Usually set to 10-20 times the timestep.
-            element period {
-               real
-            }|
             ## Adapt period in timesteps.
             element period_in_timesteps {
                integer
@@ -429,15 +418,24 @@ hr_adaptivity =
                real
             }
          ),
-         ## Time interval (in cpu time) when mesh adaptivity performed
-         ## Manual suggests disabling this option.
-         element cpu_period {
-            real
-         }?,
-         ## Delay start of adaptive algorithm until this time
-	 element t_adapt_delay {
-            real
-         }?,
+         ## The maximum number of nodes this simulation may use.
+         ## In parallel, by default, this is the global maximum number of nodes.
+         ##
+         ## If the mesh adaptivity algorithm wants to place more
+         ## nodes than this, the desired mesh is coarsened
+         ## everywhere in space until it will fit within this limit.
+         ## In general, the error tolerances should be set so that
+         ## this is never reached; it should only be a safety catch.
+         ## A typical value is 100000.
+         ##
+         ## When using vertically_structured_adaptivity this indicates the 
+         ## maximum number of nodes in the horizontal mesh, i.e. the number
+         ## of nodes in the full mesh will be much bigger and depends on the 
+         ## number of layers specified, or if using inhomogenous_vertical_resolution
+         ## on the resolution produced by the vertical adaptivity step.
+         element maximum_number_of_nodes {
+            integer
+         },
          ## The minimum number of nodes this simulation may use.
          ## In parallel, by default, this is the global minimum number of nodes.
          ##
@@ -455,56 +453,65 @@ hr_adaptivity =
             }?,
             integer
          }?,
-         ## Use the minimum timestep at an adapt and ramp back up the maximum
-         element adaptive_timestep_at_adapt {
-            empty
-         }?,
-         ## The maximum number of nodes this simulation may use.
-         ## In parallel, by default, this is the global maximum number of nodes.
-         ##
-         ## If the mesh adaptivity algorithm wants to place more
-         ## nodes than this, the desired mesh is coarsened
-         ## everywhere in space until it will fit within this limit.
-         ## In general, the error tolerances should be set so that
-         ## this is never reached; it should only be a safety catch.
-         ## A typical value is 100000.
-         ##
-         ## When using vertically_structured_adaptivity this indicates the 
-         ## maximum number of nodes in the horizontal mesh, i.e. the number
-         ## of nodes in the full mesh will be much bigger and depends on the 
-         ## number of layers specified, or if using inhomogenous_vertical_resolution
-         ## on the resolution produced by the vertical adaptivity step.
-         element maximum_number_of_nodes {
-            ## Define maximum_number_of_nodes to be the maximum number of
-            ## nodes per process (rather than the global maximum number of
-            ## nodes).
-            element per_process {
-              comment
-            }?,
-            integer
+         gradation_options_full,
+         ## Mesh size constraints: the minimum edge length bound.
+         element tensor_field {
+           attribute name { "MinimumEdgeLengths" },
+	   (
+           element anisotropic_symmetric {
+             input_choice_real_dim_symmetric_tensor
+           }|
+	   element value {
+	     attribute name { string },
+             region_ids?,
+	     element anisotropic_symmetric {
+	     	input_choice_real_dim_symmetric_tensor
+	     }
+	   }
+	   )+	   
          },
-	 ## Specifc bounds on the number of nodes used in mesh subdomians
-	 ## identified by a region id.
-	 element number_of_nodes_by_mesh_region {
-	    attribute name {xsd:string},
-	    ## Region ids specifying the subdomain
-	    element region_ids {
-	       integer_vector
-	    }, 
-	    ## Maximum number of nodes to be used in this subdomain. 
-	    element maximum_number_of_nodes {
-	       integer
-	    },
-	    ## Minimum number of nodes to be used in this subdomain.Defaults to 1	
-	    element minimum_number_of_nodes {
-	       integer
-	    }?
-         }*,
-         ## The maximum ratio by which the number of nodes is allowed to
-         ## increase in an adapt. e.g., a value of 1.1 indicates that the
-         ## number of nodes may be increased by at most 10%.
-         element max_node_increase {
-            real
+         ## Mesh size constraints: the maximum edge length bound.
+         element tensor_field {
+           attribute name { "MaximumEdgeLengths" },
+	   (
+           element anisotropic_symmetric {
+             input_choice_real_dim_symmetric_tensor
+           }|
+	   element value {
+	     attribute name { string },
+             region_ids?,
+	     element anisotropic_symmetric {
+	       input_choice_real_dim_symmetric_tensor
+	     }
+	   }
+	   )+
+         },
+         ## Maximum aspect ratio in the adapted mesh.
+         element aspect_ratio_bound {
+           real
+         }?,
+         ## Adapt at first timestep
+         element adapt_at_first_timestep {
+            ## Number of adapts done after initialisation but
+            ## before the actual simulation starts
+            element number_of_adapts{integer},
+            ## Write out the first timestep adapted mesh.
+            ## This is useful when needing to re-run simulations
+            ## without waiting for the first timestep adapt
+            element output_adapted_mesh {
+               comment
+            }?
+         }?,
+         ## Number of times the adaptivity library is called. In parallel elements
+         ## near the local domain boundary are locked during the mesh adaptation. The mesh
+         ## is then redistributed in such a way that these locked regions are moved into the
+         ## interior of local domains and adaptivity is called again to adapt these not-yet-adapted
+         ## regions. By default, in parallel, the number of times the adaptivity library is called
+         ## in this way is three. If a relatively small mesh is distributed among a large number
+         ## of processors, a large proportion of the mesh is locked during adaptivity and more
+         ## iterations may be necessary.
+         element adapt_iterations {
+            integer
          }?,
          ## Enable to lock nodes in the mesh.
          element node_locking {
@@ -537,7 +544,10 @@ hr_adaptivity =
          element functional_tolerance {
             real
          }?,
-         gradation_options_full,
+         ## Delay start of adaptive algorithm until this time
+	     element t_adapt_delay {
+            real
+         }?,
          ## Metric advection algorithm.
          ## By advecting the metric with the flow velocity,
          ## we can push mesh resolution ahead of the flow dynamics,
@@ -638,48 +648,10 @@ hr_adaptivity =
               }?
             }
          }?,
-         ## Apply geometric constraints to the metric formation.
-         ##
-         ## As specified in (Pain, 2001), the mesh adaptivity
-         ## scheme attempts to formulate an appropriate edge length
-         ## for each direction at each point in space, independent
-         ## of problem, PDE or domain.
-         ##
-         ## This option instructs the error metric formation
-         ## code to inspect the boundaries of the domain
-         ## and to bound the edge lengths requested appropriately.
-         ## This procedure stops the metric from asking for edge lengths
-         ## that are inappropriately large in comparison to the
-         ## resolution required to preserve the geometric accuracy
-         ## of the boundaries.
-         ##
-         ## If you get 'knife elements' near domain boundaries,
-         ## turn this on.
-         element geometric_constraints {
+         ## Ensures that the continuity equation is satisfied after adapting the mesh.
+         element project_continuity {
             empty
-         }?,
-         ## Bounding box factor.
-         ##
-         ## If the length scales specified by the metric are
-         ## unrealistically large, the mesh optimisation
-         ## algorithm can get confused. An example
-         ## would be specifying a length scale in a direction to be an
-         ## order of magnitude greater than the width
-         ## of the domain.
-         ##
-         ## In order to fix this, the edge lengths requested
-         ## are bounded by the bounding box of the domain
-         ## (the smallest cuboid that contains the domain).
-         ## However, it was found that bounding by the bounding
-         ## box impairs the generation of anisotropic elements
-         ## in the mesh optimisation algorithm.
-         ##
-         ## This option is multiplied by the bounding box of the domain
-         ## before it bounds the metric formed from other
-         ## considerations. By default, it is set to 2.0.
-         element bounding_box_factor {
-            real
-         }?,
+         }?,  
          ## Goal-based adaptivity. 
          ##
          ## With this option,
@@ -805,79 +777,7 @@ hr_adaptivity =
                   real
                }
             )
-         }?,
-         ## Mesh size constraints: the minimum edge length bound.
-         element tensor_field {
-           attribute name { "MinimumEdgeLengths" },
-	   (
-           element anisotropic_symmetric {
-             input_choice_real_dim_symmetric_tensor
-           }|
-	   element value {
-	     attribute name { string },
-             region_ids?,
-	     element anisotropic_symmetric {
-	     	input_choice_real_dim_symmetric_tensor
-	     }
-	   }
-	   )+	   
-         },
-         ## Mesh size constraints: the maximum edge length bound.
-         element tensor_field {
-           attribute name { "MaximumEdgeLengths" },
-	   (
-           element anisotropic_symmetric {
-             input_choice_real_dim_symmetric_tensor
-           }|
-	   element value {
-	     attribute name { string },
-             region_ids?,
-	     element anisotropic_symmetric {
-	       input_choice_real_dim_symmetric_tensor
-	     }
-	   }
-	   )+
-         },
-         ## Supply a reference mesh with which to bound the metric
-         element reference_mesh {
-            attribute name { xsd:string },
-            attribute mesh_name { xsd:string },
-            (
-               ## Use this reference mesh as a bound on the minimum edge
-               ## length of the metric
-               element minimum {
-                  comment
-               }|
-               ## Use this reference mesh as a bound on the maximum edge
-               ## length of the metric
-               element maximum {
-                  comment
-               }
-            ),
-            comment
-         }*,
-         ## Maximum aspect ratio in the adapted mesh.
-         element aspect_ratio_bound {
-           real
-         }?,
-         ## Adapt at first timestep
-         element adapt_at_first_timestep {
-            ## Number of adapts done after initialisation but
-            ## before the actual simulation starts
-            element number_of_adapts{integer},
-            ## Write out the first timestep adapted mesh.
-            ## This is useful when needing to re-run simulations
-            ## without waiting for the first timestep adapt
-            element output_adapted_mesh {
-               comment
-            }?
-         }?,
-         element project_continuity {
-            empty
-         }?,
-         element nonlinear_iterations_after_adapt {
-            integer
-         }?,
+         }?,      
          ## Enable this option to preserve any regions in your
          ## mesh (i.e. those specified by region_ids).
          ## Also, any prescribed fields using region_ids will be
@@ -887,61 +787,10 @@ hr_adaptivity =
          ## prescribed region_id fields to survive adapts!
          ## Obviously this does not apply to initial conditions
          ## set using region_ids.
+         ##
+         ## This is always on for porous media.
          element preserve_mesh_regions {
             comment
-         }?,
-         ## Vertically structured adaptivity.
-         ##
-         ## The mesh will be unstructured in the horizontal, but columnar
-         ## in the vertical.
-         ## To enable this, your meshes must be derived by extrusion
-         ## from a lower-dimensional horizontal mesh.
-         ## This will give a columnar, layered mesh.
-         element vertically_structured_adaptivity {
-           ## If this is enabled, the resolution along each column
-           ## will be computed from the error metric.
-           ## This will give a columnar mesh, but not a layered one.
-           element inhomogenous_vertical_resolution {
-              ## Ignore the horizontal adapt, and *only* adapt in the vertical
-              element adapt_in_vertical_only {
-                empty
-              }?
-           }?,
-           ## Apply a separate step of horizontal (and vertical, if using inhomogeneous_vertical_resolution)
-           ## gradation to the horizontal (and vertical) metric.
-           ## This replaces is the gradation applied to the full metric and uses the gradation
-           ## algorithm specified above.
-           element split_gradation {
-             empty
-           }?,
-           (
-            ## Remove components from each field's metric that aren't aligned either horizontally
-            ## or vertically.  This can help prevent the horizontal metric from becoming
-            ## contaminated by parts of the vertical metric.
-            ##
-            ## NOTE: Vertical is defined using the GravityDirection field.  This is unlike some other
-            ## parts of the vertically_structured_adaptivity and extrusion routines where vertical is defined as the
-            ## last dimension.
-            element vertically_align_metric {
-              empty
-            }|
-            ## When separating the horizontal metric from the vertical use the full metric.  This
-            ## can lead to more constrained horizontal resolution due to leakage between the vertical
-            ## and horizontal components.
-            element use_full_metric {
-              empty
-            }
-           ),
-           ## When constructing the horizontal metric incorporate the components of the 
-           ## full metric tangential to the bottom boundary.  For example, this is useful 
-           ## when horizontal contours of a field intersect the bathymetry and this information
-           ## is not automatically incorporated into the horizontal metric leading to
-           ## the contact point being underresolved.
-           ##
-           ## Depends on /geometry/ocean_boundaries.
-           element include_bottom_metric {
-            empty
-           }?
          }?,
          ## Zoltan Options
          ##
@@ -1146,17 +995,6 @@ hr_adaptivity =
                comment
             }
          }?,
-         ## Number of times the adaptivity library is called. In parallel elements
-         ## near the local domain boundary are locked during the mesh adaptation. The mesh
-         ## is then redistributed in such a way that these locked regions are moved into the
-         ## interior of local domains and adaptivity is called again to adapt these not-yet-adapted
-         ## regions. By default, in parallel, the number of times the adaptivity library is called
-         ## in this way is three. If a relatively small mesh is distributed among a large number
-         ## of processors, a large proportion of the mesh is locked during adaptivity and more
-         ## iterations may be necessary.
-         element adapt_iterations {
-            integer
-         }?,
          ## hr adptivity debugging options
          element debug {
             ## Write out error metric at each stage of the processing
@@ -1196,573 +1034,10 @@ hr_adaptivity =
             }?,
             comment
          }?
-      }
-   )
-      
-prescribed_adaptivity =
-   (
-      ## Mesh adaptivity, with prescribed adapt interval and target meshes.
-      ## <b>Serial only</b>.
-      element prescribed_adaptivity {
-         ## Options relating the the frequency of mesh adaptivity
-         element adapt_interval {
-            ## Python code defining whether to adapt the mesh, evaluated at the
-            ## end of each timestep. Return non-zero to signal a mesh adapt, and
-            ## zero otherwise. Functions should be of the form:
-            ##
-            ##  def val(t):
-            ##    # Function code
-            ##    return # Return value
-            ##
-            ## The return value must be an integer.
-            element python {
-               python_code
-            },
-            comment
-         },
-         ## Options relating to the target meshes
-         element mesh {
-            ## The target mesh. If not reading from file, this must be a mesh
-            ## specified under /geometry.
-            element name {
-               ## Python code defining the target mesh. Functions should be of
-               ## the form:
-               ##
-               ##  def val(t):
-               ##    # Function code
-               ##    return # Return value
-               ##
-               ## The return value must be a string.
-               element python {
-                  python_code
-               },
-               comment
-            },
-            ## Read the mesh from file, rather than extracting it from the
-            ## system state.
-            element from_file {
-               (
-                  ## Input mesh file format.
-                  element format {
-                     "triangle",
-                     comment
-                  }
-               ),
-               comment
-            }?,
-            comment
-         },
-         comment
-      }
-   )
 
-hr_adaptivity_prescribed_metric =
-   (
-   ## Anisotropic mesh hr-adaptivity with known metric
-      element hr_adaptivity_prescribed_metric {
-         (
-            ## Time interval (in simulation time) when mesh adaptivity performed.
-            ##
-            ## DO NOT SET THIS EQUAL TO OR LESS THAN ONE TIME-STEP SMALLER
-            ## THAN YOUR DUMP PERIOD BECAUSE ALL YOUR DIAGNOSTIC FIELDS WILL
-            ## APPEAR AS ZERO OR JUNK
-            ## DIAGNOSTIC FIELDS GET ZEROED AFTER AN ADAPT
-            ##
-            ## Usually set to 10-20 times the timestep.
-            element period {
-               real
-            }|
-            ## Adapt period in timesteps.
-            element period_in_timesteps {
-               integer
-            }
-         ),
-         ## Time interval (in cpu time) when mesh adaptivity performed
-         ## Manual suggests disabling this option.
-         element cpu_period {
-            real
-         }?,
-         ## The minimum number of nodes this simulation may use.
-         ## In parallel, by default, this is the global minimum number of nodes.
-         ##
-         ## If the mesh adaptivity algorithm wants to place fewer nodes
-         ## than this, the desired mesh is refined everywhere in space
-         ## until it will exceed this limit. This option should generally
-         ## only be used if a specified node count is being targetted.
-         ## Default value: 0
-         element minimum_number_of_nodes {
-            ## Define minimum_number_of_nodes to be the minimum number of
-            ## nodes per process (rather than the global minimum number of
-            ## nodes).
-            element per_process {
-              comment
-            }?,
-            integer
-         }?,
-         ## Use the minimum timestep at an adapt and ramp back up the maximum
-         element adaptive_timestep_at_adapt {
-            empty
-         }?,
-         ## The maximum number of nodes this simulation may use.
-         ## In parallel, by default, this is the global maximum number of nodes.
-         ##
-         ## If the mesh adaptivity algorithm wants to place more
-         ## nodes than this, the desired mesh is coarsened
-         ## everywhere in space until it will fit within this limit.
-         ## In general, the error tolerances should be set so that
-         ## this is never reached; it should only be a safety catch.
-         ## A typical value is 100000.
-         ##
-         ## When using vertically_structured_adaptivity this indicates the 
-         ## maximum number of nodes in the horizontal mesh, i.e. the number
-         ## of nodes in the full mesh will be much bigger and depends on the 
-         ## number of layers specified, or if using inhomogenous_vertical_resolution
-         ## on the resolution produced by the vertical adaptivity step.
-         element maximum_number_of_nodes {
-            ## Define maximum_number_of_nodes to be the maximum number of
-            ## nodes per process (rather than the global maximum number of
-            ## nodes).
-            element per_process {
-              comment
-            }?,
-            integer
-         },
-         ## The maximum ratio by which the number of nodes is allowed to
-         ## increase in an adapt. e.g., a value of 1.1 indicates that the
-         ## number of nodes may be increased by at most 10%.
-         element max_node_increase {
-            real
-         }?,
-         ## Enable to lock nodes in the mesh.
-         element node_locking {
-           ## Python function defining nodes to lock. Return 0 for free
-           ## nodes, and non-zero for locked nodes. Functions should be
-           ## of the form:
-           ##
-           ##  def val(x, t):
-           ##     # Function code
-           ##     return # Return value
-           ##
-           ## The return value must be an integer.
-           element python {
-              python_code
-           },
-           comment
-         }?,
-         ## Specifies the minimum element functional value for which elements
-         ## are considered for adaptivity. For the Pain et al 2001 functional,
-         ## ideal tetrahdera have a functional value of 0.0. A functional value
-         ## of 0.5 corresponds to a tetrehedron with: unit edge lengths and
-         ## and in-sphere radius of 0.3, or alternatively unit in-sphere radius,
-         ## five edges of unit length and a single edge of length 2
-         ## (all measured in metric space).
-         ##
-         ## The minimum permitted value is 0.15 - the value supplied to
-         ## libadaptivity is max(abs(user value), 0.15).
-         ##
-         ## Default value if not specified: 0.15
-         element functional_tolerance {
-            real
-         }?,
-         ## Prescribed metric tensor. Define the target ellipse directly
-         element tensor_field {
-           attribute name { "MetricTensor" },
-           element anisotropic_symmetric {
-             input_choice_real_dim_symmetric_tensor
-           }
-         },
-         ## Maximum aspect ratio in the adapted mesh.
-         element aspect_ratio_bound {
-           real
-         }?,
-         ## Adapt at first timestep
-         element adapt_at_first_timestep {
-            ## Number of adapts done after initialisation but
-            ## before the actual simulation starts
-            element number_of_adapts{integer},
-            ## Write out the first timestep adapted mesh.
-            ## This is useful when needing to re-run simulations
-            ## without waiting for the first timestep adapt
-            element output_adapted_mesh {
-               comment
-            }?
-         }?,
-         ## Enable this option to preserve any regions in your
-         ## mesh (i.e. those specified by region_ids).
-         ## Also, any prescribed fields using region_ids will be
-         ## reinitialised using them on the new mesh.
-         ##
-         ## Therefore this is a required option if you want your
-         ## prescribed region_id fields to survive adapts!
-         ## Obviously this does not apply to initial conditions
-         ## set using region_ids.
-         element preserve_mesh_regions {
-            comment
-         }?,
-         ## Vertically structured adaptivity.
-         ##
-         ## The mesh will be unstructured in the horizontal, but columnar
-         ## in the vertical.
-         ## To enable this, your meshes must be derived by extrusion
-         ## from a lower-dimensional horizontal mesh.
-         ## This will give a columnar, layered mesh.
-         element vertically_structured_adaptivity {
-           ## If this is enabled, the resolution along each column
-           ## will be computed from the error metric.
-           ## This will give a columnar mesh, but not a layered one.
-           element inhomogenous_vertical_resolution {
-              ## Ignore the horizontal adapt, and *only* adapt in the vertical
-              element adapt_in_vertical_only {
-                empty
-              }?
-           }?,
-           ## Apply a separate step of horizontal (and vertical, if using inhomogeneous_vertical_resolution)
-           ## gradation to the horizontal (and vertical) metric.
-           ## This replaces is the gradation applied to the full metric and uses the gradation
-           ## algorithm specified above.
-           element split_gradation {
-             empty
-           }?,
-           (
-            ## Remove components from each field's metric that aren't aligned either horizontally
-            ## or vertically.  This can help prevent the horizontal metric from becoming
-            ## contaminated by parts of the vertical metric.
-            ##
-            ## NOTE: Vertical is defined using the GravityDirection field.  This is unlike some other
-            ## parts of the vertically_structured_adaptivity and extrusion routines where vertical is defined as the
-            ## last dimension.
-            element vertically_align_metric {
-              empty
-            }|
-            ## When separating the horizontal metric from the vertical use the full metric.  This
-            ## can lead to more constrained horizontal resolution due to leakage between the vertical
-            ## and horizontal components.
-            element use_full_metric {
-              empty
-            }
-           ),
-           ## When constructing the horizontal metric incorporate the components of the 
-           ## full metric tangential to the bottom boundary.  For example, this is useful 
-           ## when horizontal contours of a field intersect the bathymetry and this information
-           ## is not automatically incorporated into the horizontal metric leading to
-           ## the contact point being underresolved.
-           ##
-           ## Depends on /geometry/ocean_boundaries.
-           element include_bottom_metric {
-            empty
-           }?
-         }?,
-         ## Zoltan Options
-         ##
-         ## Set up some Zoltan options, including which partitioner to use.
-         ## Only works if you have the --with-zoltan option in your configure.
-         ##
-         ## Note that Zoltan will become the default (replacing Sam at some point)
-         ## and these options are currently here only for development and testing
-         ## purposes. They are subject to change and may not be in the final "release".
-         element zoltan_options {
-            ## Select which partitioner to use during all but the last adapt iteration.
-            ## Graph partitioners available are ParMETIS and Zoltan PHG. The Zoltan
-            ## PHG hypergraph partitoner is also available.
-            ## Default is the Zoltan PHG graph partitioner.
-            element partitioner {
-                ## Use the ParMETIS graph partitioner. ParMETIS setup to match as
-                ## closely as possible the setup used previously by Sam.
-                element metis {
-                    empty
-                }|
-                ## Use the PT-Scotch graph partitioner. *CURRENTLY UNAVAILABLE*
-                element scotch {
-                    empty
-                }|
-                ## Use the Zoltan PHG partitioner.
-                element zoltan {
-                    ## Select the partitioning method you would like used by Zoltan PHG.
-                    ## Currently hypergraph partitioning is the simplest implementation
-                    ## and can produce non-contiguous partitions for certain problems.
-                    element method {
-                    "graph"|"hypergraph"
-                    }
-                }
-            }?,
-            ## Select which partitioner to use after the final adapt iteration.
-            ## Graph partitioners available are ParMETIS and Zoltan PHG. The 
-            ## Zoltan PHG hypergraph partitoner is also available.
-            ## Default is the Zoltan PHG graph partitioner.
-            element final_partitioner {
-                ## Use the ParMETIS graph partitioner. ParMETIS setup to match as
-                ## closely as possible the setup used previously by Sam.
-                element metis {
-                    empty
-                }|
-                ## Use the PT-Scotch graph partitioner. *CURRENTLY UNAVAILABLE* 
-                element scotch {
-                    empty
-                }|
-                ## Use the Zoltan PHG partitioner.
-                element zoltan {
-                    ## Select the partitioning method you would like used by Zoltan PHG.
-                    ## Currently hypergraph partitioning is the simplest implementation
-                    ## and can produce non-contiguous partitions for certain problems.
-                    element method {
-                    "graph"|"hypergraph"
-                    }
-                }
-            }?,
-            ## Element quality cut off. 
-            ## Elements with a quality greater than this will be liable to be
-            ## on the parition boundary. Below this, they will be free to be adapted
-            ## and improved. Range is 0 to 1, with default 0.6
-            element element_quality_cutoff {
-                real
-            }?,
-            ## Load imbalance tolerance.
-            ## The amount of load imbalance the partitioning algorithm should deem acceptable.
-            ## The imbalance is computed as the maximum load divided by the average load.
-            ## A value for load_imbalance_tol of 1.2 indicates that 20% imbalance is okay.
-            ## A high value for this parameter (~1.5) could see Zoltan produce poorer partitions
-            ## but be able to move the partition boundaries easier to allow adaption. For some 
-            ## problems where the partitioner creates empty partitions lowering this (~1.075) will
-            ## force Zoltan to create more evenly balanced partitions (no empty ones) but may
-            ## require more adapt iterations to produce a fully adapted final mesh.
-            element load_imbalance_tolerance {
-                real
-            }?,
-            ## Zoltan Debugging
-            ## 
-            ## Turn on more verbose output for use when debugging Zoltan.
-            element zoltan_debug {
-               ## Turn on graph checking.
-               ## When using ParMETIS or PT-Scotch options for turning on
-               ## graph checking are provided by Zoltan.
-               ## 1 - on process checking,
-               ## 2 - full checking (very slow)
-               element graph_checking {
-                   "1"|"2"
-               }?,
-               ## Print out a dump file of the edge counts.
-               ## Edge counts for each owned node are calculated in zoltan_cb_get_num_edges.
-               ## This option dumps the edge count for each owned node.
-               ## Dump is to the current directory, in a file called edge_counts_*.dat
-               ## One dump file is created for each rank.
-               ## Will get overwritten at each adapt.
-               element dump_edge_counts {
-                  empty
-               }?,
-               ## Print out a dump file of the edge weights.
-               ## Edge weights are calculated for each edge in zoltan_cb_get_edge_list.
-               ## Permits a visualisation of how the edge weights are distributed.
-               ## Dump is to the current directory, in a file called edge_weights_*.dat
-               ## One dump file is created for each rank.
-               ## Will get overwritten at each adapt.
-               element dump_edge_weights {
-                  empty
-               }?,
-               ## Print out a dump file of node sizes.
-               ## Zoltan needs to be told how much data is associated with each node when
-               ## doing phase one migration.
-               ## Here we dump the size calculated by zoltan_cb_pack_node_sizes for each
-               ## owned node.
-               ## Dump is to the current directory, in a file called node_sizes_*.dat
-               ## One dump file is created for each rank.
-               element dump_node_sizes {
-                  empty
-               }?,
-               ## Print out a dump file of halo node sizes.
-               ## Zoltan needs to be told how much data is associated with each halo node when
-               ## doing phase two migration.
-               ## Here we dump the size calculated by zoltan_cb_pack_halo_node_sizes for each
-               ## owned node.
-               ## Dump is to the current directory, in a file called halo_node_sizes_*.dat
-               ## One dump file is created for each rank.
-               element dump_halo_node_sizes {
-                  empty
-               }?,
-               ## Print out a dump file of field sizes.
-               ## Zoltan needs to be told how much data is associated with the fields for each 
-               ## element when we're transfering fields.
-               ## Here we dump the size calculated by zoltan_cb_pack_field_sizes for each
-               ## owned node.
-               ## Dump is to the current directory, in a file called field_sizes_*.dat
-               ## One dump file is created for each rank.
-               element dump_field_sizes {
-                  empty
-               }?
-            }?
-         }?,
-         ## Select the adaptivity library used by hr-adaptivity. If disabled,
-         ## the defaults are:
-         ##   In 3D: libadaptivity
-         ##   In 2D: libmba2d
-         ##   In 1D: adaptivity_1d
-         element adaptivity_library {
-            ## libadaptivity. 3D, parallelised.
-            element libadaptivity {
-               ## The number of adaptivity sweeps. Default value: 10
-               element sweeps {
-                  integer
-               }?,
-               ## Enable this option to turn off edge splitting
-               element disable_edge_split {
-                  comment
-               }?,
-               ## Enable this option to turn off edge collapsing
-               element disable_edge_collapse {
-                  comment
-               }?,
-               ## Enable this option to turn off edge/face, face/edge and
-               ## edge/edge swapping
-               element disable_edge_swap {
-                  comment
-               }?,
-               ## Enable this option to turn off node movement, and use
-               ## h-adaptivity only.
-               element disable_node_movement {
-                  comment
-               }?,
-               ## Writes vtus containing the Pain 2001 P0 element functionals
-               ## of the adapted meshes.
-               element write_adapted_quality {
-                  comment
-               }?,
-               comment
-            }|
-            ## libmba2d. 2D. A testing parallel implementation is available.
-            element libmba2d {               
-               ## Desired output mesh quality, 0 <= quality <= 1.
-               ## Default value 0.6.
-               element quality {
-                 real
-               }?,
-               comment
-            }|
-            ## Re-uses 1D adaptivity code from 2+1D adaptivity. 1D, serial only.
-            element adaptivity_1d {
-               comment
-            }|
-            ## libmba3d. 3D, serial only.
-            element libmba3d {           
-               ## Desired output mesh quality, 0 <= quality <= 1.
-               ## Default value 0.6.
-               element quality {
-                  real
-               }?,
-               ## Maximum number of mesh optimisations. Default value 10^5.
-               element max_optimisations {
-                  integer
-               }?,
-               comment
-            }
-         }?,
-         ## Number of times the adaptivity library is called. In parallel elements
-         ## near the local domain boundary are locked during the mesh adaptation. The mesh
-         ## is then redistributed in such a way that these locked regions are moved into the
-         ## interior of local domains and adaptivity is called again to adapt these not-yet-adapted
-         ## regions. By default, in parallel, the number of times the adaptivity library is called
-         ## in this way is three. If a relatively small mesh is distributed among a large number
-         ## of processors, a large proportion of the mesh is locked during adaptivity and more
-         ## iterations may be necessary.
-         element adapt_iterations {
-            integer
-         }?,
-         ## hr adptivity debugging options
-         element debug {
-            ## Write out error metric at each stage of the processing
-            ## pipeline. This can be very useful in diagnosing why
-            ## adaptivity is doing something you don't expect.
-            element write_metric_stages {
-               comment
-            }?,
-            ## Write out the Coordinate field to a triangle mesh for every
-            ## state adapt. In parallel, a triangle mesh and .halo files
-            ## will be written for every parallel adapt iteration.
-            element write_adapted_mesh {
-               comment
-            }?,
-            ## Write out the system state to a vtu adapt every state adapt.
-            ## In parallel, a vtu will be written for every parallel
-            ## adapt iteration.
-            element write_adapted_state {
-               comment
-            }?,
-            ## Write periodic meshes and surface IDs to vtus at each stage of the processing
-            ## pipeline. This can be very useful in diagnosing why
-            ## adaptivity is doing something you don't expect.
-            element write_periodic_adapted_mesh {
-               comment
-            }?,
-            ## Checkpoint the simulation after every adapt. In parallel, a
-            ## checkpoint will be written <b>only</b> after the final adapt
-            ## iteration. Checkpoints are postfixed with "adapt_checkpoint".
-            element checkpoint {
-               ## Number of checkpoints to write before overwriting existing
-               ## checkpoints.
-               element max_checkpoint_count {
-                  integer
-               }?,
-               comment
-            }?,
-            comment
-         }?
       }
    )
       
-prescribed_adaptivity =
-   (
-      ## Mesh adaptivity, with prescribed adapt interval and target meshes.
-      ## <b>Serial only</b>.
-      element prescribed_adaptivity {
-         ## Options relating the the frequency of mesh adaptivity
-         element adapt_interval {
-            ## Python code defining whether to adapt the mesh, evaluated at the
-            ## end of each timestep. Return non-zero to signal a mesh adapt, and
-            ## zero otherwise. Functions should be of the form:
-            ##
-            ##  def val(t):
-            ##    # Function code
-            ##    return # Return value
-            ##
-            ## The return value must be an integer.
-            element python {
-               python_code
-            },
-            comment
-         },
-         ## Options relating to the target meshes
-         element mesh {
-            ## The target mesh. If not reading from file, this must be a mesh
-            ## specified under /geometry.
-            element name {
-               ## Python code defining the target mesh. Functions should be of
-               ## the form:
-               ##
-               ##  def val(t):
-               ##    # Function code
-               ##    return # Return value
-               ##
-               ## The return value must be a string.
-               element python {
-                  python_code
-               },
-               comment
-            },
-            ## Read the mesh from file, rather than extracting it from the
-            ## system state.
-            element from_file {
-               (
-                  ## Input mesh file format.
-                  element format {
-                     "triangle",
-                     comment
-                  }
-               ),
-               comment
-            }?,
-            comment
-         },
-         comment
-      }
-   )
 
 consistent_interpolation =
    (
@@ -1774,19 +1049,6 @@ consistent_interpolation =
         empty
       }
    )   
-pseudo_consistent_interpolation =
-   (
-      ## Basis function pseudo-interpolation, with averaging for nodes on
-      ## element boundaries. This can accept a discontinuous input, but always
-      ## gives a continuous output. It is strong recommended that you <b>use
-      ## interpolation_galerkin</b> instead of this interpolation method.
-      ##
-      ## The distance in ideal space from the boundary where averaging is
-      ## applied is currently hard coded to 1.0e3 * epsilon(0.0).
-      element pseudo_consistent_interpolation {
-         comment
-      }
-   )
 grandy_interpolation =
    (
       ## Grandy interpolation. Conservative, but highly diffusive.
@@ -2417,147 +1679,8 @@ supermesh_conservation =
 
 mesh_adaptivity_options =
    element mesh_adaptivity {
-      ## Options involving mesh movement (Lagrangian, ALE methods)
-      ##  Allow a moving mesh.
-      ##  Assigns memory for grid velocities
-      ##  Amends previous timestep`s mass matrix
-      element mesh_movement {
-         (
-            ## enable movement of mesh with the free surface
-            element free_surface {
-               (
-                  ## Only move the nodes on the free surface using
-                  ## the surface height calculated at it.
-                  element move_surface_nodes {
-                    empty
-                  }|
-                  ## Move the whole mesh according to the free surface
-                  ## height, scaled linearly by the depth from the surface.
-                  ##
-                  ## Requires the specification of ocean_boundaries under
-                  ## geometry.
-                  element move_whole_mesh {
-                    empty
-                  }
-               ),
-               ## Activates wetting and drying. Note: Works only with theta=1.0 and relaxation=1.0 under temporal discretisation
-               element wetting_and_drying {
-                 ## Specifies the d0 value which is the waterlevel kept in dry areas.
-                 element d0 {
-                      real
-                 },
-                 ## Specifies the amount of absorption in dry areas. If a pressure corrected absorption term is desired, please add a pressure corrected absorption under Velocity (of magnitude 0).
-                 ## Note: If you double d0, this value has to be doubled as well to achieve the same amount of absorption.
-                 element dry_absorption {real_dim_vector}?,
-                 ## With wetting and drying the free surface is the maximum of two functions in the pressure finite element space. The result is in general not a function of the finite element space and 
-                 ## can therefore not be represented exactly on the pressure mesh.
-                 ## This option enables geometrical volume conservation by evaluating the maximum operator only at the nodal positions (instead of at each quadrature point),
-                 ## on the cost of a worse internal representation of the wetting and drying interface.
-                 element conserve_geometric_volume {empty}?
-               }?
-            }|
-            ## Enable movement of mesh by an imposed Grid Velocity.
-            ## Requires a prescribed GridVelocity field (see below).
-            element imposed_grid_velocity {
-               empty
-            }|
-            ## Enable movement of mesh by the Velocity.
-            ## Note that this is only pseudo-lagrangian as the
-            ## Velocity and GridVelocity only match at the beginning of
-            ## the timestep.  Therefore the advection terms are still
-            ## present and evaluated.
-            element pseudo_lagrangian {
-               ## Specify the material phase from which to extract the Velocity
-               ## field.  Defaults to state(1) if unspecified.  Note that this
-               ## doesn't necessarily correspond to the first material_phase
-               ## in a flml file!
-               element velocity_material_phase {
-                 attribute material_phase_name { xsd:string },
-                 empty
-               }?
-            }|
-            ## enable full ale movement of mesh
-            element explicit_ale {
-               element number_of_linesearch_pts {integer},
-               element maximum_iterations {integer},
-               element max_elements_second_level {integer},
-               element functional1_weight {real}, 
-               element functional2_weight {real},
-               element functional3_weight {real}, 
-               element functional4_weight {real},
-               element functional5_weight {real},
-               element minimum_val_functional_change {real},       
-               element minimum_val_functional {real},      
-               element coarse_tolerance {real},
-               element fine_tolerance {real},
-               element gradient_dx {real},  
-               element gradient_dy {real}, 
-               element gradient_dz {real},
-               element move_nodes_in_x {empty}?,
-               element move_nodes_in_y {empty}?,
-               element move_nodes_in_z {empty}?
-            }|
-            ## enable vertical movement of mesh (TBD)
-            element vertical_ale {
-               (
-                  ## Functionals
-                  element physical_functionals {
-                     ## move the nodes along an isosurface
-                     ##Please specify a scalar field
-                     element minimise_relative_velocity_dot_grad_density {
-                        attribute name { xsd:string }
-                     }|
-                     ## Lock a node to a high curvature region, 
-                     ##Please specify a scalar field
-                     element use_hessian_density {
-                        attribute name { xsd:string }
-                     }
-                  },
-                  ##Mesh Quality terms
-                  element mesh_quality_terms {
-                     ##Spring term, default value is 1.0
-                     element spring_term {
-                        real 
-                     }?,
-                     ## Exponential term, default value is 1.0
-                     element exponential_term{
-                        real 
-                     }?
-                  }?,
-                  element block_nodes_in_x {empty}?,
-                  element block_nodes_in_y {empty}?,
-                  element block_nodes_in_z {empty}?
-               )
-            }                  
-         ),
-         ## The velocity of the mesh.
-         element vector_field {
-            attribute name { "GridVelocity" },
-            attribute rank { "1" },
-            (
-               element diagnostic {
-                 internal_algorithm,
-                 element mesh {
-                   attribute name {  "CoordinateMesh" }
-                 },
-                 diagnostic_vector_field
-               }|
-               element prescribed {
-                 element mesh {
-                   attribute name {  "CoordinateMesh" }
-                 },
-                 prescribed_vector_field_no_adapt
-               }|
-               element aliased {
-                 generic_aliased_field
-               }
-            )
-         }               
-      }?,
       (
-         hr_adaptivity |
-	 hr_adaptivity_prescribed_metric | 
-         prescribed_adaptivity
+         hr_adaptivity
       )?
    }
 

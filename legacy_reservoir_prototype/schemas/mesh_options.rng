@@ -4,31 +4,16 @@
     <choice>
       <element name="from_file">
         <a:documentation>Read mesh from file.</a:documentation>
-        <choice>
-          <element name="format">
-            <a:documentation>Read the mesh from a vtu. Note that the mesh will have no 
-surface or region IDs.</a:documentation>
-            <attribute name="name">
-              <value>vtu</value>
-            </attribute>
-            <ref name="comment"/>
-          </element>
-          <element name="format">
-            <a:documentation>GMSH mesh format</a:documentation>
-            <attribute name="name">
-              <value>gmsh</value>
-            </attribute>
-            <ref name="comment"/>
-          </element>
-        </choice>
+        <element name="format">
+          <a:documentation>GMSH mesh format</a:documentation>
+          <attribute name="name">
+            <value>gmsh</value>
+          </attribute>
+          <ref name="comment"/>
+        </element>
         <attribute name="file_name">
           <data type="string"/>
         </attribute>
-        <optional>
-          <element name="dimension">
-            <ref name="integer"/>
-          </element>
-        </optional>
         <ref name="from_file_mesh_stat_options"/>
         <ref name="comment"/>
       </element>
@@ -298,17 +283,7 @@ Default is 1e-3.</a:documentation>
       </element>
       <element name="mesh">
         <attribute name="name">
-          <value>PressureMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <value>CoordinateMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <data type="string" datatypeLibrary=""/>
+          <data type="string"/>
         </attribute>
       </element>
     </choice>
@@ -323,17 +298,7 @@ Default is 1e-3.</a:documentation>
       </element>
       <element name="mesh">
         <attribute name="name">
-          <value>VelocityMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <value>CoordinateMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <data type="string" datatypeLibrary=""/>
+          <data type="string"/>
         </attribute>
       </element>
     </choice>
@@ -348,17 +313,7 @@ Default is 1e-3.</a:documentation>
       </element>
       <element name="mesh">
         <attribute name="name">
-          <value>VelocityMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <value>PressureMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <data type="string" datatypeLibrary=""/>
+          <data type="string"/>
         </attribute>
       </element>
     </choice>
@@ -373,22 +328,7 @@ Default is 1e-3.</a:documentation>
       </element>
       <element name="mesh">
         <attribute name="name">
-          <data type="string" datatypeLibrary=""/>
-        </attribute>
-      </element>
-    </choice>
-  </define>
-  <!-- Same choices, but with P0DG offered first -->
-  <define name="subcv_mesh_choice">
-    <choice>
-      <element name="mesh">
-        <attribute name="name">
-          <value>PressureMesh_Discontinuous</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <data type="string" datatypeLibrary=""/>
+          <data type="string"/>
         </attribute>
       </element>
     </choice>

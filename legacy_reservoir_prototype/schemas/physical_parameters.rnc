@@ -1,9 +1,7 @@
 physical_parameter_options =
    element physical_parameters {
       gravity_options?,
-      coriolis_options?,
-      black_oil_options?,
-      mobility_options?
+      coriolis_options?
       }
 
 gravity_options =
@@ -13,9 +11,12 @@ gravity_options =
       element magnitude {
          real
       },
+      ## Solve the gravity component indendently from the pressure general solver
+      ## this is to have higher precision when using P1DG for the velocity. For inertia dominated only.
+      ##
+      ## IMPORTANT: for this to work a mesh and a field ph needs to be created. Check the test 
+      ## Collapsing_Water_Column_hydrostatic_pressure for an example
       element hydrostatic_pressure_solver { empty }?,
-      element fem_buoyancy { empty }?,
-      element fem_density_buoyancy { empty }?,
       ## The direction of the gravity vector.
       element vector_field {
          attribute name { "GravityDirection" },
