@@ -642,7 +642,8 @@ contains
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, eles_with_pipe, pipes_aux, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        thermal = .true.,&
+                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                     ! Copy back memory
@@ -677,7 +678,6 @@ contains
                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
                        option_path = '/material_phase[0]/scalar_field::SoluteMassFraction', &
-                       thermal = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/equation::InternalEnergy'),&
                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                    nullify(tracer_field)

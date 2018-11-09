@@ -1937,11 +1937,10 @@ the smoothed bounds calculated by the code</a:documentation>
       </optional>
       <choice>
         <element name="solver">
-          <a:documentation>Solver options for the linear solve.
-This method requires the inversion of a mass matrix. Note that
+          <a:documentation>This method requires the inversion of a mass matrix. Note that
 conservation properties are affected by the tolerance of the
-linear solve.</a:documentation>
-          <ref name="linear_solver_options_sym"/>
+linear solve. The default linear_solver settings are used here.</a:documentation>
+          <empty/>
         </element>
         <element name="lump_mass_matrix">
           <a:documentation>Lump the mass matrix on the left hand side of the galerkin projection.

@@ -702,10 +702,19 @@ character(len=OPTION_PATH_LEN):: complete_solver_option_path
   else if (have_option(trim(option_path)//'/solver')) then
     complete_solver_option_path=trim(option_path)//'/solver'
   else if (option_path(1:15) == "/solver_options") then
+    !IC_FERST options
     complete_solver_option_path = trim(option_path)
-  else
+  else if (.not. have_option("/solver_options")) then !Checking if using IC_FERST new schema
+    !we don't need this check because we always have the default solver settings
     ewrite(-1,*) 'option_path: ', trim(option_path)
     FLAbort("Missing solver element in provided option_path.")
+  end if
+
+  !Final check to ensure that the solver exists, otherwise use default IC_FERST path
+  if (.not. have_option(trim(complete_solver_option_path)//"preconditioner[0]/name")) then
+    !Use default IC_FERST solver settings
+    complete_solver_option_path = "/solver_options/Linear_solver"
+    ewrite(2, *) "Using default settings for trim(option_path)."
   end if
 
 end function complete_solver_option_path

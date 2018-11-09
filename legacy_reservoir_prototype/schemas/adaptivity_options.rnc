@@ -1608,12 +1608,11 @@ continuous_projection =
           }
         )?,
         (
-          ## Solver options for the linear solve.
           ## This method requires the inversion of a mass matrix. Note that
           ## conservation properties are affected by the tolerance of the
-          ## linear solve.
+          ## linear solve. The default linear_solver settings are used here.
           element solver {
-            linear_solver_options_sym
+            empty
           }|
           ## Lump the mass matrix on the left hand side of the galerkin projection.
           ## Hence solver options aren't necessary.

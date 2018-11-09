@@ -241,159 +241,7 @@ start =
                )               
             }?,         
               ## Options to provide properties of the fluid for the given phase.
-              element phase_properties{
-                (
-                ## Phase density
-                phase_density,
-
-
-                ## Viscosity of the current phase (tensor field)
-                element Viscosity {(
-                  ## Viscosity for compositional field
-                  element tensor_field {
-                     attribute name { "Viscosity" },
-                     attribute rank { "2" },
-                     (
-                        element prescribed {
-                            velocity_mesh_choice?,
-                            prescribed_tensor_field_no_adapt
-                        }|
-                        ## For electrical modelling only - holds electrical conductivity
-                        element diagnostic {
-                           (
-                              tensor_python_diagnostic_algorithm |
-                              internal_algorithm
-                           ),
-                           velocity_mesh_choice,
-                           diagnostic_tensor_field
-                        }
-                     )
-                  }
-                ),
-                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
-                    element linearise_viscosity {empty}?,
-               element viscosity_scheme {
-                  (
-                     ## Tensor form
-                     element tensor_form {
-                        empty
-                     }|
-                     ## Stress form
-                     element stress_form {
-                        empty
-                     }|
-                     ## Compact discontinuous Galerkin scheme.
-                     ## (Peraire and Persson SIAM J. Sci. Comput. 30, p1806)
-                     element compact_discontinuous_galerkin {
-                        ## Penalty_parameter
-                        ## Add penalty term Int [u][v] dS on element boundaries
-                        ## scaled by C_0
-                        element penalty_parameter {
-                           real
-                        }?
-                     }|
-                     ## Classical scheme from Bassi and Rebay 
-                     ## (JCP 131 267-179 1997)
-                     element bassi_rebay {
-                        empty
-                     }|
-                     ## Scheme in which upwinding is applied in
-                     ## alternating directions. Devised by C.Pain.
-                     element arbitrary_upwind {
-                        empty
-                     }
-                    
-                  ),
-                  (   
-                     ## Non-linear scheme
-                     element nonlinear_scheme {
-                        element beta_viscosity_min{ real }?,
-                        element beta_viscosity_max{ real }?
-                     }|
-                     ## Linear scheme
-                     element linear_scheme {
-                        element high_order { empty } ?
-                     }
-                  ),
-                  ## defaults to 0.
-                  element zero_or_two_thirds {
-                     real
-                  }?
-               }
-                },
-                ## Stabilisation for Inertia dominated flow. 
-                ## LES and Petrov-Galerkin stabilisation are available.
-                element Stabilisation{(
-                   ## Usual LES modeling
-                   element les_model {
-                      ## =0 No LES, 
-                      ## =1 Anisotropic element length scale, 
-                      ## =2 Take the average length scale h, 
-                      ## =3 Take the min length scale h, 
-                      ## =4 Take the max length scale h
-                      element model {
-                         integer
-                      },
-                      ## literature sybol: Cs
-                      ##
-                      ## defaults to 0.1
-                      element smagorinsky_coefficient {
-                         real
-                      }?,
-                      (
-                         ## Tensor form
-                         element tensor_form {
-                            empty
-                         }|
-                         ## Stress form
-                         element stress_form {
-                            empty
-                         }
-                      ),
-                      ## defaults to 1.0
-                      element les_theta { real }?
-                   }?,
-                   ## This applies a non-linear shock capturing scheme which 
-                   ## may be used to reduce oscillations in velocity or
-                   ## perform implicit LES modelling of turbulence.
-                   element Petrov_Galerkin_stabilisation {
-                      ## What type of Petrov-Galerkin method to use:
-                      ## =1 is the residual squared approach, 
-                      ## =2 is max(0, A . grad U * residual ),
-                      ## =3 is the max of 1 and 2 (the most dissipative). 
-                      element method {
-                         integer
-                      },
-                      ## [0,1] is the magnitude of the non-linear dissipation. 
-                      ## =0.25 is small,
-                      ## =1.0 is large.
-                      ## Defaults to 1.
-                      element nonlinear_velocity_coefficient {
-                         real
-                      }?,
-                      ## [0,1] decides if we include the pressure term in A . grad soln if 
-                      ## =0.0 don't include pressure term,
-                      ## =1.0 include the pressure term.
-                      ## Defaults to 1.
-                      element  include_pressure{
-                         real
-                      }?,
-                      (
-                         ## Tensor form
-                         element tensor_form {
-                            empty
-                         }|
-                         ## Stress form
-                         element stress_form {
-                            empty
-                         }
-                   )
-                   }?
-
-
-                )}?
-               )
-              },
+              phase_properties_options,
 
             ## Pressure
             element scalar_field {
@@ -2148,7 +1996,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                  equation_of_state,
+                  phase_properties_options,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -2180,7 +2028,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                  equation_of_state,
+                  phase_properties_options,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -2212,7 +2060,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                  equation_of_state,
+                  phase_properties_options,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -2241,7 +2089,7 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                  equation_of_state,
+                  phase_properties_options,
                   prognostic_scalar_field,
                   cap_option?
                }|
@@ -3071,6 +2919,28 @@ surface_integral_stats_vector.surface_integral &=
       attribute type { "normal" }
    )
 
+phase_viscosity =(
+                  element tensor_field {
+                     attribute name { "Viscosity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            velocity_mesh_choice?,
+                            prescribed_tensor_field_no_adapt
+                        }|
+                        ## For electrical modelling only - holds electrical conductivity
+                        element diagnostic {
+                           (
+                              tensor_python_diagnostic_algorithm |
+                              internal_algorithm
+                           ),
+                           velocity_mesh_choice,
+                           diagnostic_tensor_field
+                        }
+                     )
+                  }
+)
+
 
 phase_density =
                (
@@ -3188,7 +3058,182 @@ element Density{(
                   )
                )
 
-		  
+phase_properties_options =
+               (
+              ## Options to provide properties of the fluid for the given phase.
+              ## Component properties overwrite the ones given for a phase and are mandatory for all the components.
+              element phase_properties{
+                (
+                ## Phase density
+                phase_density,
 
+
+                ## Viscosity of the current phase (tensor field)
+                element Viscosity {
+                phase_viscosity,
+                    ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
+                    element linearise_viscosity {empty}?,
+               element viscosity_scheme {
+                  (
+                     ## Tensor form
+                     element tensor_form {
+                        empty
+                     }|
+                     ## Stress form
+                     element stress_form {
+                        empty
+                     }|
+                     ## Compact discontinuous Galerkin scheme.
+                     ## (Peraire and Persson SIAM J. Sci. Comput. 30, p1806)
+                     element compact_discontinuous_galerkin {
+                        ## Penalty_parameter
+                        ## Add penalty term Int [u][v] dS on element boundaries
+                        ## scaled by C_0
+                        element penalty_parameter {
+                           real
+                        }?
+                     }|
+                     ## Classical scheme from Bassi and Rebay 
+                     ## (JCP 131 267-179 1997)
+                     element bassi_rebay {
+                        empty
+                     }|
+                     ## Scheme in which upwinding is applied in
+                     ## alternating directions. Devised by C.Pain.
+                     element arbitrary_upwind {
+                        empty
+                     }
+                    
+                  ),
+                  (   
+                     ## Non-linear scheme
+                     element nonlinear_scheme {
+                        element beta_viscosity_min{ real }?,
+                        element beta_viscosity_max{ real }?
+                     }|
+                     ## Linear scheme
+                     element linear_scheme {
+                        element high_order { empty } ?
+                     }
+                  ),
+                  ## defaults to 0.
+                  element zero_or_two_thirds {
+                     real
+                  }?
+               }
+                },
+             ## Diffusivity for field.
+              ##
+              ## Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
+              element tensor_field {
+                 attribute name { "Diffusivity" },
+                 attribute rank { "2" },
+                 (
+                    element prescribed {
+                        mesh_choice?,
+                        prescribed_tensor_field_no_adapt
+                    }|
+                    ## For electrical modelling only - holds electrical conductivity
+                    element diagnostic {
+                       (
+                          tensor_python_diagnostic_algorithm |
+                          internal_algorithm
+                       ),
+                       diagnostic_tensor_field
+                    }
+                 )
+              }?,
+              ## Specific heat capacity for field
+              element scalar_field {
+                 attribute name { "HeatCapacity" },
+                 attribute rank { "0" },
+                 (
+                    element prescribed {
+                       prescribed_scalar_field_no_adapt
+                    }|
+                    ## This only works for traffic modelling
+                    element diagnostic {
+                       (
+                          scalar_python_diagnostic_algorithm |
+                          internal_algorithm
+                       ),
+                       diagnostic_scalar_field_no_adapt
+                    } 
+                 )
+              }?,
+                ## Stabilisation for Inertia dominated flow. 
+                ## LES and Petrov-Galerkin stabilisation are available.
+                element Stabilisation{(
+                   ## Usual LES modeling
+                   element les_model {
+                      ## =0 No LES, 
+                      ## =1 Anisotropic element length scale, 
+                      ## =2 Take the average length scale h, 
+                      ## =3 Take the min length scale h, 
+                      ## =4 Take the max length scale h
+                      element model {
+                         integer
+                      },
+                      ## literature sybol: Cs
+                      ##
+                      ## defaults to 0.1
+                      element smagorinsky_coefficient {
+                         real
+                      }?,
+                      (
+                         ## Tensor form
+                         element tensor_form {
+                            empty
+                         }|
+                         ## Stress form
+                         element stress_form {
+                            empty
+                         }
+                      ),
+                      ## defaults to 1.0
+                      element les_theta { real }?
+                   }?,
+                   ## This applies a non-linear shock capturing scheme which 
+                   ## may be used to reduce oscillations in velocity or
+                   ## perform implicit LES modelling of turbulence.
+                   element Petrov_Galerkin_stabilisation {
+                      ## What type of Petrov-Galerkin method to use:
+                      ## =1 is the residual squared approach, 
+                      ## =2 is max(0, A . grad U * residual ),
+                      ## =3 is the max of 1 and 2 (the most dissipative). 
+                      element method {
+                         integer
+                      },
+                      ## [0,1] is the magnitude of the non-linear dissipation. 
+                      ## =0.25 is small,
+                      ## =1.0 is large.
+                      ## Defaults to 1.
+                      element nonlinear_velocity_coefficient {
+                         real
+                      }?,
+                      ## [0,1] decides if we include the pressure term in A . grad soln if 
+                      ## =0.0 don't include pressure term,
+                      ## =1.0 include the pressure term.
+                      ## Defaults to 1.
+                      element  include_pressure{
+                         real
+                      }?,
+                      (
+                         ## Tensor form
+                         element tensor_form {
+                            empty
+                         }|
+                         ## Stress form
+                         element stress_form {
+                            empty
+                         }
+                   )
+                   }?
+
+
+                )}?
+               )
+              }
+            )
 	         
 	 

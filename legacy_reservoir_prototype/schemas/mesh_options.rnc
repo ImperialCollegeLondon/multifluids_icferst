@@ -250,6 +250,17 @@ pressure_mesh_choice =
       }
    )
 
+# Same choices, but with PressureMesh_Discontinuous offered first
+subcv_mesh_choice =
+   (
+      element mesh {
+         attribute name { "PressureMesh_Discontinuous" }
+      }|
+      element mesh {
+         attribute name { xsd:string }
+      }
+   )
+
 # Same choices, but with CoordinateMesh offered first
 coordinate_mesh_choice =
    (

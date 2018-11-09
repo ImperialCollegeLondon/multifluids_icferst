@@ -498,7 +498,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
        option_path, &
        mass_ele_transp, &
-       thermal, &
        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
 
@@ -518,7 +517,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(multi_absorption), intent(inout) :: multi_absorp
            INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
-           LOGICAL, intent( in ), optional ::THERMAL
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
            REAL, intent( in ) :: DT
@@ -666,7 +664,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
                    MeanPoreCV%val, &
-                   mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+                   mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
@@ -680,7 +678,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    call zero(vtracer)
                    call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
-
+                   if (have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')) then
+                    !Ensure concentration is between 1 and 0
+                    tracer%val = min(1., max(tracer%val,0.))
+                   end if
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
 
@@ -1418,7 +1419,6 @@ end if
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,symmetric_P, boussinesq, calculate_mass_delta, outfluxes)
-
         deallocate(UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -1460,8 +1460,7 @@ end if
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, symmetric_P )
-
-!call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
 
@@ -3344,6 +3343,7 @@ end if
                     END DO
                 END DO
             END IF
+
             if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
 !            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
@@ -6133,6 +6133,9 @@ end if
 
          deallocate( field_tmp, field_cv_nod )
 
+     else
+       ewrite(1,*) "Asked to linearised a field that is already linear..."
+       field_out = field_in%val(1,:,:)
      end if
 
      return

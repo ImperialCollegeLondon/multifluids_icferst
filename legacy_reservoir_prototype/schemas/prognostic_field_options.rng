@@ -200,59 +200,6 @@ requires a distinct name for the options dictionary.</a:documentation>
         </element>
       </optional>
       <optional>
-        <element name="tensor_field">
-          <a:documentation>Diffusivity for field.
-
-Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin =&gt; W/(m·K) ).</a:documentation>
-          <attribute name="name">
-            <value>Diffusivity</value>
-          </attribute>
-          <attribute name="rank">
-            <value>2</value>
-          </attribute>
-          <choice>
-            <element name="prescribed">
-              <optional>
-                <ref name="mesh_choice"/>
-              </optional>
-              <ref name="prescribed_tensor_field_no_adapt"/>
-            </element>
-            <element name="diagnostic">
-              <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
-              <choice>
-                <ref name="tensor_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
-              <ref name="diagnostic_tensor_field"/>
-            </element>
-          </choice>
-        </element>
-      </optional>
-      <optional>
-        <element name="scalar_field">
-          <a:documentation>Specific heat capacity for field</a:documentation>
-          <attribute name="name">
-            <value>HeatCapacity</value>
-          </attribute>
-          <attribute name="rank">
-            <value>0</value>
-          </attribute>
-          <choice>
-            <element name="prescribed">
-              <ref name="prescribed_scalar_field_no_adapt"/>
-            </element>
-            <element name="diagnostic">
-              <a:documentation>This only works for traffic modelling</a:documentation>
-              <choice>
-                <ref name="scalar_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
-              <ref name="diagnostic_scalar_field_no_adapt"/>
-            </element>
-          </choice>
-        </element>
-      </optional>
-      <optional>
         <element name="scalar_field">
           <a:documentation>Absorption term</a:documentation>
           <attribute name="name">

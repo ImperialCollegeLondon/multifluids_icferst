@@ -107,10 +107,10 @@ contains
         if( ncomp > 1 ) then
            do icomp =1, ncomp
               do iphase =1, nphase
-                 eos_option_path( ( icomp - 1 ) * nphase + iphase ) = &!sprint_to_do this currently does nothing?
+                 eos_option_path( ( icomp - 1 ) * nphase + iphase ) = &
                       trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
                       ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                      '/prognostic/Density' )
+                      '/prognostic/phase_properties/Density' )
                  call Assign_Equation_of_State( eos_option_path( ( icomp - 1 ) * nphase + iphase ) )
               end do
            end do
@@ -349,7 +349,7 @@ contains
             e = ( icomp - 1 ) * Mdims%nphase * Mdims%cv_nonods + iphase * Mdims%cv_nonods
             eos_option_path = trim( '/material_phase[' // int2str( Mdims%nphase + icomp - 1 ) // &
                  ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                 '/prognostic/equation_of_state' )
+                 '/prognostic/phase_properties/Density' )
             call Assign_Equation_of_State( eos_option_path )
             Rho=0. ; dRhodP=0.
             call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
@@ -419,13 +419,13 @@ contains
         if ( ncomp > 0 ) then
             option_path_comp = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                '/prognostic/Density/compressible' )!sprint_to_do this does not make sense, what it is actually used is the flag is_multiphase_component
+                '/prognostic/phase_properties/Density/compressible' )
             option_path_incomp = trim( '/material_phase[' // int2str(nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                '/prognostic/Density/incompressible' )!sprint_to_do this does not make sense
+                '/prognostic/phase_properties/Density/incompressible' )
             option_path_python = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                '/prognostic/Density/python_state' )!sprint_to_do this does not make sense
+                '/prognostic/phase_properties/Density/python_state' )
         else
             option_path_comp = trim( '/material_phase[' // int2str( iphase - 1 ) // &
                 ']/phase_properties/Density/compressible' )
@@ -1082,6 +1082,7 @@ contains
             real :: mobility
             type(tensor_field), pointer :: viscosity_ph
 
+            !SPRINT_TO_DO what happens here if we have components???
             DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
                 viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
                 visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
@@ -1839,6 +1840,7 @@ contains
                      component => extract_scalar_field( state(Mdims%nphase + icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
                      tc_field => extract_tensor_field( state( Mdims%nphase + icomp ), 'Viscosity' )
                      tp_field => extract_tensor_field( state( iphase ), 'Viscosity' )
+
                      ewrite(3,*) 'Component, Phase, Visc_min_max', icomp, iphase, minval( tc_field%val ), maxval( tc_field%val )
                      do ele = 1, ele_count( tc_field )
                         component_tmp = ele_val( component, ele )

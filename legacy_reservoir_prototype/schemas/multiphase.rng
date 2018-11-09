@@ -305,195 +305,9 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
               </optional>
             </element>
           </optional>
-          <element name="phase_properties">
+          <ref name="phase_properties_options">
             <a:documentation>Options to provide properties of the fluid for the given phase.</a:documentation>
-            <ref name="phase_density">
-              <a:documentation>Phase density</a:documentation>
-            </ref>
-            <element name="Viscosity">
-              <a:documentation>Viscosity of the current phase (tensor field)</a:documentation>
-              <element name="tensor_field">
-                <a:documentation>Viscosity for compositional field</a:documentation>
-                <attribute name="name">
-                  <value>Viscosity</value>
-                </attribute>
-                <attribute name="rank">
-                  <value>2</value>
-                </attribute>
-                <choice>
-                  <element name="prescribed">
-                    <optional>
-                      <ref name="velocity_mesh_choice"/>
-                    </optional>
-                    <ref name="prescribed_tensor_field_no_adapt"/>
-                  </element>
-                  <element name="diagnostic">
-                    <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
-                    <choice>
-                      <ref name="tensor_python_diagnostic_algorithm"/>
-                      <ref name="internal_algorithm"/>
-                    </choice>
-                    <ref name="velocity_mesh_choice"/>
-                    <ref name="diagnostic_tensor_field"/>
-                  </element>
-                </choice>
-              </element>
-              <optional>
-                <element name="linearise_viscosity">
-                  <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-              <element name="viscosity_scheme">
-                <choice>
-                  <element name="tensor_form">
-                    <a:documentation>Tensor form</a:documentation>
-                    <empty/>
-                  </element>
-                  <element name="stress_form">
-                    <a:documentation>Stress form</a:documentation>
-                    <empty/>
-                  </element>
-                  <element name="compact_discontinuous_galerkin">
-                    <a:documentation>Compact discontinuous Galerkin scheme.
-(Peraire and Persson SIAM J. Sci. Comput. 30, p1806)</a:documentation>
-                    <optional>
-                      <element name="penalty_parameter">
-                        <a:documentation>Penalty_parameter
-Add penalty term Int [u][v] dS on element boundaries
-scaled by C_0</a:documentation>
-                        <ref name="real"/>
-                      </element>
-                    </optional>
-                  </element>
-                  <element name="bassi_rebay">
-                    <a:documentation>Classical scheme from Bassi and Rebay 
-(JCP 131 267-179 1997)</a:documentation>
-                    <empty/>
-                  </element>
-                  <element name="arbitrary_upwind">
-                    <a:documentation>Scheme in which upwinding is applied in
-alternating directions. Devised by C.Pain.</a:documentation>
-                    <empty/>
-                  </element>
-                </choice>
-                <choice>
-                  <element name="nonlinear_scheme">
-                    <a:documentation>Non-linear scheme</a:documentation>
-                    <optional>
-                      <element name="beta_viscosity_min">
-                        <ref name="real"/>
-                      </element>
-                    </optional>
-                    <optional>
-                      <element name="beta_viscosity_max">
-                        <ref name="real"/>
-                      </element>
-                    </optional>
-                  </element>
-                  <element name="linear_scheme">
-                    <a:documentation>Linear scheme</a:documentation>
-                    <optional>
-                      <element name="high_order">
-                        <empty/>
-                      </element>
-                    </optional>
-                  </element>
-                </choice>
-                <optional>
-                  <element name="zero_or_two_thirds">
-                    <a:documentation>defaults to 0.</a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
-              </element>
-            </element>
-            <optional>
-              <element name="Stabilisation">
-                <a:documentation>Stabilisation for Inertia dominated flow. 
-LES and Petrov-Galerkin stabilisation are available.</a:documentation>
-                <optional>
-                  <element name="les_model">
-                    <a:documentation>Usual LES modeling</a:documentation>
-                    <element name="model">
-                      <a:documentation>=0 No LES, 
-=1 Anisotropic element length scale, 
-=2 Take the average length scale h, 
-=3 Take the min length scale h, 
-=4 Take the max length scale h</a:documentation>
-                      <ref name="integer"/>
-                    </element>
-                    <optional>
-                      <element name="smagorinsky_coefficient">
-                        <a:documentation>literature sybol: Cs
-
-defaults to 0.1</a:documentation>
-                        <ref name="real"/>
-                      </element>
-                    </optional>
-                    <choice>
-                      <element name="tensor_form">
-                        <a:documentation>Tensor form</a:documentation>
-                        <empty/>
-                      </element>
-                      <element name="stress_form">
-                        <a:documentation>Stress form</a:documentation>
-                        <empty/>
-                      </element>
-                    </choice>
-                    <optional>
-                      <element name="les_theta">
-                        <a:documentation>defaults to 1.0</a:documentation>
-                        <ref name="real"/>
-                      </element>
-                    </optional>
-                  </element>
-                </optional>
-                <optional>
-                  <element name="Petrov_Galerkin_stabilisation">
-                    <a:documentation>This applies a non-linear shock capturing scheme which 
-may be used to reduce oscillations in velocity or
-perform implicit LES modelling of turbulence.</a:documentation>
-                    <element name="method">
-                      <a:documentation>What type of Petrov-Galerkin method to use:
-=1 is the residual squared approach, 
-=2 is max(0, A . grad U * residual ),
-=3 is the max of 1 and 2 (the most dissipative). </a:documentation>
-                      <ref name="integer"/>
-                    </element>
-                    <optional>
-                      <element name="nonlinear_velocity_coefficient">
-                        <a:documentation>[0,1] is the magnitude of the non-linear dissipation. 
-=0.25 is small,
-=1.0 is large.
-Defaults to 1.</a:documentation>
-                        <ref name="real"/>
-                      </element>
-                    </optional>
-                    <optional>
-                      <element name="include_pressure">
-                        <a:documentation>[0,1] decides if we include the pressure term in A . grad soln if 
-=0.0 don't include pressure term,
-=1.0 include the pressure term.
-Defaults to 1.</a:documentation>
-                        <ref name="real"/>
-                      </element>
-                    </optional>
-                    <choice>
-                      <element name="tensor_form">
-                        <a:documentation>Tensor form</a:documentation>
-                        <empty/>
-                      </element>
-                      <element name="stress_form">
-                        <a:documentation>Stress form</a:documentation>
-                        <empty/>
-                      </element>
-                    </choice>
-                  </element>
-                </optional>
-              </element>
-            </optional>
-          </element>
+          </ref>
           <optional>
             <element name="scalar_field">
               <a:documentation>Pressure</a:documentation>
@@ -2613,7 +2427,7 @@ even if the problem is one-phase</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <ref name="equation_of_state"/>
+            <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
             <optional>
               <ref name="cap_option"/>
@@ -2655,7 +2469,7 @@ even if the problem is one-phase</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <ref name="equation_of_state"/>
+            <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
             <optional>
               <ref name="cap_option"/>
@@ -2697,7 +2511,7 @@ even if the problem is one-phase</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <ref name="equation_of_state"/>
+            <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
             <optional>
               <ref name="cap_option"/>
@@ -2736,7 +2550,7 @@ mass fraction with a particular phase</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
-            <ref name="equation_of_state"/>
+            <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
             <optional>
               <ref name="cap_option"/>
@@ -3708,6 +3522,33 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
       <value>normal</value>
     </attribute>
   </define>
+  <define name="phase_viscosity">
+    <element name="tensor_field">
+      <attribute name="name">
+        <value>Viscosity</value>
+      </attribute>
+      <attribute name="rank">
+        <value>2</value>
+      </attribute>
+      <choice>
+        <element name="prescribed">
+          <optional>
+            <ref name="velocity_mesh_choice"/>
+          </optional>
+          <ref name="prescribed_tensor_field_no_adapt"/>
+        </element>
+        <element name="diagnostic">
+          <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
+          <choice>
+            <ref name="tensor_python_diagnostic_algorithm"/>
+            <ref name="internal_algorithm"/>
+          </choice>
+          <ref name="velocity_mesh_choice"/>
+          <ref name="diagnostic_tensor_field"/>
+        </element>
+      </choice>
+    </element>
+  </define>
   <define name="phase_density">
     <element name="Density">
       <a:documentation>Use this option to specify the density of fluids</a:documentation>
@@ -3830,6 +3671,226 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
         <element name="linearise_density">
           <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
           <empty/>
+        </element>
+      </optional>
+    </element>
+  </define>
+  <define name="phase_properties_options">
+    <element name="phase_properties">
+      <a:documentation>Options to provide properties of the fluid for the given phase.
+Component properties overwrite the ones given for a phase and are mandatory for all the components.</a:documentation>
+      <ref name="phase_density">
+        <a:documentation>Phase density</a:documentation>
+      </ref>
+      <element name="Viscosity">
+        <a:documentation>Viscosity of the current phase (tensor field)</a:documentation>
+        <ref name="phase_viscosity"/>
+        <optional>
+          <element name="linearise_viscosity">
+            <a:documentation>Linearises a P2 field. Use this if having stability issues with high-order discretisations</a:documentation>
+            <empty/>
+          </element>
+        </optional>
+        <element name="viscosity_scheme">
+          <choice>
+            <element name="tensor_form">
+              <a:documentation>Tensor form</a:documentation>
+              <empty/>
+            </element>
+            <element name="stress_form">
+              <a:documentation>Stress form</a:documentation>
+              <empty/>
+            </element>
+            <element name="compact_discontinuous_galerkin">
+              <a:documentation>Compact discontinuous Galerkin scheme.
+(Peraire and Persson SIAM J. Sci. Comput. 30, p1806)</a:documentation>
+              <optional>
+                <element name="penalty_parameter">
+                  <a:documentation>Penalty_parameter
+Add penalty term Int [u][v] dS on element boundaries
+scaled by C_0</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+            <element name="bassi_rebay">
+              <a:documentation>Classical scheme from Bassi and Rebay 
+(JCP 131 267-179 1997)</a:documentation>
+              <empty/>
+            </element>
+            <element name="arbitrary_upwind">
+              <a:documentation>Scheme in which upwinding is applied in
+alternating directions. Devised by C.Pain.</a:documentation>
+              <empty/>
+            </element>
+          </choice>
+          <choice>
+            <element name="nonlinear_scheme">
+              <a:documentation>Non-linear scheme</a:documentation>
+              <optional>
+                <element name="beta_viscosity_min">
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="beta_viscosity_max">
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+            <element name="linear_scheme">
+              <a:documentation>Linear scheme</a:documentation>
+              <optional>
+                <element name="high_order">
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </choice>
+          <optional>
+            <element name="zero_or_two_thirds">
+              <a:documentation>defaults to 0.</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+        </element>
+      </element>
+      <optional>
+        <element name="tensor_field">
+          <a:documentation>Diffusivity for field.
+
+Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin =&gt; W/(m·K) ).</a:documentation>
+          <attribute name="name">
+            <value>Diffusivity</value>
+          </attribute>
+          <attribute name="rank">
+            <value>2</value>
+          </attribute>
+          <choice>
+            <element name="prescribed">
+              <optional>
+                <ref name="mesh_choice"/>
+              </optional>
+              <ref name="prescribed_tensor_field_no_adapt"/>
+            </element>
+            <element name="diagnostic">
+              <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
+              <choice>
+                <ref name="tensor_python_diagnostic_algorithm"/>
+                <ref name="internal_algorithm"/>
+              </choice>
+              <ref name="diagnostic_tensor_field"/>
+            </element>
+          </choice>
+        </element>
+      </optional>
+      <optional>
+        <element name="scalar_field">
+          <a:documentation>Specific heat capacity for field</a:documentation>
+          <attribute name="name">
+            <value>HeatCapacity</value>
+          </attribute>
+          <attribute name="rank">
+            <value>0</value>
+          </attribute>
+          <choice>
+            <element name="prescribed">
+              <ref name="prescribed_scalar_field_no_adapt"/>
+            </element>
+            <element name="diagnostic">
+              <a:documentation>This only works for traffic modelling</a:documentation>
+              <choice>
+                <ref name="scalar_python_diagnostic_algorithm"/>
+                <ref name="internal_algorithm"/>
+              </choice>
+              <ref name="diagnostic_scalar_field_no_adapt"/>
+            </element>
+          </choice>
+        </element>
+      </optional>
+      <optional>
+        <element name="Stabilisation">
+          <a:documentation>Stabilisation for Inertia dominated flow. 
+LES and Petrov-Galerkin stabilisation are available.</a:documentation>
+          <optional>
+            <element name="les_model">
+              <a:documentation>Usual LES modeling</a:documentation>
+              <element name="model">
+                <a:documentation>=0 No LES, 
+=1 Anisotropic element length scale, 
+=2 Take the average length scale h, 
+=3 Take the min length scale h, 
+=4 Take the max length scale h</a:documentation>
+                <ref name="integer"/>
+              </element>
+              <optional>
+                <element name="smagorinsky_coefficient">
+                  <a:documentation>literature sybol: Cs
+
+defaults to 0.1</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <choice>
+                <element name="tensor_form">
+                  <a:documentation>Tensor form</a:documentation>
+                  <empty/>
+                </element>
+                <element name="stress_form">
+                  <a:documentation>Stress form</a:documentation>
+                  <empty/>
+                </element>
+              </choice>
+              <optional>
+                <element name="les_theta">
+                  <a:documentation>defaults to 1.0</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
+            <element name="Petrov_Galerkin_stabilisation">
+              <a:documentation>This applies a non-linear shock capturing scheme which 
+may be used to reduce oscillations in velocity or
+perform implicit LES modelling of turbulence.</a:documentation>
+              <element name="method">
+                <a:documentation>What type of Petrov-Galerkin method to use:
+=1 is the residual squared approach, 
+=2 is max(0, A . grad U * residual ),
+=3 is the max of 1 and 2 (the most dissipative). </a:documentation>
+                <ref name="integer"/>
+              </element>
+              <optional>
+                <element name="nonlinear_velocity_coefficient">
+                  <a:documentation>[0,1] is the magnitude of the non-linear dissipation. 
+=0.25 is small,
+=1.0 is large.
+Defaults to 1.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="include_pressure">
+                  <a:documentation>[0,1] decides if we include the pressure term in A . grad soln if 
+=0.0 don't include pressure term,
+=1.0 include the pressure term.
+Defaults to 1.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <choice>
+                <element name="tensor_form">
+                  <a:documentation>Tensor form</a:documentation>
+                  <empty/>
+                </element>
+                <element name="stress_form">
+                  <a:documentation>Stress form</a:documentation>
+                  <empty/>
+                </element>
+              </choice>
+            </element>
+          </optional>
         </element>
       </optional>
     </element>

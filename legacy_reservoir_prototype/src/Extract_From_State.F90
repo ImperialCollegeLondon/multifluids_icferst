@@ -465,7 +465,7 @@ contains
         integer :: iphase, i, simulation_quality
         character( len = option_path_len ) :: option_path, option_path2
         integer :: default_flux_scheme
-        real :: default_theta
+        real :: default_theta, default_consv_vel
         !!$ DISOPT Options:
         !!$ =0      1st order in space          Theta=specified    UNIVERSAL
         !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
@@ -499,7 +499,8 @@ contains
           default_flux_scheme = 1
           default_theta  = 1.
         end if
-
+        default_consv_vel =0.
+        if (is_porous_media) default_consv_vel = 1.
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####!SPRINT_TO_DO THESE DEFAULT OPTIONS SHOULD DEPEND ON SIMULATION QUALITY
         !!$ SoluteMassFraction and temperature have the same settings for the time being
         option_path2 = trim(option_path)//'Space_Discretisation::Tracer/advection_scheme'
@@ -537,7 +538,7 @@ contains
 
         !!$ Velocity Field options
         call get_option( trim(option_path)// '/Time_Discretisation::Velocity/Theta', Mdisopt%u_theta , default = default_theta )
-        call get_option( trim(option_path)// '/Conservative_formulation_settings::Velocity/conservative_advection', Mdisopt%u_beta , default = 1. )
+        call get_option( trim(option_path)// '/Conservative_formulation_settings::Velocity/conservative_advection', Mdisopt%u_beta , default = default_consv_vel)
         !!$ Solving Component Field
         !!$ Scaling factor for the momentum equation
         Mdisopt%scale_momentum_by_volume_fraction = .false.
@@ -2234,6 +2235,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
                     !! Arash
                 case (5)!Salt
+                  call get_var_from_packed_state(packed_state, solutemassfraction = solutemassfraction)
                   ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
                   !Calculate value of the l infinitum for the saturation as well
                   inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence

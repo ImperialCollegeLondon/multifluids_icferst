@@ -303,6 +303,21 @@ Default is 1e-3.</a:documentation>
       </element>
     </choice>
   </define>
+  <!-- Same choices, but with PressureMesh_Discontinuous offered first -->
+  <define name="subcv_mesh_choice">
+    <choice>
+      <element name="mesh">
+        <attribute name="name">
+          <value>PressureMesh_Discontinuous</value>
+        </attribute>
+      </element>
+      <element name="mesh">
+        <attribute name="name">
+          <data type="string"/>
+        </attribute>
+      </element>
+    </choice>
+  </define>
   <!-- Same choices, but with CoordinateMesh offered first -->
   <define name="coordinate_mesh_choice">
     <choice>
