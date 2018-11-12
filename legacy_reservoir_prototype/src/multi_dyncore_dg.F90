@@ -1230,7 +1230,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
-           UDEN_ALL=0.0; UDENOLD_ALL=0.0!This is to disable the time-derivative that inertia has; !sprint_to_do is this still needed?
            call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_SOURCE_CV_ALL )
         else
            if ( linearise_density ) then
