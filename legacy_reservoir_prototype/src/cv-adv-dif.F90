@@ -760,6 +760,7 @@ contains
         IGOT_T_CONST=.FALSE.
         IGOT_T_CONST_VALUE=0.0
         ! If we have any bc's then assume we ave a non-uniform field...
+        ! SPRINT_TO_DO this now fails if the domain is closed and no BCs are necessary
         DO IPHASE=1,Mdims%nphase
             IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
                 CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
@@ -4261,6 +4262,7 @@ end if
 
 
     SUBROUTINE IS_FIELD_CONSTANT(IGOT_T_CONST, IGOT_T_CONST_VALUE, T_ALL, CV_NONODS)
+        !SPRINT_TO_DO THIS SUBROUTINE IS HORRIBLE!!!! we need to find another way of checking if a field is constant!
         LOGICAL IGOT_T_CONST
         REAL IGOT_T_CONST_VALUE
         INTEGER CV_NONODS

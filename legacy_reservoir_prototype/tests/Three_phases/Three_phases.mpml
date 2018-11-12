@@ -174,6 +174,17 @@
             <real_value rank="0">0.3</real_value>
           </constant>
         </initial_condition>
+        <boundary_conditions name="all">
+          <surface_ids>
+            <integer_value shape="4" rank="1">7 8 9 10</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">0</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -294,6 +305,17 @@
             <real_value rank="0">0.6</real_value>
           </constant>
         </initial_condition>
+        <boundary_conditions name="all">
+          <surface_ids>
+            <integer_value shape="4" rank="1">7 8 9 10</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">0</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -394,6 +416,17 @@
             <real_value rank="0">0.1</real_value>
           </constant>
         </initial_condition>
+        <boundary_conditions name="all">
+          <surface_ids>
+            <integer_value shape="4" rank="1">7 8 9 10</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">0</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
