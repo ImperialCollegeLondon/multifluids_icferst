@@ -75,12 +75,12 @@
           <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
-      <tensor_field name="Diffusivity" rank="2">
+      <tensor_field name="Thermal_Conductivity" rank="2">
         <prescribed>
           <value name="WholeMesh">
             <isotropic>
               <constant>
-                <real_value rank="0">0</real_value>
+                <real_value rank="0">0.</real_value>
               </constant>
             </isotropic>
           </value>
@@ -271,12 +271,12 @@
           <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
-      <tensor_field name="Diffusivity" rank="2">
+      <tensor_field name="Thermal_Conductivity" rank="2">
         <prescribed>
           <value name="WholeMesh">
             <isotropic>
               <constant>
-                <real_value rank="0">0.58</real_value>
+                <real_value rank="0">0.</real_value>
               </constant>
             </isotropic>
           </value>

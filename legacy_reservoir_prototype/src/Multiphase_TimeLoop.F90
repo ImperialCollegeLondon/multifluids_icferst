@@ -1168,7 +1168,7 @@ contains
                             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'MetricTensor' )
                             call initialise_field(metric_tensor,'/mesh_adaptivity/hr_adaptivity_prescribed_metric/tensor_field::MetricTensor',positions)
                             nullify(positions)
-                        else
+                        else                       
                             call qmesh( state, metric_tensor )
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &

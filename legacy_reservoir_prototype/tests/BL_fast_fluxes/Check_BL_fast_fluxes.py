@@ -10,7 +10,7 @@ tCA,f1CA,f2CA,t1CA,t2CA,ssumA = [], [], [], [], [], []
 
 tolerance1 = 1e-4
 tolerance2 = 1e-4
-toleranceMass = 2e-5
+toleranceMass = 2.5e-5
 
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'

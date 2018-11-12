@@ -746,9 +746,9 @@ contains
               call set_option(trim(option_path)//"/Vanishing_relaxation",-1e2)
             else !single phase
               call add_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
-              if (have_option("/material_phase[0]::scalar_field::Temperature")) then
+              if (have_option('/material_phase[0]/scalar_field::Temperature')) then
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 4)
-              elseif (have_option("/material_phase[0]::scalar_field::SoluteMassFraction")) then
+              elseif (have_option('/material_phase[0]/scalar_field::SoluteMassFraction')) then
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 5)
               else !If nothing, then pressure
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 1)
