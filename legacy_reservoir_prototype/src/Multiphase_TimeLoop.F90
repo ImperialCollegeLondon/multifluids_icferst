@@ -430,7 +430,7 @@ contains
         if( current_time < finish_time .and. &
          .not. have_option("/io/disable_dump_at_start") ) then
 !-------------------------------------------------------------------------------
-! to allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
+! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
              if (do_checkpoint_simulation(dump_no)) then
                   checkpoint_number=0
                   CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
@@ -519,7 +519,7 @@ contains
                call blasting( packed_state, Mdims%nphase )
                call update_blasting_memory( packed_state, state, timestep )
 !            elseif (have_option( '/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
- !              call femdemthermal(packed_state, state,Mdims%nphase)
+!              call femdemthermal(packed_state, state,Mdims%nphase)
 !			   call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
@@ -645,12 +645,6 @@ contains
                         thermal = .true.,&
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
-                    ! Copy back memory
-                    do iphase=1,Mdims%nphase!sprint_to_do remove this
-                       T=>extract_scalar_field(state(iphase),"Temperature")
-                       T%val=tracer_field%val(1,iphase,:)
-                    end do
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
@@ -1095,12 +1089,11 @@ contains
         !This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
             !local variables
-            type( scalar_field ), pointer ::  s_field, s_field2, s_field3
-            type( vector_field ), pointer ::  U_x1, U_x2
-            integer :: U_x1_stat, idim
-            real, dimension(2) :: min_max_limits_before, solute_min_max_limits_before
-            type (tensor_field), pointer :: tempfield
-            type (tensor_field), pointer :: saltfield
+            type( scalar_field ), pointer :: s_field, s_field2, s_field3
+            integer                       :: idim
+            real, dimension(2)            :: min_max_limits_before, solute_min_max_limits_before
+            type (tensor_field), pointer  :: tempfield
+            type (tensor_field), pointer  :: saltfield
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1175,16 +1168,6 @@ contains
                             itime, not_to_move_det_yet = .true. , non_linear_iterations = FPI_eq_taken)
                         call run_diagnostics( state )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
-                        ! Copy U memory
-                        do iphase=1,Mdims%nphase
-                           U_x1=>extract_vector_field(state(iphase),"U",U_x1_stat)
-                           U_x2=>extract_vector_field(state(iphase),"Velocity")
-                           if(U_x1_stat==0)then
-                              do idim=1,Mdims%ndim
-                                 U_x1%val(idim,:)=U_x2%val(idim,:)
-                              end do
-                           end if
-                        end do
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
@@ -1523,13 +1506,12 @@ end if
         implicit none
         logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
         integer, intent(inout) :: its
-        integer, intent(in) :: flag
-        !Local variables
+        integer, intent(in)    :: flag
+        ! Local variables
         type(scalar_field), pointer :: sat1, sat2
-        integer :: iphase
-        integer, save :: phaseToAdapt = -1
-        real, save :: Inf_tol = -1, non_linear_tol = -1
-
+        integer                     :: iphase
+        integer, save               :: phaseToAdapt = -1
+        real, save                  :: Inf_tol = -1, non_linear_tol = -1
 
         if (phaseToAdapt<0) then
             !Retrieve which phase has the options to adapt to
@@ -1567,13 +1549,13 @@ end if
             !Four steps
             !1. Store OldPhaseVolumeFraction
             do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat1 => extract_scalar_field( state(iphase),  "OldPhaseVolumeFraction")
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak"        )
                 sat2%val = sat1%val
             end do
             !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
             sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
-            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction"    )
             !It is important that the average keep the sharpness of the interfaces
             sat1%val = abs(sat1%val - sat2%val)**0.8
             call adapt_mesh_mp()
@@ -1588,8 +1570,8 @@ end if
             end do
             !4. Copy back to OldPhaseVolumeFraction
             do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat1 => extract_scalar_field( state(iphase),  "OldPhaseVolumeFraction" )
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak"         )
                 sat1%val = sat2%val
             end do
             !Pointing to porosity again is required
