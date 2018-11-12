@@ -787,7 +787,7 @@ contains
         real, save :: backup_shockfront_Courant = 0.
         real :: physics_adjustment, courant_number
         logical, save :: Readed_options = .false.
-        logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
+        logical, save :: gravity, cap_pressure, compositional, many_phases, ov_relaxation, one_phase
 
         !Sometimes the shock-front courant number is not well calculated, then use previous value
         if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
@@ -805,7 +805,6 @@ contains
             end if
             compositional = Mdims%ncomp > 0
             many_phases = Mdims%n_in_pres > 2
-            black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
             !Positive effects on the convergence !Need to check for shock fronts...
             ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
 
@@ -820,8 +819,6 @@ contains
         if (cap_pressure) physics_adjustment = physics_adjustment * 5.0
         if (compositional) physics_adjustment = physics_adjustment * 1.5
         if (many_phases) physics_adjustment = physics_adjustment * 1.5
-        !For the first two non-linear iterations, it has to re-adjust, as the gas and oil are again mixed
-        if (black_oil .and. nonlinear_iteration <= 2) physics_adjustment = physics_adjustment * 2.
 
         !Positive effects on the convergence !Need to check for shock fronts...
         if (ov_relaxation) physics_adjustment = physics_adjustment * 0.05!huge benefits when using ov_relaxation...

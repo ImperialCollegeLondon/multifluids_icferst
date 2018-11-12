@@ -17,7 +17,7 @@
       </from_file>
     </mesh>
     <simulation_quality>
-      <string_value>balanced</string_value>
+      <string_value>precision</string_value>
     </simulation_quality>
   </geometry>
   <solver_options>
