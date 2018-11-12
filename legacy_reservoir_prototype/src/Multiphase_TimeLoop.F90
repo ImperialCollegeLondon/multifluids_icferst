@@ -123,7 +123,7 @@ contains
         !!$ Defining problem that will be solved
         !! Arash
         logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
-            solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
+            solve_force_balance, solve_PhaseVolumeFraction
         !!$ Defining solver options
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
         !!$ Shape function related fields:
@@ -388,15 +388,6 @@ contains
                     '/number_advection_iterations', NonLinearIteration_Components, default = 3 )
             end if
         end do
-        simple_black_oil_model = .false.
-        if (have_option( "/physical_parameters/black-oil_PVT_table" )) then
-            simple_black_oil_model = is_porous_media .and..not.have_component_field .and. Mdims%nphase == 3
-            if (.not. simple_black_oil_model) then
-                ewrite(0,*) "WARNING: Black-oil modelling based on PVT tables requires porous media, 3 phases and no components"
-            end if
-            !Initialize Stock tank oil conditions. sprint_to_do. Is this necessary?
-            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 10)
-        end if
 
         if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
             have_extra_DiffusionLikeTerm = .true.
@@ -538,10 +529,6 @@ contains
             ! evaluate prescribed fields at time = current_time+dt
             call set_prescribed_field_values( state, exclude_interpolated = .true., &
                 exclude_nonreprescribed = .true., time = acctim )
-            !Initialize gas molar fraction, this has to occur after copy_packed_new_to_old
-            !since for consistency, (later it is called as well) it uses the old values of pressure,
-            !however, they have to be the most updated at this point
-            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
             !Initialise to zero the SFPI counter
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
@@ -1168,7 +1155,7 @@ contains
                             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'MetricTensor' )
                             call initialise_field(metric_tensor,'/mesh_adaptivity/hr_adaptivity_prescribed_metric/tensor_field::MetricTensor',positions)
                             nullify(positions)
-                        else                       
+                        else
                             call qmesh( state, metric_tensor )
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
