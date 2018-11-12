@@ -2236,9 +2236,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     !! Arash
                 case (5)!Salt
                   call get_var_from_packed_state(packed_state, solutemassfraction = solutemassfraction)
-                  ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
+                  !ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
                   !Calculate value of the l infinitum for the saturation as well
-                  inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+                  !inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+
+                  !!!!!!!
+                  ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))!/backtrack_or_convergence
+                  inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
+!                  backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
 
                   ! !Calculate value of the functional (considering wells and reservoir)
                   ! ts_ref_val = get_Convergence_Functional(tracer, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
@@ -2286,8 +2291,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection >= 4) then!temperature or concentration
+            else if (is_porous_media .and. variable_selection == 4) then!temperature
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
+            else if (is_porous_media .and. variable_selection == 5) then! concentration
+                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Concentration (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", its
             end if
