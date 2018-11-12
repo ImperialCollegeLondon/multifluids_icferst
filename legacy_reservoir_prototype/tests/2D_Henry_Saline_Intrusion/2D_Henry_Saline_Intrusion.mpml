@@ -26,7 +26,7 @@
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Infinite_norm_tol>
-          <real_value rank="0">0.01</real_value>
+          <real_value rank="0">0.05</real_value>
           <adaptive_non_linear_iterations>
             <integer_value rank="0">2</integer_value>
           </adaptive_non_linear_iterations>
@@ -43,9 +43,17 @@
         <Impose_min_max/>
         <Show_Convergence/>
         <adaptive_timestep_nonlinear>
-          <integer_value rank="0">2</integer_value>
+          <integer_value rank="0">5</integer_value>
+          <PID_controller>
+            <Aim_num_FPI>
+              <integer_value rank="0">5</integer_value>
+            </Aim_num_FPI>
+          </PID_controller>
+          <max_timestep>
+            <real_value rank="0">300</real_value>
+          </max_timestep>
           <min_timestep>
-            <real_value rank="0">60</real_value>
+            <real_value rank="0">10</real_value>
           </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>
