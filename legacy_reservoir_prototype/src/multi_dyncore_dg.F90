@@ -592,32 +592,26 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedCVPressure" )
 
-           den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-           denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+           den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
+           denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
            den_all    = den_all2 % val ( 1, :, : )
            denold_all = denold_all2 % val ( 1, :, : )
 
            IGOT_T2_loc = 1
 
-           !What is this? rethink this it is not necessary extracting the temporal discretisation
-           if( present( option_path ) ) then ! solving for Solute Mass Fraction
+           call get_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/temporal_discretisation/' // &
+               'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+           Field_selector = 1
+           Q => extract_tensor_field( packed_state, "PackedSoluteMassFractionSource" )
+           T_source( :, : ) = Q % val( 1, :, : )
 
-               if( trim( option_path ) == '/material_phase[0]/scalar_field::SoluteMassFraction' ) then
-                   call get_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/temporal_discretisation/' // &
-                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-                   Field_selector = 1
-                   Q => extract_tensor_field( packed_state, "PackedSoluteMassFractionSource" )
-                   T_source( :, : ) = Q % val( 1, :, : )
-               end if
-
-               !sprint to do, just pass down the other values...
-               cv_disopt = Mdisopt%t_disopt
-               cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
-               cv_theta = Mdisopt%t_theta
-               cv_beta = Mdisopt%t_beta
+           !sprint to do, just pass down the other values...
+           cv_disopt = Mdisopt%t_disopt
+           cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
+           cv_theta = Mdisopt%t_theta
+           cv_beta = Mdisopt%t_beta
 
 
-           end if
 
            RETRIEVE_SOLID_CTY = .false.
 
@@ -665,7 +659,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
                    MeanPoreCV%val, &
                    mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &
-                   .false.,  mass_Mn_pres, &
+                   THERMAl = .true.,  mass_Mn_pres, &
                    mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&

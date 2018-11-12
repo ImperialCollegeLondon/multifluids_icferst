@@ -797,12 +797,12 @@ contains
             "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/tensor_field::Viscosity")
   !CHECK BECAUSE MAYBE THESE MEMORY IS AUTOMATICALLY ALLOCATED
 !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
-            if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Diffusivity")) then
+            if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity")) then
               if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
-                  FLAbort("Diffusivity specified but no prognostic temperature field specified.")
+                  FLAbort("Thermal Conductivity specified but no prognostic temperature field specified.")
               end if
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Diffusivity",&
-                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/tensor_field::Diffusivity")
+                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity",&
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
             end if
 !Easiest way to create the heatcapacity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity")) then
@@ -812,7 +812,14 @@ contains
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
             end if
-
+            !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
+            if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
+              if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
+                  FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")
+              end if
+                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+            end if
             ! SCALAR_FIELD(PRESSURE) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic"
             if (have_option(trim(option_path))) then

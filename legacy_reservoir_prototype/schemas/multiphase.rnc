@@ -3122,11 +3122,9 @@ phase_properties_options =
                   }?
                }
                 },
-             ## Diffusivity for field.
-              ##
-              ## Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
+              ## Thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
               element tensor_field {
-                 attribute name { "Diffusivity" },
+                 attribute name { "Thermal_Conductivity" },
                  attribute rank { "2" },
                  (
                     element prescribed {
@@ -3159,6 +3157,25 @@ phase_properties_options =
                        ),
                        diagnostic_scalar_field_no_adapt
                     } 
+                 )
+              }?,
+              ## Solute diffusivity (in S.I. m^2/s ).
+              element tensor_field {
+                 attribute name { "Solute_Diffusivity" },
+                 attribute rank { "2" },
+                 (
+                    element prescribed {
+                        mesh_choice?,
+                        prescribed_tensor_field_no_adapt
+                    }|
+                    ## For electrical modelling only - holds electrical conductivity
+                    element diagnostic {
+                       (
+                          tensor_python_diagnostic_algorithm |
+                          internal_algorithm
+                       ),
+                       diagnostic_tensor_field
+                    }
                  )
               }?,
                 ## Stabilisation for Inertia dominated flow. 

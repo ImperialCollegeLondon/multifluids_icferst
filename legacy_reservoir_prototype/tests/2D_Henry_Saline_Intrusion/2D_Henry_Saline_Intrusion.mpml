@@ -28,7 +28,7 @@
         <Infinite_norm_tol>
           <real_value rank="0">0.01</real_value>
           <adaptive_non_linear_iterations>
-            <integer_value rank="0">5</integer_value>
+            <integer_value rank="0">2</integer_value>
           </adaptive_non_linear_iterations>
         </Infinite_norm_tol>
         <Backtracking_factor>
@@ -40,9 +40,10 @@
             <real_value rank="0">-1e0</real_value>
           </Vanishing_for_transport>
         </Vanishing_relaxation>
+        <Impose_min_max/>
         <Show_Convergence/>
         <adaptive_timestep_nonlinear>
-          <integer_value rank="0">5</integer_value>
+          <integer_value rank="0">2</integer_value>
           <min_timestep>
             <real_value rank="0">60</real_value>
           </min_timestep>
@@ -126,6 +127,17 @@
           <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
+      <tensor_field name="Solute_Diffusivity" rank="2">
+        <prescribed>
+          <value name="WholeMesh">
+            <isotropic>
+              <constant>
+                <real_value rank="0">1.88571e-2</real_value>
+              </constant>
+            </isotropic>
+          </value>
+        </prescribed>
+      </tensor_field>
     </phase_properties>
     <scalar_field name="Pressure" rank="0">
       <prognostic>
@@ -348,11 +360,6 @@
       <aspect_ratio_bound>
         <real_value rank="0">30</real_value>
       </aspect_ratio_bound>
-      <adapt_at_first_timestep>
-        <number_of_adapts>
-          <integer_value rank="0">2</integer_value>
-        </number_of_adapts>
-      </adapt_at_first_timestep>
     </hr_adaptivity>
   </mesh_adaptivity>
   <porous_media>
