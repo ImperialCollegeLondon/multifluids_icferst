@@ -428,9 +428,9 @@ contains
         REAL, DIMENSION( : ), allocatable ::  RSUM_VEC
         real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2, PIPE_ABS
         REAL , DIMENSION( :, : ), ALLOCATABLE :: SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, opt_vel_upwind_coefs_new_cv
-        ! Define MASS_CV_PLUS for reservoir domain here, this field is created so it can account for many pressures
-        Real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS
 
+        Real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS ! Define MASS_CV_PLUS for reservoir domain here,
+                                                                     ! this field is created so it can account for many pressures
         !Permeability
         type( tensor_field ), pointer :: perm
         !Variables for Vanishing artificial diffusion (VAD)
