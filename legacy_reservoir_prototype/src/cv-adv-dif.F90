@@ -64,25 +64,12 @@ module cv_advection
   use petsc
 #endif
 
-
-
     implicit none
 
     interface DG_DERIVS_ALL
         module procedure DG_DERIVS_ALL1
         module procedure DG_DERIVS_ALL2
     end interface DG_DERIVS_ALL
-
-    !sprint_to_do; get rid of public variables
-
-    public ::  mat1, mat2
-
-
-
-    ! Variables needed for the mesh to mesh interpolation calculations
-
-    type(csr_matrix) :: mat1
-    type(csr_matrix) :: mat2
 
 #include "petsc_legacy.h"
 
@@ -302,7 +289,7 @@ contains
         logical, PARAMETER :: integrate_other_side= .true.
         ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
         logical, PARAMETER :: correct_method_petrov_method= .true.
-        LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, NORMALISE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+        LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
         logical :: skip, GOT_T2, use_volume_frac_T2, symmetric_P, logical_igot_theta_flux
         ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
         ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
@@ -352,7 +339,7 @@ contains
 
         INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
         REAL, DIMENSION( : ), allocatable ::  N
-        real, dimension (Mdims%cv_nonods) :: MASS_CV, SUM_CV
+        real, dimension (Mdims%cv_nonods) ::  SUM_CV
         real, dimension (Mdims%totele) :: MASS_ELE
         REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
         REAL, DIMENSION( Mdims%ndim, Mdims%cv_nonods ) :: XC_CV_ALL
@@ -441,7 +428,9 @@ contains
         REAL, DIMENSION( : ), allocatable ::  RSUM_VEC
         real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2, PIPE_ABS
         REAL , DIMENSION( :, : ), ALLOCATABLE :: SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, opt_vel_upwind_coefs_new_cv
-        real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS
+        ! Define MASS_CV_PLUS for reservoir domain here, this field is created so it can account for many pressures
+        Real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS
+
         !Permeability
         type( tensor_field ), pointer :: perm
         !Variables for Vanishing artificial diffusion (VAD)
@@ -572,8 +561,7 @@ contains
         if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
         T_ALL_KEEP = T_ALL
 
-            !##################END OF SET VARIABLES##################
-
+       !################## END OF SET VARIABLES ##################
 
         IF( GETCT ) THEN
             IF( RETRIEVE_SOLID_CTY ) THEN
@@ -739,7 +727,7 @@ contains
         GETMAT = .TRUE.
         X_SHARE = .FALSE.
         ! Determine FEMT (finite element wise) etc from T (control volume wise)
-        ! Also determine the CV mass matrix MASS_CV and centre of the CV's XC_CV_ALL
+        ! Also determine the CV mass matrix MASS_CV_PLUS and centre of the CV's XC_CV_ALL
         ! This is for projecting to finite element basis functions...
         IGETCT = 0
         IF ( GETCT ) IGETCT = 1
@@ -910,11 +898,11 @@ contains
             tracer,PSI_AVE, PSI_INT)
         XC_CV_ALL=0.0
         !sprint_to_do!use a pointer?
-        XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
-        MASS_CV=psi_int(1)%ptr%val(1,:)
-        FEMT_ALL(:,:)=FEMPSI(1)%ptr%val(1,:,:)
-        FEMTOLD_ALL(:,:)=FEMPSI(2)%ptr%val(1,:,:)
-        FEM_IT=3!<==============WHY DO WE SET IT TO THREE??
+        XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
+        MASS_CV_PLUS(1,:)         = psi_int(1)%ptr%val(1,:)
+        FEMT_ALL(:,:)             = FEMPSI(1)%ptr%val(1,:,:)
+        FEMTOLD_ALL(:,:)          = FEMPSI(2)%ptr%val(1,:,:)
+        FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
         if (.not. is_constant(density)) then
             FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
             tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
@@ -951,14 +939,7 @@ contains
         end do
         IF (PRESENT(MASS_ELE_TRANSP)) &
             MASS_ELE_TRANSP = MASS_ELE
-        NORMALISE = .FALSE.
-        IF ( NORMALISE ) THEN!sprint_to_do remove?
-            ! Make sure the FEM representation sums to unity so we don't get surprising results...
-            DO CV_INOD = 1, Mdims%cv_nonods
-                RSUM = SUM( FEMT_ALL( :, CV_INOD ) )
-                FEMT_ALL( :, CV_INOD ) = FEMT_ALL( :, CV_INOD ) / RSUM
-            END DO
-        END IF
+
         ! Calculate MEAN_PORE_CV
         MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
         DO ELE = 1, Mdims%totele
@@ -989,7 +970,7 @@ contains
                 ! FOR SUB SURRO_CV_MINMAX:
                 T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, Mdims%nphase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
                 Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
-                MASS_CV, &
+                MASS_CV_PLUS(1,:), &
                 ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
                 TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
                 TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
@@ -1469,7 +1450,7 @@ contains
                                         upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
                                         upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
                                         upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                        NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
                                         T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                         .false., anisotropic_and_frontier)
                                     CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
@@ -1479,7 +1460,7 @@ contains
                                         upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
                                         upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
                                         upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                        NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
                                         T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
                                         .true., anisotropic_and_frontier)
                                 else
@@ -1501,7 +1482,7 @@ contains
                                         upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
                                         upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
                                         upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                        NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
                                         TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                         .false., anisotropic_and_frontier)
                                     CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
@@ -1511,7 +1492,7 @@ contains
                                         upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
                                         upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
                                         upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
+                                        NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
                                         TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
                                         .true., anisotropic_and_frontier)
                                 else
@@ -1971,13 +1952,10 @@ contains
         END DO Loop_Elements
         IF(GET_GTHETA) THEN
             DO CV_NODI = 1, Mdims%cv_nonods
-                THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
+                THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV_PLUS(1,CV_NODI)
             END DO
         ENDIF
 
-        !Define MASS_CV_PLUS for reservoir domain here, this field is created so it can account for many pressures
-        MASS_CV_PLUS(1,:)= MASS_CV!SPRINT_TO_DO Why aren't we just creating from the start MASS_CV_PLUS??? we are copying memory here for no reason!
-                                !have concerns with MEAN_PORE_CV as well, memory duplicated for no reason whatsoever
         !Prepare everything for the wells if required only
         call calc_pipe_absorption_and_adv_terms()!<=Prior step to sending it to multi_pipes
 
@@ -1994,22 +1972,22 @@ contains
                 !        IF( RETRIEVE_SOLID_CTY ) THEN
                 !            DO IPHASE = 1, Mdims%nphase
                 !                LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                !                    + VOL_FRA_FLUID(cv_nodi)*SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI)
+                !                    + VOL_FRA_FLUID(cv_nodi)*SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV_PLUS(1,CV_NODI)
                 !            END DO
                 !        else
                 !            DO IPHASE = 1, Mdims%nphase
                 !                LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                !                    + SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI)
+                !                    + SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV_PLUS(1,CV_NODI)
                 !            END DO
                 !        end if
                 !    END IF
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
-                        - CV_P_PHASE_NODI(:) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
+                        - CV_P_PHASE_NODI(:) * ( MASS_CV_PLUS(1, CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
                 END IF
 
                 IF ( GOT_T2 ) THEN
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                        + MASS_CV(CV_NODI) * SOURCT_ALL( :, CV_NODI )
+                        + MASS_CV_PLUS(1,CV_NODI) * SOURCT_ALL( :, CV_NODI )
                     if (thermal .and. is_porous_media) then
                         !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                         ! and the fluids. Here we add the porous media contribution
@@ -2040,7 +2018,7 @@ contains
                         * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                 ELSE
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                        + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI )
+                        + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( :, CV_NODI )
                     DO IPHASE = 1,Mdims%nphase
                         call addto(Mmat%petsc_ACV,iphase,iphase,&
                             cv_nodi, cv_nodi,&
@@ -2079,7 +2057,7 @@ contains
                             if ( have_absorption ) then
                                call addto(Mmat%petsc_ACV,iphase,jphase, &
                                    cv_nodi, cv_nodi, &
-                                   MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                                   MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
                             end if
                         end do
                     end do
@@ -2122,11 +2100,11 @@ contains
                     +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
                     / ( DT * DEN_ALL_DIVID(:, CV_NODI) )
                 ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                    + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
+                    + MASS_CV_PLUS(1,CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
                 IF ( HAVE_ABSORPTION ) THEN
                    DO JPHASE = 1, Mdims%nphase
                       ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                         - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
+                         - MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
                    END DO
                 END IF
                 ! scaling coefficient...
@@ -2263,8 +2241,8 @@ contains
                 h_nano = h
                 cc = 0.0
                 if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
-                h = (mass_cv( cv_nodi )/h)**(1.0/(Mdims%ndim-1)) ! This is the lengthscale normal to the wells.
-                IF ( is_flooding ) h = mass_cv( cv_nodi )**(1.0/Mdims%ndim)
+                h = (MASS_CV_PLUS(1, cv_nodi )/h)**(1.0/(Mdims%ndim-1)) ! This is the lengthscale normal to the wells.
+                IF ( is_flooding ) h = MASS_CV_PLUS(1, cv_nodi )**(1.0/Mdims%ndim)
                 rp = 0.14 * h
                 rp_nano = 0.14 * h_nano
                 Skin = 0.0
@@ -2399,7 +2377,7 @@ contains
                    ct_rhs_phase(2)=0.0
                    ct_rhs_phase(3)= R_PEACMAN( 3 ) *gravity_flooding*(-bathymetry%val(1,1,CV_NODI ) + K_PIPES*depth_of_drain%val( CV_NODI ))
                    ct_rhs_phase(4)=0.0
-                   ct_rhs_phase(1:2)=ct_rhs_phase(1:2)*MASS_CV( CV_NODI )
+                   ct_rhs_phase(1:2)=ct_rhs_phase(1:2)*MASS_CV_PLUS( 1, CV_NODI )
                    ct_rhs_phase(3:4)=ct_rhs_phase(3:4)*MASS_CV_PLUS( 2, CV_NODI )
 
         ! Remeber for flooding DEN_ALL_DIVID( 1, CV_NODI )=1.0
@@ -2425,7 +2403,7 @@ contains
                     h_nano = h
                     cc = 0.0
                     if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
-                    h = (mass_cv( cv_nodi )/h)**(1.0/(Mdims%ndim-1))  ! This is the lengthscale normal to the wells.
+                    h = (MASS_CV_PLUS(1, cv_nodi )/h)**(1.0/(Mdims%ndim-1))  ! This is the lengthscale normal to the wells.
                     rp = 0.14 * h
                     rp_NANO = 0.14 * h_NANO
                     Skin = 0.0
@@ -6172,16 +6150,10 @@ end if
                             END IF
                         END DO
 
-
-
-                        ! ***PUT INTO MATRIX**************
-                        ! Populate  limiting matrix based on max and min values
-
-
-                        COUNT_OUT= COUNT
-
+                        ! ********PUT INTO MATRIX*******************************
+                        ! Populate  limiting matrix based on max and min values.
+                        COUNT_OUT = COUNT
                         DO IPHASE=1,NPHASE
-
                             IF(T_ALL( IPHASE, CV_NODI ).GT.T_ALL( IPHASE, CV_NODJ )) THEN
                                 TUPWIND_MAT_ALL( IPHASE, COUNT_OUT ) = TMAX_ALL( IPHASE, CV_NODI )
                                 DENUPWIND_MAT_ALL( IPHASE, COUNT_OUT ) = DENMAX_ALL( IPHASE, CV_NODI )
@@ -6196,9 +6168,6 @@ end if
                                 ENDIF
                             ENDIF
                         END DO
-
-
-
 
                         DO IPHASE=1,NPHASE
                             IF ( LIM_VOL_ADJUST ) THEN
@@ -6219,16 +6188,10 @@ end if
                                     CALL CAL_LIM_VOL_ADJUST(T2MAX_STORE(IPHASE),T2MAX_ALL(IPHASE,:),T2_ALL(IPHASE,:),T2MAX_NOD_ALL(IPHASE,:),RESET_STORE,MASS_CV, &
                                         CV_NODI, CV_NODJ, 1, CV_NONODS, INCOME )
                                 END IF
-
                             END IF
                         END DO
-
-
-
                     END DO
                 END DO
-
-
 
                 RETURN
 
