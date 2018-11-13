@@ -751,12 +751,14 @@ contains
           !Include that fields are part of stat, and not of detectors
           do k = 1, option_count("/material_phase[" // int2str(i-1) // "]/scalar_field")
               option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
-              ! Stat, convergence, detectors, steady state settings
-              !We have removd this from scalar_fields
-              !SPRINT_TO_DO THESE OPTIONS TO BE REMOVED from here and the other fields, this seems unnecessary?
-              call add_option(trim(option_path)//"/stat/include_in_stat", stat=stat)
-              call add_option(trim(option_path)//"/convergence/include_in_convergence", stat=stat)
-              call add_option(trim(option_path)//"/detectors/exclude_from_detectors", stat=stat)
+              if (have_option(trim(option_path))) then!Only for prognostic fields
+                ! Stat, convergence, detectors, steady state settings
+                !We have removd this from scalar_fields
+                !SPRINT_TO_DO THESE OPTIONS TO BE REMOVED from here and the other fields, this seems unnecessary?
+                call add_option(trim(option_path)//"/stat/include_in_stat", stat=stat)
+                call add_option(trim(option_path)//"/convergence/include_in_convergence", stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors", stat=stat)
+              end if
           end do
 
 
