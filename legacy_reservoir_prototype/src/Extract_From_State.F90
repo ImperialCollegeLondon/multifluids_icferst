@@ -2055,8 +2055,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
         nonlinear_its = its
     else
         if (.not.ExitNonLinearLoop) then
-            nonlinear_its = its!Only do something different when we are suppose to exit
-        else!Store when we are in theory finishing
+            nonlinear_its = its!Only do something different when we are supposes to exit
+        else !Store when we are in theory finishing
             nonlinear_its = nonlinear_its + its
         end if
     end if

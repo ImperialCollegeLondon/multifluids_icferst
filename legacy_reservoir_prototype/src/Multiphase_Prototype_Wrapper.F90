@@ -310,6 +310,7 @@ contains
             call set_option("/geometry/mesh::P0DG/from_mesh/mesh_continuity", "discontinuous")
         end if
 
+        !SPRINT_TO_DO generilise this to other fields
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
             ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"
             !Create necessary backups for storing the saturation (in a way that it is also adapted)

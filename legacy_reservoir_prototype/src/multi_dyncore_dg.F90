@@ -6207,7 +6207,7 @@ end if
                      * CV_Bound_Shape_Func( CV_SJLOC, : ) * SDETWE( : ))
                  if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
                      cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-                 else!If no neighbour then we use the same value.
+                 else !If no neighbour then we use the same value.
                      cv_Xnod = CV_INOD
                  end if
                  do iphase = 1, Mdims%nphase
@@ -6216,7 +6216,7 @@ end if
                  end do
              end do
          end do
-     else!Volumetric integration only (requires the CapPressure to be in FEM)
+     else !Volumetric integration only (requires the CapPressure to be in FEM)
          if (iface ==1) then!The volumetric term is added just one time
              DO U_ILOC = 1, Mdims%u_nloc
                  DO CV_JLOC = 1, Mdims%cv_nloc
@@ -6242,7 +6242,7 @@ end if
                  NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
                  if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
                      cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-                 else!If no neighbour then we use the same value.
+                 else !If no neighbour then we use the same value.
                      cv_Xnod = CV_INOD
                  end if
                  do iphase = 1, Mdims%nphase

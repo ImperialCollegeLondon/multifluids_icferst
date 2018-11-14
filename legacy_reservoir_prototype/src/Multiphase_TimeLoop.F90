@@ -1242,8 +1242,11 @@ end if
                         call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
-                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
-                    call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    !This to be removed once adapt within FPI is improved and generalised
+                    if (.not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+                      call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
+                      call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    end if
                 end if
                 if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                 if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
@@ -1539,6 +1542,7 @@ end if
             !It is important that the average keep the sharpness of the interfaces
             sat1%val = abs(sat1%val - sat2%val)**0.8
             call adapt_mesh_mp()
+
             !3.Reconstruct the Saturation of the first phase
             sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
             sat1%val = 1.0
