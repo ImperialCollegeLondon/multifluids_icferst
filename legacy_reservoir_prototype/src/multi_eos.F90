@@ -1763,7 +1763,6 @@ contains
 
                             LongDispCoeff = vel_av * LongDisp
                             TransDispCoeff = vel_av * TransDisp
-
                             do idim1 = 1, Mdims%ndim
                                 do idim2 = 1, Mdims%ndim
                                     if (idim1 == idim2) then
@@ -1784,14 +1783,13 @@ contains
                                         SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
                                         sfield%val(ele_nod)*(1/(vel_av**2)) *&
                                         (LongDispCoeff - TransDispCoeff) *&
-                                        (vel_comp(idim1) * vel_comp(idim2))
+                                        (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
                                     else
                                         SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
                                         sfield%val(ele_nod)*DispDiaComp(idim1)
                                     endif
                                 end do
                             end do
-
                         end do
                     end do
                 end do

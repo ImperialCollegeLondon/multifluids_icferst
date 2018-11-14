@@ -621,7 +621,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call calculate_solute_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer)
            !Arash
            !Calculates solute dispersion with specific longitudinal and transverse dispersion coefficients
-           call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 0.001, 0.00005, CDISPERSION, tracer)
+           call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 100.0, 10.0, CDISPERSION, tracer)
            !Correction for the diffusivity for dispersion
            !TDIFFUSION = TDIFFUSION + (CDISPERSION * 1000.)
 
