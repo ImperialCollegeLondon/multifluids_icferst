@@ -189,7 +189,6 @@ contains
 !!-Variables related to the detection and correction of bad elements
         real, save :: Max_bad_angle = -1 ! set in timeloop from diamond input
         integer :: i, k
-        type(bad_elements), allocatable, dimension(:) :: Quality_list
         real, dimension(:,:), pointer:: X_ALL
         real, dimension(:), allocatable :: quality_table
         integer, dimension(:), allocatable :: diagnostics ! number of bad elements - used to generate a diagnostics table
@@ -452,10 +451,6 @@ contains
 
         checkpoint_number=1
 
-        ! Reading options for bad_element test
-        call BadElementTest(Quality_list, 1)
-
-
         !Prepapre the pipes
         if (Mdims%npres > 1) then
            !Retrieve the elements with pipes and the corresponding coordinates
@@ -467,8 +462,6 @@ contains
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
-            ! Tests bad elements and creates table of angles for model elements
-            call BadElementTest(Quality_list, 2)
 
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
             call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
@@ -545,7 +538,7 @@ contains
                 if( solve_force_balance) then
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, Quality_list )
+                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
@@ -602,7 +595,7 @@ contains
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
+                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
 
                 end if Conditional_PhaseVolumeFraction
 
@@ -1576,82 +1569,7 @@ end if
 
     end subroutine adapt_mesh_within_FPI
 
-
-subroutine BadElementTest(Quality_list, flag)
-
-    implicit none
-    integer, intent(in) :: flag
-    type(bad_elements), allocatable, dimension(:), intent(inout) :: Quality_list
-    ! local variable
-    integer :: i
-
-    select case(flag)
-
-            ! Allocate memory for the quality_table to check the angles of each element and print out the diagnostics for the mesh
-        case (1)
-
-			bad_element = have_option('/numerical_methods/Bad_element_fix/')
-			if (have_option('/io/Mesh_Diagnostics_Angles')) then
-				mesh_diagnostics = .true.
-				shape = option_shape('/io/Mesh_Diagnostics_Angles')
-				allocate(quality_table(shape(1)))
-				call get_option( '/io/Mesh_Diagnostics_Angles', quality_table)
-				allocate(diagnostics(shape(1)))
-				diagnostics(:) = -1
-			end if
-
-
-        case default
-            if (bad_element .or. mesh_diagnostics)  then
-                ! Check bad elements (angles larger than specified in Max_bad_angle) at first time step or after mesh adapt
-                if (first_time_step .or. after_adapt) then
-                    if (allocated(Quality_list)) then
-                        i=1
-                        do while (allocated(Quality_list(i)%rotmatrix) )
-                            deallocate(Quality_list(i)%rotmatrix)
-                            i = i+1
-                        end do
-                        deallocate(Quality_list)
-                    end if
-                    allocate(Quality_list(Mdims%totele+1))
-                    call get_var_from_packed_state(packed_state, Coordinate = X_ALL)
-                    ! create table for stats on the angles of the mesh
-                    if (mesh_diagnostics) then
-                        do i=1, size(quality_table)
-                            call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1 ,quality_table(i), Quality_list, bad_element, diagnostics(i))
-                        end do
-
-
-                        if (getprocno() == 1) then
-                            if (after_adapt) then
-                                ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
-                            else
-                                ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
-                            end if
-
-                            ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
-                            do i=1, size(quality_table)
-                                ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
-                            end do
-                            ewrite(0, '(38("-"))')
-                        end if
-                    end if
-
-                    if (.not. bad_element) then
-                        deallocate(Quality_list) ! don't change element properties - throw away Quality list
-                    else
-
-                        if (Max_bad_angle < 0) call get_option( '/numerical_methods/Bad_element_fix/Angle', Max_bad_angle, default = 177. )
-                        call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1, Max_bad_angle, Quality_list, bad_element)
-                    endif
-                end if
-            end if
-
-    end select
-
-end subroutine BadElementTest
-
-    end subroutine MultiFluids_SolveTimeLoop
+ end subroutine MultiFluids_SolveTimeLoop
 
 
 

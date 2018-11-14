@@ -722,7 +722,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, SFPI_taken, Courant_number,option_path,&
-         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, Quality_list)
+         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
              type( state_type ) :: packed_state
@@ -765,9 +765,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
              type( tensor_field ), pointer :: den_all2, denold_all2
              character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
-
-             ! Element quality fix
-             type(bad_elements), allocatable, dimension(:), optional :: Quality_list
              !Working pointers
              real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
@@ -976,7 +973,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
                              call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                                   CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, Quality_list )
+                                   CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
                              !Also recalculate the Over-relaxation parameter
                             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)

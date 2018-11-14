@@ -760,7 +760,7 @@ contains
     end subroutine Calculate_flooding_absorptionTerm
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                      upwnd, suf_sig_diagten_bc, Quality_list )
+                                                      upwnd, suf_sig_diagten_bc )
        implicit none
        type( state_type ), dimension( : ), intent( inout ) :: state
        type( state_type ), intent( inout ) :: packed_state
@@ -772,7 +772,6 @@ contains
        type(multi_ndgln), intent(in) :: ndgln
        type (porous_adv_coefs), intent(inout) :: upwnd
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
-       type(bad_elements), allocatable, dimension(:), optional :: Quality_list
        !Local variables
        real, save :: kv_kh_ratio = -1
        type( tensor_field ), pointer :: perm
@@ -794,35 +793,7 @@ contains
                 kv_kh_ratio = 0.
             end if
             kv_kh_ratio = abs(kv_kh_ratio)
-        end if
-
-        if ( present(Quality_list) .and. kv_kh_ratio > 1d-8 ) then!sprint_to_do remove everything related to quality list
-            if (allocated(Quality_list)) then
-            ! create transformation matrix with Kv/kh ratio
-            ! |1    0    0    |  |1    0     |
-            ! |0    1    0    |  |0    kv/kh |
-            ! |0    0   kv/kh |
-            trans_matrix(:,:) = 0.
-            do i=1,Mdims%ndim-1
-                trans_matrix(i,i) = 1.
-            end do
-            trans_matrix(Mdims%ndim,Mdims%ndim) = kv_kh_ratio
-            i=1
-            do while ( Quality_list(i)%bad_ele > 0 )
-                ele = Quality_list(i)%bad_ele
-                rot_trans_matrix = matmul(transpose(Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim)) , matmul(trans_matrix,Quality_list(ele)%rotmatrix(1:Mdims%ndim,1:Mdims%ndim))  )
-                perm%val(:, :, ele) =  matmul(rot_trans_matrix, perm%val(:, :, ele))
-                i = i+1
-            end do
-
-            i=1
-            do while (allocated(Quality_list(i)%rotmatrix) )
-                deallocate(Quality_list(i)%rotmatrix)
-                i = i+1
-            end do
-            deallocate(Quality_list)
-            end if
-        end if
+       end if
 
        if (PorousMedia_absorp%memory_type<2) then!The permeability is isotropic
            inv_perm = 0.
