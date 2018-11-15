@@ -1,4 +1,4 @@
-  
+
 !    Copyright (C) 2006 Imperial College London and others.
 !
 !    Please see the AUTHORS file in the main source directory for a full list
@@ -26,7 +26,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-  
+
 
 module multi_surface_tension
     use fldebug
@@ -64,7 +64,7 @@ contains
      type(multi_sparsities), intent(in) :: Mspars
      type(multi_ndgln), intent(in) :: ndgln
      type(multi_discretization_opts), intent(in) :: Mdisopt
-     
+
      !Local variables
      real, dimension( : ), allocatable :: X, Y, Z
 
@@ -153,7 +153,7 @@ contains
      SUF_TENSION_COEF, ANGLE, VOLUME_FRAC, &
      Mdims, Mspars, ndgln, Mdisopt )
      ! Calculate the surface tension force as a pressure force term:
-     ! PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_GRAD 
+     ! PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_GRAD
      ! for a given DevFuns%VOLUME fraction field VOLUME_FRAC
      ! SUF_TENSION_COEF is the surface tension coefficient.
      !use shape_functions
@@ -172,7 +172,7 @@ contains
      REAL, intent( in ) ::  SUF_TENSION_COEF, ANGLE
      REAL, DIMENSION( : ), intent( in ) :: VOLUME_FRAC
         ! Local variables
-     
+
         INTEGER, DIMENSION( : ), allocatable :: CV_OTHER_LOC, CV_SLOC2LOC
         INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
         REAL, DIMENSION( : ), allocatable :: MASS_CV, MASS_ELE, CURVATURE
@@ -188,11 +188,11 @@ contains
         LOGICAL, PARAMETER :: DCYL = .FALSE.
         !Derivative of the shape functions
         type(multi_dev_shape_funs) :: Devfuns
-!--------------------DISTANCE FUNCTION VARIABLES-----------------------
+!--------------------DISTANCE FUNCTION VARIABLES--------------------------------
       REAL, DIMENSION( : , : ), allocatable :: SIGN_FUN_GI, MAT_LOC
       REAL, DIMENSION( : , : , : ), allocatable :: SIGN_FUN_SGI
       REAL, DIMENSION( : ), allocatable ::  DISTANCE_FUN, DISTANCE_FUN1, DISTANCE_FUN_OLD, &
-               RHS_CV_SHORT,CV_SOL, XSL, YSL, ZSL, & 
+               RHS_CV_SHORT,CV_SOL, XSL, YSL, ZSL, &
                S_INCOME, SDETWE, N_DOT_SQ,  &
                NORMALIZATION, CURV, ST, DIFF_COEF
       INTEGER :: CV_ILOC2, CV_JLOC2, CV_SJLOC, &
@@ -205,16 +205,16 @@ contains
       LOGICAL :: GTHALF, LTHALF
       LOGICAL, DIMENSION(:), allocatable :: INTERFACE_ELE, INTERFACE_ELE2
       INTEGER :: IPIV(Mdims%cv_nloc)
-!------------------------------------------------------
+!-------------------------------------------------------------------------------
       type(scalar_field), pointer :: ds, dx, dy, dz, dk, ck
       integer, dimension(:), pointer :: state_nodes
-!-----------------------------------------------------------------------
+!-------------------------------------------------------------------------------
      !Local variables
       real, dimension( : ), allocatable :: X, Y, Z, PSIGI_X, DGI_X, PSISGI_X, NORMX
       real, dimension( : , : ), allocatable :: SOL_DERIV_X, SOL_DERIV_X1, UD, SNORMXN
-     
+
       type( vector_field ), pointer :: x_all
-      QUAD_OVER_WHOLE_ELE=.true. 
+      QUAD_OVER_WHOLE_ELE=.true.
       ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
       call retrieve_ngi( CV_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele )
       call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
@@ -228,7 +228,7 @@ contains
       ALLOCATE( PSISGI_X( Mdims%ndim ) ) ; PSISGI_X = 0.0
       ALLOCATE( NORMX( 3 ) ) ; NORMX = 0.0
       ALLOCATE( SNORMXN( Mdims%ndim, CV_GIdims%sbcvngi )); SNORMXN = 0.0
-      ALLOCATE( CV_OTHER_LOC( Mdims%cv_nloc ))    
+      ALLOCATE( CV_OTHER_LOC( Mdims%cv_nloc ))
       ALLOCATE( CV_SLOC2LOC( Mdims%cv_snloc ))
 
       x_all => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -242,13 +242,13 @@ contains
       dz => extract_scalar_field( state(1), 'dz'  )
       dk => extract_scalar_field( state(1), 'dk'  )
       ck => extract_scalar_field( state(1), 'ck'  )
- 
+
       ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
       CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
            CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
       ALLOCATE( MASS_ELE( Mdims%totele )); MASS_ELE=0.0
-      
+
 
       call allocate_multi_dev_shape_funs(CV_funs, Devfuns)
       DO ELE=1,Mdims%totele
@@ -258,14 +258,14 @@ contains
          MASS_ELE( ELE ) = DevFuns%VOLUME
       END DO
       ALLOCATE( MASS_CV(  Mdims%cv_nonods ) ) ; MASS_CV=0.0
- 
+
       DO ELE=1,Mdims%totele
          DO CV_ILOC=1,Mdims%cv_nloc
             CV_NOD=ndgln%cv((ELE-1)*Mdims%cv_nloc+CV_ILOC)
-            MASS_CV(CV_NOD) = MASS_CV(CV_NOD) + MASS_ELE(ELE) 
+            MASS_CV(CV_NOD) = MASS_CV(CV_NOD) + MASS_ELE(ELE)
           END DO
       END DO
-!---------------- Calculate the distance function -------------------
+!---------------- Calculate the distance function ------------------------------
       ALLOCATE(CURVATURE( Mdims%cv_nonods))
       DG_NONODS=Mdims%cv_nloc*Mdims%totele
       ALLOCATE( INTERFACE_ELE( Mdims%totele ))
@@ -298,14 +298,14 @@ contains
          GTHALF=.FALSE.
          LTHALF=.FALSE.
          DO CV_ILOC=1,Mdims%cv_nloc
-            CV_NOD=ndgln%cv((ELE-1)*Mdims%cv_nloc+CV_ILOC) 
+            CV_NOD=ndgln%cv((ELE-1)*Mdims%cv_nloc+CV_ILOC)
             IF(VOLUME_FRAC(CV_NOD).GT.0.5) THEN
                GTHALF=.TRUE.
             ELSE
                LTHALF=.TRUE.
             ENDIF
          END DO
-         IF(GTHALF.AND.LTHALF) THEN 
+         IF(GTHALF.AND.LTHALF) THEN
            INTERFACE_ELE(ELE)=.TRUE.
          ELSE
            INTERFACE_ELE(ELE)=.FALSE.
@@ -335,7 +335,7 @@ contains
          END DO
          END IF
       END DO
-      
+
       if (IsParallel()) call allmax(HDC)
 ! Initialise the distance function
       DO ELE=1,Mdims%totele
@@ -360,16 +360,16 @@ contains
                DO CV_ILOC=1,Mdims%cv_nloc
                   DG_NOD=(ELE-1)*Mdims%cv_nloc+CV_ILOC
                   PSI_GI=PSI_GI + CV_funs%CVFEN( CV_ILOC, GI ) * DISTANCE_FUN(DG_NOD)
-               END DO        
+               END DO
                SIGN_FUN_GI(ELE,GI)=PSI_GI/SQRT(PSI_GI**2+EH**2)
             END DO
          END DO
-  
+
          DO ELE=1,Mdims%totele
             Between_Elements_And_Boundary0: DO IFACE = 1, CV_GIdims%nface
-            ! The surface nodes on element face IFACE. 
+            ! The surface nodes on element face IFACE.
             CV_SLOC2LOC( : ) = CV_funs%cv_sloclist( IFACE, : )
-             
+
             DO SGI=1,CV_GIdims%sbcvngi
                PSI_SGI=0.0
                DO CV_SILOC=1,Mdims%cv_snloc
@@ -382,7 +382,7 @@ contains
             END DO
             END DO Between_Elements_And_Boundary0
          END DO ! ELE
-      
+
       END IF ! Dif_Int_App
 ! Calculate the minimum lengthscale near the interface
       HDC=1.0E+6
@@ -414,7 +414,7 @@ contains
                IF(INTERFACE_ELE(ELE)) THEN
                 call DETNLXR_PLUS_U(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
- 
+
                CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
                                            Mdims%ndim,  ndgln%cv, &
                                            Mdims%x_nloc, ndgln%x, &
@@ -424,7 +424,7 @@ contains
                                            CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                                            ELE, DevFuns%DETWEI, 1, angle)
-                                  
+
                END IF
             END DO ! ELE loop 1
             dx%val = SOL_DERIV_X(1,:)
@@ -433,10 +433,10 @@ contains
             call halo_update(dx)
             call halo_update(dy)
             IF(Mdims%ndim.GE.3) call halo_update(dz)
-            SOL_DERIV_X(1,:) = dx%val 
-            SOL_DERIV_X(2,:) = dy%val 
-            IF(Mdims%ndim.GE.3) SOL_DERIV_X(3,:) = dz%val 
-       
+            SOL_DERIV_X(1,:) = dx%val
+            SOL_DERIV_X(2,:) = dy%val
+            IF(Mdims%ndim.GE.3) SOL_DERIV_X(3,:) = dz%val
+
 !   Distribute DG DERIV to the CV nodes...
             SOL_DERIV_X1=0.0
             DO ELE=1,Mdims%totele ! ELE loop 2
@@ -487,13 +487,13 @@ contains
                         DIFF_COEF(GI)=0.0
                      END IF
                   END DO
- 
+
                   MAT_LOC=0.0
                   RHS_CV_SHORT=0.0
                   DO CV_ILOC=1,Mdims%cv_nloc
                      DO CV_JLOC=1,Mdims%cv_nloc
                         CV_JNOD=ndgln%cv((ELE-1)*Mdims%cv_nloc+CV_JLOC)
-                        DG_JNOD=(ELE-1)*Mdims%cv_nloc+CV_JLOC 
+                        DG_JNOD=(ELE-1)*Mdims%cv_nloc+CV_JLOC
                         NN=0.0
                         VLN=0.0
                         DNN=0.0
@@ -512,22 +512,22 @@ contains
                                    +(NN/SUR_DT)*DISTANCE_FUN_OLD(DG_JNOD) + SNN
                      END DO
                   END DO
- 
+
                   Between_Elements_And_Boundary: DO IFACE = 1, CV_GIdims%nface
                   ELE2  = FACE_ELE( IFACE, ELE )
                   SELE2 = MAX( 0, - ELE2 )
                   SELE  = SELE2
                   ELE2  = MAX( 0, + ELE2 )
                   IF (ELE2.GT.0) THEN
-                ! The surface nodes on element face IFACE. 
+                ! The surface nodes on element face IFACE.
                      CV_SLOC2LOC( : ) = CV_funs%cv_sloclist( IFACE, : )
                      DO CV_SILOC = 1, Mdims%cv_snloc
                         CV_ILOC = CV_SLOC2LOC( CV_SILOC )
                         X_INOD = ndgln%x(( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                         DO CV_ILOC2 = 1, Mdims%cv_nloc
                            X_INOD2 = ndgln%x(( ELE2 - 1 ) * Mdims%cv_nloc + CV_ILOC2 )
-                           IF( X_INOD2 == X_INOD ) THEN 
-                              CV_OTHER_LOC( CV_ILOC ) = CV_ILOC2 
+                           IF( X_INOD2 == X_INOD ) THEN
+                              CV_OTHER_LOC( CV_ILOC ) = CV_ILOC2
                            ENDIF
                         END DO
                      END DO
@@ -538,7 +538,7 @@ contains
                      XSL=0. ; YSL=0. ; ZSL=0.
                      DO CV_SILOC=1,Mdims%cv_snloc
                         CV_ILOC=CV_SLOC2LOC(CV_SILOC)
-                        X_INOD=ndgln%x((ELE-1)*Mdims%x_nloc+CV_ILOC) 
+                        X_INOD=ndgln%x((ELE-1)*Mdims%x_nloc+CV_ILOC)
                         XSL(CV_SILOC)=X(X_INOD)
                         IF(Mdims%ndim.GE.2) YSL(CV_SILOC)=Y(X_INOD)
                         IF(Mdims%ndim.GE.3) ZSL(CV_SILOC)=Z(X_INOD)
@@ -549,7 +549,7 @@ contains
                      (Mdims%ndim==1), (Mdims%ndim==3), (Mdims%ndim==-2), &
                      SNORMXN(1,:),SNORMXN(2,:),SNORMXN(3,:), &
                      NORMX(1),NORMX(2),NORMX(3))
-                 
+
                      DO SGI=1,CV_GIdims%sbcvngi
                         PSISGI_X=0.0
                         DO CV_SILOC=1,Mdims%cv_snloc
@@ -576,7 +576,7 @@ contains
                               SVLN_IN =SVLN_IN  + RR*S_INCOME(SGI)
                               SVLN_OUT=SVLN_OUT + RR*(1.-S_INCOME(SGI))
                            END DO
-               
+
                            !MAT_LOC(CV_ILOC,CV_JLOC)=MAT_LOC(CV_ILOC,CV_JLOC) - SVLN_IN
                            !RHS_CV_SHORT(CV_ILOC)=RHS_CV_SHORT(CV_ILOC) &
                            !   -SVLN_IN*DISTANCE_FUN(DG_JNOD2)
@@ -589,10 +589,10 @@ contains
                         END DO
                      END DO
                   END IF
-               END DO Between_Elements_And_Boundary 
+               END DO Between_Elements_And_Boundary
 ! Invert mass matrix...
 ! Solve MAT_LOC *CV_SOL = RHS_CV_SHORT
-! STORE_MASS is overwritten by lu decomposition which used after the 1st solve. 
+! STORE_MASS is overwritten by lu decomposition which used after the 1st solve.
               GOTDEC = .FALSE.
               CALL SMLINNGOT( MAT_LOC, CV_SOL, RHS_CV_SHORT, Mdims%cv_nloc, IPIV, GOTDEC)
 ! Solve mass matrix systems...
@@ -608,7 +608,7 @@ contains
             call halo_update(ds)
             DISTANCE_FUN = ds%val
          END DO ! OUT_ITER
-      
+
          DISTANCE_FUN1=0.0
 !   Distribute DISTANCE_FUN to the CV nodes...
          DO ELE=1,Mdims%totele ! ELE loop 5
@@ -639,17 +639,17 @@ contains
          END DO ! ELE loop 6
          DISTANCE_FUN_OLD=DISTANCE_FUN
       END DO !ITIME
-      
+
 !---------------- end of calculation of the distance function -------
-    
+
 !ds => extract_scalar_field( state(1), 'ds'  )
       ds%val = distance_fun
 !       DO ELE=1,Mdims%totele
 !          state_nodes => ele_nodes(ds, ele)
 !     DO CV_ILOC=1,Mdims%cv_nloc
-!             ds%val( state_nodes( CV_ILOC )  ) = distance_fun(  (ELE-1)*Mdims%cv_nloc+CV_ILOC  )      
+!             ds%val( state_nodes( CV_ILOC )  ) = distance_fun(  (ELE-1)*Mdims%cv_nloc+CV_ILOC  )
 !          END DO
-!       END DO 
+!       END DO
       SOL_DERIV_X=0.
 !Calculate the interface normal
       DO ELE=1,Mdims%totele ! ELE loop 7
@@ -657,7 +657,7 @@ contains
 ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
                 call DETNLXR_PLUS_U(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
- 
+
             CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
                                            Mdims%ndim,  ndgln%cv, &
                                            Mdims%x_nloc, ndgln%x, &
@@ -667,19 +667,19 @@ contains
                                            CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                                            ELE, DevFuns%DETWEI, 2, angle)
-            
+
          END IF
       END DO ! ELE loop 7
-             
+
       dx%val = SOL_DERIV_X(1,:)
       dy%val = SOL_DERIV_X(2,:)
       IF(Mdims%ndim.GE.3) dz%val = SOL_DERIV_X(3,:)
       call halo_update(dx)
       call halo_update(dy)
       IF(Mdims%ndim.GE.3) call halo_update(dz)
-      SOL_DERIV_X(1,:) = dx%val 
-      SOL_DERIV_X(2,:) = dy%val 
-      IF(Mdims%ndim.GE.3) SOL_DERIV_X(3,:) = dz%val 
+      SOL_DERIV_X(1,:) = dx%val
+      SOL_DERIV_X(2,:) = dy%val
+      IF(Mdims%ndim.GE.3) SOL_DERIV_X(3,:) = dz%val
 !   Distribute DG DERIV to the CV nodes...
       SOL_DERIV_X1=0.0
       DO ELE=1,Mdims%totele ! ELE loop 8
@@ -703,7 +703,7 @@ contains
             !SOL_DERIV_X(1, DG_NOD)=-(X(X_INOD)-4.0)/MAX(SQRT((X(X_INOD)-4.0)**2+(Y(X_INOD)-4.0)**2),1.E-10)
             !SOL_DERIV_X(2, DG_NOD)=-(Y(X_INOD)-4.0)/MAX(SQRT((X(X_INOD)-4.0)**2+(Y(X_INOD)-4.0)**2),1.E-10)
          END DO
-         
+
          IF ( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) ) THEN
             SOL_DERIV_X(:, (ELE-1)*Mdims%cv_nloc+2)=0.5*(SOL_DERIV_X(:, (ELE-1)*Mdims%cv_nloc+1)+SOL_DERIV_X(:, (ELE-1)*Mdims%cv_nloc+3))
             SOL_DERIV_X(:, (ELE-1)*Mdims%cv_nloc+4)=0.5*(SOL_DERIV_X(:, (ELE-1)*Mdims%cv_nloc+1)+SOL_DERIV_X(:, (ELE-1)*Mdims%cv_nloc+6))
@@ -722,7 +722,7 @@ contains
             dy%val( state_nodes( CV_ILOC )  ) = sol_deriv_x( 2, (ELE-1)*Mdims%cv_nloc+CV_ILOC  )
             IF(Mdims%ndim.GE.3) dz%val( state_nodes( CV_ILOC )  ) = sol_deriv_x( 3, (ELE-1)*Mdims%cv_nloc+CV_ILOC  )
          END DO
-      END DO 
+      END DO
       !dx%val = SOL_DERIV_X
       !dy%val = SOL_DERIV_Y
       !dz%val = SOL_DERIV_Z
@@ -746,7 +746,7 @@ contains
       END DO ! ELE loop 10
       dk%val = curv
       call halo_update(dk)
-      curv = dk%val 
+      curv = dk%val
 !   Distribute curvature to the CV nodes...
       CURVATURE=0.0
       DO ELE=1,Mdims%totele ! ELE loop 11
@@ -756,7 +756,7 @@ contains
             CURVATURE(CV_NOD)=CURVATURE(CV_NOD)+CURV(DG_NOD) * MASS_ELE(ELE) / MASS_CV(CV_NOD)
          END DO
       END DO ! ELE loop 11
-      
+
       DO ELE=1,Mdims%totele ! ELE loop 12
          IF( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) ) THEN
             CURVATURE(ndgln%cv((ELE-1)*Mdims%cv_nloc+2))=0.5*(CURVATURE(ndgln%cv((ELE-1)*Mdims%cv_nloc+1)) &
@@ -780,7 +780,7 @@ contains
       !IF_USE_PRESSURE_FORCE: IF ( USE_PRESSURE_FORCE ) THEN
          PLIKE_GRAD_SOU_COEF = PLIKE_GRAD_SOU_COEF + SUF_TENSION_COEF * CURVATURE
          PLIKE_GRAD_SOU_GRAD = PLIKE_GRAD_SOU_GRAD + VOLUME_FRAC
-         
+
       !END IF IF_USE_PRESSURE_FORCE
       DEALLOCATE( X, Y, Z )
       DEALLOCATE( DGI_X, UD, PSISGI_X, NORMX, SNORMXN )
@@ -803,7 +803,7 @@ contains
                                            X, Y, Z, &
                                            NFACE, FACE_ELE, CV_SLOCLIST, CV_SNLOC, &
                                            SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                                           ELE, DETWEI) 
+                                           ELE, DETWEI)
 
       IMPLICIT NONE
       INTEGER, intent( in ) :: NDIM,  X_NLOC, CV_NGI, CV_NLOC, &
@@ -821,8 +821,8 @@ contains
       REAL, DIMENSION( : ), intent( in ) :: SBCVFEWEIGH
       REAL, DIMENSION( : ), intent( in ) :: DETWEI
       ! Local variables
- 
-  
+
+
       REAL, DIMENSION( : ), allocatable :: SOL, RHS_DG, DN_GI, &
                                            SOL_X, SOL_Y, SOL_Z, &
                                        RHS_DG_X, RHS_DG_Y, RHS_DG_Z
@@ -831,7 +831,7 @@ contains
       REAL  :: VLNN, VLNX, VLNY, VLNZ, VLNX2, VLNY2, VLNZ2, &
                RR, SXNN, SYNN, SZNN, RDISTX, RDISTY, RDISTZ
       INTEGER :: CV_ILOC, CV_JLOC, DG_JNOD, CV_INOD, X_INOD, &
-                     CV_ILOC2, CV_JLOC2,DG_JNOD2, &  
+                     CV_ILOC2, CV_JLOC2,DG_JNOD2, &
                      CV_SILOC, CV_SJLOC, &
                      ELE2, SELE, SELE2, &
                      GI, SGI, IFACE, X_INOD2, DG_NOD
@@ -840,7 +840,7 @@ contains
       REAL ::  NORMX, NORMY, NORMZ, SAREA
       INTEGER :: IPIV(CV_NLOC)
       REAL :: DGI_X, DGI_Y, DGI_Z, SQRT_RR, DN!, SDGI_X, SDGI_Y, SDGI_Z, SDN
-  
+
       ALLOCATE(SOL(CV_NLOC))
       ALLOCATE(RHS_DG(CV_NLOC))
       ALLOCATE(SOL_X(CV_NLOC),SOL_Y(CV_NLOC),SOL_Z(CV_NLOC))
@@ -857,7 +857,7 @@ contains
       ALLOCATE( SDETWE( SBCVNGI ))
       ALLOCATE( DN_GI( CV_NGI ))
 
-  
+
       RHS_DG=0.0
       RHS_DG_X=0.0
       RHS_DG_Y=0.0
@@ -873,7 +873,7 @@ contains
             DGI_X=DGI_X + CVFENX( CV_ILOC, GI ) * DISTANCE_FUN(DG_NOD)
             IF(NDIM.GE.2) DGI_Y=DGI_Y + CVFENY( CV_ILOC, GI ) * DISTANCE_FUN(DG_NOD)
             IF(NDIM.GE.3) DGI_Z=DGI_Z + CVFENZ( CV_ILOC, GI ) * DISTANCE_FUN(DG_NOD)
-         END DO        
+         END DO
          RR = DGI_X**2
          IF(NDIM.GE.2) RR = RR+ DGI_Y**2
          IF(NDIM.GE.3) RR = RR+ DGI_Z**2
@@ -889,7 +889,7 @@ contains
       DO CV_ILOC=1,CV_NLOC
          DO CV_JLOC=1,CV_NLOC
             DG_JNOD=(ELE-1)*CV_NLOC+CV_JLOC
-            
+
             VLNN=0.0
             VLNX=0.0
             VLNY=0.0
@@ -942,7 +942,7 @@ contains
          SELE  = SELE2
          ELE2  = MAX( 0, + ELE2 )
 
-            ! The surface nodes on element face IFACE. 
+            ! The surface nodes on element face IFACE.
          CV_SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
 
          CV_OTHER_LOC = 0
@@ -952,8 +952,8 @@ contains
                X_INOD = X_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
                DO CV_ILOC2 = 1, CV_NLOC
                   X_INOD2 = X_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-                  IF( X_INOD2 == X_INOD ) THEN 
-                     CV_OTHER_LOC( CV_ILOC ) = CV_ILOC2 
+                  IF( X_INOD2 == X_INOD ) THEN
+                     CV_OTHER_LOC( CV_ILOC ) = CV_ILOC2
                   ENDIF
                END DO
             END DO
@@ -966,7 +966,7 @@ contains
             ! Recalculate the normal...
          DO CV_SILOC=1,CV_SNLOC
             CV_ILOC=CV_SLOC2LOC(CV_SILOC)
-            X_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC) 
+            X_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC)
             XSL(CV_SILOC)=X(X_INOD)
             YSL(CV_SILOC)=Y(X_INOD)
             ZSL(CV_SILOC)=Z(X_INOD)
@@ -1008,10 +1008,10 @@ contains
                   SZNN=SZNN+SNORMZN(SGI)*RR
                END DO
                IF(SELE.GT.0) THEN
-                  RDISTX=0.0!SOL_DERIV_X(DG_JNOD) 
+                  RDISTX=0.0!SOL_DERIV_X(DG_JNOD)
                   RDISTY=0.0!SOL_DERIV_Y(DG_JNOD)
                   RDISTZ=0.0!SOL_DERIV_Z(DG_JNOD)
-                  !RDISTX=SOL_DERIV_X(DG_JNOD) 
+                  !RDISTX=SOL_DERIV_X(DG_JNOD)
                   !RDISTY=SOL_DERIV_Y(DG_JNOD)
                   !RDISTZ=SOL_DERIV_Z(DG_JNOD)
 
@@ -1021,7 +1021,7 @@ contains
 !                  DO GI=1,CV_NGI
 !                     DGI_X=DGI_X + CVFEN( CV_JLOC, GI ) * SOL_X(CV_JLOC)
 !                     IF(NDIM.GE.2) DGI_Y=DGI_Y + CVFEN( CV_JLOC, GI ) * SOL_Y(CV_JLOC)
-!                     IF(NDIM.GE.3) DGI_Z=DGI_Z + CVFEN( CV_JLOC, GI ) * SOL_Z(CV_JLOC)  
+!                     IF(NDIM.GE.3) DGI_Z=DGI_Z + CVFEN( CV_JLOC, GI ) * SOL_Z(CV_JLOC)
 !                  END DO
 !                  RR = DGI_X**2
 !                  IF(NDIM.GE.2) RR = RR+ DGI_Y**2
@@ -1055,10 +1055,10 @@ contains
 !                  DO GI=1,CV_NGI
 !                     DGI_X=DGI_X + CVFENX( CV_JLOC, GI ) * DISTANCE_FUN(DG_JNOD)
 !                     IF(NDIM.GE.2) DGI_Y=DGI_Y + CVFENY( CV_JLOC, GI ) * DISTANCE_FUN(DG_JNOD)
-!                     IF(NDIM.GE.3) DGI_Z=DGI_Z + CVFENZ( CV_JLOC, GI ) * DISTANCE_FUN(DG_JNOD)  
+!                     IF(NDIM.GE.3) DGI_Z=DGI_Z + CVFENZ( CV_JLOC, GI ) * DISTANCE_FUN(DG_JNOD)
 !                     SDGI_X=SDGI_X + CVFENX( CV_JLOC2, GI ) * DISTANCE_FUN(DG_JNOD2)
 !                     IF(NDIM.GE.2) SDGI_Y=SDGI_Y + CVFENY( CV_JLOC2, GI ) * DISTANCE_FUN(DG_JNOD2)
-!                     IF(NDIM.GE.3) SDGI_Z=SDGI_Z + CVFENZ( CV_JLOC2, GI ) * DISTANCE_FUN(DG_JNOD2)   
+!                     IF(NDIM.GE.3) SDGI_Z=SDGI_Z + CVFENZ( CV_JLOC2, GI ) * DISTANCE_FUN(DG_JNOD2)
 !                  END DO
 !                  RR = DGI_X**2
 !                  IF(NDIM.GE.2) RR = RR+ DGI_Y**2
@@ -1086,7 +1086,7 @@ contains
             END DO
          END DO
 
-      END DO Between_Elements_And_Boundary 
+      END DO Between_Elements_And_Boundary
 
       SOL=0.
       GOTDEC = .FALSE.
@@ -1107,12 +1107,12 @@ contains
             ENDIF
          END DO
 
-      END DO Between_Elements_And_Boundary1 
+      END DO Between_Elements_And_Boundary1
 
       DO CV_ILOC=1,CV_NLOC
          CURV((ELE-1)*CV_NLOC+CV_ILOC)=SOL(CV_ILOC)
       END DO
- 
+
 
       DEALLOCATE(SOL)
       DEALLOCATE(RHS_DG)
@@ -1130,7 +1130,7 @@ contains
       DEALLOCATE( SDETWE)
       DEALLOCATE( DN_GI)
 
-        
+
       END SUBROUTINE LOC_1ST_DERIV_XYZ_DG_CURV
 
       SUBROUTINE LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z, &
@@ -1141,7 +1141,7 @@ contains
                                            X, Y, Z, &
                                            NFACE, FACE_ELE, CV_SLOCLIST, CV_SNLOC, &
                                            SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                                           ELE, DETWEI, factor, angle) 
+                                           ELE, DETWEI, factor, angle)
 
       IMPLICIT NONE
       INTEGER, intent( in ) :: NDIM,  X_NLOC, CV_NGI, CV_NLOC, &
@@ -1159,8 +1159,8 @@ contains
       REAL, DIMENSION( : ), intent( in ) :: SBCVFEWEIGH
       REAL, DIMENSION( : ), intent( in ) :: DETWEI
       ! Local variables
- 
-  
+
+
       REAL, DIMENSION( : ), allocatable :: SOL_X, SOL_Y, SOL_Z, &
                                        RHS_DG_X, RHS_DG_Y, RHS_DG_Z
       INTEGER, DIMENSION( : ), allocatable :: CV_SLOC2LOC, CV_OTHER_LOC
@@ -1168,7 +1168,7 @@ contains
       REAL  :: VLNN, VLNX, VLNY, VLNZ, &
            RR, RDIST, SXNN, SYNN, SZNN, SXTT, SYTT, SZTT
       INTEGER :: CV_ILOC, CV_JLOC, DG_JNOD, CV_INOD, X_INOD, &
-                     CV_ILOC2, CV_JLOC2,DG_JNOD2, &  
+                     CV_ILOC2, CV_JLOC2,DG_JNOD2, &
                      CV_SILOC, CV_SJLOC, &
                      ELE2, SELE, SELE2, &
                      GI, SGI, IFACE, X_INOD2, DG_INOD
@@ -1177,7 +1177,7 @@ contains
       REAL ::  NORMX, NORMY, NORMZ, SAREA
       INTEGER :: IPIV(CV_NLOC)
       REAL, PARAMETER :: PI=3.14159265359
-  
+
       ALLOCATE(SOL_X(CV_NLOC),SOL_Y(CV_NLOC),SOL_Z(CV_NLOC))
       ALLOCATE(RHS_DG_X(CV_NLOC),RHS_DG_Y(CV_NLOC),RHS_DG_Z(CV_NLOC))
       ALLOCATE(MASS(CV_NLOC,CV_NLOC),INV_MASS(CV_NLOC,CV_NLOC))
@@ -1190,12 +1190,12 @@ contains
       ALLOCATE( SNORMYN( SBCVNGI ))
       ALLOCATE( SNORMZN( SBCVNGI ))
       ALLOCATE( SDETWE( SBCVNGI ))
-  
+
       RHS_DG_X=0.0
       RHS_DG_Y=0.0
       RHS_DG_Z=0.0
       MASS=0.0
-          
+
 
       DO CV_ILOC=1,CV_NLOC
          DO CV_JLOC=1,CV_NLOC
@@ -1228,7 +1228,7 @@ contains
          SELE  = SELE2
          ELE2  = MAX( 0, + ELE2 )
 !         print*, nface, iface, ele, FACE_ELE( IFACE, ELE ), ele2, sele2
-            ! The surface nodes on element face IFACE. 
+            ! The surface nodes on element face IFACE.
          CV_SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
 
          CV_OTHER_LOC = 0
@@ -1238,8 +1238,8 @@ contains
                X_INOD = X_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
                DO CV_ILOC2 = 1, CV_NLOC
                   X_INOD2 = X_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-                  IF( X_INOD2 == X_INOD ) THEN 
-                     CV_OTHER_LOC( CV_ILOC ) = CV_ILOC2 
+                  IF( X_INOD2 == X_INOD ) THEN
+                     CV_OTHER_LOC( CV_ILOC ) = CV_ILOC2
                   ENDIF
                END DO
             END DO
@@ -1252,7 +1252,7 @@ contains
             ! Recalculate the normal...
          DO CV_SILOC=1,CV_SNLOC
             CV_ILOC=CV_SLOC2LOC(CV_SILOC)
-            X_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC) 
+            X_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC)
             XSL(CV_SILOC)=X(X_INOD)
             YSL(CV_SILOC)=Y(X_INOD)
             ZSL(CV_SILOC)=Z(X_INOD)
@@ -1283,7 +1283,7 @@ contains
                END DO
                IF(SELE.GT.0) THEN
                   RDIST=0.0
-                  !RDIST=DISTANCE_FUN(DG_JNOD) 
+                  !RDIST=DISTANCE_FUN(DG_JNOD)
                ELSE
                   CV_JLOC2=CV_OTHER_LOC( CV_JLOC )
                   DG_JNOD2=(ELE2-1)*CV_NLOC+CV_JLOC2
@@ -1296,7 +1296,7 @@ contains
             END DO
          END DO
 
-      END DO Between_Elements_And_Boundary 
+      END DO Between_Elements_And_Boundary
 
       SOL_X=0.
       SOL_Y=0.
@@ -1331,7 +1331,7 @@ contains
             ! Recalculate the normal...
          DO CV_SILOC=1,CV_SNLOC
             CV_ILOC=CV_SLOC2LOC(CV_SILOC)
-            X_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC) 
+            X_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC)
             XSL(CV_SILOC)=X(X_INOD)
             YSL(CV_SILOC)=Y(X_INOD)
             ZSL(CV_SILOC)=Z(X_INOD)
@@ -1370,7 +1370,7 @@ contains
             ENDIF
          END DO
 
-      END DO Between_Elements_And_Boundary1 
+      END DO Between_Elements_And_Boundary1
       end if
 
       DO CV_ILOC=1,CV_NLOC
@@ -1381,7 +1381,7 @@ contains
          SOL_DERIV_Z(DG_INOD)=SOL_Z(CV_ILOC)
 
       END DO
- 
+
 
       DEALLOCATE(SOL_X,SOL_Y,SOL_Z)
       DEALLOCATE(RHS_DG_X,RHS_DG_Y,RHS_DG_Z)
@@ -1396,12 +1396,10 @@ contains
       DEALLOCATE( SNORMZN)
       DEALLOCATE( SDETWE)
 
-        
+
       END SUBROUTINE LOC_1ST_DERIV_XYZ_DG_DERIV
 
       END SUBROUTINE SURFACE_TENSION_WRAPPER_NEW
 
 
 end module multi_surface_tension
-
-

@@ -310,6 +310,7 @@ contains
             call set_option("/geometry/mesh::P0DG/from_mesh/mesh_continuity", "discontinuous")
         end if
 
+        !SPRINT_TO_DO generilise this to other fields
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
             ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"
             !Create necessary backups for storing the saturation (in a way that it is also adapted)
@@ -328,33 +329,6 @@ contains
                 end if
             end do
         end if
-
-
-        if (have_option('/physical_parameters/black-oil_PVT_table')) then
-
-        !Maybe no need for a field in state? and just calculate using required conditions????
-
-            !Create necessary memory to store the mass fraction of one of the pseudo-components (in a way that it is also adapted)
-            if (nphase /= 3)then
-                FLAbort('Black-Oil modelling requires three phases. Phase 1 Aqua, phase 2 liquid, phase 3 vapour')
-            end if
-
-            option_path = "/material_phase["// int2str( nphase -1 )//"]/scalar_field::VapourMassFraction"
-            call copy_option("/material_phase["// int2str( nphase - 1 )//"]/scalar_field::PhaseVolumeFraction",&
-                 trim(option_path))
-            !Make sure the field is not shown
-            if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
-                !Don't know how to set exclude_from_vtu to true from the spud options, hence,
-                !since simulation_name HAS to exist I copy it to obtain the same effect
-                call copy_option("/simulation_name",&
-                 trim(option_path)//"/prognostic/output/exclude_from_vtu")
-            end if
-            !Make sure that this field is not the objective of adaptivity
-            if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
-                call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
-            end if
-        end if
-
 
         if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
             ewrite(1, *) "Preserve regions MUST to be ON. Check multiphase_prototype_wrapper"
@@ -774,6 +748,21 @@ contains
         call set_option(trim(option_path),"PressureMesh")
 
         do i = 1, nphase*npres + ncomp*nphase
+
+          !Include that fields are part of stat, and not of detectors
+          do k = 1, option_count("/material_phase[" // int2str(i-1) // "]/scalar_field")
+              option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
+              if (have_option(trim(option_path))) then!Only for prognostic fields
+                ! Stat, convergence, detectors, steady state settings
+                !We have removd this from scalar_fields
+                !SPRINT_TO_DO THESE OPTIONS TO BE REMOVED from here and the other fields, this seems unnecessary?
+                call add_option(trim(option_path)//"/stat/include_in_stat", stat=stat)
+                call add_option(trim(option_path)//"/convergence/include_in_convergence", stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors", stat=stat)
+              end if
+          end do
+
+
           !Components are treated differently, but this should change! SPRINT_TO_DO
           if (.not.have_option("/material_phase["// int2str( i - 1 )//"]/is_multiphase_component")) then
             !Create memory for Density internally
@@ -826,16 +815,6 @@ contains
                 !SPRINT_TO_DO THESE OPTIONS TO BE REMOVED from here and the other fields, this seems unnecessary?
                 option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/spatial_discretisation/continuous_galerkin"
                 call add_option(trim(option_path), stat=stat)
-
-                ! Stat, convergence, detectors, steady state settings
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/stat"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/convergence/include_in_convergence"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/detectors/exclude_from_detectors"
-                call add_option(trim(option_path), stat=stat)
-                ! option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/steady_state/include_in_steady_state"
-                ! call add_option(trim(option_path), stat=stat)
             end if
 
                 ! VECTOR_FIELD(VELOCITY) OPTIONS ADDED AUTOMATICALLY
@@ -854,22 +833,6 @@ contains
                 option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/detectors/exclude_from_detectors"
                 call add_option(trim(option_path), stat=stat)
                 ! option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/steady_state/include_in_steady_state"
-                ! call add_option(trim(option_path), stat=stat)
-            end if
-
-
-                ! SCALAR_FIELD(PHASE VOLUME FRACTION) OPTIONS ADDED AUTOMATICALLY
-            option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic"
-            if (have_option(trim(option_path))) then
-                ! Stat, convergence, detectors, steady state settings
-                !We have removd this from scalar_field however we are only populating with this PhaseVolumeFraction
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/stat"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/convergence/include_in_convergence"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/detectors/exclude_from_detectors"
-                call add_option(trim(option_path), stat=stat)
-                ! option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/steady_state/include_in_steady_state"
                 ! call add_option(trim(option_path), stat=stat)
             end if
           else

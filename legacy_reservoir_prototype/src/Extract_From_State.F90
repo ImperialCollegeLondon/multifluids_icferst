@@ -1060,14 +1060,12 @@ contains
 !            porosity%val(1,:)=sfield%val
             call set(porosity,1,sfield)
         end if
-
         ! hack to define a lateral from diamond
         if(npres>1) then
             vfield=>extract_vector_field(packed_state,"Porosity")
             sfield=>extract_scalar_field(state(1),"Pipe")
             call assign_val(vfield%val(2,:),sfield%val)
         end if
-
         if(has_scalar_field(state(1),"Permeability")) then
             call allocate(permeability,element_mesh,"Permeability",&
                 dim=[mesh_dim(position),mesh_dim(position)])
@@ -2057,8 +2055,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
         nonlinear_its = its
     else
         if (.not.ExitNonLinearLoop) then
-            nonlinear_its = its!Only do something different when we are suppose to exit
-        else!Store when we are in theory finishing
+            nonlinear_its = its!Only do something different when we are supposes to exit
+        else !Store when we are in theory finishing
             nonlinear_its = nonlinear_its + its
         end if
     end if

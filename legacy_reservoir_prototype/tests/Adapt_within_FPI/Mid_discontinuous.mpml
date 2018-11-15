@@ -399,7 +399,6 @@
           </constant>
         </anisotropic_symmetric>
       </tensor_field>
-      <preserve_mesh_regions/>
     </hr_adaptivity>
   </mesh_adaptivity>
   <porous_media>

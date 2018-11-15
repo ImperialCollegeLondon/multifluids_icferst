@@ -123,7 +123,7 @@ contains
         !!$ Defining problem that will be solved
         !! Arash
         logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
-            solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
+            solve_force_balance, solve_PhaseVolumeFraction
         !!$ Defining solver options
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
         !!$ Shape function related fields:
@@ -189,7 +189,6 @@ contains
 !!-Variables related to the detection and correction of bad elements
         real, save :: Max_bad_angle = -1 ! set in timeloop from diamond input
         integer :: i, k
-        type(bad_elements), allocatable, dimension(:) :: Quality_list
         real, dimension(:,:), pointer:: X_ALL
         real, dimension(:), allocatable :: quality_table
         integer, dimension(:), allocatable :: diagnostics ! number of bad elements - used to generate a diagnostics table
@@ -388,15 +387,6 @@ contains
                     '/number_advection_iterations', NonLinearIteration_Components, default = 3 )
             end if
         end do
-        simple_black_oil_model = .false.
-        if (have_option( "/physical_parameters/black-oil_PVT_table" )) then
-            simple_black_oil_model = is_porous_media .and..not.have_component_field .and. Mdims%nphase == 3
-            if (.not. simple_black_oil_model) then
-                ewrite(0,*) "WARNING: Black-oil modelling based on PVT tables requires porous media, 3 phases and no components"
-            end if
-            !Initialize Stock tank oil conditions. sprint_to_do. Is this necessary?
-            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 10)
-        end if
 
         if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
             have_extra_DiffusionLikeTerm = .true.
@@ -430,7 +420,7 @@ contains
         if( current_time < finish_time .and. &
          .not. have_option("/io/disable_dump_at_start") ) then
 !-------------------------------------------------------------------------------
-! to allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
+! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
              if (do_checkpoint_simulation(dump_no)) then
                   checkpoint_number=0
                   CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
@@ -461,10 +451,6 @@ contains
 
         checkpoint_number=1
 
-        ! Reading options for bad_element test
-        call BadElementTest(Quality_list, 1)
-
-
         !Prepapre the pipes
         if (Mdims%npres > 1) then
            !Retrieve the elements with pipes and the corresponding coordinates
@@ -476,8 +462,6 @@ contains
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
-            ! Tests bad elements and creates table of angles for model elements
-            call BadElementTest(Quality_list, 2)
 
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
             call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
@@ -519,7 +503,7 @@ contains
                call blasting( packed_state, Mdims%nphase )
                call update_blasting_memory( packed_state, state, timestep )
 !            elseif (have_option( '/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
- !              call femdemthermal(packed_state, state,Mdims%nphase)
+!              call femdemthermal(packed_state, state,Mdims%nphase)
 !			   call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
@@ -538,10 +522,6 @@ contains
             ! evaluate prescribed fields at time = current_time+dt
             call set_prescribed_field_values( state, exclude_interpolated = .true., &
                 exclude_nonreprescribed = .true., time = acctim )
-            !Initialize gas molar fraction, this has to occur after copy_packed_new_to_old
-            !since for consistency, (later it is called as well) it uses the old values of pressure,
-            !however, they have to be the most updated at this point
-            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
             !Initialise to zero the SFPI counter
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
@@ -558,7 +538,7 @@ contains
                 if( solve_force_balance) then
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, Quality_list )
+                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
@@ -615,7 +595,7 @@ contains
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
+                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
 
                 end if Conditional_PhaseVolumeFraction
 
@@ -645,12 +625,6 @@ contains
                         thermal = .true.,&
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
-                    ! Copy back memory
-                    do iphase=1,Mdims%nphase!sprint_to_do remove this
-                       T=>extract_scalar_field(state(iphase),"Temperature")
-                       T%val=tracer_field%val(1,iphase,:)
-                    end do
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
@@ -1094,12 +1068,11 @@ contains
         !This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
             !local variables
-            type( scalar_field ), pointer ::  s_field, s_field2, s_field3
-            type( vector_field ), pointer ::  U_x1, U_x2
-            integer :: U_x1_stat, idim
-            real, dimension(2) :: min_max_limits_before, solute_min_max_limits_before
-            type (tensor_field), pointer :: tempfield
-            type (tensor_field), pointer :: saltfield
+            type( scalar_field ), pointer :: s_field, s_field2, s_field3
+            integer                       :: idim
+            real, dimension(2)            :: min_max_limits_before, solute_min_max_limits_before
+            type (tensor_field), pointer  :: tempfield
+            type (tensor_field), pointer  :: saltfield
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1174,16 +1147,6 @@ contains
                             itime, not_to_move_det_yet = .true. , non_linear_iterations = FPI_eq_taken)
                         call run_diagnostics( state )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
-                        ! Copy U memory
-                        do iphase=1,Mdims%nphase
-                           U_x1=>extract_vector_field(state(iphase),"U",U_x1_stat)
-                           U_x2=>extract_vector_field(state(iphase),"Velocity")
-                           if(U_x1_stat==0)then
-                              do idim=1,Mdims%ndim
-                                 U_x1%val(idim,:)=U_x2%val(idim,:)
-                              end do
-                           end if
-                        end do
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
@@ -1278,8 +1241,11 @@ end if
                         call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
-                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
-                    call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    !This to be removed once adapt within FPI is improved and generalised
+                    if (.not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+                      call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
+                      call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    end if
                 end if
                 if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                 if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
@@ -1522,13 +1488,12 @@ end if
         implicit none
         logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
         integer, intent(inout) :: its
-        integer, intent(in) :: flag
-        !Local variables
+        integer, intent(in)    :: flag
+        ! Local variables
         type(scalar_field), pointer :: sat1, sat2
-        integer :: iphase
-        integer, save :: phaseToAdapt = -1
-        real, save :: Inf_tol = -1, non_linear_tol = -1
-
+        integer                     :: iphase
+        integer, save               :: phaseToAdapt = -1
+        real, save                  :: Inf_tol = -1, non_linear_tol = -1
 
         if (phaseToAdapt<0) then
             !Retrieve which phase has the options to adapt to
@@ -1566,16 +1531,17 @@ end if
             !Four steps
             !1. Store OldPhaseVolumeFraction
             do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat1 => extract_scalar_field( state(iphase),  "OldPhaseVolumeFraction")
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak"        )
                 sat2%val = sat1%val
             end do
             !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
             sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
-            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction"    )
             !It is important that the average keep the sharpness of the interfaces
             sat1%val = abs(sat1%val - sat2%val)**0.8
             call adapt_mesh_mp()
+
             !3.Reconstruct the Saturation of the first phase
             sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
             sat1%val = 1.0
@@ -1587,8 +1553,8 @@ end if
             end do
             !4. Copy back to OldPhaseVolumeFraction
             do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+                sat1 => extract_scalar_field( state(iphase),  "OldPhaseVolumeFraction" )
+                sat2  => extract_scalar_field( state(iphase), "Saturation_bak"         )
                 sat1%val = sat2%val
             end do
             !Pointing to porosity again is required
@@ -1606,82 +1572,7 @@ end if
 
     end subroutine adapt_mesh_within_FPI
 
-
-subroutine BadElementTest(Quality_list, flag)
-
-    implicit none
-    integer, intent(in) :: flag
-    type(bad_elements), allocatable, dimension(:), intent(inout) :: Quality_list
-    ! local variable
-    integer :: i
-
-    select case(flag)
-
-            ! Allocate memory for the quality_table to check the angles of each element and print out the diagnostics for the mesh
-        case (1)
-
-			bad_element = have_option('/numerical_methods/Bad_element_fix/')
-			if (have_option('/io/Mesh_Diagnostics_Angles')) then
-				mesh_diagnostics = .true.
-				shape = option_shape('/io/Mesh_Diagnostics_Angles')
-				allocate(quality_table(shape(1)))
-				call get_option( '/io/Mesh_Diagnostics_Angles', quality_table)
-				allocate(diagnostics(shape(1)))
-				diagnostics(:) = -1
-			end if
-
-
-        case default
-            if (bad_element .or. mesh_diagnostics)  then
-                ! Check bad elements (angles larger than specified in Max_bad_angle) at first time step or after mesh adapt
-                if (first_time_step .or. after_adapt) then
-                    if (allocated(Quality_list)) then
-                        i=1
-                        do while (allocated(Quality_list(i)%rotmatrix) )
-                            deallocate(Quality_list(i)%rotmatrix)
-                            i = i+1
-                        end do
-                        deallocate(Quality_list)
-                    end if
-                    allocate(Quality_list(Mdims%totele+1))
-                    call get_var_from_packed_state(packed_state, Coordinate = X_ALL)
-                    ! create table for stats on the angles of the mesh
-                    if (mesh_diagnostics) then
-                        do i=1, size(quality_table)
-                            call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1 ,quality_table(i), Quality_list, bad_element, diagnostics(i))
-                        end do
-
-
-                        if (getprocno() == 1) then
-                            if (after_adapt) then
-                                ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
-                            else
-                                ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
-                            end if
-
-                            ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
-                            do i=1, size(quality_table)
-                                ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
-                            end do
-                            ewrite(0, '(38("-"))')
-                        end if
-                    end if
-
-                    if (.not. bad_element) then
-                        deallocate(Quality_list) ! don't change element properties - throw away Quality list
-                    else
-
-                        if (Max_bad_angle < 0) call get_option( '/numerical_methods/Bad_element_fix/Angle', Max_bad_angle, default = 177. )
-                        call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1, Max_bad_angle, Quality_list, bad_element)
-                    endif
-                end if
-            end if
-
-    end select
-
-end subroutine BadElementTest
-
-    end subroutine MultiFluids_SolveTimeLoop
+ end subroutine MultiFluids_SolveTimeLoop
 
 
 
