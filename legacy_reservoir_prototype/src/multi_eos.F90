@@ -1639,8 +1639,7 @@ contains
                                     if (boussinesq) then
                                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod )*&
-                                        1000)
+                                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ))
                                     else
                                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&

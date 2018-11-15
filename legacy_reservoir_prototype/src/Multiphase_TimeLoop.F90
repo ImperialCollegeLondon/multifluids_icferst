@@ -663,7 +663,6 @@ contains
                    have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
                    ewrite(3,*)'Now advecting SoluteMassFraction Field'
                    call set_nu_to_u( packed_state )
-                   !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                    tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
@@ -1168,7 +1167,7 @@ contains
                             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'MetricTensor' )
                             call initialise_field(metric_tensor,'/mesh_adaptivity/hr_adaptivity_prescribed_metric/tensor_field::MetricTensor',positions)
                             nullify(positions)
-                        else                       
+                        else
                             call qmesh( state, metric_tensor )
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &

@@ -572,8 +572,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !temperature backup for the petsc bug
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve
+           logical :: boussinesq
 
-
+           boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
+           
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
            else
@@ -592,10 +594,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedCVPressure" )
 
-           den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
-           denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-           den_all    = den_all2 % val ( 1, :, : )
-           denold_all = denold_all2 % val ( 1, :, : )
+           if (boussinesq) then
+               den_all = 1
+               denold_all =1
+           else
+              den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
+              denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+              den_all    = den_all2 % val ( 1, :, : )
+              denold_all = denold_all2 % val ( 1, :, : )
+           endif
 
            IGOT_T2_loc = 1
 
