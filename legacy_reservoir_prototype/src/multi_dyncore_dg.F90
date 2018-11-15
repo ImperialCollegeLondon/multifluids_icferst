@@ -618,7 +618,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0
            CDISPERSION=0.0
-           call calculate_solute_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer)
+           call calculate_solute_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
            !Arash
            !Calculates solute dispersion with specific longitudinal and transverse dispersion coefficients
            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 100.0, 10.0, CDISPERSION, tracer)
