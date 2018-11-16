@@ -573,9 +573,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve
            logical :: boussinesq
+           real, dimension(:), allocatable :: disp_coeffs
 
            boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
-           
+
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
            else
@@ -627,10 +628,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            CDISPERSION=0.0
            call calculate_solute_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
            !Arash
-           !Calculates solute dispersion with specific longitudinal and transverse dispersion coefficients
-           call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, 100.0, 10.0, CDISPERSION, tracer)
-           !Correction for the diffusivity for dispersion
-           !TDIFFUSION = TDIFFUSION + (CDISPERSION * 1000.)
+           !Calculates solute dispersion with specific longitudinal and transverse dispersivity
+           allocate( disp_coeffs(2) ) ; disp_coeffs = 0.
+           call get_option('porous_media/dispersivity/longitudinal', disp_coeffs( 1 ) )
+           call get_option('porous_media/dispersivity/transverse', disp_coeffs( 2 ) )
+
+           call calculate_solute_dispersity( state, packed_state, Mdims, ndgln,&
+            disp_coeffs( 1 ), disp_coeffs( 2 ), CDISPERSION, tracer)
+
+           TDIFFUSION = TDIFFUSION + CDISPERSION
+
+           deallocate( disp_coeffs )
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated

@@ -397,6 +397,14 @@
         </value>
       </prescribed>
     </tensor_field>
+    <dispersivity>
+      <longitudinal>
+        <real_value rank="0">0</real_value>
+      </longitudinal>
+      <transverse>
+        <real_value rank="0">0</real_value>
+      </transverse>
+    </dispersivity>
     <thermal_porous>
       <scalar_field name="porous_density">
         <prescribed>

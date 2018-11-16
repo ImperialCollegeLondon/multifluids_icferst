@@ -1684,6 +1684,7 @@ contains
 
       SoluteDispersion = 0.
       DispCoeffMat = 0.
+      boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
                 sfield=>extract_scalar_field(state(1),"Porosity")
 
@@ -1746,7 +1747,7 @@ contains
                                         SoluteDispersion( u_nod, idim1, idim2, iphase ) *&
                                         node_val( den, idim, idim, mat_inod )
                                     endif
-                                    
+
                                 end do
                             end do
                         end do
