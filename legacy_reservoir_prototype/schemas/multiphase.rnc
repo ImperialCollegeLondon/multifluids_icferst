@@ -474,6 +474,17 @@ start =
                   }
                }
             ),
+            ## Specify Dispersivity
+            ## 
+            ## Longitudianl and transverse dispersivity of solid matrix in [m] for isotropic-media dispersion
+            element dispersivity {
+               element longitudinal {
+                  real
+               },
+               element transverse {
+                  real
+               } 
+            },
             ## Parameters for thermal porous media simulations
             element thermal_porous{
                 ## Specify scalar field density of the porous media

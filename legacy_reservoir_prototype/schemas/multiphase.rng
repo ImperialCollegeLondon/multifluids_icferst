@@ -601,6 +601,17 @@ ONLY specify for the wetting phase</a:documentation>
               </element>
             </element>
           </choice>
+          <element name="dispersivity">
+            <a:documentation>Specify Dispersivity
+
+Longitudianl and transverse dispersivity of solid matrix in [m] for isotropic-media dispersion</a:documentation>
+            <element name="longitudinal">
+              <ref name="real"/>
+            </element>
+            <element name="transverse">
+              <ref name="real"/>
+            </element>
+          </element>
           <optional>
             <element name="thermal_porous">
               <a:documentation>Parameters for thermal porous media simulations</a:documentation>
