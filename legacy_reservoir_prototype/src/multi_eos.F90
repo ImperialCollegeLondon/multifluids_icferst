@@ -1745,7 +1745,7 @@ contains
                                     else
                                         SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
                                         SoluteDispersion( u_nod, idim1, idim2, iphase ) *&
-                                        node_val( den, idim, idim, mat_inod )
+                                        node_val( den, idim, idim, u_nod )
                                     endif
 
                                 end do
