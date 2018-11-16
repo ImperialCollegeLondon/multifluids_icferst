@@ -1672,13 +1672,14 @@ contains
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield
-      type(tensor_field), pointer :: diffusivity
+      type(tensor_field), pointer :: diffusivity, den
       type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc
       real :: vel_av, LongDispCoeff, TransDispCoeff
       real, dimension(3, 3) :: DispCoeffMat
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
+      logical :: boussinesq
       type(tensor_field), intent(inout) :: tracer
 
       SoluteDispersion = 0.
@@ -1688,8 +1689,8 @@ contains
 
                 do iphase = 1, Mdims%nphase
                     darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
-
                     diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                    den => extract_tensor_field( packed_state,"PackedDensity" )
                     do ele = 1, Mdims%totele
                         ele_nod = min(size(sfield%val), ele)
                          do u_iloc = 1, mdims%u_nloc
@@ -1736,6 +1737,16 @@ contains
                                         SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
                                         sfield%val(ele_nod)*DispDiaComp(idim1)
                                     endif
+
+                                    if (boussinesq) then
+                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
+                                        SoluteDispersion( u_nod, idim1, idim2, iphase )
+                                    else
+                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
+                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) *&
+                                        node_val( den, idim, idim, mat_inod )
+                                    endif
+                                    
                                 end do
                             end do
                         end do
