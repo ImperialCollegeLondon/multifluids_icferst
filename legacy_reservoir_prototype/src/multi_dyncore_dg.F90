@@ -632,7 +632,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            allocate( disp_coeffs(2) ) ; disp_coeffs = 0.
            call get_option('porous_media/dispersivity/longitudinal', disp_coeffs( 1 ) )
            call get_option('porous_media/dispersivity/transverse', disp_coeffs( 2 ) )
-
            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln,&
             disp_coeffs( 1 ), disp_coeffs( 2 ), CDISPERSION, tracer)
 

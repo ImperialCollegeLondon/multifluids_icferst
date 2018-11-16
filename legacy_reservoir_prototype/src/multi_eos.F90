@@ -1530,7 +1530,7 @@ contains
       type(scalar_field), pointer :: component, sfield, solid_concentration
       type(tensor_field), pointer :: diffusivity, tfield, den
       integer :: icomp, iphase, idim, stat, ele
-      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
+      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_nod, u_iloc, cv_loc, cv_iloc
       logical, parameter :: harmonic_average=.false.
       logical :: boussinesq
       type(tensor_field), intent(inout) :: tracer
@@ -1583,11 +1583,12 @@ contains
                     den => extract_tensor_field( packed_state,"PackedDensity" )
                     do ele = 1, Mdims%totele
                         ele_nod = min(size(sfield%val), ele)
-                        t_ele_nod = min(size(tfield%val, 3), ele)
-                         do iloc = 1, Mdims%mat_nloc
-                            mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                            cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                            do idim = 1, Mdims%ndim
+                        do u_iloc = 1, mdims%u_nloc
+                           u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
+                           do cv_iloc = 1, Mdims%cv_nloc
+                               mat_inod = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                               cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                               do idim = 1, Mdims%ndim
                                     !Arash
                                     if (boussinesq) then
                                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
@@ -1597,10 +1598,12 @@ contains
                                     ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
                                         (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod )*&
-                                        node_val( den, idim, idim, mat_inod ))
+                                        den%val(1, 1, cv_loc))
+                                        !node_val( den, idim, idim, mat_inod ))
 
                                     endif
                             end do
+                        end do
                         end do
                     end do
                 end do
@@ -1675,7 +1678,7 @@ contains
       type(tensor_field), pointer :: diffusivity, den
       type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
-      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc
+      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc
       real :: vel_av, LongDispCoeff, TransDispCoeff
       real, dimension(3, 3) :: DispCoeffMat
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
@@ -1696,7 +1699,9 @@ contains
                         ele_nod = min(size(sfield%val), ele)
                          do u_iloc = 1, mdims%u_nloc
                             u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
-
+                            do cv_iloc = 1, Mdims%cv_nloc
+                                mat_inod = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+                                cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                             vel_av = 0
 
                             do idim1 = 1, Mdims%ndim
@@ -1730,26 +1735,27 @@ contains
                             do idim1 = 1, Mdims%ndim
                                 do idim2 = 1, Mdims%ndim
                                     if (idim1 .NE. idim2) then
-                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
+                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                                         sfield%val(ele_nod)*(1/(vel_av**2)) *&
                                         (LongDispCoeff - TransDispCoeff) *&
                                         (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
                                     else
-                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
+                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                                         sfield%val(ele_nod)*DispDiaComp(idim1)
                                     endif
 
                                     if (boussinesq) then
-                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
-                                        SoluteDispersion( u_nod, idim1, idim2, iphase )
+                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                                        SoluteDispersion( mat_inod, idim1, idim2, iphase )
                                     else
-                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) =&
-                                        SoluteDispersion( u_nod, idim1, idim2, iphase ) *&
-                                        node_val( den, idim, idim, u_nod )
+                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
+                                        den%val(1, 1, cv_loc)
                                     endif
 
                                 end do
                             end do
+                        end do
                         end do
                     end do
                 end do
