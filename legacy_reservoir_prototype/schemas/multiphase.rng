@@ -3606,6 +3606,48 @@ Use this option for flooding, being A = 1/gravity and B the bathymetry</a:docume
                 </element>
               </optional>
             </element>
+            <element name="stiffened_gas">
+              <a:documentation>Stiffened Gas EoS
+
+DEN = ( P + EOS_COEFS( 1 )) * EOS_COEFS( 2 ) / T
+
+Note that setting EOS_COEFS( 1 ) = 0. and EOS_COEFS( 2 ) = 1/gas constant (Rd [J/kg/K])
+The equation for ideal gases is obtained.</a:documentation>
+              <element name="eos_option1">
+                <ref name="real"/>
+              </element>
+              <element name="eos_option2">
+                <ref name="real"/>
+              </element>
+              <optional>
+                <element name="reference_density">
+                  <a:documentation>reference uncompressed density
+
+if activated then either Liquid EoS or
+full Stiffened Gas EoS</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="ratio_specific_heats">
+                  <a:documentation>Ratio of specific heats at constant
+pressure to that at constant volume
+
+Requires an energy field.
+If activated then a full Stiffened Gas EoS </a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="bulk_sound_speed_squared">
+                  <a:documentation>bulk_sound_speed_squared = isothermal_bulk_modulus/reference_density
+
+if activated then either full or partial Liquid EoS or full
+Stiffened Gas EoS</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+            </element>
             <element name="exponential_in_pressure">
               <a:documentation>Exponential in Pressure EOS 
 

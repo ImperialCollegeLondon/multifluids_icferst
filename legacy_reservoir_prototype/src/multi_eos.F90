@@ -440,6 +440,20 @@ contains
             dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( temperature_local, eos_coefs )
 
+      else if( trim( eos_option_path ) == trim( option_path_comp ) // '/stiffened_gas' ) then
+            !!$ Den = C0 / T * ( P - C1 )
+            if( .not. have_temperature_field ) FLAbort( 'Temperature Field not defined' )
+            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
+            call get_option( trim( eos_option_path) // '/eos_option1' , eos_coefs( 1 ) )
+            call get_option( trim( eos_option_path )// '/eos_option2' , eos_coefs( 2 ) )
+            Rho = ( pressure%val(1, 1, :) + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
+            perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure%val(1, 1, :) ) + eos_coefs( 1 ) ) )
+            RhoPlus = ( pressure%val(1, 1, :) + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+                temperature % val
+            RhoMinus = ( pressure%val(1 , 1, :) - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+                temperature % val
+            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+            deallocate( eos_coefs )
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
             !!$ Den = C0 * P +C1
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
@@ -641,7 +655,10 @@ contains
         Conditional_for_Compressibility: if( have_option( trim( eos_option_path_out ) // '/compressible' ) ) then
             eos_option_path_out = trim( eos_option_path_out ) // '/compressible'
 
-            Conditional_for_Compressibility_Option: if( have_option( trim( eos_option_path_out ) // '/linear_in_pressure' ) ) then
+            Conditional_for_Compressibility_Option: if( have_option( trim( eos_option_path_out ) // '/stiffened_gas' ) ) then
+                eos_option_path_out = trim( eos_option_path_out ) // '/stiffened_gas'
+
+            elseif( have_option( trim( eos_option_path_out ) // '/linear_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/linear_in_pressure'
 
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then

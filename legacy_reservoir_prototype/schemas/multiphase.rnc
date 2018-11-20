@@ -2995,6 +2995,38 @@ element Density{(
                               empty
                            }?
                         }|
+                        ## Stiffened Gas EoS
+                        ##
+                        ## DEN = ( P + EOS_COEFS( 1 )) * EOS_COEFS( 2 ) / T
+                        ##
+                        ## Note that setting EOS_COEFS( 1 ) = 0. and EOS_COEFS( 2 ) = 1/gas constant (Rd [J/kg/K])
+                        ## The equation for ideal gases is obtained.
+                        element stiffened_gas {
+                           element eos_option1 { real },
+                           element eos_option2 { real },
+                           ## reference uncompressed density
+                           ##
+                           ## if activated then either Liquid EoS or
+                           ## full Stiffened Gas EoS
+                           element reference_density {
+                              real
+                           }?,
+                           ## Ratio of specific heats at constant
+                           ## pressure to that at constant volume
+                           ##
+                           ## Requires an energy field.
+                           ## If activated then a full Stiffened Gas EoS 
+                           element ratio_specific_heats {
+                              real
+                           }?,
+                           ## bulk_sound_speed_squared = isothermal_bulk_modulus/reference_density
+                           ##
+                           ## if activated then either full or partial Liquid EoS or full
+                           ## Stiffened Gas EoS
+                           element bulk_sound_speed_squared {
+                              real
+                           }?
+                        }|
                         ## Exponential in Pressure EOS 
                         ##
                         ## DEN = A * P ^ B
