@@ -484,7 +484,7 @@ start =
                element transverse {
                   real
                } 
-            },
+            }?,
             ## Parameters for thermal porous media simulations
             element thermal_porous{
                 ## Specify scalar field density of the porous media
