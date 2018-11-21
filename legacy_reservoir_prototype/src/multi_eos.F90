@@ -1889,7 +1889,7 @@ contains
       !!! NEW CODE HERE !!!
       !!! deal with Momentum_Diffusion2
 
-      
+
 
       return
     end subroutine calculate_viscosity
@@ -1999,15 +1999,6 @@ contains
                 '/prognostic/vector_field::Source'
             have_source(iphase) =  have_option( trim(option_path) )
         end do
-
-!        if (any(have_source)) then
-!            u_source%have_field = .true.
-!            if (associated(u_source%val))then
-!                nullify(u_source%val)
-!                deallocate(u_source%val)
-!            end if
-!            allocate(u_source%val(Mdims%ndim, Mdims%nphase, 1, Mdims%u_nonods))
-!        end if
 
         do iphase = 1, Mdims%nphase
             if ( have_source(iphase) ) then
