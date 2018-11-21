@@ -14,4 +14,4 @@ clean:
 	rm -f mirror_new.dat matrixdump matrixdump.info
 	rm -f *.ele *.bound *.face *.node *.edge
 	rm -f src/*.msh
-#	rm -f *_80layers.mpml
+	rm -f *_80layers.mpml
