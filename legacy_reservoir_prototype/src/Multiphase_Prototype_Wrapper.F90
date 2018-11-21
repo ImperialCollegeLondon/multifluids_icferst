@@ -619,7 +619,7 @@ contains
           if (simulation_quality < 100) then
               if (have_option("/porous_media_simulator")) then
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
-              else !Currently only for porous media P0DG works, so we use homogenisation in the meantime
+              else !Currently only for porous media P0DG works, so we use P1 for the rest
                 call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
               end if
               call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
@@ -665,6 +665,25 @@ contains
             call copy_option("/geometry/Advance_options/mesh::"//trim(option_path), "/geometry/mesh::"//trim(option_path), stat=stat)
           end if
         end do
+
+        if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
+          !Introduce the ph mesh, quadratic and continuous
+          option_path = "/geometry/mesh::ph/"
+          call add_option(trim(option_path)//"from_mesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_continuity", "continuous")
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
+          call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
+          !Do we need the user to create a ph scalar field? maybe not
+          if (GetProcNo() == 1) then
+            print*, "Hydrostatic pressure solver currently tested only for inertia dominated flows."
+          end if
+        end if
+
 
         !#########GEOMETRY AND PRECISION OPTIONS#################
 
@@ -809,6 +828,31 @@ contains
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
             end if
+
+            if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
+              !Add a prognostic field named ph (do we need BCs or initial conditions for this?)
+              !This is only required for the first phase
+              option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Ph"
+              if (.not.have_option (trim(option_path))) then
+                call add_option(trim(option_path),  stat=stat)
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Ph/prognostic"
+
+                call add_option(trim(option_path)//"/mesh::ph",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/constant",  stat=stat)
+                call set_option(trim(option_path)//"/value::WholeMesh/constant",  0.)
+                call add_option(trim(option_path)//"/output",  stat=stat)
+                call add_option(trim(option_path)//"/stat",  stat=stat)
+                call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
+
+                call add_option(trim(option_path)//"/detectors",  stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+              end if
+
+            end if
+
+
             ! SCALAR_FIELD(PRESSURE) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic"
             if (have_option(trim(option_path))) then
