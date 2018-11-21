@@ -848,6 +848,7 @@ contains
                 call add_option(trim(option_path)//"/detectors",  stat=stat)
                 call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                 call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+
               end if
 
             end if

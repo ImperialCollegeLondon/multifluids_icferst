@@ -6511,8 +6511,8 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
 
       solver_option_path = "/solver_options/Linear_solver"
-      if (have_option('/solver_options/Custom_solver_configuration/field::HydrostaticPressure')) then
-        solver_option_path = '/solver_options/Custom_solver_configuration/field::HydrostaticPressure'
+      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure')) then
+        solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure'
       end if
       if(max_allowed_its < 0)  then
           call get_option( trim(solver_option_path)//"max_iterations",&
@@ -6523,7 +6523,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
       ewrite(3,*) "inside high_order_pressure_solve"
 
 
-      boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
+      boussinesq =  have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
       call get_option( '/timestepping/timestep', dt )
 
@@ -6653,8 +6653,8 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
 
-          call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
-          call zero( matrix )
+      call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
+      call zero( matrix )
       call allocate( rhs, phmesh, "rhs" )
       call zero ( rhs )
       call allocate( ph_sol, phmesh, "ph_sol" )
@@ -6666,7 +6666,6 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
          ! iloop=2 put the residual into the rhs of the momentum eqn.
 
          do  ele = 1, totele
-
             ! calculate detwei,ra,nx,ny,nz for element ele
             call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
                  x_ndgln, totele, x_nonods, x_nloc, tmp_cv_nloc, ph_ngi, &
@@ -6860,17 +6859,14 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
                end do
             end if
 
-            path = "/material_phase[0]/scalar_field::Ph/prognostic"
 
-            if ( .not.got_free_surf ) call add_option( &
-                 trim( path ) // "/solver/remove_null_space", stat )
-
-            ph_sol % option_path = path
-
+            !Add remove null_space if not bcs specified for the field
+            if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
             call zero(ph_sol) !; call zero_non_owned(rhs)
-
             call petsc_solve( ph_sol, matrix, rhs, option_path = trim(solver_option_path) )
 
+            !Remove remove_null_space
+            if ( .not.got_free_surf ) call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
             if (IsParallel()) call halo_update(ph_sol)
 
             printf => extract_scalar_field( state( 1 ), "Ph", stat )

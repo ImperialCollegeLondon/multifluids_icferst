@@ -709,14 +709,12 @@ character(len=OPTION_PATH_LEN):: complete_solver_option_path
     ewrite(-1,*) 'option_path: ', trim(option_path)
     FLAbort("Missing solver element in provided option_path.")
   end if
-
   !Final check to ensure that the solver exists, otherwise use default IC_FERST path
-  if (.not. have_option(trim(complete_solver_option_path)//"preconditioner[0]/name")) then
+  if (.not. have_option(trim(complete_solver_option_path)//"/preconditioner[0]/name")) then
     !Use default IC_FERST solver settings
     complete_solver_option_path = "/solver_options/Linear_solver"
     ewrite(2, *) "Using default settings for trim(option_path)."
   end if
-
 end function complete_solver_option_path
 
 subroutine petsc_solve_setup(y, A, b, ksp, petsc_numbering, &
@@ -1768,7 +1766,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
     ! cancel all existing monitors (if reusing the same ksp)
     call KSPMonitorCancel(ksp, ierr)
-
     ! Set up the monitors:
     if (have_option(trim(solver_option_path)// &
        '/diagnostics/monitors/preconditioned_residual')) then
