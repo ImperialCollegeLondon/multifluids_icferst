@@ -1889,50 +1889,7 @@ contains
       !!! NEW CODE HERE !!!
       !!! deal with Momentum_Diffusion2
 
-      if ( is_porous_media ) then
-         return
-      else
-
-         ! return here as code below untested
-         return!sprint_to_do remove code below
-
-         t_field => extract_tensor_field( state( 1 ), "Viscosity", stat ) ! need to set dimensions in diamond - Populate_State.F90:2164
-         if ( stat == 0 ) then
-
-            do iphase = 1, Mdims%nphase
-
-               call allocate_multi_field( state( iphase ), Mdims, "Viscosity", Momentum_Diffusion2 )
-
-               if ( Mdims%ncomp > 1 ) then
-
-                  tp_field => extract_tensor_field( state( iphase ), "Viscosity" )
-                  call zero( tp_field )
-                  ndim1 = size( tp_field%val, 1 ) ; ndim2 = size( tp_field%val, 2 )
-
-                  do icomp = 1, Mdims%ncomp
-                     component => extract_scalar_field( state( Mdims%nphase + icomp ), "ComponentMassFractionPhase" // int2str( iphase ) )
-                     tc_field => extract_tensor_field( state( Mdims%nphase + icomp ), "Viscosity" )
-                     do ele = 1, Mdims%totele
-                        do iloc = 1, Mdims%mat_nloc
-                           mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                           cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
-                           call addto( tp_field, mat_nod, node_val( component, cv_nod ) * node_val( tc_field, mat_nod ) )
-                        end do
-                     end do
-                  end do
-
-               end if
-
-            end do
-
-            if ( have_option( "/material_phase[0]/linearise_viscosity" ) ) then
-               call linearise_multi_field( Momentum_Diffusion2, Mdims, ndgln%mat )
-            end if
-
-         end if
-      end if
-
-      !!!!!!!!!!!!!!!!!!!!!
+      
 
       return
     end subroutine calculate_viscosity
