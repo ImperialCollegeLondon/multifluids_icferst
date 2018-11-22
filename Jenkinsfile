@@ -2,7 +2,7 @@ pipeline {
     agent { 
         docker {
             image "fluidity/baseimages:xenial"
-            label 'azure-linux'
+            label 'dockerhost'
         } 
     }
     environment {
