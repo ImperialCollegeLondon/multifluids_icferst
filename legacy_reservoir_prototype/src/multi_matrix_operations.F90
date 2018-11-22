@@ -1003,9 +1003,9 @@ contains
         ! U = BLOCK_MAT * CDP
         INTEGER, intent( in )  :: NDIM, NPHASE, TOTELE, U_NLOC
         INTEGER, DIMENSION( : ), intent( in ), target ::  U_NDGLN
-        REAL, DIMENSION( : ), intent( inout ) :: U
+        REAL, DIMENSION( ndim * nphase * U_NLOC * TOTELE ), intent( inout ) :: U!Reshape done implicitly
         REAL, DIMENSION( :, :, : ), intent( in ), target :: BLOCK_MAT
-        REAL, DIMENSION( :, :, : ), intent( in ) :: CDP
+        REAL, DIMENSION( :, :, : ), intent( in ) :: CDP!We may need to do a Reshape implicitly for this as well
         ! Local
         INTEGER :: ELE, N, U_ILOC
         INTEGER, DIMENSION(:), pointer :: U_NOD

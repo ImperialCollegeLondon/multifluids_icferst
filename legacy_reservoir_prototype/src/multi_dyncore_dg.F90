@@ -1484,17 +1484,12 @@ end if
                 deallocate(U_ABSORBIN)
             end if
         end if
-        ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
         IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
-            ALLOCATE( U_RHS_CDP2( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ))
             !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
-            U_RHS_CDP2 = Mmat%U_RHS + CDP_tensor%val
-            ! DU = BLOCK_MAT * CDP
-            CALL PHA_BLOCK_MAT_VEC_old( UP_VEL, Mmat%PIVIT_MAT, U_RHS_CDP2, Mdims%ndim, Mdims%nphase, &
+            CALL PHA_BLOCK_MAT_VEC_old( U_ALL2 % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
-            U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
-            deallocate(U_RHS_CDP2)
         ELSE
+            ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
             !SPRINT_TO_DO: THIS BUSSINES OF RESHAPING IS AWFUL...
             call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
             rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
@@ -1513,10 +1508,10 @@ end if
             call deallocate(Mmat%DGM_PETSC)
             call deallocate(rhs)
             U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
+            deallocate( UP_VEL )
         END IF
         ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
-        deallocate( UP_VEL )
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
             if ( .not.symmetric_P ) then ! original
                 ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
@@ -6865,6 +6860,8 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
             call zero(ph_sol) !; call zero_non_owned(rhs)
             call petsc_solve( ph_sol, matrix, rhs, option_path = trim(solver_option_path) )
 
+! call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, iphase)
+! read*
             !Remove remove_null_space
             if ( .not.got_free_surf ) call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
             if (IsParallel()) call halo_update(ph_sol)
