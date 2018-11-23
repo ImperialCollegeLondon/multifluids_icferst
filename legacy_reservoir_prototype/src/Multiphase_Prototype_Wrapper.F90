@@ -330,6 +330,33 @@ contains
             end do
         end if
 
+
+        if (have_option('/physical_parameters/black-oil_PVT_table')) then
+
+        !Maybe no need for a field in state? and just calculate using required conditions????
+
+            !Create necessary memory to store the mass fraction of one of the pseudo-components (in a way that it is also adapted)
+            if (nphase /= 3)then
+                FLAbort('Black-Oil modelling requires three phases. Phase 1 Aqua, phase 2 liquid, phase 3 vapour')
+            end if
+
+            option_path = "/material_phase["// int2str( nphase -1 )//"]/scalar_field::VapourMassFraction"
+            call copy_option("/material_phase["// int2str( nphase - 1 )//"]/scalar_field::PhaseVolumeFraction",&
+                 trim(option_path))
+            !Make sure the field is not shown
+            if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
+                !Don't know how to set exclude_from_vtu to true from the spud options, hence,
+                !since simulation_name HAS to exist I copy it to obtain the same effect
+                call copy_option("/simulation_name",&
+                 trim(option_path)//"/prognostic/output/exclude_from_vtu")
+            end if
+            !Make sure that this field is not the objective of adaptivity
+            if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
+                call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
+            end if
+        end if
+
+
         if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
             ewrite(1, *) "Preserve regions MUST to be ON. Check multiphase_prototype_wrapper"
             !Ensure that preserve_mesh_regions is on, since otherwise it does not work

@@ -521,6 +521,44 @@ contains
         end if
     end function table_interpolation
 
+    subroutine read_csv_table(data_array, path_to_table, extra_data)
+        !Template of csv table
+        !OPTIONAL section (header)
+        !real1,real2,real3,..., size(extra_data)
+        !rows,columns
+        !2,3
+        !Pressure,Saturation
+        !1000,0.9
+        !250,0.5
+        !100,0.1
+        implicit none
+        real, dimension(:,:), allocatable, intent(inout) :: data_array
+        character( len = option_path_len ), intent(in) :: path_to_table
+        real, optional, dimension(:), intent(inout) :: extra_data
+        !Local variables
+        integer :: i, ierr
+        integer, dimension(2) :: table_size
+        !Open file
+        open(unit= 89, file=trim(path_to_table)//".csv", status='old', action='read')
+        if (present(extra_data)) then
+            !The extra data is composed of one line of headers that we ignore plus one extra line with the data
+            read(89,*)!skip header
+            read(89,*) extra_data
+        end if
+        read(89,*)!skip header
+        !CSV table must start with the number of columns by rows
+        read(89,*) table_size
+        allocate(data_array(table_size(1), table_size(2)))
+        !Skip the headers
+        read(89,*);
+        !Read the table
+        do i = 1, table_size(2)
+            read(89,*, IOSTAT=ierr) data_array(1:table_size(1), i)
+            if (ierr/=0) exit
+        end do
+        close(89)
+    end subroutine read_csv_table
+
 
     subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
         !This subroutine reads a csv file and returns

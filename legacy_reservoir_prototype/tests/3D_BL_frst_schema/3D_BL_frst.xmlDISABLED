@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml frst 3D CV_pressure</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./*.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="3D_BL_frst" language="python">BL_frst = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: BL_frst = True
+
+assert(BL_frst)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
