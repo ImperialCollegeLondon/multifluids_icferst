@@ -1,6 +1,7 @@
 physical_parameter_options =
    element physical_parameters {
       gravity_options?,
+      black_oil_options?,
       coriolis_options?
       }
 

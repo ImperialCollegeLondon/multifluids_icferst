@@ -6,6 +6,9 @@
         <ref name="gravity_options"/>
       </optional>
       <optional>
+        <ref name="black_oil_options"/>
+      </optional>
+      <optional>
         <ref name="coriolis_options"/>
       </optional>
     </element>

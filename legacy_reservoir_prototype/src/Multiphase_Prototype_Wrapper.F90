@@ -339,6 +339,10 @@ contains
             if (nphase /= 3)then
                 FLAbort('Black-Oil modelling requires three phases. Phase 1 Aqua, phase 2 liquid, phase 3 vapour')
             end if
+            if (GetProcNo() == 1) then
+              print*, "WARNING: Currently for Black-Oil modelling it is recommended to disable Test_mass_consv by setting a high value. For example 1e10."
+            end if
+
 
             option_path = "/material_phase["// int2str( nphase -1 )//"]/scalar_field::VapourMassFraction"
             call copy_option("/material_phase["// int2str( nphase - 1 )//"]/scalar_field::PhaseVolumeFraction",&
