@@ -3678,7 +3678,7 @@ end if
                                 ! Ensure all processors have the correct value of totout for parallel runs
                                 do iphase = 1, Mdims%nphase
                                     call allsum(outfluxes%totout(1, iphase, k))
-                                    if (has_temperature) call allsum(outfluxes%totout(2, iphase, k))
+                                    if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
                                     !Arash
                                     if (has_salt) call allsum(outfluxes%totout(3, iphase, k))
                                 end do
