@@ -6163,6 +6163,7 @@ end if
      logical, parameter :: Cap_to_FEM = .true.
      !Use integration by parts to introduce the CapPressure, otherwise it uses the integration by parts twice approach
      logical, parameter :: Int_by_part_CapPress = .false.
+
      !Local variables
      integer :: iphase, cv_inod, u_siloc, cv_jloc,&
          CV_SJLOC, u_iloc, cv_Xnod
@@ -6170,13 +6171,17 @@ end if
      real, pointer, dimension(:, :) :: CV_Bound_Shape_Func
      real, pointer, dimension(:, :) :: CV_Shape_Func
      real, dimension(Mdims%NDIM) :: NMX_ALL
-
+     logical :: DISC_PRES ! discontinuous pressure flag, only perform volumetric integral for the continuous pressure method, otherwise an extra surface intergal is needed
+     ! following integration by parts twice which introduces the jump condition see Gomes et al 2016
 
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
 
      !Retrieve derivatives of the shape functions
      call DETNLXR_PLUS_U(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
         FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
+
+    ! discontinuous pressure flag
+    DISC_PRES = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
 
      !Project to FEM
      if (CAP_to_FEM .and..not. Mmat%CV_pressure) then
@@ -6188,6 +6193,7 @@ end if
          CV_Bound_Shape_Func => FE_funs%sbcvn
          CV_Shape_Func => FE_funs%cvn
      end if
+
      !Integration by parts
      if (Int_by_part_CapPress .or. .not. CAP_to_FEM) then
          if (iface == 1) then!The volumetric term is added just one time
@@ -6241,6 +6247,8 @@ end if
                  end do
              end do
          end if
+
+         if (DISC_PRES) then
          !Get neighbouring nodes
          !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
          DO U_SILOC = 1, Mdims%u_snloc
@@ -6260,6 +6268,7 @@ end if
                  end do
              end do
          end do
+         end if
      end if
 
  end subroutine Introduce_Cap_press_term

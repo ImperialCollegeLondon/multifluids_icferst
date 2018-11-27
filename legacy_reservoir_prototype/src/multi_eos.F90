@@ -2878,7 +2878,7 @@ contains
 
                 ! check if saturation has converged
                 inf_norm = maxval(abs(saturation_field(heavier_phase,:) - old_saturation_field(heavier_phase,:)))
-                if (inf_norm < 1.e-4) then
+                if (inf_norm < 5.e-3) then
                     ewrite(0,*) 'initialisation porous media convergence reached'
                     ewrite(0,*) '... exiting'
                     call delete_option("/porous_media/FWL")
