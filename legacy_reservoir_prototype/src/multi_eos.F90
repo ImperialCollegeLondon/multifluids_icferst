@@ -466,6 +466,21 @@ contains
                 temperature % val
             dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( eos_coefs )
+
+         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
+            !!$ Den = C0 * P/T +C1
+            if( .not. have_temperature_field ) FLAbort( 'Temperature Field not defined' )
+            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
+            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_A', eos_coefs( 1 ) )
+            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', eos_coefs( 2 ) )
+            Rho = eos_coefs( 1 ) * pressure % val(1,1,:) / temperature % val + eos_coefs( 2 )
+            perturbation_pressure = 1.
+            !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) / &
+            !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
+            !RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) / &
+            !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
+            dRhodP =  eos_coefs( 1 ) / temperature % val !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
+            deallocate( eos_coefs )
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
             !!$ Den = C0 * P +C1
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
@@ -486,7 +501,6 @@ contains
             dRhodP = eos_coefs( 1 ) !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
             deallocate( eos_coefs )
             call deallocate(sfield)
-
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
             !!$ Den = C0 * ( P ^ C1 )
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
@@ -672,6 +686,9 @@ contains
 
             elseif( have_option( trim( eos_option_path_out ) // '/linear_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/linear_in_pressure'
+
+                if( have_option( trim( eos_option_path_out ) // '/include_internal_energy' ) ) &
+                    eos_option_path_out = trim( eos_option_path_out ) // '/include_internal_energy'
 
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
