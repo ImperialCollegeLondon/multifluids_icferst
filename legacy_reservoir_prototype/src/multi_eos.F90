@@ -464,7 +464,11 @@ contains
                 temperature % val
             RhoMinus = ( pressure%val(1 , 1, :) - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
                 temperature % val
-            dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+            if (eos_coefs(1)==0) then
+              dRhodP = eos_coefs(2)/temperature%val
+            else
+              dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+            end if
             deallocate( eos_coefs )
 
          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
