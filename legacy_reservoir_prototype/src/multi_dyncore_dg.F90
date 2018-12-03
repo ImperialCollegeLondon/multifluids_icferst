@@ -6241,7 +6241,8 @@ end if
                  end do
              end do
          end if
-         !Get neighbouring nodes
+         !Get neighbouring nodes!SPRINT_TO_DO Use beta instead of the 0.5 for this. Also it seems that dPc/dS grad S is more stable
+         !Also if not dicsontinuous formulation do not perform this operation
          !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
          DO U_SILOC = 1, Mdims%u_snloc
              U_ILOC = U_SLOC2LOC( U_SILOC )

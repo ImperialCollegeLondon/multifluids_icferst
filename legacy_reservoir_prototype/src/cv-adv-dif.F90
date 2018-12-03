@@ -1675,7 +1675,7 @@ contains
 
                             ENDIF Conditional_GETCT2
 
-                            if (present(outfluxes) .and. GETCT) then
+                            if (present(outfluxes) .and. GETCT) then!Better to do it GETCV_DISC of each corresponding field...
                                 !Store fluxes across all the boundaries either for mass conservation check or mass outflux
                                 !velocity * area * density * saturation
                                 if (on_domain_boundary ) then
@@ -1688,7 +1688,12 @@ contains
                                                 if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
                                                     bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, k) =  bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, k) + &
                                                     ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMT(1:Mdims%n_in_pres)
-                                                    if (has_temperature) then
+                                                    if (has_temperature) then!Instead of max tem, maybe energy produced...
+                                                      ! do iphase = 1, Mdims%nphase
+                                                      !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
+                                                      !     (ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:Mdims%n_in_pres) &
+                                                      !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
+                                                      ! end do
                                                         do iphase = 1, Mdims%nphase
                                                             outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
                                                             outfluxes%totout(2, iphase, k)   )
