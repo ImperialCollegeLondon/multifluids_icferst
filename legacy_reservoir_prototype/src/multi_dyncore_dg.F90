@@ -6163,6 +6163,7 @@ end if
      logical, parameter :: Cap_to_FEM = .true.
      !Use integration by parts to introduce the CapPressure, otherwise it uses the integration by parts twice approach
      logical, parameter :: Int_by_part_CapPress = .false.
+
      !Local variables
      integer :: iphase, cv_inod, u_siloc, cv_jloc,&
          CV_SJLOC, u_iloc, cv_Xnod
@@ -6170,13 +6171,17 @@ end if
      real, pointer, dimension(:, :) :: CV_Bound_Shape_Func
      real, pointer, dimension(:, :) :: CV_Shape_Func
      real, dimension(Mdims%NDIM) :: NMX_ALL
-
+     logical :: DISC_PRES ! discontinuous pressure flag, only perform volumetric integral for the continuous pressure method, otherwise an extra surface intergal is needed
+     ! following integration by parts twice which introduces the jump condition see Gomes et al 2016
 
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
 
      !Retrieve derivatives of the shape functions
      call DETNLXR_PLUS_U(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
         FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
+
+    ! discontinuous pressure flag
+    DISC_PRES = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
 
      !Project to FEM
      if (CAP_to_FEM .and..not. Mmat%CV_pressure) then
@@ -6188,6 +6193,7 @@ end if
          CV_Bound_Shape_Func => FE_funs%sbcvn
          CV_Shape_Func => FE_funs%cvn
      end if
+
      !Integration by parts
      if (Int_by_part_CapPress .or. .not. CAP_to_FEM) then
          if (iface == 1) then!The volumetric term is added just one time
@@ -6241,26 +6247,29 @@ end if
                  end do
              end do
          end if
-         !Get neighbouring nodes!SPRINT_TO_DO Use beta instead of the 0.5 for this. Also it seems that dPc/dS grad S is more stable
+	 !Get neighbouring nodes!SPRINT_TO_DO Use beta instead of the 0.5 for this. Also it seems that dPc/dS grad S is more stable
          !Also if not dicsontinuous formulation do not perform this operation
-         !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
-         DO U_SILOC = 1, Mdims%u_snloc
-             U_ILOC = U_SLOC2LOC( U_SILOC )
-             DO CV_SJLOC = 1, Mdims%cv_snloc
-                 CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
-                 CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                 NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
-                 if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-                     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-                 else !If no neighbour then we use the same value.
-                     cv_Xnod = CV_INOD
-                 end if
-                 do iphase = 1, Mdims%nphase
-                     LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                         + NMX_ALL(:) * 0.5* (CapPressure(iphase, CV_INOD) - CapPressure(iphase, cv_Xnod))
-                 end do
-             end do
-         end do
+         if (DISC_PRES) then
+	   !Get neighbouring nodes
+	   !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
+	   DO U_SILOC = 1, Mdims%u_snloc
+	       U_ILOC = U_SLOC2LOC( U_SILOC )
+	       DO CV_SJLOC = 1, Mdims%cv_snloc
+	           CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
+	           CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+	           NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
+	           if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
+	               cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
+	           else !If no neighbour then we use the same value.
+	               cv_Xnod = CV_INOD
+	           end if
+	           do iphase = 1, Mdims%nphase
+	               LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
+	                   + NMX_ALL(:) * 0.5* (CapPressure(iphase, CV_INOD) - CapPressure(iphase, cv_Xnod))
+	           end do
+	       end do
+	   end do
+         end if
      end if
 
  end subroutine Introduce_Cap_press_term
