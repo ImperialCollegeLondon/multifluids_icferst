@@ -519,7 +519,7 @@ contains
 
             !!$ Arash
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
-              !!$ Den = den0 * ( 1 + alpha * solute mass fraction )* ( 1 - beta * DeltaT )
+              !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
 
               allocate( eos_coefs( 4 ) ) ; eos_coefs = 0.
               call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 1 ) )
@@ -528,10 +528,10 @@ contains
               call get_option( trim( eos_option_path ) // '/beta', eos_coefs( 4 ), default = 0. )
               Rho = 1.0
               if (have_salt_field) then!Add the concentration contribution
-                Rho =  Rho * ( 1 + ( salt_concentration % val * eos_coefs( 2 ) ) )
+                Rho =  Rho + eos_coefs( 2 ) * salt_concentration % val
               end if
               if (have_temperature_field) then !add the temperature contribution
-                Rho = Rho * ( 1 - ( (temperature % val - eos_coefs( 3 )) * eos_coefs( 4 ) ) )
+                Rho = Rho - eos_coefs( 4 ) * (temperature % val - eos_coefs( 3 ))
               end if
               Rho = Rho * eos_coefs( 1 )
 
