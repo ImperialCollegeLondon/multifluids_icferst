@@ -3683,9 +3683,9 @@ DEN = A * P ^ B
             <element name="concentration_dependant">
               <a:documentation>Concentration-dependant EOS
 
-Temperature and concentration can be considered with this equation which is the recommended for the Boussinesq approximation.
+Temperature and concentration can be considered simultaneously with this equation which is the recommended for the Boussinesq approximation.
 
-DEN = DEN0 * ( 1 + Alpha * w ) (1 + Beta * DeltaT)
+DEN = DEN0 * ( 1 + Alpha * w ) (1 - Beta * (Temp -T0))
 
 w is the solute mass fraction and DEN0 is the reference density corresponding to w = 0
 
@@ -3702,7 +3702,7 @@ Note: this equation can be used only with concentration, temperature or both sim
               </optional>
               <optional>
                 <element name="T0">
-                  <a:documentation>Reference temperature</a:documentation>
+                  <a:documentation>Reference temperature (default 298)</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -3714,7 +3714,8 @@ Note: this equation can be used only with concentration, temperature or both sim
               </optional>
             </element>
             <element name="Temperature_Pressure_correlation">
-              <a:documentation>Temperature-Pressure correlation for liquids ONLY.
+              <a:documentation>Temperature-Pressure correlation for liquids ONLY. With the Boussinesq approximation, only temperature
+variation is considered.
 
 Range of applicability: 0 to 2*10^9 Pa.
 
@@ -3724,7 +3725,7 @@ where rho0 is the reference density at temperature T0 and pressure P0;
 
 Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
                        
-E is the liquid elasticity bulk modulus (N/m^2)
+E is the liquid elasticity bulk modulus (N/m^2);
 
 NOTE: if temperature is not defined the temperature is defined as zero.</a:documentation>
               <element name="rho0">

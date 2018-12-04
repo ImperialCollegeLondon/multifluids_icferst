@@ -523,7 +523,7 @@ contains
 
               allocate( eos_coefs( 4 ) ) ; eos_coefs = 0.
               call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 1 ) )
-              call get_option( trim( eos_option_path ) // '/alpha', eos_coefs( 2 ) )
+              call get_option( trim( eos_option_path ) // '/alpha', eos_coefs( 2 ), default  = 0.  )
               call get_option( trim( eos_option_path ) // '/T0', eos_coefs( 3 ), default = 298. )
               call get_option( trim( eos_option_path ) // '/beta', eos_coefs( 4 ), default = 0. )
               Rho = 1.0
