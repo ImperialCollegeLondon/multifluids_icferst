@@ -3056,19 +3056,33 @@ element Density{(
                         }|
                         ## Concentration-dependant EOS
                         ## 
-                        ## DEN = DEN0 * ( 1 + Alpha * w )
+			## Temperature and concentration can be considered simultaneously with this equation which is the recommended for the Boussinesq approximation.
+                        ## 
+                        ## DEN = DEN0 * ( 1 + Alpha * w ) (1 - Beta * (Temp -T0))
                         ##
                         ## w is the solute mass fraction and DEN0 is the reference density corresponding to w = 0
+                        ## 
+                        ## Beta is the thermal expansion and a reference Temperature needs to be set.
                         ##
+                        ## Note: this equation can be used only with concentration, temperature or both simultaneously.
                         element concentration_dependant {
                            element reference_density { 
                               real 
                            },
                            element alpha {
                               real
-                           }
+                           }?,
+                           ## Reference temperature (default 298)
+                           element T0 { 
+                              real 
+                           }?,
+                           ## Thermal expansion (Kelvin^-1)
+                           element beta { 
+                              real 
+                           }?
                         }|
-                        ## Temperature-Pressure correlation for liquids ONLY.
+                        ## Temperature-Pressure correlation for liquids ONLY. With the Boussinesq approximation, only temperature
+                        ## variation is considered.
                         ##
                         ## Range of applicability: 0 to 2*10^9 Pa.
                         ##
@@ -3078,7 +3092,7 @@ element Density{(
                         ##
                         ## Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
                         ##                        
-                        ## E is the liquid elasticity bulk modulus (N/m^2)
+                        ## E is the liquid elasticity bulk modulus (N/m^2);
                         ##
                         ## NOTE: if temperature is not defined the temperature is defined as zero.
                         element Temperature_Pressure_correlation {

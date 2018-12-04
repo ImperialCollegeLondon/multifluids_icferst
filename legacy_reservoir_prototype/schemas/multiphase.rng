@@ -3683,16 +3683,35 @@ DEN = A * P ^ B
             <element name="concentration_dependant">
               <a:documentation>Concentration-dependant EOS
 
-DEN = DEN0 * ( 1 + Alpha * w )
+Temperature and concentration can be considered with this equation which is the recommended for the Boussinesq approximation.
+
+DEN = DEN0 * ( 1 + Alpha * w ) (1 + Beta * DeltaT)
 
 w is the solute mass fraction and DEN0 is the reference density corresponding to w = 0
-</a:documentation>
+
+Beta is the thermal expansion and a reference Temperature needs to be set.
+
+Note: this equation can be used only with concentration, temperature or both simultaneously.</a:documentation>
               <element name="reference_density">
                 <ref name="real"/>
               </element>
-              <element name="alpha">
-                <ref name="real"/>
-              </element>
+              <optional>
+                <element name="alpha">
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="T0">
+                  <a:documentation>Reference temperature</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="beta">
+                  <a:documentation>Thermal expansion (Kelvin^-1)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
             <element name="Temperature_Pressure_correlation">
               <a:documentation>Temperature-Pressure correlation for liquids ONLY.

@@ -519,13 +519,24 @@ contains
 
             !!$ Arash
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
-              !!$ Den = den0 * ( 1 + alpha * solute mass fraction )
+              !!$ Den = den0 * ( 1 + alpha * solute mass fraction )* ( 1 - beta * DeltaT )
 
-              allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
+              allocate( eos_coefs( 4 ) ) ; eos_coefs = 0.
               call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 1 ) )
               call get_option( trim( eos_option_path ) // '/alpha', eos_coefs( 2 ) )
-              Rho = eos_coefs( 1 ) * ( 1 + ( salt_concentration % val * eos_coefs( 2 ) ) )
-                dRhodP = 0.0
+              call get_option( trim( eos_option_path ) // '/T0', eos_coefs( 3 ), default = 298. )
+              call get_option( trim( eos_option_path ) // '/beta', eos_coefs( 4 ), default = 0. )
+              Rho = 1.0
+              if (have_salt_field) then!Add the concentration contribution
+                Rho =  Rho * ( 1 + ( salt_concentration % val * eos_coefs( 2 ) ) )
+              end if
+              if (have_temperature_field) then !add the temperature contribution
+                Rho = Rho * ( 1 - ( (temperature % val - eos_coefs( 3 )) * eos_coefs( 4 ) ) )
+              end if
+              Rho = Rho * eos_coefs( 1 )
+
+              ! Rho = Rho * eos_coefs( 1 )
+              dRhodP = 0.0
               deallocate( eos_coefs )
           else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
             !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
@@ -539,7 +550,10 @@ contains
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/P0/', eos_coefs( 3 ) )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ), default = 0. )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_E/', eos_coefs( 5 ), default = 0. )
-
+            if (have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )) THEN
+              !Effectively dissable the pressure dependency
+              eos_coefs( 5 ) = 1e50
+            end if
             !!$ den = den0/(1+Beta(T1-T0))
             !We use RHo as auxiliar variable here as the we do not perturbate the temperature
 
