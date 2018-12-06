@@ -61,8 +61,8 @@ print 'Now running the numerical model'
 
 #Get path
 path = os.getcwd()
-#binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
-binpath = 'multiphase.sh'
+binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
+
 
 os.system('make clean')
 os.system('make')
