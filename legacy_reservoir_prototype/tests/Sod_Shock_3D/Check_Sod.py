@@ -63,7 +63,6 @@ print 'Now running the numerical model'
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 
-
 os.system('make clean')
 os.system('make')
 os.system(binpath + ' ' + path + '/sod_shock3d_test.mpml')
@@ -88,7 +87,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = True
+showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name_rho = 'Density'
@@ -247,20 +246,35 @@ if (AutoNumber < 20): Passed = False
 if (Passed):
     print 'Sod shock works OK'
 else:
-    print 'Sod shock NOT work'
+    print 'Sod shock NOT ok'
 
 #######################################################
 if (showPlot):
-    fig, ax = plt.subplots()
-    x = []
-    y = []
-    for i in range(len(detector)):
-        x.append(float(detector[i][0]))#+0.5)#In this test case the origin is in -0.5
-        y.append(float(FSrho[i][0]))
-    line = plt.Line2D(x, y, color='red', linewidth=2)
-    line2 = plt.Line2D(Analytical_X, Analytical_Yrho, color='blue', linewidth=2)
-    #line.text.set_color('red')
-    #line.text.set_fontsize(16)
-    ax.add_line(line)
-    ax.add_line(line2)
-    plt.show()
+	fig, ax = plt.subplots(3, sharex=True)
+	x = []
+	y = []
+	yp = []
+	yv = []
+	for i in range(len(detector)):
+		x.append(float(detector[i][0]))#+0.5)#In this test case the origin is in -0.5
+		y.append(float(FSrho[i][0]))
+		yp.append(float(FSP[i][0]))
+		yv.append(float(FSV[i][0]))
+	line = plt.Line2D(x, y, color='red', linewidth=2)
+	line2 = plt.Line2D(Analytical_X, Analytical_Yrho, color='blue', linewidth=2)
+	#line.text.set_color('red')
+	#line.text.set_fontsize(16)
+	ax[0].add_line(line)
+	ax[0].add_line(line2)
+
+	line3 = plt.Line2D(x, yp, color='red', linewidth=2)
+	line4 = plt.Line2D(Analytical_X, Analytical_Yp, color='blue', linewidth=2)
+	ax[1].add_line(line3)
+	ax[1].add_line(line4)
+
+	line5 = plt.Line2D(x, yv, color='red', linewidth=2)
+	line6 = plt.Line2D(Analytical_X, Analytical_Yv, color='blue', linewidth=2)
+	ax[2].add_line(line5)
+	ax[2].add_line(line6)
+
+	plt.show()
