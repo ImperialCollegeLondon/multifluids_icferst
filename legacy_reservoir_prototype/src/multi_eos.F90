@@ -1757,6 +1757,10 @@ contains
 
       SoluteDispersion = 0.
       DispCoeffMat = 0.
+      DispDiaComp = 0.
+      LongDispCoeff = 0.0
+      TransDispCoeff = 0.0
+
       boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
                 sfield=>extract_scalar_field(state(1),"Porosity")
@@ -1781,6 +1785,11 @@ contains
                                 vel_comp(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
                                 (sfield%val(ele_nod)))
 
+                                if (Mdims%ndim == 2) then
+                                    vel_comp2(3) = 0
+                                    vel_comp(3) = 0
+                                endif
+
                                 vel_av = vel_av + vel_comp2(idim1)
                             end do
 
@@ -1799,14 +1808,14 @@ contains
                             end do
 
                             !! Diagonal components of the dispersion tensor
-                            DispDiaComp = (1/(vel_av**2))*matmul(DispCoeffMat, vel_comp2)
+                            DispDiaComp = (1.0/(vel_av**2))*matmul(DispCoeffMat, vel_comp2)
 
                             !! Off-diaginal components of the dispersion tensor
                             do idim1 = 1, Mdims%ndim
                                 do idim2 = 1, Mdims%ndim
                                     if (idim1 .NE. idim2) then
                                         SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        sfield%val(ele_nod)*(1/(vel_av**2)) *&
+                                        sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
                                         (LongDispCoeff - TransDispCoeff) *&
                                         (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
                                     else
