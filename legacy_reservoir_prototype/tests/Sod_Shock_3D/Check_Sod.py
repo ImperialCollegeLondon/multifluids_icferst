@@ -18,8 +18,8 @@ print 'First solving the analytical'
 #Plot analytical results#############
 gamma = 1.4
 dustFrac = 0.0
-npts = 500
-t = 0.15
+npts = 1000
+t = 0.075
 left_state = (1,1,0)
 right_state = (0.1, 0.125, 0.)
 
@@ -29,8 +29,6 @@ right_state = (0.1, 0.125, 0.)
 # t is the time evolution for which positions and states in tube should be
 # calculated
 # gamma denotes specific heat
-# note that gamma and npts are default parameters (1.4 and 500) in solve
-# function
 positions, regions, values = sod.solve(left_state=left_state, \
 	right_state=right_state, geometry=(0.0, 1.0, 0.5), t=t,
 	gamma=gamma, npts=npts, dustFrac=dustFrac)
@@ -87,7 +85,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = False
+showPlot = True
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name_rho = 'Density'
@@ -203,9 +201,6 @@ for item in FSV:
 
 L1_sum = 0.0
 L2_sum = 0.0
-L1_sum_shock_front = 0.0
-L2_sum_shock_front = 0.0
-N_shock = 0
 Infinite_Norm = 0.0
 
 
@@ -226,21 +221,17 @@ for i in range(len(Experimental_X)):
         Infinite_Norm = abs(x - Experimental_Yrho[i])
     L1_sum = L1_sum + abs(x - Experimental_Yrho[i])
     L2_sum = L2_sum + (x - Experimental_Yrho[i])**2
-    if (abs(x - Experimental_Yrho[i])>1/100000000):
-        N_shock = N_shock + 1
-        L1_sum_shock_front = L1_sum_shock_front + abs(x - Experimental_Yrho[i])
-        L2_sum_shock_front = L2_sum_shock_front + (x - Experimental_Yrho[i])**2
 
 
 L1_norm= L1_sum / len(Experimental_X)
 L2_norm = L2_sum**0.5 / len(Experimental_X)
 
-Passed = True
+Passed = False
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 #Check the experiment has finished
-if (AutoNumber < 20): Passed = False
+if (AutoNumber < 16): Passed = False
 
 #print L1_norm, L2_norm
 if (Passed):
