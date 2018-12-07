@@ -226,7 +226,7 @@ for i in range(len(Experimental_X)):
 L1_norm= L1_sum / len(Experimental_X)
 L2_norm = L2_sum**0.5 / len(Experimental_X)
 
-Passed = False
+Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
@@ -237,7 +237,7 @@ if (AutoNumber < 16): Passed = False
 if (Passed):
     print 'Sod shock works OK'
 else:
-    print 'Sod shock NOT ok'
+    print 'Sod shock NOT work'
 
 #######################################################
 if (showPlot):
