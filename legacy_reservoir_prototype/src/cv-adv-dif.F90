@@ -6008,25 +6008,29 @@ end if
                                 if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
                                     !Only in the boundaries with a defined pressure it needs to be added into
                                     !the matrix and into the RHS
+                                    !Arash
                                     if (hydrostatic_bc) then
-                                    Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                    Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                        - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                        * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
-                                        SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*((maxval(X_All(2, :)))-X_ALL(2, CV_NODI))*&
-                                        CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
-                                        !print*, SUF_D_BC_ALL( 1, IPHASE, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) )
-                                        !print*, SUF_D_BC_ALL( 1, IPHASE, U_ILOC )
-                                        !read *
-                                        !print*, maxval(X_All(2, :))
+                                        if (Mdims%ndim == 2) then
+                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
+                                                SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*(-1.0*X_ALL(2, CV_NODI))*&
+                                                CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
+                                        else
+                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
+                                                SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*(-1.0*X_ALL(3, CV_NODI))*&
+                                                CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
+                                        endif
                                     else
                                         Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                             - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )    
+                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
                                     endif
-
-
 
                                 else
                                     if (show_warn_msg) then
