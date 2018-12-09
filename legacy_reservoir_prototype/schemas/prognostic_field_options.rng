@@ -430,6 +430,20 @@ coordinates, the nearest vertex will be selected.</a:documentation>
           </element>
         </choice>
       </optional>
+      <optional>
+        <element name="hydrostatic_boundaries">
+          <a:documentation>It calculates the pressure based on p = rho * g * ( h - y ) + p0  in 2D and p = rho * g * ( h - z ) + p0 in 3D. 
+where "h" is the height of the boundary; "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0"
+is the pressure in
+[pa] at the highest point of the boundary. With hydrostatic option "p0" should be assinged under 'dirichlet/constant' for each
+boundary (however, it nomraly has a value of 0.0).
+
+It should be noted that datum is considered to be at y=0 (or z=0 in 3D) and all parts of the model should be located
+above zero in y (or z in 3D) direction. The gravitational acceleration is considered to be in 
+negative y (or negative z in 3D) direction.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
       <zeroOrMore>
         <choice>
           <element name="initial_condition">
@@ -489,26 +503,6 @@ want this.</a:documentation>
                 </optional>
               </element>
               <ref name="input_choice_real"/>
-            </element>
-            <element name="type">
-              <a:documentation>It calculates the pressure based on p=rho * g * (h-y+H0) in 2D and p=rho * g * (h-z+H0)
-where h is the height of the boundary; y and z are the vertical coordinates in 2D and 3D, respectively; H0 is the head in
-[m] at the highest point of the boundary.
-
-It should be noted that datum is considered to be at y=0 (or z=0 in 3D) and all parts of the model should be located
-above zero in y (or z in 3D) direction. The gravitational acceleration is considered to be in 
-negative y (or negative z in 3D) direction.</a:documentation>
-              <attribute name="name">
-                <value>hydrostatic</value>
-              </attribute>
-              <element name="boundary_height">
-                <a:documentation>h in [m]</a:documentation>
-                <ref name="input_choice_real"/>
-              </element>
-              <element name="head_at_highest_point">
-                <a:documentation>H0 in [m]</a:documentation>
-                <ref name="input_choice_real"/>
-              </element>
             </element>
             <element name="type">
               <attribute name="name">

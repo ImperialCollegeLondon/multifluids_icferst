@@ -339,6 +339,20 @@ prognostic_pressure_field =
             real_dim_vector
          }
       )?,
+    (	
+         ## It calculates the pressure based on p = rho * g * ( h - y ) + p0  in 2D and p = rho * g * ( h - z ) + p0 in 3D. 
+         ## where "h" is the height of the boundary; "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0"
+         ## is the pressure in
+         ## [pa] at the highest point of the boundary. With hydrostatic option "p0" should be assinged under 'dirichlet/constant' for each
+         ## boundary (however, it nomraly has a value of 0.0).
+         ## 
+         ## It should be noted that datum is considered to be at y=0 (or z=0 in 3D) and all parts of the model should be located
+         ## above zero in y (or z in 3D) direction. The gravitational acceleration is considered to be in 
+         ## negative y (or negative z in 3D) direction.
+         element hydrostatic_boundaries {
+            empty
+         }
+      )?,
       (
          ## Initial condition for WholeMesh
          ##asc
@@ -383,24 +397,6 @@ prognostic_pressure_field =
                   }?
                },
                input_choice_real
-            }|
-            ## It calculates the pressure based on p=rho * g * (h-y+H0) in 2D and p=rho * g * (h-z+H0)
-            ## where h is the height of the boundary; y and z are the vertical coordinates in 2D and 3D, respectively; H0 is the head in
-            ## [m] at the highest point of the boundary.
-            ## 
-            ## It should be noted that datum is considered to be at y=0 (or z=0 in 3D) and all parts of the model should be located
-            ## above zero in y (or z in 3D) direction. The gravitational acceleration is considered to be in 
-            ## negative y (or negative z in 3D) direction.
-            element type {
-               attribute name { "hydrostatic" },
-               ## h in [m]
-               element boundary_height {
-                  input_choice_real
-               },
-               ## H0 in [m]
-               element head_at_highest_point {
-                  input_choice_real
-               }
             }|
             element type {
                attribute name { "freesurface" },

@@ -5989,8 +5989,10 @@ end if
             !Local variables
             integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC, P_ILOC, CV_ILOC
             logical, save :: show_warn_msg = .true.
+            logical :: hydrostatic_bc
             !By default no modification is required
             Bound_ele_correct = 1.0
+            hydrostatic_bc = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )
             IF ( on_domain_boundary ) THEN
                 !By default the position must not be added to the matrix
                 Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
@@ -6006,16 +6008,24 @@ end if
                                 if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
                                     !Only in the boundaries with a defined pressure it needs to be added into
                                     !the matrix and into the RHS
+                                    if (hydrostatic_bc) then
                                     Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                     Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                         - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
                                         * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
-                                        SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*(1.0-X_ALL(2, CV_NODI))*&
+                                        SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*((maxval(X_All(2, :)))-X_ALL(2, CV_NODI))*&
                                         CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
                                         !print*, SUF_D_BC_ALL( 1, IPHASE, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) )
                                         !print*, SUF_D_BC_ALL( 1, IPHASE, U_ILOC )
                                         !read *
-                                        !(1.0-X_ALL(2, U_INOD))
+                                        !print*, maxval(X_All(2, :))
+                                    else
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )    
+                                    endif
+
 
 
                                 else
