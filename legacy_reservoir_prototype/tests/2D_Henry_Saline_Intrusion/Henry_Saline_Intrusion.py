@@ -52,8 +52,8 @@ data_name = 'SoluteMassFraction'
 x0 = 1.2
 x1 = 2.0
 
-y0 = 0.0 # 1.0/float(NUMBER)
-y1 = 1.0 #<==Temporary, it can handle different values
+y0 = -1.0 # 1.0/float(NUMBER)
+y1 = 0.0 #<==Temporary, it can handle different values
 
 z0 = 0.0
 z1 = 0.0
