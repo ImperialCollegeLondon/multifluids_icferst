@@ -7,7 +7,7 @@
 #include "petscversion.h"
 #ifdef HAVE_PETSC_MODULES
 #if PETSC_VERSION_MINOR>=6
-#include "petsc/finclude/petsc.h"
+#include "petsc/finclude/petscdef.h"
 #else
 #include "finclude/petscdef.h"
 #endif
