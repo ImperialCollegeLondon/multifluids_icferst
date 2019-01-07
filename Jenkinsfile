@@ -1,4 +1,4 @@
-def repo = https://pds-pe.visualstudio.com/DefaultCollection/Ava/_git/ava-cascade-icferst
+def repo = 'pds-pe@vs-ssh.visualstudio.com:v3/pds-pe/Ava/ava-cascade-icferst'
 def branch = 'master'
 def cores = 2
 def rsync_opt = "--rsh='ssh -x -q' --delete --exclude '*@tmp' --recursive --links --chmod=D2750,Fo-rxw --owner --group --chown=:icl_user"
