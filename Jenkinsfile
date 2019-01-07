@@ -1,22 +1,32 @@
+def repo = https://pds-pe.visualstudio.com/DefaultCollection/Ava/_git/ava-cascade-icferst
 def branch = 'master'
 def cores = 2
 def rsync_opt = "--rsh='ssh -x -q' --delete --exclude '*@tmp' --recursive --links --chmod=D2750,Fo-rxw --owner --group --chown=:icl_user"
-def okapi_user = "s.koshelev"
 def deploy_path = "/glb/data/icl"
 
-node( 'FluidityCentos7' )
-{
 
-  stage( 'Clean workspace') { cleanWs() }
+pipeline {
+   agent
+   {
+      docker
+      {
+         image 'doc-reg-ac.pds.nl/fluidity2:dev'
+         args '-v ${env.WORKSPACE}/${branch}:/data'
+      }
+   }
 
-  stage('Get source code')
-  {
-    dir ( "${branch}" )
-    {
-      git branch: "${branch}", url: 'git@nlvsrv-5231:/home/git/ICL', extensions: [[$class: 'CloneOption', noTags: true, reference: '', shallow: true]]
-    }
-  }  
+   stages
+   {
+      stage( 'Clean workspace') { cleanWs() }
 
+      stage('Get source code')
+      {
+         dir ( /data )
+         {
+            git branch: "${branch}", url: "$repo", extensions: [[$class: 'CloneOption', noTags: true, reference: '', shallow: true]]
+         }
+      } 
+/*
   stage( 'Configure')
   {
     dir ( "${branch}" ) { sh "./configure --prefix=${env.WORKSPACE}/icl --with-exodusii --enable-2d-adaptivity"  }
@@ -104,4 +114,8 @@ node( 'FluidityCentos7' )
       sh "chmod 750 ${env.WORKSPACE}/icl/"
       sh "rsync ${rsync_opt} ${env.WORKSPACE}/icl/ ${okapi_user}@okapi.pds.local:/glb/data/icl"
   }
+
+ */
+
+   }
 }
