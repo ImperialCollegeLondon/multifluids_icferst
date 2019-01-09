@@ -753,9 +753,9 @@ contains
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
-                call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat )
-                call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat )
-                call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat )
+                call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat, default = 0.)
+                call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat, default = 66.e6)
+                call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat, default = 1.1)
                 !For porous media we need to use the Courant number obtained in cv_assemb
                 if (is_porous_media) then
                     c = max ( c, Courant_number(1) )
@@ -770,7 +770,7 @@ contains
                         c = max ( c, maxval( cfl % val ) )
                     end do
                 end if
-                call get_option( '/timestepping/timestep', dt )
+                !call get_option( '/timestepping/timestep', dt )
                 !To ensure that we always create a vtu file at the desired time (if requested),
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
                 !Original solution slowed down simulations due to having to build up dt again after forced reduction, now fixed by using stored_dt when appropiate
@@ -792,9 +792,10 @@ contains
                     end if
                 end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
+                !dt = ic * dt
+                print*, dt
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
-
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
@@ -1153,7 +1154,7 @@ contains
                             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'MetricTensor' )
                             call initialise_field(metric_tensor,'/mesh_adaptivity/hr_adaptivity_prescribed_metric/tensor_field::MetricTensor',positions)
                             nullify(positions)
-                        else                       
+                        else
                             call qmesh( state, metric_tensor )
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
