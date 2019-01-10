@@ -792,8 +792,6 @@ contains
                     end if
                 end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
-                !dt = ic * dt
-                print*, dt
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
                 call allmin(dt)
