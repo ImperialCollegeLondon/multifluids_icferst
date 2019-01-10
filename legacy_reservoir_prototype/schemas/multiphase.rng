@@ -602,16 +602,37 @@ ONLY specify for the wetting phase</a:documentation>
             </element>
           </choice>
           <optional>
-            <element name="dispersivity">
-              <a:documentation>Specify Dispersivity
-
-Longitudianl and transverse dispersivity of solid matrix in [m] for isotropic-media dispersion</a:documentation>
-              <element name="longitudinal">
-                <ref name="real"/>
-              </element>
-              <element name="transverse">
-                <ref name="real"/>
-              </element>
+            <element name="scalar_field">
+              <a:documentation>Specify scalar field Longitudinal Dispersivity</a:documentation>
+              <attribute name="name">
+                <value>Longitudinal_Dispersivity</value>
+              </attribute>
+              <choice>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_scalar_field"/>
+                </element>
+                <element name="aliased">
+                  <ref name="generic_aliased_field"/>
+                </element>
+              </choice>
+            </element>
+          </optional>
+          <optional>
+            <element name="scalar_field">
+              <a:documentation>Specify scalar field Transverse Dispersivity</a:documentation>
+              <attribute name="name">
+                <value>Transverse_Dispersivity</value>
+              </attribute>
+              <choice>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_scalar_field"/>
+                </element>
+                <element name="aliased">
+                  <ref name="generic_aliased_field"/>
+                </element>
+              </choice>
             </element>
           </optional>
           <optional>

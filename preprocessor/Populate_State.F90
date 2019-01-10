@@ -1332,6 +1332,18 @@ contains
              call allocate_and_insert_tensor_field('/porous_media/tensor_field::Permeability', &
                states(i))
           end if
+          !Arash
+          if (have_option("/porous_media/scalar_field::Longitudinal_Dispersivity")) then
+             call allocate_and_insert_scalar_field('/porous_media/scalar_field::Longitudinal_Dispersivity', &
+               states(i), field_name='Longitudinal_Dispersivity')
+          end if
+
+          if (have_option("/porous_media/scalar_field::Transverse_Dispersivity")) then
+             call allocate_and_insert_scalar_field('/porous_media/scalar_field::Transverse_Dispersivity', &
+               states(i), field_name='Transverse_Dispersivity')
+          end if
+
+
        end do
        !Insert if required thermal porous media fields
         if (have_option('/porous_media/thermal_porous/')) then
@@ -1563,7 +1575,7 @@ contains
     integer :: nfields ! number of fields
     ! logicals to find out if we have certain options
     logical :: is_aliased
-    type(scalar_field) :: sfield
+    type(scalar_field) :: sfield, ldfield, tdfield
     type(vector_field) :: vfield
     type(tensor_field) :: tfield
 
@@ -1725,6 +1737,20 @@ contains
        do i = 1,nstates-1
           call insert(states(i+1), sfield, 'Porosity')
        end do
+
+       !Arash
+       ldfield=extract_scalar_field(states(1), 'Longitudinal_Dispersivity')
+       ldfield%aliased = .true.
+       do i = 1,nstates-1
+          call insert(states(i+1), ldfield, 'Longitudinal_Dispersivity')
+       end do
+
+       tdfield=extract_scalar_field(states(1), 'Transverse_Dispersivity')
+       tdfield%aliased = .true.
+       do i = 1,nstates-1
+          call insert(states(i+1), tdfield, 'Transverse_Dispersivity')
+       end do
+
 
        ! alias the Permeability field which may be
        ! either scalar or vector (if present)

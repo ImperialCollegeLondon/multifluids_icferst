@@ -1735,21 +1735,19 @@ contains
 
     !! Arash
     !! Dispersion for isotropic porous media
-    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, &
-        LongDisp, TransDisp, SoluteDispersion, tracer)
+    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion, tracer)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
-      real, intent(in) :: LongDisp, TransDisp !Longitudinal and transverse dispersivity
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
-      type(scalar_field), pointer :: component, sfield
+      type(scalar_field), pointer :: component, sfield, ldfield, tdfield
       type(tensor_field), pointer :: diffusivity, den
       type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc
-      real :: vel_av, LongDispCoeff, TransDispCoeff
+      real :: vel_av
       real, dimension(3, 3) :: DispCoeffMat
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
       logical :: boussinesq
@@ -1758,12 +1756,13 @@ contains
       SoluteDispersion = 0.
       DispCoeffMat = 0.
       DispDiaComp = 0.
-      LongDispCoeff = 0.0
-      TransDispCoeff = 0.0
+
 
       boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
                 sfield=>extract_scalar_field(state(1),"Porosity")
+                ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
+                tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
 
                 do iphase = 1, Mdims%nphase
                     darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
@@ -1795,14 +1794,12 @@ contains
 
                             vel_av = SQRT(vel_av)
 
-                            LongDispCoeff = vel_av * LongDisp
-                            TransDispCoeff = vel_av * TransDisp
                             do idim1 = 1, Mdims%ndim
                                 do idim2 = 1, Mdims%ndim
                                     if (idim1 == idim2) then
-                                        DispCoeffMat(idim1, idim2) = LongDispCoeff
+                                        DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod)
                                     else
-                                        DispCoeffMat(idim1, idim2) = TransDispCoeff
+                                        DispCoeffMat(idim1, idim2) = vel_av * tdfield%val(ele_nod)
                                     endif
                                 end do
                             end do
@@ -1816,7 +1813,7 @@ contains
                                     if (idim1 .NE. idim2) then
                                         SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                                         sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
-                                        (LongDispCoeff - TransDispCoeff) *&
+                                        ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdfield%val(ele_nod))) *&
                                         (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
                                     else
                                         SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
