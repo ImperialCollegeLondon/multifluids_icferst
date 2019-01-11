@@ -1333,13 +1333,13 @@ contains
                states(i))
           end if
           !Arash
-          if (have_option("/porous_media/scalar_field::Longitudinal_Dispersivity")) then
-             call allocate_and_insert_scalar_field('/porous_media/scalar_field::Longitudinal_Dispersivity', &
+          if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+             call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity', &
                states(i), field_name='Longitudinal_Dispersivity')
           end if
 
-          if (have_option("/porous_media/scalar_field::Transverse_Dispersivity")) then
-             call allocate_and_insert_scalar_field('/porous_media/scalar_field::Transverse_Dispersivity', &
+          if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+             call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Transverse_Dispersivity', &
                states(i), field_name='Transverse_Dispersivity')
           end if
 
@@ -1739,13 +1739,13 @@ contains
        end do
 
        !Arash
-       if (have_option("/porous_media/scalar_field::Longitudinal_Dispersivity")) then
+       if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
          ldfield=extract_scalar_field(states(1), 'Longitudinal_Dispersivity')
          ldfield%aliased = .true.
          do i = 1,nstates-1
             call insert(states(i+1), ldfield, 'Longitudinal_Dispersivity')
          end do
-         if (have_option("/porous_media/scalar_field::Transverse_Dispersivity")) then
+         if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
            tdfield=extract_scalar_field(states(1), 'Transverse_Dispersivity')
            tdfield%aliased = .true.
            do i = 1,nstates-1

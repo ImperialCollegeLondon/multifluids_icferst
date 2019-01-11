@@ -1095,7 +1095,7 @@ contains
               ldfield=>extract_scalar_field(state(1),"Pipe")
               call assign_val(ldvfield%val(2,:),ldfield%val)
             end if
-            if (have_option("/porous_media/scalar_field::Transverse_Dispersivity")) then
+            if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
               call allocate(Transverse_Dispersivity,npres,element_mesh,"Transverse_Dispersivity")
               do ipres = 1, npres
                 call set(Transverse_Dispersivity,ipres,1.0)

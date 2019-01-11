@@ -475,30 +475,31 @@ start =
                }
             ),
             ## Specify scalar field Longitudinal Dispersivity
-            element scalar_field {
-               attribute name { "Longitudinal_Dispersivity" },
-               (
-                  element prescribed {
-                     material_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
-            }?,
-            ## Specify scalar field Transverse Dispersivity
-            element scalar_field {
-               attribute name { "Transverse_Dispersivity" },
-               (
-                  element prescribed {
-                     material_mesh_choice,
-                     prescribed_scalar_field
-                  }|
-                  element aliased {
-                     generic_aliased_field
-                  }
-               )
+            element Dispersion {  
+               element scalar_field {
+                  attribute name { "Longitudinal_Dispersivity" },
+                  (
+                     element prescribed {
+                        material_mesh_choice,
+                        prescribed_scalar_field
+                     }|
+                     element aliased {
+                        generic_aliased_field
+                     }
+                  )
+               },
+              element scalar_field {
+                  attribute name { "Transverse_Dispersivity" },
+                  (
+                     element prescribed {
+                        material_mesh_choice,
+                        prescribed_scalar_field
+                     }|
+                     element aliased {
+                        generic_aliased_field
+                     }
+                  )
+               }?
             }?,
             ## Parameters for thermal porous media simulations
             element thermal_porous{
