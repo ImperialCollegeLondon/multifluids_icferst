@@ -1739,18 +1739,20 @@ contains
        end do
 
        !Arash
-       ldfield=extract_scalar_field(states(1), 'Longitudinal_Dispersivity')
-       ldfield%aliased = .true.
-       do i = 1,nstates-1
-          call insert(states(i+1), ldfield, 'Longitudinal_Dispersivity')
-       end do
-
-       tdfield=extract_scalar_field(states(1), 'Transverse_Dispersivity')
-       tdfield%aliased = .true.
-       do i = 1,nstates-1
-          call insert(states(i+1), tdfield, 'Transverse_Dispersivity')
-       end do
-
+       if (have_option("/porous_media/scalar_field::Longitudinal_Dispersivity")) then
+         ldfield=extract_scalar_field(states(1), 'Longitudinal_Dispersivity')
+         ldfield%aliased = .true.
+         do i = 1,nstates-1
+            call insert(states(i+1), ldfield, 'Longitudinal_Dispersivity')
+         end do
+         if (have_option("/porous_media/scalar_field::Transverse_Dispersivity")) then
+           tdfield=extract_scalar_field(states(1), 'Transverse_Dispersivity')
+           tdfield%aliased = .true.
+           do i = 1,nstates-1
+              call insert(states(i+1), tdfield, 'Transverse_Dispersivity')
+           end do
+       end if
+     end if
 
        ! alias the Permeability field which may be
        ! either scalar or vector (if present)

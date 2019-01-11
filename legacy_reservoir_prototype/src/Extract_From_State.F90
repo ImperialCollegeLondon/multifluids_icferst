@@ -1081,40 +1081,42 @@ contains
         end if
 
         !Arash
-        call allocate(Longitudinal_Dispersivity,npres,element_mesh,"Longitudinal_Dispersivity")
-        do ipres = 1, npres
-            call set(Longitudinal_Dispersivity,ipres,1.0)
-        end do
-        call insert(packed_state,Longitudinal_Dispersivity,"Longitudinal_Dispersivity")
-        call deallocate(Longitudinal_Dispersivity)
         if (has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
+          call allocate(Longitudinal_Dispersivity,npres,element_mesh,"Longitudinal_Dispersivity")
+          do ipres = 1, npres
+              call set(Longitudinal_Dispersivity,ipres,1.0)
+          end do
+          call insert(packed_state,Longitudinal_Dispersivity,"Longitudinal_Dispersivity")
+          call deallocate(Longitudinal_Dispersivity)
             ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
             call set(Longitudinal_Dispersivity,1,ldfield)
+            if(npres>1) then
+              ldvfield=>extract_vector_field(packed_state,"Longitudinal_Dispersivity")
+              ldfield=>extract_scalar_field(state(1),"Pipe")
+              call assign_val(ldvfield%val(2,:),ldfield%val)
+            end if
+            if (have_option("/porous_media/scalar_field::Transverse_Dispersivity")) then
+              call allocate(Transverse_Dispersivity,npres,element_mesh,"Transverse_Dispersivity")
+              do ipres = 1, npres
+                call set(Transverse_Dispersivity,ipres,1.0)
+              end do
+              call insert(packed_state,Transverse_Dispersivity,"Transverse_Dispersivity")
+              call deallocate(Transverse_Dispersivity)
+              if (has_scalar_field(state(1),"Transverse_Dispersivity")) then
+                tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
+                call set(Transverse_Dispersivity,1,tdfield)
+                if(npres>1) then
+                  tdvfield=>extract_vector_field(packed_state,"Transverse_Dispersivity")
+                  tdfield=>extract_scalar_field(state(1),"Pipe")
+                  call assign_val(tdvfield%val(2,:),tdfield%val)
+                end if
+              end if
+            end if
         end if
 
-        if(npres>1) then
-            ldvfield=>extract_vector_field(packed_state,"Longitudinal_Dispersivity")
-            ldfield=>extract_scalar_field(state(1),"Pipe")
-            call assign_val(ldvfield%val(2,:),ldfield%val)
-        end if
         !!!!!!!!
 
-        call allocate(Transverse_Dispersivity,npres,element_mesh,"Transverse_Dispersivity")
-        do ipres = 1, npres
-            call set(Transverse_Dispersivity,ipres,1.0)
-        end do
-        call insert(packed_state,Transverse_Dispersivity,"Transverse_Dispersivity")
-        call deallocate(Transverse_Dispersivity)
-        if (has_scalar_field(state(1),"Transverse_Dispersivity")) then
-            tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
-            call set(Transverse_Dispersivity,1,tdfield)
-        end if
 
-        if(npres>1) then
-            tdvfield=>extract_vector_field(packed_state,"Transverse_Dispersivity")
-            tdfield=>extract_scalar_field(state(1),"Pipe")
-            call assign_val(tdvfield%val(2,:),tdfield%val)
-        end if
 
 
         if(has_scalar_field(state(1),"Permeability")) then
