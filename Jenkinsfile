@@ -1,5 +1,113 @@
 def repo = 'pds-pe@vs-ssh.visualstudio.com:v3/pds-pe/Ava/ava-cascade-icferst'
 def branch = 'master'
+def cores = env.CORES
+def deploy_path = "/opt/icl"
+
+println "Number of cores: for build ${cores}"
+
+pipeline
+{
+    agent
+    {
+        docker
+        {
+            image 'doc-reg-ac.pds.nl/fluidity2dev:1.0'
+            args "-v ${env.WORKSPACE}:/opt:rw,z --entrypoint=''"
+            registryUrl 'https://doc-reg-ac.pds.nl'
+        }
+    }
+    stages
+    {
+        stage('Cleaning workspace')
+        {
+            steps
+            {
+                sh "pwd"
+                sh "ls -la"
+                sh " whoami"
+                sh "rm -rf ./* ./.git"
+                sh "ls -la"
+                //CleanWs()
+            }
+        }
+        
+        stage('Get source code')
+        {
+            steps
+            {
+		checkout scm
+//                checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'okapi-s-koshelev', url: "${repo}" ]]]
+            }
+        }
+
+        stage('Configure')
+        {
+            steps
+            {
+                sh "./configure --prefix=${deploy_path} --with-exodusii --enable-2d-adaptivity"
+            }
+        }
+        
+        stage( 'Compile Fluidity code' )
+        {
+            steps
+            {
+                sh "make -j ${cores} all"
+            }
+        }
+        
+        stage( 'Compile IC-Ferst code' )
+        {
+            steps
+            {
+                sh "make -j ${cores} mp"
+            }
+        }
+ 
+        stage( 'Install compiled code' )
+        {
+            steps
+            {
+                sh "make -j ${cores} install"
+                sh "make -j ${cores} install-diamond"
+                sh "make -j ${cores} install-user-schemata"
+
+                dir ( "icl/lib/diamond/mpschemas" )
+                {
+                    sh "cp -r ../../../../legacy_reservoir_prototype/schemas/* ."
+                    sh "cp -r ../../../../libspud/schema ."
+                }
+                
+                dir ( "icl/bin" )
+                {
+                    // Generate startup script for Diamond
+                    sh "echo '#!/bin/bash' > mpdiamond"
+                    sh "echo 'export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages' >> mpdiamond"
+                    sh "echo '${deploy_path}/bin/diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> mpdiamond"
+                    sh "chmod 755 mpdiamond"
+                }
+            }
+        }
+ 
+        stage( 'Generate documentaion' )
+        {
+            steps
+            {
+                dir ( "legacy_reservoir_prototype/doc" ) { sh "make -j ${cores}" }
+                dir ( "manual"                         ) { sh "make -j ${cores}" }
+                
+                dir ( "icl/doc" ) { sh "cp ../../legacy_reservoir_prototype/doc/*.pdf ." }
+                dir ( "icl/doc" ) { sh "cp ../../manual/*.pdf ." }
+            }
+        }
+    }
+}
+
+
+
+/*
+def repo = 'pds-pe@vs-ssh.visualstudio.com:v3/pds-pe/Ava/ava-cascade-icferst'
+def branch = 'master'
 def cores = 2
 def rsync_opt = "--rsh='ssh -x -q' --delete --exclude '*@tmp' --recursive --links --chmod=D2750,Fo-rxw --owner --group --chown=:icl_user"
 def deploy_path = "/glb/data/icl"
@@ -26,7 +134,7 @@ pipeline {
             git branch: "${branch}", url: "$repo", extensions: [[$class: 'CloneOption', noTags: true, reference: '', shallow: true]]
          }
       } 
-/*
+
   stage( 'Configure')
   {
     dir ( "${branch}" ) { sh "./configure --prefix=${env.WORKSPACE}/icl --with-exodusii --enable-2d-adaptivity"  }
