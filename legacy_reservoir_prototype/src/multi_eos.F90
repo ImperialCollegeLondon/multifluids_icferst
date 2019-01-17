@@ -1752,6 +1752,8 @@ contains
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
       logical :: boussinesq
       type(tensor_field), intent(inout) :: tracer
+      real, dimension(:), pointer :: tdisp
+
 
       SoluteDispersion = 0.
       DispCoeffMat = 0.
@@ -1762,7 +1764,15 @@ contains
 
                 sfield=>extract_scalar_field(state(1),"Porosity")
                 ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
-                tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
+
+                if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+                    tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
+                    tdisp => tdfield%val
+                else
+                    allocate(tdisp(size(ldfield%val)))
+                    tdisp = ldfield%val / 10.
+                end if
+
 
                 do iphase = 1, Mdims%nphase
                     darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
@@ -1799,7 +1809,7 @@ contains
                                     if (idim1 == idim2) then
                                         DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod)
                                     else
-                                        DispCoeffMat(idim1, idim2) = vel_av * tdfield%val(ele_nod)
+                                        DispCoeffMat(idim1, idim2) = vel_av * tdisp(ele_nod)
                                     endif
                                 end do
                             end do
@@ -1813,7 +1823,7 @@ contains
                                     if (idim1 .NE. idim2) then
                                         SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                                         sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
-                                        ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdfield%val(ele_nod))) *&
+                                        ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdisp(ele_nod))) *&
                                         (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
                                     else
                                         SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
@@ -1835,6 +1845,9 @@ contains
                         end do
                     end do
                 end do
+                if (.not.have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+                    deallocate(tdisp)
+                end if
 
       return
   end subroutine calculate_solute_dispersity

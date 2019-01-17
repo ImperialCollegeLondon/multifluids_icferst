@@ -628,10 +628,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call calculate_solute_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
            !Arash
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
-
+           if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
            call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION, tracer)
-
            TDIFFUSION = TDIFFUSION + CDISPERSION
+           end if
 
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
