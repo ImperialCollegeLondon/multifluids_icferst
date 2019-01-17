@@ -5,7 +5,7 @@ def docker_registry = env.DOCKER_REGISTRY_URL ?: "https://doc-reg-ac.pds.nl"
 def rt_image        = env.RUNTIME_IMAGE_NAME  ?: "doc-reg-ac.pds.nl/fluidity2rt:1.0"
 def build_image     = env.BUILD_IMAGE_NAME    ?: "doc-reg-ac.pds.nl/fluidity2dev:1.0"
 
-docker_registry_host = (new URI( docker_registry )).getHost()
+docker_registry_host = docker_registry.split("//")[1]
 image_version        = image_version + (env.DEPLOY_ENVIRONMENT ? env.DEPLOY_ENVIRONMENT.take(1) : "D")
 
 println "${docker_registry_host}/${image_name}:${image_version}"
