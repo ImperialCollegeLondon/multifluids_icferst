@@ -1,229 +1,97 @@
-def repo = 'pds-pe@vs-ssh.visualstudio.com:v3/pds-pe/Ava/ava-cascade-icferst'
-def branch = 'master'
-def cores = env.CORES
-def deploy_path = "/opt/icl"
+def cores           = env.CORES               ?: 8
+def image_name      = env.IMAGE_NAME          ?: "doc-reg-ac-pds.nl/icferst"
+def image_version   = env.IMAGE_VERSION       ?: "1.0"
+def docker_registry = env.DOCKER_REGISTRY_URL ?: "https://doc-reg-ac.pds.nl"
+def rt_image        = env.RUNTIME_IMAGE_NAME  ?: "doc-reg-ac.pds.nl/fluidity2rt:1.0"
+def build_image     = env.BUILD_IMAGE_NAME    ?: "doc-reg-ac.pds.nl/fluidity2dev:1.0"
 
-println "Number of cores: for build ${cores}"
+docker_registry_host = (new URI( docker_registry )).getHost()
+image_version        = image_version + (env.DEPLOY_ENVIRONMENT ? env.DEPLOY_ENVIRONMENT.take(1) : "D")
 
-pipeline
+println "${docker_registry_host}/${image_name}:${image_version}"
+
+node('docker && linux')
 {
-    agent
-    {
-        docker
-        {
-            image 'doc-reg-ac.pds.nl/fluidity2dev:1.0'
-            args "-v ${env.WORKSPACE}:/opt:rw,z --entrypoint=''"
-            registryUrl 'https://doc-reg-ac.pds.nl'
-        }
-    }
-    stages
-    {
-        stage('Cleaning workspace')
-        {
-            steps
-            {
-                sh "pwd"
-                sh "ls -la"
-                sh " whoami"
-                sh "rm -rf ./* ./.git"
-                sh "ls -la"
-                //CleanWs()
-            }
-        }
-        
-        stage('Get source code')
-        {
-            steps
-            {
-		checkout scm
-//                checkout changelog: false, poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'okapi-s-koshelev', url: "${repo}" ]]]
-            }
-        }
+    // default values
+    def dockerExe = "/usr/bin/docker"
+    def deploy_path = "/opt/icl"
 
-        stage('Configure')
+    stage( 'Configure environment and clean workspace' )
+    {
+        cleanWs()
+    }
+
+    stage('Get source code') { checkout scm }
+
+    // Run icferst compilation inside build_image
+    docker.withRegistry( "${docker_registry}" )
+    {
+        docker.image( "${build_image}" ).inside( "-v ${env.WORKSPACE}:/opt:rw,z --entrypoint='' " )
         {
-            steps
+            stage( "Diagnostics: ")
             {
-                sh "./configure --prefix=${deploy_path} --with-exodusii --enable-2d-adaptivity"
+                sh "whoami ; hostname ; ls -la . ; ls -la / ; ls -la /opt ; pwd"
             }
-        }
-        
-        stage( 'Compile Fluidity code' )
-        {
-            steps
-            {
-                sh "make -j ${cores} all"
-            }
-        }
-        
-        stage( 'Compile IC-Ferst code' )
-        {
-            steps
-            {
-                sh "make -j ${cores} mp"
-            }
-        }
- 
-        stage( 'Install compiled code' )
-        {
-            steps
+
+            stage( 'Configure'             ) { sh "./configure --prefix=${deploy_path} --with-exodusii --enable-2d-adaptivity" }
+            stage( 'Compile Fluidity code' ) { sh "make -j ${cores} all" }
+            stage( 'Compile IC-Ferst code' ) { sh "make -j ${cores} mp"  }
+            stage( 'Compile IC-Ferst code' ) { sh "make -j ${cores} fltools"  }
+
+            stage( 'Install compiled code' )
             {
                 sh "make -j ${cores} install"
                 sh "make -j ${cores} install-diamond"
-                sh "make -j ${cores} install-user-schemata"
+                // sh "make -j ${cores} install-user-schemata"
 
-                dir ( "icl/lib/diamond/mpschemas" )
-                {
-                    sh "cp -r ../../../../legacy_reservoir_prototype/schemas/* ."
-                    sh "cp -r ../../../../libspud/schema ."
-                }
-                
-                dir ( "icl/bin" )
-                {
-                    // Generate startup script for Diamond
-                    sh "echo '#!/bin/bash' > mpdiamond"
-                    sh "echo 'export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages' >> mpdiamond"
-                    sh "echo '${deploy_path}/bin/diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> mpdiamond"
-                    sh "chmod 755 mpdiamond"
-                }
+                sh "mkdir -p ${deploy_path}/lib/diamond/mpschemas/"
+                sh "cp -r ${env.WORKSPACE}/legacy_reservoir_prototype/schemas/* ${deploy_path}/lib/diamond/mpschemas/"
+                sh "cp -r ${env.WORKSPACE}/libspud/schema/* ${deploy_path}/lib/diamond/"
+
+                // Generate startup script for Diamond
+                sh "/bin/bash -c \"echo '#!/bin/bash' > ${deploy_path}/bin/mpdiamond\""
+                sh "/bin/bash -c \"echo 'export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages' >> ${deploy_path}/bin/mpdiamond\""
+                sh "/bin/bash -c \"echo '${deploy_path}/bin/diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> ${deploy_path}/bin/mpdiamond\""
+                sh "chmod 755 ${deploy_path}/bin/mpdiamond"
             }
-        }
- 
-        stage( 'Generate documentaion' )
-        {
-            steps
+
+            stage( 'Generate documentaion' )
             {
-                dir ( "legacy_reservoir_prototype/doc" ) { sh "make -j ${cores}" }
-                dir ( "manual"                         ) { sh "make -j ${cores}" }
-                
-                dir ( "icl/doc" ) { sh "cp ../../legacy_reservoir_prototype/doc/*.pdf ." }
-                dir ( "icl/doc" ) { sh "cp ../../manual/*.pdf ." }
+                sh "bash -c \"pushd legacy_reservoir_prototype/doc ; make -j ${cores}\""
+                sh "make -j ${cores} manual"
+
+                sh "mkdir -p ${deploy_path}/icl/doc/"
+                sh "cp ./legacy_reservoir_prototype/doc/*.pdf ${deploy_path}/icl/doc/"
+                sh "cp ./manual/*.pdf ${deploy_path}/icl/doc/"
             }
         }
     }
-}
 
-
-
-/*
-def repo = 'pds-pe@vs-ssh.visualstudio.com:v3/pds-pe/Ava/ava-cascade-icferst'
-def branch = 'master'
-def cores = 2
-def rsync_opt = "--rsh='ssh -x -q' --delete --exclude '*@tmp' --recursive --links --chmod=D2750,Fo-rxw --owner --group --chown=:icl_user"
-def deploy_path = "/glb/data/icl"
-
-
-pipeline {
-   agent
-   {
-      docker
-      {
-         image 'doc-reg-ac.pds.nl/fluidity2:dev'
-         args '-v ${env.WORKSPACE}/${branch}:/data'
-      }
-   }
-
-   stages
-   {
-      stage( 'Clean workspace') { cleanWs() }
-
-      stage('Get source code')
-      {
-         dir ( /data )
-         {
-            git branch: "${branch}", url: "$repo", extensions: [[$class: 'CloneOption', noTags: true, reference: '', shallow: true]]
-         }
-      } 
-
-  stage( 'Configure')
-  {
-    dir ( "${branch}" ) { sh "./configure --prefix=${env.WORKSPACE}/icl --with-exodusii --enable-2d-adaptivity"  }
-  }
-
-  stage( 'Compile Fluidity code' )
-  {
-    dir ( "${branch}" ) { sh "make -j ${cores} all" }
-  }
-
-  stage( 'Compile IC-Ferst code' )
-  {
-    dir ( "${branch}" ) { sh "make -j ${cores} mp" }
-  }
-
-  stage( 'Generate documentaion' )
-  {
-    dir ( "${branch}/legacy_reservoir_prototype/doc" ) { sh "make -j ${cores}" }
-    dir ( "${branch}/manual"                         ) { sh "make -j ${cores}" }
-  }
-    
-  stage( 'Install binaries locally' )
-  {
-    dir ( "${branch}" ) { sh "make -j ${cores} install" }
-  }
-
-  stage( 'Install diamond locally' )
-  {
-    dir ( "${branch}" )
+    stage( 'Create runtime image for ICFerst' )
     {
-      sh "make -j ${cores} install-diamond"
-      sh "make -j ${cores} install-user-schemata"
+        sh """mkdir -p ./dockerRT
+mv ./icl ./dockerRT
+pushd ./dockerRT
+
+cat << EOF > Dockerfile
+# DockerFile for a ICFerst runtime container
+FROM ${rt_image}
+
+# This DockerFile is looked after by
+MAINTAINER Sergey Koshelev, e-mail: sergey.koshelev@pds.nl
+
+ENV PATH /usr/lib64/openmpi/bin:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:${deploy_path}/bin
+ENV LD_LIBRARY_PATH /usr/lib64/openmpi/lib64/petsc/3.6.3/linux-gnu-c-opt/lib64:/usr/lib64/openmpi/lib
+ENV PYTHONPATH=${deploy_path}/lib/python2.7/site-packages
+
+COPY ./icl/ ${deploy_path}/
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+EOF
+
+popd
+        """
+        dir( './dockerRT' ) { sh "docker build -t ${docker_registry_host}/${image_name}:${image_version} ." }
+        sh "docker push ${docker_registry_host}/${image_name}:${image_version}"
     }
-
-    dir ( "icl/lib/diamond/mpschemas" )
-    {
-      sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/schemas | tar xf - --strip-components=9"
-      sh "tar cf - ${env.WORKSPACE}/${branch}/libspud/schema | tar fx - --strip-components=9"
-    }
-
-    dir ( "icl/bin" )
-    {
-      // Generate startup script for Diamond
-      sh "echo '#!/bin/bash' > mpdiamond"
-      sh "echo 'export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages' >> mpdiamond"
-      sh "echo '${deploy_path}/bin/diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> mpdiamond"
-      sh "chmod 750 mpdiamond"
-    }
-  }
-
-  stage( 'Install documentation locally' )
-  {
-    dir ( "icl/doc" )
-    {
-      sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/doc/*.pdf | tar xf - --strip-components=9"
-      sh "tar cf - ${env.WORKSPACE}/${branch}/manual/*.pdf | tar xf - --strip-components=8"
-    }
-  }
-  
-  stage( 'Collect 3rd party dependecies' )
-  {
-    dir ( "icl/bin" )
-    {
-      sh "cp /usr/lib64/openmpi/lib/libzoltan.so.3.82 ./libzoltan.so.3"
-      sh "cp /usr/lib64/openmpi/lib/libpetsc.so.3.6.3 ./libpetsc.so.3.6"
-      sh "cp /usr/lib64/openmpi/lib/libparmetis.so ./libparmetis.so"
-      sh "cp /usr/lib64/libmetis.so.0 ./libmetis.so"
-      sh "cp /usr/lib64/libudunits2.so.0.1.0 ./libudunits2.so.0"
-      sh "cp /usr/lib64/libexodus-5.14.0.so ./libexodus-5.14.0.so"
-    }
-  }
-
-  stage( 'Collect Fluidity tests' )
-  {
-    dir ( "icl/test/Fluidity" ) { sh "tar cf - ${env.WORKSPACE}/${branch}/tests                            | tar fx - --strip-components=8" }
-  }
-
-  stage( 'Collect IC-Ferst tests' )
-  {
-    dir ( "icl/test/IC-Ferst" ) { sh "tar cf - ${env.WORKSPACE}/${branch}/legacy_reservoir_prototype/tests | tar fx - --strip-components=9" }
-  }
-
-  stage( 'Deploy build to Okapi' )
-  {
-      sh "chmod 750 ${env.WORKSPACE}/icl/"
-      sh "rsync ${rsync_opt} ${env.WORKSPACE}/icl/ ${okapi_user}@okapi.pds.local:/glb/data/icl"
-  }
-
- */
-
-   }
 }
