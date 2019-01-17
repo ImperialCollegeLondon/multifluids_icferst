@@ -30,7 +30,7 @@ node('docker && linux')
         {
             stage( "Diagnostics: ")
             {
-                sh "whoami ; hostname ; ls -la . ; ls -la / ; ls -la /opt ; pwd"
+                sh "hostname ; ls -la . ; ls -la / ; ls -la /opt ; pwd"
             }
 
             stage( 'Configure'             ) { sh "./configure --prefix=${deploy_path} --with-exodusii --enable-2d-adaptivity" }
