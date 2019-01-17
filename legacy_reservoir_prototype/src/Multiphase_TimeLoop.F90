@@ -1563,6 +1563,9 @@ end if
                     sat1%val = sat1%val - sat2%val
                 end if
             end do
+            !This works for incompressible flows. For other types of flows we have to ensure that
+            !we store the old pressure and velocity. As well, currently only considers saturation
+            call copy_packed_new_to_old(packed_state)!<= if we don't do this, the results are wrong, after we moved to the new schema...
             !4. Copy back to OldPhaseVolumeFraction
             do iphase = 1, Mdims%n_in_pres
                 sat1 => extract_scalar_field( state(iphase),  "OldPhaseVolumeFraction" )

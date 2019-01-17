@@ -99,21 +99,7 @@
         </boundary_conditions>
         <galerkin_projection>
           <continuous>
-            <solver>
-              <relative_error>
-                <real_value rank="0">1e-10</real_value>
-              </relative_error>
-              <absolute_error>
-                <real_value rank="0">1e-10</real_value>
-              </absolute_error>
-              <max_iterations>
-                <integer_value rank="0">300</integer_value>
-              </max_iterations>
-              <ignore_all_solver_failures/>
-              <diagnostics>
-                <monitors/>
-              </diagnostics>
-            </solver>
+            <solver/>
           </continuous>
         </galerkin_projection>
       </prognostic>
@@ -194,21 +180,7 @@
         </adaptivity_options>
         <galerkin_projection>
           <continuous>
-            <solver>
-              <relative_error>
-                <real_value rank="0">1e-10</real_value>
-              </relative_error>
-              <absolute_error>
-                <real_value rank="0">1e-10</real_value>
-              </absolute_error>
-              <max_iterations>
-                <integer_value rank="0">300</integer_value>
-              </max_iterations>
-              <ignore_all_solver_failures/>
-              <diagnostics>
-                <monitors/>
-              </diagnostics>
-            </solver>
+            <solver/>
           </continuous>
         </galerkin_projection>
       </prognostic>
@@ -349,21 +321,7 @@
         </boundary_conditions>
         <galerkin_projection>
           <continuous>
-            <solver>
-              <relative_error>
-                <real_value rank="0">1e-10</real_value>
-              </relative_error>
-              <absolute_error>
-                <real_value rank="0">1e-10</real_value>
-              </absolute_error>
-              <max_iterations>
-                <integer_value rank="0">300</integer_value>
-              </max_iterations>
-              <ignore_all_solver_failures/>
-              <diagnostics>
-                <monitors/>
-              </diagnostics>
-            </solver>
+            <solver/>
           </continuous>
         </galerkin_projection>
       </prognostic>
