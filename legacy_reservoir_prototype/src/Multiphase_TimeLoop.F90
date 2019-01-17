@@ -1332,6 +1332,7 @@ end if
         integer :: i
         do i=1,size(packed_state%scalar_fields)
             sfield=>packed_state%scalar_fields(i)%ptr
+            if (sfield%name(1:4)=="BAK_") cycle!For adapt within FPI we create these fields that we do not need to update
             if (sfield%name(1:9)=="PackedOld") then
                 nsfield=>extract_scalar_field(packed_state,"Packed"//sfield%name(10:))
                 sfield%val=nsfield%val
@@ -1339,6 +1340,7 @@ end if
         end do
         do i=1,size(packed_state%vector_fields)
             vfield=>packed_state%vector_fields(i)%ptr
+            if (vfield%name(1:4)=="BAK_") cycle!For adapt within FPI we create these fields that we do not need to update
             if (vfield%name(1:9)=="PackedOld") then
                 nvfield=>extract_vector_field(packed_state,"Packed"//vfield%name(10:))
                 vfield%val=nvfield%val
@@ -1503,28 +1505,17 @@ end if
         integer, intent(in)    :: flag
         ! Local variables
         type(scalar_field), pointer :: sat1, sat2
-        integer                     :: iphase
-        integer, save               :: phaseToAdapt = -1
+        type(vector_field), pointer :: vfield1, vfield2
+        integer                     :: iphase, fields, k, i
         real, save                  :: Inf_tol = -1, non_linear_tol = -1
+        character( len = option_path_len ) :: option_path, option_name
 
-        if (phaseToAdapt<0) then
-            !Retrieve which phase has the options to adapt to
-            do iphase = 1, Mdims%nphase
-                if (have_option('/material_phase['//int2str(iphase-1)//']/scalar_field::PhaseVolumeFraction/prognostic/adaptivity_options')) then
-                    phaseToAdapt = iphase
-                    exit
-                end if
-            end do
-            !Make sure it is not the last phase! and that the option can be used
-            if (phaseToAdapt==Mdims%nphase .or. phaseToAdapt < 0 .or. .not.is_porous_media ) then
-                ewrite(0,*) "WARNING: Adapt_mesh_within_FPI requires porous media flow and the last PhaseVolumeFraction NOT to be the only target for adapting the mesh"
-                return
-            end if
-            !Store the settings selected by the user
-            call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
-            call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol, default = 0.03)
+
+        if (Inf_tol<0) then
+          !Store the settings selected by the user
+          call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
+          call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol, default = 0.01)
         end if
-
 
         select case (flag)
             case (1)
@@ -1540,37 +1531,51 @@ end if
                 call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',min(Inf_tol*5.,0.1))
         case default
 
-            !Four steps
-            !1. Store OldPhaseVolumeFraction
-            do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase),  "OldPhaseVolumeFraction")
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak"        )
-                sat2%val = sat1%val
+            !Three steps
+            !1. Store OldValues into BAK values
+            do iphase = 1, Mdims%nphase
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle!Not backed fields!
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  sat1 => extract_scalar_field( state(iphase),  "Old"//trim(option_name))
+                  sat2  => extract_scalar_field( state(iphase), "BAK_"//trim(option_name))
+                  sat2%val = sat1%val
+                end do
+                !Finally velocity as well
+                vfield1 => extract_vector_field( state(iphase),  "OldVelocity")
+                vfield2 => extract_vector_field( state(iphase),  "BAK_Velocity")
+                vfield2%val = vfield1%val
             end do
-            !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
-            sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
-            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction"    )
-            !It is important that the average keep the sharpness of the interfaces
-            sat1%val = abs(sat1%val - sat2%val)**0.8
+
+            !2. Adapt the mesh (bak fields have the same adaptivity options)
             call adapt_mesh_mp()
 
-            !3.Reconstruct the Saturation of the first phase
-            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-            sat1%val = 1.0
-            do iphase = 1, Mdims%n_in_pres
-                if (iphase /= phaseToAdapt) then
-                    sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
-                    sat1%val = sat1%val - sat2%val
-                end if
-            end do
-            !This works for incompressible flows. For other types of flows we have to ensure that
-            !we store the old pressure and velocity. As well, currently only considers saturation
-            call copy_packed_new_to_old(packed_state)!<= if we don't do this, the results are wrong, after we moved to the new schema...
-            !4. Copy back to OldPhaseVolumeFraction
-            do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase),  "OldPhaseVolumeFraction" )
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak"         )
-                sat1%val = sat2%val
+            call copy_packed_new_to_old(packed_state)!<= if we don't do this, the results are wrong and I don't know why, after we moved to the new schema...
+            !3. Copy back from BAK fields to Old fields
+            do iphase = 1, Mdims%nphase
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle!Not backed fields!
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  sat1 => extract_scalar_field( state(iphase),  "Old"//trim(option_name))
+                  sat2  => extract_scalar_field( state(iphase), "BAK_"//trim(option_name))
+                  sat1%val = sat2%val
+                end do
+                !Finally velocity as well
+                vfield1 => extract_vector_field( state(iphase),  "OldVelocity")
+                vfield2 => extract_vector_field( state(iphase),  "BAK_Velocity")
+                vfield2%val = vfield1%val
             end do
             !Pointing to porosity again is required
             porosity_field=>extract_vector_field(packed_state,"Porosity")

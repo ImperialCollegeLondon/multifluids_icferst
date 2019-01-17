@@ -30,6 +30,8 @@
 
 module multi_tools
     use fldebug
+    use futils
+    use spud
     use fields
     use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_porous_media
     use vector_tools
@@ -43,7 +45,6 @@ module multi_tools
         real, allocatable, dimension(:,:) :: rotmatrix ! the rotation matrix to 'stretch' the bad element in the direction normal to the big angle
         real :: base ! length of side opposite the large angle
     end type
-
 
 contains
 

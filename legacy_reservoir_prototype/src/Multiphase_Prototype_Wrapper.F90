@@ -62,7 +62,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use MeshDiagnostics
     use write_gmsh
     use signals
-    use multi_tools, only: extract_strings_from_csv_file
+    use multi_tools
     !use mp_prototype
     use tictoc
     implicit none
@@ -251,8 +251,8 @@ contains
         !Local variables
         integer :: i, nphase, npres, aux, ncomp
         integer, dimension(2) :: shape
-        character( len = option_path_len ) :: option_path
-        integer :: stat, Pdegree, Vdegree
+        character( len = option_path_len ) :: option_path, option_name, option_path_BAK
+        integer :: stat, Pdegree, Vdegree, fields, k
         type (scalar_field), target :: targ_Store
         type (scalar_field), pointer :: sfield1, sfield2
         type (vector_field), pointer :: position
@@ -311,25 +311,58 @@ contains
         end if
 
         !SPRINT_TO_DO generilise this to other fields
+        ! if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+        !     ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"
+        !     !Create necessary backups for storing the saturation (in a way that it is also adapted)
+        !     do i = 1, nphase
+        !         option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_bak"
+        !         call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction",&
+        !              trim(option_path))
+        !         !Make sure the field is not shown
+        !         if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
+        !             !Copy an option that always exists to ensure we exclude the new field from vtu
+        !             call copy_option("/simulation_name",trim(option_path)//"/prognostic/output/exclude_from_vtu")
+        !         end if
+        !         !Make sure that this field is not the objective of adaptivity
+        !         if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
+        !             call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
+        !         end if
+        !     end do
+        ! end if
+
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
-            ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"
+            ewrite(1, *) "For adapt within FPI, create necessary backups for storing the old fields. Check multiphase_prototype_wrapper"
             !Create necessary backups for storing the saturation (in a way that it is also adapted)
             do i = 1, nphase
-                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_bak"
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction",&
-                     trim(option_path))
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( i - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( i - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/scalar_field::BAK_"//trim(option_name)
+                  !If a prognostic field then create backup (for incompressible flows, pressure would not be necessary)
+                  call copy_option(trim(option_path),trim(option_path_BAK))
+                  !Make sure the field is not shown
+                  if (.not.have_option(trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")) then
+                      !Copy an option that always exists to ensure we exclude the new field from vtu
+                      call copy_option("/simulation_name",trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")
+                  end if
+                end do
+                !Finally velocity as well
+                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity"
+                option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/vector_field::BAK_Velocity"
+                call copy_option(trim(option_path),trim(option_path_BAK))
                 !Make sure the field is not shown
-                if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
+                if (.not.have_option(trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")) then
                     !Copy an option that always exists to ensure we exclude the new field from vtu
-                    call copy_option("/simulation_name",trim(option_path)//"/prognostic/output/exclude_from_vtu")
-                end if
-                !Make sure that this field is not the objective of adaptivity
-                if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
-                    call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
+                    call copy_option("/simulation_name",trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")
                 end if
             end do
         end if
-
 
         if (have_option('/physical_parameters/black-oil_PVT_table')) then
 
