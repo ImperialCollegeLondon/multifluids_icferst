@@ -741,7 +741,13 @@ contains
         END DO
         if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
 
-        ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) )
+        ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) ! To avoid the case of NFIELD=0
+        ! This logical needs to be expanded...
+        if (NFIELD>0 ) THEN
+            DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
+            IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
+        ENDIF
+
         ! Determine IGOT_T_PACK(IPHASE,:):
         IGOT_T_PACK=.FALSE.
         DO ILOOP=1,6
@@ -752,9 +758,7 @@ contains
                 ENDIF
             END DO
         END DO
-        ! This logical needs to be expanded...
-        DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
-        IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
+
 
         ! F and LOC_U:
         ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
@@ -992,15 +996,17 @@ contains
 
         ! The above leads to CV_funs%NX_ALL equaling always to zero, which makes the negative diffusion ZERO (GET_INT_T_DEN_new( LIMF ))
         ! In order to fix this, we use FE_funs - only when we calculate negative diffusion coefficient (cv_disopt >= 8_. [INTRO_NX_ALL]
-        IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
-	        !Calculate the gauss integer numbers
-            call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+        if (NFIELD>0 ) THEN
+            IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
+  	            !Calculate the gauss integer numbers
+                call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
 
-            !! Compute reference shape functions
-            call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
-            call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
-            call allocate_multi_dev_shape_funs(FE_funs%scvfenlx_all, FE_funs%sufenlx_all, FSdevFuns)
-        END IF
+                !! Compute reference shape functions
+                call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
+                call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+                call allocate_multi_dev_shape_funs(FE_funs%scvfenlx_all, FE_funs%sufenlx_all, FSdevFuns)
+            END IF
+        endif
 
         !###########################################
         Loop_Elements: DO ELE = 1, Mdims%totele
@@ -1511,10 +1517,11 @@ contains
                                   ! Calculate T and DEN on the CV face at quadrature point GI.
 
                             ! Only when cvdispot>=8. See/Find [INTRO_NX_ALL] above.
-                            IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
-                                call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
-                            END IF
-
+                            if (NFIELD>0 ) THEN
+                                IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
+                                    call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
+                                END IF
+                            ENDIF
                             IF(NFIELD.GT.0) THEN
                                 CALL GET_INT_T_DEN_new( LIMF )
                             ENDIF

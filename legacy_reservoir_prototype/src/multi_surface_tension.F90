@@ -265,7 +265,8 @@ contains
             MASS_CV(CV_NOD) = MASS_CV(CV_NOD) + MASS_ELE(ELE)
           END DO
       END DO
-!---------------- Calculate the distance function ------------------------------
+
+!---------------- Calculate the distance function -------------------
       ALLOCATE(CURVATURE( Mdims%cv_nonods))
       DG_NONODS=Mdims%cv_nloc*Mdims%totele
       ALLOCATE( INTERFACE_ELE( Mdims%totele ))
@@ -291,6 +292,21 @@ contains
       ALLOCATE(MAT_LOC(Mdims%cv_nloc,Mdims%cv_nloc))
       ALLOCATE(RHS_CV_SHORT(Mdims%cv_nloc) )
       ALLOCATE(CV_SOL(Mdims%cv_nloc))
+! Allocate pointers size
+      ALLOCATE(ds%val( DG_NONODS))
+      ALLOCATE(dx%val( DG_NONODS))
+      ALLOCATE(dy%val( DG_NONODS))
+      ALLOCATE(dz%val( DG_NONODS))
+      ALLOCATE(dk%val( DG_NONODS))
+      ALLOCATE(ck%val( Mdims%cv_nonods))
+! Zero pointers
+      call zero( ds)
+      call zero( dx)
+      call zero( dy)
+      call zero( dz)
+      call zero( dk)
+      call zero( ck)
+
 ! Determine which elements to integrate over
 ! we just need to integrate over the elements near the boundary...
       INTERFACE_ELE=.FALSE.
@@ -405,6 +421,7 @@ contains
       ELSE
          SUR_DT = 0.1*HDC ! assume Dtau=0.1.* H
       END IF
+
 ! Start to calculate the diffused interface DevFuns%VOLUME fraction or distance function
       DO ITIME=1,5
          DO OUTER_ITS=1,1
