@@ -1454,6 +1454,7 @@ contains
                                 INCOME_J = 1.
                             END WHERE
                             !Calculate the courant number for porous media
+                            !SPRINT_TO_DO Currently if temperature/solutemassfraction multiphase we are doing this more than once...
                             if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
                                 !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                 Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
