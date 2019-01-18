@@ -17,12 +17,12 @@
       </from_file>
     </mesh>
     <simulation_quality>
-      <string_value>precision</string_value>
+      <string_value>balanced</string_value>
     </simulation_quality>
   </geometry>
   <solver_options>
     <Non_Linear_Solver>
-      <integer_value rank="0">50</integer_value>
+      <integer_value rank="0">20</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Infinite_norm_tol>
@@ -34,6 +34,7 @@
         <Vanishing_relaxation>
           <real_value rank="0">-1e2</real_value>
         </Vanishing_relaxation>
+        <Show_Convergence/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
           <PID_controller>
@@ -244,7 +245,7 @@
               <prescribed>
                 <value name="WholeMesh">
                   <constant>
-                    <real_value rank="0">0.01</real_value>
+                    <real_value rank="0">0.005</real_value>
                   </constant>
                 </value>
                 <stat/>
@@ -525,29 +526,34 @@
   <mesh_adaptivity>
     <hr_adaptivity>
       <period_in_timesteps>
-        <integer_value rank="0">500000</integer_value>
+        <integer_value rank="0">2000</integer_value>
       </period_in_timesteps>
       <maximum_number_of_nodes>
-        <integer_value rank="0">500</integer_value>
+        <integer_value rank="0">1500</integer_value>
       </maximum_number_of_nodes>
       <disable_gradation/>
       <tensor_field name="MinimumEdgeLengths">
         <anisotropic_symmetric>
           <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.06 0 0 0.06</real_value>
+            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.0001 0 0 0.0001</real_value>
           </constant>
         </anisotropic_symmetric>
       </tensor_field>
       <tensor_field name="MaximumEdgeLengths">
         <anisotropic_symmetric>
           <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">1 0 0 1</real_value>
+            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.05 0 0 0.05</real_value>
           </constant>
         </anisotropic_symmetric>
       </tensor_field>
       <aspect_ratio_bound>
         <real_value rank="0">100</real_value>
       </aspect_ratio_bound>
+      <adapt_at_first_timestep>
+        <number_of_adapts>
+          <integer_value rank="0">2</integer_value>
+        </number_of_adapts>
+      </adapt_at_first_timestep>
       <preserve_mesh_regions/>
     </hr_adaptivity>
   </mesh_adaptivity>
