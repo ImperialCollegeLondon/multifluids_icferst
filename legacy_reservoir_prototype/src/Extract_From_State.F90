@@ -478,7 +478,6 @@ contains
         !!$ =7      Finite elements in space    Theta=non-linear   NONE
         !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
         !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
-
         !Check quality option to decide mesh type, theta and advection schemes
         option_path = "/geometry/simulation_quality"
         call get_option(trim(option_path), option_path2, stat=i)
@@ -503,6 +502,8 @@ contains
         if (is_porous_media) default_consv_vel = 1.
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####!SPRINT_TO_DO THESE DEFAULT OPTIONS SHOULD DEPEND ON SIMULATION QUALITY
         !!$ SoluteMassFraction and temperature have the same settings for the time being
+        !Advanced options
+        option_path = "/geometry/Advance_options/"
         option_path2 = trim(option_path)//'Space_Discretisation::Tracer/advection_scheme'
         Mdisopt%t_disopt = default_flux_scheme
         if( have_option( trim( option_path2 ) ) ) then
@@ -2276,8 +2277,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     call get_var_from_packed_state(packed_state, temperature = temperature)
                     !Calculate normalized infinite norm of the difference
                                                             !This Mask is important because otherwise it gets the lowest saturation value
-                    totally_min_max(1)=minval(reference_field, MASK = reference_field > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
-                    totally_min_max(2)=maxval(reference_field)!use stored temperature
+                    totally_min_max(1)=minval(reference_field(1,:,:))
+                    totally_min_max(2)=maxval(reference_field(1,:,:))!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                     !Analyse the difference !Calculate infinite norm, not consider wells
