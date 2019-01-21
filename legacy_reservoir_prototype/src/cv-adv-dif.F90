@@ -907,7 +907,7 @@ contains
         ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
         MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
         MeanPoreCV%val=MEAN_PORE_CV
-
+        
         ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
         IF ( CV_DISOPT < 5 ) THEN
             ! Isotropic limiting - calculate far field upwind maticies...

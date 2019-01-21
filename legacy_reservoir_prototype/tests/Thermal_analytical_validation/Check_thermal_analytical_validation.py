@@ -22,7 +22,7 @@ t = 1.
 nodes = 202
 gamma = 1.
 pi = 3.141596
-Tolerance_L1_NORM = 0.06
+Tolerance_L1_NORM = 0.01
 
 print 'Running the model'
 path = os.getcwd()
@@ -174,7 +174,7 @@ for item in FS:
     Experimental_Y.extend(item)
     
 #Create spline curve
-f = interp1d(Analytical_X, Analytical_Y,kind ='linear')
+f = interp1d(Analytical_X, Analytical_Y,kind ='cubic')
 L1_sum = 0.0
 N_shock = 0
 Infinite_Norm = 0.0

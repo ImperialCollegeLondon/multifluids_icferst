@@ -205,7 +205,7 @@
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">0.1</real_value>
+                  <real_value rank="0">1.0</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -246,7 +246,7 @@
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">1e-5</real_value>
+            <real_value rank="0">1e-8</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="left">
@@ -260,16 +260,40 @@
             </constant>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="right">
+        <boundary_conditions name="all_but_inlet">
           <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
+            <integer_value shape="3" rank="1">8 9 10</integer_value>
           </surface_ids>
-          <type name="neumann">
-            <constant>
-              <real_value rank="0">0</real_value>
-            </constant>
+          <type name="robin">
+            <order_zero_coefficient>
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </order_zero_coefficient>
+            <order_one_coefficient>
+              <constant>
+                <real_value rank="0">0.</real_value>
+              </constant>
+            </order_one_coefficient>
           </type>
         </boundary_conditions>
+        <adaptivity_options>
+          <absolute_measure>
+            <scalar_field name="InterpolationErrorBound" rank="0">
+              <prescribed>
+                <value name="WholeMesh">
+                  <constant>
+                    <real_value rank="0">0.001</real_value>
+                  </constant>
+                </value>
+                <stat/>
+                <detectors>
+                  <exclude_from_detectors/>
+                </detectors>
+              </prescribed>
+            </scalar_field>
+          </absolute_measure>
+        </adaptivity_options>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
