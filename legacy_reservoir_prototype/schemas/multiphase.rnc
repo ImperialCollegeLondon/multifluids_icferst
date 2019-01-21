@@ -135,6 +135,190 @@ start =
                   comment
                }?,
                comment
+            }?,
+
+            ## Specification of detectors. Note that when running in parallel the detector output is in binary format even if binary_output is not enabled. When running in serial, although the output is in principle still generated in ascii format if binary_output is not enabled, it is not certain that it is working well. Hence, it is recommended to enable binary_output and work with binary files. 
+            element detectors {
+               (
+                  ## A single static detector
+                  element static_detector {
+                     attribute name { xsd:string },
+                     (
+                        element location {
+                           real_dim_vector
+                     }|
+                        ## File containing the detectors positions in binary form
+                        element from_checkpoint_file {
+                           attribute file_name { xsd:string },
+                           ## The format of the input file containing field data.
+                           element format {
+                             element string_value {
+                                 "binary"
+                             }
+                           }
+                        }
+                     )
+                  }|
+                  ## A single lagrangian detector
+                  element lagrangian_detector {
+                     attribute name { xsd:string },
+                     (
+                     ## This is the initial location of a detector that moves with the fluid velocity.
+                        element location {
+                           real_dim_vector
+                     }|
+                        ## File containing the detectors positions in binary form
+                        element from_checkpoint_file {
+                           attribute file_name { xsd:string },
+                           ## The format of the input file containing field data.
+                           element format {
+                             element string_value {
+                                 "binary"
+                             }
+                           }
+                        }
+                     )
+                  }|
+                  ## Detectors with their locations specified via a python function or from a file. Allows detector arrays to be added.
+                  element detector_array {
+                     attribute name { xsd:string },
+                     ## The number of detectors prescribed by the python function.
+                     element number_of_detectors {
+                        integer
+                     },
+                     (
+                        ## Create fixed detectors.
+                        element static {
+                           empty
+                        }|
+                        ## Create detectors which move with the fluid velocity.
+                        element lagrangian {
+                           empty
+                        }
+                     ),
+                     (
+                        ## Python function prescribing dimensional vector input. Functions should be of the form:
+                        ##
+                        ##  def val(t):
+                        ##     # Function code
+                        ##     return # Return value
+                        ##
+                        ## The return value must have length number_of_detectors.
+                        ##
+                        ## *** IMPORTANT NOTE ***
+                        ##
+                        ## The t argument is for future use only - currently detector locations are only set at simulation start.
+                        element python {
+                          python_code
+                        }|
+                        ## File containing the detectors positions in binary form
+                        element from_file {
+                           attribute file_name { xsd:string },
+                           ## The format of the input file containing field data.
+                           element format {
+                             element string_value {
+                                 "binary"
+                             }
+                           }
+                        }|
+                        ## File containing the detectors positions in binary form
+                        element from_checkpoint_file {
+                           attribute file_name { xsd:string },
+                           ## The format of the input file containing field data.
+                           element format {
+                              element string_value {
+                                 "binary"
+                              }
+                           }
+                        }
+                     )
+                  }
+               )*,
+               ## Enable to write detector output in binary format
+               element binary_output {
+                  comment
+               }?,
+               element lagrangian_timestepping {
+                  (
+                     ## Use explicit runge kutta method with
+                     ## binary search
+                     element explicit_runge_kutta_guided_search {
+                        ## Number of subdivisions of the timestep
+                        ## increase this if you are not happy with your 
+                        ## detector trajectory accuracy, or if particles
+                        ## are jumping out of the domain a lot
+                        element subcycles {
+                           integer
+                        },
+                        ## Tolerance for deciding if detector is in a given
+                        ## element. Recommended value 1.0e-10.
+                        element search_tolerance {
+                           real
+                        },
+                        ## Number of RK stages
+                        ## For the RK4 method, it should be 4.
+                        element n_stages {
+                           integer
+                        },
+                        ## ERK stage array. This is an array
+                        ## containing the lower-triangular
+                        ## part of the Butcher weight matrix
+                        ## A that explains how to compute the
+                        ## RK stages.  See
+                        ## http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
+                        ## for notation.  The array is stored
+                        ## in the following order:
+                        ## [a_{21},a_{31},a_{32},...,a_{s1},a_{s2},a_{s(s-1)}]
+                        ## and so the array has size s(s-1)/2
+                        ## where s is the number of stages.
+                        ## For the RK4 method, it should be
+                        ## [0.5,0,0.5,0,0,1]
+                        element stage_weights {
+                           real_vector
+                        },
+                        ## ERK timestep weights. This is the
+                        ## b vector that explains how to
+                        ## compute the timestep from the RK
+                        ## stages.  See
+                        ## http://en.wikipedia.org/wiki/Runge–Kutta_methods#Explicit_Runge.E2.80.93Kutta_methods
+                        ## for notation.  It should have size
+                        ## s where s is the number of stages.
+                        ## For the RK4 method, it should be
+                        ## [1/6,1/3,1/3,1/6]
+                        element timestep_weights {
+                           real_vector
+                        }
+                     }|
+                     ## Use binary search algorithm
+                     element binary_search {
+                        empty
+                     }
+                  )
+               }?
+            }?, 
+            ## Options to create even more output in the logs:
+            ##
+            ## Note that the main option to control the log output is given on the command line:
+            ##
+            ## -v0  only output error and warnings
+            ##
+            ## -v1  also give "navigational information", to indicate where in the code we currently are
+            ##
+            ## -v2  also give any additional information (mins and maxes of fields, etc.)
+            ##
+            element log_output {
+               ## Log all allocates and deallocates done for meshes, fields, sparsities and matrices.
+               ##
+               ## NOTE: Requires -v2
+               element memory_diagnostics {
+                  empty
+               }?
+            }?,
+            ## Printout the number of elements and percentage that contain an angle
+            ## equal or bigger than the ones specified here
+	    ## Note: This may slow down your simulation should be used as a diagnostic tool 
+            element Mesh_Diagnostics_Angles {
+               real_vector
             }?
          },
          ## Options dealing with time discretisation

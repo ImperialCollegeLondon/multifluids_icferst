@@ -2560,7 +2560,7 @@ end if
 
         !For P1DGP1 the DCVFEM method does not work and requires P0DGP1. This is done through homogenisation
         !For historic reasons we always lump with the DCVFEM
-        if (Mmat%CV_pressure) then
+        if (Mmat%CV_pressure.and. is_porous_media) then
             lump_mass = .true.
             call get_option( &
             '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
