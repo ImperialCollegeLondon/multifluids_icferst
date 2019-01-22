@@ -103,6 +103,10 @@ start =
             ## If using this, all the modifiable fields need to have the option to read from a csv file
           element PropertiesFromFile {xsd:string
           }?,
+                
+            ## Prints the number of iterations and
+            ## the final convergence achieved by the FPI solver
+            element Show_Convergence{comment}?,
             ## If porous_media, printout the Courant number every time-step
             element Courant_number {
                comment
@@ -1239,11 +1243,6 @@ solver_options =
             ## 
 	    ## By default the tolerance is 1e-2
                 element Test_mass_consv{real}?
-              ),
-              (
-                ## Prints the number of iterations and
-                ## the final convergence achieved by the FPI solver
-                element Show_Convergence{comment}?
               ),
               (
                 ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.

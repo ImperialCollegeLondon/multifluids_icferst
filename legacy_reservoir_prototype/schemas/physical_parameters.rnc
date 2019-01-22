@@ -13,7 +13,7 @@ gravity_options =
          real
       },
       ## Solve the gravity component indendently from the pressure general solver
-      ## this is to have higher precision when using P1DG for the velocity. For inertia dominated only.
+      ## this is to have higher precision when using P1DGP1. For inertia dominated only.
       ##
       ## IMPORTANT: for this to work a mesh and a field ph needs to be created. Check the test 
       ## Collapsing_Water_Column_hydrostatic_pressure for an example

@@ -114,6 +114,13 @@ If using this, all the modifiable fields need to have the option to read from a 
           </element>
         </optional>
         <optional>
+          <element name="Show_Convergence">
+            <a:documentation>Prints the number of iterations and
+the final convergence achieved by the FPI solver</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
           <element name="Courant_number">
             <a:documentation>If porous_media, printout the Courant number every time-step</a:documentation>
             <ref name="comment"/>
@@ -1541,13 +1548,6 @@ conservation of volume of each phase for the non-linear solver
 
 By default the tolerance is 1e-2</a:documentation>
                   <ref name="real"/>
-                </element>
-              </optional>
-              <optional>
-                <element name="Show_Convergence">
-                  <a:documentation>Prints the number of iterations and
-the final convergence achieved by the FPI solver</a:documentation>
-                  <ref name="comment"/>
                 </element>
               </optional>
               <optional>

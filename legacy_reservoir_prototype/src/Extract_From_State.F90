@@ -2142,7 +2142,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
         min_ts, default = dt_by_user*1d-3 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
-    show_FPI_conv = .not.have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Show_Convergence')
+    show_FPI_conv = .not.have_option( '/io/Show_Convergence')
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller/Aim_num_FPI', &
         Aim_num_FPI, default = int(0.20 * NonLinearIteration) )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv', &
