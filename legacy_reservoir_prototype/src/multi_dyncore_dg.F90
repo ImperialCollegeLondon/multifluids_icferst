@@ -2117,7 +2117,6 @@ end if
                 DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
                     SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
                 end do
-
                   !Initialise
                   NN_SIGMAGI_ELE = 0.
                   DO U_JLOC = 1, Mdims%u_nloc

@@ -5871,11 +5871,11 @@ contains
              nlz( 3, gi ) = 1.
              nlz( 4, gi ) = -1.
              if( nloc == 5 ) then ! Bubble function
-                !alpha == 50 behaves better than the correct value of 256. See Osman et al. 2019
-                 N(5,GI)  = 50. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
-                 NLX(5,GI)= 50. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                 NLY(5,GI)= 50. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                 NLZ(5,GI)= 50. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                !alpha == 100 behaves better than the correct value of 256. See Osman et al. 2019
+                 N(5,GI)  = 100. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                 NLX(5,GI)= 100. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLY(5,GI)= 100. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLZ(5,GI)= 100. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
 
              endif
           end do
