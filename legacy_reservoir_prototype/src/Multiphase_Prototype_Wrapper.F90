@@ -77,7 +77,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     character(len = option_path_len) :: filename
     character(len = option_path_len) :: simulation_name, dump_format
 
-    real :: finish_time, nonlinear_iteration_tolerance
+    real :: finish_time, nonlinear_iteration_tolerance, auxR, dump_period
 
     ! Establish signal handlers
     call initialise_signals()
@@ -123,6 +123,20 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! set the remaining timestepping options, needs to be before any diagnostics are calculated
     call get_option("/timestepping/timestep", dt)
+
+    if ( have_option('/io/dump_period') ) then
+      !Check, if we are not adapting the timestep that the dump_period is a multiple of the timestep
+      if (.not.have_option( '/timestepping/adaptive_timestep' ) .and. &
+      .not. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
+        call get_option('/io/dump_period/constant', dump_period, default = 0.01)
+        auxR = mod(dump_period,dt)
+        if ( abs(auxR) > 1e-8 .or. dt > dump_period) then
+          dt = dump_period/ceiling(dump_period/dt)
+          ewrite(0, *) "WARNING: Dump period has to be a multiple of the time-step. Time-step adjusted to: ", dt
+          call set_option("/timestepping/timestep", dt)
+        end if
+      end if
+    end if
     !  if(have_option("/timestepping/adaptive_timestep/at_first_timestep")) then
     !    call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
     !    call set_option("/timestepping/timestep", dt)
