@@ -24,7 +24,7 @@ node('docker && linux')
     stage('Get source code') { checkout scm }
 
     // Run icferst compilation inside build_image
-    docker.withRegistry( "${docker_registry}" )
+    docker.withRegistry( "${docker_registry}", 'docker_registry' )
     {
         docker.image( "${build_image}" ).inside( "-v ${env.WORKSPACE}:/opt:rw,z --entrypoint='' " )
         {
@@ -91,9 +91,7 @@ EOF
 
 popd
         """
-    dir( './dockerRT' )
-    {
-        stage ( "Build image and deploy image" )
+        dir( './dockerRT' )
         {
             docker.withRegistry( "${docker_registry}", 'docker_registry' )
             {
