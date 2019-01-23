@@ -1,9 +1,9 @@
 def cores           = env.CORES               ?: 8
-def image_name      = env.IMAGE_NAME          ?: "doc-reg-ac-pds.nl/icferst"
+def image_name      = env.IMAGE_NAME          ?: "cascade/icferst"
 def image_version   = env.IMAGE_VERSION       ?: "1.0"
 def docker_registry = env.DOCKER_REGISTRY_URL ?: "https://doc-reg-ac.pds.nl"
-def rt_image        = env.RUNTIME_IMAGE_NAME  ?: "doc-reg-ac.pds.nl/fluidity2rt:1.0"
-def build_image     = env.BUILD_IMAGE_NAME    ?: "doc-reg-ac.pds.nl/fluidity2dev:1.0"
+def rt_image        = env.RUNTIME_IMAGE_NAME  ?: "doc-reg-ac.pds.nl/cascade/icferst2rt:1.0"
+def build_image     = env.BUILD_IMAGE_NAME    ?: "doc-reg-ac.pds.nl/cascade/icferst2dev:1.0"
 
 docker_registry_host = docker_registry.split("//")[1]
 image_version        = image_version + (env.DEPLOY_ENVIRONMENT ? env.DEPLOY_ENVIRONMENT.take(1) : "D")
@@ -91,7 +91,17 @@ EOF
 
 popd
         """
-        dir( './dockerRT' ) { sh "docker build -t ${docker_registry_host}/${image_name}:${image_version} ." }
-        sh "docker push ${docker_registry_host}/${image_name}:${image_version}"
+    dir( './dockerRT' )
+    {
+        stage ( "Build image and deploy image" )
+        {
+            docker.withRegistry( "${docker_registry}", 'docker_registry' )
+            {
+                // build container image
+                def customImage = docker.build("${image_name}:${image_version}")
+                // Push the image to the custom Registry
+                customImage.push()
+            }
+        }
     }
 }
