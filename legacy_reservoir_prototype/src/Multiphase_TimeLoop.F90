@@ -606,9 +606,7 @@ contains
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
-                        option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
-                        theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
 
                 end if Conditional_PhaseVolumeFraction
 
@@ -628,11 +626,9 @@ contains
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
+                        suf_sig_diagten_bc, Porosity_field%val, &
                         !!$
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, eles_with_pipe, pipes_aux, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = .true.,&
@@ -657,13 +653,10 @@ contains
                    call SOLUTE_ASSEM_SOLVE( state, packed_state, &
                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                       suf_sig_diagten_bc, &
-                       Porosity_field%val, &
+                       suf_sig_diagten_bc, Porosity_field%val, &
                        !!$
-                       0, igot_theta_flux, &
-                       Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                       option_path = '/material_phase[0]/scalar_field::SoluteMassFraction', &
                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                    nullify(tracer_field)

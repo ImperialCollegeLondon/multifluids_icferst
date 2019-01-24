@@ -496,7 +496,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-       option_path, &
        mass_ele_transp, &
        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
@@ -522,7 +521,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, intent( in ) :: DT
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-           character( len = * ), intent( in ), optional :: option_path
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
@@ -730,7 +728,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
-         nonlinear_iteration, SFPI_taken, Courant_number,option_path,&
+         nonlinear_iteration, SFPI_taken, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
@@ -756,8 +754,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              integer, intent(in) :: nonlinear_iteration
              integer, intent(inout) :: SFPI_taken
              real, dimension(:), intent(inout) :: Courant_number
-             character(len= * ), intent(in), optional :: option_path
-             REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+             REAL, DIMENSION( :, :), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
 
              ! Local Variables
              LOGICAL, PARAMETER :: THERMAL= .false.

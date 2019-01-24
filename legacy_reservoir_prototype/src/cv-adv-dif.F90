@@ -508,7 +508,7 @@ contains
 
         call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
-        if (is_porous_media .and. .not. present(solving_compositional)) call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+        if (is_porous_media) call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
         !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
         U_ALL => NU_ALL
         old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
@@ -907,7 +907,7 @@ contains
         ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
         MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
         MeanPoreCV%val=MEAN_PORE_CV
-        
+
         ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
         IF ( CV_DISOPT < 5 ) THEN
             ! Isotropic limiting - calculate far field upwind maticies...

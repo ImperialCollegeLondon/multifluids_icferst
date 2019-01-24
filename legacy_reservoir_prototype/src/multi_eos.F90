@@ -2137,7 +2137,7 @@ contains
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(1,iphase,:) = targ_Store%val(:)
-            else!default value
+            else !default value
                 t_field%val(1,iphase,:) = 0.0
             end if
         end do
@@ -2149,7 +2149,7 @@ contains
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(2,iphase,:) = max(min(targ_Store%val(:), 1.0), 0.0)
-            else!default value
+            else !default value
                 t_field%val(2,iphase,:) = 1.0
             end if
         end do
@@ -2160,7 +2160,7 @@ contains
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(3,iphase,:) = targ_Store%val(:)
-            else!default value
+            else !default value
                 t_field%val(3,iphase,:) = 2.0
             end if
         end do
