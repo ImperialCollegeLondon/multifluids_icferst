@@ -96,6 +96,9 @@ popd
         {
             docker.withRegistry( "${docker_registry}", 'docker_registry' )
             {
+                // Get latest runtime image from registry
+                sh "docker pull ${rt_image}"
+
                 // build container image
                 def customImage = docker.build("${image_name}:${image_version}")
                 // Push the image to the custom Registry
