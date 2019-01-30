@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -597,6 +597,7 @@ contains
     !-
     !- date last modified : 29/11/2011
     !-
+    integer, intent( in ) :: u_nloc
     integer, intent( in ) :: scvngi, cv_nloc
     integer, dimension( cv_nloc, scvngi ), intent( inout ) :: cv_neiloc
     logical, dimension( cv_nloc, scvngi ), intent( inout ) :: cv_on_face, cvfem_on_face
@@ -605,7 +606,6 @@ contains
     real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfen, scvfenslx, scvfensly
     real, dimension( scvngi ), intent( inout ) :: scvfeweigh
     real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
-    integer, intent( in ) :: u_nloc
     real, dimension( u_nloc, scvngi ), intent( inout ) :: sufen, sufenslx, sufensly, &
          sufenlx, sufenly, sufenlz
     integer, intent( in ) :: ndim
@@ -706,13 +706,13 @@ contains
        cv_on_face = cvfem_on_face
     else
        do iloc = 1, cv_nloc
-          do gi = 1, scvngi 
+          do gi = 1, scvngi
              ! ewrite(3,*)'cv_neiloc, cvfem_on_face:', iloc, gi, &
              !      cv_neiloc( iloc, gi ), cvfem_neiloc( iloc, gi )
              if ( cv_neiloc( iloc, gi ) == -1 ) &
                   cv_on_face( iloc, gi ) = .true.
              if ( cvfem_neiloc( iloc, gi ) == -1 ) &
-                  cvfem_on_face( iloc, gi ) = .true. 
+                  cvfem_on_face( iloc, gi ) = .true.
           end do
        end do
 
@@ -996,8 +996,8 @@ contains
     do ILOC = 1, NLOC! Was loop
        !
        do IFACE = 1, NFACE! Was loop
-          !     
-          do GJ = 1, FNGI! Was loop 
+          !
+          do GJ = 1, FNGI! Was loop
              !
              GI = IFACE
              !
@@ -1028,7 +1028,7 @@ contains
                   &              *( 1.0 + ETA(ILOC)*POS(2) )&
                   &              + 0.25*( 1.0 + XI(ILOC)*POS(1) )&
                   &              *ETA(ILOC)*DPDXI(2)
-             !     
+             !
           END DO
           !
        END DO
@@ -1402,8 +1402,8 @@ contains
     do ILOC = 1, NLOC! Was loop
        !
        do IFACE = 1, NFACE! Was loop
-          !     
-          do GJ = 1, FNGI! Was loop 
+          !
+          do GJ = 1, FNGI! Was loop
              !
              GI = IFACE
              !
@@ -1457,7 +1457,7 @@ contains
                   &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
                   &              *( 1.0 + ETA(ILOC)*POS(2) )&
                   &              *ZETA(ILOC)*DPDETA(3)
-             !     
+             !
           END DO
           !
        END DO
@@ -1534,13 +1534,13 @@ contains
     !     - shape functions over a subcell of a CV.
     !
     M = 0.0
-    !     
+    !
     COUNT = 1
-    !     
+    !
     do ILOC = 1, NLOC! Was loop
        !
        do GI = COUNT, COUNT + 3! Was loop
-          !     
+          !
           M(ILOC,GI) = 1.0
           !
        END DO
@@ -1671,10 +1671,10 @@ contains
     do IFACE = 1, NFACE! Was loop
        !
        do GJ = 1, FNGI! Was loop
-          !     
+          !
           GI = (IFACE-1)*FNGI+GJ
-          !     
-          do ICOORD = 1, NCOORD! Was loop 
+          !
+          do ICOORD = 1, NCOORD! Was loop
              !
              POS(ICOORD)    = 0.0
              DPDXI(ICOORD)  = 0.0
@@ -1691,29 +1691,29 @@ contains
                      &                 *0.5*XIP(JLOC)
                 !
              END DO
-             !     
+             !
           END DO
-          !     
+          !
           XI  = POS(1)
           ETA = POS(2)
-          !     
+          !
           LIJXI(1)   =  0.5*XI*(XI-1.0)
           LIJXI(2)   =  1.0-XI*XI
           LIJXI(3)   =  0.5*XI*(XI+1.0)
-          !     
+          !
           LIJETA(1)  =  0.5*ETA*(ETA-1.0)
           LIJETA(2)  =  1.0-ETA*ETA
           LIJETA(3)  =  0.5*ETA*(ETA+1.0)
-          !     
+          !
           DLIJXIDXI(1) =  0.5*(2.0*XI-1.0)*DPDXI(1)
           DLIJXIDXI(2) = -2.0*XI*DPDXI(1)
           DLIJXIDXI(3) =  0.5*(2.0*XI+1.0)*DPDXI(1)
-          !     
+          !
           DLIJETADXI(1) =  0.5*(2.0*ETA-1.0)*DPDXI(2)
           DLIJETADXI(2) = -2.0*ETA*DPDXI(2)
           DLIJETADXI(3) =  0.5*(2.0*ETA+1.0)*DPDXI(2)
-          !     
-          do I = 1, 3! Was loop 
+          !
+          do I = 1, 3! Was loop
              !
              do J = 1, 3! Was loop
                 !
@@ -1725,7 +1725,7 @@ contains
                      &                 + LIJETA(J)*DLIJXIDXI(I)
                 !
              END DO
-             !     
+             !
           END DO
           !
        END DO
@@ -2836,10 +2836,10 @@ contains
     do IFACE = 1, NFACE! Was loop
        !
        do GJ = 1, FNGI! Was loop
-          !     
+          !
           GI = (IFACE-1)*FNGI+GJ
-          !     
-          do ICOORD = 1, NCOORD! Was loop 
+          !
+          do ICOORD = 1, NCOORD! Was loop
              !
              POS(ICOORD)    = 0.0
              DPDXI(ICOORD)  = 0.0
@@ -2863,50 +2863,50 @@ contains
                      &                 *ETAP(JLOC)
                 !
              END DO
-             !     
+             !
           END DO
-          !     
+          !
           XI   = POS(1)
           ETA  = POS(2)
           ZETA = POS(3)
-          !     
+          !
           LIJXI(1)   =  0.5*XI*(XI-1.0)
           LIJXI(2)   =  1.0-XI*XI
           LIJXI(3)   =  0.5*XI*(XI+1.0)
-          !     
+          !
           LIJETA(1)  =  0.5*ETA*(ETA-1.0)
           LIJETA(2)  =  1.0-ETA*ETA
           LIJETA(3)  =  0.5*ETA*(ETA+1.0)
-          !     
+          !
           LIJZETA(1) =  0.5*ZETA*(ZETA-1.0)
           LIJZETA(2) =  1.0-ZETA*ZETA
           LIJZETA(3) =  0.5*ZETA*(ZETA+1.0)
-          !     
+          !
           DLIJXIDXI(1)   =  0.5*(2.0*XI-1.0)*DPDXI(1)
           DLIJXIDXI(2)   = -2.0*XI*DPDXI(1)
           DLIJXIDXI(3)   =  0.5*(2.0*XI+1.0)*DPDXI(1)
-          !     
+          !
           DLIJETADXI(1)  =  0.5*(2.0*ETA-1.0)*DPDXI(2)
           DLIJETADXI(2)  = -2.0*ETA*DPDXI(2)
           DLIJETADXI(3)  =  0.5*(2.0*ETA+1.0)*DPDXI(2)
-          !     
+          !
           DLIJZETADXI(1) =  0.5*(2.0*ZETA-1.0)*DPDXI(3)
           DLIJZETADXI(2) = -2.0*ZETA*DPDXI(3)
           DLIJZETADXI(3) =  0.5*(2.0*ZETA+1.0)*DPDXI(3)
-          !     
+          !
           DLIJXIDETA(1)  =  0.5*(2.0*XI-1.0)*DPDETA(1)
           DLIJXIDETA(2)  = -2.0*XI*DPDETA(1)
           DLIJXIDETA(3)  =  0.5*(2.0*XI+1.0)*DPDETA(1)
-          !     
+          !
           DLIJETADETA(1) =  0.5*(2.0*ETA-1.0)*DPDETA(2)
           DLIJETADETA(2) = -2.0*ETA*DPDETA(2)
           DLIJETADETA(3) =  0.5*(2.0*ETA+1.0)*DPDETA(2)
-          !     
+          !
           DLIJZETADETA(1) =  0.5*(2.0*ZETA-1.0)*DPDETA(3)
           DLIJZETADETA(2) = -2.0*ZETA*DPDETA(3)
           DLIJZETADETA(3) =  0.5*(2.0*ZETA+1.0)*DPDETA(3)
-          !     
-          do I = 1, 3! Was loop 
+          !
+          do I = 1, 3! Was loop
              !
              do J = 1, 3! Was loop
                 !
@@ -2927,7 +2927,7 @@ contains
                 END DO
                 !
              END DO
-             !     
+             !
           END DO
           !
        END DO
@@ -4539,4 +4539,3 @@ contains
   END SUBROUTINE DETNLXR_PLUS_U2
 
 end module shape_functions_prototype
-
