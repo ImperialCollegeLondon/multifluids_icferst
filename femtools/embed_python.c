@@ -33,6 +33,7 @@ USA
 #include "Python.h"
 #endif
 #ifdef HAVE_NUMPY
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include "numpy/arrayobject.h"
 #endif
 
@@ -526,7 +527,7 @@ void set_tensor_field_from_python(char *function, int *function_len, int *dim,
     }
     
     pArray = (PyArrayObject *)
-      PyArray_ContiguousFromObject(pResult, PyArray_DOUBLE, 2, 2);
+      PyArray_ContiguousFromObject(pResult, NPY_DOUBLE, 2, 2);
 
     if (PyErr_Occurred()){
       PyErr_Print();
@@ -534,10 +535,10 @@ void set_tensor_field_from_python(char *function, int *function_len, int *dim,
       return;
     }
 
-    if (pArray->dimensions[0] != result_dim[0] || pArray->dimensions[1] != result_dim[1])
+    if (PyArray_DIMS(pArray)[0] != result_dim[0] || PyArray_DIMS(pArray)[1] != result_dim[1])
     {
       fprintf(stderr, "Error: dimensions of array returned from python ([%d, %d]) do not match allocated dimensions of the tensor_field ([%d, %d])).\n", 
-             (int) pArray->dimensions[0], (int) pArray->dimensions[1], result_dim[0], result_dim[1]);
+             (int) PyArray_DIMS(pArray)[0], (int) PyArray_DIMS(pArray)[1], result_dim[0], result_dim[1]);
       *stat=1;
       return;
     }
@@ -547,7 +548,7 @@ void set_tensor_field_from_python(char *function, int *function_len, int *dim,
         
         // Note the transpose for fortran.
         double tmp;
-        tmp = *(double*)(pArray->data + ii * pArray->strides[0] + jj * pArray->strides[1]);
+        tmp = *(double*)(PyArray_DATA(pArray) + ii * PyArray_STRIDES(pArray)[0] + jj * PyArray_STRIDES(pArray)[1]);
         result[i*(result_dim[0] * result_dim[1]) + jj * result_dim[0] + ii] = tmp;
       }
     }
@@ -1047,6 +1048,7 @@ void real_vector_from_python(char* function, int* function_len,
                              int* result_len, 
                              int* stat)
 {
+ int i;
 #ifndef HAVE_PYTHON
   strncpy(function, "No Python support!\n", (size_t) *function_len);
   for (i=0; i < *function_len; i++)
@@ -1062,8 +1064,6 @@ void real_vector_from_python(char* function, int* function_len,
   
   char *function_c;
 
-  int i;
-  
   // the function string passed down from Fortran needs terminating,
   // so make a copy and fiddle with it (remember to free it)
   function_c = (char *)malloc(*function_len+3);
@@ -1172,6 +1172,7 @@ void integer_vector_from_python(char* function, int* function_len,
                              int* result_len, 
                              int* stat)
 {
+ int i;
 #ifndef HAVE_PYTHON
   strncpy(function, "No Python support!\n", (size_t) *function_len);
   for (i=0; i < *function_len; i++)
@@ -1187,8 +1188,6 @@ void integer_vector_from_python(char* function, int* function_len,
   
   char *function_c;
 
-  int i;
-  
   // the function string passed down from Fortran needs terminating,
   // so make a copy and fiddle with it (remember to free it)
   function_c = (char *)malloc(*function_len+3);

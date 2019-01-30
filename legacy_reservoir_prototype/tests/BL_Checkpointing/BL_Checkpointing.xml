@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Buckley-Leverett Checkpointing</name>
+  <owner userid="aga06"/>
+  <tags>mpml Checkpointing</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst BL_Checkpointing_P1DGP1.mpml
+../../../bin/icferst BL_Checkpointing_P1DGP1_1_checkpoint.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="pressure_P1DGP1" language="python">
+import numpy
+import vtk
+from vtk.util.numpy_support import vtk_to_numpy
+
+reader = vtk.vtkXMLUnstructuredGridReader()
+reader.SetFileName("BL_Checkpointing_P1DGP1_2.vtu")
+reader.Update()
+my_vtk_array = reader.GetOutput().GetPointData().GetArray("phase1::Pressure")
+d1 = vtk_to_numpy(my_vtk_array)
+
+reader2 = vtk.vtkXMLUnstructuredGridReader()
+reader2.SetFileName("BL_Checkpointing_P1DGP1_phase1_PressureMesh_1_checkpoint.vtu")
+reader2.Update()
+my_vtk_array2 = reader2.GetOutput().GetPointData().GetArray("Pressure")
+d2 = vtk_to_numpy(my_vtk_array2)
+
+
+pressure_P1DGP1=sum(d1)/len(d1)-sum(d2)/len(d2)
+print pressure_P1DGP1</variable>
+  </variables>
+  <pass_tests>
+    <test name="P1DGP1 pressure difference:" language="python">assert( abs(pressure_P1DGP1) &lt;5.0e-4)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

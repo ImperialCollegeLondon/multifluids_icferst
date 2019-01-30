@@ -59,7 +59,7 @@ module multi_pipes
 
     private
 
-    public  :: MOD_1D_CT_AND_ADV, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
+    public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
 
     !Parameters for boundary conditions copied from cv_adv-diff.F90
     INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
@@ -78,7 +78,7 @@ contains
 
     SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                     getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                    INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes )
+                    INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes )
         ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
         type(state_type), intent(inout) :: packed_state
         type(state_type), dimension(:), intent(in) :: state
@@ -89,7 +89,7 @@ contains
         integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
         real, dimension(:,:,:), intent( in ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL
         real, dimension(:,:,:,:), intent( in ) :: OPT_VEL_UPWIND_COEFS_NEW
-        real, dimension(:,:),intent( inout ) :: INV_SIGMA, INV_SIGMA_NANO
+        real, dimension(:,:),intent( inout ) :: INV_SIGMA
         real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
         real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
         logical, intent( in ) :: getcv_disc, getct, thermal
@@ -158,7 +158,7 @@ contains
 
         !if allocated then calculate outfluxes
 
-        CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
+        CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
         NCORNER = Mdims%ndim + 1
         ! default limiting NVD diagram...
         XI_LIMIT = 2.0 ; ndiff=.false. ; diff=.true.
@@ -344,13 +344,11 @@ contains
         allocate( x_all_corn(Mdims%ndim, NCORNER) )
         mass_pipe = 0.0; MASS_PIPE_FOR_COUP = 0.0
         MASS_CVFEM2PIPE = 0.0; MASS_PIPE2CVFEM = 0.0; MASS_CVFEM2PIPE_TRUE = 0.0
-        INV_SIGMA = 0.0!; INV_SIGMA_NANO = 0.0
+        INV_SIGMA = 0.0
         !Populate INV_SIGMA inside the pipes to ensure that flux from pipes to the domain can happen
         DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
             call assign_val(INV_SIGMA(iphase, : ),1./sigma1_pipes%val)
         end do
-        !Initialise INV_SIGMA_NANO based on INV_SIGMA
-        INV_SIGMA_NANO = INV_SIGMA
 
 
         DO k = 1, size(eles_with_pipe)
@@ -538,7 +536,6 @@ contains
                             N1NN1 = SUM( DIRECTION )
                         end if
                         INV_SIGMA_NANO_ND = 1.0/MAX(1.E-25, N1NN1)
-                        INV_SIGMA_NANO(IPHASE,CV_NODI) = INV_SIGMA_NANO(IPHASE,CV_NODI) + INV_SIGMA_NANO_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                     END DO
                 END DO
                 ! The number of CV basis functions...
@@ -711,6 +708,7 @@ contains
                     LIMT=0.0
                     LIMD=0.0
                     FVT =0.0
+
                     DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
                         IF ( WIC_T_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_T_BC_DIRICHLET ) THEN
                             LIMT(IPHASE)=T_ALL%val(1,IPHASE,JCV_NOD)*(1.0-INCOME(IPHASE)) + SUF_T_BC_ALL_NODS(IPHASE,JCV_NOD)*INCOME(IPHASE)
@@ -736,22 +734,6 @@ contains
                     ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                     suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                     IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS on the boundary...
-                        if (element_owned(T_ALL, ele)) then
-                            !Store total outflux for volume conservation check
-                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, 0) =  bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD,0) + &
-                                NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
-                            if (outfluxes%calculate_flux) then
-                                !If we want to output the outfluxes of the pipes we fill the array here with the information
-                                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
-                                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
-                                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
-                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) =  &
-                                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) + &
-                                            NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
-                                    end if
-                                end do
-                            end if
-                        end if
 
 
                         DO IDIM = 1, Mdims%ndim
@@ -778,6 +760,26 @@ contains
                                 sum( LOC_CT_RHS_U_ILOC( 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres ) ) )
                         END DO
                     END IF ! IF ( GETCT ) THEN
+
+                    !Calculate fluxes to check mass conservation and outflux
+                    IF ( GETCT ) THEN
+                        if (element_owned(T_ALL, ele)) then
+                            !Store total outflux for mass conservation check
+                            bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, 0) =  bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD,0) + &
+                            NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMDT(Mdims%n_in_pres+1:Mdims%nphase)
+                            if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
+                                !If we want to output the outfluxes of the pipes we fill the array here with the information
+                                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
+                                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
+                                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
+                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) =  &
+                                        bcs_outfluxes(Mdims%n_in_pres+1:Mdims%nphase, JCV_NOD, iofluxes) + &
+                                        NDOTQ(Mdims%n_in_pres+1:Mdims%nphase) * suf_area * LIMT(Mdims%n_in_pres+1:Mdims%nphase)
+                                    end if
+                                end do
+                            end if
+                        end if
+                    end if
                     IF ( GETCV_DISC ) THEN ! this is on the boundary...
                         ! Put results into the RHS vector
                         LOC_CV_RHS_I = 0.0
@@ -804,9 +806,6 @@ contains
         END DO ! DO ELE = 1, Mdims%totele
         DO IPHASE = 1, Mdims%n_in_pres
             INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
-            INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
-            ! We divide by this so that we get the right source term for the nano laterals...
-            INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP, 1.E-15 )
         END DO
         IF ( GETCV_DISC ) THEN
             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -899,7 +898,303 @@ contains
 
     END SUBROUTINE MOD_1D_CT_AND_ADV
 
+    subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, Mdims, ndgln,   &
+                    WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, A_GAMMA_PRES_ABS,PIPE_ABS,&
+                    getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, MASS_PIPE_FOR_COUP, SIGMA_INV_APPROX, &
+                    eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, reservoir_P, INV_B, MASS_ELE, bcs_outfluxes, outfluxes )
+        ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
+        type(tensor_field), intent(inout) :: tracer
+        type(state_type), intent(inout) :: packed_state
+        type(state_type), dimension(:), intent(in) :: state
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
+        type (multi_matrices), intent(inout) :: Mmat
+        type (multi_sparsities), intent(in) :: Mspars
+        type (porous_adv_coefs), intent(inout) :: upwnd
+        type (multi_pipe_package), intent(in) :: pipes_aux
+        integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
+        real, dimension(:,:,:), intent( inout ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, INV_B, A_GAMMA_PRES_ABS, PIPE_ABS
+        real, dimension(:,:),intent( inout ) :: den_all, SIGMA_INV_APPROX, MASS_CV_PLUS
+        real, dimension(:),intent( inout ) :: MASS_PIPE_FOR_COUP, reservoir_P, MASS_ELE
+        logical, intent( in ) :: getcv_disc, getct, thermal, GOT_T2
+        real, intent(in) :: DT, CV_BETA
+        !Variables that are used to define the pipe pos.
+        type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+        !variables to store the pipe outfluxes if asked by the user
+        real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+        type (multi_outfluxes), intent(inout) :: outfluxes
+        ! Local variables
+        INTEGER :: CV_NODI, IPHASE, COUNT, cv_iloc, jphase
+        INTEGER :: u_lnloc, ele, i
 
+        !Variables for boundary conditions
+        REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
+        ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement
+        ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained
+        ! by correlating the IC-FERST production results with Eclipse results on a regular mesh
+        ! of linear tetrahedra elements and a single well at steady state. =0.0 is no correction =0.35 recommended.
+        real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N
+        integer :: jpres, &
+            u_iloc, x_iloc, idim, cv_lkloc, u_knod, u_lngi, &
+            U_NOD, U_SILOC, MAT_NODI, IPRES, k
+
+        type(tensor_field), pointer :: old_tracer
+        real, dimension(:,:,:), pointer :: U_ALL
+        real, dimension(:,:), pointer :: t2_all, T2OLD_ALL, T_ALL, TOLD_ALL
+        real, dimension( :, :, : ), pointer :: fem_p
+        real, dimension( Mdims%cv_nonods ) :: N
+        !Logical to check if we using a conservative method or not, to save cpu time
+        logical :: conservative_advection
+        !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
+        !Parameters of the simulation
+        real, parameter :: INFINY=1.0E+20
+        integer, parameter :: WIC_B_BC_DIRICHLET = 1
+        !
+        ! !variables for pipes, allocatable because they are big and barely used
+        type( scalar_field ), pointer :: pipe_Diameter, conductivity_pipes, well_thickness
+        logical :: has_conductivity_pipes
+        REAL, DIMENSION( Mdims%nphase ) ::  RSUM_VEC
+        real, dimension( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) :: GAMMA_PRES_ABS2
+        REAL , DIMENSION( Mdims%nphase, Mdims%cv_nonods) :: opt_vel_upwind_coefs_new_cv
+        real, dimension(Mdims%nphase):: SAT_FOR_PIPE, DEN_FOR_PIPE_PHASE
+        real, dimension(Mdims%nphase):: PRES_FOR_PIPE_PHASE, PRES_FOR_PIPE_PHASE_FULL
+
+        !#################SET WORKING VARIABLES#################
+
+        call get_var_from_packed_state(packed_state, &
+            NonlinearVelocity = U_ALL, FEPressure = FEM_P)
+        !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
+        T_ALL =>tracer%val(1,:,:)
+        old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+        TOLD_ALL =>old_tracer%val(1,:,:)
+        if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
+        IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
+        PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
+        pipe_Diameter => extract_scalar_field( state(1), "DiameterPipe" )
+
+        !For thermal retrieve, if present, the conductivity of the pipes to calculate the heat loss
+        has_conductivity_pipes = .false.
+        if (thermal .and. is_porous_media) then
+            has_conductivity_pipes = have_option('/wells_and_pipes/thermal_well_properties')
+            if (has_conductivity_pipes) then
+                conductivity_pipes => extract_scalar_field( state(1), "Conductivity" )
+                well_thickness => extract_scalar_field( state(1), "well_thickness" )
+            end if
+        end if
+      !################## END OF SET VARIABLES ##################
+        conservative_advection = abs(cv_beta) > 0.99
+        OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
+        DO ELE = 1, Mdims%totele
+            DO CV_ILOC = 1, Mdims%cv_nloc
+                CV_NODI = ndgln%cv( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
+                MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
+                if (is_porous_media) then
+                    RSUM_VEC = 0.0
+                    DO IDIM = 1, Mdims%ndim
+                        RSUM_VEC = RSUM_VEC + upwnd%adv_coef( IDIM, IDIM, :, MAT_NODI ) / REAL( Mdims%ndim )
+                    END DO
+                else
+                    RSUM_VEC = 1.0
+                end if
+                OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) = OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) + &
+                    RSUM_VEC * MASS_ELE( ELE )
+                N( CV_NODI ) = N( CV_NODI ) + MASS_ELE( ELE )
+            END DO
+        END DO
+
+        !Populate SIGMA_INV_APPROX depending on what type of problem we are trying to solve
+        if (is_porous_media) then
+            DO CV_NODI = 1, Mdims%cv_nonods
+                SIGMA_INV_APPROX(:, CV_NODI) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV(:, CV_NODI) / N(CV_NODI) )
+            end do
+        else
+            SIGMA_INV_APPROX = 1.0
+        end if
+
+        CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+            getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
+            SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes)
+
+        ! Used for pipe modelling...
+        DO CV_NODI = 1, Mdims%cv_nonods
+            MASS_CV_PLUS(2:Mdims%npres,CV_NODI) = pipes_aux%MASS_PIPE(CV_NODI)
+        END DO
+        GAMMA_PRES_ABS2 = 0.0
+        A_GAMMA_PRES_ABS = 0.0
+        DO CV_NODI = 1, Mdims%cv_nonods
+
+            !Only go through the nodes that have a well
+            if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+
+            ! variables used in the edge approach
+            h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi), 1.0e-10))**2 )
+            h = max( h, 1.0e-10 )
+            cc = 0.0
+            if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
+            h = (MASS_CV_PLUS(1, cv_nodi )/h)**(1.0/(Mdims%ndim-1)) ! This is the lengthscale normal to the wells.
+            rp = 0.14 * h
+            Skin = 0.0
+            if (GOT_T2) then
+                SAT_FOR_PIPE(:) = MIN( MAX( 0.0, T2_ALL( :, CV_NODI ) ), 1.0 )
+            else
+                SAT_FOR_PIPE(:) = MIN( MAX( 0.0, T_ALL( :, CV_NODI ) ), 1.0 )
+            end if
+            DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
+            DO IPRES = 1, Mdims%npres
+               PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+            END DO
+            PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
+
+            DO IPHASE = 1, Mdims%nphase
+                IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                DO JPHASE = 1, Mdims%nphase
+                    JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                    ! This is the edge approach
+                    ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
+                    IF ( IPRES /= JPRES ) THEN
+                        !Peaceman correction
+                        IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
+                            GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                                cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                                / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        ELSE
+                            GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                                cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                                / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        END IF
+                    END IF ! IF ( IPRES /= JPRES ) THEN
+                END DO
+            END DO
+
+           DO IPHASE = 1, Mdims%nphase
+               DO JPHASE = 1, Mdims%nphase
+                   IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                   JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                   IF( IPRES /= JPRES ) THEN
+                       A_GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) = - GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI )
+                       A_GAMMA_PRES_ABS( IPHASE, IPHASE, CV_NODI ) = A_GAMMA_PRES_ABS( IPHASE, IPHASE, CV_NODI ) + GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI )
+                   END IF
+               END DO
+           END DO
+        END DO  ! DO CV_NODI = 1, Mdims%cv_nonods
+
+
+        if(GETCV_DISC) then
+            PIPE_ABS = 0.0
+            DO CV_NODI = 1, Mdims%cv_nonods
+                !Only go through the nodes that have a well
+                if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+
+                h = pipes_aux%MASS_PIPE( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
+                h = max( h, 1.0e-10 )
+                h_nano = h
+                cc = 0.0
+                if ( pipes_aux%MASS_PIPE( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
+                h = (MASS_CV_PLUS(1, cv_nodi )/h)**(1.0/(Mdims%ndim-1))  ! This is the lengthscale normal to the wells.
+                rp = 0.14 * h
+                rp_NANO = 0.14 * h_NANO
+                Skin = 0.0
+
+                SAT_FOR_PIPE(:) = MIN( MAX( 0.0, T_ALL( :, CV_NODI ) ), 1.0 )
+                DO IPRES = 1, Mdims%npres
+                   PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                   !####For Chris: This option below changes the results, IF that is what we want we need to update the test case####
+        !                       PRES_FOR_PIPE_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                END DO
+                PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
+                DEN_FOR_PIPE_PHASE(:) =  DEN_ALL( :, CV_NODI )
+                !If got_t2 (mainly for thermal) the equations are also multiplied by the saturation. To keep the code "tidy" we do it here
+                if (GOT_T2)  DEN_FOR_PIPE_PHASE(:) = DEN_FOR_PIPE_PHASE(:) * T2_ALL(:, CV_NODI)
+
+                if (.not. conservative_advection) then
+                    !In the non-conservative method the concept is to only exchange the difference of the mass/Energy
+                    !instead of one side sending X and reciving Y and the other sending Y and receiving X
+                    DO IPHASE = 1, Mdims%nphase
+                        DO JPHASE = 1, Mdims%nphase
+                            IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                            JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                            IF ( IPRES /= JPRES ) THEN
+                                !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
+                                ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
+                                ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
+                                IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) < PRES_FOR_PIPE_PHASE_FULL(JPHASE)  ) THEN
+                                    DeltaP = PRES_FOR_PIPE_PHASE(IPHASE) - PRES_FOR_PIPE_PHASE(JPHASE)
+                                    !Add coupling in a non_conservative manner (mass conservative anyway is just the formulation)
+                                    PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) +&
+                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( JPHASE ) * &
+                                        cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                                        / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                                   PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) - &!notice the negative sign
+                                       DeltaP * pipes_aux%GAMMA_PRES_ABS( JPHASE, IPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( JPHASE ) * &
+                                       cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                                       / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                                END IF
+                            END IF
+                        END DO
+                    END DO
+                else
+                    DO IPHASE = 1, Mdims%nphase
+                        DO JPHASE = 1, Mdims%nphase
+                            IPRES = 1 + INT( (IPHASE-1)/Mdims%n_in_pres )
+                            JPRES = 1 + INT( (JPHASE-1)/Mdims%n_in_pres )
+                            IF ( IPRES /= JPRES ) THEN
+                                DeltaP = PRES_FOR_PIPE_PHASE(IPHASE) - PRES_FOR_PIPE_PHASE(JPHASE)
+                                !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
+                                ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
+                                ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
+                                IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) >= PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
+                                    PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
+                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( IPHASE ) * &
+                                        cc * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                                        / (log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin)
+                                ELSE
+                                    PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) +&
+                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_FOR_PIPE_PHASE( JPHASE ) * &
+                                        cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                                        / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                                END IF
+                            END IF
+                        END DO
+                    END DO
+                end if
+
+                !add the heat loss contribution due to diffusion to the nodes with pipes defined, even if it is closed
+                !this might be true only for thermal and porous media
+                if (has_conductivity_pipes) then!NOT SURE IF THIS WILL WORK FOR MUTIPHASE AS IT IS NOW, SINCE THE HEAT IS EXCHANGED THROUGH PHASES
+                    !Apply only where wells are closed, this is a good approximation
+                    !Gamma should be the same for at least the well phases, so we check Mdims%nphase
+                    if (pipes_aux%GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, CV_NODI )<1d-8) then
+                        count = min(1,cv_nodi)
+                        !Rp is the internal radius of the well
+                        rp = max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) - well_thickness%val(count)
+                        h = 1./(PI * (0.5*pipe_Diameter%val( cv_nodi )**2.))!height/volume pipe
+                        !we apply Q = 1/WellVolume * (Tin-Tout) * 2 * PI * K * L/(ln(Rout/Rin))
+                        auxR = conductivity_pipes%val(count) * 2.0 * PI * h / log( max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) / rp )
+                        DO IPHASE = 1, Mdims%n_in_pres!Mdims%nphase
+                            jphase = iphase+Mdims%n_in_pres
+                            PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
+                            PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
+                        end do
+                        !Need to apply variation of heat from the other domain as well
+                        DO IPHASE = Mdims%n_in_pres + 1, Mdims%nphase!Mdims%nphase
+                            jphase = iphase-Mdims%n_in_pres
+                            PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
+                            PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
+                        end do
+                    end if
+                end if
+            END DO ! DO CV_NODI = 1, Mdims%cv_nonods
+        endif ! if(GETCV_DISC) then
+        IF ( GETCT ) THEN!sprint_to_do invb_b is actually not used
+            INV_B = DT * PIPE_ABS!SPRINT_TO_DO IS INV_B USED, it is used to calculate the CMC matrix ...
+              DO IPHASE = 1, Mdims%nphase
+                  INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) + DEN_ALL( IPHASE, : )
+              END DO
+            DO CV_NODI = 1, Mdims%cv_nonods
+                CALL INVERT( INV_B( :, :, CV_NODI ) )
+            END DO
+        ENDIF ! ENDOF IF ( GETCT ) THEN
+    end subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY
 
 
     SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe, GET_PIVIT_MAT, &
@@ -960,10 +1255,10 @@ contains
 
         ncorner = Mdims%ndim + 1
         PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
-        CALC_SIGMA_PIPE = have_option("/wells_and_pipes/well_options/calculate_sigma_pipe")
-        call get_option("/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
+        CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe")
+        call get_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
-        SWITCH_PIPES_ON_AND_OFF= have_option("/wells_and_pipes/well_options/switch_wells_on_and_off")
+        SWITCH_PIPES_ON_AND_OFF= have_option("/porous_media/wells_and_pipes/well_options/switch_wells_on_and_off")
         if ( CALC_SIGMA_PIPE ) then
             allocate( well_density(Mdims%nphase), well_viscosity(Mdims%nphase) )
             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -975,7 +1270,7 @@ contains
         end if
         if ( SWITCH_PIPES_ON_AND_OFF ) then
             ! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-            call get_option( "/wells_and_pipes/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
+            call get_option( "/porous_media/wells_and_pipes/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
             phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
             phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
             sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
@@ -1017,7 +1312,7 @@ contains
             if (U_P0DG) u_lnloc = 1
         end if
 
-        PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe")
+        PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
         X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         allocate( PIPE_DIAM_GI(scvngi) )
         allocate( SIGMA_GI(Mdims%nphase,scvngi), SIGMA_ON_OFF_GI(Mdims%nphase,scvngi) )
@@ -1479,7 +1774,7 @@ contains
         !Create list of corners
         call CALC_CORNER_NODS( CV_LOC_CORNER, Mdims%NDIM, Mdims%CV_NLOC)
         !Retrieve, if there are any number of input .bdf files
-        number_well_files = option_count("/wells_and_pipes/well_from_file")
+        number_well_files = option_count("/porous_media/wells_and_pipes/well_from_file")
         if (number_well_files > 0) then
             !Need the mesh to get neighbouring elements
             tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
@@ -1498,17 +1793,20 @@ contains
             end if
             do k = 1, number_well_files
                 !First identify the well trajectory
-                call get_option("/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
+                call get_option("/porous_media/wells_and_pipes/well_from_file["// int2str(k-1) //"]/file_path", file_path)
                 call read_nastran_file(file_path, nodes, edges)
                 call find_pipe_seeds(well_domains, X%val, nodes, edges, pipe_seeds)
-                call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
+                !Only if a seed is found then the well is constructed
+                if ( size(pipe_seeds)>0 ) call find_nodes_of_well(X%val, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
                 deallocate(nodes, edges)!because nodes and edges are allocated inside read_nastran_file
                 deallocate(pipe_seeds)
             end do
 
+            if (.not.allocated(eles_with_pipe))allocate(eles_with_pipe(0)) !This if is important for parallel so it exists and the loops are skipped
             !Re-populate properly PIPE_DIAMETER
             PIPE_DIAMETER%val = 0.
             !Copy values back to PIPE_DIAMETER from diameter_of_the_pipe_aux. This should go over less than 1% of the nodes
+
             do ele = 1, size(eles_with_pipe)
                 do k = 1, eles_with_pipe(ele)%npipes
                     x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(k)
@@ -1519,6 +1817,7 @@ contains
                      diameter_of_the_pipe_aux(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc ))
                 end do
             end do
+
         else
             do ele = 1, Mdims%totele
                 ! Look for pipe indicator in element:
@@ -1535,7 +1834,7 @@ contains
                 !If it has pipe, then store the element
                 if (PIPE_NOD_COUNT-1 >= 1) then
                     AUX_eles_with_pipe(k)%ele = ele
-                    AUX_eles_with_pipe(k)%npipes = PIPE_NOD_COUNT - 1
+                    AUX_eles_with_pipe(k)%npipes = 1!just one pipe !PIPE_NOD_COUNT - 1
                     allocate(AUX_eles_with_pipe(k)%pipe_index(NCORNER))
                     AUX_eles_with_pipe(k)%pipe_index = PIPE_INDEX_LOGICAL
                     k = k + 1
@@ -1624,8 +1923,8 @@ contains
             !Initialise tolerancePipe just once per simulation
             if (first_time) then
                 first_time = .false.
-                if (have_option('/wells_and_pipes/well_options/wells_bdf_tolerance')) then
-                    call get_option('/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
+                if (have_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance')) then
+                    call get_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
                 end if
             end if
 
@@ -1911,13 +2210,13 @@ contains
                 end do
             end if
 
-            !We have to ensure that the python prescribed field is not recalculated
-            !this needs to be removed once the memory is properly allocated
-            if (first_time) then
-                first_time = .false.
-                if (have_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
-                    call add_option("wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
-            end if
+            ! !We have to ensure that the python prescribed field is not recalculated
+            ! !this needs to be removed once the memory is properly allocated
+            ! if (first_time .and. getprocno() == 1) then
+            !     first_time = .false.
+            !     if (have_option("porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed")) &
+            !         call add_option("porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate", stat = k)
+            ! end if
             !#######################################################################
 !    !To test the results gnuplot and the run spl'test' w linesp
 !to compare with well plotted from multi_tools: spl'test'  using 1:2:3 with lines palette title "Eles", 'well_coords' with lines

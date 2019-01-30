@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -44,7 +44,7 @@ module matrix_operations
         entries,  &
         zero, addto, addto_diag, scale, &
         extract_diagonal, assemble, incref_petsc_csr_matrix, &
-        addref_petsc_csr_matrix, &
+        !addref_petsc_csr_matrix, &!Removed with last fluidity merge
         mult_T, dump_matrix, &
         csr2petsc_csr, dump_petsc_csr_matrix
     use parallel_tools
@@ -57,7 +57,7 @@ module matrix_operations
     use multi_data_types
     use multi_tools
     implicit none
-
+#include "petsc_legacy.h"
 contains
 
 
@@ -115,7 +115,7 @@ contains
         end interface
 
         LWORK=N*N
-      
+
         mat=a
 
         call dgetrf(N,N,A,NMAX,IPIV,INFO)
@@ -985,44 +985,16 @@ contains
                 end do
              end do
             return
-        end if
-
-
-        if (is_porous_media) then !No coupling between phases nor dimensions, inverse can be done faster
-             allocate(mat(Mdims%u_nloc, Mdims%u_nloc))
-             DO ELE = 1, Mdims%TOTELE
-                k = 1
-                !Compress into a mini matrix
-                do u_iloc = 1, Mdims%u_nloc
-                    do u_jloc = 1, Mdims%u_nloc
-                        mat(u_iloc, u_jloc) = PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
-                                 k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele )
-                    end do
-                end do
-                !Invert
-                mat = inverse(mat)
-                !Populate PIVIT_MAT. Since the matrix is repeated mdims%nphase * mdims%ndim times we don't need to
-                !invert it that many times
-                do i = 1, mdims%nphase * mdims%ndim
-                    do u_iloc = 1, Mdims%u_nloc
-                        do u_jloc = 1, Mdims%u_nloc
-                            PIVIT_MAT( k + (u_iloc-1)*mdims%nphase * mdims%ndim, &
-                                     k + (u_jloc-1)*mdims%nphase * mdims%ndim, ele ) = mat(u_iloc, u_jloc)
-                        end do
-                    end do
-                    k = k + 1
-                end do
-            END DO
         else
-            allocate(MAT( Mdims%u_nloc * Mdims%nphase * Mdims%ndim , Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
-            allocate(B( Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
-            DO ELE = 1, Mdims%TOTELE
-                CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
-            END DO
-            deallocate(b)
+          allocate(MAT( Mdims%u_nloc * Mdims%nphase * Mdims%ndim , Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+          allocate(B( Mdims%u_nloc * Mdims%nphase * Mdims%ndim ))
+          DO ELE = 1, Mdims%TOTELE
+              CALL MATINVold( PIVIT_MAT( :, :, ele ), Mdims%u_nloc * Mdims%nphase * Mdims%ndim, MAT, B )
+          END DO
+          deallocate(b)
+          deallocate(MAT)
         end if
-        deallocate(MAT)
-        RETURN
+
     END SUBROUTINE PHA_BLOCK_INV
 
     SUBROUTINE PHA_BLOCK_MAT_VEC_old( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
@@ -1031,9 +1003,9 @@ contains
         ! U = BLOCK_MAT * CDP
         INTEGER, intent( in )  :: NDIM, NPHASE, TOTELE, U_NLOC
         INTEGER, DIMENSION( : ), intent( in ), target ::  U_NDGLN
-        REAL, DIMENSION( : ), intent( inout ) :: U
+        REAL, DIMENSION( ndim * nphase * U_NLOC * TOTELE ), intent( inout ) :: U!Reshape done implicitly
         REAL, DIMENSION( :, :, : ), intent( in ), target :: BLOCK_MAT
-        REAL, DIMENSION( :, :, : ), intent( in ) :: CDP
+        REAL, DIMENSION( :, :, : ), intent( in ) :: CDP!We may need to do a Reshape implicitly for this as well
         ! Local
         INTEGER :: ELE, N, U_ILOC
         INTEGER, DIMENSION(:), pointer :: U_NOD
@@ -1051,7 +1023,7 @@ contains
                 real, dimension(M) :: Y
             end subroutine dgemv
         end interface
-           
+
 
         N=U_NLOC * NDIM * NPHASE
 
@@ -1099,7 +1071,7 @@ contains
         real, dimension(U_NLOC*NDIM*NPHASE) :: lcdp, lu
         integer, dimension(U_NLOC*NDIM*NPHASE) :: u_nodi
         integer :: N
-      
+
         interface
             subroutine dgemv(T,M,N,alpha,MAT,NMAX,X,Xinc,beta,Y,yinc)
                 implicit none
@@ -1111,7 +1083,7 @@ contains
                 real, dimension(M) :: Y
             end subroutine dgemv
         end interface
-           
+
 
         N=U_NLOC * NDIM * NPHASE
 
@@ -1168,7 +1140,7 @@ contains
         INTEGER :: ELE, N
         INTEGER, DIMENSION( U_NLOC ) :: U_NOD
         REAL, DIMENSION( NDIM * NPHASE * U_NLOC ) :: LCDP, LU
-      
+
         interface
             subroutine dgemv(T,M,N,alpha,MAT,NMAX,X,Xinc,beta,Y,yinc)
                 implicit none
@@ -1180,7 +1152,7 @@ contains
                 real, dimension(M) :: Y
             end subroutine dgemv
         end interface
-           
+
         N = U_NLOC * NDIM * NPHASE
 
         if (size(BLOCK_MAT,1) == 1) then
@@ -1220,7 +1192,7 @@ contains
         real, dimension(U_NLOC*NDIM*NPHASE) :: lcdp, lu
         integer, dimension(U_NLOC*NDIM*NPHASE) :: u_nodi
         integer :: N
-      
+
         interface
             subroutine dgemv(T,M,N,alpha,MAT,NMAX,X,Xinc,beta,Y,yinc)
                 implicit none
@@ -1265,7 +1237,7 @@ contains
     END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY2
 
 
- 
+
 
     SUBROUTINE PHA_BLOCK_MAT_VEC_MANY( U, BLOCK_MAT, CDP, NDIM, NPHASE, NBLOCK, &
         TOTELE, U_NLOC, U_NDGLN )
@@ -1281,7 +1253,7 @@ contains
 
         real, dimension(:,:,:,:), pointer, contiguous :: lcdp, lu
         integer :: N
-       
+
         interface
             subroutine dgemm(TA,TB,M,N,K,alpha,A,LDA,B,LDB,beta,C,LDC)
                 implicit none
@@ -1302,7 +1274,7 @@ contains
             lu=>u(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
             lcdp=>cdp(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
             call dgemm('N','T',NBLOCK,N,N,1.0,LCDP,NBLOCK,Block_mat(:,:,ele),N,1.0,LU,NBLOCK)
-       
+
         END DO Loop_Elements
 
         RETURN
@@ -1749,11 +1721,11 @@ contains
 
     end subroutine allocate_global_multiphase_petsc_csr
 
-    function allocate_momentum_matrix(sparsity,velocity) result(Mat)
+    function allocate_momentum_matrix(sparsity,velocity) result(matrix)
         type(csr_sparsity), intent (inout) :: sparsity
         type(tensor_field), intent (inout) :: velocity
         type(halo_type), pointer:: halo
-        type(petsc_csr_matrix) :: mat
+        type(petsc_csr_matrix) :: matrix
         integer :: ierr
 
 
@@ -1763,42 +1735,42 @@ contains
             nullify(halo)
         end if
 
-        mat%name="MomentumMatrix"
+        matrix%name="MomentumMatrix"
 
         if (associated(halo)) then
-            allocate(mat%row_halo)
-            mat%row_halo = halo
-            call incref(mat%row_halo)
-            allocate(mat%column_halo)
-            mat%column_halo = halo
-            call incref(mat%column_halo)
+            allocate(matrix%row_halo)
+            matrix%row_halo = halo
+            call incref(matrix%row_halo)
+            allocate(matrix%column_halo)
+            matrix%column_halo = halo
+            call incref(matrix%column_halo)
         else
-            nullify(mat%row_halo)
-            nullify(mat%column_halo)
+            nullify(matrix%row_halo)
+            nullify(matrix%column_halo)
         end if
 
-        call allocate(mat%row_numbering,node_count(velocity),&
-            product(velocity%dim),halo)
-        call allocate(mat%column_numbering,node_count(velocity),&
-            product(velocity%dim),halo)
+        call allocate(matrix%row_numbering,node_count(velocity),&
+            product(velocity%dim),halo = halo)
+        call allocate(matrix%column_numbering,node_count(velocity),&
+            product(velocity%dim),halo = halo)
 
         if (.not. IsParallel()) then
-            mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
-                mat%column_numbering,.false.)
+            matrix%M=full_CreateSeqAIJ(sparsity, matrix%row_numbering, &
+                matrix%column_numbering,.false.)
         else
-            mat%M=full_CreateMPIAIJ(sparsity, mat%row_numbering, &
-                mat%column_numbering,.false.)
+            matrix%M=full_CreateMPIAIJ(sparsity, matrix%row_numbering, &
+                matrix%column_numbering,.false.)
         end if
 
-        call MatSetOption(mat%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
-        call MatSetOption(mat%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
-        call MatSetOption(mat%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
-        nullify(mat%refcount)
-        call addref_petsc_csr_matrix(mat)
+        call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
+        nullify(matrix%refcount)
+        !call addref_petsc_csr_matrix(matrix)!Removed with last fluidity merge
 
+        allocate(matrix%ksp)
+        matrix%ksp = PETSC_NULL_KSP
 
     end function allocate_momentum_matrix
 
 end module matrix_operations
-
-

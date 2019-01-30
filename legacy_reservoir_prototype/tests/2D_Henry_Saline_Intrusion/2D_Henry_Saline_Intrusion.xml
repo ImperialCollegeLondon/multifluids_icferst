@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>2D_Henry_Saline_Intrusion</name>
+  <owner userid="Arash.Hamzehloo"/>
+  <tags>porous mpml adaptivity transport solute saline intrusion tbc</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst 2D_Henry_Saline_Intrusion.mpml</command_line>
+  </problem_definition>
+  <variables>
+  </variables>
+  <pass_tests>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

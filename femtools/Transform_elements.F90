@@ -29,14 +29,18 @@
 module transform_elements
   ! Module to calculate element transformations from local to physical
   ! coordinates.
-  use quadrature
-  use elements
+  use fldebug
+  use futils, only: present_and_true
   use vector_tools
+  use quadrature
+  use element_numbering
+  use elements
   use parallel_tools, only: abort_if_in_parallel_region
+  use memory_diagnostics
+  use fields_data_types
   use fields_base
   use cv_faces, only: cv_faces_type
   use eventcounter
-  use memory_diagnostics
   
   implicit none
   
@@ -1108,10 +1112,10 @@ contains
                   J = jacobian_on_sphere(x_shape, gi, X_val, r_val, J)
                 end if
                 ! outer product
-                det=abs( &
-                     J(2,1)*J(3,2)-J(3,1)*J(2,2) &
-                     -J(3,1)*J(1,2)+J(1,1)*J(3,2) &
-                     +J(1,1)*J(2,2)-J(2,1)*J(1,2))
+                det=sqrt( &
+                      (J(2,1)*J(3,2)-J(3,1)*J(2,2))**2 &
+                     +(J(3,1)*J(1,2)-J(1,1)*J(3,2))**2 &
+                     +(J(1,1)*J(2,2)-J(2,1)*J(1,2))**2)
              end if
              ! outer product times quad. weight
              detwei(gi)=det *x_shape%quadrature%weight(gi)

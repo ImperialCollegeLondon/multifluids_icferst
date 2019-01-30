@@ -10,7 +10,7 @@ tCA,f1CA,f2CA,t1CA,t2CA,ssumA = [], [], [], [], [], []
 
 tolerance1 = 1e-4
 tolerance2 = 1e-4
-toleranceMass = 2e-5
+toleranceMass = 2.5e-5
 
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
@@ -99,6 +99,7 @@ totalMass_reference = fn3(tC[pos])+fn4(tC[pos])
 InjectedMass = 0.008
 #print totalMass - InjectedMass
 #print  L1_sum1, L1_sum2, L1_sum3, L1_sum4, L1_sum5, L1_sum6, L1_sum7, L1_sum8
+
 
 #First and most important thing of this test is to check if we conserve Mass
 if (abs(totalMass-InjectedMass) < toleranceMass):

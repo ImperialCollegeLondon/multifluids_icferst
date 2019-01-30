@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Sod_Shock_3D</name>
+  <owner userid="asiri.obeysekara"/>
+  <tags>inertia mpml shock compressible</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./*.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="3D_SS" language="python">BL_SS = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: BL_SS = True
+
+assert(BL_SS)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

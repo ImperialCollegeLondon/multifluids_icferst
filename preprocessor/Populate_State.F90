@@ -27,10 +27,25 @@
 
 #include "fdebug.h"
 module populate_state_module
+
+  use fldebug
+  use global_parameters, only: OPTION_PATH_LEN, is_active_process, pi, &
+no_active_processes, topology_mesh_name, adaptivity_mesh_name, &
+periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
+  use futils, only: int2str, present_and_true, starts_with
+  use quadrature
+  use element_numbering
   use elements
-  use state_module
-  use FLDebug
   use spud
+  use mpi_interfaces, only: MPI_bcast
+  use parallel_tools
+  use data_structures
+  use metric_tools
+  use transform_elements
+  use fields
+  use profiler
+  use state_module
+  use boundary_conditions, only: set_dirichlet_consistent
   use mesh_files
   use vtk_cache_module
   use global_parameters, only: OPTION_PATH_LEN, is_active_process, pi, &
@@ -38,22 +53,17 @@ module populate_state_module
     periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius, is_porous_media
   use field_options
   use reserve_state_module
-  use fields_manipulation
-  use diagnostic_variables, only: convergence_field, steady_state_field
   use field_options
-  use surfacelabels
-  use climatology
-  use metric_tools
-  use coordinates
   use halos
+  use surfacelabels
+  use diagnostic_variables, only: convergence_field, steady_state_field
+  use climatology
+  use coordinates
   use tictoc
   use hadapt_extrude
-  use initialise_fields_module
-  use transform_elements
-  use parallel_tools
-  use boundary_conditions_from_options
   use nemo_states_module
-  use data_structures
+  use initialise_fields_module
+  use boundary_conditions_from_options
   use fields_halos
   use read_triangle
   use initialise_ocean_forcing_module
@@ -68,8 +78,7 @@ module populate_state_module
        allocate_field_as_constant, allocate_and_insert_fields, &
        initialise_prognostic_fields, set_prescribed_field_values, &
        alias_fields, mesh_name, &
-       allocate_and_insert_auxilliary_fields, allocate_and_insert_vector_field, &
-       allocate_and_insert_tensor_field, allocate_and_insert_scalar_field, &
+       allocate_and_insert_auxilliary_fields, &
        initialise_field, allocate_metric_limits, &
        make_mesh_periodic_from_options, make_mesh_unperiodic_from_options, &
        compute_domain_statistics
@@ -83,13 +92,12 @@ module populate_state_module
 
   !! A list of locations in which additional scalar/vector/tensor fields
   !! are to be found. These are absolute paths in the schema.
-  character(len=OPTION_PATH_LEN), dimension(8) :: additional_fields_absolute=&
+  character(len=OPTION_PATH_LEN), dimension(7) :: additional_fields_absolute=&
        (/ &
        "/ocean_biology/pznd                                                                                                   ", &
        "/ocean_biology/six_component                                                                                          ", &
        "/ocean_forcing/iceshelf_meltrate/Holland08                                                                            ", &
        "/ocean_forcing/bulk_formulae/output_fluxes_diagnostics                                                                ", &
-       "/porous_media                                                                                                         ", &
        "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/continuous_galerkin/les_model/dynamic_les ", &
        "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/continuous_galerkin/les_model/second_order", &
        "/material_phase[0]/sediment/                                                                                          " &
@@ -97,7 +105,7 @@ module populate_state_module
 
   !! A list of relative paths under /material_phase[i]
   !! that are searched for additional fields to be added.
-  character(len=OPTION_PATH_LEN), dimension(15) :: additional_fields_relative=&
+  character(len=OPTION_PATH_LEN), dimension(20) :: additional_fields_relative=&
        (/ &
        "/subgridscale_parameterisations/Mellor_Yamada                                                       ", &
        "/subgridscale_parameterisations/prescribed_diffusivity                                              ", &
@@ -113,7 +121,12 @@ module populate_state_module
        "/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/les_model/debug/   ", &
        "/vector_field::Velocity/prognostic/equation::ShallowWater                                           ", &
        "/vector_field::Velocity/prognostic/equation::ShallowWater/bottom_drag                               ", &
-       "/vector_field::BedShearStress/diagnostic/calculation_method/velocity_gradient                       " &
+       "/vector_field::BedShearStress/diagnostic/calculation_method/velocity_gradient                       ", &
+       "/population_balance[#]/abscissa/                                                                    ", &
+       "/population_balance[#]/weights/                                                                     ", &
+       "/population_balance[#]/weighted_abscissa/                                                           ", &
+       "/population_balance[#]/moments/                                                                     ", &
+       "/population_balance[#]/statistics/                                                                  "  &
        /)
 
   !! Relative paths under a field that are searched for grandchildren
@@ -123,11 +136,26 @@ module populate_state_module
          &    "/spatial_discretisation/inner_element" &
          /)
 
+
+  !! Dynamic paths that are searched for fields
+  !! This allows for searching for field within paths that may branch several times
+  !! The index of any particular path should be replaced with #
+  character(len=OPTION_PATH_LEN), dimension(7):: &
+         dynamic_paths = (/&
+         &    "/material_phase[#]/equation_of_state/fluids/linear/        ", &
+         &    "/material_phase[#]/phase_properties/Density                ", &
+         &    "/material_phase[#]/population_balance[#]/abscissa/         ", &
+         &    "/material_phase[#]/population_balance[#]/weights/          ", &
+         &    "/material_phase[#]/population_balance[#]/weighted_abscissa/", &
+         &    "/material_phase[#]/population_balance[#]/moments/          ", &
+         &    "/material_phase[#]/population_balance[#]/statistics/       " &
+         /)
+
+  character(len=OPTION_PATH_LEN), dimension(:), allocatable :: field_locations
+
 contains
 
-
   subroutine populate_state(states)
-    use Profiler
     type(state_type), pointer, dimension(:) :: states
 
     integer :: nstates ! number of states
@@ -1280,6 +1308,15 @@ contains
        call allocate_and_insert_irradiance(states(1))
     end if
 
+    !Insert density and viscosity fields, required for the new schema
+    ! if (have_option('/material_phase[0]/phase_properties' )) then
+    !   do i=1, nstates
+    !     !Insert Viscosity
+    !      call allocate_and_insert_tensor_field('/material_phase['//int2str(i)//']phase_properties/Viscosity/tensor_field::Viscosity', &
+    !      states(i), parent_mesh = "VelocityMesh")
+    !
+    !    end do
+    ! end if
     ! insert porous media fields
     if (have_option('/porous_media')) then
        do i=1, nstates
@@ -1295,6 +1332,18 @@ contains
              call allocate_and_insert_tensor_field('/porous_media/tensor_field::Permeability', &
                states(i))
           end if
+          !Arash
+          if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+             call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity', &
+               states(i), field_name='Longitudinal_Dispersivity')
+          end if
+
+          if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+             call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Transverse_Dispersivity', &
+               states(i), field_name='Transverse_Dispersivity')
+          end if
+
+
        end do
        !Insert if required thermal porous media fields
         if (have_option('/porous_media/thermal_porous/')) then
@@ -1311,24 +1360,25 @@ contains
         end if
     end if
 
-    if (have_option("/wells_and_pipes")) then
+    if (have_option("/porous_media/wells_and_pipes")) then
        do i=1, nstates
-          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Pipe', &
+          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Pipe', &
              states(i), field_name='Pipe')
-          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Gamma', &
+          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Gamma', &
              states(i), field_name='Gamma')
-          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Sigma', &
+          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Sigma', &
              states(i), field_name='Sigma')
-          call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::DiameterPipe', &
-             states(i), field_name='DiameterPipe')
-          if (have_option('/wells_and_pipes/thermal_well_properties'))then
-             call allocate_and_insert_scalar_field('/wells_and_pipes/thermal_well_properties/scalar_field::Conductivity', &
+        !For diameter, we need to define meory over all the mesh
+          call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::DiameterPipe', &
+             states(i), field_name='DiameterPipe', dont_save_memory = .true. )
+          if (have_option('/porous_media/wells_and_pipes/thermal_well_properties'))then
+             call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/thermal_well_properties/scalar_field::Conductivity', &
                 states(i), field_name='Conductivity')
-             call allocate_and_insert_scalar_field('/wells_and_pipes/thermal_well_properties/scalar_field::well_thickness', &
+             call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/thermal_well_properties/scalar_field::well_thickness', &
                 states(i), field_name='well_thickness')
           end if
-          if (have_option('/wells_and_pipes/well_volume_ids')) then
-              call allocate_and_insert_scalar_field('/wells_and_pipes/scalar_field::Well_domains', &
+          if (have_option('/porous_media/wells_and_pipes/well_volume_ids')) then
+              call allocate_and_insert_scalar_field('/porous_media/wells_and_pipes/scalar_field::Well_domains', &
                  states(i), field_name='Well_domains')
         end if
        end do
@@ -1525,7 +1575,7 @@ contains
     integer :: nfields ! number of fields
     ! logicals to find out if we have certain options
     logical :: is_aliased
-    type(scalar_field) :: sfield
+    type(scalar_field) :: sfield, ldfield, tdfield
     type(vector_field) :: vfield
     type(tensor_field) :: tfield
 
@@ -1688,6 +1738,22 @@ contains
           call insert(states(i+1), sfield, 'Porosity')
        end do
 
+       !Arash
+       if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
+         ldfield=extract_scalar_field(states(1), 'Longitudinal_Dispersivity')
+         ldfield%aliased = .true.
+         do i = 1,nstates-1
+            call insert(states(i+1), ldfield, 'Longitudinal_Dispersivity')
+         end do
+         if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+           tdfield=extract_scalar_field(states(1), 'Transverse_Dispersivity')
+           tdfield%aliased = .true.
+           do i = 1,nstates-1
+              call insert(states(i+1), tdfield, 'Transverse_Dispersivity')
+           end do
+       end if
+     end if
+
        ! alias the Permeability field which may be
        ! either scalar or vector (if present)
 
@@ -1816,6 +1882,7 @@ contains
     character(len = *), intent(in) :: option_path
 
     logical :: is_constant
+
     if(option_count(trim(option_path) // "/prescribed/value") == 1) then
       is_constant = have_option(trim(option_path) // "/prescribed/value/isotropic/constant") .or. &
         & have_option(trim(option_path) // "/prescribed/value/anisotropic_symmetric/constant") .or. &
@@ -1823,6 +1890,7 @@ contains
     else
       is_constant = .false.
     end if
+
   end function allocate_tensor_field_as_constant
 
   function allocate_field_as_constant_scalar(s_field) result(is_constant)
@@ -1869,14 +1937,14 @@ contains
 
   recursive subroutine allocate_and_insert_scalar_field(option_path, state, &
     parent_mesh, parent_name, field_name, &
-    dont_allocate_prognostic_value_spaces)
+    dont_allocate_prognostic_value_spaces, dont_save_memory)
 
     character(len=*), intent(in) :: option_path
     type(state_type), intent(inout) :: state
     character(len=*), intent(in), optional :: parent_mesh
     character(len=*), intent(in), optional :: parent_name
     character(len=*), optional, intent(in):: field_name
-    logical, optional, intent(in):: dont_allocate_prognostic_value_spaces
+    logical, optional, intent(in):: dont_allocate_prognostic_value_spaces, dont_save_memory
 
     logical :: is_prognostic, is_prescribed, is_diagnostic, is_aliased
     ! paths for options and child fields
@@ -1914,7 +1982,7 @@ contains
     ! modify constant fields. *Do not add to this list!* Construct an
     ! appropriate diagnostic algorithm instead (possibly an internal).
     backward_compatibility = .false.
-
+    if (present(dont_save_memory)) backward_compatibility = dont_save_memory
     ! Find out what kind of field we have
     is_prognostic=have_option(trim(path)//"/prognostic")
     is_prescribed=have_option(trim(path)//"/prescribed")
@@ -2221,18 +2289,18 @@ contains
 
        ! If we want to defer allocation (for sam), don't allocate the value space yet
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_DEFERRED,dim=[ndim_tensor,ndim_tensor])
+          field_type=FIELD_TYPE_DEFERRED)
 
     else if(is_constant .and. .not. backward_compatibility) then
 
        ! Allocate as constant field if possible (and we don't need backward compatibility)
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_CONSTANT,dim=[ndim_tensor,ndim_tensor])
+          field_type=FIELD_TYPE_CONSTANT)
        call zero(field)
     else
 
        ! Allocate field
-       call allocate(field, mesh, trim(field_name),dim=[ndim_tensor,ndim_tensor])
+       call allocate(field, mesh, trim(field_name))
        call zero(field)
     end if
 
@@ -2556,8 +2624,14 @@ contains
 
     ewrite(1,*) "In allocate_and_insert_auxilliary_fields"
 
-    call get_option("/timestepping/nonlinear_iterations", iterations, default=1)
-    steady_state_global = have_option("/timestepping/steady_state")
+    if (have_option('/solver_options')) then !New schema for ICFERST
+      !By default ensure that it does not think this is a steady state case (since the default is not a steady state case)
+      call get_option("/solver_options/Non_Linear_Solver", iterations, default=2)
+      steady_state_global = .false.
+    else !usual options for fluidty
+      call get_option("/timestepping/nonlinear_iterations", iterations, default=1)
+      steady_state_global = have_option("/timestepping/steady_state")
+    end if
 
     ! old and iterated fields
     do p = 1, size(states)
@@ -2656,6 +2730,13 @@ contains
             call insert(states(p), aux_vfield, trim(aux_vfield%name))
             call deallocate(aux_vfield)
 
+          else if((prescribed).and.(trim(vfield%name)=="Velocity")) then
+
+            call allocate(aux_vfield, vfield%dim, vfield%mesh, "Old"//trim(vfield%name), field_type = vfield%field_type)
+            call zero(aux_vfield)
+            call insert(states(p), aux_vfield, trim(aux_vfield%name))
+            call deallocate(aux_vfield)
+
           else
 
             aux_vfield = extract_vector_field(states(p), trim(vfield%name))
@@ -2676,6 +2757,13 @@ contains
             call insert(states(p), aux_vfield, trim(aux_vfield%name))
             call deallocate(aux_vfield)
 
+          else if((prescribed).and.((trim(vfield%name)=="Velocity"))) then
+
+            call allocate(aux_vfield, vfield%dim, vfield%mesh, "Iterated"//trim(vfield%name))
+            call zero(aux_vfield)
+            call insert(states(p), aux_vfield, trim(aux_vfield%name))
+            call deallocate(aux_vfield)
+
           else
 
             aux_vfield = extract_vector_field(states(p), trim(vfield%name))
@@ -2690,7 +2778,7 @@ contains
 
           if(trim(vfield%name)=="Velocity") then
 
-            if(iterations>1) then
+            if(iterations>1 .or. prescribed) then
 
               call allocate(aux_vfield, vfield%dim, vfield%mesh, "Nonlinear"//trim(vfield%name))
               call zero(aux_vfield)
@@ -2955,74 +3043,10 @@ contains
     call insert(states, aux_sfield, trim(aux_sfield%name))
     call deallocate(aux_sfield)
 
-    ! Porous media fields
-    have_porous_media: if (have_option('/porous_media')) then
-
-       ! alias the OldPorosity field
-       aux_sfield=extract_scalar_field(states(1), 'OldPorosity')
-       aux_sfield%aliased = .true.
-       aux_sfield%option_path = ""
-       do p = 1,size(states)-1
-          call insert(states(p+1), aux_sfield, 'OldPorosity')
-       end do
-
-       ! alias the OldPermeability field which may be
-       ! either scalar or vector (if present)
-
-       aux_sfield=extract_scalar_field(states(1), 'OldPermeability', stat = stat)
-       if (stat == 0) then
-          aux_sfield%aliased = .true.
-          aux_sfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_sfield, 'OldPermeability')
-          end do
-       end if
-
-       aux_vfield=extract_vector_field(states(1), 'OldPermeability', stat = stat)
-       if (stat == 0) then
-          aux_vfield%aliased = .true.
-          aux_vfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_vfield, 'OldPermeability')
-          end do
-       end if
-
-       ! alias the IteratedPorosity field
-       aux_sfield=extract_scalar_field(states(1), 'IteratedPorosity')
-       aux_sfield%aliased = .true.
-       aux_sfield%option_path = ""
-       do p = 1,size(states)-1
-          call insert(states(p+1), aux_sfield, 'IteratedPorosity')
-       end do
-
-       ! alias the IteratedPermeability field which may be
-       ! either scalar or vector (if present)
-
-       aux_sfield=extract_scalar_field(states(1), 'IteratedPermeability', stat = stat)
-       if (stat == 0) then
-          aux_sfield%aliased = .true.
-          aux_sfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_sfield, 'IteratedPermeability')
-          end do
-       end if
-
-       aux_vfield=extract_vector_field(states(1), 'IteratedPermeability', stat = stat)
-       if (stat == 0) then
-          aux_vfield%aliased = .true.
-          aux_vfield%option_path = ""
-          do p = 1,size(states)-1
-             call insert(states(p+1), aux_vfield, 'IteratedPermeability')
-          end do
-       end if
-
-    end if have_porous_media
-
   end subroutine allocate_and_insert_auxilliary_fields
 
   function mesh_name(field_path)
     !!< given a field path, establish the mesh that the field is on.
-    use global_parameters, only: FIELD_NAME_LEN
     character(len=FIELD_NAME_LEN) :: mesh_name
     character(len=*), intent(in) :: field_path
 
@@ -3124,7 +3148,7 @@ contains
     type(tensor_field) :: min_eigen, max_eigen
     character(len=*), parameter :: path = &
     & "/mesh_adaptivity/hr_adaptivity/"
-    logical :: is_constant, have_regions
+    logical :: is_constant
     type(mesh_type), pointer :: mesh
     type(vector_field), pointer :: X
     integer :: node
@@ -3145,19 +3169,14 @@ contains
     end if
 
     is_constant = (have_option(path // "/tensor_field::MinimumEdgeLengths/anisotropic_symmetric/constant"))
-    have_regions = (have_option(path // "/tensor_field::MinimumEdgeLengths/value"))
     if (is_constant) then
       call allocate(min_edge, mesh, "MinimumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
-         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
       call allocate(max_eigen, mesh, "MaxMetricEigenbound", field_type=FIELD_TYPE_CONSTANT)
       call set(max_eigen, eigenvalue_from_edge_length(node_val(min_edge, 1)))
     else
       call allocate(min_edge, mesh, "MinimumEdgeLengths")
-      if (have_regions) then
-         call initialise_field_over_regions(min_edge, path // "/tensor_field::MinimumEdgeLengths/value", X)
-      else
-         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
-      end if
+      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
       call allocate(max_eigen, mesh, "MaxMetricEigenbound")
       do node=1,node_count(mesh)
         call set(max_eigen, node, eigenvalue_from_edge_length(node_val(min_edge, node)))
@@ -3169,8 +3188,6 @@ contains
     call deallocate(max_eigen)
 
     is_constant = (have_option(path // "/tensor_field::MaximumEdgeLengths/anisotropic_symmetric/constant"))
-    have_regions = (have_option(path // "/tensor_field::MaximumEdgeLengths/value"))
-
     if (is_constant) then
       call allocate(max_edge, mesh, "MaximumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
       call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
@@ -3178,11 +3195,7 @@ contains
       call set(min_eigen, eigenvalue_from_edge_length(node_val(max_edge, 1)))
     else
       call allocate(max_edge, mesh, "MaximumEdgeLengths")
-      if (have_regions) then
-         call initialise_field_over_regions(max_edge, path // "/tensor_field::MaximumEdgeLengths/value", X)
-      else
-         call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
-      end if
+      call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
       call allocate(min_eigen, mesh, "MinMetricEigenbound")
       do node=1,node_count(mesh)
         call set(min_eigen, node, eigenvalue_from_edge_length(node_val(max_edge, node)))
@@ -3274,8 +3287,6 @@ contains
        call check_large_scale_ocean_options
     case ("multimaterial")
        call check_multimaterial_options
-    case ("porous_media")
-       call check_porous_media_options
     case ("stokes")
        call check_stokes_options
     case ("foams")
@@ -3897,36 +3908,6 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
 
   end subroutine check_multimaterial_options
 
-  subroutine check_porous_media_options
-
-    integer :: nmat, i
-    logical :: have_vfrac, have_viscosity, have_porosity, have_permeability
-
-    nmat = option_count("/material_phase")
-    ewrite(2,*) 'nmat:',nmat
-
-    have_porosity = have_option("/porous_media/scalar_field::Porosity")
-    have_permeability = have_option("/porous_media/scalar_field::Permeability").or.&
-                       &have_option("/porous_media/vector_field::Permeability").or.&
-                       &have_option("/porous_media/tensor_field::Permeability")
-    if((.not.have_porosity).or.(.not.have_permeability)) then
-       FLExit("For porous media problems we need porosity and permeability.")
-    end if
-! Need to sort this out for multiphase!!!
-    do i = 0, nmat-1
-       if(have_option("/porous_media/multiphase_parameters")) then
-          have_vfrac = have_option("/material_phase["//int2str(i)//&
-               "]/scalar_field::PhaseVolumeFraction")
-          have_viscosity = have_option("/materical_phase["//int2str(i)//&
-               "]/tensor_field::MaterialViscosity")
-          if((.not.have_vfrac).or.(.not.have_viscosity)) then
-             FLExit("Need volume fractions and viscosities for each material phase.")
-          endif
-       endif
-    end do
-
-  end subroutine check_porous_media_options
-
   subroutine check_stokes_options
 
     ! Check options for Stokes flow simulations.
@@ -4019,32 +4000,6 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
     end do
 
   end subroutine check_stokes_options
-
-  subroutine check_implicit_solids_options
-
-    integer :: nmat, i
-    logical :: have_scon, have_spha, have_oneway, have_twoway
-
-    nmat = option_count("/material_phase")
-
-    do i = 0, nmat-1
-       have_scon = have_option("/material_phase["//int2str(i)//&
-            "]/scalar_field::SolidConcentration")
-       have_spha = have_option("/material_phase["//int2str(i)//&
-            "]/scalar_field::SolidPhase")
-       if((.not.have_scon).or.(.not.have_spha)) then
-          FLExit("An implicit solid needs a SolidConcentration and a SolidPhase.")
-       end if
-    end do
-
-    have_oneway = have_option("/material_phase/one_way_coupling")
-    have_twoway = have_option("/material_phase/two_way_coupling")
-
-    if((.not.have_oneway).or.(.not.have_twoway)) then
-       FLExit("Implicit_solids should be run with either a one-way coupling or a two-way coupling.")
-    end if
-
-  end subroutine check_implicit_solids_options
 
   subroutine check_foams_options
     ! Check options for liquid drainage in foam simulations.

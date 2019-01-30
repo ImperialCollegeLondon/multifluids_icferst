@@ -29,81 +29,78 @@
 
 module fluids_module
 
-  use AuxilaryOptions
-  use MeshDiagnostics
-  use signal_vars
+  use fldebug
+  use auxilaryoptions
   use spud
-  use equation_of_state
-  use timers
-  use adapt_state_module
-  use adapt_state_prescribed_module
-  use FLDebug
+  use global_parameters, only: current_time, dt, timestep, OPTION_PATH_LEN, &
+       simulation_start_time, &
+       simulation_start_cpu_time, &
+       simulation_start_wall_time, &
+       topology_mesh_name, FIELD_NAME_LEN, is_porous_media
+  use futils, only: int2str
+  use reference_counting, only: print_references
+  use parallel_tools
+  use memory_diagnostics
   use sparse_tools
   use elements
+  use adjacency_lists
+  use eventcounter
+  use transform_elements, only: cache_transform_elements, deallocate_transform_cache
+  use meshdiagnostics
+  use signal_vars
   use fields
-  use boundary_conditions_from_options
-  use populate_state_module
-  use populate_sub_state_module
-  use reserve_state_module
+  use state_module
   use vtk_interfaces
-  use Diagnostic_variables
-  use diagnostic_fields_new, only : &
-    & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
-    & check_diagnostic_dependencies
-  use diagnostic_fields_wrapper
-  use diagnostic_children
-  use advection_diffusion_cg
-  use advection_diffusion_DG
-  use advection_diffusion_FV
-  use field_equations_cv, only: solve_field_eqn_cv, initialise_advection_convergence, coupled_cv_field_eqn
-  use vertical_extrapolation_module
-  use qmesh_module
-  use checkpoint
-  use write_state_module
+  use boundary_conditions
+  use halos
+  use equation_of_state
+  use timers
   use synthetic_bc
+  use k_epsilon, only: keps_advdif_diagnostics
+  use tictoc
+  use boundary_conditions_from_options
+  use reserve_state_module
+  use write_state_module
+  use detector_parallel, only: sync_detector_coordinates, deallocate_detector_list_array
+  use diagnostic_variables
+  use populate_state_module
+  use vertical_extrapolation_module
+  use field_priority_lists
+  use multiphase_module
+  use multimaterial_module
+  use free_surface_module
+  use momentum_diagnostic_fields, only: calculate_densities
+  use sediment_diagnostics, only: calculate_sediment_flux
+  use dqmom
+  use diagnostic_fields_wrapper
+  use checkpoint
   use goals
   use adaptive_timestepping
   use conformity_measurement
-  ! Use Solid-fluid coupling and ALE - Julian- 18-09-06
-  use ale_module
-  use adjacency_lists
-  use multimaterial_module
-  use parallel_tools
-  use SolidConfiguration
-  use MeshMovement
+  use timeloop_utilities
+  use discrete_properties_module
+  use adapt_state_module
+  use adapt_state_prescribed_module
+  use populate_sub_state_module
+  use diagnostic_fields_new, only : &
+       & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
+       & check_diagnostic_dependencies
+  use diagnostic_children
+  use advection_diffusion_cg
+  use advection_diffusion_dg
+  use advection_diffusion_fv
+  use field_equations_cv, only: solve_field_eqn_cv, initialise_advection_convergence, coupled_cv_field_eqn
+  use qmesh_module
   use write_triangle
+  use meshmovement
   use biology
   use foam_flow_module, only: calculate_potential_flow, calculate_foam_velocity
   use momentum_equation
-  use timeloop_utilities
-  use field_priority_lists
-  use boundary_conditions
-  use spontaneous_potentials, only: calculate_electrical_potential
-  use saturation_distribution_search_hookejeeves
-  use discrete_properties_module
   use gls
-  use k_epsilon
   use iceshelf_meltrate_surf_normal
-  use halos
-  use memory_diagnostics
-  use free_surface_module
-  use global_parameters, only: current_time, dt, timestep, OPTION_PATH_LEN, &
-                               simulation_start_time, &
-                               simulation_start_cpu_time, &
-                               simulation_start_wall_time, &
-                               topology_mesh_name
-  use eventcounter
-  use reduced_model_runtime
-  use implicit_solids
-  use sediment
 #ifdef HAVE_HYPERLIGHT
   use hyperlight
 #endif
-  use multiphase_module
-  use detector_parallel, only: sync_detector_coordinates, deallocate_detector_list_array
-  use tictoc
-  use momentum_diagnostic_fields, only: calculate_densities
-  use sediment_diagnostics, only: calculate_sediment_flux
 
   implicit none
 
@@ -135,7 +132,6 @@ contains
     !     System state wrapper.
     type(state_type), dimension(:), pointer :: state => null()
     type(state_type), dimension(:), pointer :: sub_state => null()
-    type(state_type), dimension(:), allocatable :: POD_state
 
     type(tensor_field) :: metric_tensor
     !     Dump index
@@ -151,21 +147,10 @@ contains
 
     !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
-    !     STUFF for MEsh movement, and Solid-fluid-coupling.  ------ jem
-
-    !     Ale mesh movement - Julian 05-02-07
-    LOGICAL:: USE_ALE
-    INTEGER:: fs
-
-    !     Solid-fluid coupling - Julian 18-09-06
-    !New options
-    INTEGER :: ss,ph
-    LOGICAL :: have_solids
-
     ! An array of submaterials of the current phase in state(istate).
     ! Needed for k-epsilon VelocityBuoyancyDensity calculation line:~630
     ! S Parkinson 31-08-12
-    type(state_type), dimension(:), pointer :: submaterials     
+    type(state_type), dimension(:), pointer :: submaterials
 
     ! Pointers for scalars and velocity fields
     type(scalar_field), pointer :: sfield
@@ -202,7 +187,7 @@ contains
        if (.not.have_option("/material_phase[0]/scalar_field::Chlorophyll")) then
           FLExit("You need Chlorophyll scalar field for Hyperlight")
        else
-          call hyperlight_init()       
+          call hyperlight_init()
        end if
     end if
 #else
@@ -224,13 +209,6 @@ contains
 
     ewrite(3,*)'before have_option test'
 
-    if (have_option("/reduced_model/execute_reduced_model")) then
-       call read_pod_basis(POD_state, state)
-    else
-       ! need something to pass into solve_momentum
-       allocate(POD_state(1:0))
-    end if
-
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
 
@@ -238,7 +216,7 @@ contains
 
     ! For multiphase simulations, we have to call calculate_diagnostic_phase_volume_fraction *before*
     ! copy_to_stored(state,"Old") is called below. Otherwise, OldPhaseVolumeFraction (in the phase
-    ! containing the diagnostic PhaseVolumeFraction) will be zero and 
+    ! containing the diagnostic PhaseVolumeFraction) will be zero and
     ! NonlinearPhaseVolumeFraction will be calculated incorrectly at t=0.
     if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
       call calculate_diagnostic_phase_volume_fraction(state)
@@ -249,13 +227,16 @@ contains
          & default=1)
     call get_option("/timestepping/nonlinear_iterations/tolerance", &
          & nonlinear_iteration_tolerance, default=0.0)
-    
+
     if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
 
        if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
          call get_option('/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
          nonlinear_iterations = nonlinear_iterations_adapt
        end if
+
+       ! set population balance initial conditions - for first adaptivity
+       call dqmom_init(state)
 
        call adapt_state_first_timestep(state)
 
@@ -270,9 +251,6 @@ contains
        ! Ensure that checkpoints do not adapt at first timestep.
        call delete_option(&
             "/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")
-
-       ! Remove dummy field used by implicit_solids
-       if (have_option("/implicit_solids")) call remove_dummy_field(state(1))
     else
        ! Auxilliary fields.
        call allocate_and_insert_auxilliary_fields(state)
@@ -300,6 +278,9 @@ contains
        call populate_sub_state(state,sub_state)
     end if
 
+    ! set population balance initial conditions
+    call dqmom_init(state)
+
     ! Calculate the number of scalar fields to solve for and their correct
     ! solve order taking into account dependencies.
     call get_ntsol(ntsol)
@@ -321,7 +302,7 @@ contains
              call insert_original_distance_to_bottom(state(1))
              ! Wetting and drying only works with no poisson guess ... let's check that
              call get_option("/material_phase[0]/scalar_field::Pressure/prognostic/scheme/poisson_pressure_solution", option_buffer)
-             if (.not. trim(option_buffer) == "never") then 
+             if (.not. trim(option_buffer) == "never") then
                FLExit("Please choose 'never' under /material_phase[0]/scalar_field::Pressure/prognostic/scheme/poisson_pressure_solution when using wetting and drying")
              end if
           end if
@@ -335,47 +316,6 @@ contains
 
     call run_diagnostics(state)
 
-    !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-    !     Initialise solid-fluid coupling, and ALE ----------- -Julian 17-07-2008
-    have_solids=.false.
-    use_ale=.false.
-
-    !Read the amount of SolidConcentration fields
-    !and save their IT numbers.
-    if(have_option(trim('/imported_solids'))) then
-       ss=0
-       phaseloop: do ph = 1, size(state)
-          write(option_buffer, '(a,i0,a)') "/material_phase[",ph-1,"]"
-          if(have_option(trim(option_buffer)//"/scalar_field::SolidConcentration") &
-             .and. have_option("/imported_solids")) then
-             ss = ph
-             have_solids=.true.
-          end if
-       end do phaseloop
-       if(ss==0) then
-          ewrite(-1,*) "You have /imported_solids on but..."
-          FLExit("..couldn't find a material phase containing solid concentration.")
-       end if
-       EWRITE(2,*) 'solid state= ',ss
-    end if
-
-    if(have_option(trim('/mesh_adaptivity/mesh_movement/explicit_ale'))) then
-       !if using ALE with two fluids, look for the prognostic Material Volume fraction field.
-       !This will later be changed to be more general (i.e.: be able to do this with any field by providing
-       !its name)
-       use_ale=.true.
-       fs=-1
-       phaseloop1: do ph = 1, size(state)
-          write(option_buffer, '(a,i0,a)') "/material_phase[",ph-1,"]"
-          if(have_option(trim(option_buffer)//"/scalar_field::MaterialVolumeFraction/prognostic")) then
-             fs = ph
-          end if
-       end do phaseloop1
-       if (fs==-1) then
-          FLExit('No prognostic MaterialVolumeFraction was defined, which is needed for ALE')
-       end if
-    end if
-    !     end initialise solid-fluid coupling, and ALE  -Julian 17-07-2008
     !CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 
     if (have_option("/mesh_adaptivity/hr_adaptivity")) then
@@ -389,11 +329,13 @@ contains
        FLExit("Rejig your FLML: /io/dump_format")
     end if
 
-    ! initialise the multimaterial fields
+    ! Initialise multimaterial fields:
     call initialise_diagnostic_material_properties(state)
 
-    call calculate_diagnostic_variables(State)
+    ! Calculate diagnostic variables:
+    call calculate_diagnostic_variables(state)
     call calculate_diagnostic_variables_new(state)
+
     ! This is mostly to ensure that the photosynthetic radiation
     ! has a non-zero value before the first adapt.
     if (have_option("/ocean_biology")) then
@@ -412,7 +354,7 @@ contains
             call melt_bc(state(1))
           endif
     end if
-    
+
     ! Checkpoint at start
     if(do_checkpoint_simulation(dump_no)) call checkpoint_simulation(state, cp_no = dump_no)
     ! Dump at start
@@ -462,11 +404,11 @@ contains
        call tic(TICTOC_ID_TIMESTEP)
 
        if( &
-                                ! Do not dump at the start of the simulation (this is handled by write_state call earlier)
+            ! Do not dump at the start of the simulation (this is handled by write_state call earlier)
             & current_time > simulation_start_time &
-                                ! Do not dump at the end of the simulation (this is handled by later write_state call)
+            ! Do not dump at the end of the simulation (this is handled by later write_state call)
             & .and. current_time < finish_time &
-                                ! Test write_state conditions
+            ! Test write_state conditions
             & .and. do_write_state(current_time, timestep) &
             & ) then
 
@@ -541,12 +483,9 @@ contains
           ewrite(1,*)'Start of another nonlinear iteration; ITS,nonlinear_iterations=',ITS,nonlinear_iterations
           ewrite(1,*)'###################'
 
+          ! For each field, set the iterated field, if present:
           call copy_to_stored_values(state, "Iterated")
-          ! relax to nonlinear has to come before copy_from_stored_values
-          ! so that the up to date values don't get wiped from the field itself
-          ! (this could be fixed by replacing relax_to_nonlinear on the field
-          !  with a dependency on the iterated field but then copy_to_stored_values
-          !  would have to come before relax_to_nonlinear)
+          ! For each field, set the nonlinear field, if present:
           call relax_to_nonlinear(state)
           call copy_from_stored_values(state, "Old")
 
@@ -574,50 +513,15 @@ contains
 
           call compute_goals(state)
 
-          !------------------------------------------------
-          ! Addition for calculating drag force ------ jem 05-06-2008
-          if (have_option("/imported_solids/calculate_drag_on_surface")) then
-             call drag_on_surface(state)
-          end if
-
-          !     Addition for reading solids in - jem  02-04-2008
-          if (have_solids) call solid_configuration(state(ss:ss))
-
-          !Explicit ALE ------------   jem 21/07/08
-          if (use_ale) then
-             EWRITE(0,'(A)') '----------------------------------------------'
-             EWRITE(0,'(A26,E12.6)') 'Using explicit_ale. time: ',current_time
-             call explicit_ale(state,fs)
-          end if
-          !end explicit ale ------------  jem 21/07/08
-
-          ! Call to electrical properties for porous_media module 
-          if (have_option("/porous_media")) then
-             ! compute spontaneous electrical potentials
-             do i=1,size(state)
-                option_buffer = '/material_phase['//int2str(i-1)//']/electrical_properties/'
-                ! Option to search through a space of saturation distributions to find
-                ! best match to measured electrical data - for reservoir modelling.
-                if (have_option(trim(option_buffer)//'Saturation_Distribution_Search')) then
-                   call search_saturations_hookejeeves(state, i)
-                elseif (have_option(trim(option_buffer)//'coupling_coefficients/scalar_field::Electrokinetic').or.&
-                    have_option(trim(option_buffer)//'coupling_coefficients/scalar_field::Thermoelectric').or.&
-                    have_option(trim(option_buffer)//'coupling_coefficients/scalar_field::Electrochemical')) then
-                   call calculate_electrical_potential(state(i), i)
-                end if
-             end do
-          end if
+          ! Calculate source terms for population balance scalars
+          call dqmom_calculate_source_terms(state, ITS)
 
           if (have_option("/ocean_biology")) then
              call calculate_biology_terms(state(1))
           end if
 
-          if (have_option("/implicit_solids")) then
-             call solids(state(1), its, nonlinear_iterations)
-          end if
-
           ! Do we have the k-epsilon turbulence model?
-          ! If we do then we want to calculate source terms and diffusivity for the k and epsilon 
+          ! If we do then we want to calculate source terms and diffusivity for the k and epsilon
           ! fields and also tracer field diffusivities at n + theta_nl
           do i= 1, size(state)
              if(have_option("/material_phase["//&
@@ -625,9 +529,9 @@ contains
                 if(timestep == 1 .and. its == 1 .and. have_option('/physical_parameters/gravity')) then
                    ! The very first time k-epsilon is called, VelocityBuoyancyDensity
                    ! is set to zero until calculate_densities is called in the momentum equation
-                   ! solve. Calling calculate_densities here is a work-around for this problem.  
+                   ! solve. Calling calculate_densities here is a work-around for this problem.
                    sfield => extract_scalar_field(state, 'VelocityBuoyancyDensity')
-                   if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then 
+                   if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
                       call get_phase_submaterials(state, i, submaterials)
                       call calculate_densities(submaterials, buoyancy_density=sfield)
                       deallocate(submaterials)
@@ -723,12 +627,12 @@ contains
           if( have_option("/material_phase[0]/subgridscale_parameterisations/GLS/option")) then
             call gls_diffusivity(state(1))
           end if
-          
+
           !BC for ice melt
           if (have_option('/ocean_forcing/iceshelf_meltrate/Holland08/calculate_boundaries')) then
             call melt_bc(state(1))
           endif
-          
+
           if(option_count("/material_phase/scalar_field/prognostic/spatial_discretisation/coupled_cv")>0) then
              call coupled_cv_field_eqn(state, global_it=its)
           end if
@@ -736,12 +640,6 @@ contains
           !
           ! Assemble and solve N.S equations.
           !
-
-          if (have_solids) then
-             ewrite(2,*) 'into solid_drag_calculation'
-             call solid_drag_calculation(state(ss:ss), its, nonlinear_iterations)
-             ewrite(2,*) 'out of solid_drag_calculation'
-          end if
 
           do i=1, option_count("/material_phase")
             option_path="/material_phase["//int2str(i-1)//"]/scalar_field::FoamVelocityPotential"
@@ -751,7 +649,7 @@ contains
                ! avoid outflow bc's for velocity being zero after adapts
                call set_boundary_conditions_values(state, shift_time=.true.)
             end if
-          end do 
+          end do
 
           ! This is where the non-legacy momentum stuff happens
           ! a loop over state (hence over phases) is incorporated into this subroutine call
@@ -759,11 +657,22 @@ contains
 
           if(use_sub_state()) then
              call update_subdomain_fields(state,sub_state)
-             call solve_momentum(sub_state,at_first_timestep=((timestep==1).and.(its==1)),timestep=timestep, POD_state=POD_state)
+             call solve_momentum(sub_state,at_first_timestep=((timestep==1).and.(its==1)),timestep=timestep)
              call sub_state_remap_to_full_mesh(state, sub_state)
           else
-             call solve_momentum(state,at_first_timestep=((timestep==1).and.(its==1)),timestep=timestep, POD_state=POD_state)
+             call solve_momentum(state,at_first_timestep=((timestep==1).and.(its==1)),timestep=timestep)
           end if
+
+          ! Apply minimum weight condition on weights - population balance
+          call dqmom_apply_min_weight(state)
+
+          ! calculate abscissa in the population balance equation
+          ! this must be done at the end of each non-linear iteration
+          call dqmom_calculate_abscissa(state)
+          do i = 1, size(state)
+             call dqmom_calculate_moments(state(i))
+             call dqmom_calculate_statistics(state(i))
+          end do
 
           if(nonlinear_iterations > 1) then
              ! Check for convergence between non linear iteration loops
@@ -783,12 +692,6 @@ contains
              end if
           end if
 
-          if(have_solids) then
-             ewrite(2,*) 'into solid_data_update'
-             call solid_data_update(state(ss:ss), its, nonlinear_iterations)
-             ewrite(2,*) 'out of solid_data_update'
-          end if
-
        end do nonlinear_iteration_loop
 
        ! Calculate prognostic sediment deposit fields
@@ -805,20 +708,6 @@ contains
           end if
        end if
 
-       if (have_option("/implicit_solids")) then
-          call implicit_solids_update(state(1))
-          if (have_option("/timestepping/nonlinear_iterations/tolerance")) then
-             if ((its < nonlinear_iterations .and. change < abs(nonlinear_iteration_tolerance))) then
-                call implicit_solids_nonlinear_iteration_converged()
-             end if
-          end if
-       end if
-
-       if(have_option(trim('/mesh_adaptivity/mesh_movement/vertical_ale'))) then
-          ewrite(1,*) 'Entering vertical_ale routine'
-          !move the mesh and calculate the grid velocity
-          call movemeshy(state(1))
-       end if
        if (have_option('/mesh_adaptivity/mesh_movement')) then
           ! During the timestep Coordinate is evaluated at n+theta, i.e.
           ! (1-theta)*OldCoordinate+theta*IteratedCoordinate. For writing
@@ -839,13 +728,13 @@ contains
        ! calculate and write diagnostics before the timestep gets changed
        call calculate_diagnostic_variables(State, exclude_nonrecalculated=.true.)
        call calculate_diagnostic_variables_new(state, exclude_nonrecalculated = .true.)
-          
+
        ! Call the modern and significantly less satanic version of study
        call write_diagnostics(state, current_time, dt, timestep)
        ! Work out the domain volume by integrating the water depth function over the surface if using wetting and drying
        if (have_option("/mesh_adaptivity/mesh_movement/free_surface/wetting_and_drying")) then
           ewrite(1, *) "Domain volume (\int_{fs} (\eta.-b)n.n_z)): ", calculate_volume_by_surface_integral(state(1))
-       end if 
+       end if
 
 
        if(have_option("/timestepping/adaptive_timestep")) call calc_cflnumber_field_based_dt(state, dt)
@@ -894,7 +783,7 @@ contains
 
              if(have_option("/io/stat/output_after_adapts")) call write_diagnostics(state, current_time, dt, timestep, not_to_move_det_yet=.true.)
              call run_diagnostics(state)
- 
+
           end if
        else if(have_option("/mesh_adaptivity/prescribed_adaptivity")) then
           if(do_adapt_state_prescribed(current_time)) then
@@ -961,18 +850,12 @@ contains
        end do
     end if
 
-    if (allocated(pod_state)) then
-       do i=1, size(pod_state)
-          call deallocate(pod_state(i))
-       end do
-    end if
-    
     ! deallocate the pointer to the array of states and sub-state:
     deallocate(state)
     if(use_sub_state()) deallocate(sub_state)
 
     ! Clean up registered diagnostics
-    call destroy_registered_diagnostics 
+    call destroy_registered_diagnostics
 
     ! Delete the transform_elements cache.
     call deallocate_transform_cache
@@ -1065,7 +948,7 @@ contains
         end if
     else
         ! Timestep adapt
-        if(have_option("/timestepping/adaptive_timestep")) then
+        if(have_option("/timestepping/adaptive_timestep") .and. .not. is_porous_media) then
             call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
             call set_option("/timestepping/timestep", dt)
         end if

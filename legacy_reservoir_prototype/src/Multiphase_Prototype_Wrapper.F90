@@ -33,6 +33,8 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use elements
     use fields
     use state_module
+    use futils
+    use transform_elements
     use populate_state_module
     use reserve_state_module
     use diagnostic_variables
@@ -60,7 +62,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use MeshDiagnostics
     use write_gmsh
     use signals
-    use multi_tools, only: extract_strings_from_csv_file
+    use multi_tools
     !use mp_prototype
     use tictoc
     implicit none
@@ -75,7 +77,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     character(len = option_path_len) :: filename
     character(len = option_path_len) :: simulation_name, dump_format
 
-    real :: finish_time, nonlinear_iteration_tolerance
+    real :: finish_time, nonlinear_iteration_tolerance, auxR, dump_period
 
     ! Establish signal handlers
     call initialise_signals()
@@ -90,14 +92,14 @@ subroutine multiphase_prototype_wrapper() bind(C)
     ! this is to make sure the option /io/log_output/memory_diagnostics is read
     call reset_memory_logs()
 #endif
-
     call initialise_write_state
-
 
     !!Retrieve what type of simulation are we doing
     call get_simulation_type()
+
     !Flag the first time step
     first_time_step = .true.
+
     ! Read state from .mpml file
     call populate_multi_state(state)
 !    call populate_state(state)
@@ -121,6 +123,20 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! set the remaining timestepping options, needs to be before any diagnostics are calculated
     call get_option("/timestepping/timestep", dt)
+
+    if ( have_option('/io/dump_period') ) then
+      !Check, if we are not adapting the timestep that the dump_period is a multiple of the timestep
+      if (.not.have_option( '/timestepping/adaptive_timestep' ) .and. &
+      .not. have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
+        call get_option('/io/dump_period/constant', dump_period, default = 0.01)
+        auxR = mod(dump_period,dt)
+        if ( abs(auxR) > 1e-8 .or. dt > dump_period) then
+          dt = dump_period/ceiling(dump_period/dt)
+          ewrite(0, *) "WARNING: Dump period has to be a multiple of the time-step. Time-step adjusted to: ", dt
+          call set_option("/timestepping/timestep", dt)
+        end if
+      end if
+    end if
     !  if(have_option("/timestepping/adaptive_timestep/at_first_timestep")) then
     !    call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
     !    call set_option("/timestepping/timestep", dt)
@@ -130,7 +146,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call get_option("/timestepping/finish_time", finish_time)
 
     call get_option('/simulation_name',simulation_name)
-    call initialise_diagnostics(trim(simulation_name),state)
+    call initialise_diagnostics(trim(simulation_name),state, ICFERST = .true.)
 
     ! Calculate the number of scalar fields to solve for and their correct
     ! solve order taking into account dependencies.
@@ -148,11 +164,10 @@ subroutine multiphase_prototype_wrapper() bind(C)
     end if
 
     ! set the nonlinear timestepping options, needs to be before the adapt at first timestep
-    call get_option('/timestepping/nonlinear_iterations',nonlinear_iterations,&
+    call get_option('/solver_options/Non_Linear_Solver',nonlinear_iterations,&
         & default=1)
-    call get_option("/timestepping/nonlinear_iterations/tolerance", &
+    call get_option("/solver_options/Non_Linear_Solver/tolerance", &
         & nonlinear_iteration_tolerance, default=0.0)
-
     ! Auxilliary fields.
     call allocate_and_insert_auxilliary_fields(state)
     call copy_to_stored_values(state,"Old")
@@ -163,7 +178,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     call run_diagnostics(state)
 
-    !     Determine the output format 
+    ! Determine the output format
     dump_format = "vtk"
 
     ! initialise the multimaterial fields
@@ -248,10 +263,10 @@ contains
         implicit none
         type(state_type), dimension(:), pointer, intent(inout) :: state
         !Local variables
-        integer :: i, nphase, npres, aux
+        integer :: i, nphase, npres, aux, ncomp
         integer, dimension(2) :: shape
-        character( len = option_path_len ) :: option_path
-        integer :: stat
+        character( len = option_path_len ) :: option_path, option_name, option_path_BAK
+        integer :: stat, Pdegree, Vdegree, fields, k
         type (scalar_field), target :: targ_Store
         type (scalar_field), pointer :: sfield1, sfield2
         type (vector_field), pointer :: position
@@ -259,16 +274,30 @@ contains
 
         nphase = option_count("/material_phase")
         npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+        ncomp = option_count("/material_phase/is_multiphase_component")
         !Adjust nphase to not account for the extra phases added by the wells
-        nphase = nphase/npres
-
+        nphase = nphase/npres - ncomp
+        ncomp = ncomp/nphase
         !Read at the very beginning the property input file
         call read_fluid_and_rock_properties_from_csv()
 
-        !If the input file is the simplified version of the mpml
-        ! file then we need to reconstruct the original mpml file
-        ! the flag /is_porous_media only exists in the IC_FERST schema and triggers this
-        if (have_option("/is_porous_media")) call convert_FERST_input_file(nphase, npres)
+        ! Fill in to old style schema internally
+        call autocomplete_input_file(nphase, npres, ncomp)
+
+        !Check if it is P0DGP1; do it after adapting new schema file
+        call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', &
+            Vdegree )
+        call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
+            Pdegree )
+        is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
+                .not. have_option( '/geometry/Advance_options/FE_Pressure' )
+        if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
+                        .or. have_option('/inertia_dominated'))) then
+            ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
+            ewrite(0, *) "A. Use the P1DGP2CV formulation."
+            ewrite(0, *) "B. Use the P1DGP1CV formulation with mass lumping = 100 in: /numerical_methods/lump_mass_matrix/lump_weight"
+            stop
+        end if
 
         !Prepare some specific modifications prior to populating state
         !If the extra mesh have not been created, create them here
@@ -278,6 +307,7 @@ contains
                 call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")
             end if
         end if
+        ewrite(1, *) "Create internally: PressureMesh_Continuous, PressureMesh_Discontinuous and P0DG mesh. Check multiphase_prototype_wrapper"
         if (.not. have_option("/geometry/mesh::PressureMesh_Continuous")) then
             call copy_option("/geometry/mesh::PressureMesh", "/geometry/mesh::PressureMesh_Continuous")
             call set_option("/geometry/mesh::PressureMesh_Continuous/from_mesh/mesh_continuity", "continuous")
@@ -294,25 +324,59 @@ contains
             call set_option("/geometry/mesh::P0DG/from_mesh/mesh_continuity", "discontinuous")
         end if
 
+        !SPRINT_TO_DO generilise this to other fields
+        ! if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+        !     ewrite(1, *) "For adapt within FPI, create necessary backups for storing the saturation. Check multiphase_prototype_wrapper"
+        !     !Create necessary backups for storing the saturation (in a way that it is also adapted)
+        !     do i = 1, nphase
+        !         option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_bak"
+        !         call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction",&
+        !              trim(option_path))
+        !         !Make sure the field is not shown
+        !         if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
+        !             !Copy an option that always exists to ensure we exclude the new field from vtu
+        !             call copy_option("/simulation_name",trim(option_path)//"/prognostic/output/exclude_from_vtu")
+        !         end if
+        !         !Make sure that this field is not the objective of adaptivity
+        !         if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
+        !             call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
+        !         end if
+        !     end do
+        ! end if
 
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+            ewrite(1, *) "For adapt within FPI, create necessary backups for storing the old fields. Check multiphase_prototype_wrapper"
             !Create necessary backups for storing the saturation (in a way that it is also adapted)
             do i = 1, nphase
-                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_bak"
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction",&
-                     trim(option_path))
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( i - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( i - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/scalar_field::BAK_"//trim(option_name)
+                  !If a prognostic field then create backup (for incompressible flows, pressure would not be necessary)
+                  call copy_option(trim(option_path),trim(option_path_BAK))
+                  !Make sure the field is not shown
+                  if (.not.have_option(trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")) then
+                      !Copy an option that always exists to ensure we exclude the new field from vtu
+                      call copy_option("/simulation_name",trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")
+                  end if
+                end do
+                !Finally velocity as well
+                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity"
+                option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/vector_field::BAK_Velocity"
+                call copy_option(trim(option_path),trim(option_path_BAK))
                 !Make sure the field is not shown
-                if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
-                    !Copy an option that lways exists to ensure we exclude the new field from vtu
-                    call copy_option("/simulation_type",trim(option_path)//"/prognostic/output/exclude_from_vtu")
-                end if
-                !Make sure that this field is not the objective of adaptivity
-                if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
-                    call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
+                if (.not.have_option(trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")) then
+                    !Copy an option that always exists to ensure we exclude the new field from vtu
+                    call copy_option("/simulation_name",trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")
                 end if
             end do
         end if
-
 
         if (have_option('/physical_parameters/black-oil_PVT_table')) then
 
@@ -322,6 +386,10 @@ contains
             if (nphase /= 3)then
                 FLAbort('Black-Oil modelling requires three phases. Phase 1 Aqua, phase 2 liquid, phase 3 vapour')
             end if
+            if (GetProcNo() == 1) then
+              print*, "WARNING: Currently for Black-Oil modelling it is recommended to disable Test_mass_consv by setting a high value. For example 1e10."
+            end if
+
 
             option_path = "/material_phase["// int2str( nphase -1 )//"]/scalar_field::VapourMassFraction"
             call copy_option("/material_phase["// int2str( nphase - 1 )//"]/scalar_field::PhaseVolumeFraction",&
@@ -329,8 +397,8 @@ contains
             !Make sure the field is not shown
             if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
                 !Don't know how to set exclude_from_vtu to true from the spud options, hence,
-                !since Porous_media HAS to be true I copy it to obtain the same effect
-                call copy_option("/simulation_type/porous_media",&
+                !since simulation_name HAS to exist I copy it to obtain the same effect
+                call copy_option("/simulation_name",&
                  trim(option_path)//"/prognostic/output/exclude_from_vtu")
             end if
             !Make sure that this field is not the objective of adaptivity
@@ -341,17 +409,18 @@ contains
 
 
         if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
+            ewrite(1, *) "Preserve regions MUST to be ON. Check multiphase_prototype_wrapper"
             !Ensure that preserve_mesh_regions is on, since otherwise it does not work
             !Don't know how to set exclude_from_vtu to true from the spud options, hence,
-            !since Porous_media HAS to be true I copy it to obtain the same effect
+            !since simulation_name HAS to exist I copy it to obtain the same effect
             if (.not.have_option("/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")) then
-                call copy_option("/simulation_type/porous_media",&
+                call copy_option("/simulation_name",&
                  "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
             end if
         end if
         if (is_porous_media) then
-            !Create a copy of the velocity fields to store the DarcyVelocity in it
-            !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
+            ewrite(1, *) "For porous media we output only the Darcy Velocity, not the velocity. Check multiphase_prototype_wrapper"
+            !Create a field to store the DarcyVelocity in it
             do i = 1, nphase
                 option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::DarcyVelocity"
                 if (.not.have_option(option_path)) then
@@ -367,8 +436,14 @@ contains
                     call add_option(trim(option_path)//"/detectors",  stat=stat)
                     call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                     call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
-                end if
+                    !Velocity is the force density which is pretty much useless so we instead show the DarcyVelocity
+                    !do_not_show velocity
 
+                    if (.not.have_option("/numerical_methods/porous_output_force_density") .and.&
+                    .not.have_option("/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu"))&
+                    call copy_option("simulation_name", &
+                        "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/output/exclude_from_vtu")
+                end if
 
 
 !                option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::"
@@ -387,14 +462,15 @@ contains
         !Add dummy fields to ensure that the well geometries are preserved when the mesh is adapted
         !or to show the wells in paraview
         if (npres>1 ) then
-            if (have_option('/wells_and_pipes/well_volume_ids')) then
+            ewrite(1, *) "For wells we define dummy variables and we enforce options in Diamond. Check multiphase_prototype_wrapper"
+            if (have_option('/porous_media/wells_and_pipes/well_volume_ids')) then
                 !Introduce some dummy regions to ensure that mesh adaptivity keeps the wells in place
-                shape = option_shape('/wells_and_pipes/well_volume_ids')
+                shape = option_shape('/porous_media/wells_and_pipes/well_volume_ids')
                 assert(shape(1) >= 0)
                 allocate(well_ids(shape(1)))
-                call get_option( '/wells_and_pipes/well_volume_ids', well_ids)
+                call get_option( '/porous_media/wells_and_pipes/well_volume_ids', well_ids)
                 !Create field by adding the fields manually
-                option_path = "/wells_and_pipes/scalar_field::Well_domains"
+                option_path = "/porous_media/wells_and_pipes/scalar_field::Well_domains"
                 call add_option(trim(option_path),  stat=stat)
                 call add_option(trim(option_path)//"/prescribed",  stat=stat)
                 call add_option(trim(option_path)//"/prescribed/mesh::P0DG",  stat=stat)
@@ -409,16 +485,21 @@ contains
                 end do
                 deallocate(well_ids)
 
-                if (.not.have_option('/wells_and_pipes/well_volume_ids/Show_well_volumes_ids'))&
-                    call copy_option("/simulation_type/porous_media", trim(option_path)//"/prescribed/output/exclude_from_vtu")
+                !It is important that the DiameterPipe is not recalculated if wells are defined using files
+                if (have_option('/porous_media/wells_and_pipes/well_from_file[0]') .and. &
+                    .not.have_option('/porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate'))&
+                    call copy_option("/simulation_name", '/porous_media/wells_and_pipes/scalar_field::DiameterPipe/prescribed/do_not_recalculate')
+
+                if (.not.have_option('/porous_media/wells_and_pipes/well_volume_ids/Show_well_volumes_ids'))&
+                    call copy_option("/simulation_name", trim(option_path)//"/prescribed/output/exclude_from_vtu")
 
                 call add_option(trim(option_path)//"/prescribed/do_not_recalculate",  stat=stat)
-             else if (have_option('/wells_and_pipes/well_from_file[0]')) then
+             else if (have_option('/porous_media/wells_and_pipes/well_from_file[0]')) then
                 ewrite(0, *) "WARNING: well trajectories may not be preserved after mesh adaptivity. It is recommended to use /wells_and_pipes/well_volume_ids"
              end if
         end if
 !print all the options in the diamond file and added here to the terminal
-!call print_options()
+   ! call print_options()
         !Call fluidity to populate state
         call populate_state(state)
 
@@ -569,19 +650,16 @@ contains
         end if
     end subroutine read_fluid_and_rock_properties_from_csv
 
-    subroutine convert_FERST_input_file(nphase, npres)
+    subroutine autocomplete_input_file(nphase, npres, ncomp)
                 ! ################################
         ! In this subroutine. We populate the input file elements that are not user-selected in IC_FERST.rnc. (i.e. we set all the things that the user doesn't need to worry about).
         !IT IS VERY IMPORTANT NOT TO CHANGE THE ORDERING IN THIS SUBROUTINE!!!
         implicit none
-        integer, intent(in) :: nphase, npres
+        integer, intent(in) :: nphase, npres, ncomp
         !Local variables
-        integer :: stat, i, simulation_quality = 10
-        real :: theta, aux
+        integer :: stat, i, k, simulation_quality = 10, scalarComponents
+        real :: aux
         character( len = option_path_len ) :: option_path, quality_option
-
-        !Add simulation type like in the normal fashion
-        call add_option("/simulation_type/porous_media", stat=stat)
 
         ! GEOMETRY OPTIONS
         !Add quadrature option (always equals to 5 I think we need this for legacy reasons)
@@ -602,139 +680,273 @@ contains
             simulation_quality = 10
         end if
 
-        !Unless it is discontinuous_pressure (and this will change in the future) specify the CV_pressure formulation
-        if (simulation_quality < 1000) then
-            option_path = "/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/"
-            call add_option(trim(option_path), stat=stat)
-        end if
-
-        option_path = "/geometry/mesh::VelocityMesh/"
-        call add_option(trim(option_path)//"from_mesh", stat=stat)
-        call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
-        call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
-        call set_option(trim(option_path)//"from_mesh/mesh_continuity", "discontinuous")
-        call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
-        call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
-        call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
-        if (simulation_quality < 100) then
-            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
-        else if (simulation_quality < 1000) then
-            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
+        !#########GEOMETRY AND PRECISION OPTIONS#################
+        !SPRINT_TO_DO Make Fluidity to read the meshes from /geometry/Advance_options instead of having to copy them in the /geometry
+        if (have_option("/geometry/Advance_options/mesh::VelocityMesh/")) Then
+            !use the user input options
+            call copy_option("/geometry/Advance_options/mesh::VelocityMesh", "/geometry/mesh::VelocityMesh", stat=stat)
         else
-            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
+          option_path = "/geometry/mesh::VelocityMesh/"
+          call add_option(trim(option_path)//"from_mesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_continuity", "discontinuous")
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
+          if (simulation_quality < 100) then
+              if (have_option("/porous_media_simulator")) then
+                call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 0)
+              else !Currently only for porous media P0DG works, so we use P1 for the rest
+                call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
+              end if
+              call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
+          else if (simulation_quality < 1000) then
+              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
+              call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
+          else
+              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
+              call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "bubble")
+          end if
+          call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
         end if
-        call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
 
-        option_path = "/geometry/mesh::PressureMesh/"
-        call add_option(trim(option_path)//"from_mesh", stat=stat)
-        call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
-        call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
-        if (simulation_quality >= 1000) then
-            call set_option(trim(option_path)//"from_mesh/mesh_continuity", "discontinuous")
+        if (have_option("/geometry/Advance_options/mesh::PressureMesh/")) Then
+            !use the user input options
+            call copy_option("/geometry/Advance_options/mesh::PressureMesh", "/geometry/mesh::PressureMesh", stat=stat)
         else
-            call set_option(trim(option_path)//"from_mesh/mesh_continuity", "continuous")
+          option_path = "/geometry/mesh::PressureMesh/"
+          call add_option(trim(option_path)//"from_mesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
+          if (simulation_quality >= 1000) then
+              call set_option(trim(option_path)//"from_mesh/mesh_continuity", "discontinuous")
+          else
+              call set_option(trim(option_path)//"from_mesh/mesh_continuity", "continuous")
+          end if
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
+          if (simulation_quality >= 100 .and. simulation_quality < 1000) then
+              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
+          else
+              call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
+          end if
+          call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
         end if
-        call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
-        call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
-        call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
-        if (simulation_quality >= 100 .and. simulation_quality < 1000) then
-            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
-        else
-            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
+        !Extra meshes
+        k = option_count("/geometry/Advance_options/mesh")
+        do i =1, k
+          call get_option("/geometry/Advance_options/mesh["// int2str( i - 1 )//"]/name",option_path)
+          if (trim(option_path)/="VelocityMesh" .and. trim(option_path)/="PressureMesh") then
+            !Put in the place where Fluidity expects the mesh to be
+            call copy_option("/geometry/Advance_options/mesh::"//trim(option_path), "/geometry/mesh::"//trim(option_path), stat=stat)
+          end if
+        end do
+
+        if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
+          !Introduce the ph mesh, quadratic and continuous
+          option_path = "/geometry/mesh::ph/"
+          call add_option(trim(option_path)//"from_mesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
+          call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_continuity", "continuous")
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
+          call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
+          call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
+          call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
+          !Do we need the user to create a ph scalar field? maybe not
+          if (GetProcNo() == 1) then
+            print*, "Hydrostatic pressure solver currently tested only for inertia dominated flows."
+          end if
         end if
-        call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
 
-        !Select the theta
-        theta = -1.
-        if (simulation_quality < 10) theta = 1.0
-        !If it is balanced quality select local decision on theta
-        if (simulation_quality >= 10 .and. simulation_quality < 100) call add_option("/numerical_methods/local_upwinding", stat=stat)
 
-            ! IO STAT OPTIONS
+        !#########GEOMETRY AND PRECISION OPTIONS#################
+
+!Sprint_to_do
+!use allocate_and_insert_auxilliary_fields as a template to include internally the fields into state, without actually changing the input fiel using spud
+
+
+        ! Linear Solver options - Iterative Method; default options for all fields
+        if (.not. have_option("/solver_options/Linear_solver" )) then!The default has to exist
+          if (GetProcNo() == 1) then
+            print*, "MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE"
+          end if
+          option_path = "/solver_options/Linear_solver/iterative_method::gmres/restart"
+          call add_option(trim(option_path), stat = stat)
+          call set_option(trim(option_path), 30)
+          !Preconditioner
+          option_path = "/solver_options/Linear_solver/preconditioner::hypre/hypre_type[0]/name"
+          call add_option(trim(option_path), stat = stat)
+          call set_option(trim(option_path), "boomeramg")
+          !Convergence settings
+          call add_option("/solver_options/Linear_solver/relative_error", stat = stat)
+          call set_option("/solver_options/Linear_solver/relative_error", 1e-10)
+          call add_option("/solver_options/Linear_solver/absolute_error", stat = stat)
+          call set_option("/solver_options/Linear_solver/absolute_error", 1e-8)
+          call add_option("/solver_options/Linear_solver/max_iterations", stat = stat)
+          call set_option("/solver_options/Linear_solver/max_iterations", 300)
+          !Copy an option that always exists to ensure ignore all solver failues
+          call copy_option("/simulation_name","/solver_options/Linear_solver/ignore_all_solver_failures")
+
+        end if
+
+        !Non_Linear_Solver default settings
+        option_path = "/solver_options/Non_Linear_Solver"
+        if (.not. have_option(trim(option_path) )) then!The default has to exist
+          if (GetProcNo() == 1) then
+            print*, "MESSAGE: Using default options for the non-linear solver. Convergence check (Pressure) with a maximum of 20 its. ",&
+             "For multiphase porous media VAD and automatic backtracking are on. The check is either Saturation, if multiphase, or the Tracer used."
+          end if
+          call add_option(trim(option_path), stat = stat)
+          call set_option(trim(option_path), 20)
+          option_path = trim(option_path)//"/Fixed_Point_Iteration"
+          call add_option(trim(option_path), stat = stat)
+          call set_option(trim(option_path), 5e-2)
+          call add_option(trim(option_path)//"/Infinite_norm_tol", stat = stat)
+          call set_option(trim(option_path)//"/Infinite_norm_tol", 0.01)
+          if (have_option("/porous_media_simulator")) then
+            !If multiphase then the important thing is saturation!
+            if ( nphase > 1.) then
+              !Set up the non-linear solver to use an automatic backtracking method
+              call add_option(trim(option_path)//"/Backtracking_factor", stat=stat)
+              call set_option(trim(option_path)//"/Backtracking_factor",-10.)
+              call add_option(trim(option_path)//"/Vanishing_relaxation", stat=stat)
+              call set_option(trim(option_path)//"/Vanishing_relaxation",-1e2)
+            else !single phase
+              call add_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
+              if (have_option('/material_phase[0]/scalar_field::Temperature')) then
+                call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 4)
+              elseif (have_option('/material_phase[0]/scalar_field::SoluteMassFraction')) then
+                call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 5)
+              else !If nothing, then pressure
+                call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 1)
+              end if
+              call add_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport", stat=stat)
+              call set_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport",-1e1)
+
+              call add_option(trim(option_path)//"/Impose_min_max", stat = stat)
+            end if
+
+          else
+              call add_option("/solver_options/Linear_solver/relative_error", stat = stat)
+              call set_option("/solver_options/Linear_solver/relative_error", 1e-10)
+              !Use pressure to decide when to stop the non_linear iteration process
+              call add_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
+              call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 1)
+          end if
+
+        end if
+        ! IO STAT OPTIONS
         option_path = "/io/output_mesh[0]/name"
         call add_option(trim(option_path), stat=stat)
         call set_option(trim(option_path),"PressureMesh")
 
-        !Set up the non-linear solver to use an automatic backtracking method
-        option_path = "/timestepping/nonlinear_iterations/Fixed_Point_iteration/Bactracking_factor"
-        call add_option(trim(option_path), stat=stat)
-        call set_option(trim(option_path),-10.)
+        do i = 1, nphase*npres + ncomp*nphase
+
+          !Include that fields are part of stat, and not of detectors
+          do k = 1, option_count("/material_phase[" // int2str(i-1) // "]/scalar_field")
+              option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
+              if (have_option(trim(option_path))) then!Only for prognostic fields
+                ! Stat, convergence, detectors, steady state settings
+                !We have removd this from scalar_fields
+                !SPRINT_TO_DO THESE OPTIONS TO BE REMOVED from here and the other fields, this seems unnecessary?
+                call add_option(trim(option_path)//"/stat/include_in_stat", stat=stat)
+                call add_option(trim(option_path)//"/convergence/include_in_convergence", stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors", stat=stat)
+              end if
+          end do
 
 
-        do i = 1, nphase
+          !Components are treated differently, but this should change! SPRINT_TO_DO
+          if (.not.have_option("/material_phase["// int2str( i - 1 )//"]/is_multiphase_component")) then
+            !Create memory for Density internally
+            option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Density"
+            if (.not.have_option(option_path)) then
+                call add_option(trim(option_path),  stat=stat)
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Density/prognostic"
+                call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                call add_option(trim(option_path)//"/output",  stat=stat)
+                call add_option(trim(option_path)//"/stat",  stat=stat)
+                call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
 
-                    ! NEW TREATMENT OF EQUATION OF STATE AND SPECIFYING THE DENSITY OF EACH PHASE
-            option_path = "/material_phase["// int2str( i - 1)//"]/equation_of_state/incompressible/linear/all_equal"
-            if (.not. have_option(trim(option_path))) then
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/Density", trim(option_path)) ! Note this is an entirely new density option.
+                call add_option(trim(option_path)//"/detectors",  stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+            end if
+!Easiest way to create the viscosity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
+            call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Viscosity/tensor_field::Viscosity",&
+            "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity/prognostic/tensor_field::Viscosity")
+  !CHECK BECAUSE MAYBE THESE MEMORY IS AUTOMATICALLY ALLOCATED
+!Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
+            if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity")) then
+              if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
+                  FLAbort("Thermal Conductivity specified but no prognostic temperature field specified.")
+              end if
+                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity",&
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+            end if
+!Easiest way to create the heatcapacity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
+            if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity")) then
+                if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
+                    FLAbort("HeatCapacity specified but no prognostic temperature field specified.")
+                end if
+                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
+            end if
+            !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
+            if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
+              if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
+                  FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")
+              end if
+                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
             end if
 
-            ! REMOVE THE DENSITY FIELD ENIRELY - IT'S CONFUSIONG - CREATE IT INTERNALLY AS A COPY OF THE SATURATIONF FIELD MINUS THE SOLVER (check how safe this step is - otherwise do it the long way)
-            option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Density"
-            if (.not. have_option(trim(option_path))) then
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction", trim(option_path))
-                call delete_option(trim(option_path)//"/prognostic/solver")
+            if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
+              !Add a prognostic field named ph (do we need BCs or initial conditions for this?)
+              !This is only required for the first phase
+              option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Ph"
+              if (.not.have_option (trim(option_path))) then
+                call add_option(trim(option_path),  stat=stat)
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Ph/prognostic"
+
+                call add_option(trim(option_path)//"/mesh::ph",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/constant",  stat=stat)
+                call set_option(trim(option_path)//"/value::WholeMesh/constant",  0.)
+                call add_option(trim(option_path)//"/output",  stat=stat)
+                call add_option(trim(option_path)//"/stat",  stat=stat)
+                call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
+
+                call add_option(trim(option_path)//"/detectors",  stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+
+              end if
+
             end if
 
 
             ! SCALAR_FIELD(PRESSURE) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic"
             if (have_option(trim(option_path))) then
+                !SPRINT_TO_DO THESE OPTIONS TO BE REMOVED from here and the other fields, this seems unnecessary?
                 option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/spatial_discretisation/continuous_galerkin"
                 call add_option(trim(option_path), stat=stat)
-
-                            ! Stat, convergence, detectors, steady state settings
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/stat"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/convergence/include_in_convergence"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/detectors/exclude_from_detectors"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/steady_state/include_in_steady_state"
-                call add_option(trim(option_path), stat=stat)
-
-                ! Solver options - Iterative Method
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/solver/iterative_method::gmres/restart"
-                call add_option(trim(option_path), stat = stat)
-                call set_option(trim(option_path), 0)
-                !Preconditioner
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic/solver/preconditioner::hypre/hypre_type[0]/name"
-                call add_option(trim(option_path), stat = stat)
-                call set_option(trim(option_path), "boomeramg")
             end if
 
                 ! VECTOR_FIELD(VELOCITY) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic"
             if (have_option(trim(option_path))) then
 
-                !We don't need to repopulate much of this as the default values are good for porous media
+                !SPRINT_TO_DO THIS OPTION TO BE REMOVED
                 option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin"
                 call add_option(trim(option_path), stat=stat)
-
-                !Set this values just in case. We don't need them for porous media
-                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/temporal_discretisation/theta"
-                call add_option(trim(option_path), stat=stat)
-                call set_option(trim(option_path), theta)
-                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/temporal_discretisation/relaxation"
-                call add_option(trim(option_path), stat=stat)
-                call set_option(trim(option_path), 1.0)
-
-                !Create viscosity from simplified version and create memory for the absoprtion
-                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/tensor_field::Viscosity/prescribed"
-                call add_option(trim(option_path)//"/mesh::PressureMesh", stat=stat)
-                call add_option(trim(option_path)//"/value::WholeMesh/isotropic/constant", stat=stat)!<= set up mesh
-                call get_option("/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/viscosity",  aux)
-                call set_option(trim(option_path)//"/value::WholeMesh/isotropic/constant", aux)!<= introduce value from the user
-
-                !Create memory for the absoprtion
-                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/vector_field::Absorption/diagnostic"
-                call add_option(trim(option_path)//"/mesh::PressureMesh_Discontinuous", stat=stat)!<= set up mesh
-                call add_option(trim(option_path)//"/algorithm::Internal", stat=stat)!<= set up algorithm type
-                    ! Stat, convergence, detectors, steady state settings
-                    call add_option(trim(option_path)//"/stat", stat=stat)
-                    call add_option(trim(option_path)//"/convergence/include_in_convergence", stat=stat)
-                    call add_option(trim(option_path)//"/detectors/exclude_from_detectors", stat=stat)
-                    call add_option(trim(option_path)//"/steady_state/include_in_steady_state", stat=stat)
 
                 ! Stat, convergence, detectors, steady state settings
                 option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/stat"
@@ -743,64 +955,41 @@ contains
                 call add_option(trim(option_path), stat=stat)
                 option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/detectors/exclude_from_detectors"
                 call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/steady_state/include_in_steady_state"
-                call add_option(trim(option_path), stat=stat)
-
-                ! Solver options - Iterative Method (we don't actually solve for velocity, so we copy the options from the pressure just in case)
-                call copy_option("/material_phase[0]/scalar_field::Pressure/prognostic/solver",trim(option_path)//"/solver" )
+                ! option_path = "/material_phase["// int2str( i - 1)//"]/vector_field::Velocity/prognostic/steady_state/include_in_steady_state"
+                ! call add_option(trim(option_path), stat=stat)
             end if
+          else
+
+            scalarComponents = option_count("/material_phase[" // int2str(i-1) // "]/scalar_field")
+            !Easiest way to move the fields in the root of the scalar field ComponentMassFraction. NEED TO CHANGE THIS!
+            do k = 1, scalarComponents
+              option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field["// int2str( k - 1)//"]/prognostic"
+              !Check fields and move then one level up
+              if (have_option(trim(option_path)//"/phase_properties/Viscosity/tensor_field::Viscosity")) then
+                !Move one level up, as it used to be, SPRINT_TO_DO, CREATE THE MEMORY BASED ON THIS NEW POSITION
+                call copy_option(trim(option_path)//"/phase_properties/Viscosity/tensor_field::Viscosity",&
+                trim(option_path)//"/tensor_field::Viscosity")
+              end if
+              if (have_option(trim(option_path)//"/phase_properties/tensor_field::Diffusivity")) then
+                !Move one level up, as it used to be, SPRINT_TO_DO, CREATE THE MEMORY BASED ON THIS NEW POSITION
+                call copy_option(trim(option_path)//"/phase_properties/tensor_field::Diffusivity",&
+                trim(option_path)//"/tensor_field::Diffusivity")
+              end if
+              if (have_option(trim(option_path)//"/phase_properties/scalar_field::HeatCapacity")) then
+                !Move one level up, as it used to be, SPRINT_TO_DO, CREATE THE MEMORY BASED ON THIS NEW POSITION
+                call copy_option(trim(option_path)//"/phase_properties/scalar_field::HeatCapacity",&
+                trim(option_path)//"/scalar_field::HeatCapacity")
+              end if
 
 
-                ! SCALAR_FIELD(PHASE VOLUME FRACTION) OPTIONS ADDED AUTOMATICALLY
-            option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic"
-            if (have_option(trim(option_path))) then
+            end do
 
-                            ! Stat, convergence, detectors, steady state settings
-                !We have removd this from scalar_field however we are only populating with this PhaseVolumeFraction
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/stat"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/convergence/include_in_convergence"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/detectors/exclude_from_detectors"
-                call add_option(trim(option_path), stat=stat)
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/steady_state/include_in_steady_state"
-                call add_option(trim(option_path), stat=stat)
-
-                !Removed the selection of the equation as it was not even read by the code
-
-                !Spatial discretisation
-                if (simulation_quality < 10) then
-                    option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/spatial_discretisation/control_volumes/face_value"
-                    call add_option(trim(option_path)//"::FirstOrderUpwind", stat=stat)
-                else
-                    option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/spatial_discretisation/control_volumes"
-                    option_path = trim(option_path) //"/face_value::FiniteElement/limit_face_value/limiter"
-                    call add_option(trim(option_path)//"::Sweby", stat=stat)
-                end if
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/spatial_discretisation/conservative_advection"
-                call add_option(trim(option_path), stat=stat)
-                call set_option(trim(option_path), 1.)
-                !Temporal discretisation
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/temporal_discretisation/theta"
-                call add_option(trim(option_path), stat=stat)
-                call set_option(trim(option_path), theta)
-
-
-                ! Solver options - Iterative Method
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/solver/iterative_method::gmres/restart"
-                call add_option(trim(option_path), stat = stat)
-                call set_option(trim(option_path), 0)
-                !Preconditioner
-                option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::PhaseVolumeFraction/prognostic/solver/preconditioner::hypre/hypre_type[0]/name"
-                call add_option(trim(option_path), stat = stat)
-                call set_option(trim(option_path), "boomeramg")
-            end if
-
+          end if
         end do
 
         !####################################
 
-    end subroutine convert_FERST_input_file
+    end subroutine autocomplete_input_file
 
 
 
@@ -847,39 +1036,32 @@ contains
         !and activates the flags from global_parameters accordingly
         implicit none
         integer :: Vdegree, Pdegree
-        character( len = option_path_len ) :: quality_option
         !By default it is inertia dominated
-        is_porous_media = have_option('/simulation_type/porous_media') .or. have_option('/is_porous_media')
-        is_magma = have_option('/simulation_type/magma')
-        is_flooding = have_option('/simulation_type/flooding')
-        is_poroelasticity = have_option('/simulation_type/poroelasticity')
+        is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
+        is_magma = have_option('/magma_simulator')
+        is_flooding = have_option('/flooding_simulator')
         !Flag to set up the coupling with femdem
-        is_multifracture = have_option( '/simulation_type/femdem_fracture' )
+        is_multifracture = have_option( '/femdem_fracture' )
         !Flag to set up blasting
         is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
-        !Check if it is P0DGP1
-        if (.not. have_option("/is_porous_media")) then!This is to check if the input file is mpml or else, i.e. frst
-            call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', &
-                Vdegree )
-            call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
-                Pdegree )
-            is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
-                    have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
-            if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
-                            .or. have_option('/simulation_type/inertia_dominated'))) then
-                ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
-                ewrite(0, *) "A. Use the P1DGP2CV formulation."
-                ewrite(0, *) "B. Use the P1DGP1CV formulation with mass lumping = 100 in: Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_term/lump_mass_matrix/lump_weight"
-                stop
-            end if
-        else
-            is_P0DGP1CV = .false.
-            !If using IC_FERST schema then this depends on the quality selected
-            call get_option("/geometry/simulation_quality", quality_option)
-            if ((trim(quality_option) == "fast") .or. (trim(quality_option) == "balanced")) is_P0DGP1CV = .true.
+        !Arash
+        has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
+
+        ! Check if Porous media model initialisation
+        is_porous_initialisation =  have_option("/porous_media/FWL")
+
+        !Tell the user which sort of simulation type he is running, just in case
+        if (have_option('/inertia_dominated_simulator') .and. have_option('/porous_media')) then
+          if (GetProcNo() == 1) then
+            FLAbort("The simulator has been set up to inertia dominated but porous media options have been set up. ")
+          end if
         end if
+
+
+
+
     end subroutine get_simulation_type
 
 end subroutine multiphase_prototype_wrapper

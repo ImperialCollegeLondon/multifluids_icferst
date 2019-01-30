@@ -361,7 +361,7 @@ end subroutine fracking
 
 print *,  'inside initialise_femdem'
 
-    if (have_option('/simulation_type/femdem_fracture') ) then
+    if (have_option('/femdem_fracture') ) then
 
     call get_option( "/femdem_fracture/femdem_file/name", femdem_mesh_name )
 !!-PY changed it for 3D_fracture_coupling_with_multiphase
@@ -389,18 +389,18 @@ print *,  'inside initialise_femdem'
 !    iflag(3)=0
 
 
-    if (have_option('/simulation_type/femdem_fracture') ) then
+    if (have_option('/femdem_fracture') ) then
     
     iflag(2)=1
-    print *, "/simulation_type/femdem_fracture"
+    print *, "/femdem_fracture"
     print *, "iflag"
 
     print *, iflag(1),iflag(2),iflag(3)
-    elseif (have_option('/simulation_type/inertia_dominated') ) then
+    elseif (have_option('/inertia_dominated') ) then
     iflag(1)=1
     print *, "iflag"
 
-    print *, "/simulation_type/intertia_dominated"
+    print *, "/intertia_dominated"
     print *, iflag(1),iflag(2),iflag(3)
 
     end if

@@ -37,6 +37,7 @@ node('docker && linux')
             stage( 'Compile Fluidity code' ) { sh "make -j ${cores} all" }
             stage( 'Compile IC-Ferst code' ) { sh "make -j ${cores} mp"  }
             stage( 'Compile IC-Ferst code' ) { sh "make -j ${cores} fltools"  }
+            stage( 'Testing'               ) { sh 'make test-mp-xml' }
 
             stage( 'Install compiled code' )
             {
@@ -102,4 +103,6 @@ popd
             }
         }
     }
+
+    post { always { junit 'legacy_reservoir_prototype/tests/multiphase_test_result*xml' } }
 }

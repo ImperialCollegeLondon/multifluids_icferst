@@ -6,13 +6,10 @@
         <ref name="gravity_options"/>
       </optional>
       <optional>
-        <ref name="coriolis_options"/>
-      </optional>
-      <optional>
         <ref name="black_oil_options"/>
       </optional>
       <optional>
-        <ref name="mobility_options"/>
+        <ref name="coriolis_options"/>
       </optional>
     </element>
   </define>
@@ -25,16 +22,11 @@
       </element>
       <optional>
         <element name="hydrostatic_pressure_solver">
-          <empty/>
-        </element>
-      </optional>
-      <optional>
-        <element name="fem_buoyancy">
-          <empty/>
-        </element>
-      </optional>
-      <optional>
-        <element name="fem_density_buoyancy">
+          <a:documentation>Solve the gravity component indendently from the pressure general solver
+this is to have higher precision when using P1DGP1. For inertia dominated only.
+
+IMPORTANT: for this to work a mesh and a field ph needs to be created. Check the test 
+Collapsing_Water_Column_hydrostatic_pressure for an example</a:documentation>
           <empty/>
         </element>
       </optional>

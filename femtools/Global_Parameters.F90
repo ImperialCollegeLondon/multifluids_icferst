@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -39,14 +39,14 @@ module global_parameters
   !!< use global_parameters, only: parameter1, parameter2 ...
   !!<
   !!< Try to only use the parameters which are needed locally.
-  
+
   ! Debug specific paramaters are contained in fldebug_parameters
   ! (to resolve build dependencies)
   use fldebug_parameters
   use iso_c_binding
-  
+
   implicit none
-        
+
   !------------------------------------------------------------------------
   ! Precision parameters
   !------------------------------------------------------------------------
@@ -55,7 +55,7 @@ module global_parameters
 
   !! Integer size in bytes
   integer, parameter :: integer_size=bit_size(0)/8
-  ! The real_size depends on reals having the obvious ieee754 sizes. 
+  ! The real_size depends on reals having the obvious ieee754 sizes.
   !! Real size in bytes
 #ifdef DOUBLEP
   integer, parameter :: real_size=8
@@ -63,29 +63,18 @@ module global_parameters
   integer, parameter :: real_size=4
 #endif
 
-  integer, parameter :: int_4 = selected_int_kind(4), &
-                      & int_8 = selected_int_kind(8), &
-                     & int_16 = selected_int_kind(16)
-  ! real variable declarations of the form:
-  !   real*4 :: real_var
-  ! are not portable. Use these instead:
-  !   real(real_4) :: real_val
-  integer, parameter :: real_4 = selected_real_kind(4), &
-                      & real_8 = selected_real_kind(8), &
-                     & real_16 = selected_real_kind(16)
-
   !------------------------------------------------------------------------
   ! Parameters controlling the scheme used in the flow core.
   !------------------------------------------------------------------------
-  
-  
+
+
   !! The simulation start time (model time)
   real, save :: simulation_start_time
   !! The simulation start CPU time
   real, save :: simulation_start_cpu_time
   !! The simulation start wall time
   real, save :: simulation_start_wall_time
-  
+
   !! Accumulated system time.
   real, save, target :: current_time
   !! The timestep.
@@ -98,7 +87,7 @@ module global_parameters
   !------------------------------------------------------------------------
   ! Parameters for parallel
   !------------------------------------------------------------------------
-  
+
   !! When upscaling a problem (e.g. from 16 to 32 processors),
   !! we want to run sam on 32 processors to do the domain decomposition.
   !! But only 16 processors will have data on disk. However,
@@ -134,14 +123,14 @@ module global_parameters
   !! Maximum length of a python string representing a function
   integer, parameter :: PYTHON_FUNC_LEN=8192
   character(len=PYTHON_FUNC_LEN) :: empty_python_func=""
-  
+
   !! Name of the topology mesh in state - this mesh is used by adaptivity
   !! for the error metric etc.
   character(len=FIELD_NAME_LEN):: topology_mesh_name=""
-  
+
   !! Name of mesh to be handled by adapt_state()
   character(len=FIELD_NAME_LEN):: adaptivity_mesh_name=""
-  
+
   !! optionpath where the periodic boundary conditions are defined
   character(len=OPTION_PATH_LEN), dimension(3) :: periodic_boundary_option_path=""
 
@@ -171,20 +160,21 @@ module global_parameters
 
   !! Multiphase prototype, reservoir simulator
   logical :: is_porous_media = .false.
+  !! Porous media model initialisation (Gravity capillary equilibration)
+  logical :: is_porous_initialisation = .false.
   !! Multiphase prototype, flooding simulator
   logical :: is_flooding = .false.
   !! Multiphase prototype, magma simulator
   logical :: is_magma = .false.
-  !! Multiphase prototype, poro-elasticity simulator
-  logical :: is_poroelasticity = .false.
-
-
   !! Checking multifracture
   logical :: is_multifracture = .false.
     !! Checking to see if fracturing is occuring in FEMDEM
   logical :: is_fracturing = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
+  !! Arash
+  !! Multiphase prototype, models salt concentration
+  logical :: has_salt = .false.
   !! Checking if using the P0DG for velocity,
   !! special because we need to avoid the use of PressureMesh_Continuous
   logical :: is_P0DGP1CV = .false.

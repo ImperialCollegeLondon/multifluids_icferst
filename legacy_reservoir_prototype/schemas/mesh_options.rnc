@@ -3,30 +3,13 @@ mesh_info =
       ## Read mesh from file.
       element from_file {
          (
-            ## Read the mesh from a vtu. Note that the mesh will have no 
-            ## surface or region IDs.
-            element format {
-              attribute name { "vtu" },
-              comment
-            }|
             ## GMSH mesh format
             element format {
                attribute name { "gmsh" },
                comment
-            }|
-            ## ExodusII mesh format.
-            ##
-            ##<b>Note: Only works for serial mesh files and 
-            ## Checkpoints are dumped in the GMSH file format.</b>
-            element format {
-               attribute name { "exodusii" },
-               comment
             }
          ),
          attribute file_name { xsd:string },
-         element dimension {
-            integer
-         }?,
          from_file_mesh_stat_options,
          comment
       }|
@@ -252,13 +235,7 @@ velocity_mesh_choice =
          attribute name { "VelocityMesh" }
       }|
       element mesh {
-         attribute name { "PressureMesh" }
-      }|
-      element mesh {
-         attribute name { "CoordinateMesh" }
-      }|
-      element mesh {
-         attribute name { string }
+         attribute name { xsd:string }
       }
    )
 
@@ -269,13 +246,18 @@ pressure_mesh_choice =
          attribute name { "PressureMesh" }
       }|
       element mesh {
-         attribute name { "VelocityMesh" }
+         attribute name { xsd:string }
+      }
+   )
+
+# Same choices, but with PressureMesh_Discontinuous offered first
+subcv_mesh_choice =
+   (
+      element mesh {
+         attribute name { "PressureMesh_Discontinuous" }
       }|
       element mesh {
-         attribute name { "CoordinateMesh" }
-      }|
-      element mesh {
-         attribute name { string }
+         attribute name { xsd:string }
       }
    )
 
@@ -286,13 +268,7 @@ coordinate_mesh_choice =
          attribute name { "CoordinateMesh" }
       }|
       element mesh {
-         attribute name { "VelocityMesh" }
-      }|
-      element mesh {
-         attribute name { "PressureMesh" }
-      }|
-      element mesh {
-         attribute name { string }
+         attribute name { xsd:string }
       }
    )
 # Same choices, but with P0DG offered first
@@ -302,16 +278,6 @@ material_mesh_choice =
          attribute name { "P0DG" }
       }|
       element mesh {
-         attribute name { string }
-      }
-   )
-# Same choices, but with P0DG offered first
-subcv_mesh_choice =
-   (
-      element mesh {
-         attribute name { "PressureMesh_Discontinuous" }
-      }|
-      element mesh {
-         attribute name { string }
+         attribute name { xsd:string }
       }
    )

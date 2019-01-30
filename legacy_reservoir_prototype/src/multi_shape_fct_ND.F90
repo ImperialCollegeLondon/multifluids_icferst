@@ -47,7 +47,6 @@ module shape_functions_Linear_Quadratic
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
   logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.!With this true it does not work...we need to fix it
 
-
     interface DETNLXR
         module procedure DETNLXR1
         module procedure DETNLXR2
@@ -1229,9 +1228,9 @@ contains
                 GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
              end Select
 !!$
-             if( u_nloc == 6 ) then
-                GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             elseif( u_nloc == 10 .or. u_nloc == 4) then!Sixth order quadrature for bubble velocity element or P3
+             if( u_nloc == 6 .or. u_nloc == 4) then!degree of precision 3. Enough for P1 bubble with Direct mass lumping
+                GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3!or P2 normal mass matrix, the integral is not fully exact but results are correct
+            elseif( u_nloc == 10 ) then!Quintic order quadrature for P3, or activate for P1 bubble if not using direct mass lumping
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
              end if
           else
@@ -1406,13 +1405,13 @@ contains
              case( 3 )
                 GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end Select
-!!$          ! Use a quadratic interpolation pt set for quad tets
-             if( u_nloc == 10 .or. u_nloc == 5) then
+!!$          ! Use a degree of precision of 4 ;interpolation pt set for quad tets. Enough for P2 normal Mass matrix
+             if( u_nloc == 10 .or. u_nloc == 5) then! or P1 bubble with direct mass lumping
                   GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end if
-             ! Use sixth order quadrature interpolation set for bubble tets
-             if( u_nloc == 5) then
-                GIdims%cv_ngi = 15 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+             ! Use a degree of precision of 8 for bubble tets!sprint_to_do this needs to be optional, to use different options for bubble elements
+             if( u_nloc == 5) then !THIS IS VERY EXPENSIVE! only use this if not using direct mass lumping and bubble elements are required
+                GIdims%cv_ngi = 45 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end if
           else
              Select Case( volume_order )
@@ -5797,10 +5796,12 @@ contains
              nly( 2, gi ) = 1.
              nly( 3, gi ) = -1.
              ! nloc = 4
-             if( nloc == 4 ) then
-                n( 4, gi ) = l1( gi ) * l2( gi ) * l3( gi )
-                nlx( 4, gi ) = l2( gi ) * ( 1. - l2( gi )) - 2. * l1( gi ) * l2( gi )
-                nly( 4, gi ) = l1( gi ) * ( 1. - l1( gi )) - 2. * l1( gi ) * l2( gi )
+             if( nloc == 4 ) then!bubble element
+                !alpha == 1 behaves better than the correct value of 27. See Osman et al. 2019
+                 N(4,GI)  =1. * L1(GI)*L2(GI)*L3(GI)!Bubble done as (dim+1)**(dim+1) * Multiplier (L_i)
+                 NLX(4,GI)=1. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
+                 NLY(4,GI)=1. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
+
              end if
           end do
 
@@ -5870,13 +5871,12 @@ contains
              nlz( 3, gi ) = 1.
              nlz( 4, gi ) = -1.
              if( nloc == 5 ) then ! Bubble function
-                n( 5, gi ) = l1( gi ) * l2( gi ) * l3( gi ) * l4( gi )
-                nlx( 5, gi ) = l2( gi ) * l3( gi ) * ( 1. - l2( gi ) - l3( gi ))  &
-                     -2. * ( l1( gi ) * l2( gi ) * l3( gi ) )
-                nly( 5, gi ) = l1( gi ) * l3( gi ) * ( 1. - l1( gi ) - l3( gi ))  &
-                     -2. * ( l1( gi ) * l2( gi ) * l3( gi ) )
-                nlz( 5, gi ) = l1( gi ) * l2( gi ) * ( 1. - l2( gi ) - l2( gi ))  &
-                     -2. * ( l1( gi ) * l2( gi ) * l3( gi ) )
+                !alpha == 100 behaves better than the correct value of 256. See Osman et al. 2019
+                 N(5,GI)  = 100. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                 NLX(5,GI)= 100. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLY(5,GI)= 100. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                 NLZ(5,GI)= 100. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+
              endif
           end do
 
@@ -8381,9 +8381,10 @@ contains
              NLY(3,GI)=-1.0
              IF(NLOC.EQ.4) THEN
                 ! Bubble function...
-                N(4,GI)  =L1(GI)*L2(GI)*L3(GI)
-                NLX(4,GI)=L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
-                NLY(4,GI)=L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
+                !alpha == 1 behaves better than the correct value of 27. See Osman et al. 2019
+                N(4,GI)  =1. * L1(GI)*L2(GI)*L3(GI)
+                NLX(4,GI)=1. * L2(GI)*(1.-L2(GI))-2.*L1(GI)*L2(GI)
+                NLY(4,GI)=1. * L1(GI)*(1.-L1(GI))-2.*L1(GI)*L2(GI)
              ENDIF
           end DO Loop_Gi_Nloc3_4
        ELSE IF((NLOC.EQ.6).OR.(NLOC.EQ.7)) THEN
@@ -8537,11 +8538,12 @@ contains
              NLZ(3,GI)=1.0
              NLZ(4,GI)=-1.0
              IF(NLOC.EQ.5) THEN
-                ! Bubble function...
-                N(5,GI)  =L1(GI)*L2(GI)*L3(GI)*L4(GI)
-                NLX(5,GI)=L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                NLY(5,GI)=L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
-                NLZ(5,GI)=L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                ! Bubble function ...
+                !alpha == 50 behaves better than the correct value of 256. See Osman et al. 2019
+                N(5,GI)  = 50. * L1(GI)*L2(GI)*L3(GI)*L4(GI)
+                NLX(5,GI)= 50. * L2(GI)*L3(GI)*(1.-L2(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                NLY(5,GI)= 50. * L1(GI)*L3(GI)*(1.-L1(GI)-L3(GI))-2.*L1(GI)*L2(GI)*L3(GI)
+                NLZ(5,GI)= 50. * L1(GI)*L2(GI)*(1.-L1(GI)-L2(GI))-2.*L1(GI)*L2(GI)*L3(GI)
              ENDIF
           end DO Loop_Gi_Nloc_4_5
        ENDIF
@@ -8668,8 +8670,8 @@ contains
           ! ENDOF IF(NGI.EQ.11) THEN...
        ENDIF
 
-        if (NGI == 15) then!Sixth order quadrature, for bubble shape functions or P3
-          ! Degree of precision is 6
+        if (NGI == 15) then!Fith order quadrature
+          ! Degree of precision is 5
          L1=(/0.2500000000000000, 0.0000000000000000, 0.3333333333333333, 0.3333333333333333, 0.3333333333333333, &
              0.7272727272727273, 0.0909090909090909, 0.0909090909090909, 0.0909090909090909, 0.4334498464263357, &
              0.0665501535736643, 0.0665501535736643, 0.0665501535736643, 0.4334498464263357, 0.4334498464263357/)
@@ -8685,6 +8687,46 @@ contains
              0.0656948493683187, 0.0656948493683187, 0.0656948493683187, 0.0656948493683187, 0.0656948493683187/)
        end if
 
+
+       if (NGI == 45) then!Eighth order quadrature, for bubble shape functions or P3
+         !Obtained from: https://people.sc.fsu.edu/~jburkardt/datasets/quadrature_rules_tet/quadrature_rules_tet.html
+         !Here to get triangle quadrature sets:
+         !https://people.sc.fsu.edu/~jburkardt/datasets/quadrature_rules_tri/quadrature_rules_tri.html
+         ! Degree of precision is 8
+        L1=(/0.2500000000000000,0.6175871903000830,0.1274709365666390,0.1274709365666390,0.1274709365666390,0.9037635088221031,&
+        0.0320788303926323,0.0320788303926323,0.0320788303926323,0.4502229043567190,0.0497770956432810,0.0497770956432810,&
+        0.0497770956432810,0.4502229043567190,0.4502229043567190,0.3162695526014501,0.1837304473985499,0.1837304473985499,&
+        0.1837304473985499,0.3162695526014501,0.3162695526014501,0.0229177878448171,0.2319010893971509,0.2319010893971509,&
+        0.5132800333608811,0.2319010893971509,0.2319010893971509,0.2319010893971509,0.0229177878448171,0.5132800333608811,&
+        0.2319010893971509,0.0229177878448171,0.5132800333608811,0.7303134278075384,0.0379700484718286,0.0379700484718286,&
+        0.1937464752488044,0.0379700484718286,0.0379700484718286,0.0379700484718286,0.7303134278075384,0.1937464752488044,&
+        0.0379700484718286,0.7303134278075384,0.1937464752488044/)
+        L2=(/0.2500000000000000,0.1274709365666390,0.1274709365666390,0.1274709365666390,0.6175871903000830,0.0320788303926323,&
+        0.0320788303926323,0.0320788303926323,0.9037635088221031,0.0497770956432810,0.4502229043567190,0.0497770956432810,&
+        0.4502229043567190,0.0497770956432810,0.4502229043567190,0.1837304473985499,0.3162695526014501,0.1837304473985499,&
+        0.3162695526014501,0.1837304473985499,0.3162695526014501,0.2319010893971509,0.0229177878448171,0.2319010893971509,&
+        0.2319010893971509,0.5132800333608811,0.2319010893971509,0.0229177878448171,0.5132800333608811,0.2319010893971509,&
+        0.5132800333608811,0.2319010893971509,0.0229177878448171,0.0379700484718286,0.7303134278075384,0.0379700484718286,&
+        0.0379700484718286,0.1937464752488044,0.0379700484718286,0.7303134278075384,0.1937464752488044,0.0379700484718286,&
+        0.1937464752488044,0.0379700484718286,0.7303134278075384/)
+        L3=(/0.2500000000000000,0.1274709365666390,0.1274709365666390,0.6175871903000830,0.1274709365666390,0.0320788303926323,&
+        0.0320788303926323,0.9037635088221031,0.0320788303926323,0.0497770956432810,0.0497770956432810,0.4502229043567190,&
+        0.4502229043567190,0.4502229043567190,0.0497770956432810,0.1837304473985499,0.1837304473985499,0.3162695526014501,&
+        0.3162695526014501,0.3162695526014501,0.1837304473985499,0.2319010893971509,0.2319010893971509,0.0229177878448171,&
+        0.2319010893971509,0.2319010893971509,0.5132800333608811,0.5132800333608811,0.2319010893971509,0.0229177878448171,&
+        0.0229177878448171,0.5132800333608811,0.2319010893971509,0.0379700484718286,0.0379700484718286,0.7303134278075384,&
+        0.0379700484718286,0.0379700484718286,0.1937464752488044,0.1937464752488044,0.0379700484718286,0.7303134278075384,&
+        0.7303134278075384,0.1937464752488044,0.0379700484718286/)
+        !We divide the weights later by 6
+        WEIGHT=(/-0.2359620398477557,0.0244878963560562,0.0244878963560562,0.0244878963560562,0.0244878963560562,0.0039485206398261,&
+        0.0039485206398261,0.0039485206398261,0.0039485206398261,0.0263055529507371,0.0263055529507371,0.0263055529507371,&
+        0.0263055529507371,0.0263055529507371,0.0263055529507371,0.0829803830550589,0.0829803830550589,0.0829803830550589,&
+        0.0829803830550589,0.0829803830550589,0.0829803830550589,0.0254426245481023,0.0254426245481023,0.0254426245481023,&
+        0.0254426245481023,0.0254426245481023,0.0254426245481023,0.0254426245481023,0.0254426245481023,0.0254426245481023,&
+        0.0254426245481023,0.0254426245481023,0.0254426245481023,0.0134324384376852,0.0134324384376852,0.0134324384376852,&
+        0.0134324384376852,0.0134324384376852,0.0134324384376852,0.0134324384376852,0.0134324384376852,0.0134324384376852,&
+        0.0134324384376852,0.0134324384376852,0.0134324384376852/)
+      end if
 
        DO I=1,NGI
           L4(I)=1.0-L1(I)-L2(I)-L3(I)
@@ -10026,10 +10068,10 @@ contains
        Select Case ( nloc )
        case (1)  ! Constant triangle
           nwicel = 0
-       case( 3 ) ! Linear triangle
+       case( 3, 4 ) ! Linear triangle
           nwicel = 4
-       case( 4 ) ! Linear quad
-          nwicel = 1
+       ! case( 4 ) ! Linear quad
+       !    nwicel = 1
        case( 6 ) ! Quadratic triangle
           nwicel = 5
        case( 9 ) ! Quadratic quad
@@ -10042,6 +10084,9 @@ contains
 !!$
     end if Conditional_Dimensionality
 
+    if (nwicel >= 1 .and. nwicel <= 3) then
+      FLAbort("ERROR: code not tested for Quads/Tetrahedra")
+    end if
     Get_NwiCel = nwicel
 
     return
@@ -10049,4 +10094,3 @@ contains
 
 
 end module shape_functions_NDim
-

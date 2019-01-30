@@ -5,6 +5,9 @@ subroutine vertical_integration(target_basename_, target_basename_len, &
   & output_basename_, output_basename_len, &
   & top, bottom, sizing, field_b_continuity, field_b_degree) bind(c)
 
+  use fetools, only: shape_shape, shape_rhs
+  use transform_elements
+  use elements
   use fields
   use fldebug
   use global_parameters, only : current_debug_level, OPTION_PATH_LEN
@@ -43,7 +46,7 @@ subroutine vertical_integration(target_basename_, target_basename_len, &
   character(len = output_basename_len) :: output_basename
   character(len = *), parameter :: solver_path = "/temporary/solver/path"
   character(len = OPTION_PATH_LEN) :: base_path, mesh_path
-  integer :: dim, ele_a, ele_b, ele_b_surf, i, index, j, k, nele_as, stat, ntests
+  integer :: dim, ele_a, ele_b, ele_b_surf, i, index, j, k, nele_as, stat
   integer, parameter :: quad_degree = 4
   real, dimension(:, :), allocatable :: lshape
   type(csr_matrix) :: matrix
@@ -59,6 +62,7 @@ subroutine vertical_integration(target_basename_, target_basename_len, &
   type(vector_field) :: positions_b_ext, positions_b_surf, vfield_b
   type(vector_field), pointer :: positions_a, vfield_a
   type(vector_field), target :: positions_c
+  logical :: empty_intersection
 
   ewrite(-1, *) "In vertical_integration"
 
@@ -220,15 +224,11 @@ subroutine vertical_integration(target_basename_, target_basename_len, &
           cycle
         end if
       else
-        positions_c = intersect_elements(positions_b_ext, ele_b, ele_val(positions_a, ele_a), ele_shape(positions_a, ele_a))
-      end if
-
-      if(ele_count(positions_c) == 0) then
-        ! No intersection to integrate
-        call deallocate(positions_c)
-        cycle
-      end if
-      if(dim /= 3 .or. (intersector_exactness .eqv. .true.)) then  ! The stat argument to intersect_tets checks this
+        positions_c = intersect_elements(positions_b_ext, ele_b, ele_val(positions_a, ele_a), ele_shape(positions_a, ele_a), empty_intersection=empty_intersection)
+        if(empty_intersection) then
+          ! No intersection to integrate
+          cycle
+        end if
         if(volume(positions_c) < epsilon(0.0)) then
           ! Negligable intersection to integrate
           call deallocate(positions_c)
@@ -281,7 +281,7 @@ subroutine vertical_integration(target_basename_, target_basename_len, &
   deallocate(field_c)
 
   call deallocate(positions_b_ext)
-  call rtree_intersection_finder_reset(ntests)
+  call rtree_intersection_finder_reset()
   if(dim == 3) call finalise_tet_intersector()
 
   ! Step 4: Solve

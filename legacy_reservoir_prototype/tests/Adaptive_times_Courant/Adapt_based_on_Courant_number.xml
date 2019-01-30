@@ -13,7 +13,7 @@ A = list(vals.values())
 final_dt = A[0][1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final dT to be correct" language="python">assert(abs(final_dt - 0.0193)/0.0193 &lt; 0.1)</test>
+    <test name="Assert final dT to be correct" language="python">assert(abs(final_dt - 0.02165)/0.02165 &lt; 0.1)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

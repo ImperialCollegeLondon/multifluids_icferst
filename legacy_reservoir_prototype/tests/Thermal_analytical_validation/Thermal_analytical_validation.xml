@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast_adapt_ts</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml thermal tbc</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./Check_thermal_analytical_validation.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="Thermal_analytical_validation" language="python">Thermal_analytical_validation = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: Thermal_analytical_validation = True
+
+assert(Thermal_analytical_validation)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

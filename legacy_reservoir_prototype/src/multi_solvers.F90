@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -32,19 +32,22 @@ module solvers_module
     use fldebug
     use fields
     use Petsc_tools
+    use parallel_tools
     use sparse_tools_petsc
     use solvers
     use global_parameters, only: OPTION_PATH_LEN, FPI_have_converged
     use spud
+    use parallel_tools, only : allmax, allmin, isparallel, getprocno
+    use parallel_fields
 
     use state_module
     use halo_data_types
 #ifdef HAVE_PETSC_MODULES
-  use petsc 
+  use petsc
 #if PETSC_VERSION_MINOR==0
-  use petscvec 
-  use petscmat 
-  use petscksp 
+  use petscvec
+  use petscmat
+  use petscksp
   use petscpc
 #endif
 #endif
@@ -59,150 +62,15 @@ module solvers_module
 
     private
 
-    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
+    public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Ensure_initial_Saturation_to_sum_one, auto_backtracking
 
-    interface multi_solver
-        module procedure solve_via_copy_to_petsc_csr_matrix
-    end interface
-  
+
 contains
-
-    ! -----------------------------------------------------------------------------
-    subroutine solve_via_copy_to_petsc_csr_matrix( A, &
-        x, b, findfe, colfe, option_path, block_size )
-
-        !!< Solve a matrix Ax = b system via copying over to the
-        !!< petsc_csr_matrix type and calling the femtools solver
-        !!< using the spud options given by the field options path
-
-        integer, dimension( : ), intent(in) :: findfe
-        integer, dimension( : ), intent(in) :: colfe
-        real, dimension( : ), intent(in) :: a, b
-        real, dimension( : ), intent(inout) :: x
-        character( len=* ), intent(in) :: option_path
-        !This optional argument is to create a block-diagonal matrix
-        !and therefore to use block-solvers
-        integer, optional, intent(in) :: block_size
-
-        ! local variables
-        integer :: i, j, k, rows
-        integer, dimension( : ), allocatable :: dnnz
-        type(petsc_csr_matrix) :: matrix
-        integer :: size_of_block
-
-        size_of_block = 1
-        if (present(block_size)) size_of_block = block_size
-
-        rows = size( x )
-        assert( size( x ) == size( b ) )
-        assert( size( a ) == size( colfe ) )
-        assert( size( x ) + 1 == size( findfe ) )
-        ewrite(3,*) rows+1, size(findfe)
-
-        allocate( dnnz( rows/size_of_block ) ) ; dnnz = 0
-        ! find the number of non zeros per row
-        do i = 1, size( dnnz )
-            dnnz( i ) =(findfe( i+1 ) - findfe( i ))
-        end do
-        call allocate( matrix, rows/size_of_block, rows/size_of_block, dnnz, dnnz,&
-            (/1, 1/), name = 'dummy', element_size=size_of_block)
-
-        call zero( matrix )
-        ! add in the entries to petsc matrix
-        do i = 1, rows
-            do j = findfe( i ), findfe( i+1 ) - 1
-                k = colfe( j )
-                call addto( matrix, blocki = 1, blockj = 1, i = i, j = k, val = a( j ) )
-            end do
-        end do
-
-        call assemble( matrix )
-
-        call petsc_solve_scalar_petsc_csr_mp( x, matrix, b, rows, trim( option_path ) )
-
-        ! deallocate as needed
-        deallocate( dnnz )
-        call deallocate( matrix )
-
-        return
-    end subroutine solve_via_copy_to_petsc_csr_matrix
-
-
-    subroutine petsc_solve_scalar_petsc_csr_mp( x, matrix, rhs, rows, option_path )
-
-        real, dimension( : ), intent(inout) :: x
-        type( petsc_csr_matrix ), intent(inout) :: matrix
-        real, dimension( : ), intent(in) :: rhs
-        integer, intent(in) :: rows
-        character( len=* ), intent(in) :: option_path
-
-        KSP :: ksp
-        Vec :: y, b
-
-        character(len=OPTION_PATH_LEN) :: solver_option_path
-        integer :: ierr
-
-        assert( size( x ) == size( rhs ) )
-        assert( size( x ) == size( matrix, 2 ) )
-        assert( size( rhs ) == size( matrix, 1 ) )
-
-        solver_option_path = complete_solver_option_path( option_path )
-
-        call SetupKSP( ksp, matrix%M, matrix%M, solver_option_path, .false., &
-            matrix%column_numbering, .true. )
-
-        b = PetscNumberingCreateVec( matrix%column_numbering )
-        call VecDuplicate( b, y, ierr )
-
-
-        ! copy array into PETSc vecs
-        call VecSetValues( y, rows, &
-            matrix%row_numbering%gnn2unn( 1:rows, 1 ), &
-            x, INSERT_VALUES, ierr )
-        call VecAssemblyBegin( y, ierr )
-        call VecAssemblyEnd( y, ierr )
-
-        call VecSetValues( b, rows, &
-            matrix%row_numbering%gnn2unn( 1:rows, 1 ), &
-            rhs, INSERT_VALUES, ierr )
-        call VecAssemblyBegin( b, ierr )
-        call VecAssemblyEnd( b, ierr )
-
-        call KSPSolve( ksp, b, y, ierr )
-
-        ! copy back the result
-        call VecGetValues( y, rows, &
-            matrix%row_numbering%gnn2unn( 1:rows, 1 ), &
-            x, ierr )
-
-        ! destroy all PETSc objects and the petsc_numbering
-        call multi_petsc_solve_destroy_petsc_csr( y, b, ksp )
-
-
-        return
-        contains
-        !Clone of the same subroutine in femtools/Solvers.F90
-        subroutine multi_petsc_solve_destroy_petsc_csr( y, b, ksp )
-
-            type(Vec), intent(inout):: y
-            type(Vec), intent(inout):: b
-            type(KSP), intent(inout):: ksp
-
-            type(PC) :: pc
-            integer ierr
-
-            call VecDestroy(y, ierr)
-            call VecDestroy(b, ierr)
-            call KSPGetPC(ksp, pc, ierr)
-            call KSPDestroy(ksp, ierr)
-
-        end subroutine multi_petsc_solve_destroy_petsc_csr
-    end subroutine petsc_solve_scalar_petsc_csr_mp
 
 
     subroutine BoundedSolutionCorrections( state, packed_state, &
-        Mdims, CV_funs, small_findrm, small_colm, &
+        Mdims, CV_funs, small_findrm, small_colm, Field_name, &
         for_sat, min_max_limits)
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
@@ -222,6 +90,7 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
+        character( len=* ), intent(in) :: Field_name
         real, optional, dimension(2) :: min_max_limits
         logical, optional, intent(in) :: for_sat
         ! local variables...
@@ -238,13 +107,13 @@ contains
         integer :: ele, iloc, jloc
         real :: mm
         integer, dimension( : ), pointer ::  x_ndgln, cv_ndgln
-        type(scalar_field) :: mass_cv_sur_halo
         type( vector_field ), pointer :: x
         real, dimension(:,:), pointer :: Immobile_fraction
         if (present_and_true(for_sat)) then
             field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         else
-            field => extract_tensor_field( packed_state, "PackedTemperature" )
+            field => extract_tensor_field( packed_state, trim(Field_name) )
+
         end if
         ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ;
         ewrite(3,*) 'Bounding correction input: iphase, icomp, min, max:'
@@ -259,7 +128,6 @@ contains
         allocate( r_min( ndim1, ndim2 ), r_max( ndim1, ndim2 ) )
         allocate( ii_min( ndim1, ndim2 ), ii_max( ndim1, ndim2 ) )
         allocate( mass_cv( Mdims%cv_nonods ), mass_cv_sur( Mdims%cv_nonods ) )
-        call allocate(mass_cv_sur_halo,field%mesh,'mass_cv_sur_halo')
         ufield => extract_tensor_field( packed_state, "PackedVelocity" )
 
         x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -281,16 +149,13 @@ contains
         end do
         mass_cv_sur = 0.0
         do inod = 1, Mdims%cv_nonods
-            if ( .not. node_owned( field, inod ) ) cycle
+            !Since everything is local, we overcycle and then we can avoid halo_updates
+            ! if ( .not. node_owned( field, inod ) ) cycle
             do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                 jnod = small_colm( count )
                 mass_cv_sur(inod) = mass_cv_sur(inod) + mass_cv( jnod )
             end do
         end do
-        ! Obtain the halos of mass_cv_sur:
-        mass_cv_sur_halo%val(:)=mass_cv_sur(:)
-        call halo_update(mass_cv_sur_halo)
-        mass_cv_sur(:)=mass_cv_sur_halo%val(:)
         !Establish bounds
         if (present_and_true(for_sat)) then
             !Define the immobile fractions for each phase
@@ -379,7 +244,9 @@ contains
                 end do ! do knod = 1, Mdims%cv_nonods
                 if ( .not. changed_something ) exit ! stop iterating and move onto next stage of iteration...
             end do ! do loc_its=1,nloc_its
-            call halo_update( field )
+            !We are potentially calling halo_update 500 times...
+            ! call halo_update( field )!For principles this should not even exist here in this loop
+
             ! This iteration is very good at avoiding stagnating but does spread the modifcations far.
             ! use a single iteration because of this as default...
             do loc_its2 = 1, nloc_its2
@@ -415,7 +282,8 @@ contains
                 ! adjust the values...
                 error_changed = maxval( abs( -field_dev_val + field_alt_val ) )
                 field%val( :, :, : ) = field%val( :, :, : ) - field_dev_val( :, :, : ) + field_alt_val( :, :, : )
-                call halo_update( field )
+                !We are potentially calling halo_update 500 times...
+                ! call halo_update( field )!For principles this should not even exist here in this loop
             end do ! loc_its2
             ! communicate the errors ( max_change, error_changed ) ...
             ! this could be more efficient sending a vector...
@@ -423,6 +291,9 @@ contains
             call allmax( max_max_error )
             if ( max_max_error < error_tol ) exit
         end do ! gl_its
+        !After performing everything update halos only once...
+        if (IsParallel()) call halo_update( field )
+
         ewrite(3,*) 'Bounding correction output: iphase, icomp, min, max:'
         do j = 1, ndim2
             do i = 1, ndim1
@@ -435,7 +306,6 @@ contains
         deallocate( r_min, r_max )
         deallocate( ii_min, ii_max )
         deallocate( mass_cv, mass_cv_sur )
-        call deallocate(mass_cv_sur_halo)
         call deallocate_multi_dev_shape_funs(DevFuns)
         return
     end subroutine BoundedSolutionCorrections
@@ -464,7 +334,7 @@ contains
         real, save :: anders_exp!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
         !Local variables        !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak
         real, dimension(:, :), pointer :: Satura
-        logical :: new_time_step, new_FPI
+        logical :: new_time_step, new_FPI, Undo_update
         real :: aux
         integer :: i
         !Parameters for the automatic backtrack_par
@@ -482,19 +352,11 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        if (is_porous_media) then
-            call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)
-            sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-            Satura =>  sat_field%val(1,:,:)
-            !Stablish minimum backtracking parameter
-            min_backtrack = 0.1
-        else
-            !Use the pressure as it is in this case the field of interest
-            sat_field => extract_tensor_field( packed_state, "PackedFEPressure" )
-            Satura =>  sat_field%val(1,:,:)
-            !Stablish minimum backtracking parameter
-            min_backtrack = 0.05
-        end if
+        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!halos are updated within this subroutine
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        Satura =>  sat_field%val(1,:,:)
+        !Stablish minimum backtracking parameter
+        min_backtrack = 0.1
 
         !Automatic method based on the history of convergence
         if (backtrack_par_from_schema < 0.0) then
@@ -502,21 +364,21 @@ contains
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
             !backtrack_par_parameter
             if (backtrack_pars(1) < 0) then!retrieve it just once
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration',&
+                call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration',&
                     convergence_tol, default = 0. )
                 convergence_tol =  convergence_tol
                 !Tolerance for the infinite norm
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',&
+                call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
                     Infinite_norm_tol, default = 0.03 )
                 backtrack_pars(1) = max(min(abs(backtrack_par_from_schema), 1.0), min_backtrack)
                 !Retrieve the shape of the function to use to weight the importance of previous saturations
-                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
+                call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Acceleration_exp',&
                     anders_exp, default = 0.4 )!0.4 the best option, based on experience
                 !Should not be negative
                 anders_exp = max(anders_exp, 0.)
             end if
 
-            if (new_time_step .and.is_porous_media) then
+            if (new_time_step) then
                 !Store last convergence to use it as a reference
                 Previous_convergence = Convergences(1)
                 !restart all the storage
@@ -536,7 +398,9 @@ contains
                     maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
-                if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
+                Undo_update = its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.
+                if (IsParallel()) call allor(Undo_update)!Consistently repeat an update if required
+                if (Undo_update) then
                     Satura = backtrack_sat
                     !We do not allow two consecutive undos
                     allow_undo = .false.
@@ -562,7 +426,12 @@ contains
                         !Calculate the new optimal backtrack_par parameter
                         backtrack_pars(1) = get_optimal_backtrack_par(backtrack_pars(2:), Convergences, Coefficients)
                 end select
-
+                !If it is parallel then we want to be consistent between cpus
+                !we use the smallest value, since it is more conservative
+                if (IsParallel()) then
+                    call allmin(backtrack_pars(1))
+                    call allmin(Convergences(1))
+                end if
                 !Update history, 1 => newest
                 do i = size(backtrack_pars), 2, -1
                     backtrack_pars(i) = backtrack_pars(i-1)
@@ -573,6 +442,7 @@ contains
 
             end if
         else!Use the value introduced by the user
+
             backtrack_pars(1) = backtrack_par_from_schema
             !Just one local saturation iteration
             satisfactory_convergence = .true.
@@ -580,29 +450,20 @@ contains
 
         ewrite(1,*) "backtrack_par factor",backtrack_pars(1)
 
-        !If it is parallel then we want to be consistent between cpus
-        !we use the smallest value, since it is more conservative
-        if (IsParallel()) then
-            call allmin(backtrack_pars(1))
-            call allmin(Convergences(1))
-        end if
+
         !***Calculate new saturation***
-        if (is_porous_media) then
-            !Obtain new saturation using the backtracking method
-            if (useful_sats < 2 .or. satisfactory_convergence) then
-                !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
-                Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
-            else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
+        !Obtain new saturation using the backtracking method
+        if (useful_sats < 2 .or. satisfactory_convergence) then
+            !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
+            Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
+        else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
 
-                !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
-                !The highest value of backtrack_sat is displaced to low values of alpha
-                aux = 1.0 - backtrack_pars(1)
-                Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
-                    aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
+            !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
+            !The highest value of backtrack_sat is displaced to low values of alpha
+            aux = 1.0 - backtrack_pars(1)
+            Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
+                aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
-            end if
-            !Update halos with the new values
-            if (IsParallel()) call halo_update(sat_field)
         end if
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
@@ -781,25 +642,27 @@ contains
 
     end subroutine FPI_backtracking
 
-    subroutine Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)
+    subroutine Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
-        type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent(inout) :: packed_state
+        type( state_type ), dimension(:), intent(in) :: state
         !Local variables
         type(scalar_field), pointer :: pipe_diameter
+        type(tensor_field), pointer :: sat_field
         integer :: iphase, cv_iloc, ele, cv_nod, i_start, i_end, ipres, stat
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
 
-
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+        !Obtain saturation field from packed_state
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        satura =>  sat_field%val(1,:,:)
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
@@ -815,11 +678,12 @@ contains
             do ele = 1, Mdims%totele
                 do cv_iloc = 1, Mdims%cv_nloc
                     cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                    if ( .not. node_owned( sat_field, cv_nod ) ) cycle
                     if (ipres>1 .and. stat == 0) then
                         if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
                     end if
                     moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
-                    !Work in normalize saturation here
+                    !Work in normalized saturation here
                     Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
                         Immobile_fraction(i_start:i_end, ele))/moveable_sat
                     sum_of_phases = sum(Normalized_sat(i_start:i_end))
@@ -837,7 +701,8 @@ contains
                 end do
             end do
         end do
-        !Deallocate
+        !Ensure cosistency across CPUs
+        if (IsParallel())call halo_update(sat_field)
         deallocate(Normalized_sat)
 
     end subroutine Set_Saturation_to_sum_one
@@ -855,10 +720,12 @@ contains
         real :: maxsat, minsat, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
+        type(tensor_field), pointer :: sat_field
         real, dimension(:, :), pointer :: Immobile_fraction
 
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
-        !Get Immobile_fractions
+        !Obtain saturation field from packed_state
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        satura =>  sat_field%val(1,:,:)        !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
         !Allocate
@@ -899,6 +766,8 @@ contains
                 end do
             end do
         end do
+        !Update halos
+        call halo_update(sat_field)!Ensure consistency across CPUs
         !Deallocate
         deallocate(Normalized_sat)
 
@@ -938,7 +807,7 @@ contains
             many_phases = Mdims%n_in_pres > 2
             black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
             !Positive effects on the convergence !Need to check for shock fronts...
-            ov_relaxation = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Vanishing_relaxation')
+            ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
 
             one_phase = (Mdims%n_in_pres == 1)
             readed_options = .true.
@@ -981,10 +850,8 @@ contains
         !For the first calculation, the Courant number is usually zero, hence we force a safe value here
         if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
         !Use the most restrictive value across all the processors
-        if (IsParallel()) call allmin(backtrack_par_factor)
+        if (IsParallel()) call allmin(backtrack_par_factor)!Should not be necessary as the Courant numbers are already parallel safe
 
     end subroutine auto_backtracking
 
 end module solvers_module
-
-

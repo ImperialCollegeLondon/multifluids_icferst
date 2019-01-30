@@ -28,56 +28,63 @@
 #include "fdebug.h"
 
 module adapt_state_module
-! these 5 need to be on top and in this order, so as not to confuse silly old intel compiler
+  use spud
+  use fldebug
+  use global_parameters, only : OPTION_PATH_LEN, periodic_boundary_option_path, adaptivity_mesh_name, adaptivity_mesh_name, domain_bbox, topology_mesh_name, FIELD_NAME_LEN
+  use futils, only: int2str, int2str_len, present_and_false, present_and_true
+  use reference_counting, only: tag_references, print_tagged_references
   use quadrature
   use elements
+  use mpi_interfaces
+  use parallel_tools
+  use data_structures
   use sparse_tools
+  use metric_tools
+  use eventcounter
+  use parallel_fields
+  use intersection_finder_module
   use fields
   use state_module
-!
+  use vtk_interfaces
+  use halos
+  use field_options
+  use node_boundary, only: initialise_boundcount
+  use boundary_conditions
+  use detector_data_types
+  use pickers
+  use interpolation_module
+  use hadapt_metric_based_extrude
+  use tictoc
   use adaptivity_1d
+  use limit_metric_module, only: limit_metric
   use adapt_integration, only : adapt_mesh_3d => adapt_mesh
+  use fefields
   use adaptive_timestepping
+  use detector_parallel
+  use diagnostic_variables
   use checkpoint
+  use edge_length_module
+  use boundary_conditions_from_options
+  use diagnostic_fields_wrapper_new, only : calculate_diagnostic_variables_new => calculate_diagnostic_variables
+  use hadapt_extrude
+  use reserve_state_module
+  use fields_halos
+  use populate_state_module
+  use dqmom
   use diagnostic_fields_wrapper
   use discrete_properties_module
-  use edge_length_module
-  use eventcounter
-  use field_options
-  use global_parameters, only : OPTION_PATH_LEN, periodic_boundary_option_path, adaptivity_mesh_name, domain_bbox, topology_mesh_name
-  use hadapt_extrude
-  use hadapt_metric_based_extrude
-  use halos
-  use fefields
   use interpolation_manager
-  use interpolation_module
   use mba_adapt_module
   use mba2d_integration
   use mba3d_integration
-  use metric_assemble
   use anisotropic_gradation, only: use_anisotropic_gradation
-  use parallel_tools
-  use boundary_conditions
-  use boundary_conditions_from_options
-  use populate_state_module
   use project_metric_to_surface_module
-  use reserve_state_module
+  use metric_assemble
   use sam_integration
-  use tictoc
   use timeloop_utilities
-  use fields_halos
-  use data_structures
-  use detector_data_types
-  use detector_parallel
-  use diagnostic_variables
-  use intersection_finder_module
-  use diagnostic_variables
-  use diagnostic_fields_wrapper_new, only : calculate_diagnostic_variables_new => calculate_diagnostic_variables
-  use pickers
   use write_gmsh
 #ifdef HAVE_ZOLTAN
   use zoltan_integration
-  use mpi_interfaces
 #endif
 
   implicit none
@@ -111,7 +118,7 @@ contains
     integer :: i
 
     assert(.not. mesh_periodic(old_positions))
-    
+
     if(isparallel()) then
       ! generate stripped versions of the position and metric fields
       call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
@@ -140,7 +147,7 @@ contains
           do i = 1, 3
               call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
                   force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, adapt_error = adapt_error)
-              call allor(adapt_error)
+              if (i/=3 ) call allor(adapt_error)
               !#####Section to ensure that mesh adaptivity does not stop the simulation#######
               if (.not.adapt_error) then
                 exit!Life is good! We can continue!
@@ -152,13 +159,23 @@ contains
                       case (3)!Last time, back to original mesh...
                           !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
                           if (getprocno() == 1) then
-                            ewrite(0,*) "##############################################################################################"
-                            ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used. This may fail if using CVGalerkin"
-                            ewrite(0,*) "##############################################################################################"
+                            ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used."
                           end if
-                          call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
-                          call set(new_positions,old_positions)
-                          call incref(new_positions)
+                          if (adapt_error) then !For the sections that this failed, re-use old mesh
+                            if(isparallel()) then
+                              ewrite(0,*) "Domain associated to processor number", getprocno()," has failed to adapt the mesh"
+                            end if
+                            call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
+                            call set(new_positions,old_positions)
+                            call incref(new_positions)
+                          else !Normal process for parts of the domain that work normally
+                            if(isparallel()) then
+                              expanded_positions = expand_positions_halo(new_positions)
+                              call deallocate(new_positions)
+                              new_positions = expanded_positions
+                            end if
+                          end if
+                          call allor(adapt_error) !Used as mpi_barrier
                           !...deallocate everything and leave subroutine
                           call deallocate(stripped_metric)
                           call deallocate(stripped_positions)
@@ -167,9 +184,12 @@ contains
                               !imposed in Adapt_Integration.F90
                           !Restart to original mesh
                           if (getprocno() == 1) then
-                            ewrite(0,*) "##############################################################################################"
-                            ewrite(0,*) "WARNING",i,": Mesh adaptivity failed to create a mesh, trying again with more conservative settings"
-                            ewrite(0,*) "##############################################################################################"
+                            select case (i)
+                              case (1)
+                                ewrite(0,*) "WARNING 1: Mesh adaptivity failed to create a mesh, trying again with more conservative settings."
+                              case default
+                                ewrite(0,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, trying only with r-adaptivity."
+                            end select
                           end if
                           if(isparallel()) then
                               ! generate stripped versions of the position and metric fields
@@ -207,7 +227,6 @@ contains
     type(vector_field), intent(out) :: stripped_positions
     type(tensor_field), intent(out):: stripped_metric
 
-    type(halo_type), dimension(:), pointer :: save_halos
     type(mesh_type):: stripped_mesh, mesh
     integer, dimension(:), pointer :: node_list, nodes
     integer, dimension(:), allocatable :: non_halo2_elements
@@ -235,9 +254,6 @@ contains
     ! the new element halos are recreated from the new nodal halo without
     ! using those of the input positions%mesh
     mesh = positions%mesh
-    if (.not. size(save_halos)/=2) then
-      FLAbort("In strip_l2_halo: halo2 is already stripped?")
-    end if
     ! since mesh is a copy of positons%mesh, we can change mesh%halos
     ! without changing positions%mesh%halos
     allocate(mesh%halos(1))
@@ -399,7 +415,7 @@ contains
         call vtk_write_fields("mesh", 2, position=intermediate_positions, model=intermediate_positions%mesh)
         call vtk_write_surface_mesh("surface", 2, intermediate_positions)
       end if
-      
+
       ! Step e). Advance a front in the new mesh using the unwrapped nelist from the aliased boundary
       ! until the front contains no nodes on the boundary; this forms the new cut
       nelist => extract_nelist(unwrapped_positions_B)
@@ -1053,6 +1069,10 @@ contains
       ! Adapt state, initialising fields from the options tree rather than
       ! interpolating them
       call adapt_state(states, metric, initialise_fields = .true.)
+
+      ! Population balance equation initialise - dqmom_init() helps to recalculate the abscissas and weights
+      ! based on moment initial conditions (if provided)
+      call dqmom_init(states)
     end do
 
     if(have_option(trim(base_path) // "/output_adapted_mesh")) then
@@ -1110,6 +1130,7 @@ contains
     integer :: ierr
     type(detector_list_ptr), dimension(:), pointer :: detector_list_array => null()
     type(detector_type), pointer :: detector => null()
+    real, save :: cutoff_tol = -1
 
     ! Node locking variable
     type(integer_set) :: lock_faces
@@ -1148,9 +1169,14 @@ contains
     if (zoltan_additional_adapt_iterations < 0) then
        FLExit("Zoltan additional adapt iterations must not be negative.")
     end if
-
+    !get cutoff_tol just once
+    if (cutoff_tol<0) then
+      cutoff_tol = 0.6
+      !For CV Pressure things are much more robust and we can relax this safety setting
+      if (have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )) cutoff_tol = 0.05
+    end if
     call get_option("/mesh_adaptivity/hr_adaptivity/zoltan_options/element_quality_cutoff", &
-       & quality_tolerance, default = 0.6)
+       & quality_tolerance, default = cutoff_tol)
 
     zoltan_min_adapt_iterations = adapt_iterations()
     zoltan_max_adapt_iterations = zoltan_min_adapt_iterations + zoltan_additional_adapt_iterations
@@ -1164,7 +1190,7 @@ contains
     else
        final_adapt_iteration = .false.
     end if
-    
+
     i = 1
 
     do while (.not. finished_adapting)
@@ -1355,7 +1381,7 @@ contains
 #ifdef DDEBUG
         ! Re-load-balance using zoltan
         my_num_detectors = default_stat%detector_list%length
-         
+
         call MPI_ALLREDUCE(my_num_detectors, total_num_detectors_before_zoltan, 1, getPINTEGER(), &
               MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
         assert(ierr == MPI_SUCCESS)
@@ -1405,14 +1431,14 @@ contains
           default_stat%zoltan_drive_call=.true.
 
         end if
-        
+
 #ifdef DDEBUG
         my_num_detectors = default_stat%detector_list%length
 
         call MPI_ALLREDUCE(my_num_detectors, total_num_detectors_after_zoltan, 1, getPINTEGER(), &
              MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
         assert(ierr == MPI_SUCCESS)
-        
+
         assert(total_num_detectors_before_zoltan == total_num_detectors_after_zoltan)
 #endif
 
@@ -1467,7 +1493,7 @@ contains
                   ewrite(-1,*) "quality_tolerance = ", quality_tolerance
                end if
             end if
-            
+
             final_adapt_iteration = .true.
          else
             ! Only check to allow an early exit if additional adapt iterations have been switched on
@@ -1549,7 +1575,7 @@ contains
     !!< Return the number of adapt / re-load-balance iterations
 
     integer :: adapt_iterations
-    
+
     integer :: adapt_iterations_default
 
     if(isparallel()) then

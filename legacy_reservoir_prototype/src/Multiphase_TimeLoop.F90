@@ -121,7 +121,8 @@ contains
             NonLinearIteration, NonLinearIteration_Components
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
-        logical :: have_temperature_field, have_component_field, have_extra_DiffusionLikeTerm, &
+        !! Arash
+        logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
         !!$ Defining solver options
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
@@ -142,11 +143,11 @@ contains
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
-        real :: c, rc, minc, maxc, ic
+        real :: c, rc, minc, maxc, ic, FPI_eq_taken
         !Variables for adaptive time stepping based on non-linear iterations
         logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
         real, dimension(:,:,:), allocatable  :: reference_field
@@ -164,7 +165,7 @@ contains
         !Array to map nodes to region ids
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         !Working pointers
-        type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
+        type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
@@ -188,16 +189,20 @@ contains
 !!-Variables related to the detection and correction of bad elements
         real, save :: Max_bad_angle = -1 ! set in timeloop from diamond input
         integer :: i, k
-        type(bad_elements), allocatable, dimension(:) :: Quality_list
         real, dimension(:,:), pointer:: X_ALL
         real, dimension(:), allocatable :: quality_table
         integer, dimension(:), allocatable :: diagnostics ! number of bad elements - used to generate a diagnostics table
         integer, dimension(2) :: shape
         logical :: mesh_diagnostics = .false., bad_element = .false. ! print out mesh diagnostics / change properties of bad elements to improve deltaP calculations for bad meshes (with large angles)
 
-!!-Variable to keep track of dt reduction for meeting dump_period requirements
+        !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
         real :: old_acctim
+
+        !! Variables to initialise porous media models
+        logical :: exit_initialise_porous_media = .false.
+
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -205,8 +210,13 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
+
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
+
+        if (numberfields_CVGalerkin_interp > 0 .and. isParallel()) then
+          ewrite(1,*) "WARNING: CVGalerkin projection not well tested for parallel."
+        end if
 
         ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
         call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold, default = 0.0 )
@@ -214,8 +224,8 @@ contains
 
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
-            if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
-                call get_option('/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
+            if(have_option("/solver_options/Non_Linear_Solver/nonlinear_iterations_at_adapt")) then
+                call get_option('/solver_options/Non_Linear_Solver/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
                 nonlinear_iterations = nonlinear_iterations_adapt
             end if
             call adapt_state_first_timestep(state)
@@ -266,7 +276,7 @@ contains
         !  A deallocate tfield when finished!!
 
         Repeat_time_step = .false.
-        nonLinearAdaptTs = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
+        nonLinearAdaptTs = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
 
         !!$ Calculating Global Node Numbers
         call allocate_multi_ndgln(ndgln, Mdims)
@@ -329,7 +339,7 @@ contains
         !!$ Defining discretisation options
         call Get_Discretisation_Options( state, Mdims, Mdisopt )
         !Check if the pressure matrix is a CV matrix
-        Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
+        Mmat%CV_pressure = .not. have_option( '/geometry/Advance_options/FE_Pressure' )
         if (.not. Mmat%CV_pressure .and. ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or. (Mdims%ndim==3 .and. Mdims%u_nloc == 5))) then
             ewrite(0, *) "WARNING: the only tested element pair using bubble shape functions is the P1DG(BL)P1DG(CV)"
         end if
@@ -339,7 +349,7 @@ contains
         !sprint_to_do for this to work with wells we need to change the sparsity, but that still needs to be done!
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', i )
             call get_option( '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', k )
-            Mmat%compact_PIVIT_MAT = (i == (k - 1))
+            Mmat%compact_PIVIT_MAT = (i == (k - 1))!This does not include the P1DG(BL)P1DG(CV) element pair...maybe we should include it as well
         end if
         !!$ Defining problem to be solved:
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
@@ -358,12 +368,15 @@ contains
         elseif ( have_option('/io/dump_period') ) then
             call get_option('/io/dump_period/constant', dump_period, default = 0.01)
         end if
-        call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
+        call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::Temperature' ) ) &
                 have_temperature_field = .true.
+            !! Arash
+            if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::SoluteMassFraction' ) ) &
+                have_salt_field = .true.
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
@@ -411,15 +424,12 @@ contains
 
         !!$ Starting Time Loop
         itime = 0
-        if( &
-             ! if this is not a zero timestep simulation (otherwise, there would
-             ! be two identical dump files)
-             current_time < finish_time &! unless explicitly disabled
-             .and. .not. have_option("/io/disable_dump_at_start") &
-             ) then
-            
+        ! if this is not a zero timestep simulation (otherwise, there would
+        ! be two identical dump files)! unless explicitly disabled
+        if( current_time < finish_time .and. &
+         .not. have_option("/io/disable_dump_at_start") ) then
 !-------------------------------------------------------------------------------
-! to allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
+! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
              if (do_checkpoint_simulation(dump_no)) then
                   checkpoint_number=0
                   CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
@@ -435,9 +445,11 @@ contains
               call write_state(dump_no, state)
 
         end if
+        !Initialise FPI_eq_taken
+        FPI_eq_taken = 0
         if(have_option("/io/stat/output_at_start")) then
             call write_diagnostics(state, current_time, dt,&
-                timestep, not_to_move_det_yet=.true.)
+                timestep, not_to_move_det_yet=.true., non_linear_iterations = FPI_eq_taken)
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
         ! If calculating boundary fluxes, allocate and initialise to zero outfluxes variables
@@ -448,9 +460,6 @@ contains
 
         checkpoint_number=1
 
-        ! Reading options for bad_element test
-        call BadElementTest(Quality_list, 1)
-
         !Prepapre the pipes
         if (Mdims%npres > 1) then
            !Retrieve the elements with pipes and the corresponding coordinates
@@ -458,13 +467,14 @@ contains
            call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
-!!$ Time loop
+
+        !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
-            ! Tests bad elements and creates table of angles for model elements
-            call BadElementTest(Quality_list, 2)
 
-
+            ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
+            call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
+            if (exit_initialise_porous_media) exit Loop_Time
 
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
@@ -501,8 +511,8 @@ contains
             elseif ( have_option( '/blasting') ) then
                call blasting( packed_state, Mdims%nphase )
                call update_blasting_memory( packed_state, state, timestep )
-!            elseif (have_option( '/simulation_type/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
- !              call femdemthermal(packed_state, state,Mdims%nphase)
+!            elseif (have_option( '/femdem_thermal') ) then ! Overriting of the temperature source and temperature absorption
+!              call femdemthermal(packed_state, state,Mdims%nphase)
 !			   call update_blasting_memory( packed_state, state, timestep )
             end if
 #endif
@@ -512,7 +522,7 @@ contains
             its = 1
 
             !Store backup to be able to repeat a timestep
-            if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
+            if (nonLinearAdaptTs) call Adaptive_NonLinear(mdims, packed_state, reference_field, its, &
                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 1)
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
@@ -525,6 +535,8 @@ contains
             !since for consistency, (later it is called as well) it uses the old values of pressure,
             !however, they have to be the most updated at this point
             if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
+            !Initialise to zero the SFPI counter
+            SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
@@ -532,14 +544,14 @@ contains
                 if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
 
                 !Store the field we want to compare with to check how are the computations going
-                call Adaptive_NonLinear(packed_state, reference_field, its, &
+                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 if( solve_force_balance) then
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc, Quality_list )
+                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
@@ -578,20 +590,9 @@ contains
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                        dt, &
-                        SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, &
-                        igot_theta_flux, &
-                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
+                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                        igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes)
-
-                    !!$ Calculate Darcy velocity
-                    if(is_porous_media) then
-                        !Do not calculate unless necessary, this is not specially efficient...
-                        if(is_multifracture) then
-                            call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
-                        end if
-                    end if
 
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
@@ -600,16 +601,17 @@ contains
 
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
+
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, &
-                        igot_theta_flux, mass_ele, &
-                        its, Courant_number, &
-                        option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
-                        theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j, Quality_list=Quality_list)
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+
                 end if Conditional_PhaseVolumeFraction
+
+                !!$ Calculate Darcy velocity with the most up-to-date information
+                if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
@@ -624,24 +626,42 @@ contains
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
+                        suf_sig_diagten_bc, Porosity_field%val, &
                         !!$
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, eles_with_pipe, pipes_aux, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        thermal = .true.,&
+                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
-                    ! Copy back memory
-                    do iphase=1,Mdims%nphase
-                       T=>extract_scalar_field(state(iphase),"Temperature")
-                       T%val=tracer_field%val(1,iphase,:)
-                    end do
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
+
+               sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+
+               !!$ Arash
+               !!$ Solve advection of the scalar 'SoluteMassFraction':
+               Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
+                   have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
+                   ewrite(3,*)'Now advecting SoluteMassFraction Field'
+                   call set_nu_to_u( packed_state )
+                   tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                   call SOLUTE_ASSEM_SOLVE( state, packed_state, &
+                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                       suf_sig_diagten_bc, Porosity_field%val, &
+                       !!$
+                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+
+                   nullify(tracer_field)
+
+                end if Conditional_ScalarAdvectionField2
 
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
@@ -654,7 +674,7 @@ contains
                     exit Loop_NonLinearIteration
                 end if
                 !Finally calculate if the time needs to be adapted or not
-                call Adaptive_NonLinear(packed_state, reference_field, its,&
+                call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, adapt_mesh_in_FPI, calculate_mass_delta)
 
                 !Flag the matrices as already calculated (only the storable ones
@@ -678,6 +698,10 @@ contains
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
 
+            !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
+            if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
+            FPI_eq_taken = dble(its) + dble(SFPI_taken)/3.!SFPI cost 1/3 roughly, this needs to be revisited when solving for nphases-1
+
             ! If calculating boundary fluxes, dump them to outfluxes.txt
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
                 if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
@@ -699,7 +723,7 @@ contains
             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
+            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
@@ -718,13 +742,13 @@ contains
 
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
-            
+
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
-                call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat )
-                call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat )
-                call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat )
+                call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat, default = 0.)
+                call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat, default = 66.e6)
+                call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat, default = 1.1)
                 !For porous media we need to use the Courant number obtained in cv_assemb
                 if (is_porous_media) then
                     c = max ( c, Courant_number(1) )
@@ -739,7 +763,7 @@ contains
                         c = max ( c, maxval( cfl % val ) )
                     end do
                 end if
-                call get_option( '/timestepping/timestep', dt )
+                !call get_option( '/timestepping/timestep', dt )
                 !To ensure that we always create a vtu file at the desired time (if requested),
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
                 !Original solution slowed down simulations due to having to build up dt again after forced reduction, now fixed by using stored_dt when appropiate
@@ -762,8 +786,7 @@ contains
                 end if
                 dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
                 !Make sure we finish at required time and we don't get dt = 0
-                dt = max(min(dt, finish_time - current_time), 1d-15)                    
-                
+                dt = max(min(dt, finish_time - current_time), 1d-15)
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
@@ -778,7 +801,7 @@ contains
             if ( after_adapt .and. have_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt' ) ) then
                 call get_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt', NonLinearIteration )
             else
-                call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
+                call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
             end if
             call set_boundary_conditions_values(state, shift_time=.true.)
             if (sig_hup .or. sig_int) then
@@ -1007,12 +1030,7 @@ contains
 
         subroutine create_dump_vtu_and_checkpoints()
 
-            if (is_porous_media) then!Calculate Darcy velocity to output in the vtu files
-                !Do not recalculate for "is_multifracture"
-                if(.not.is_multifracture) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, multi_absorp%PorousMedia )
-            end if
-
-
+            ! sprint to do: check this routine - why are we swapping pressure fields??
             !!$ Write outputs (vtu and checkpoint files)
             if (have_option('/io/dump_period_in_timesteps')) then
                 ! dump based on the prescribed period of time steps
@@ -1027,7 +1045,7 @@ contains
                         call set(pressure_field,CV_Pressure)
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
 
                     call write_state( dump_no, state ) ! Now writing into the vtu files
@@ -1045,7 +1063,7 @@ contains
                         checkpoint_number=checkpoint_number+1
                         call set(pressure_field,CV_Pressure)
                     end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
@@ -1055,11 +1073,11 @@ contains
         !This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
             !local variables
-            type( scalar_field ), pointer ::  s_field, s_field2, s_field3
-            type( vector_field ), pointer ::  U_x1, U_x2
-            integer :: U_x1_stat, idim
-            real, dimension(2) :: min_max_limits_before
-            type (tensor_field), pointer :: tempfield
+            type( scalar_field ), pointer :: s_field, s_field2, s_field3
+            integer                       :: idim
+            real, dimension(2)            :: min_max_limits_before, solute_min_max_limits_before
+            type (tensor_field), pointer  :: tempfield
+            type (tensor_field), pointer  :: saltfield
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1072,6 +1090,15 @@ contains
                 tempfield => extract_tensor_field( packed_state, "PackedTemperature" )
                 min_max_limits_before(1) = minval(tempfield%val); call allmin(min_max_limits_before(1))
                 min_max_limits_before(2) = maxval(tempfield%val); call allmax(min_max_limits_before(2))
+            end if
+            !Arash
+            if (has_salt) then
+                saltfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+                solute_min_max_limits_before(1) = minval(saltfield%val); call allmin(solute_min_max_limits_before(1))
+                solute_min_max_limits_before(2) = maxval(saltfield%val); call allmax(solute_min_max_limits_before(2))
+                !sprint_to_do: check the boundedness of the mass fraction (and also the temperature) field
+                !solute_min_max_limits_before(1) = 0.; call allmin(solute_min_max_limits_before(1))
+                !solute_min_max_limits_before(2) = 1.0; call allmax(solute_min_max_limits_before(2))
             end if
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
@@ -1122,19 +1149,9 @@ contains
                             call qmesh( state, metric_tensor )
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
-                            itime, not_to_move_det_yet = .true. )
+                            itime, not_to_move_det_yet = .true. , non_linear_iterations = FPI_eq_taken)
                         call run_diagnostics( state )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
-                        ! Copy U memory
-                        do iphase=1,Mdims%nphase
-                           U_x1=>extract_vector_field(state(iphase),"U",U_x1_stat)
-                           U_x2=>extract_vector_field(state(iphase),"Velocity")
-                           if(U_x1_stat==0)then
-                              do idim=1,Mdims%ndim
-                                 U_x1%val(idim,:)=U_x2%val(idim,:)
-                              end do
-                           end if
-                        end do
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
@@ -1229,10 +1246,14 @@ end if
                         call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
-                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,for_sat=.true.)
-                    call Set_Saturation_to_sum_one(mdims, ndgln, state, packed_state)!<= just in case, cap unphysical values if there are still some
+                    !This to be removed once adapt within FPI is improved and generalised
+                    if (.not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+                      call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
+                      call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
+                    end if
                 end if
-                if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,min_max_limits = min_max_limits_before)
+                if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
+                if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields_CVGalerkin_interp > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
@@ -1304,6 +1325,7 @@ end if
         integer :: i
         do i=1,size(packed_state%scalar_fields)
             sfield=>packed_state%scalar_fields(i)%ptr
+            if (sfield%name(1:4)=="BAK_") cycle!For adapt within FPI we create these fields that we do not need to update
             if (sfield%name(1:9)=="PackedOld") then
                 nsfield=>extract_scalar_field(packed_state,"Packed"//sfield%name(10:))
                 sfield%val=nsfield%val
@@ -1311,6 +1333,7 @@ end if
         end do
         do i=1,size(packed_state%vector_fields)
             vfield=>packed_state%vector_fields(i)%ptr
+            if (vfield%name(1:4)=="BAK_") cycle!For adapt within FPI we create these fields that we do not need to update
             if (vfield%name(1:9)=="PackedOld") then
                 nvfield=>extract_vector_field(packed_state,"Packed"//vfield%name(10:))
                 vfield%val=nvfield%val
@@ -1391,6 +1414,7 @@ end if
                     thermal = .false.,& ! the false means that we don't add an extra source term
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                     icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
+
                 tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
             end do Loop_NonLinearIteration_Components
 
@@ -1471,74 +1495,80 @@ end if
         implicit none
         logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
         integer, intent(inout) :: its
-        integer, intent(in) :: flag
-        !Local variables
+        integer, intent(in)    :: flag
+        ! Local variables
         type(scalar_field), pointer :: sat1, sat2
-        integer :: iphase
-        integer, save :: phaseToAdapt = -1
-        real, save :: Inf_tol = -1, non_linear_tol = -1
+        type(vector_field), pointer :: vfield1, vfield2
+        integer                     :: iphase, fields, k, i
+        real, save                  :: Inf_tol = -1, non_linear_tol = -1
+        character( len = option_path_len ) :: option_path, option_name
 
 
-        if (phaseToAdapt<0) then
-            !Retrieve which phase has the options to adapt to
-            do iphase = 1, Mdims%nphase
-                if (have_option('/material_phase['//int2str(iphase-1)//']/scalar_field::PhaseVolumeFraction/prognostic/adaptivity_options')) then
-                    phaseToAdapt = iphase
-                    exit
-                end if
-            end do
-            !Make sure it is not the last phase! and that the option can be used
-            if (phaseToAdapt==Mdims%nphase .or. phaseToAdapt < 0 .or. .not.is_porous_media ) then
-                ewrite(0,*) "WARNING: Adapt_mesh_within_FPI requires porous media flow and the last PhaseVolumeFraction NOT to be the only target for adapting the mesh"
-                return
-            end if
-            !Store the settings selected by the user
-            call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
-            call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol, default = 0.03)
+        if (Inf_tol<0) then
+          !Store the settings selected by the user
+          call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol, default = 5e-2)
+          call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol, default = 0.01)
         end if
-
 
         select case (flag)
             case (1)
                 !Relax the convergence criteria since we don't need much precision at this stage
                 !Since non_linear_tol is they key convergence criterion, we use a relative value and we reduce it half-order
-                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', min(non_linear_tol*10., 1e-1))
-                if (.not.have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol'))then
+                call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', min(non_linear_tol*10., 1e-1))
+                if (.not.have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol'))then
                     !Create the option
                     call copy_option( '/timestepping/timestep/', &
-                        '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol')
+                        '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol')
                 end if
                 !10% tolerance provides a good enough result
-                call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',min(Inf_tol*5.,0.1))
+                call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',min(Inf_tol*5.,0.1))
         case default
 
-            !Four steps
-            !1. Store OldPhaseVolumeFraction
-            do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-                sat2%val = sat1%val
+            !Three steps
+            !1. Store OldValues into BAK values
+            do iphase = 1, Mdims%nphase
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle!Not backed fields!
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  sat1 => extract_scalar_field( state(iphase),  "Old"//trim(option_name))
+                  sat2  => extract_scalar_field( state(iphase), "BAK_"//trim(option_name))
+                  sat2%val = sat1%val
+                end do
+                !Finally velocity as well
+                vfield1 => extract_vector_field( state(iphase),  "OldVelocity")
+                vfield2 => extract_vector_field( state(iphase),  "BAK_Velocity")
+                vfield2%val = vfield1%val
             end do
-            !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
-            sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
-            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-            !It is important that the average keep the sharpness of the interfaces
-            sat1%val = abs(sat1%val - sat2%val)**0.8
+
+            !2. Adapt the mesh (bak fields have the same adaptivity options)
             call adapt_mesh_mp()
-            !3.Reconstruct the Saturation of the first phase
-            sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-            sat1%val = 1.0
-            do iphase = 1, Mdims%n_in_pres
-                if (iphase /= phaseToAdapt) then
-                    sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
-                    sat1%val = sat1%val - sat2%val
-                end if
-            end do
-            !4. Copy back to OldPhaseVolumeFraction
-            do iphase = 1, Mdims%n_in_pres
-                sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-                sat1%val = sat2%val
+
+            call copy_packed_new_to_old(packed_state)!<= if we don't do this, the results are wrong and I don't know why, after we moved to the new schema...
+            !3. Copy back from BAK fields to Old fields
+            do iphase = 1, Mdims%nphase
+                !First scalar prognostic fields
+                option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field"
+                fields = option_count("/material_phase["// int2str( iphase - 1 )//"]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  option_path = "/material_phase["// int2str( iphase - 1 )//"]/scalar_field::"//trim(option_name)
+                  if (option_name(1:4)=="BAK_") cycle!Not backed fields!
+                  if (trim(option_name)=="Density" .or. .not.have_option(trim(option_path)//"/prognostic" )) cycle!Nothing to do for density or non prognostic fields
+                  if (have_option(trim(option_path)//"/aliased" )) cycle
+                  sat1 => extract_scalar_field( state(iphase),  "Old"//trim(option_name))
+                  sat2  => extract_scalar_field( state(iphase), "BAK_"//trim(option_name))
+                  sat1%val = sat2%val
+                end do
+                !Finally velocity as well
+                vfield1 => extract_vector_field( state(iphase),  "OldVelocity")
+                vfield2 => extract_vector_field( state(iphase),  "BAK_Velocity")
+                vfield2%val = vfield1%val
             end do
             !Pointing to porosity again is required
             porosity_field=>extract_vector_field(packed_state,"Porosity")
@@ -1547,91 +1577,15 @@ end if
             adapt_mesh_in_FPI = .false.
 
             !Set the original convergence criteria since we are now solving the equations
-            call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', non_linear_tol)
-            call set_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol)
+            call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol)
+            call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol)
             !Do not re-adapt the mesh
             t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
         end select
 
     end subroutine adapt_mesh_within_FPI
 
-
-subroutine BadElementTest(Quality_list, flag)
-
-    implicit none
-    integer, intent(in) :: flag
-    type(bad_elements), allocatable, dimension(:), intent(inout) :: Quality_list
-    ! local variable
-    integer :: i
-
-    select case(flag)
-
-            ! Allocate memory for the quality_table to check the angles of each element and print out the diagnostics for the mesh
-        case (1)
-            
-			bad_element = have_option('/numerical_methods/Bad_element_fix/')
-			if (have_option('/io/Mesh_Diagnostics_Angles')) then
-				mesh_diagnostics = .true.
-				shape = option_shape('/io/Mesh_Diagnostics_Angles')
-				allocate(quality_table(shape(1)))
-				call get_option( '/io/Mesh_Diagnostics_Angles', quality_table)
-				allocate(diagnostics(shape(1)))
-				diagnostics(:) = -1
-			end if
-           
-
-        case default
-            if (bad_element .or. mesh_diagnostics)  then
-                ! Check bad elements (angles larger than specified in Max_bad_angle) at first time step or after mesh adapt
-                if (first_time_step .or. after_adapt) then
-                    if (allocated(Quality_list)) then
-                        i=1
-                        do while (allocated(Quality_list(i)%rotmatrix) )
-                            deallocate(Quality_list(i)%rotmatrix)
-                            i = i+1
-                        end do
-                        deallocate(Quality_list)
-                    end if
-                    allocate(Quality_list(Mdims%totele+1))
-                    call get_var_from_packed_state(packed_state, Coordinate = X_ALL)
-                    ! create table for stats on the angles of the mesh
-                    if (mesh_diagnostics) then
-                        do i=1, size(quality_table)
-                            call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1 ,quality_table(i), Quality_list, bad_element, diagnostics(i))
-                        end do
-
-
-
-                        if (getprocno() == 1) then
-                            if (after_adapt) then
-                                ewrite(0, '( 38("-") / 1X A, I6, 10X, A / 38("-") )') "Time = ", itime ,"after adapt"
-                            else
-                                ewrite(0, '( 38("-") / 1X A, I10 / 38("-") )') "Time = ", itime
-                            end if
-
-                            ewrite(0, '(1X A, 4X A, 3X A, T9, "|", T24, "|" / 38("-"), T9, "|", T24, "|")') "Angle", "No. elements", "Percentage"
-                            do i=1, size(quality_table)
-                                ewrite(0, '(1X F6.2, 1X, I10, 6X, F7.2, T9, "|", T24 "|")') quality_table(i), diagnostics(i), diagnostics(i)*100./Mdims%totele
-                            end do
-                            ewrite(0, '(38("-"))')
-                        end if
-                    end if
-
-                    if (.not. bad_element) then
-                        deallocate(Quality_list) ! don't change element properties - throw away Quality list
-                    else
-
-                        if (Max_bad_angle < 0) call get_option( '/numerical_methods/Bad_element_fix/Angle', Max_bad_angle, default = 177. )
-                        call CheckElementAngles(X_ALL, Mdims%totele, ndgln%x_p1, Mdims%x_nloc_p1, Max_bad_angle, Quality_list, bad_element)
-                    endif
-                end if
-            end if
-
-    end select
-
-end subroutine BadElementTest
-
-    end subroutine MultiFluids_SolveTimeLoop
+ end subroutine MultiFluids_SolveTimeLoop
 
 
 

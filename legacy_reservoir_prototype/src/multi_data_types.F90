@@ -1,4 +1,4 @@
-  
+
 !    Copyright (C) 2006 Imperial College London and others.
 !
 !    Please see the AUTHORS file in the main source directory for a full list
@@ -26,7 +26,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-  
+
 
 module multi_data_types
     use fldebug
@@ -39,6 +39,7 @@ module multi_data_types
     use fields
     use spud
     use multi_tools
+    use futils
 
 
     interface allocate_multi_dev_shape_funs
@@ -89,9 +90,9 @@ module multi_data_types
         !This type includes the necessary information to choose from the different discretization options available
         integer ::  cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type
         integer ::  t_disopt, v_disopt
-        real ::     t_beta, v_beta, t_theta, v_theta, u_theta
+        real ::     t_beta, v_beta, t_theta, v_theta, u_theta, u_beta
         integer ::  t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-                    in_ele_upwind, dg_ele_upwind, nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
+                    in_ele_upwind, dg_ele_upwind, nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp, nits_flux_lim_c
         logical ::  volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, &
                     comp_get_theta_flux, t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction
     end type multi_discretization_opts
@@ -227,6 +228,8 @@ module multi_data_types
         type (multi_field) :: PorousMedia ! <= Always memory_type = 2
         type (multi_field) :: Components
         type (multi_field) :: Temperature
+        !! Arash
+        type (multi_field) :: SaltConcentration
         type (multi_field) :: Velocity
         type (multi_field) :: Flooding
     end type multi_absorption
@@ -1344,10 +1347,15 @@ contains
         !Local variables
         integer :: k
 
+        !REMEBER TO CHECK MASS CONSERVATION FOR THE CONCENTRATION AS WELL
         allocate(outfluxes%intflux(Mdims%nphase,size(outfluxes%outlet_id)))
-        k = 1
-        if (has_temperature) k = k + 1
+        k = 3!Consider always all possible fields
+        ! if (has_temperature) k = k + 1
         !(field -saturation, temperature-, Mdims%nphase, size(outfluxes%outlet_id))
+        ! allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
+
+        !Arash
+        ! if (has_salt) k = k + 2
         allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
 
         outfluxes%intflux= 0.
@@ -1364,5 +1372,3 @@ contains
     end subroutine destroy_multi_outfluxes
 
 end module multi_data_types
-
-
