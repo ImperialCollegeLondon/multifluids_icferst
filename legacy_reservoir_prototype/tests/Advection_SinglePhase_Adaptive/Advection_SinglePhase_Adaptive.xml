@@ -2,7 +2,7 @@
 <testproblem>
   <name>Advection</name>
   <owner userid="jefferson.gomes"/>
-  <tags>mpml</tags>
+  <tags>disabled mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst Advection_SinglePhase_Adaptive.mpml
 ../../../bin/icferst Advection_SinglePhase_Unstructured.mpml
