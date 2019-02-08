@@ -499,7 +499,7 @@ contains
              end if
         end if
 !print all the options in the diamond file and added here to the terminal
-   ! call print_options()
+        !call print_options()
         !Call fluidity to populate state
         call populate_state(state)
 
