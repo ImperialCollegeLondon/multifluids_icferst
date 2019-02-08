@@ -509,6 +509,9 @@ contains
         if( have_option( trim( option_path2 ) ) ) then
             if( have_option( trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection') ) then
                 Mdisopt%t_disopt = 9
+                if (have_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/value')) then
+                  call get_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/value', Mdisopt%compcoeff)
+                end if
             else
                 if( have_option( trim( option_path2 ) // 'upwind' ) ) &
                     Mdisopt%t_disopt = 1
@@ -526,6 +529,9 @@ contains
         if( have_option( trim( option_path2 ) ) ) then
             if( have_option( trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection') ) then
                 Mdisopt%v_disopt = 9
+                if (have_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/value')) then
+                  call get_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/value', Mdisopt%compcoeff)
+                end if
             else
                 if( have_option( trim( option_path2 ) // 'upwind' ) ) &
                     Mdisopt%v_disopt = 0

@@ -2798,7 +2798,8 @@ sweby_limiter =
 
 compressive_advection_limiter = 
   element limiter {
-    attribute name {"CompressiveAdvection"}
+    attribute name {"CompressiveAdvection"},
+    InterfaceCapturing_options?
   }
 
 ENO_advection = 
@@ -2806,6 +2807,14 @@ ENO_advection =
     attribute name {"ENO"}
   }
 
+InterfaceCapturing_options =
+   (
+     ## Controls the negative diffusion added to the interface
+     ## Defaults to full negative diffusion (= 1.0) if unselected
+     element value {
+        real
+     }?
+   )
 
 slope_options =
    (
