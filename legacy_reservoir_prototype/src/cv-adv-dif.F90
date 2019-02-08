@@ -2688,6 +2688,7 @@ end if
                                             IF( QUAD_ELEMENTS ) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
                                         END DO
                                     ELSE ! Interface capturing...
+                                        CONVECTION_ADVECTION_COEFF = Mdisopt%compcoeff
                                         DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD) ! It should be Mdims%nphase because interface tracking only applied to the 1st set of fields.
                                             U_DOT_GRADF_GI(IFIELD) = SUM( UDGI_ALL(:,IFIELD)*FXGI_ALL(:,IFIELD)  )
                                             IF ( NON_LIN_PETROV_INTERFACE == 5 ) THEN
@@ -2739,7 +2740,7 @@ end if
                                                     DIFF_COEF(IFIELD) = SQRT( SUM( UDGI_ALL(:,IFIELD)**2 )) * P_STAR(IFIELD)
                                             END select
                                             ! Make the diffusion coefficient negative (compressive)
-                                            DIFF_COEF(IFIELD) = -DIFF_COEF(IFIELD)
+                                            DIFF_COEF(IFIELD) = -DIFF_COEF(IFIELD)*CONVECTION_ADVECTION_COEFF
                                             RSCALE(IFIELD) = 1. / TOLFUN( SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD))   )
                                         END DO ! END OF DO IFIELD=1,NFIELD
                                     END IF ! Petrov-Galerkin end of IF(NON_LIN_PETROV_INTERFACE==0) THEN
