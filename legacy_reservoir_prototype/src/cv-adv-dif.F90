@@ -2627,6 +2627,7 @@ end if
             REAL, dimension(NFIELD) :: courant_or_minus_one_new, XI_LIMIT,&
                 P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
                 RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
+            real :: CONVECTION_ADVECTION_COEFF = 1.0 !default behaviour = 1.0
             ! No limiting if CV_DISOPT is 6 or 7  (why not just define limt=femt and skip to assembly?)
             NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
             ! Make a guess at the CV face value of advected field variable and density

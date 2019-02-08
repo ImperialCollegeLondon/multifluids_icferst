@@ -3397,6 +3397,9 @@ Journal on Numerical Analysis, 21, 995-1011</a:documentation>
       <attribute name="name">
         <value>CompressiveAdvection</value>
       </attribute>
+      <optional>
+        <ref name="InterfaceCapturing_options"/>
+      </optional>
     </element>
   </define>
   <define name="ENO_advection">
@@ -3405,6 +3408,15 @@ Journal on Numerical Analysis, 21, 995-1011</a:documentation>
         <value>ENO</value>
       </attribute>
     </element>
+  </define>
+  <define name="InterfaceCapturing_options">
+    <optional>
+      <element name="value">
+        <a:documentation>Controls the negative diffusion added to the interface
+Defaults to full negative diffusion (= 1.0) if unselected</a:documentation>
+        <ref name="real"/>
+      </element>
+    </optional>
   </define>
   <define name="slope_options">
     <element name="slopes">
