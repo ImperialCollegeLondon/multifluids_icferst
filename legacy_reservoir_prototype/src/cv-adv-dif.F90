@@ -2935,7 +2935,7 @@ end if
             REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J
             REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT
             REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
-            REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
+            REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL!This is for the continuity equation, so we convert V into u
             REAL, DIMENSION( :, :, : ), intent( in ) :: I_adv_coef, I_adv_coef_grad, &
                 J_adv_coef, J_adv_coef_grad
             REAL, DIMENSION( :, :, : ), intent( in ) :: I_inv_adv_coef, J_inv_adv_coef

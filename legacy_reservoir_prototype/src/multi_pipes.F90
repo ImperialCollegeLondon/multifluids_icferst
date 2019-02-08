@@ -1874,6 +1874,10 @@ contains
             !local variables
             real, dimension(Mdims%ndim) :: vec1, vec2, Vaux
             real :: c1, c2, distance, Saux1, Saux2, diam
+            !To compare if a mesh node falls within the well section we need
+            !to use a tighter tolerance than when checking if the node is within a cirtual well cylinder
+            !this is because we are not affected by the lack of precision of the nastran .bdf files 
+            real, parameter :: single_precision_tol = 1e-8
             !Initialiase variables
             is_within_pipe = .false.
 
@@ -1883,9 +1887,9 @@ contains
             c1 = dot_product(Vec2,Vec1)
             c2 = dot_product(Vec1,Vec1)!<=lenght of the section**2
             !First we check that the point is between the two vertexes
-            if (c1 <= tol)then!Before v1
+            if (c1 <= single_precision_tol)then!Before v1
                 distance = sqrt(dot_product(Vec2,Vec2))
-            else if ( c2 - c1 <= tol )then!after v2
+            else if ( c2 - c1 <= single_precision_tol)then!after v2
                 Vec2 = P(1:Mdims%ndim)-v2(1:Mdims%ndim)
                 distance = sqrt(dot_product(Vec2,Vec2))
             else !Calculate distance to a line
@@ -2148,24 +2152,24 @@ contains
 
 
 !print *, "ELEMENT COORDINATES"
-!j = 1
-!do while (visited_eles(1,j) > 0)
-!ele = visited_eles(1,j)
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
-!print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
-!j = j + 1
-!end do
-!read*
+! j = 1
+! do while (visited_eles(1,j) > 0)
+! ele = visited_eles(1,j)
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 1 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 2 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 3 ))
+! print *, X(:,ndgln%x( ( ele - 1 ) * Mdims%x_nloc + 4 ))
+! j = j + 1
+! end do
+! read*
             !Count useful values
             j = 0
             do while (AUX_eles_with_pipe(j+1)%ele > 0)
