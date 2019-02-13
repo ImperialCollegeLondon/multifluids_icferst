@@ -9,7 +9,6 @@ import vtk
 import sys
 
 fname=sys.argv[1]
-print(vtk.vtkVersion.GetVTKSourceVersion())
 r=vtk.vtkExodusIIReader()
 if (fname[-2:] == '-h'):
     print 'This script converts a general exodus ii file into ASCII .msh file format. It requires the vtk python library to be installed on the system.'
