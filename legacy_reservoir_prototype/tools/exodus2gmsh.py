@@ -9,7 +9,7 @@ import vtk
 import sys
 
 fname=sys.argv[1]
-
+print(vtk.vtkVersion.GetVTKSourceVersion())
 r=vtk.vtkExodusIIReader()
 if (fname[-2:] == '-h'):
     print 'This script converts a general exodus ii file into ASCII .msh file format. It requires the vtk python library to be installed on the system.'
@@ -23,6 +23,7 @@ r.SetFileName(fname)
 r.UpdateInformation()
 r.GenerateGlobalNodeIdArrayOn()
 r.GenerateGlobalElementIdArrayOn()
+r.GenerateObjectIdCellArrayOn()
 #r.ExodusModelMetadataOn()
 #r.PackExodusModelOntoOutputOn()
 for i in range(r.GetNumberOfSideSetArrays()):
@@ -46,6 +47,7 @@ def f():
 
 for j in range(data.GetBlock(4).GetNumberOfBlocks()):
     ug=data.GetBlock(4).GetBlock(j)
+    sidesetID=r.GetObjectId(3,j)
     for k in range(ug.GetNumberOfPoints()):
         lnodes={}
         p=ug.GetPoint(k)
@@ -56,14 +58,15 @@ for j in range(data.GetBlock(4).GetNumberOfBlocks()):
         lnodes[k]=node_dict.get(p)
     for k in range(ug.GetNumberOfCells()):
         cp=ug.GetCell(k).GetPoints()
-        ele_face_dict.append((j+1,
+        ele_face_dict.append((sidesetID,
                               node_dict[cp.GetPoint(0)],
                               node_dict[cp.GetPoint(1)],
                               node_dict[cp.GetPoint(2)]))
-                                        
+                                     
 
 for j in range(data.GetBlock(0).GetNumberOfBlocks()):
     ug=data.GetBlock(0).GetBlock(j)
+    blockID=r.GetObjectId(1,j)
     for k in range(ug.GetNumberOfPoints()):
         lnodes={}
         p=ug.GetPoint(k)
@@ -74,7 +77,7 @@ for j in range(data.GetBlock(0).GetNumberOfBlocks()):
         lnodes[k]=node_dict.get(p)
     for k in range(ug.GetNumberOfCells()):
         cp=ug.GetCell(k).GetPoints()
-        ele_vol_dict.append((j+1,
+        ele_vol_dict.append((blockID,
                               node_dict[cp.GetPoint(0)],
                               node_dict[cp.GetPoint(1)],
                               node_dict[cp.GetPoint(2)],
