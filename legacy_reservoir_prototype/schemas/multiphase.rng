@@ -14,7 +14,7 @@
   <include href="temporal_discretisation.rng"/>
   <start>
     <element name="icferst_options">
-      <a:documentation>IC-FERST is a next generation simulator based on Double-Control-Volume 
+      <a:documentation>IC-FERST is a next generation simulator based on Double-Control-Volume
 Finite Element methods and dynamic unstructured mesh optimisation.
 
 IC-FERST is licensed under the LGPL. For more information
@@ -166,7 +166,7 @@ checkpoints may be overwritten.</a:documentation>
         </optional>
         <optional>
           <element name="detectors">
-            <a:documentation>Specification of detectors. Note that when running in parallel the detector output is in binary format even if binary_output is not enabled. When running in serial, although the output is in principle still generated in ascii format if binary_output is not enabled, it is not certain that it is working well. Hence, it is recommended to enable binary_output and work with binary files. </a:documentation>
+            <a:documentation>Specification of detectors. Note that when running in parallel the detector output is in binary format even if binary_output is not enabled. When running in serial, although the output is in principle still generated in ascii format if binary_output is not enabled, it is not certain that it is working well. Hence, it is recommended to enable binary_output and work with binary files.</a:documentation>
             <zeroOrMore>
               <choice>
                 <element name="static_detector">
@@ -292,7 +292,7 @@ The t argument is for future use only - currently detector locations are only se
 binary search</a:documentation>
                     <element name="subcycles">
                       <a:documentation>Number of subdivisions of the timestep
-increase this if you are not happy with your 
+increase this if you are not happy with your
 detector trajectory accuracy, or if particles
 are jumping out of the domain a lot</a:documentation>
                       <ref name="integer"/>
@@ -371,7 +371,7 @@ NOTE: Requires -v2</a:documentation>
           <element name="Mesh_Diagnostics_Angles">
             <a:documentation>Printout the number of elements and percentage that contain an angle
 equal or bigger than the ones specified here
-Note: This may slow down your simulation should be used as a diagnostic tool </a:documentation>
+Note: This may slow down your simulation should be used as a diagnostic tool</a:documentation>
             <ref name="real_vector"/>
           </element>
         </optional>
@@ -408,11 +408,18 @@ timestep and after a mesh adapt.</a:documentation>
                 <a:documentation>Minimum time step size.
 Manual suggests 0.0</a:documentation>
                 <optional>
-                  <element name="terminate_if_reached">
-                    <a:documentation>If enabled, signals model termination if a timestep less
+                  <element name="dump_vtu_if_reached">
+                    <a:documentation>If enabled, signals model dump if a timestep less
+than or equal to the minimum_timestep is requested.</a:documentation>
+                    <optional>
+                      <element name="terminate">
+                        <a:documentation>If enabled, signals model termination if a timestep less
 than or equal to the minimum_timestep is requested. The
 model will stop at the end of the timestep in order to
-allow for the latest output to be written. </a:documentation>
+allow for the latest output to be written.</a:documentation>
+                        <ref name="comment"/>
+                      </element>
+                    </optional>
                     <ref name="comment"/>
                   </element>
                 </optional>
@@ -476,7 +483,7 @@ between 0 and 1. Test cases have 1.</a:documentation>
                   <a:documentation>Enable this option to force component mass fractions
 to sum to 1 by adding constraint into compositional source term.</a:documentation>
                   <element name="Relaxation_Coefficient">
-                    <a:documentation>Relaxation coefficient to summation constraint [0,1]. 
+                    <a:documentation>Relaxation coefficient to summation constraint [0,1].
 --&gt; 0: under-relaxation ; --&gt; 1: over-relaxation</a:documentation>
                     <ref name="real"/>
                   </element>
@@ -498,12 +505,12 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
                 <element name="surface_tension">
                   <a:documentation>Surface tension</a:documentation>
                   <element name="coefficient">
-                    <a:documentation>Surface tension coefficient. </a:documentation>
+                    <a:documentation>Surface tension coefficient.</a:documentation>
                     <ref name="real"/>
                   </element>
                   <optional>
                     <element name="angle">
-                      <a:documentation>Contact angle. </a:documentation>
+                      <a:documentation>Contact angle.</a:documentation>
                       <ref name="real"/>
                     </element>
                   </optional>
@@ -645,7 +652,7 @@ Default value 2.0</a:documentation>
               </optional>
               <optional>
                 <element name="capillary_pressure">
-                  <a:documentation>Option for capillary pressure				 </a:documentation>
+                  <a:documentation>Option for capillary pressure</a:documentation>
                   <optional>
                     <element name="type_Brooks_Corey">
                       <a:documentation>Brooks-Corey equation
@@ -654,7 +661,7 @@ Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a; here c is the entry pressure
 
 For imbibition swith the formula is:
 
-## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure 
+## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure
 
 You should specify this ONLY for the wetting phase</a:documentation>
                       <element name="scalar_field">
@@ -707,7 +714,7 @@ where s_eff = (S_w-Swir)/(1-Swir-Sor)
 
 c = maximum pc pressure; a = pc exponent
 
-(no entry pressure) 
+(no entry pressure)
 
 ONLY specify for the wetting phase</a:documentation>
                       <element name="scalar_field">
@@ -947,7 +954,7 @@ It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
 If none, set it to 1.
 
 Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
-/wells_and_pipes/well_options/calculate_sigma_pipe </a:documentation>
+/wells_and_pipes/well_options/calculate_sigma_pipe</a:documentation>
                 <attribute name="name">
                   <value>Sigma</value>
                 </attribute>
@@ -1110,7 +1117,7 @@ Each file has to describe a continuous well touching an external boundary.
           </optional>
           <optional>
             <element name="FWL">
-              <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil. 
+              <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 
 This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
 
@@ -1160,7 +1167,7 @@ The following must be specified:
           <a:documentation>Flooding parameters</a:documentation>
           <element name="scalar_field">
             <a:documentation>This is the term Nm of the manning formula:
-b = Nm^2*g * |u|/h^1.33; 
+b = Nm^2*g * |u|/h^1.33;
 Nm is the manning coefficent. Values between [0.01 and 0.025];
 Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
 For no friction set this to zero or do not activate it.</a:documentation>
@@ -1205,7 +1212,7 @@ Elsewhere a high-order advection scheme is used. This should increase the speed 
           </optional>
           <optional>
             <element name="lump_mass_matrix">
-              <a:documentation>Use the row-sum method to create a lumped mass matrix. 
+              <a:documentation>Use the row-sum method to create a lumped mass matrix.
 For porous media this will not have an effect.
 Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix</a:documentation>
               <optional>
@@ -1213,7 +1220,7 @@ Also options to convert P1DG into P0DG and introduce the temporal terms into the
                   <a:documentation>For the CV pressure formulation this controls the homogenisation of the velocity nodes of per element
 the bigger it is the more P0DG the element becomes. The default values have been obtained so the results are stable.
 The default value for P1DGP1 =&gt; 1e4 and disabled for other element types.
-To disable it manually, set it to negative values. </a:documentation>
+To disable it manually, set it to negative values.</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -1277,9 +1284,9 @@ activate this to also output the force_density</a:documentation>
         <a:documentation>Selects the quality configuration of the experiment
 For Porous media the P1/P0 stands for P0, for inertia for P1.
 
-Fast =&gt; Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler; 
+Fast =&gt; Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
 
-Balanced (recommended) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta; 
+Balanced (recommended) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
 
 Precision =&gt; Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
 
@@ -1374,7 +1381,7 @@ Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
             <element name="Conservative_formulation_settings">
               <a:documentation>Conservative discretisation options
 Note that non-conservative does NOT mean that we do not conserve mass
-For transport equations this is recommended to be zero. 
+For transport equations this is recommended to be zero.
 For PhaseVolumeFraction the recommendation is one.
 
 You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
@@ -1402,7 +1409,7 @@ nonetheless the classical CVFEM can also be used.</a:documentation>
       </optional>
       <optional>
         <element name="create_binary_msh">
-          <a:documentation>Use Fluidity to overwrite the input .msh file into a binary .msh file. 
+          <a:documentation>Use Fluidity to overwrite the input .msh file into a binary .msh file.
 
 Useful to convert your ASCII msh files into binary to be able to decompose the mesh.</a:documentation>
           <empty/>
@@ -1421,7 +1428,7 @@ Useful to convert your ASCII msh files into binary to be able to decompose the m
           <element name="Custom_solver_configuration">
             <optional>
               <element name="Pressure">
-                <a:documentation>Options for pressure solver      	</a:documentation>
+                <a:documentation>Options for pressure solver</a:documentation>
                 <ref name="advanced_solver_options_sym"/>
                 <ref name="linear_solver_options_sym"/>
               </element>
@@ -1454,15 +1461,15 @@ Manual suggests 2 for problems that are not very non-linear
 
 If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
 
-If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of 
+If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of
 non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.</a:documentation>
           <ref name="integer"/>
           <optional>
             <element name="Fixed_Point_Iteration">
-              <a:documentation>NOTE: For multiphase porous media only. Otherwise this value is ignored.  
+              <a:documentation>NOTE: For multiphase porous media only. Otherwise this value is ignored.
 
 This is the convergence criterion for the Fixed Point Iteration solver.
-The functional to compare is: 
+The functional to compare is:
 
 f = L2norm(S*-So)/L2norm(S1-So)
 
@@ -1486,7 +1493,7 @@ By default 0.01, 0.03 is a good value to increase the speed of the simulations; 
                       <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature 
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature
 
 The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
                       <ref name="integer"/>
@@ -1502,7 +1509,7 @@ Backtracking_parameter = -10 automatically selection based on the Courant number
 
 The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
 
-Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
+Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8;
 Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
 
 The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
@@ -1511,7 +1518,7 @@ The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc
               </optional>
               <optional>
                 <element name="Vanishing_relaxation">
-                  <a:documentation>Introduce over-relaxation in the saturation equation. 
+                  <a:documentation>Introduce over-relaxation in the saturation equation.
 This severely HELPS to reduce the number of FPI.
 
 If positive, the input value is the entry pressure.
@@ -1543,7 +1550,7 @@ This imposes that the temperature has to be between bounds.</a:documentation>
               </optional>
               <optional>
                 <element name="Test_mass_consv">
-                  <a:documentation>Convergence criterion based on the 
+                  <a:documentation>Convergence criterion based on the
 conservation of volume of each phase for the non-linear solver
 
 By default the tolerance is 1e-2</a:documentation>
@@ -1555,7 +1562,7 @@ By default the tolerance is 1e-2</a:documentation>
                   <a:documentation>Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature </a:documentation>
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature</a:documentation>
                   <ref name="integer"/>
                   <group>
                     <optional>
@@ -1570,7 +1577,7 @@ If this is off, a classical method based on the number of FPI performed is used 
                         <optional>
                           <element name="Aim_num_FPI">
                             <a:documentation>Time-step size is controlled to try to always perform the specified number of FPI introduced
-here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
+here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size.
 By default this is the 20% of the maximum number of non-linear iterations.</a:documentation>
                             <ref name="integer"/>
                           </element>
@@ -1579,7 +1586,7 @@ By default this is the 20% of the maximum number of non-linear iterations.</a:do
                     </optional>
                     <optional>
                       <element name="ensure_solvers_convergence">
-                        <a:documentation>If any of the solvers failt to achieve convergence the time-step size is 
+                        <a:documentation>If any of the solvers failt to achieve convergence the time-step size is
 reduced and the time-level repeated without waiting to reach the maximum number of FPI.
 Note: For the saturation for porous media it allows to diverge inside the saturation FPI.</a:documentation>
                         <empty/>
@@ -1788,7 +1795,7 @@ If on the tangents vectors must also be specified.</a:documentation>
           <element name="debugging_mode">
             <a:documentation>this will calculate the determinant of the
 rotation matrix for every boundary node
-and dump a vtu with the node 
+and dump a vtu with the node
 normals and tangenials 1/2</a:documentation>
             <empty/>
           </element>
@@ -1960,8 +1967,8 @@ on the Velocity field.</a:documentation>
         </attribute>
         <optional>
           <element name="surface_stabilisation">
-            <a:documentation>This options adds a surface stabilisation term to the free surface. Works only for cg velocity so far. 
-Note: Once activated, the stabilisation term will occur in all free surface areas in the domain. 
+            <a:documentation>This options adds a surface stabilisation term to the free surface. Works only for cg velocity so far.
+Note: Once activated, the stabilisation term will occur in all free surface areas in the domain.
 IN DEVELOPMENT</a:documentation>
             <element name="scale_factor">
               <a:documentation>Scale factor for the surface stabilisation.</a:documentation>
@@ -2014,7 +2021,7 @@ Replaces windy.dat and windy.py</a:documentation>
             <a:documentation>Wind forcing with user specified wind stress
 
 &lt;b&gt; Note that the stress needs to be specified
-using the same density units as the reference_density 
+using the same density units as the reference_density
 under equation of state.&lt;/b&gt;So if you use the recommended
 non-dimensional value of 1.0 for reference_density and
 your calculated stress is in kg m^-1s^-2 and the dimensional
@@ -2046,14 +2053,14 @@ Suggested value: 4.0e-4</a:documentation>
               <ref name="input_choice_real"/>
             </element>
             <element name="density_air">
-              <a:documentation>Density of air. 
+              <a:documentation>Density of air.
 
 &lt;b&gt;Note that you have to specify
-this density in the same units as the 
+this density in the same units as the
 reference_density under equation of state.&lt;/b&gt;
 So with a typicial value of rho_air=1.3 kgm^-3
-and rho_water=1000 kgm^-3, if you fill in the 
-recommended (non-dimensional) value of 1.0 for 
+and rho_water=1000 kgm^-3, if you fill in the
+recommended (non-dimensional) value of 1.0 for
 reference_density, this field needs to be 1.3e-3.</a:documentation>
               <ref name="real"/>
             </element>
@@ -2097,7 +2104,7 @@ boundary condition on the surface_ids specified.</a:documentation>
 Using this option coarse meshes can
 be used in the near wall region.
 
-Should be used in combination with a no_normal_flow condition. 
+Should be used in combination with a no_normal_flow condition.
 
 See Bazilevs et al. 2007</a:documentation>
         <attribute name="name">
@@ -2116,7 +2123,7 @@ See Bazilevs et al. 2007</a:documentation>
       <element name="type">
         <a:documentation>Log law of the wall
 
-Should be used in combination with a no_normal_flow condition. </a:documentation>
+Should be used in combination with a no_normal_flow condition.</a:documentation>
         <attribute name="name">
           <value>log_law_of_wall</value>
         </attribute>
@@ -2361,7 +2368,7 @@ during nonlinear iterations
 (if /timestepping/nonlinear_iterations and
 /timestepping/nonlinear_iterations/tolerance are
 enabled).
-Also specifies whether the field is added to the 
+Also specifies whether the field is added to the
 convergence file (if /io/convergence_file is enabled).</a:documentation>
       <choice>
         <element name="include_in_convergence">
@@ -2372,7 +2379,7 @@ enabled) and file (if /io/convergence_file is enabled)</a:documentation>
           <ref name="comment"/>
         </element>
         <element name="exclude_from_convergence">
-          <a:documentation>Exclude this field from convergence testing and file </a:documentation>
+          <a:documentation>Exclude this field from convergence testing and file</a:documentation>
           <ref name="comment"/>
         </element>
       </choice>
@@ -2386,7 +2393,7 @@ during nonlinear iterations
 (if /timestepping/nonlinear_iterations and
 /timestepping/nonlinear_iterations/tolerance are
 enabled).
-Also specifies whether the field is added to the 
+Also specifies whether the field is added to the
 convergence file (if /io/convergence_file is enabled).</a:documentation>
       <choice>
         <element name="include_in_convergence">
@@ -2398,7 +2405,7 @@ enabled) and file (if /io/convergence_file is enabled)</a:documentation>
           <ref name="comment"/>
         </element>
         <element name="exclude_components_from_convergence">
-          <a:documentation>Include just the magnitude of this field 
+          <a:documentation>Include just the magnitude of this field
 in convergence testing
 (if /timestepping/nonlinear_iterations and
 /timestepping/nonlinear_iterations/tolerance are
@@ -2407,7 +2414,7 @@ i.e. excluding the components</a:documentation>
           <ref name="comment"/>
         </element>
         <element name="exclude_from_convergence">
-          <a:documentation>Exclude this field entirely from convergence testing and file </a:documentation>
+          <a:documentation>Exclude this field entirely from convergence testing and file</a:documentation>
           <ref name="comment"/>
         </element>
       </choice>
@@ -2449,7 +2456,7 @@ in steady state testing
           <ref name="comment"/>
         </element>
         <element name="exclude_components_from_steady_state">
-          <a:documentation>Include just the magnitude of this field 
+          <a:documentation>Include just the magnitude of this field
 in steady state testing
 (if /timestepping/steady_state is
 enabled)
@@ -2457,7 +2464,7 @@ i.e. excluding the components</a:documentation>
           <ref name="comment"/>
         </element>
         <element name="exclude_from_steady_state">
-          <a:documentation>Exclude this field entirely from convergence testing and file </a:documentation>
+          <a:documentation>Exclude this field entirely from convergence testing and file</a:documentation>
           <ref name="comment"/>
         </element>
       </choice>
@@ -2496,7 +2503,7 @@ i.e. excluding the components</a:documentation>
     </element>
   </define>
   <!--
-    Detector output defaults on for prognostic and diagnostic fields, 
+    Detector output defaults on for prognostic and diagnostic fields,
     off for prescribed.
   -->
   <define name="prognostic_detector_options">
@@ -2974,7 +2981,7 @@ of this field is continuous.</a:documentation>
             <optional>
               <element name="lump_mass">
                 <a:documentation>Lump the mass matrix of the galerkin projection
-less accurate but faster and might give smoother result.                  </a:documentation>
+less accurate but faster and might give smoother result.</a:documentation>
                 <empty/>
               </element>
             </optional>
@@ -3237,7 +3244,7 @@ of this field is continuous.</a:documentation>
             <optional>
               <element name="lump_mass">
                 <a:documentation>Lump the mass matrix of the galerkin projection
-less accurate but faster and might give smoother result.                  </a:documentation>
+less accurate but faster and might give smoother result.</a:documentation>
                 <empty/>
               </element>
             </optional>
@@ -3444,7 +3451,7 @@ simplex element meshes and to a locally_bound_upwind_value for cube
 element meshes.
 
 This method projects the upwind value from a point in the element just
-upwind of the node pair straddling the face.  It is otherwise known as 
+upwind of the node pair straddling the face.  It is otherwise known as
 anisotropic limiting.
 This is only available on simplex meshes as it involes a search around
 the donor node to find the upwind element.</a:documentation>
@@ -3704,18 +3711,18 @@ divided by the total volume of the domain</a:documentation>
 (continuous galerkin) or within the control volume (control_volumes).</a:documentation>
           <optional>
             <element name="normalise">
-              <a:documentation>if select normalise the volume fractions will be divided by the total volume of the domain  </a:documentation>
+              <a:documentation>if select normalise the volume fractions will be divided by the total volume of the domain</a:documentation>
               <empty/>
             </element>
           </optional>
         </element>
       </choice>
       <element name="mixing_bin_bounds">
-        <a:documentation>The values of the bounds of the bins 
-e.g. the values -1.5 0.0 1.5 2.0 will return 4 bins 
+        <a:documentation>The values of the bounds of the bins
+e.g. the values -1.5 0.0 1.5 2.0 will return 4 bins
 and the fraction of the field in each bin with,
--1.5&lt;=field&lt;0.0, 0.0&lt;=field&lt;1.5, 1.5&lt;=field&lt;2.0, 2.0&lt;=field, 
-will be calculated.  </a:documentation>
+-1.5&lt;=field&lt;0.0, 0.0&lt;=field&lt;1.5, 1.5&lt;=field&lt;2.0, 2.0&lt;=field,
+will be calculated.</a:documentation>
         <choice>
           <element name="constant">
             <a:documentation>list of bin bounds</a:documentation>
@@ -3748,7 +3755,7 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
       <empty/>
     </element>
   </define>
-  <!-- Options for inclusion of calculations of surface integrals in the .stat file   -->
+  <!-- Options for inclusion of calculations of surface integrals in the .stat file -->
   <define name="surface_integral_stats_base.surface_integral">
     <attribute name="name">
       <data type="string"/>
@@ -3839,7 +3846,7 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
           <a:documentation>Equations of state for compressible applications</a:documentation>
           <choice>
             <element name="linear_in_pressure">
-              <a:documentation>Linear in Pressure EOS 
+              <a:documentation>Linear in Pressure EOS
 
 DEN = A * P + B
 
@@ -3899,7 +3906,7 @@ full Stiffened Gas EoS</a:documentation>
 pressure to that at constant volume
 
 Requires an energy field.
-If activated then a full Stiffened Gas EoS </a:documentation>
+If activated then a full Stiffened Gas EoS</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -3914,7 +3921,7 @@ Stiffened Gas EoS</a:documentation>
               </optional>
             </element>
             <element name="exponential_in_pressure">
-              <a:documentation>Exponential in Pressure EOS 
+              <a:documentation>Exponential in Pressure EOS
 
 DEN = A * P ^ B
 </a:documentation>
@@ -3969,7 +3976,7 @@ rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
 where rho0 is the reference density at temperature T0 and pressure P0;
 
 Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
-                       
+
 E is the liquid elasticity bulk modulus (N/m^2);
 
 NOTE: if temperature is not defined the temperature is defined as zero.</a:documentation>
@@ -4054,7 +4061,7 @@ scaled by C_0</a:documentation>
               </optional>
             </element>
             <element name="bassi_rebay">
-              <a:documentation>Classical scheme from Bassi and Rebay 
+              <a:documentation>Classical scheme from Bassi and Rebay
 (JCP 131 267-179 1997)</a:documentation>
               <empty/>
             </element>
@@ -4175,16 +4182,16 @@ alternating directions. Devised by C.Pain.</a:documentation>
       </optional>
       <optional>
         <element name="Stabilisation">
-          <a:documentation>Stabilisation for Inertia dominated flow. 
+          <a:documentation>Stabilisation for Inertia dominated flow.
 LES and Petrov-Galerkin stabilisation are available.</a:documentation>
           <optional>
             <element name="les_model">
               <a:documentation>Usual LES modeling</a:documentation>
               <element name="model">
-                <a:documentation>=0 No LES, 
-=1 Anisotropic element length scale, 
-=2 Take the average length scale h, 
-=3 Take the min length scale h, 
+                <a:documentation>=0 No LES,
+=1 Anisotropic element length scale,
+=2 Take the average length scale h,
+=3 Take the min length scale h,
 =4 Take the max length scale h</a:documentation>
                 <ref name="integer"/>
               </element>
@@ -4216,19 +4223,19 @@ defaults to 0.1</a:documentation>
           </optional>
           <optional>
             <element name="Petrov_Galerkin_stabilisation">
-              <a:documentation>This applies a non-linear shock capturing scheme which 
+              <a:documentation>This applies a non-linear shock capturing scheme which
 may be used to reduce oscillations in velocity or
 perform implicit LES modelling of turbulence.</a:documentation>
               <element name="method">
                 <a:documentation>What type of Petrov-Galerkin method to use:
-=1 is the residual squared approach, 
+=1 is the residual squared approach,
 =2 is max(0, A . grad U * residual ),
-=3 is the max of 1 and 2 (the most dissipative). </a:documentation>
+=3 is the max of 1 and 2 (the most dissipative).</a:documentation>
                 <ref name="integer"/>
               </element>
               <optional>
                 <element name="nonlinear_velocity_coefficient">
-                  <a:documentation>[0,1] is the magnitude of the non-linear dissipation. 
+                  <a:documentation>[0,1] is the magnitude of the non-linear dissipation.
 =0.25 is small,
 =1.0 is large.
 Defaults to 1.</a:documentation>
@@ -4237,7 +4244,7 @@ Defaults to 1.</a:documentation>
               </optional>
               <optional>
                 <element name="include_pressure">
-                  <a:documentation>[0,1] decides if we include the pressure term in A . grad soln if 
+                  <a:documentation>[0,1] decides if we include the pressure term in A . grad soln if
 =0.0 don't include pressure term,
 =1.0 include the pressure term.
 Defaults to 1.</a:documentation>

@@ -946,12 +946,13 @@ contains
             ewrite(-1,*) "Warning: you have adaptive timestep adjustment after &&
                           && adapt, but have not set a minimum timestep"
         end if
-    else
+    !else
         ! Timestep adapt
-        if(have_option("/timestepping/adaptive_timestep") .and. .not. is_porous_media) then
-            call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
-            call set_option("/timestepping/timestep", dt)
-        end if
+        ! Commented this in order to avoid duplicate change on dt (or a new change that it is not controlled by IC-FERST)
+        ! if(have_option("/timestepping/adaptive_timestep") .and. .not. is_porous_media) then
+        !    call calc_cflnumber_field_based_dt(state, dt, force_calculation = .true.)
+        !    call set_option("/timestepping/timestep", dt)
+        ! end if
     end if
 
     ! Ocean boundaries
