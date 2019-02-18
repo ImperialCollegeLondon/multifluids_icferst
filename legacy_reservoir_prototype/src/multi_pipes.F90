@@ -975,7 +975,7 @@ contains
         !For thermal retrieve, if present, the conductivity of the pipes to calculate the heat loss
         has_conductivity_pipes = .false.
         if (thermal .and. is_porous_media) then
-            has_conductivity_pipes = have_option('/wells_and_pipes/thermal_well_properties')
+            has_conductivity_pipes = have_option('/porous_media/wells_and_pipes/thermal_well_properties')
             if (has_conductivity_pipes) then
                 conductivity_pipes => extract_scalar_field( state(1), "Conductivity" )
                 well_thickness => extract_scalar_field( state(1), "well_thickness" )
@@ -1876,7 +1876,7 @@ contains
             real :: c1, c2, distance, Saux1, Saux2, diam
             !To compare if a mesh node falls within the well section we need
             !to use a tighter tolerance than when checking if the node is within a cirtual well cylinder
-            !this is because we are not affected by the lack of precision of the nastran .bdf files 
+            !this is because we are not affected by the lack of precision of the nastran .bdf files
             real, parameter :: single_precision_tol = 1e-8
             !Initialiase variables
             is_within_pipe = .false.
