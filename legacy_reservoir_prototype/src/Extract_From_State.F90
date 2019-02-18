@@ -813,6 +813,7 @@ contains
         end if
 #endif
 
+
         ncomp=option_count('/material_phase/is_multiphase_component')
         nphase=size(state)-ncomp
         allocate(multiphase_state(nphase))

@@ -508,7 +508,9 @@ contains
 
         call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
-        if (is_porous_media) call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+        if (.not. present_and_true(solving_compositional)) then
+          if (is_porous_media)   call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+        end if
         !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
         U_ALL => NU_ALL
         old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
