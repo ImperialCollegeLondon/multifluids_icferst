@@ -784,7 +784,23 @@ contains
                         stored_dt=-1
                     end if
                 end if
-                dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
+                dt = min( dt * rc / c, ic * dt )
+                if(have_option("/timestepping/adaptive_timestep/minimum_timestep/dump_vtu_if_reached")) then
+                  if(dt < minc) then
+                    ewrite(0, *) "Minimum timestep reached - outputting vtu"
+                    !SIG_INT = .true.
+                    call write_state_mindt(dump_no, acctim, state)
+                  end if
+                end if
+                if(have_option("/timestepping/adaptive_timestep/minimum_timestep/dump_vtu_if_reached/terminate")) then
+                  if(dt < minc) then
+                    ewrite(0, *) "Minimum timestep reached - terminating"
+                    SIG_INT = .true.
+                    ! call write_state(dump_no, state)
+                  end if
+                end if
+                dt = max( min( dt , maxc ), minc )
+                ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
                 call allmin(dt)
