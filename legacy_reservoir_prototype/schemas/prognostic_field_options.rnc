@@ -319,6 +319,7 @@ prognostic_velocity_field =
          )
       }?,
       prognostic_vector_output_options,
+      prognostic_detector_options,
       adaptivity_options_prognostic_vector_field,
       interpolation_algorithm_vector
    )
