@@ -409,6 +409,7 @@ only if the mass matrix is lumped (lump_mass_matrix).</a:documentation>
       </element>
     </optional>
     <ref name="prognostic_vector_output_options"/>
+    <ref name="prognostic_detector_options"/>
     <ref name="adaptivity_options_prognostic_vector_field"/>
     <ref name="interpolation_algorithm_vector"/>
   </define>
