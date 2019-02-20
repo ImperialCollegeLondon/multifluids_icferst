@@ -2489,21 +2489,15 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     end if
                     !Decrease time step, reset the time and repeat!
                     call set_option( '/timestepping/current_time', old_acctim )
-                    if (PID_controller) auxR = PID_time_controller(reset=.true.)
-!
-!                    call get_option( '/timestepping/current_time', acctim )
-!                     acctim = acctim - dt
-!                    call set_option( '/timestepping/current_time', acctim )
-
-
-!                    if (PID_controller) then
-!                        auxR = PID_time_controller()
-!                        !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
-!                        dt = max(min(dt / decreaseFactor, max( auxR*dt, 0.5*dt / decreaseFactor)), min_ts)
-!                        !If PID_controller then update the status
-!                        auxR = PID_time_controller(reset=.true.)
-!                    end if
-                    dt = max(dt / decreaseFactor,min_ts)
+                    if (PID_controller) then
+                       auxR = PID_time_controller()
+                       !Maybe the PID controller thinks is better to reduce more than just half, up to 0.25
+                       dt = max(max(0.5/decreaseFactor * dt, auxR*dt), min_ts)
+                       !If PID_controller then update the status
+                       auxR = PID_time_controller(reset=.true.)
+                     else
+                       dt = max(dt / decreaseFactor,min_ts)
+                    end if
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
                     if (getprocno() == 1) then
@@ -2547,7 +2541,7 @@ contains
         ! 2.0 => too strongly enforce the number of iterations, ignores other criteria
         ! 1.0 => Forces the number of iterations, almost ignore other criteria
         ! 0.6 => soft constrain, it will try but not very much, considers other criteria
-        real, parameter :: impose_FPI_num = 1.5
+        real, parameter :: impose_FPI_num = 2.0
         real, parameter :: tol = 1e-8
         logical, parameter :: max_criteria = .false.!If false, use an average with different weights
 
@@ -2579,7 +2573,7 @@ contains
             PID_time_controller = (1./Cn(1))**Ki * (Cn1/Cn(1))**Kp * (Cn1**2. / (Cn(1)*Cn2))**Kd
         else if (Cn1 > 0) then
             PID_time_controller = (1./Cn(1))**Ki * (Cn1/Cn(1))**Kp
-        else!Not enough information
+        else !Not enough information
             PID_time_controller = (1./Cn(1))**1.0
         end if
 
