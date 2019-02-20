@@ -70,7 +70,7 @@ onto the same surface, or you will get an error.</a:documentation>
         <element name="type">
           <a:documentation>Sediment reentrainment boundary. Any sediment in the correct
 sediment class will be rentrained back into the flow
-depending on the bed shear stress and the parameters of the 
+depending on the bed shear stress and the parameters of the
 sediment grain</a:documentation>
           <attribute name="name">
             <value>sediment_reentrainment</value>
@@ -241,9 +241,9 @@ requires a distinct name for the options dictionary.</a:documentation>
       <!--
              prognostic_scalar_stat_options,
              scalar_convergence_options,
-             prognostic_detector_options,
-             scalar_steady_state_options,
       -->
+      <ref name="prognostic_detector_options"/>
+      <!--      scalar_steady_state_options, -->
       <ref name="adaptivity_options_prognostic_scalar_field"/>
       <ref name="interpolation_algorithm_scalar"/>
     </group>
@@ -267,7 +267,7 @@ requires a distinct name for the options dictionary.</a:documentation>
              ## Must be less than the total number of nodes.
              ## If parallel must be less than the total number of nodes of the first processor.
              ##
-             ## This is used to impose a pressure level when there are no pressure boundary conditions 
+             ## This is used to impose a pressure level when there are no pressure boundary conditions
              element reference_node {
                 integer
              }?,
@@ -354,7 +354,7 @@ requires a distinct name for the options dictionary.</a:documentation>
 
 Note: When in spherical geometry the absorption is now automatically rotated.
 The input values below correspond to setting the diagonal of the absorption matrix
-in the rotated frame of reference. The columns correspond to phi, theta and r 
+in the rotated frame of reference. The columns correspond to phi, theta and r
 respectively.</a:documentation>
         <attribute name="name">
           <value>Absorption</value>
@@ -409,6 +409,7 @@ only if the mass matrix is lumped (lump_mass_matrix).</a:documentation>
       </element>
     </optional>
     <ref name="prognostic_vector_output_options"/>
+    <ref name="prognostic_detector_options"/>
     <ref name="adaptivity_options_prognostic_vector_field"/>
     <ref name="interpolation_algorithm_vector"/>
   </define>
@@ -432,13 +433,13 @@ coordinates, the nearest vertex will be selected.</a:documentation>
       </optional>
       <optional>
         <element name="hydrostatic_boundaries">
-          <a:documentation>It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D. 
+          <a:documentation>It calculates the pressure based on p = rho * g * ( -1.0 * y ) + p0  in 2D and p = rho * g * (-1.0 * z ) + p0 in 3D.
 where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" is the pressure in
-[pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged 
-under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0). 
-p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0. 
+[pa] at the highest point of the boundary (normally at y=0 or z=0). With this hydrostatic option "p0" should be assinged
+under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
+p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
 
-It should be noted that all parts of the model should be located below zero in y (or z in 3D) direction. 
+It should be noted that all parts of the model should be located below zero in y (or z in 3D) direction.
 The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.</a:documentation>
           <empty/>
         </element>
@@ -522,9 +523,9 @@ want this.</a:documentation>
         pressure_output_options,
         prognostic_scalar_stat_options,
         scalar_convergence_options,
-        detector_options_disabled_default,
-        scalar_steady_state_options,
       -->
+      <ref name="detector_options_disabled_default"/>
+      <!-- scalar_steady_state_options, -->
       <ref name="adaptivity_options_prognostic_scalar_field"/>
       <ref name="interpolation_algorithm_scalar_full"/>
     </group>
@@ -712,7 +713,7 @@ Requires a continuous mesh and solver options below.</a:documentation>
           <optional>
             <element name="do_not_integrate_gradient_by_parts">
               <a:documentation>By default when the gradient of the HydrostaticPressure is
-subtracted from the rhs of the momentum equation, it is 
+subtracted from the rhs of the momentum equation, it is
 integrated by parts.  This is the most general case as the
 HydrostaticPressure can be discontinuous.
 Use this option to turn off this behaviour, which will
@@ -923,7 +924,7 @@ With PN-PN we need some filter to supress spurious modes.</a:documentation>
       </optional>
       <optional>
         <element name="tidal_forcing">
-          <a:documentation>Tidal forcing options </a:documentation>
+          <a:documentation>Tidal forcing options</a:documentation>
           <optional>
             <element name="M2">
               <a:documentation>M2</a:documentation>
@@ -1213,14 +1214,14 @@ Set the name of the prescribed NEMO pressure scalar field below.</a:documentatio
           <ref name="integer_vector"/>
         </element>
         <element name="secondary_boundary">
-          <a:documentation>Secondary boundaries have a value given by the flux between this boundary and the primary boundary.  </a:documentation>
+          <a:documentation>Secondary boundaries have a value given by the flux between this boundary and the primary boundary.</a:documentation>
           <element name="primary_point">
-            <a:documentation>A point on or behind the primary boundary *from* which the flux line should extend. 
+            <a:documentation>A point on or behind the primary boundary *from* which the flux line should extend.
 Note: Path should not go through periodic boundary</a:documentation>
             <ref name="real_dim_vector"/>
           </element>
           <element name="secondary_point">
-            <a:documentation>A point on or behind the secondary boundary *to* which the flux line should extend. 
+            <a:documentation>A point on or behind the secondary boundary *to* which the flux line should extend.
 Note: Path should not go through periodic boundary</a:documentation>
             <ref name="real_dim_vector"/>
           </element>
@@ -1330,7 +1331,7 @@ Uses a nonconservative time discretisation.</a:documentation>
       </element>
       <element name="equation">
         <a:documentation>Option to solve for electrical potential from
-electrokinetic, electrochemical or electrothermal sources </a:documentation>
+electrokinetic, electrochemical or electrothermal sources</a:documentation>
         <attribute name="name">
           <value>ElectricalPotential</value>
         </attribute>
