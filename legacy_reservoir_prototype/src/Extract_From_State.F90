@@ -2544,8 +2544,13 @@ contains
         real, save :: Cn1 = -1, Cn2 = -1
         real, dimension(3) :: Cn
         real :: aux
+        ! 2.0 => too strongly enforce the number of iterations, ignores other criteria
+        ! 1.0 => Forces the number of iterations, almost ignore other criteria
+        ! 0.6 => soft constrain, it will try but not very much, considers other criteria
+        real, parameter :: impose_FPI_num = 1.5
         real, parameter :: tol = 1e-8
         logical, parameter :: max_criteria = .false.!If false, use an average with different weights
+
 
         if (present_and_true(reset))then
             Cn1 = -1; Cn2 = -1
@@ -2560,10 +2565,10 @@ contains
         Cn(2) = inf_norm_val/Infinite_norm_tol
         aux = aux + 1.0
         !Maybe consider as well aiming to a certain number of FPIs
-        if (Aim_num_FPI > 0) then                     !Options for the exponent:
-            Cn(3) = (dble(nonlinear_its)/dble(Aim_num_FPI))**0.9! 2.0 => too strongly enforce the number of iterations, ignores other criteria
-            aux = aux + 1.0                           ! 1.0 => default value, forces the number of iterations, almost ignore other criteria
-        end if                                        ! 0.6 => soft constrain, it will try but not very much, considers other criteria
+        if (Aim_num_FPI > 0) then
+            Cn(3) = (dble(nonlinear_its)/dble(Aim_num_FPI))**impose_FPI_num
+            aux = aux + 1.0
+        end if
         if (max_criteria) then
             Cn(1) = maxval(Cn)
         else

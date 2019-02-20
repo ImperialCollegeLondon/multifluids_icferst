@@ -2,7 +2,7 @@
 <testproblem>
   <name>Sod_Shock_3D</name>
   <owner userid="asiri.obeysekara"/>
-  <tags>disabled inertia mpml shock compressible</tags>
+  <tags>inertia mpml shock compressible</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python ./*.py &gt; log</command_line>
   </problem_definition>
