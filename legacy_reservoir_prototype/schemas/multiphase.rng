@@ -1569,8 +1569,7 @@ If this is off, a classical method based on the number of FPI performed is used 
                         <empty/>
                         <optional>
                           <element name="Aim_num_FPI">
-                            <a:documentation>Time-step size is controlled to try to always perform the specified number of FPI introduced
-here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
+                            <a:documentation>Time-step size is controlled to try to always perform the specified number of FPI introduced here. 
 By default this is the 20% of the maximum number of non-linear iterations.</a:documentation>
                             <ref name="integer"/>
                           </element>

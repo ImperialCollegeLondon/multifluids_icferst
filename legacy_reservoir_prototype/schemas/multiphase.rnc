@@ -1260,8 +1260,7 @@ solver_options =
                     ## If this is off, a classical method based on the number of FPI performed is used instead.
                     element PID_controller {
                       empty,
-                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced
-                        ## here, but in a soft way so if the other checks are performing correctly it can still increase the time-step size. 
+                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced here. 
                         ## By default this is the 20% of the maximum number of non-linear iterations.
                         element Aim_num_FPI {
                           integer
