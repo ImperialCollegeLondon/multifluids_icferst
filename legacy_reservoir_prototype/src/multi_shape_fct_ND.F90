@@ -1215,14 +1215,14 @@ contains
              GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
 !!$
              Select Case( whole_ele_volume_order )
-             case( 1 )
+             case( 0,1 )
                 GIdims%cv_ngi = 1
              case( 2 )
                 GIdims%cv_ngi = 3
              end Select
 !!$
              Select Case( whole_ele_surface_order )
-             case( 1 )
+             case( 0,1 )
                 GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
              case( 2 )
                 GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
@@ -1385,11 +1385,13 @@ contains
     case( 7, 8 ) ! Tetrahedra
        Conditional_CV_NLOC_3D_Tets: Select Case( cv_nloc )
        case( 4 ) ! Linear
+
           Conditional_LinTets: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
 !!$
+
              Select Case( whole_ele_volume_order )
-             case( 1 )
+             case( 0,1 )
                 GIdims%cv_ngi = 1
              case( 2 )
                 GIdims%cv_ngi = 4
@@ -1397,8 +1399,9 @@ contains
                 GIdims%cv_ngi = 11
              end Select
 !!$
+
              Select Case( whole_ele_surface_order )
-             case( 1 )
+             case( 0,1 )
                 GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
              case( 2 )
                 GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
