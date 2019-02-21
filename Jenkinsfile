@@ -57,14 +57,14 @@ node('docker && linux')
                 sh "${intsh} make -j ${cores} install"
                 sh "${intsh} make -j ${cores} install-diamond"
 
-                sh "${intsh} mkdir -p ${deploy_path}/lib/diamond/mpschemas/"
-                sh "${intsh} cp -r ${env.WORKSPACE}/legacy_reservoir_prototype/schemas/* ${deploy_path}/lib/diamond/mpschemas/"
+                sh "${intsh} mkdir -p ${deploy_path}/lib/diamond/"
+                sh "${intsh} cp -r ${env.WORKSPACE}/legacy_reservoir_prototype/schemas/* ${deploy_path}/lib/diamond/"
                 sh "${intsh} cp -r ${env.WORKSPACE}/libspud/schema/* ${deploy_path}/lib/diamond/"
 
                 // Generate startup script for Diamond
                 sh "${intsh} /bin/bash -c \"echo '#!/bin/bash' > ${deploy_path}/bin/mpdiamond\""
                 sh "${intsh} /bin/bash -c \"echo 'export PYTHONPATH=\$PYTHONPATH:${deploy_path}/lib/python2.7/site-packages' >> ${deploy_path}/bin/mpdiamond\""
-                sh "${intsh} /bin/bash -c \"echo '${deploy_path}/bin/diamond -s ${deploy_path}/lib/diamond/mpschemas/multiphase.rng \$*' >> ${deploy_path}/bin/mpdiamond\""
+                sh "${intsh} /bin/bash -c \"echo '${deploy_path}/bin/diamond -s ${deploy_path}/lib/diamond/multiphase.rng \$*' >> ${deploy_path}/bin/mpdiamond\""
                 sh "${intsh} chmod 755 ${deploy_path}/bin/mpdiamond"
             }
 
