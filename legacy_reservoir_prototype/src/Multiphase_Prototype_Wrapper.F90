@@ -347,7 +347,7 @@ contains
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
             ewrite(1, *) "For adapt within FPI, create necessary backups for storing the old fields. Check multiphase_prototype_wrapper"
             !Create necessary backups for storing the saturation (in a way that it is also adapted)
-            do i = 1, nphase
+            do i = 1, nphase * npres
                 !First scalar prognostic fields
                 option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field"
                 fields = option_count("/material_phase["// int2str( i - 1 )//"]/scalar_field")
