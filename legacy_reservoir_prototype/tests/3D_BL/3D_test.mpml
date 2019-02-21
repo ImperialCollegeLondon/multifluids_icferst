@@ -108,6 +108,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <no_interpolation/>
       </prognostic>
     </scalar_field>
@@ -169,6 +172,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -191,6 +197,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -274,6 +283,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -296,6 +308,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>

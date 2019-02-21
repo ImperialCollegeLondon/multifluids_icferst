@@ -419,6 +419,7 @@ contains
         real :: reservoir_P( Mdims%npres ) ! this is the background reservoir pressure
         real, dimension( :, :, : ), pointer :: fem_p
         real :: dt_pipe_factor
+        real, save :: dumping_well_factor = -1.0 !This is used to include explicit term that stabilises the well implementation
         real, dimension( : ), allocatable :: MASS_PIPE_FOR_COUP
         REAL , DIMENSION( :, : ), ALLOCATABLE :: SIGMA_INV_APPROX
         real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS, PIPE_ABS
@@ -460,6 +461,8 @@ contains
         if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
             VAD_activated = Phase_with_Pc >0
         end if
+        !Retrieve only once the dumping well factor
+        if (dumping_well_factor<0) call get_option( "/porous_media/wells_and_pipes/well_option/dumping_well_factor", dumping_well_factor, default = 0.5 )
         !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction
         local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional)
         !this is true if the user is asking for high order advection scheme
@@ -1989,14 +1992,23 @@ contains
                     do jphase = 1, Mdims%nphase
                         do iphase=1,Mdims%nphase
                             IF ( Mdims%npres > 1 ) THEN
-                                if(.not.conservative_advection) then ! original method - all implicit (very slow for the non-linear convergence to be removed 12/07/2017)
+                                if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
                                     call addto(Mmat%petsc_ACV,iphase,jphase, &
                                         cv_nodi, cv_nodi, &
                                         MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
                                 else
-                                    ! ! well mass exchange is introduced in the RHS so it is treated explictly
-                                    LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                                    - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
+                                  !Some sort of predictor correctoy. Implicit may be unstable, therefore the explicit acts as a Dumping term
+                                  call addto(Mmat%petsc_ACV,iphase,jphase, &
+                                      cv_nodi, cv_nodi, &
+                                        (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
+
+                                      ! ! well mass exchange is introduced in the RHS so it is treated explictly
+                                      LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
+                                      + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
+
+                                    ! ! ! well mass exchange is introduced in the RHS so it is treated explictly <+ all explicit is too slow
+                                    ! LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
+                                    ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
                                 endif
                             END IF
                             if ( have_absorption ) then

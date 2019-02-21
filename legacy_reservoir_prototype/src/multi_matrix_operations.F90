@@ -255,8 +255,8 @@ contains
 
         !COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
         !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
-        IF ( Mdims%npres==1 .and.( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1 )) THEN
-            ! Fast but memory intensive... (wells not yet implemented here)
+        IF ( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1 ) THEN
+            ! Fast but memory intensive
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &

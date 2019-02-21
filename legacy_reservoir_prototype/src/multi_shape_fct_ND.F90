@@ -1215,14 +1215,14 @@ contains
              GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
 !!$
              Select Case( whole_ele_volume_order )
-             case( 0,1 )
+             case( 1 )
                 GIdims%cv_ngi = 1
              case( 2 )
                 GIdims%cv_ngi = 3
              end Select
 !!$
              Select Case( whole_ele_surface_order )
-             case( 0,1 )
+             case( 1 )
                 GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
              case( 2 )
                 GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
@@ -1391,7 +1391,7 @@ contains
 !!$
 
              Select Case( whole_ele_volume_order )
-             case( 0,1 )
+             case( 1 )
                 GIdims%cv_ngi = 1
              case( 2 )
                 GIdims%cv_ngi = 4
@@ -1401,13 +1401,14 @@ contains
 !!$
 
              Select Case( whole_ele_surface_order )
-             case( 0,1 )
+             case( 1 )
                 GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
              case( 2 )
                 GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
              case( 3 )
                 GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
              end Select
+
 !!$          ! Use a degree of precision of 4 ;interpolation pt set for quad tets. Enough for P2 normal Mass matrix
              if( u_nloc == 10 .or. u_nloc == 5) then! or P1 bubble with direct mass lumping
                   GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
