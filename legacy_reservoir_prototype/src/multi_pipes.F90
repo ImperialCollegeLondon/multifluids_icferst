@@ -148,7 +148,6 @@ contains
         !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
         !Parameters of the simulation
         logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
-        logical, parameter :: integrate_other_side_and_not_boundary = .FALSE.
         logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
         logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
         real, parameter :: INFINY=1.0E+20
@@ -1185,7 +1184,7 @@ contains
                 end if
             END DO ! DO CV_NODI = 1, Mdims%cv_nonods
         endif ! if(GETCV_DISC) then
-        IF ( GETCT ) THEN!sprint_to_do invb_b is actually not used
+        IF ( GETCT ) THEN
             INV_B = DT * PIPE_ABS!SPRINT_TO_DO IS INV_B USED, it is used to calculate the CMC matrix ...
               DO IPHASE = 1, Mdims%nphase
                   INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) + DEN_ALL( IPHASE, : )

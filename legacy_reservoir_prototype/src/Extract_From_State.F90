@@ -2114,6 +2114,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     !Variables for adaptive time stepping based on non-linear iterations
     real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
     integer :: variable_selection, NonLinearIteration
+    !Variables to convert output time into days if it is very big
+    real, save :: conversor = 1.0
+    character (len = OPTION_PATH_LEN), save :: output_units =' '
+
     !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
     !consider less iterations of the total ones if adapting time using PID
     if (.not.have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
@@ -2264,6 +2268,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             end select
 
         case default!Check how is the process going on and decide
+
+          !We decide a priory if we use days or seconds to show dt to the user
+          call get_option( '/timestepping/timestep', dt )
+          conversor = 1.0; output_units =' seconds <dimensionless>'
+          if (dt > 86400.) then
+            conversor = 86400.; output_units =' days <dimensionless>'
+          end if
+
             !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
             ExitNonLinearLoop = .false.
             Repeat_time_step = .false.
@@ -2418,7 +2430,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     dt = max(min(stored_dt, max_ts), 1d-8)
                     call set_option( '/timestepping/timestep', dt )
                     if (getprocno() == 1)then
-                        ewrite(show_FPI_conv,*) "Time step restored to:", dt
+                        ewrite(show_FPI_conv,*) "Time step restored to:", dt/ conversor , trim(output_units)
                     end if
                     adjusted_ts_to_dump = .false.
                     return
@@ -2443,7 +2455,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         dt = max(min(dt, max_ts), min_ts)
                         call set_option( '/timestepping/timestep', dt )
                         if (getprocno() == 1 .and. abs(auxR-dt)/dt > 1d-3)then
-                            ewrite(show_FPI_conv,*) "Time step changed to:", dt
+                            ewrite(show_FPI_conv,*) "Time step changed to:", dt/ conversor , trim(output_units)
                         end if
                         ExitNonLinearLoop = .true.
                         return
@@ -2460,7 +2472,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     !Ensure that period_vtus or the final time are matched, controlled by max_ts
                     dt = max(min(dt, max_ts), min_ts)
                     if (getprocno() == 1) then
-                        ewrite(show_FPI_conv,*) "Time step increased to:", dt
+                        ewrite(show_FPI_conv,*) "Time step increased to:", dt/ conversor , trim(output_units)
                     end if
                     ExitNonLinearLoop = .true.
                     call set_option( '/timestepping/timestep', dt )
@@ -2481,7 +2493,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         deallocate(reference_field)
                         !Tell the user the number of FPI and final convergence to help improving the parameters
                         if (getprocno() == 1) then
-                            ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts,") reached, advancing time."
+                            ewrite(show_FPI_conv,*)  "Minimum time-step(",min_ts/ conversor , trim(output_units),") reached, advancing time."
                         end if
                         !If PID_controller then update the status
                         if (PID_controller) auxR = PID_time_controller(reset=.true.)
@@ -2501,7 +2513,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     call set_option( '/timestepping/timestep', dt )
                     stored_dt = dt
                     if (getprocno() == 1) then
-                        ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt
+                        ewrite(show_FPI_conv,*) "<<<Convergence not achieved, repeating time-level>>> Time step decreased to:", dt/ conversor , trim(output_units)
                     end if
                     Repeat_time_step = .true.
                     ExitNonLinearLoop = .true.
@@ -2517,7 +2529,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     call set_option( '/timestepping/timestep', dt )
                     if (abs(auxR-dt) > 1d-8) then
                         if (getprocno() == 1)then
-                            ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt
+                            ewrite(show_FPI_conv,*) "Time step modified to match final time/dump_period:", dt/ conversor , trim(output_units)
                             adjusted_ts_to_dump = .true.
                         end if
                     end if

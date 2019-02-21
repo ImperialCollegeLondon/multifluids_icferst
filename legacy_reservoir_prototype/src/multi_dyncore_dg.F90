@@ -320,7 +320,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -815,7 +815,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
              Satura =>  sat_field%val(1,:,:)
              !Get information for capillary pressure to be use in CV_ASSEMB
-             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+             call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
              !Get variable for global convergence method
              if (.not. have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration')) then
@@ -982,7 +982,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
                              !Also recalculate the Over-relaxation parameter
-                            call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
+                            call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
 
                          else
                              exit Loop_NonLinearFlux
@@ -6267,11 +6267,12 @@ end if
 
 
 
- subroutine getOverrelaxation_parameter(packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, for_transport)
+ subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, for_transport)
      !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
      !It is the derivative of the capillary pressure for each node.
      !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
      implicit none
+     type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent(inout) :: packed_state
      type (multi_dimensions), intent(in) :: Mdims
      type(multi_ndgln), intent(in) :: ndgln
@@ -6288,6 +6289,7 @@ end if
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
      type( tensor_field ), pointer :: Velocity
+     type( scalar_field ), pointer :: PIPE_Diameter
 
 
      !Extract variables from packed_state
@@ -6425,6 +6427,17 @@ end if
      else
          Overrelaxation = 0.0
      end if
+
+
+     if (Mdims%npres >1) THEN !If we have pipes, reduce VAD in the CVs that have pipes, they do not get along...
+       PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
+       do cv_nodi = 1, Mdims%cv_nonods
+         IF ( PIPE_DIAMETER%VAL(CV_NODI) > 1e-8 ) THEN
+            Overrelaxation(CV_NODI) = Overrelaxation(CV_NODI) * 1e-5!Severely reduce Overrelaxation around wells
+         end if
+       end do
+     end if
+
 
      !Deallocate
      if (Artificial_Pe) then
