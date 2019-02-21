@@ -50,7 +50,7 @@ node('docker && linux')
             stage( 'Compile Fluidity code' ) { sh "${intsh} make -j ${cores} all" }
             stage( 'Compile IC-Ferst code' ) { sh "${intsh} make -j ${cores} mp"  }
             stage( 'Compile fltools'       ) { sh "${intsh} make -j ${cores} fltools"  }
-            stage( 'Testing'               ) { sh "${intsh} make test-mp-xml" }
+            stage( 'Testing'               ) { sh "${intsh} make test-mp-xml THREADS=${cores}" }
 
             stage( 'Install compiled code' )
             {
