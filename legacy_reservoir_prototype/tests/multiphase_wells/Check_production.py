@@ -47,7 +47,7 @@ diff = abs(phase1_in[2] + phase2_out[2])/abs(phase2_out[2])
 print 'In-out difference after 15 years: ' + str(diff)
 Passed = False
 #Check time to produce water with lower temperature than the reservoir
-if (abs(diff) < 1e-5): Passed = True
+if (abs(diff) < 1e-3): Passed = True
 
 #print time, temp
 
