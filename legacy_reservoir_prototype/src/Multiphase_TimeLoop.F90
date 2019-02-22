@@ -673,19 +673,23 @@ contains
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
                     exit Loop_NonLinearIteration
                 end if
+
+
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
-                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, adapt_mesh_in_FPI, calculate_mass_delta)
+                    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &
+                        adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Courant_number(2), first_time_step)
 
                 !Flag the matrices as already calculated (only the storable ones
                 Mmat%stored = .true.!Since the mesh can be adapted below, this has to be set to true before the adapt_mesh_in_FPI
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
+                      !Calculate the acumulated COurant Number
                         Accum_Courant = Accum_Courant + Courant_number(2)
                         if (Accum_Courant >= Courant_tol .or. first_time_step) then
-                            Accum_Courant = 0.
                             call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 2)
+                            Accum_Courant = 0.
                         else
                             exit Loop_NonLinearIteration
                         end if
@@ -728,7 +732,7 @@ contains
             if (is_porous_media) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
                     ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
-                else!printout only in the log
+                else !printout only in the log
                     ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
                 end if
             end if
@@ -737,9 +741,10 @@ contains
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
 
-            ! Call to adapt the mesh if required!
-            if(acctim >= t_adapt_threshold) call adapt_mesh_mp()
-
+            ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
+            if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+              call adapt_mesh_mp()
+            end if
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
 
@@ -1263,10 +1268,8 @@ end if
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
                     !This to be removed once adapt within FPI is improved and generalised
-                    if (.not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
-                      call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
-                      call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
-                    end if
+                    call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
+                    call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 end if
                 if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                 if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
@@ -1539,7 +1542,6 @@ end if
                 !10% tolerance provides a good enough result
                 call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',min(Inf_tol*5.,0.1))
         case default
-
             !Three steps
             !1. Store OldValues into BAK values
             do iphase = 1, Mdims%nphase
@@ -1595,8 +1597,7 @@ end if
             !Set the original convergence criteria since we are now solving the equations
             call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration', non_linear_tol)
             call set_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',Inf_tol)
-            !Do not re-adapt the mesh
-            t_adapt_threshold = acctim + 1.0 !Just to ensure that we do not re-mesh again
+
         end select
 
     end subroutine adapt_mesh_within_FPI

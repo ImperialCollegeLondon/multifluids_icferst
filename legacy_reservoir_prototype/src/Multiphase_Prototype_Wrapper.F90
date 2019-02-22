@@ -359,21 +359,29 @@ contains
                   if (have_option(trim(option_path)//"/aliased" )) cycle
                   option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/scalar_field::BAK_"//trim(option_name)
                   !If a prognostic field then create backup (for incompressible flows, pressure would not be necessary)
-                  call copy_option(trim(option_path),trim(option_path_BAK))
+                  call copy_option(trim(option_path),trim(option_path_BAK))!Better to copy twice and delete options because it is more robust that add_option
+                  !Delete the prognostic section
+                  call delete_option(trim(option_path_BAK)//"/prognostic")
+                  !Now copy the interior of the prognostic as prescribed
+                  call copy_option(trim(option_path)//"/prognostic",trim(option_path_BAK)//"/prescribed")
                   !Make sure the field is not shown
-                  if (.not.have_option(trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")) then
+                  if (.not.have_option(trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")) then
                       !Copy an option that always exists to ensure we exclude the new field from vtu
-                      call copy_option("/simulation_name",trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")
+                      call copy_option("/simulation_name",trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")
                   end if
                 end do
                 !Finally velocity as well
                 option_path = "/material_phase["// int2str( i - 1 )//"]/vector_field::Velocity"
                 option_path_BAK = "/material_phase["// int2str( i - 1 )//"]/vector_field::BAK_Velocity"
                 call copy_option(trim(option_path),trim(option_path_BAK))
+                !Delete the prognostic section
+                call delete_option(trim(option_path_BAK)//"/prognostic")
+                !Now copy the interior of the prognostic as prescribed
+                call copy_option(trim(option_path)//"/prognostic",trim(option_path_BAK)//"/prescribed")
                 !Make sure the field is not shown
-                if (.not.have_option(trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")) then
+                if (.not.have_option(trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")) then
                     !Copy an option that always exists to ensure we exclude the new field from vtu
-                    call copy_option("/simulation_name",trim(option_path_BAK)//"/prognostic/output/exclude_from_vtu")
+                    call copy_option("/simulation_name",trim(option_path_BAK)//"/prescribed/output/exclude_from_vtu")
                 end if
             end do
         end if
