@@ -2073,7 +2073,8 @@ end subroutine finalise_multistate
 
 
 subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
-    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, adapt_mesh_in_FPI, calculate_mass_delta)
+    Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, &
+    adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)
     !This subroutine either store variables before the nonlinear timeloop starts, or checks
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
@@ -2086,10 +2087,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     integer, intent(inout) :: its!not to be modified unless VERY sure
     logical, intent(in) :: nonLinearAdaptTs
     integer, intent(in) :: order
-    logical, optional, intent(in) :: adapt_mesh_in_FPI
+    logical, optional, intent(in) :: adapt_mesh_in_FPI, first_time_step
+    real, optional, intent(in) :: Accum_Courant, Courant_tol, Current_Courant
     !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     real, dimension(:,:), optional :: calculate_mass_delta
     !Local variables
+    logical :: adapting_within_happening_now
     integer, save :: nonlinear_its=0!Needed for adapt_within_fpi to consider all the non-linear iterations together
     real, save :: stored_dt = -1
     logical, save :: adjusted_ts_to_dump = .false.
@@ -2124,7 +2127,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
         nonlinear_its = its
     else
         if (.not.ExitNonLinearLoop) then
-            nonlinear_its = its!Only do something different when we are supposes to exit
+            nonlinear_its = its!Only do something different when we are supposed to exit
         else !Store when we are in theory finishing
             nonlinear_its = nonlinear_its + its
         end if
@@ -2363,17 +2366,17 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 inf_norm_val = 0.0; max_calculate_mass_delta= 0.
             end if
 
+
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
-                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
+                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else if (is_porous_media .and. variable_selection == 4) then!temperature
-                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
+                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else if (is_porous_media .and. variable_selection == 5) then! concentration
-                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Concentration (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", its, "; Mass error:", max_calculate_mass_delta
+                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Concentration (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else
-                write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", its
+                write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
-
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
@@ -2405,12 +2408,22 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
             !(Maybe unnecessary) If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call alland(ExitNonLinearLoop)
-            !Tell the user the number of FPI and final convergence to help improving the parameters
-            if (ExitNonLinearLoop .and. getprocno() == 1) then
-                ewrite(show_FPI_conv,*) trim(output_message)
+
+            adapting_within_happening_now = .false.
+            if (ExitNonLinearLoop .and. adapt_mesh_in_FPI) then
+              adapting_within_happening_now = Accum_Courant +  Current_Courant >= Courant_tol .or. first_time_step
             end if
+
+            !Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
+            if (.not. adapting_within_happening_now) then
+              !Tell the user the number of FPI and final convergence to help improving the parameters
+              if (ExitNonLinearLoop .and. getprocno() == 1) then
+                  ewrite(show_FPI_conv,*) trim(output_message)
+              end if
+           end if
+
             !If time adapted based on the non-linear solver then
-            if (nonLinearAdaptTs .and. .not. adapt_mesh_in_FPI) then!Do not adapt time if we are adapting the mesh within the FPI and
+            if (nonLinearAdaptTs .and. .not. adapting_within_happening_now) then!Do not adapt time if we are adapting the mesh within the FPI and
                                                                     !this is the first guess
                 !If any solver fails to converge (and the user care), we may want to repeat the time-level
                 !without waiting for the last non-linear iteration
