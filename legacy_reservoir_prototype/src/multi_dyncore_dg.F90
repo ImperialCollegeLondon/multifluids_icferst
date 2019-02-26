@@ -6433,7 +6433,7 @@ end if
        PIPE_Diameter => EXTRACT_SCALAR_FIELD(state(1), "DiameterPipe")
        do cv_nodi = 1, Mdims%cv_nonods
          IF ( PIPE_DIAMETER%VAL(CV_NODI) > 1e-8 ) THEN
-            Overrelaxation(CV_NODI) = Overrelaxation(CV_NODI) * 1e-5!Severely reduce Overrelaxation around wells
+            Overrelaxation(CV_NODI) = Overrelaxation(CV_NODI) * 1e-2!Severely reduce Overrelaxation around wells
          end if
        end do
      end if
