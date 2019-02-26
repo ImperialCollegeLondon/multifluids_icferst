@@ -1267,7 +1267,6 @@ end if
                         call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
                     end if
                     !Ensure that the saturation is physically plausible by diffusing unphysical values to neighbouring nodes
-                    !This to be removed once adapt within FPI is improved and generalised
                     call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col,"PackedPhaseVolumeFraction", for_sat=.true.)
                     call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 end if
