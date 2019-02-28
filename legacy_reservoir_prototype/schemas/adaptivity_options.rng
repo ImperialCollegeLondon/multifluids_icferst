@@ -1276,7 +1276,6 @@ and higher order. Not yet tested in parallel.</a:documentation>
   <define name="interpolation_algorithm_scalar">
     <choice>
       <ref name="consistent_interpolation"/>
-      <ref name="pseudo_consistent_interpolation"/>
       <ref name="CVgalerkin_interpolation"/>
       <element name="galerkin_projection">
         <a:documentation>Galerkin projection. By default, conservative, non-dissipative and
@@ -1302,7 +1301,6 @@ the L2 norm of the residual</a:documentation>
   <define name="interpolation_algorithm_vector">
     <choice>
       <ref name="consistent_interpolation"/>
-      <ref name="pseudo_consistent_interpolation"/>
       <element name="galerkin_projection">
         <a:documentation>Galerkin projection. By default, conservative, non-dissipative and
 non-bounded. The most accurate choice, in the sense of minimising
@@ -1593,7 +1591,6 @@ the L2 norm of the residual</a:documentation>
               <ref name="comment"/>
             </element>
             <ref name="consistent_interpolation"/>
-            <ref name="pseudo_consistent_interpolation"/>
             <ref name="grandy_interpolation"/>
           </choice>
           <optional>
@@ -1646,7 +1643,6 @@ the L2 norm of the residual</a:documentation>
                 <ref name="comment"/>
               </element>
               <ref name="consistent_interpolation"/>
-              <ref name="pseudo_consistent_interpolation"/>
               <ref name="grandy_interpolation"/>
             </choice>
           </element>
@@ -1666,7 +1662,6 @@ the L2 norm of the residual</a:documentation>
                 <ref name="comment"/>
               </element>
               <ref name="consistent_interpolation"/>
-              <ref name="pseudo_consistent_interpolation"/>
               <ref name="grandy_interpolation"/>
             </choice>
             <ref name="comment"/>

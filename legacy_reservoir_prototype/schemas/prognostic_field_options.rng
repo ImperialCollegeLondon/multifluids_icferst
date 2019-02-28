@@ -237,7 +237,6 @@ requires a distinct name for the options dictionary.</a:documentation>
           </element>
         </element>
       </optional>
-      <ref name="prognostic_scalar_output_options"/>
       <!--
              prognostic_scalar_stat_options,
              scalar_convergence_options,
@@ -408,7 +407,6 @@ only if the mass matrix is lumped (lump_mass_matrix).</a:documentation>
         </choice>
       </element>
     </optional>
-    <ref name="prognostic_vector_output_options"/>
     <ref name="prognostic_detector_options"/>
     <ref name="adaptivity_options_prognostic_vector_field"/>
     <ref name="interpolation_algorithm_vector"/>
@@ -635,7 +633,6 @@ this only makes sense when excluding coriolis.</a:documentation>
         </element>
       </element>
     </zeroOrMore>
-    <ref name="prognostic_scalar_output_options"/>
     <ref name="prognostic_scalar_stat_options"/>
     <ref name="scalar_convergence_options"/>
     <ref name="prognostic_detector_options"/>
@@ -679,7 +676,6 @@ This is normally be a homogeneous bc on the top surface.</a:documentation>
       <a:documentation>Disables checkpointing of this field</a:documentation>
       <ref name="comment"/>
     </element>
-    <ref name="prognostic_scalar_output_options"/>
     <ref name="prognostic_scalar_stat_options"/>
     <ref name="scalar_convergence_options"/>
     <ref name="prognostic_detector_options"/>
@@ -735,7 +731,6 @@ Only required for continuous_galerkin spatial_discretisations!</a:documentation>
       <a:documentation>Disables checkpointing of this field</a:documentation>
       <ref name="comment"/>
     </element>
-    <ref name="prognostic_scalar_output_options"/>
     <ref name="prognostic_scalar_stat_options"/>
     <ref name="scalar_convergence_options"/>
     <ref name="prognostic_detector_options"/>
@@ -752,7 +747,6 @@ Only required for continuous_galerkin spatial_discretisations!</a:documentation>
       <a:documentation>Disables checkpointing of this field</a:documentation>
       <ref name="comment"/>
     </element>
-    <ref name="prognostic_vector_output_options"/>
     <ref name="prognostic_velocity_stat_options"/>
     <ref name="vector_convergence_options"/>
     <ref name="prognostic_detector_options"/>
@@ -861,7 +855,6 @@ Only applicable to control volume spatial discretisations.</a:documentation>
         </choice>
       </element>
     </zeroOrMore>
-    <ref name="prognostic_scalar_output_options"/>
     <ref name="prognostic_scalar_stat_options"/>
     <ref name="prognostic_detector_options"/>
     <ref name="scalar_steady_state_options"/>
@@ -1130,7 +1123,6 @@ Set the name of the prescribed NEMO pressure scalar field below.</a:documentatio
       no Absorption term
       no Adaptive timestepping option
     -->
-    <ref name="prognostic_scalar_output_options"/>
     <ref name="prognostic_scalar_stat_options"/>
     <ref name="scalar_convergence_options"/>
     <ref name="prognostic_detector_options"/>
@@ -1160,7 +1152,6 @@ Set the name of the prescribed NEMO pressure scalar field below.</a:documentatio
       no Absorption term
       no Adaptive timestepping option
     -->
-    <ref name="prognostic_scalar_output_options"/>
     <ref name="prognostic_scalar_stat_options"/>
     <ref name="prognostic_detector_options"/>
     <ref name="adaptivity_options_prognostic_scalar_field"/>
@@ -1249,7 +1240,6 @@ Note: Path should not go through periodic boundary</a:documentation>
       no Absorption term
       no Adaptive timestepping option
     -->
-    <ref name="prognostic_scalar_output_options"/>
     <ref name="prognostic_scalar_stat_options"/>
     <ref name="prognostic_detector_options"/>
     <ref name="scalar_steady_state_options"/>

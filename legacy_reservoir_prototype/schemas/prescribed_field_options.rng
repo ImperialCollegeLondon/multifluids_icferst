@@ -23,7 +23,6 @@
   -->
   <define name="prescribed_scalar_field_no_adapt">
     <ref name="prescribed_values_scalar_field"/>
-    <ref name="prescribed_output_options"/>
     <ref name="prescribed_scalar_stat_options"/>
     <ref name="prescribed_detector_options"/>
   </define>
@@ -78,7 +77,6 @@ In this case each value requires a distinct name for the options dictionary.</a:
   -->
   <define name="prescribed_vector_field_no_adapt">
     <ref name="prescribed_values_vector_field"/>
-    <ref name="prescribed_output_options"/>
     <ref name="prescribed_vector_stat_options"/>
     <ref name="prescribed_detector_options"/>
   </define>
@@ -118,7 +116,6 @@ In this case each value requires a distinct name for the options dictionary.</a:
   -->
   <define name="prescribed_tensor_field">
     <ref name="prescribed_values_tensor_field"/>
-    <ref name="prescribed_output_options"/>
     <ref name="adaptivity_options_tensor_field"/>
   </define>
   <!--
@@ -128,7 +125,6 @@ In this case each value requires a distinct name for the options dictionary.</a:
   -->
   <define name="prescribed_tensor_field_no_adapt">
     <ref name="prescribed_values_tensor_field"/>
-    <ref name="prescribed_output_options"/>
   </define>
   <define name="prescribed_values_tensor_field">
     <oneOrMore>
