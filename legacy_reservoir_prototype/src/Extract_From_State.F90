@@ -1226,8 +1226,8 @@ contains
                     call unpack_sfield(state(i),packed_state,"IteratedTemperature",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"Temperature"),&
                         extract_scalar_field(state(i),"IteratedTemperature")))
-                    call unpack_sfield(state(i),packed_state,"TemperatureSource",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"TemperatureAbsorption",1,iphase)
+                    ! call unpack_sfield(state(i),packed_state,"TemperatureSource",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"TemperatureAbsorption",1,iphase)!Diagnostic fields do not get along with this...
                     call unpack_sfield(state(i),packed_state,"Temperature",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
@@ -1240,8 +1240,8 @@ contains
                     call unpack_sfield(state(i),packed_state,"IteratedSoluteMassFraction",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"SoluteMassFraction"),&
                         extract_scalar_field(state(i),"IteratedSoluteMassFraction")))
-                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionSource",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionAbsorption",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionSource",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionAbsorption",1,iphase)!Diagnostic fields do not get along with this...
                     call unpack_sfield(state(i),packed_state,"SoluteMassFraction",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"SoluteMassFraction"),"SoluteMassFraction")
                 end if
@@ -1254,7 +1254,8 @@ contains
                         check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
                         extract_scalar_field(state(i),"OldPhaseVolumeFraction")))
                     call unpack_sfield(state(i),packed_state,"PhaseVolumeFraction",1,iphase)
-                    call unpack_sfield(state(i),packed_state,"PhaseVolumeFractionSource",1,iphase)
+                    ! call unpack_sfield(state(i),packed_state,"PhaseVolumeFractionSource",1,iphase)!sprint_to_do Diagnostic fields do not get along with this...
+                                                                                                    !should we do the same with the other sources and absorptions?
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"PhaseVolumeFraction"),"PhaseVolumeFraction")
                 end if
 
