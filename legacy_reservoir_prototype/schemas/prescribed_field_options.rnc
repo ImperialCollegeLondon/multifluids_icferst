@@ -14,7 +14,6 @@ prescribed_scalar_field =
 prescribed_scalar_field_no_adapt =
    (
       prescribed_values_scalar_field,
-      prescribed_output_options,
       prescribed_scalar_stat_options,
       prescribed_detector_options
    )
@@ -57,7 +56,6 @@ prescribed_vector_field =
 prescribed_vector_field_no_adapt =
    (
       prescribed_values_vector_field,
-      prescribed_output_options,
       prescribed_vector_stat_options,
       prescribed_detector_options
    )
@@ -91,7 +89,6 @@ prescribed_values_vector_field =
 prescribed_tensor_field =
    (
       prescribed_values_tensor_field,
-      prescribed_output_options,
       adaptivity_options_tensor_field
    )
    
@@ -100,8 +97,7 @@ prescribed_tensor_field =
 # If the field is constant then a symmetric, or asymmetric tensor may be entered
 prescribed_tensor_field_no_adapt =
    (
-      prescribed_values_tensor_field,
-      prescribed_output_options
+      prescribed_values_tensor_field
    )
 
 prescribed_values_tensor_field =

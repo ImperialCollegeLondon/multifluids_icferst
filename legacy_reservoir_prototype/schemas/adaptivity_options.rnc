@@ -1078,7 +1078,6 @@ interpolation_algorithm_disabled =
 interpolation_algorithm_scalar =
     (
       consistent_interpolation|
-      pseudo_consistent_interpolation|
       CVgalerkin_interpolation|
       ## Galerkin projection. By default, conservative, non-dissipative and
       ## non-bounded. The most accurate choice, in the sense of minimising
@@ -1098,7 +1097,6 @@ interpolation_algorithm_vector_full |= interpolation_algorithm_disabled
 interpolation_algorithm_vector =
     (
       consistent_interpolation|
-      pseudo_consistent_interpolation|
       ## Galerkin projection. By default, conservative, non-dissipative and
       ## non-bounded. The most accurate choice, in the sense of minimising
       ## the L2 norm of the residual
@@ -1338,7 +1336,6 @@ interpolation_algorithm_vector =
                 comment
               }|
               consistent_interpolation|
-              pseudo_consistent_interpolation|
               grandy_interpolation
            ),
            ## Enforce divergence free after the projection
@@ -1384,7 +1381,6 @@ interpolation_algorithm_vector =
                 comment
               }|
               consistent_interpolation|
-              pseudo_consistent_interpolation|
               grandy_interpolation
            )
         }?,
@@ -1400,7 +1396,6 @@ interpolation_algorithm_vector =
                 comment
               }|
               consistent_interpolation|
-              pseudo_consistent_interpolation|
               grandy_interpolation
            ),
            comment

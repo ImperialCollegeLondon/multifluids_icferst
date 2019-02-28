@@ -1657,9 +1657,6 @@ By default dt*1e-3.</a:documentation>
     <ref name="scalar_steady_state_options"/>
     <ref name="adaptivity_options_scalar_field"/>
     <optional>
-      <ref name="recalculation_options"/>
-    </optional>
-    <optional>
       <ref name="interpolation_algorithm_scalar"/>
     </optional>
   </define>
@@ -1679,9 +1676,6 @@ By default dt*1e-3.</a:documentation>
     <ref name="diagnostic_detector_options"/>
     <ref name="vector_steady_state_options"/>
     <ref name="adaptivity_options_vector_field"/>
-    <optional>
-      <ref name="recalculation_options"/>
-    </optional>
     <optional>
       <ref name="interpolation_algorithm_vector"/>
     </optional>
@@ -1721,9 +1715,6 @@ By default dt*1e-3.</a:documentation>
     <ref name="vector_convergence_options"/>
     <ref name="diagnostic_detector_options"/>
     <ref name="adaptivity_options_vector_field"/>
-    <optional>
-      <ref name="recalculation_options"/>
-    </optional>
   </define>
   <define name="diagnostic_gradient_vector_field">
     <element name="solver">
@@ -1734,9 +1725,6 @@ By default dt*1e-3.</a:documentation>
     <ref name="vector_convergence_options"/>
     <ref name="diagnostic_detector_options"/>
     <ref name="adaptivity_options_vector_field"/>
-    <optional>
-      <ref name="recalculation_options"/>
-    </optional>
   </define>
   <define name="diagnostic_cv_divergence_scalar_field">
     <!-- No solver options because it can be solved directly! -->
@@ -1744,9 +1732,6 @@ By default dt*1e-3.</a:documentation>
     <ref name="scalar_convergence_options"/>
     <ref name="diagnostic_detector_options"/>
     <ref name="adaptivity_options_scalar_field"/>
-    <optional>
-      <ref name="recalculation_options"/>
-    </optional>
   </define>
   <define name="diagnostic_fe_divergence_scalar_field">
     <element name="solver">
@@ -1757,9 +1742,6 @@ By default dt*1e-3.</a:documentation>
     <ref name="scalar_convergence_options"/>
     <ref name="diagnostic_detector_options"/>
     <ref name="adaptivity_options_scalar_field"/>
-    <optional>
-      <ref name="recalculation_options"/>
-    </optional>
   </define>
   <!-- three optional input vectors for user-specified rotation matrix -->
   <define name="rotation_matrix_components">
@@ -2696,9 +2678,6 @@ even if the problem is one-phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
@@ -2708,9 +2687,6 @@ even if the problem is one-phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
         </choice>
       </element>
@@ -2738,9 +2714,6 @@ even if the problem is one-phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
@@ -2750,9 +2723,6 @@ even if the problem is one-phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
         </choice>
       </element>
@@ -2780,9 +2750,6 @@ even if the problem is one-phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
@@ -2792,9 +2759,6 @@ even if the problem is one-phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
         </choice>
       </element>
@@ -2819,9 +2783,6 @@ mass fraction with a particular phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="phase_properties_options"/>
             <ref name="prognostic_scalar_field"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
@@ -2831,9 +2792,6 @@ mass fraction with a particular phase</a:documentation>
             <ref name="pressure_mesh_choice"/>
             <ref name="internal_algorithm"/>
             <ref name="diagnostic_scalar_field_no_adapt"/>
-            <optional>
-              <ref name="cap_option"/>
-            </optional>
           </element>
         </choice>
       </element>
