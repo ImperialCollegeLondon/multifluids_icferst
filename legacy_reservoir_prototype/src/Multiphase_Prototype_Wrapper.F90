@@ -45,7 +45,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use parallel_tools
     use reference_counting
     use global_parameters
-    use diagnostic_fields_new_multiphase, only : &
+    use diagnostic_fields_new, only : &
         & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
         & check_diagnostic_dependencies
     use field_priority_lists
