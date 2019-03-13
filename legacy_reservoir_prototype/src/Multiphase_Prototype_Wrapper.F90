@@ -291,6 +291,7 @@ contains
             Pdegree )
         is_P0DGP1CV = (Vdegree == 0) .and. (Pdegree == 1) .and. &
                 .not. have_option( '/geometry/Advance_options/FE_Pressure' )
+
         if ((Vdegree == 0) .and. (Pdegree == 1) .and.( .not. is_P0DGP1CV &
                         .or. have_option('/inertia_dominated'))) then
             ewrite(0, *) "P0DGP1 does not work for inertia dominated simulations. If using the DCVFEM method use either one of the following options: "
@@ -762,12 +763,14 @@ contains
           call add_option(trim(option_path)//"from_mesh/mesh_shape/element_type", stat=stat)
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
-          call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
+          call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', k )
+          if (k == 0) then !For P0DG we use a hydrostatic pressure solver of order one. sprint_to_do => this is because it is unfinished but I am not sure if it is worth it
+            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
+          else
+            call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
+          end if
           call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
           !Do we need the user to create a ph scalar field? maybe not
-          if (GetProcNo() == 1) then
-            print*, "Hydrostatic pressure solver currently tested only for inertia dominated flows."
-          end if
         end if
 
 
