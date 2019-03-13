@@ -311,7 +311,7 @@ contains
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
-    subroutine FPI_backtracking(Mdims, ndgln, state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
+    subroutine FPI_backtracking(nphase, Mdims, ndgln, state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
         Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res)
         !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
@@ -327,7 +327,7 @@ contains
         real, intent(in) :: backtrack_par_from_schema, res, res_ratio, first_res
         logical, intent(inout) :: satisfactory_convergence
         real, intent(inout) :: new_backtrack_par, Previous_convergence
-        integer, intent(in) :: Max_sat_its, its, nonlinear_iteration
+        integer, intent(in) :: Max_sat_its, its, nonlinear_iteration, nphase
         integer, intent(inout) :: useful_sats
         !Local parameters
         real, parameter :: Conv_to_achiv = 10.0
@@ -395,13 +395,13 @@ contains
                 !####Check convergence of the method####
                 satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
                     .or. (get_Convergence_Functional(Satura, Sat_bak, backtrack_pars(2)) < convergence_tol .and.&
-                    maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
+                    maxval(abs(Sat_bak-Satura(1:nphase,:)))/backtrack_pars(2) < Infinite_norm_tol)!<= exit if final convergence is achieved
                 if (IsParallel()) call alland(satisfactory_convergence)
                 !If a backtrack_par parameter turns out not to be useful, then undo that iteration
                 Undo_update = its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.
                 if (IsParallel()) call allor(Undo_update)!Consistently repeat an update if required
                 if (Undo_update) then
-                    Satura = backtrack_sat
+                    Satura(1:nphase,:) = backtrack_sat
                     !We do not allow two consecutive undos
                     allow_undo = .false.
                     !restart the counter of useful saturations, this is to not use Anderson acceleration
@@ -455,13 +455,13 @@ contains
         !Obtain new saturation using the backtracking method
         if (useful_sats < 2 .or. satisfactory_convergence) then
             !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
-            Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
+            Satura(1:nphase,:) = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura(1:nphase,:)
         else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
 
             !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
             !The highest value of backtrack_sat is displaced to low values of alpha
             aux = 1.0 - backtrack_pars(1)
-            Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
+            Satura(1:nphase,:) = backtrack_pars(1) * Satura(1:nphase,:) + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
                 aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
         end if

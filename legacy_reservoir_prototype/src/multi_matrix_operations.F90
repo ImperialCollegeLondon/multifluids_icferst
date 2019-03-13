@@ -1701,15 +1701,14 @@ contains
 
 
     subroutine allocate_global_multiphase_petsc_csr(global_petsc,&
-        sparsity,tracer)
+        sparsity,tracer, nphase)
 
         type(petsc_csr_matrix)    ::  global_petsc
         type(tensor_field) :: tracer
-
-        integer :: nphase
+        integer, intent(in) :: nphase
         type(csr_sparsity) :: sparsity
 
-        nphase=tracer%dim(2)
+        !nphase=tracer%dim(2)
 
         ewrite(3,*), "In assemble_global_multiphase_petsc_csr"
 

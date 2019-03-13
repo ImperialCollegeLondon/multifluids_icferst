@@ -1515,9 +1515,10 @@ The field selected in "adaptive_timestep_nonlinear" has preference over this</a:
                   </optional>
                 </element>
               </optional>
-              <optional>
-                <element name="Backtracking_factor">
-                  <a:documentation>
+              <group>
+                <optional>
+                  <element name="Backtracking_factor">
+                    <a:documentation>
 Recommended settings: Non-linear iterations ~ 20
 Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
 
@@ -1527,9 +1528,15 @@ Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8;
 Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
 
 The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
-                  <ref name="real"/>
-                </element>
-              </optional>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Acceleration_exp">
+                    <ref name="real"/>
+                  </element>
+                </optional>
+              </group>
               <optional>
                 <element name="Vanishing_relaxation">
                   <a:documentation>Introduce over-relaxation in the saturation equation.
