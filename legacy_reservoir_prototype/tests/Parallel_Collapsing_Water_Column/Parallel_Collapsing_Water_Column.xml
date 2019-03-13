@@ -2,13 +2,13 @@
 <testproblem>
   <name>Parallel_Collapsing_Water_Column</name>
   <owner userid="jrper"/>
-  <tags>disabled mpml parallel</tags>
+  <tags>mpml parallel</tags>
   <problem_definition length="short" nprocs="2">
     <command_line>make
 
 ../../../bin/icferst cwc_P1DGP1.mpml
 cp cwc_P1DGP1_1.vtu serial_P1DGP1.vtu
-mpiexec  ../../../bin/icferst cwc_P1DGP1.mpml
+mpiexec -n 2 ../../../bin/icferst cwc_P1DGP1.mpml
 ../../../bin/pvtu2vtu cwc_P1DGP1 1
 ../../../bin/vtudiff serial_P1DGP1.vtu cwc_P1DGP1_1.vtu diff_P1DGP1.vtu
 
