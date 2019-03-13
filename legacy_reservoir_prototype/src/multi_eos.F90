@@ -1411,36 +1411,40 @@ contains
 
     end function Get_DevCapPressure
 
-    subroutine calculate_u_source_cv(state, cv_nonods, ndim, nphase, den, u_source_cv)
+    subroutine calculate_u_source_cv(Mdims, state, den, u_source_cv)
         type(state_type), dimension(:), intent(in) :: state
-        integer, intent(in) :: cv_nonods, ndim, nphase
+        type(multi_dimensions), intent(in) :: Mdims
         real, dimension(:,:), intent(in) :: den
         real, dimension(:,:,:), intent(inout) :: u_source_cv
 
         type(vector_field), pointer :: gravity_direction
-        real, dimension(ndim) :: g
+        real, dimension(Mdims%ndim) :: g
         logical :: have_gravity, high_order_Ph
         real :: gravity_magnitude
-        integer :: idim, iphase, nod, stat
+        integer :: idim, iphase, nod, stat, start_phase
 
         call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
         have_gravity = ( stat == 0 )
-
+        !Initialise RHS
+        u_source_cv = 0.
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
-        if( have_gravity .and. .not.high_order_Ph ) then
+        if( have_gravity .and. .not. high_order_Ph) then
+          start_phase = 1
+          if (high_order_Ph .and. Mdims%npres > 1) then
+            start_phase = Mdims%n_in_pres + 1 !hydrostatic_pressure_solver only for the reservoir domain, not the wells domain
+          else if (high_order_Ph) then
+            return
+          end if
             gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
             u_source_cv = 0.
-            do nod = 1, cv_nonods
+            do nod = 1, Mdims%cv_nonods
                 g = node_val( gravity_direction, nod ) * gravity_magnitude
-                do iphase = 1, nphase
-                    do idim = 1, ndim
+                do iphase = start_phase, Mdims%nphase
+                    do idim = 1, Mdims%ndim
                         u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
                     end do
                 end do
             end do
-
-        else
-            u_source_cv = 0.
         end if
 
     end subroutine calculate_u_source_cv
