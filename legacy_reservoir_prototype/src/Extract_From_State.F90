@@ -2674,17 +2674,17 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     real, parameter :: tol = 1d-5
     real :: tmp ! Variable used for parallel consistency
     !Functional considering the average of the inf norm of the 1% of the nodes!
-    real, dimension(size(phasevolumefraction,1), size(phasevolumefraction,2)) :: sat_diff
-    integer, dimension(size(phasevolumefraction,2)) :: sorted_list
+    real, dimension(size(reference_sat,1), size(reference_sat,2)) :: sat_diff
+    integer, dimension(size(reference_sat,2)) :: sorted_list
     integer :: k, i, total_cv_nodes
     logical :: Inf_potential = .false.
 
     if (Inf_potential) then
         !Considered just a sample of nodes, either the 1% or 1000 nodes
         !and then do the average of the error of all of those nodes
-        sat_diff = abs(reference_sat - phasevolumefraction)
+        sat_diff = abs(reference_sat - phasevolumefraction(1:size(reference_sat,1), :))
         call qsort(sat_diff(1,:), sorted_list)
-        k = min(1000, nint(0.05* size(phasevolumefraction,2) ) )
+        k = min(1000, nint(0.05* size(reference_sat,2) ) )
         get_Convergence_Functional = 0
         do i = 1, k
             get_Convergence_Functional = get_Convergence_Functional + sat_diff(1, sorted_list(size(sorted_list) - i+1))
@@ -2696,11 +2696,11 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
 
     modified_vals = 0
     get_Convergence_Functional = 0.0
-    total_cv_nodes = size(phasevolumefraction,2)
+    total_cv_nodes = size(reference_sat,2)
     call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
     !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
     !(L2)**2 norm of all the elements
-    do iphase = 1, size(phasevolumefraction,1)
+    do iphase = 1, size(reference_sat,1)
 
         tmp = sum(abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:)))
         call allsum(tmp)

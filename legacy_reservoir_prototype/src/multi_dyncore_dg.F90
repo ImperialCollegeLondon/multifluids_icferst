@@ -329,7 +329,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -639,7 +639,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -744,7 +744,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
              ! Local Variables
              LOGICAL, PARAMETER :: THERMAL= .false.
-             integer :: igot_t2
+             integer :: igot_t2, nphase, n_in_pres
              REAL, DIMENSION( : ), allocatable :: mass_mn_pres
              REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
              REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
@@ -753,7 +753,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
              REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
              LOGICAL :: GET_THETA_FLUX
-             INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
+             INTEGER :: STAT, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES, cv_nodi
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
              type( tensor_field ), pointer :: den_all2, denold_all2
              character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
@@ -762,6 +762,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(:, :), pointer :: satura
              type(tensor_field), pointer :: velocity, density, deriv, sat_field
              type(scalar_field), pointer :: gamma
+             type(vector_field) :: solution
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
              !Variables for global convergence method
@@ -772,8 +773,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
+             integer :: number_of_normal_FPI = 3
              integer :: Max_sat_its, total_cv_nodes
-             real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
+             real, dimension(:,:), allocatable :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
              logical :: satisfactory_convergence
@@ -781,8 +783,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1
              integer :: its_taken
-
+             !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
+
 
              solver_option_path = "/solver_options/Linear_solver"
              if (have_option('/solver_options/Custom_solver_configuration/field::PhaseVolumeFraction')) then
@@ -793,12 +796,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                   max_allowed_its, default = 500)
              end if
 
-
-
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+
              Satura =>  sat_field%val(1,:,:)
              !Get information for capillary pressure to be use in CV_ASSEMB
              call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc)
@@ -815,8 +817,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              Auto_max_backtrack = (backtrack_par_factor == -10)
              !Retrieve number of saturation fixed point iterations from diamond, by default 9
              call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
-
-
+number_of_normal_FPI = max_sat_its
+max_sat_its = 9
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
              GET_THETA_FLUX = .FALSE.
              !####Create dummy variables required for_cv_assemb with no memory usage ####
@@ -828,29 +830,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
              ALLOCATE( mass_mn_pres(size(Mspars%small_acv%col)) ) ; mass_mn_pres = 0.
 
-             IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
-                 ! use DEN=1 because the density is already in the theta variables
-                 ALLOCATE( DEN_ALL( Mdims%nphase, Mdims%cv_nonods )); DEN_ALL = 1.
-                 ALLOCATE( DENOLD_ALL( Mdims%nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
-             ELSE
-                 DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
-                 DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-                 if (is_flooding) then
-                    !For Flooding the densities not in the pipes have to be equal to unity
-                     ALLOCATE( DEN_ALL( Mdims%nphase, Mdims%cv_nonods ))
-                     ALLOCATE( DENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ))
-                     do iphase = 1, mdims%n_in_pres
-                         DEN_ALL(iphase,:) = 1.0
-                         DENOLD_ALL(iphase,:) = 1.0
-                     end do
-                     do iphase = mdims%n_in_pres+1, mdims%nphase
-                         DEN_ALL(iphase,:) = DEN_ALL2%VAL( 1, iphase, : )
-                         DENOLD_ALL(iphase,:) = DENOLD_ALL2%VAL( 1, iphase, : )
-                     end do
-                 else
-                     DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
-                 end if
-             END IF
+
              Mdisopt%v_beta = 1.0
              velocity=>extract_tensor_field(packed_state,"PackedVelocity")
              density=>extract_tensor_field(packed_state,"PackedDensity")
@@ -867,18 +847,67 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call allsum(total_cv_nodes)!For parallel consistency when normalising the residual
              !Now total_cv_nodes includes halos, but because it is a ratio it should be fine
              if (resold < 0 ) res = huge(res)!<=initialize res once
-             call allocate(Mmat%CV_RHS,Mdims%nphase,sat_field%mesh,"RHS")
 
-             !Allocate residual, to compute the residual
-             if (backtrack_par_factor < 1.01) call allocate(residual,Mdims%nphase,sat_field%mesh,"residual")
+
+ nullify(DEN_ALL); nullify(DENOLD_ALL)
+
+allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Mdims%cv_nonods))
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
+                 if (its <= number_of_normal_FPI) then!For the number_of_normal_FPI FPIs we consider all the phases normally
+                   nphase = Mdims%nphase
+                   n_in_pres = Mdims%n_in_pres
+                 else !For subsequent SFPI iterations just perform nphases - 1
+                   !Define local nphase and n_in_pres
+                   nphase = (Mdims%n_in_pres - 1 ) * Mdims%npres
+                   n_in_pres = nphase/ Mdims%npres
+                 end if
+
+                 if (.not. associated(DEN_ALL)) then
+
+
+                     IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
+                         ! use DEN=1 because the density is already in the theta variables
+                         ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods )); DEN_ALL = 1.
+                         ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
+                     ELSE
+                         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
+                         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+                         if (is_flooding) then
+                            !For Flooding the densities not in the pipes have to be equal to unity
+                             ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods ))
+                             ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods ))
+                             do iphase = 1, n_in_pres
+                                 DEN_ALL(iphase,:) = 1.0
+                                 DENOLD_ALL(iphase,:) = 1.0
+                             end do
+                             do iphase = n_in_pres+1, nphase
+                                 DEN_ALL(iphase,:) = DEN_ALL2%VAL( 1, iphase, : )
+                                 DENOLD_ALL(iphase,:) = DENOLD_ALL2%VAL( 1, iphase, : )
+                             end do
+                         else
+                             DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
+                         end if
+                     END IF
+                     !Allocate residual, to compute the residual
+                     if (backtrack_par_factor < 1.01) call allocate(residual,nphase,sat_field%mesh,"residual")
+                     call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
+                     call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
+                     ! if (its == 1) call zero(solution)
+                end if
+
+                !Update solution field to calculate the residual
+                  do ipres =1, mdims%npres
+                    do iphase = 1 , n_in_pres
+                     solution%val(iphase+(ipres-1)*n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*n_in_pres,:)
+                   end do
+                 end do
                  !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
                  !it works, but it complains...
-                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field)
+                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
-                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                     nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                      sat_field, velocity, density, multi_absorp, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
@@ -901,26 +930,28 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  if (IsParallel()) then
                     call allmax(Courant_number(1)); call allmax(Courant_number(2))
                  end if
-                 !Solve the system
-                 vtracer=as_vector(sat_field,dim=2)
 
+                 !Time to solve the system
                  !If using FPI with backtracking
                  if (backtrack_par_factor < 1.01) then
                      !Backup of the saturation field, to adjust the solution
                      sat_bak = satura
+
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
                          if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                          end if
+
                          !Calculate the actual residual using a previous backtrack_par
-                         call mult(residual, Mmat%petsc_ACV, vtracer)
+                         ! vtracer=as_vector(sat_field,dim=2)
+                         call mult(residual, Mmat%petsc_ACV, solution)
                          !Now residual is calculated as Residual = RHS - A*X0
                          residual%val = Mmat%CV_RHS%val - residual%val
                          if (IsParallel()) call halo_update(residual)!better than zero_non_owned, important for parallel
                          resold = res; res = 0
-                         do iphase = 1, Mdims%nphase
-                            !L2 norm of the resodal; needs to be done in steps to ensure cosistency in parallel
+                         do iphase = 1, nphase
+                            !L2 norm of the residual; needs to be done in steps to ensure cosistency in parallel
                              aux = dot_product(residual%val(iphase,:),residual%val(iphase,:))
                              call allsum(aux)
                              aux = sqrt(aux)/ dble(total_cv_nodes)
@@ -932,8 +963,23 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      end if
                  end if
 
-                 call zero(vtracer)
-                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 call zero(solution)
+                 call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+
+                !Copy solution back to sat_field (not ideal...)
+                  do ipres =1, mdims%npres
+                    do iphase = 1 , n_in_pres
+                     sat_field%val(1,iphase+(ipres-1)*n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
+                   end do
+                 ! end do
+                    if (backtrack_par_factor > 1.01) then
+                     !Convert from nphases-1 to nphases (only if we are not using FPI_backtracking)
+                     do cv_nodi = 1, Mdims%cv_nonods
+                       sat_field%val(1,Mdims%n_in_pres+(ipres-1)*Mdims%n_in_pres,cv_nodi) = 1.0 - &
+                            sum(sat_field%val(1,1+(ipres-1)*Mdims%n_in_pres:(Mdims%n_in_pres-1) + (ipres-1)*Mdims%n_in_pres,cv_nodi))
+                     end do
+                   end if
+                 end do
 
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
@@ -947,9 +993,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(Mdims, ndgln, state,packed_state, sat_bak, backtrack_sat, backtrack_par_factor,&
+                         call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res)!halos are updated within this subroutine
+
                          !Store the accumulated updated done
                          updating = updating + new_backtrack_par
                          !If the backtrack_par factor is not adaptive, then, just one iteration
@@ -978,8 +1025,21 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      if (IsParallel()) call halo_update(sat_field)
                      exit Loop_NonLinearFlux
                  end if
+
+                 !Re-size arrays if we change from Nphases values to nphases-1 values
+                 if (its == number_of_normal_FPI) then
+                   ! DEALLOCATE( sat_bak, backtrack_sat )
+                   call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+                   if (backtrack_par_factor < 1.01) call deallocate(residual)
+                   if (IGOT_THETA_FLUX == 1 .or. is_flooding) then
+                     deallocate(DEN_ALL, DENOLD_ALL)
+                   end if
+                   nullify(DEN_ALL); nullify(DENOLD_ALL)
+                 end if
+
                  its = its + 1
                  useful_sats = useful_sats + 1
+
              END DO Loop_NonLinearFlux
              !Store the number of Saturation Fixed_Point iterations
              SFPI_taken = SFPI_taken + its
@@ -1002,7 +1062,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              deallocate( THETA_GDIFF, Mmat%CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
              !#### Deallocate dummy variables required for_cv_assemb with no memory usage ####
 
-             DEALLOCATE( mass_mn_pres )
+             DEALLOCATE( mass_mn_pres, MEAN_PORE_CV)
+             DEALLOCATE( sat_bak, backtrack_sat )
              call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
@@ -1855,7 +1916,7 @@ end if
         density=>extract_tensor_field(packed_state,"PackedDensity")
 
         call CV_ASSEMB( state, packed_state, &
-            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+            Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
             tracer, velocity, density, multi_absorp, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             DEN_OR_ONE, DENOLD_OR_ONE, &

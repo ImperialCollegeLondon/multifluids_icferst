@@ -85,2053 +85,2060 @@ module cv_advection
 contains
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-        tracer, velocity, density, multi_absorp, &
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
-        DEN_ALL, DENOLD_ALL, &
-        CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
-        SUF_SIG_DIAGTEN_BC, &
-        DERIV, CV_P, &
-        SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
-        GETCV_DISC, GETCT, &
-        IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
-        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-        MEAN_PORE_CV, &
-        MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
-        got_free_surf,  MASS_SUF, &
-        MASS_ELE_TRANSP, &
-        TDIFFUSION, &
-        saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
-        Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-        porous_heat_coef, outfluxes, solving_compositional, nonlinear_iteration)
-        !  =====================================================================
-        !     In this subroutine the advection terms in the advection-diffusion
-        !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
-        !
-        !     This routine uses a Control Volume (CV) formulation to compute
-        !     the advection terms. The general procedure is as follows:
-        !
-        !        1. For each node-pair, define which node is the donor, which is
-        !           the receptor and define an "upwind" value of the field being
-        !           advected (and the accompanying "density"; see note below)
-        !        2. Calculate the volume flux across the CV face that separates
-        !           these two nodes
-        !        3. Estimate the value of the advected variable at the control
-        !           volume face.
-        !        4. Using information from the donor, receptor and upwind nodes,
-        !           limit the field face value (removes oscillations from the
-        !           solution)
-        !        5. Assemble the fluxes to form the matrix and rhs of the
-        !           advection equation
-        !
-        !     This procedure is implemented by considering the CV to be made up
-        !     of a number of sub-control-volumes, which represent the part of
-        !     the control volume within a given element.  The assembly of terms
-        !     considers each of these sub-CVs in turn, calculating (and limiting)
-        !     the flux across sub-CV faces that are external to the CV...
-        !
-        !     NOTE: Add in note about what density is in this sub!!!
-        !
-        !     To define the "upwind" value of the field variable, which is
-        !     necessary for the limiting scheme, either:
-        !
-        !        A. The upwind value of the field variable to be advected is
-        !           found by interpolation and stored in a matrix (TUPWIND)
-        !        B. The neighbouring nodes are searched for the local maximum
-        !           and minimum
-        !
-        !     The subroutine has several options...
-        !
-        !     Discretisation option
-        !     ---------------------
-        !      - The estimate of the face value may be determined in one of
-        !        several ways.
-        !      - The face value may be centered in time by either a specified
-        !        CV_THETA value, or a non-linear CV_THETA value that is determined
-        !        automatically.
-        !      - The face value may be limited using a univeral-limiter-type
-        !        scheme, or a limited-downwind scheme that is ideal for INTERFACE
-        !        TRACKING.  Alternatively no limiting can be applied.
-        !
-        !     These options are defined by the value of CV_DISOPT, which corresponds
-        !     to the clast digit of the GEM option NDISOT for the field in question.
-        !
-        !     CV_DISOPT=discretisation option in space and time
-        !     ------------------------------------------------------------------
-        !     CV_DISOPT   Method for face-value est.    Time-stepping     Limiting
-        !     ------------------------------------------------------------------
-        !       =0      1st order in space          Theta=specified    UNIVERSAL
-        !       =1      1st order in space          Theta=non-linear   UNIVERSAL
-        !       =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
-        !       =2 if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
-        !       =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
-        !       =4      Finite elements in space    Theta=specified    UNIVERSAL
-        !       =5      Finite elements in space    Theta=non-linear   UNIVERSAL
-        !       =6      Finite elements in space    Theta=specified    NONE
-        !       =7      Finite elements in space    =non-linear   NONE
-        !       =8      Finite elements in space    Theta=specified    DOWNWIND+
-        !       =9      Finite elements in space    Theta=non-linear   DOWNWIND+
-        !
-        !     CV_DG_VEL_INT_OPT=interface velocity calculation option between elements
-        !
-        !     Limiting scheme
-        !     ---------------
-        !     The limiting scheme is defined in the subroutine NVDFUNNEW;
-        !     the limited values are computed in subroutine ANONVDLIM/ONVDLIM.
-        !
-        !     ONVDLIM is the original limiting algorithm
-        !
-        !     ANONVDLIM is a new anisoptropic limiting algorithm, which is
-        !     called if either ALOLIM=1 (where ALOLIM is an option flag set
-        !     in this subroutine), or if the interface tracking limiting option
-        !     is selected (CV_DISOPT=8/9).  ***In general ALOLIM appears to be set to 1 (GSC)
-        !
-        !     NOTE: ANONVDLIM only works for TETS; for all other element types
-        !     ONVDLIM is used.
-        !
-        !
-        !     IMPORTANT INPUTS:
-        !     ----------------
-        !
-        !     CSR_ACV   - Matrix for assembling the advection terms (empty on input)
-        !     CV_RHS      - Right-hand side vector for advection-diffusion terms
-        !     X,Y,Z    - Node co-ordinates
-        !     NU       - Nodal velocity component
-        !     T,TOLD   - New and old advected field values at nodes
-        !     DEN,  - New and old "density" at nodes, which is actually a constant
-        !     DENOLD     multiplying the advection diffusion equation for the field
-        !     CV_DISOPT   - The discretisation/limiting option (see above)
-        !     DT       - The time step
-        !     CV_THETA    - The time-stepping discretisation parameter
-        !     CV_BETA     - Conservative(1.)/non-conservative(0.) flag
-        !     ELE_TYP   - Integer flag definining element type
-        !
-        !     IMPORTANT OUTPUTS:
-        !     -----------------
-        !
-        !     CSR_ACV   - Matrix updated to include the advection terms
-        !     CV_RHS      - Right-hand side vector updated to include advection terms
-        !
-        !
-        !     IMPORTANT LOCAL PARAMETERS:
-        !     --------------------------
-        !
-        !     TIMOPT    - Temporal discretisation option, derived from CV_DISOPT.
-        !                (1 for non-linear theta; 0 for theta specified (THETA))
-        !
-        !
-        !***********************************************************************
-        ! Inputs/Outputs
-        IMPLICIT NONE
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
-        type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: CV_GIdims
-        type(multi_GI_dimensions) :: FE_GIdims
-        type(multi_shape_funs), intent(inout) :: CV_funs
-        type(multi_shape_funs) :: FE_funs
-        type(multi_sparsities), intent(in) :: Mspars
-        type(multi_ndgln), intent(in) :: ndgln
-        type (multi_discretization_opts) :: Mdisopt
-        type (multi_matrices), intent(inout) :: Mmat
-        type (porous_adv_coefs), intent(inout) :: upwnd
-        type(tensor_field), intent(inout), target :: tracer
-        type(tensor_field), intent(in), target :: density
-        type(tensor_field), intent(in) :: velocity
-        type(multi_absorption), intent(inout) :: multi_absorp
-        INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
-            IGOT_T2, IGOT_THETA_FLUX
-        ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
-        REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (Mdims%npres, Mdims%npres, Mdims%cv_nonods)
-        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B ! (Mdims%nphase, Mdims%nphase, Mdims%cv_nonods)
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
-        REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
-        REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
-        REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (Mdims%nphase,Mdims%cv_nonods)
-        REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        REAL, intent( in ) :: DT, CV_THETA, CV_BETA
-        REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-        REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (Mdims%nphase,Mdims%cv_nonods)
-        REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
-        REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
-        REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE ! (Mdims%npres,Mdims%totele)
-        LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
-        ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-        REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
-        REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
-        type(tensor_field), intent(in), optional, target :: saturation
-        REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
-        !Variables for Vanishing artificial diffusion
-        integer, optional, intent(in) :: Phase_with_Pc
-        real, optional, dimension(:), intent(in) :: VAD_parameter
-        !Variables to cache get_int_vel OLD
-        real, optional, dimension(:), intent(inout) :: Courant_number
-        type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
-        ! Calculate_mass variable
-        real, dimension(:,:), optional :: calculate_mass_delta
-        type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
-        type (multi_pipe_package), intent(in) :: pipes_aux
-        REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef
-        ! Variable to store outfluxes
-        type (multi_outfluxes), optional, intent(inout) :: outfluxes
-        logical, optional, intent(in) :: solving_compositional
-        !Non-linear iteration count
-        integer, optional, intent(in) :: nonlinear_iteration
-        ! ###################Local variables############################
-        REAL :: ZERO_OR_TWO_THIRDS
-
-
-        !        ===>  LOGICALS  <===
-        ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
-        logical, PARAMETER :: integrate_other_side= .true.
-        ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
-        logical, PARAMETER :: correct_method_petrov_method= .true.
-        LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
-        logical :: skip, GOT_T2, use_volume_frac_T2, symmetric_P, logical_igot_theta_flux
-        ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
-        ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
-        ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
-        ! Zhi try THETA_VEL_HAT = 1.0
-        real :: THETA_VEL_HAT = 1.0
-        ! if APPLY_ENO then apply ENO method to T and TOLD
-        LOGICAL :: APPLY_ENO
-        ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
-        ! if RECAL_C_CV_RHS, calculate the RHS for the Mmat%C_CV matrix
-        logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
-        LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
-        !Logical to check if we using a conservative method or not, to save cpu time
-        logical :: conservative_advection
-        ! GRAVTY is used in the free surface method only...
-        !        ===> GENEREIC INTEGERS <===
-        INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-            CV_NODJ, ISWITCH, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
-        INTEGER :: I, IDIM, U_ILOC, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
-            IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
-        INTEGER, dimension(1) :: IDUM
-        integer, dimension(:), pointer :: neighbours
-        INTEGER, dimension(Mdims%nphase) :: LOC_WIC_T_BC_ALL
-        !        ===>  GENERIC REALS  <===
-        REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta, auxR
-        REAL :: R, NDOTQ_HAT, DeltaP
-        REAL, dimension(Mdims%nphase) :: FTHETA, FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, &
-            ROBIN1, ROBIN2, BCZERO,  T_ALL_J, TOLD_ALL_J
-        REAL :: GRAVTY
-        character( len = option_path_len ) :: option_path2
-        LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
-        integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC, SHAPE_CV_SNL
-        integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
-        integer, dimension (Mdims%u_nloc) ::U_OTHER_LOC
-        integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
-        integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
-        !Allocate only for get_CT
-        INTEGER, DIMENSION( : ), allocatable :: &
-            JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
-            C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
-
-        INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
-        REAL, DIMENSION( : ), allocatable ::  N
-        real, dimension (Mdims%cv_nonods) ::  SUM_CV
-        real, dimension (Mdims%totele) :: MASS_ELE
-        REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
-        REAL, DIMENSION( Mdims%ndim, Mdims%cv_nonods ) :: XC_CV_ALL
-        REAL, DIMENSION( Mdims%ndim,Mdims%nphase,Mdims%u_nloc ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
-        REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
-        !###Variables for shape function calculation###
-        type (multi_dev_shape_funs) :: SdevFuns
-        type (multi_dev_shape_funs) :: FSdevFuns
-
-        ! Variables used to calculate CV face values and depend on NFIELD:
-        REAL, DIMENSION( :, : ), allocatable :: LOC_F, LOC_FEMF
-        REAL, DIMENSION( :, : ), allocatable :: SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF
-        REAL, DIMENSION( :, :, : ), allocatable :: LOC_UF
-        INTEGER, DIMENSION( : ), allocatable :: SELE_LOC_WIC_F_BC
-        REAL, DIMENSION( :, : ), allocatable :: SLOC_SUF_F_BC
-        REAL, DIMENSION( : ), allocatable :: FUPWIND_IN, FUPWIND_OUT, LIMF, F_INCOME, F_NDOTQ
-        ! Variables used in GET_INT_VEL_NEW:
-        REAL, DIMENSION ( Mdims%ndim, Mdims%nphase, Mdims%u_nloc ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU, LOC_NUOLD, LOC2_NUOLD
-        REAL, DIMENSION ( Mdims%ndim, Mdims%nphase, Mdims%u_snloc ) :: SLOC_NU, SLOC_NUOLD
-				REAL, DIMENSION ( :, : ), allocatable :: LOC_U_HAT, LOC2_U_HAT
-        INTEGER :: CV_KNOD2, U_SNODK
-        REAL, DIMENSION ( Mdims%nphase, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
-                                                            LOC_FEMT2OLD, LOC2_FEMT2OLD
-        ! Mdims%nphase Variables:
-        REAL, DIMENSION( : ), allocatable ::  Porous_diff_coef_divdx, Porous_diff_coefold_divdx
-        real, dimension(Mdims%nphase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
-            INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
-        real, dimension(Mdims%nphase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
-        REAL, DIMENSION( Mdims%ndim,Mdims%ndim,Mdims%nphase ) :: DUMMY_ZERO_NDIM_NDIM_NPHASE
-        REAL, DIMENSION( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
-        REAL , DIMENSION( Mdims%ndim, Mdims%nphase ) :: NUGI_ALL, NUOLDGI_ALL
-        real, dimension(Mdims%nphase, Mspars%small_acv%ncol) :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
-            DENOLDUPWIND_MAT_ALL
-        real, dimension(:,:), allocatable :: T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
-        LOGICAL :: STORE, integrate_other_side_and_not_boundary
-        REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
-        LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
-        LOGICAL, DIMENSION( Mdims%nphase, 6 ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
-        REAL, DIMENSION(  Mdims%nphase, 6 ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
-        !Working variables
-        real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
-        real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
-        real, dimension(:,:), allocatable, target :: T_TEMP, TOLD_TEMP
-        real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL
-        real, dimension(:, :, :), pointer :: U_ALL, NU_ALL, NUOLD_ALL
-        real, dimension(Mdims%nphase, Mdims%cv_nonods) :: T_ALL_KEEP
-
-        real, dimension( : ), allocatable :: DIAG_SCALE_PRES_phase
-        real, dimension( : ), allocatable :: R_PEACMAN
-        real, dimension( Mdims%nphase ) :: ct_rhs_phase, CV_P_PHASE_NODI,CV_P_PHASE_NODJ,ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj,R_PRES,R_PHASE,MEAN_PORE_CV_PHASE
-
-        !! boundary_condition fields
-        type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
-        type(tensor_field) :: pressure_BCs
-        type(tensor_field) :: tracer_BCs_robin2, saturation_BCs_robin2
-        INTEGER, DIMENSION( 1 , Mdims%nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
-        INTEGER, DIMENSION( Mdims%ndim , Mdims%nphase , surface_element_count(tracer) ) :: WIC_U_BC_ALL
-        type( tensor_field ), pointer ::  pressure
-        INTEGER, DIMENSION ( 1,Mdims%npres,surface_element_count(tracer) ) :: WIC_P_BC_ALL
-        REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL,&
-            SUF_T_BC_ROB1_ALL, SUF_T_BC_ROB2_ALL
-        REAL, DIMENSION(:,:,: ), pointer :: SUF_D_BC_ALL,&
-            SUF_T2_BC_ALL, SUF_T2_BC_ROB1_ALL, SUF_T2_BC_ROB2_ALL
-        REAL, DIMENSION(:,:,: ), pointer :: SUF_U_BC_ALL
-        REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC,&
-            SUF_T_BC_ROB1, SUF_T_BC_ROB2
-        !Working variables for subroutines that are called several times
-        real, dimension( Mdims%ndim,Mdims%nphase ) :: rdum_ndim_nphase_1
-        real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, LOC_CV_RHS_I, LOC_CV_RHS_J, THETA_VEL
-        REAL, DIMENSION( Mdims%nphase ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
-                wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
-        REAL, DIMENSION ( Mdims%ndim,Mdims%nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
-        type( vector_field ), pointer :: MeanPoreCV
-        !! femdem
-        type( vector_field ), pointer :: delta_u_all, us_all
-        type( scalar_field ), pointer :: solid_vol_fra
-        real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
-        type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
-        type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-        type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field !Arash
-
-        ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
-        real :: reservoir_P( Mdims%npres ) ! this is the background reservoir pressure
-        real, dimension( :, :, : ), pointer :: fem_p
-        real :: dt_pipe_factor
-        real, save :: dumping_well_factor = -1.0 !This is used to include explicit term that stabilises the well implementation
-        real, dimension( : ), allocatable :: MASS_PIPE_FOR_COUP
-        REAL , DIMENSION( :, : ), ALLOCATABLE :: SIGMA_INV_APPROX
-        real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS, PIPE_ABS
-        Real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS ! Define MASS_CV_PLUS for reservoir domain here,
-                                                                     ! this field is created so it can account for many pressures
-        !Permeability
-        type( tensor_field ), pointer :: perm
-        !Variables for Vanishing artificial diffusion (VAD)
-        logical :: VAD_activated, between_elements, on_domain_boundary
-        !Variables for get_int_vel_porous_vel
-        logical :: anisotropic_and_frontier, anisotropic_perm
-        real, dimension(Mdims%nphase):: rsum_nodi, rsum_nodj
-        integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
-        REAL :: MM_GRAVTY
-        !Variable to decide, for porous media, whether to consider, locally, using high order methods or not
-        logical :: use_porous_limiter = .true., local_upwinding = .false.
-        !Variables to calculate flux across boundaries
-        logical :: calculate_flux
-        integer :: U_JLOC
-
-        logical :: have_absorption
-        !Variables for Flooding
-        real, dimension( : , : ), pointer :: DEN_ALL_DIVID
-        real :: RDUM, RDUM2
-        !Variables for get int_vel_porous_vel
-        logical :: iv_Incomming_flow
-        REAL, DIMENSION(Mdims%ndim) :: iv_SUF_SIG_DIAGTEN_BC_GI
-        INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE, iv_u_kloc2
-        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
-        real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
-        ! ####Variables for outfluxes#####
-        real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
-        real, dimension( : , : ), pointer ::Imble_frac
-        real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
-        real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
-
-        !Check vanishing artificial diffusion options
-        VAD_activated = .false.
-        if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
-            VAD_activated = Phase_with_Pc >0
-        end if
-        !Retrieve only once the dumping well factor
-        if (dumping_well_factor<0) call get_option( "/porous_media/wells_and_pipes/well_option/dumping_well_factor", dumping_well_factor, default = 0.5 )
-        !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction
-        local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional)
-        !this is true if the user is asking for high order advection scheme
-        use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
-        !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
-        !we only do this for the first non-linear iteration
-        if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 1
-        logical_igot_theta_flux = IGOT_THETA_FLUX == 1
-
-        have_absorption=.false.
-        if ( associated( absorbt_all ) ) have_absorption = .true.
-
-        if ( Mdims%npres > 1 )then
-            reservoir_P( 1 ) = 0.0 !1.0e+7
-            reservoir_P( 2 ) = 0.0
-        else
-            reservoir_P = 0.0
-        end if
-        dt_pipe_factor = 1.0
-        if ( Mdims%npres > 1 ) then
-            ! factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
-            call get_option( "/porous_media/wells_and_pipes/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
-        end if
-        !Check pressure matrix based on Control Volumes
-        !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
-        if (Mmat%CV_pressure) then
-            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
-        else
-            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
-        end if
-        symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )!not added yet in the new schema
-
-        option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"!not added yet linked with the new schema
-        apply_eno = have_option( option_path2 )
-
-        !THETA_VEL_HAT has to be zero for porous media flow
-        if ( is_porous_media ) then
-            THETA_VEL_HAT = 0.0
-        else
-            THETA_VEL_HAT = 1.0
-        end if
-
-        call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
-
-        !#################SET WORKING VARIABLES#################
-
-        call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
-            OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
-        if (.not. present_and_true(solving_compositional)) then
-          if (is_porous_media)   call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
-        end if
-        !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
-        U_ALL => NU_ALL
-        old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
-        old_density=>extract_tensor_field(packed_state,GetOldName(density))
-        if (present(saturation)) then
-            old_saturation=>extract_tensor_field(packed_state,&
-                GetOldName(saturation))
-        end if
-        T_ALL =>tracer%val(1,:,:)
-        TOLD_ALL =>old_tracer%val(1,:,:)
-        if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
-        T_ALL_KEEP = T_ALL
-
-       !################## END OF SET VARIABLES ##################
-
-        IF( GETCT ) THEN
-            IF( RETRIEVE_SOLID_CTY ) THEN
-                ALLOCATE(VOL_FRA_FLUID(Mdims%cv_nonods))
-                ALLOCATE(U_HAT_ALL(Mdims%ndim,Mdims%u_nonods))
-                delta_u_all => extract_vector_field( packed_state, "delta_U" )
-                u_hat_all = delta_u_all%val + u_all( :, 1, :) ! Mdims%ndim, Mdims%u_nonods
-                us_all => extract_vector_field( packed_state, "solid_U" )
-                Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-                VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! Mdims%cv_nonods
-                ALLOCATE(T_TEMP(Mdims%nphase,Mdims%cv_nonods), TOLD_TEMP(Mdims%nphase,Mdims%cv_nonods))
-                IF(Mdims%nphase==1) THEN
-                    T_ALL_KEEP = 1.0
-                    do cv_inod = 1, Mdims%cv_nonods
-                        do iphase = 1, Mdims%nphase
-                            ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
-                            T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                            TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                        end do
-                    end do
-                ELSE
-                    T_TEMP= T_ALL
-                    TOLD_TEMP=TOLD_ALL
-                ENDIF
-                ! switch off caching of CV face values as this will be wrong.
-                T_ALL=>T_TEMP
-                TOLD_ALL=>TOLD_TEMP
-                ! CONV = A*B ! conV is an allocatable target
-                ! T_ALL=>CONV ! conV is an allocatable target
-                call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
-            ENDIF
-        ENDIF
-        if (present(outfluxes)) then
-            ! Initialise the calculate_mass variables
-            !Allocate array to pass to store mass going through the boundaries
-            if (allocated( outfluxes%outlet_id )) then
-                allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
-            else
-                allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
-            end if
-
-            allocate ( calculate_mass_internal(Mdims%nphase))
-            calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
-            !Extract temperature for outfluxes if required
-            if (has_temperature) then
-                temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-                if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
-            end if
-            !Arash
-            if (has_salt) then
-                salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
-                if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
-            end if
-        end if
-        !! Get boundary conditions from field
-        call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
-        call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
-        if (present(saturation))&
-            call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
-        call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
-        if(got_free_surf.or.is_porous_media .or. Mmat%CV_pressure) then
-            pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-            call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
-        endif
-        !! reassignments to old arrays, to be discussed
-        SUF_T_BC_ALL=>tracer_BCs%val
-        SUF_T_BC_ROB1_ALL=>tracer_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
-        SUF_T_BC_ROB2_ALL=>tracer_BCs_robin2%val
-        SUF_D_BC_ALL=>density_BCs%val
-        SUF_U_BC_ALL=>velocity_BCs%val
-        if(present(saturation)) then
-            SUF_T2_BC_ALL=>saturation_BCs%val
-            SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
-            SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
-        end if
-         if (tracer%name == "PackedTemperature" &
-            .or. tracer%name == "PackedSoluteMassFraction")  then
-            allocate( suf_t_bc( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
-                suf_t_bc_rob2( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
-            call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, Mdims%nphase, &
-                suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
-            SUF_T_BC_ALL=>suf_t_bc
-            SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
-            SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
-        end if
-        ! Arash
-       !  if (tracer%name == "PackedSoluteMassFraction" )  then
-       !     allocate( suf_t_bc( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
-       !         suf_t_bc_rob2( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
-       !     call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, Mdims%nphase, &
-       !         suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
-       !     SUF_T_BC_ALL=>suf_t_bc
-       !     SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
-       !     SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
-       ! end if
-
-        IDUM = 0
-        ewrite(3,*) 'In CV_ASSEMB'
-        GOT_DIFFUS = .false.
-        if (present(TDIFFUSION)) then
-            GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 )!<=I hate this thing...
-            call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
-        end if
-        call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
-        ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
-            CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
-        ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
-
-        !For flooding, only for the saturation equation we need to take out the density
-        !from the equations, we do so by forcing it to be 1, it needs to be recalculated
-        !after this before it is used somewhere else
-        if (is_flooding ) then
-            if (GETCV_DISC) then
-                DEN_ALL(1:mdims%n_in_pres,:) = 1.0
-                DENOLD_ALL(1:mdims%n_in_pres,:) = 1.0
-            end if
-        end if
-
-        !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
-        one_m_cv_beta = 1.0 - cv_beta
-        conservative_advection = abs(one_m_cv_beta) <= 1e-8
-        QUAD_OVER_WHOLE_ELE=.FALSE.
-        ! Allocate memory for the control volume surface shape functions, etc.
-        IF(GETCT) THEN
-            ALLOCATE( JCOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( JCOUNT_KLOC2( Mdims%u_nloc ))
-            ALLOCATE( ICOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( ICOUNT_KLOC2( Mdims%u_nloc ))
-            IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                ALLOCATE( C_JCOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_JCOUNT_KLOC2( Mdims%u_nloc ))
-                ALLOCATE( C_ICOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_ICOUNT_KLOC2( Mdims%u_nloc ))
-            ENDIF
-        ENDIF
-        DISTCONTINUOUS_METHOD = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
-        ! Quadratic elements
-        QUAD_ELEMENTS = ( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) )
-        !Pointer to permeability
-        if ( is_porous_media ) then
-            if (present(Permeability_tensor_field)) then
-                perm => Permeability_tensor_field
-            else
-            perm=>extract_tensor_field(packed_state,"Permeability")
-            end if
-            !Check if the permeability is not isotropic and the method is DG
-            anisotropic_perm = .not.have_option('/porous_media/scalar_field::Permeability') .and. DISTCONTINUOUS_METHOD
-        end if
-        !Initialize Courant number for porous media
-        if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
-        CVNORMX_ALL=0.0; DUMMY_ZERO_NDIM_NDIM_NPHASE=0.0
-
-        ! The procity mapped to the CV nodes
-        D1 = ( Mdims%ndim == 1 )
-        D3 = ( Mdims%ndim == 3 )
-        GETMAT = .TRUE.
-        X_SHARE = .FALSE.
-        ! Determine FEMT (finite element wise) etc from T (control volume wise)
-        ! Also determine the CV mass matrix MASS_CV_PLUS and centre of the CV's XC_CV_ALL
-        ! This is for projecting to finite element basis functions...
-        IGETCT = 0
-        IF ( GETCT ) IGETCT = 1
-        GOT_T2=( IGOT_T2 == 1 )
-        use_volume_frac_T2=( IGOT_T2 == 1 .or. thermal )
-        i_use_volume_frac_t2= 0
-        if (use_volume_frac_T2) i_use_volume_frac_t2= 1
-
-
-        IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
-            PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
-
-        ! FOR packing as well as for detemining which variables to apply interface tracking**********
-        !          STORE=.TRUE.
-        STORE=.FALSE.
-        IF( GETCT .AND. RETRIEVE_SOLID_CTY) STORE=.FALSE. ! Avoid storing and retrieving solids voln frac. until we have sorted the code for this.
-        IGOT_T_PACK=.TRUE.
-        IGOT_T_CONST=.FALSE.
-        IGOT_T_CONST_VALUE=0.0
-        ! If we have any bc's then assume we ave a non-uniform field...
-        ! SPRINT_TO_DO this now fails if the domain is closed and no BCs are necessary
-        DO IPHASE=1,Mdims%nphase
-            IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
-        END DO
-        DO IPHASE=1,Mdims%nphase
-            IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-        END DO
-        DO IPHASE=1,Mdims%nphase
-            IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
-        END DO
-        DO IPHASE=1,Mdims%nphase
-            IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
-        END DO
-        DO IPHASE=1,Mdims%nphase
-            IF(use_volume_frac_t2) THEN
-                IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
-                    CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
-            ELSE
-                IGOT_T_CONST(IPHASE,5)=.TRUE.
-                IGOT_T_CONST_VALUE(IPHASE,5)=1.0
-            ENDIF
-        END DO
-        DO IPHASE=1,Mdims%nphase
-            IF(use_volume_frac_t2) THEN
-                IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                    CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
-            ELSE
-                IGOT_T_CONST(IPHASE,6)=.TRUE.
-                IGOT_T_CONST_VALUE(IPHASE,6)=1.0
-            ENDIF
-        END DO
-        NFIELD=0
-        DO IFI=1,6
-            DO IPHASE=1,Mdims%nphase
-                IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
-            END DO
-        END DO
-        if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
-
-        ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) ! To avoid the case of NFIELD=0
-        ! This logical needs to be expanded...
-        if (NFIELD>0 ) THEN
-            DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
-            IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
-        ENDIF
-
-        ! Determine IGOT_T_PACK(IPHASE,:):
-        IGOT_T_PACK=.FALSE.
-        DO ILOOP=1,6
-            DO IPHASE=1,Mdims%nphase
-                IF(.NOT.IGOT_T_CONST(IPHASE,ILOOP)) THEN
-                    ! here we might check to see if we have this in the local storage...
-                    IGOT_T_PACK(IPHASE,ILOOP)=.TRUE.
-                ENDIF
-            END DO
-        END DO
-
-
-        ! F and LOC_U:
-        ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
-        ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
-        ALLOCATE(SLOC2_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC2_FEMF(NFIELD,Mdims%cv_snloc))
-        ALLOCATE(LOC_UF(Mdims%ndim,NFIELD,Mdims%u_nloc))
-        IF(GETCT.AND.RETRIEVE_SOLID_CTY)  ALLOCATE( LOC_U_HAT(Mdims%ndim, Mdims%u_nloc), LOC2_U_HAT(Mdims%ndim, Mdims%u_nloc) )
-        ! bc's:
-        ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) );ALLOCATE( SLOC_SUF_F_BC(NFIELD, Mdims%cv_snloc) )
-        ! limiting values...
-        ALLOCATE( FUPWIND_IN( NFIELD ) );ALLOCATE( FUPWIND_OUT( NFIELD ) )
-        ! limiting and upwinding:
-        ALLOCATE( LIMF( NFIELD ) );ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
-        ALLOCATE( F_CV_NODI( NFIELD ), F_CV_NODJ( NFIELD ) )
-
-        !###############Conditional allocations######################
-        ! NFIELD Variables:
-        if (thermal .and.is_porous_media) allocate(Porous_diff_coef_divdx(Mdims%nphase), Porous_diff_coefold_divdx(Mdims%nphase))
-        LIMT_HAT=0.0
-        IF ( VAD_activated) THEN
-            ALLOCATE( CAP_DIFFUSION( Mdims%nphase, Mdims%mat_nonods ) )
-            !Introduce the information in CAP_DIFFUSION
-            CAP_DIFFUSION = 0.!Initialize to zero just in case
-            do ele = 1, Mdims%totele
-                do CV_ILOC = 1, Mdims%cv_nloc
-                    CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
-                        - T_ALL(Phase_with_Pc, CV_NODI) * VAD_parameter(CV_NODI)
-                end do
-            end do
-        ENDIF
-
-        if( is_flooding ) then
-            allocate(DEN_ALL_DIVID( Mdims%nphase, Mdims%cv_nonods ))
-            DEN_ALL_DIVID = DEN_ALL
-            DEN_ALL_DIVID( 1, : ) = 1.0
-        else
-            DEN_ALL_DIVID => DEN_ALL
-        endif
-
-        ndotq = 0. ! ;         ndotqold = 0.
-        ! variables for get_int_tden********************
-        psi(1)%ptr=>tracer
-        psi(2)%ptr=>old_tracer
-        FEM_IT=2
-        if (.not. is_constant(density)) then
-            psi(FEM_IT+1)%ptr=>density
-            FEM_IT=FEM_IT+1
-        end if
-        if (.not. is_constant(old_density)) then
-            psi(FEM_IT+1)%ptr=>old_density
-            FEM_IT=FEM_IT+1
-        end if
-        if (present(saturation)) then
-            if (.not. is_constant(saturation)) then
-                psi(FEM_IT+1)%ptr=>saturation
-                FEM_IT=FEM_IT+1
-            end if
-            if (.not. is_constant(old_saturation)) then
-                psi(FEM_IT+1)%ptr=>old_saturation
-                FEM_IT=FEM_IT+1
-            end if
-        end if
-        do i=1,FEM_IT
-            if (has_tensor_field(packed_state,&
-                GetFEMName(psi(i)%ptr))) then
-                fempsi(i)%ptr=>extract_tensor_field(packed_state,&
-                    GetFEMName(psi(i)%ptr))
-            else
-                allocate(fempsi(i)%ptr)
-                call allocate(fempsi(i)%ptr,psi(i)%ptr%mesh,"FEMPSI"//trim(psi(i)%ptr%name),&
-                    dim=psi(i)%ptr%dim)
-            end if
-        end do
-        psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
-        psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
-        call PROJ_CV_TO_FEM(packed_state, &!sprint_to_do is it always necessary to have a Finite element representation of the Tracer?
-            FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
-            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
-            IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-            tracer,PSI_AVE, PSI_INT)
-        XC_CV_ALL=0.0
-        !sprint_to_do!use a pointer?
-        XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
-        MASS_CV_PLUS(1,:)         = psi_int(1)%ptr%val(1,:)
-        FEMT_ALL(:,:)             = FEMPSI(1)%ptr%val(1,:,:)
-        FEMTOLD_ALL(:,:)          = FEMPSI(2)%ptr%val(1,:,:)
-        FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
-        if (.not. is_constant(density)) then
-            FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
-            tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
-            tfield%val = psi(FEM_IT)%ptr%val
-            FEM_IT=FEM_IT+1
-        else
-            FEMDEN_ALL=density%val(1,:,:)
-        end if
-        if (.not. is_constant(old_density)) then
-            FEMDENOLD_ALL=psi(FEM_IT)%ptr%val(1,:,:)
-            FEM_IT=FEM_IT+1
-        else
-            FEMDENOLD_ALL=old_density%val(1,:,:)
-        end if
-        IF ( present(saturation) ) then
-            if (.not. is_constant(saturation)) then
-                FEMT2_ALL=psi(FEM_IT)%ptr%val(1,:,:)
-                FEM_IT=FEM_IT+1
-            else
-                FEMT2_ALL=saturation%val(1,:,:)
-            end if
-            if (.not. is_constant(old_saturation)) then
-                FEMt2OLD_ALL=psi(FEM_IT)%ptr%val(1,:,:)
-                FEM_IT=FEM_IT+1
-            else
-                FEMt2OLD_ALL=old_saturation%val(1,:,:)
-            end if
-        end IF
-        do i=1,FEM_IT-1!<==============WHY TO -1
-            if (fempsi(i)%ptr%name(1:6)=='FEMPSI') then
-                call deallocate(fempsi(i)%ptr)
-                deallocate(fempsi(i)%ptr)
-            end if
-        end do
-        IF (PRESENT(MASS_ELE_TRANSP)) &
-            MASS_ELE_TRANSP = MASS_ELE
-
-        ! Calculate MEAN_PORE_CV
-        MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
-        DO ELE = 1, Mdims%totele
-            DO CV_ILOC = 1, Mdims%cv_nloc
-                CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
-                MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
-                    MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )
-            END DO
-        END DO
-        DO IPRES = 1, Mdims%npres
-            MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
-        END DO
-
-        ! Scale effectively the time step size used within the pipes...
-        ! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
-        DO IPRES = 2, Mdims%npres
-            MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
-        END DO
-        ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
-        MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-        MeanPoreCV%val=MEAN_PORE_CV
-
-        ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
-        IF ( CV_DISOPT < 5 ) THEN
-            ! Isotropic limiting - calculate far field upwind maticies...
-            CALL ISOTROPIC_LIMITER_ALL( &
-                ! FOR SUB SURRO_CV_MINMAX:
-                T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, Mdims%nphase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
-                Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
-                MASS_CV_PLUS(1,:), &
-                ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
-                TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
-        ELSE
-            use_reflect = have_option("/numerical_methods/use_reflect_method")
-            CALL CALC_ANISOTROP_LIM( &
-                ! Caculate the upwind values stored in matrix form...
-                T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
-                FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
-                TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
-                T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
-                Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
-                ndgln%x,Mdims%x_nonods,Mdims%ndim, &
-                X_ALL, XC_CV_ALL, use_reflect)
-        END IF
-        FACE_ELE = 0
-        CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
-            CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
-        IF ( GOT_DIFFUS ) THEN
-            CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
-                DTX_ELE_ALL, DTOLDX_ELE_ALL, &
-                Mdims%ndim, Mdims%nphase, Mdims%totele, ndgln%cv, &
-                ndgln%x, Mdims%x_nloc, ndgln%x,&
-                CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
-                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-                Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
-                CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
-                CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
-                CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
-        END IF
-        !     =============== DEFINE THETA FOR TIME-STEPPING ===================
-        ! Define the type of time integration:
-        ! Timopt is 0 if CV_DISOPT is even (theta specified);
-        ! Timopt is 1 if CV_DISOPT is odd (non-linear theta scheme)
-        TIMOPT = MOD( CV_DISOPT, 2 )
-        FTHETA(:) = CV_THETA
-        IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqns plus RHS
-            call zero(Mmat%CT_RHS)
-            Mmat%CT = 0.0
-            if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
-            if ( Mmat%CV_pressure ) MASS_SUF=0.0
-        END IF
-        IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
-            call zero(Mmat%CV_RHS)
-            IF ( GETMAT ) THEN
-                call zero(Mmat%petsc_ACV)
-            END IF
-        END IF
-        GET_GTHETA = .FALSE.
-        IF ( logical_igot_theta_flux ) THEN
-            IF ( GET_THETA_FLUX ) THEN
-                THETA_FLUX = 0.0
-                ONE_M_THETA_FLUX = 0.0
-                if(integrate_other_side) then
-                    THETA_FLUX_J = 0.0
-                    ONE_M_THETA_FLUX_J = 0.0
-                endif
-                !            IF ( IGOT_T2 == 1 ) THEN
-                IF ( GOT_T2 ) THEN
-                    GET_GTHETA = .TRUE.
-                    THETA_GDIFF = 0.0
-                END IF
-            END IF
-        END IF
-        GLOBAL_FACE = 0
-
-        if ( is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT) then
-            !Initialise mass conservation check; calculation of porevolume
-            call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 1)
-        endif
-
-
-        !Allocate derivatives of the shape functions
-        call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
-
-        ! The above leads to CV_funs%NX_ALL equaling always to zero, which makes the negative diffusion ZERO (GET_INT_T_DEN_new( LIMF ))
-        ! In order to fix this, we use FE_funs - only when we calculate negative diffusion coefficient (cv_disopt >= 8_. [INTRO_NX_ALL]
-        if (NFIELD>0 ) THEN
-            IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
-  	            !Calculate the gauss integer numbers
-                call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
-
-                !! Compute reference shape functions
-                call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
-                call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
-                call allocate_multi_dev_shape_funs(FE_funs%scvfenlx_all, FE_funs%sufenlx_all, FSdevFuns)
-            END IF
-        endif
-
-        !###########################################
-        Loop_Elements: DO ELE = 1, Mdims%totele
-            if (IsParallel()) then
-                if (.not. assemble_ele(tracer,ele)) then
-                    skip=.true.
-                    neighbours=>ele_neigh(tracer,ele)
-                    do nb=1,size(neighbours)
-                        if (neighbours(nb)<=0) cycle
-                        if (assemble_ele(tracer,neighbours(nb))) then
-                            skip=.false.
-                            exit
-                        end if
-                    end do
-                    if (skip) cycle
-                end if
-            end if
-
-            ! Generate some local F variables ***************
-            DO CV_KLOC = 1, Mdims%cv_nloc
-                CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
-                ! loc_f
-                IPT=1
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), T_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), TOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), DEN_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), DENOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
-                IF(use_volume_frac_T2) THEN
-                    CALL PACK_LOC( LOC_F(:, CV_KLOC), T2_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
-                    CALL PACK_LOC( LOC_F(:, CV_KLOC), T2OLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
-                ENDIF
-                ! for FEM variables...
-                IPT=1
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMTOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDEN_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDENOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
-                IF(use_volume_frac_T2) THEN
-                    CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
-                    CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2OLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
-                ENDIF
-                ! loc_femt:
-                LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_NODK)
-                LOC_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_NODK)
-                IF ( use_volume_frac_t2 ) THEN
-                    LOC_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_NODK)
-                    LOC_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_NODK)
-                END IF
-            END DO
-            DO U_KLOC = 1, Mdims%u_nloc
-                U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-                ! LOC_UF
-                IPT=1
-                IFI=1
-                DO ILOOP=1,3
-                    DO IPHASE=1,Mdims%nphase
-                        IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! T:
-                            LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
-                            IPT=IPT+1
-                        END IF
-                    END DO
-                    IFI=IFI+1
-                    DO IPHASE=1,Mdims%nphase
-                        IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! Told:
-                            if(correct_method_petrov_method) then
-                                LOC_UF(:, IPT, U_KLOC) =   NUOLD_ALL( :, IPHASE, U_NODK )
-                            else
-                                LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
-                            endif
-                            IPT=IPT+1
-                        END IF
-                    END DO
-                    IFI=IFI+1
-                END DO
-                ! LOC_U, LOC_NU:
-                LOC_U( :, :, U_KLOC)=U_ALL( :, :, U_NODK)
-                LOC_NU( :, :, U_KLOC)=NU_ALL( :, :, U_NODK)
-                LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, :, U_NODK)
-                IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( :, U_NODK)
-            END DO
-            ! Generate some local F variables ***************...
-            !
-            !
-            Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
-
-                ! Global node number of the local node
-                CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
-                MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                IMID = Mspars%small_acv%mid(CV_NODI)
-
-                ! Generate some local F variables ***************
-                F_CV_NODI(:)= LOC_F(:, CV_ILOC)
-                ! Generate some local F variables ***************
-                ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
-                Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
-                    ! CV_funs%colgpts stores the local Gauss-point number in the ELE
-                    GI = CV_funs%colgpts( GCOUNT )
-                    ! Get the neighbouring node for node ILOC and Gauss point GI
-                    CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
-                    ELE2 = 0
-                    SELE = 0
-                    CV_SILOC=0
-                    INTEGRAT_AT_GI = .TRUE.
-                    U_OTHER_LOC=0
-                    CV_OTHER_LOC=0
-                    Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
-                        ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
-                        ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
-                        ! Look for these nodes on the other elements.
-                        CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
-                            MAT_OTHER_LOC, INTEGRAT_AT_GI, &
-                            Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
-                            Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
-                            Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
-
-                        IF ( INTEGRAT_AT_GI ) THEN
-                            CV_JLOC = CV_OTHER_LOC( CV_ILOC )
-                            SELE = 0
-                            ELE3=0
-                            IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
-                                CV_JLOC = CV_ILOC
-                                ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
-                                CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                                    FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
-                                    ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
-                            END IF
-                            INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
-                        END IF
-                    END IF Conditional_CheckingNeighbourhood
-                    !Avoid integrating across the middle of a CV on the boundaries of elements
-                    !For disconditnuous pressure this is always true
-                    Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
-                        between_elements = (ELE2 /= 0) .AND. (ELE2 /= ELE)
-                        on_domain_boundary = ( SELE /= 0 )
-                        !Decide whether to use high order advection or not, locally.
-                        !If the saturation is equal to the minimum, then no need to high order
-                        if (is_porous_media .and. local_upwinding) then
-                            use_porous_limiter = .true.
-                            do iphase = 1, Mdims%nphase - 1
-                                use_porous_limiter = use_porous_limiter &
-                                    .and. abs(T_ALL(iphase, cv_inod) - Imble_frac(iphase, ELE)) > 1e-4
-                            end do
-                            use_porous_limiter = use_porous_limiter .or. on_domain_boundary
-                        end if
-                        !Check as well if the CV is neigbouring another CV with a different permeability and if any of those is anisotropic
-                        anisotropic_and_frontier = anisotropic_perm .and. between_elements
-                        !Check if the permeabilities are different, this may fail in the unlikely case where the contraction of
-                        !the difference also sum 0 despite being different permeabilities
-                        if (anisotropic_and_frontier) anisotropic_and_frontier = sum(perm%val(:,:,ele) - perm%val(:,:,ele2)) < &
-                            10.**(exponent(perm%val(1,1,ele))-9)
-                        IF ( between_elements ) THEN
-                            CV_NODJ = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                            X_NODJ = ndgln%x( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                            MAT_NODJ = ndgln%mat( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                        ELSE
-                            CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                            X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                            MAT_NODJ = ndgln%mat( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                        END IF
-                        if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
-                            ! this is for DG and boundaries of the domain
-                            IF( between_elements ) THEN ! this is for DG
-                                ! Calculate U_SLOC2LOC, CV_SLOC2LOC:
-                                CV_SKLOC=0
-                                DO CV_KLOC=1,Mdims%cv_nloc
-                                    CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                    IF(CV_KLOC2.NE.0) THEN
-                                        CV_SKLOC=CV_SKLOC+1
-                                        CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
-                                        SHAPE_CV_SNL(CV_SKLOC) = CV_funs%scvfen(CV_KLOC,GI)
-                                    ENDIF
-                                END DO
-                                U_SKLOC=0
-                                DO U_KLOC=1,Mdims%u_nloc
-                                    U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                                    IF(U_KLOC2.NE.0) THEN
-                                        U_SKLOC=U_SKLOC+1
-                                        U_SLOC2LOC(U_SKLOC)=U_KLOC
-                                    ENDIF
-                                END DO
-                            ENDIF ! ENDOF IF( between_elements ) THEN
-                            integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
-                            GLOBAL_FACE = GLOBAL_FACE + 1
-                            JMID = Mspars%small_acv%mid(CV_NODJ)
-                            ! Calculate the control volume normals at the Gauss pts.
-                            CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
-                            !Obtain the list of neighbouring nodes
-                            IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
-                                                            C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
-
-                            ! Compute the distance HDC between the nodes either side of the CV face
-                            ! (this is needed to compute the local courant number and the non-linear theta)
-                            IF ( on_domain_boundary) THEN
-                                HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
-                            ELSE
-                                HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
-                            END IF
-                            DO COUNT = Mspars%small_acv%fin( CV_NODI ), Mspars%small_acv%fin( CV_NODI + 1 ) - 1
-                                IF ( Mspars%small_acv%col( COUNT ) == CV_NODJ ) THEN
-                                    count_out = COUNT
-                                    EXIT
-                                END IF
-                            END DO
-                            DO COUNT = Mspars%small_acv%fin( CV_NODJ ), Mspars%small_acv%fin( CV_NODJ + 1 ) - 1
-                                IF ( Mspars%small_acv%col( COUNT ) == CV_NODI ) THEN
-                                    count_in = COUNT
-                                    EXIT
-                                END IF
-                            END DO
-                            ! Generate some local F variables ***************
-                            IPT=1
-                            CALL PACK_LOC( F_CV_NODJ(:), T_ALL( :, CV_NODJ ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
-                            CALL PACK_LOC( F_CV_NODJ(:), TOLD_ALL( :, CV_NODJ ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
-                            CALL PACK_LOC( F_CV_NODJ(:), DEN_ALL( :, CV_NODJ ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
-                            CALL PACK_LOC( F_CV_NODJ(:), DENOLD_ALL( :, CV_NODJ ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
-                            IF(use_volume_frac_T2) THEN
-                                CALL PACK_LOC( F_CV_NODJ(:), T2_ALL( :, CV_NODJ ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
-                                CALL PACK_LOC( F_CV_NODJ(:), T2OLD_ALL( :, CV_NODJ ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
-                            ENDIF
-                            ! Generate some local F variables ***************
-                            ! local surface information***********
-                            IF( between_elements .or. on_domain_boundary ) THEN
-                                DO CV_SKLOC = 1, Mdims%cv_snloc
-                                    CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
-                                    SLOC_F(:, CV_SKLOC) = LOC_F(:, CV_KLOC)
-                                    SLOC_FEMF(:, CV_SKLOC) = LOC_FEMF(:, CV_KLOC)
-                                    !                   IF(ELE2>0) THEN
-                                    IF(between_elements) THEN
-                                        CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                        CV_NODK2 = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_KLOC2 )
-                                        IPT=1
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), TOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DEN_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DENOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
-                                        IF(use_volume_frac_T2) THEN
-                                            CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
-                                            CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2OLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
-                                        ENDIF
-                                        ! femf:
-                                        IPT=1
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMTOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDEN_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDENOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
-                                        IF(use_volume_frac_T2) THEN
-                                            CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
-                                            CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2OLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
-                                        ENDIF
-                                    ELSE
-                                        SLOC2_F(:, CV_SKLOC)    = SLOC_F(:, CV_SKLOC)
-                                        SLOC2_FEMF(:, CV_SKLOC) = SLOC_FEMF(:, CV_SKLOC)
-                                    ENDIF
-                                END DO
-                            ENDIF ! ENDOF IF( between_elements .or. on_domain_boundary ) THEN ...
-                            IF( on_domain_boundary ) THEN
-                                ! bcs:
-                                ! Make allowances for no matrix stencil operating from outside the boundary.
-                                !             BCZERO=1.0-INCOME
-                                ! What type of b.c's -integer
-                                IPT=1
-                                CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T_BC_ALL( : , : , SELE ),&
-                                    Mdims%nphase, IPT, IGOT_T_PACK( :,1) )
-                                CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T_BC_ALL( : , :, SELE ),&
-                                    Mdims%nphase, IPT, IGOT_T_PACK( :,2) )
-                                CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_D_BC_ALL( :,:, SELE ),&
-                                    Mdims%nphase, IPT, IGOT_T_PACK( :,3) )
-                                CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_D_BC_ALL( :,:, SELE ),&
-                                    Mdims%nphase, IPT, IGOT_T_PACK( :,4) )
-                                IF(use_volume_frac_T2) THEN
-                                    CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T2_BC_ALL( : , :, SELE ),&
-                                        Mdims%nphase, IPT, IGOT_T_PACK( :,5) )
-                                    CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T2_BC_ALL( : , : , SELE ),&
-                                        Mdims%nphase, IPT, IGOT_T_PACK( :,6) )
-                                ENDIF
-                                ! The b.c's values:
-                                DO CV_SKLOC=1,Mdims%cv_snloc
-                                    IPT=1
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1 ) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
-                                    IF(use_volume_frac_T2) THEN
-                                        CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
-                                        CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
-                                    ENDIF
-                                END DO
-                            ENDIF ! IF( on_domain_boundary ) THEN
-                            ! local surface information***********
-                            ! limiting VALUES*************:
-                            IPT_IN =1
-                            IPT_OUT=1
-                            CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,1) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,1) )
-                            CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,2) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,2) )
-                            CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,3) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,3) )
-                            CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,4) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,4) )
-                            IF(use_volume_frac_T2) THEN
-                                CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,5) )
-                                CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,5) )
-                                CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,6) )
-                                CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,6) )
-                            ENDIF
-                            ! limiting VALUES*************:
-                            !     endif ! endof if(.false.) then
-                            !
-                            ! LOC2_U, LOC2_NU for GET_INT_VEL_NEW
-                            !       IF (ELE2/=0) THEN
-                            IF (between_elements) THEN
-                                LOC2_U = 0.
-                                LOC2_NU = 0.
-                                LOC2_NUOLD = 0.
-                                DO U_SKLOC = 1, Mdims%u_snloc
-                                    U_KLOC = U_SLOC2LOC(U_SKLOC)
-                                    U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                                    U_NODK2 = ndgln%u((ELE2-1)*Mdims%u_nloc+U_KLOC2)
-                                    LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
-                                    LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
-                                    LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
-                                    IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC2_U_HAT(:, U_KLOC) = U_HAT_ALL(:, U_NODK2)
-                                END DO
-                                DO CV_SKLOC=1,Mdims%cv_snloc
-                                    CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
-                                    CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                    CV_KNOD2 = ndgln%cv((ELE2-1)*Mdims%cv_nloc+CV_KLOC2)
-                                    LOC2_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD2)
-                                    LOC2_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD2)
-                                    IF (use_volume_frac_T2) THEN
-                                        LOC2_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_KNOD2)
-                                        LOC2_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_KNOD2)
-                                    END IF
-                                END DO
-                            END IF ! ENDOF IF (between_elements) THEN
-                            IF ( on_domain_boundary ) THEN
-                                DO U_SKLOC = 1, Mdims%u_snloc
-                                    U_KLOC = U_SLOC2LOC( U_SKLOC )
-                                    U_NODK = ndgln%u(( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-                                    U_SNODK = ( SELE - 1 ) * Mdims%u_snloc + U_SKLOC
-                                    SLOC_NU(:, :, U_SKLOC) = NU_ALL(:, :, U_NODK)
-                                    SLOC_NUOLD(:, :, U_SKLOC) = NUOLD_ALL(:, :, U_NODK)
-                                END DO
-                            END IF
-                            !------------------
-                            If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
-                                ! This sub caculates the effective diffusion
-                                ! coefficient DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-                                T_ALL_J  =T_ALL(:, CV_NODJ)
-                                TOLD_ALL_J=TOLD_ALL(:, CV_NODJ)
-                                LOC_WIC_T_BC_ALL=0
-                                !           IF(SELE.NE.0) THEN
-                                IF(on_domain_boundary) THEN
-                                    DO IPHASE=1,Mdims%nphase
-                                        LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
-                                        IF(LOC_WIC_T_BC_ALL(IPHASE)==WIC_T_BC_DIRICHLET) THEN
-                                            T_ALL_J( IPHASE ) = SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                            TOLD_ALL_J( IPHASE )=SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                        ENDIF
-                                    END DO
-                                ENDIF
-                                CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
-                                    Mdims%cv_nloc, Mdims%mat_nloc, Mdims%nphase, ndgln%mat, &
-                                    CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
-                                    HDC, &
-                                    T_ALL_J( : ), T_ALL(:, CV_NODI), &
-                                    TOLD_ALL_J( : ), TOLD_ALL(:, CV_NODI), &
-                                    ELE, ELE2, CVNORMX_ALL( :, GI ), &
-                                    DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
-                                    LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
-                                    on_domain_boundary, between_elements )
-                            ELSE
-                                DIFF_COEF_DIVDX = 0.0
-                                DIFF_COEFOLD_DIVDX = 0.0
-                            END IF If_GOT_DIFFUS2
-                            NFACE_ITS = 1
-                            FACE_ITS = 1
-                            ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
-                            !Calling the functions directly instead inside a wrapper saves a around a 5%
-                            IF( GOT_T2 ) THEN
-                                IF( is_porous_media ) THEN
-                                    CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                        T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), LOC_FEMT2OLD, &
-                                        LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                        upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
-                                        upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
-                                        upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
-                                        T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        .false., anisotropic_and_frontier)
-                                    CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                        T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), LOC_FEMT2, &
-                                        LOC_NU, LOC2_NU, SLOC_NU, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                        upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
-                                        upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
-                                        upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
-                                        T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        .true., anisotropic_and_frontier)
-                                else
-                                    call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                        T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
-                                        LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
-                                    call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
-                                        T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
-                                        LOC_NU, LOC2_NU, NUGI_ALL, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
-                                end if
-                            ELSE
-                                IF( is_porous_media ) THEN
-                                    CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                        TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), LOC_FEMTOLD, &
-                                        LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                        upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
-                                        upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
-                                        upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
-                                        TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        .false., anisotropic_and_frontier)
-                                    CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
-                                        T_ALL(:, CV_NODI), T_ALL(:, CV_NODJ), LOC_FEMT, &
-                                        LOC_NU, LOC2_NU, SLOC_NU, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                        upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
-                                        upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
-                                        upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
-                                        NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
-                                        TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        .true., anisotropic_and_frontier)
-                                else
-                                    call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                        TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
-                                        LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
-                                    call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
-                                        T_ALL(:, CV_NODI), T_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
-                                        LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
-                                end if
-                            ENDIF
-                            !Obtain income for cv_nodj
-                            !When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
-                            WHERE ( NDOTQ <= 0. )
-                                INCOME_J = 0.
-                            ELSE WHERE
-                                INCOME_J = 1.
-                            END WHERE
-                            !Calculate the courant number for porous media
-                            !SPRINT_TO_DO Currently if temperature/solutemassfraction multiphase we are doing this more than once...
-                            if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
-                                !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
-                                Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
-                                !and the shock-front Courant number
-                                if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
-                                    !ndotq = velocity * normal
-                                    Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:Mdims%n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
-                                end if
-                            end if
-                            If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
-                                IF(SELE == 0) THEN
-                                    CAP_DIFF_COEF_DIVDX = 0.
-                                    do iphase =1, Mdims%nphase
-                                        rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
-                                            CVNORMX_ALL(:, GI) ))
-                                        rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
-                                            CVNORMX_ALL(:, GI) ))
-                                    end do
-                                    CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                        * rsum_nodi*(1.-INCOME(:)) +&
-                                        CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
-                                ELSE
-                                    CAP_DIFF_COEF_DIVDX( : ) = 0.0
-                                ENDIF
-                                !Distribute the capillary coefficient over the phases to ensure mass conservation
-                                !This is very important as it allows to use the over-relaxation parameter safely
-                                !and reduce the cost of using capillary pressure in several orders of magnitude
-                                CAP_DIFF_COEF_DIVDX(1:Mdims%n_in_pres) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/Mdims%n_in_pres
-
-                            ELSE
-                                CAP_DIFF_COEF_DIVDX( : ) = 0.0
-                            END IF If_GOT_CAPDIFFUS
-                            ! Pack ndotq information:
-                            IPT=1
-                            CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) ) ! t
-                            CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) ) ! TOLD
-                            CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )  ! d
-                            CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )  ! DOLD
-                            IF ( use_volume_frac_T2 ) THEN
-                                CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )  ! T2
-                                CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
-                            ENDIF
-                            IPT=1
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) ) ! t
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) ) ! TOLD
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )  ! d
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )  ! DOLD
-                            IF ( use_volume_frac_T2 ) THEN
-                                CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )  ! T2
-                                CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
-                            ENDIF
-
-                                  !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
-                                  ! Calculate T and DEN on the CV face at quadrature point GI.
-
-                            ! Only when cvdispot>=8. See/Find [INTRO_NX_ALL] above.
-                            if (NFIELD>0 ) THEN
-                                IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
-                                    call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
-                                END IF
-                            ENDIF
-                            IF(NFIELD.GT.0) THEN
-                                CALL GET_INT_T_DEN_new( LIMF )
-                            ENDIF
-
-                            IF(APPLY_ENO) THEN
-                                ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                                call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
-                                ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
-                                ! Put the results in LIMF.
-                                CALL APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
-                                    CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
-                                    ELE, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase,  &
-                                    Mdims%cv_nloc,Mdims%totele, ndgln%x, ndgln%cv,  &
-                                    X_ALL,FACE_ELE,CV_GIdims%nface,BETWEEN_ELEMENTS, CV_funs%scvfen, SdevFuns%NX_ALL, GI, SdevFuns%INV_JAC, &
-                                    NUGI_ALL, on_domain_boundary )
-                            ENDIF
-
-                            ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
-                            FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:)
-                            !FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
-                            ! Generate some local F variables ***************
-                            ! loc_f - Unpack into the limiting variables LIMT and may be store them in the cache.
-                            IPT=1
-                            CALL UNPACK_LOC( LIMF(:), LIMT( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1), IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
-                            CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,2), IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2))
-                            CALL UNPACK_LOC( LIMF(:), LIMD( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3), IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3))
-                            CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,4), IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4))
-                            IF ( use_volume_frac_T2 ) THEN
-                                CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5), IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5))
-                                CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,6), IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6))
-                            else
-                                LIMT2( : )=1.0; LIMT2OLD( : )=1.0
-                            ENDIF
-                            IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
-                                NDOTQ_HAT = 0.0
-                                DO U_KLOC = 1, Mdims%u_nloc
-                                    IF (between_elements) THEN ! Between elements...
-                                        NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * 0.5 * SUM( CVNORMX_ALL(:, GI) * (LOC_U_HAT( :, U_KLOC ) + LOC2_U_HAT( :, U_KLOC )) )
-                                    ELSE
-                                        NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * SUM( CVNORMX_ALL(:, GI) * LOC_U_HAT( :, U_KLOC ) )
-                                    ENDIF
-                                END DO
-                                DO IPHASE=1,Mdims%nphase
-                                    LIMT_HAT(IPHASE) = MAX(1.E-7,LIMT(IPHASE))
-                                END DO
-                                R=SUM(LIMT_HAT(:))
-                                LIMT_HAT(:)=LIMT_HAT(:)/R
-                                !                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
-                                if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
-                                    NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
-                                endif
-                            ENDIF
-                            LIMDT=LIMD*LIMT
-                            LIMDTOLD=LIMDOLD*LIMTOLD
-                            LIMDTT2=LIMD*LIMT*LIMT2
-                            LIMDTT2OLD=LIMDOLD*LIMTOLD*LIMT2OLD
-                            ! Generate some local F variables ***************...
-                            ! Make allowances for no matrix stencil operating from outside the boundary.
-                            BCZERO=1.0
-                            IF( on_domain_boundary ) BCZERO=1.0-INCOME
-                            ! Define face value of theta
-                            IF ( GOT_T2 ) THEN
-                                FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, Mdims%nphase, &
-                                    Mdims%n_in_pres, NDOTQ, LIMDTT2, DIFF_COEF_DIVDX, &
-                                    T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ) * T2_ALL(:, CV_NODJ), &
-                                    T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI) * T2_ALL(:, CV_NODI), &
-                                    NDOTQOLD, LIMDTT2OLD, DIFF_COEFOLD_DIVDX, &
-                                    TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ) * T2OLD_ALL(:, CV_NODJ), &
-                                    TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI) * T2OLD_ALL(:, CV_NODI) )
-                            ELSE
-                                FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, Mdims%nphase, &
-                                    Mdims%n_in_pres,NDOTQ, LIMDTT2, DIFF_COEF_DIVDX, &
-                                    T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ), &
-                                    T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI), &
-                                    NDOTQOLD, LIMDTT2OLD, DIFF_COEFOLD_DIVDX, &
-                                    TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ), &
-                                    TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI)  )
-                            END IF
-                            ! adjust the value of FTHETA for use with velocity only so we can use FTHETA=0.0 for voln frac.
-                            ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
-                            ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
-                            ! This determins how implicit velocity is in the cty eqn.
-                            THETA_VEL(:)=THETA_VEL_HAT
-                            IF(THETA_VEL_HAT<0.0) THEN
-                                DO IPHASE=1,Mdims%nphase
-                                    IF(FTHETA(IPHASE)>=0.5) THEN
-                                        THETA_VEL(IPHASE) = ABS(THETA_VEL_HAT)
-                                    ELSE
-                                        THETA_VEL(IPHASE) = MAX( (0.5-FTHETA(IPHASE))/(1.0-FTHETA(IPHASE)),  ABS(THETA_VEL_HAT))
-                                    ENDIF
-                                END DO
-                            ENDIF
-                            NDOTQOLD = THETA_VEL*NDOTQ + (1.0-THETA_VEL)*NDOTQOLD
-                            FTHETA_T2(:) = FTHETA(:) * LIMT2(:)
-                            ONE_M_FTHETA_T2OLD(:) = (1.0-FTHETA(:)) * LIMT2OLD(:)
-                            FTHETA_T2_J(:) = FTHETA_T2(:)!FTHETA(:) * LIMT2(:)
-                            ONE_M_FTHETA_T2OLD_J(:) = ONE_M_FTHETA_T2OLD(:)!(1.0-FTHETA(:)) * LIMT2OLD(:)
-                            IF(logical_igot_theta_flux) THEN
-                                IF ( GET_THETA_FLUX ) THEN
-                                    THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(:, CV_NODI)
-                                    ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(:, CV_NODI)
-                                    if(integrate_other_side) then ! for the flux on the other side of the CV face...
-                                        THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(:, CV_NODJ)
-                                        ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(:, CV_NODJ)
-                                    endif
-                                END IF
-                                IF ( USE_THETA_FLUX ) THEN
-                                    FTHETA_T2(:) = THETA_FLUX( :, GLOBAL_FACE )
-                                    ONE_M_FTHETA_T2OLD(:) = ONE_M_THETA_FLUX( :, GLOBAL_FACE )
-                                    if(integrate_other_side) then ! for the flux on the other side of the CV face...
-                                        FTHETA_T2_J(:) = THETA_FLUX_J( :, GLOBAL_FACE )
-                                        ONE_M_FTHETA_T2OLD_J(:) = ONE_M_THETA_FLUX_J( :, GLOBAL_FACE )
-                                    endif
-                                END IF
-                            END IF
-                            !====================== ACV AND RHS ASSEMBLY ===================
-                            Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
-                                IF ( got_free_surf ) THEN
-                                    IF ( on_domain_boundary ) THEN
-                                        IF ( .not.symmetric_P ) THEN
-                                            IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
-                                                DO P_JLOC = 1, Mdims%cv_nloc
-                                                    P_JNOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + P_JLOC )
-                                                    ! Use the same sparcity as the MN matrix...
-                                                    COUNT_SUF = 0
-                                                    DO COUNT = Mspars%CMC%fin( CV_NODI ), Mspars%CMC%fin( CV_NODI + 1 ) - 1
-                                                        IF ( Mspars%CMC%col( COUNT ) == P_JNOD ) THEN
-                                                            COUNT_SUF = COUNT
-                                                            EXIT
-                                                        END IF
-                                                    END DO
-                                                    MM_GRAVTY = CVNORMX_ALL( 3, GI ) * CV_funs%scvfen( P_JLOC, GI ) * SdevFuns%DETWEI(GI) / ( DT**2 * GRAVTY )
-                                                    MASS_SUF( COUNT_SUF ) = MASS_SUF( COUNT_SUF ) + MM_GRAVTY
-                                                END DO
-                                            END IF
-                                        END IF
-                                    END IF
-                                END IF
-                                ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-
-                                CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
-                                    Mdims, CV_funs, ndgln, Mmat, GI,  &
-                                    between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
-                                    JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
-                                    SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL_DIVID, CV_NODI, CV_NODJ, &
-                                    WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
-                                    UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
-                                    NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
-                                    FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-                                    RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, THETA_VEL, &
-                                    rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, X_ALL, SUF_D_BC_ALL, gravty)
-                                do ipres=1,Mdims%npres
-                                    call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
-                                    if ( integrate_other_side_and_not_boundary ) then
-                                        call addto(Mmat%CT_RHS,ipres,cv_nodj,sum(ct_rhs_phase_cv_nodj(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
-                                    end if
-                                end do
-
-
-
-                            ENDIF Conditional_GETCT2
-
-                            if (present(outfluxes) .and. GETCT) then!Better to do it GETCV_DISC of each corresponding field...
-                                !Store fluxes across all the boundaries either for mass conservation check or mass outflux
-                                !velocity * area * density * saturation
-                                if (on_domain_boundary ) then
-                                    if (surface_element_owned(old_tracer, sele)) then
-                                        !Store total outflux
-                                        bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, 0) =  bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI,0) + &
-                                        ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:Mdims%n_in_pres)!For the mass conservation check we need to consider mass!
-                                        if (outfluxes%calculate_flux)  then
-                                            do k = 1, size(outfluxes%outlet_id)!here below we just need a saturation
-                                                if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
-                                                    bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, k) =  bcs_outfluxes(1:Mdims%n_in_pres, CV_NODI, k) + &
-                                                    ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMT(1:Mdims%n_in_pres)
-                                                    if (has_temperature) then!Instead of max tem, maybe energy produced...
-                                                      ! do iphase = 1, Mdims%nphase
-                                                      !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
-                                                      !     (ndotqnew(1:Mdims%n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:Mdims%n_in_pres) &
-                                                      !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
-                                                      ! end do
-                                                        do iphase = 1, Mdims%nphase
-                                                            outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
-                                                            outfluxes%totout(2, iphase, k)   )
-                                                        end do
-                                                    end if
-                                                    !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
-                                                    if (has_salt) then
-                                                        do iphase = 1, Mdims%nphase
-                                                            outfluxes%totout(3, iphase, k) =  max(  salt_field%val(1,iphase,CV_NODI),&
-                                                            outfluxes%totout(3, iphase, k)   )
-                                                        end do
-                                                    end if
-                                                end if
-                                            end do
-                                        end if
-                                    end if
-                                end if
-                            end if
-
-                            Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
-                                ! Obtain the CV discretised advection/diffusion equations
-                                ROBIN1=0.0; ROBIN2=0.0
-                                IF( on_domain_boundary ) then
-                                    where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
-                                        ! this needs to be corrected (its correct but misleading)...
-                                        ROBIN1(:) = SUF_T_BC_ROB1_ALL(1,:, CV_SILOC+Mdims%cv_snloc*(sele-1))
-                                        ROBIN2(:) = SUF_T_BC_ROB2_ALL(1,:, CV_SILOC+Mdims%cv_snloc*(sele-1))
-                                    end where
-                                END IF
-                                LOC_CV_RHS_I(:)=0.0
-                                LOC_CV_RHS_J(:)=0.0
-                                IF ( GETMAT ) THEN
-                                    ! - Calculate the integration of the limited, high-order flux over a face
-                                    ! Conservative discretisation. The matrix (PIVOT ON LOW ORDER SOLN)
-                                    IF ( on_domain_boundary ) THEN
-                                        DO IPHASE=1,Mdims%nphase
-                                            IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
-                                                LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                                    + FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
-                                                    * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
-                                                IF(GET_GTHETA) THEN
-                                                    THETA_GDIFF( IPHASE, CV_NODI ) =  THETA_GDIFF( IPHASE, CV_NODI ) &
-                                                        + FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
-                                                        * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
-                                                END IF
-                                            END IF
-                                        END DO
-                                    ELSE
-                                        do iphase=1,Mdims%nphase
-                                            !temporary to check a possible memory problem with Valgrind!!!
-                                            auxR = FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase)
-                                            call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,auxR) ! Advection
-                                            if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
-                                                            - FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
-                                            if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
-                                                            - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
-                                        end do
-                                         ! integrate the other CV side contribution (the sign is changed)...
-                                        if(integrate_other_side_and_not_boundary) then
-                                            do iphase=1,Mdims%nphase
-                                                call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
-                                                    - FTHETA_T2_J(IPHASE) * SdevFuns%DETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) ) ! Advection
-                                            if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
-                                                    - FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE))
-                                            if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
-                                                           - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE))
-                                            end do
-                                        endif
-                                        IF ( GET_GTHETA ) THEN
-                                            THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                                + FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
-                                            ! integrate the other CV side contribution (the sign is changed)...
-                                            if(integrate_other_side_and_not_boundary) then
-                                                THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                                    + FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) ! Diffusion contribution
-                                            endif
-                                        END IF
-                                    END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
-                                    do iphase=1,Mdims%nphase
-                                        call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
-                                            +  FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) ) ! Advection
-
-                                        if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
-                                           +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
-                                        if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
-                                           +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
-                                        if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
-                                           - FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
-                                        if (on_domain_boundary) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
-                                                                SdevFuns%DETWEI( GI ) * ROBIN1(iphase))
-                                    end do
-                                    if(integrate_other_side_and_not_boundary) then
-                                        do iphase=1,Mdims%nphase
-                                            call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
-                                                -  FTHETA_T2_J(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) ) ! Advection
-
-                                            if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
-                                                +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
-                                            if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
-                                                +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
-                                            if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
-                                                + FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
-
-                                        end do
-                                    endif
-                                    IF ( GET_GTHETA ) THEN
-                                        THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                            -  FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) & ! Diffusion contribution
-                                            -  SdevFuns%DETWEI( GI ) * ROBIN1(:) * T_ALL(:, CV_NODI)  ! Robin bc
-                                        if(integrate_other_side_and_not_boundary) then
-                                            THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                                -  FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
-                                        endif
-                                    END IF
-                                END IF  ! ENDOF IF ( GETMAT ) THEN
-
-                                ! Put results into the RHS vector
-                                LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : )  &
-                                       ! subtract 1st order adv. soln.
-                                    + FTHETA_T2(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
-                                    -  SdevFuns%DETWEI( GI ) * ( FTHETA_T2(:) * NDOTQNEW(:) * LIMDT(:) &
-                                    + ONE_M_FTHETA_T2OLD(:)* NDOTQOLD(:) * LIMDTOLD(:) ) ! hi order adv
-                                ! Subtract out 1st order term non-conservative adv.
-                                    if (GOT_DIFFUS) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-                                        + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                        * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) )
-                                    if (VAD_activated) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-                                        - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
-                                        * ( T_ALL(:, CV_NODJ) - T_ALL(:, CV_NODI) )
-                                    if (.not.conservative_advection) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-                                        - FTHETA_T2(:) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODI) &
-                                        + ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
-                                        * ( FTHETA_T2(:) * NDOTQNEW(:) * T_ALL(:, CV_NODI) * LIMD(:)  &
-                                        + ONE_M_FTHETA_T2OLD(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODI) )
-                                    if (on_domain_boundary) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-                                        + SdevFuns%DETWEI( GI ) * ROBIN2(:)
-
-                                if(integrate_other_side_and_not_boundary) then
-                                    LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
-                                           ! subtract 1st order adv. soln.
-                                        - FTHETA_T2_J(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
-                                        +  SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J(:) * NDOTQNEW(:) * LIMDT(:) &
-                                        + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDTOLD(:) )
-                                    if (GOT_DIFFUS) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
-                                        + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                        * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) )
-                                    if (VAD_activated) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
-                                        - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capillary pressure stabilization term..
-                                        * ( T_ALL(:, CV_NODI) - T_ALL(:, CV_NODJ) )
-                                    if (.not.conservative_advection) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
-                                        + FTHETA_T2_J(:) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODJ) &
-                                        - ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
-                                        * ( FTHETA_T2_J(:) * NDOTQNEW(:) * T_ALL(:, CV_NODJ) * LIMD(:)  &
-                                        + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODJ) )
-                                endif
-                                IF ( GET_GTHETA ) THEN
-                                    THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                        + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                        * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
-                                        ! Robin bc
-                                        + SdevFuns%DETWEI( GI ) * ROBIN2(:)
-                                    if(integrate_other_side_and_not_boundary) then
-                                        THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                            + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                            * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) )
-                                    endif
-                                END IF
-                                ! this is for the internal energy equation source term..
-                                ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
-                                !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
-                                IF ( THERMAL .and. Mdims%npres == 1) THEN
-                                    THERM_FTHETA = 1.0
-                                    !IF( RETRIEVE_SOLID_CTY ) THEN
-                                        !VOL_FRA_FLUID_I = VOL_FRA_FLUID(CV_NODI)!CJ215 Deactivate
-                                        !VOL_FRA_FLUID_J = VOL_FRA_FLUID(CV_NODJ)
-                                    !ELSE
-                                        VOL_FRA_FLUID_I = 1.0
-                                        VOL_FRA_FLUID_J = 1.0
-                                    !ENDIF
-                                    DO IPRES=1,Mdims%npres
-                                        CV_P_PHASE_NODI(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=CV_P( 1, IPRES, CV_NODI )
-                                        CV_P_PHASE_NODJ(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=CV_P( 1, IPRES, CV_NODJ )
-                                    END DO
-                                    LOC_CV_RHS_I = LOC_CV_RHS_I&
-                                        - CV_P_PHASE_NODI * SdevFuns%DETWEI( GI ) * ( &
-                                        THERM_FTHETA * NDOTQNEW * LIMT2 &
-                                        + ( 1. - THERM_FTHETA ) * NDOTQOLD * LIMT2OLD )*VOL_FRA_FLUID_I
-                                    if ( integrate_other_side_and_not_boundary ) then
-                                        LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-                                            + CV_P_PHASE_NODJ( : ) * SdevFuns%DETWEI( GI ) * ( &
-                                            THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
-                                            + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
-                                    end if
-                                END IF ! THERMAL
-                                call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
-                                call addto(Mmat%CV_RHS,CV_NODJ,LOC_CV_RHS_J)
-                            ENDIF Conditional_GETCV_DISC
-                        endif ! if(CV_NODJ.ge.CV_NODI) then
-                    END IF Conditional_integration
-                END DO Loop_GCOUNT
-            END DO Loop_CV_ILOC
-        END DO Loop_Elements
-        IF(GET_GTHETA) THEN
-            DO CV_NODI = 1, Mdims%cv_nonods
-                THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV_PLUS(1,CV_NODI)
-            END DO
-        ENDIF
-
-        !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
-        if (Mdims%npres >1) then
-          allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods)); MASS_PIPE_FOR_COUP = 0.
-          ALLOCATE( A_GAMMA_PRES_ABS( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ); A_GAMMA_PRES_ABS = 0.
-          ALLOCATE( SIGMA_INV_APPROX( Mdims%nphase, Mdims%cv_nonods )); SIGMA_INV_APPROX = 0
-          ALLOCATE( PIPE_ABS( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ); PIPE_ABS = 0.
-
-          call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, Mdims, ndgln,   &
-                          WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,A_GAMMA_PRES_ABS,PIPE_ABS,&
-                          getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, MASS_PIPE_FOR_COUP, SIGMA_INV_APPROX, &
-                          eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, reservoir_P, INV_B, MASS_ELE, bcs_outfluxes, outfluxes )
-        end if
-
-        Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
-            Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
-                LOC_CV_RHS_I=0.0
-                DO IPRES = 1, Mdims%npres
-                    R_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV_PLUS( IPRES, CV_NODI ) / DT
-                    CV_P_PHASE_NODI(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
-                END DO
-!CJ215
-                IF ( THERMAL .and. Mdims%npres == 1) THEN
-                    LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
-                        - CV_P_PHASE_NODI(:) * ( MASS_CV_PLUS(1, CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
-                END IF
-
-                IF ( GOT_T2 ) THEN
-                    LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                        + MASS_CV_PLUS(1,CV_NODI) * SOURCT_ALL( :, CV_NODI )
-                    if (thermal .and. is_porous_media) then
-                        !In this case for the time-integration term the effective rho Cp is a combination of the porous media
-                        ! and the fluids. Here we add the porous media contribution
-                        DO IPHASE = 1,Mdims%n_in_pres
-                            call addto(Mmat%petsc_ACV,iphase,iphase,&
-                                cv_nodi, cv_nodi,&
-                                + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                                * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI ))
-                                !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
-                                    !we divide to remove that term and multiply by the correct term (1-porosity)
-                            LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
-                                + (CV_BETA * porous_heat_coef( iphase, CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
-                                + (ONE_M_CV_BETA) * porous_heat_coef( iphase, CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
-                                * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
-                        END DO
-                    end if
-                    DO IPHASE = 1,Mdims%nphase
-                        call addto(Mmat%petsc_ACV,iphase,iphase,&
-                            cv_nodi, cv_nodi,&
-                            + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                            * R_PHASE(IPHASE)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
-                    END DO
-
-
-                    LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                        + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
-                        + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
-                        * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
-                ELSE
-                    LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                        + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( :, CV_NODI )
-                    DO IPHASE = 1,Mdims%nphase
-                        call addto(Mmat%petsc_ACV,iphase,iphase,&
-                            cv_nodi, cv_nodi,&
-                            + DEN_ALL( IPHASE, CV_NODI )  &
-                            * R_PHASE(IPHASE) )
-                    END DO
-                    LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                        + ( CV_BETA * DENOLD_ALL( :, CV_NODI ) &
-                        + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
-                        * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
-                END IF
-
-                Conditional_GETMAT2: IF ( GETMAT ) THEN
-                    do jphase = 1, Mdims%nphase
-                        do iphase=1,Mdims%nphase
-                            IF ( Mdims%npres > 1 ) THEN
-                                if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
+          nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+          tracer, velocity, density, multi_absorp, &
+          DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
+          DEN_ALL, DENOLD_ALL, &
+          CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
+          SUF_SIG_DIAGTEN_BC, &
+          DERIV, CV_P, &
+          SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
+          GETCV_DISC, GETCT, &
+          IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
+          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+          MEAN_PORE_CV, &
+          MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
+          got_free_surf,  MASS_SUF, &
+          MASS_ELE_TRANSP, &
+          TDIFFUSION, &
+          saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
+          Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
+          porous_heat_coef, outfluxes, solving_compositional, nonlinear_iteration)
+          !  =====================================================================
+          !     In this subroutine the advection terms in the advection-diffusion
+          !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
+          !
+          !     This routine uses a Control Volume (CV) formulation to compute
+          !     the advection terms. The general procedure is as follows:
+          !
+          !        1. For each node-pair, define which node is the donor, which is
+          !           the receptor and define an "upwind" value of the field being
+          !           advected (and the accompanying "density"; see note below)
+          !        2. Calculate the volume flux across the CV face that separates
+          !           these two nodes
+          !        3. Estimate the value of the advected variable at the control
+          !           volume face.
+          !        4. Using information from the donor, receptor and upwind nodes,
+          !           limit the field face value (removes oscillations from the
+          !           solution)
+          !        5. Assemble the fluxes to form the matrix and rhs of the
+          !           advection equation
+          !
+          !     This procedure is implemented by considering the CV to be made up
+          !     of a number of sub-control-volumes, which represent the part of
+          !     the control volume within a given element.  The assembly of terms
+          !     considers each of these sub-CVs in turn, calculating (and limiting)
+          !     the flux across sub-CV faces that are external to the CV...
+          !
+          !     NOTE: Add in note about what density is in this sub!!!
+          !
+          !     To define the "upwind" value of the field variable, which is
+          !     necessary for the limiting scheme, either:
+          !
+          !        A. The upwind value of the field variable to be advected is
+          !           found by interpolation and stored in a matrix (TUPWIND)
+          !        B. The neighbouring nodes are searched for the local maximum
+          !           and minimum
+          !
+          !     The subroutine has several options...
+          !
+          !     Discretisation option
+          !     ---------------------
+          !      - The estimate of the face value may be determined in one of
+          !        several ways.
+          !      - The face value may be centered in time by either a specified
+          !        CV_THETA value, or a non-linear CV_THETA value that is determined
+          !        automatically.
+          !      - The face value may be limited using a univeral-limiter-type
+          !        scheme, or a limited-downwind scheme that is ideal for INTERFACE
+          !        TRACKING.  Alternatively no limiting can be applied.
+          !
+          !     These options are defined by the value of CV_DISOPT, which corresponds
+          !     to the clast digit of the GEM option NDISOT for the field in question.
+          !
+          !     CV_DISOPT=discretisation option in space and time
+          !     ------------------------------------------------------------------
+          !     CV_DISOPT   Method for face-value est.    Time-stepping     Limiting
+          !     ------------------------------------------------------------------
+          !       =0      1st order in space          Theta=specified    UNIVERSAL
+          !       =1      1st order in space          Theta=non-linear   UNIVERSAL
+          !       =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
+          !       =2 if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
+          !       =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
+          !       =4      Finite elements in space    Theta=specified    UNIVERSAL
+          !       =5      Finite elements in space    Theta=non-linear   UNIVERSAL
+          !       =6      Finite elements in space    Theta=specified    NONE
+          !       =7      Finite elements in space    =non-linear   NONE
+          !       =8      Finite elements in space    Theta=specified    DOWNWIND+
+          !       =9      Finite elements in space    Theta=non-linear   DOWNWIND+
+          !
+          !     CV_DG_VEL_INT_OPT=interface velocity calculation option between elements
+          !
+          !     Limiting scheme
+          !     ---------------
+          !     The limiting scheme is defined in the subroutine NVDFUNNEW;
+          !     the limited values are computed in subroutine ANONVDLIM/ONVDLIM.
+          !
+          !     ONVDLIM is the original limiting algorithm
+          !
+          !     ANONVDLIM is a new anisoptropic limiting algorithm, which is
+          !     called if either ALOLIM=1 (where ALOLIM is an option flag set
+          !     in this subroutine), or if the interface tracking limiting option
+          !     is selected (CV_DISOPT=8/9).  ***In general ALOLIM appears to be set to 1 (GSC)
+          !
+          !     NOTE: ANONVDLIM only works for TETS; for all other element types
+          !     ONVDLIM is used.
+          !
+          !
+          !     IMPORTANT INPUTS:
+          !     ----------------
+          !
+          !     CSR_ACV   - Matrix for assembling the advection terms (empty on input)
+          !     CV_RHS      - Right-hand side vector for advection-diffusion terms
+          !     X,Y,Z    - Node co-ordinates
+          !     NU       - Nodal velocity component
+          !     T,TOLD   - New and old advected field values at nodes
+          !     DEN,  - New and old "density" at nodes, which is actually a constant
+          !     DENOLD     multiplying the advection diffusion equation for the field
+          !     CV_DISOPT   - The discretisation/limiting option (see above)
+          !     DT       - The time step
+          !     CV_THETA    - The time-stepping discretisation parameter
+          !     CV_BETA     - Conservative(1.)/non-conservative(0.) flag
+          !     ELE_TYP   - Integer flag definining element type
+          !
+          !     IMPORTANT OUTPUTS:
+          !     -----------------
+          !
+          !     CSR_ACV   - Matrix updated to include the advection terms
+          !     CV_RHS      - Right-hand side vector updated to include advection terms
+          !
+          !
+          !     IMPORTANT LOCAL PARAMETERS:
+          !     --------------------------
+          !
+          !     TIMOPT    - Temporal discretisation option, derived from CV_DISOPT.
+          !                (1 for non-linear theta; 0 for theta specified (THETA))
+          !
+          !
+          !***********************************************************************
+          ! Inputs/Outputs
+          IMPLICIT NONE
+          type( state_type ), dimension( : ), intent( inout ) :: state
+          type( state_type ), intent( inout ) :: packed_state
+          type(multi_dimensions), intent(in) :: Mdims
+          type(multi_GI_dimensions), intent(in) :: CV_GIdims
+          type(multi_GI_dimensions) :: FE_GIdims
+          type(multi_shape_funs), intent(inout) :: CV_funs
+          type(multi_shape_funs) :: FE_funs
+          type(multi_sparsities), intent(in) :: Mspars
+          type(multi_ndgln), intent(in) :: ndgln
+          type (multi_discretization_opts) :: Mdisopt
+          type (multi_matrices), intent(inout) :: Mmat
+          type (porous_adv_coefs), intent(inout) :: upwnd
+          type(tensor_field), intent(inout), target :: tracer
+          type(tensor_field), intent(in), target :: density
+          type(tensor_field), intent(in) :: velocity
+          type(multi_absorption), intent(inout) :: multi_absorp
+          INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
+              IGOT_T2, IGOT_THETA_FLUX, nphase
+          ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
+          REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
+          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (Mdims%npres, Mdims%npres, Mdims%cv_nonods)
+          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B ! (nphase, nphase, Mdims%cv_nonods)
+          REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
+          REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
+          REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
+          REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
+          REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (nphase,Mdims%cv_nonods)
+          REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+          REAL, intent( in ) :: DT, CV_THETA, CV_BETA
+          REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+          REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (nphase,Mdims%cv_nonods)
+          REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
+          REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
+          REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
+          REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE ! (Mdims%npres,Mdims%totele)
+          LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
+          ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
+          REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
+          REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
+          type(tensor_field), intent(in), optional, target :: saturation
+          REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
+          !Variables for Vanishing artificial diffusion
+          integer, optional, intent(in) :: Phase_with_Pc
+          real, optional, dimension(:), intent(in) :: VAD_parameter
+          !Variables to cache get_int_vel OLD
+          real, optional, dimension(:), intent(inout) :: Courant_number
+          type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
+          ! Calculate_mass variable
+          real, dimension(:,:), optional :: calculate_mass_delta
+          type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
+          type (multi_pipe_package), intent(in) :: pipes_aux
+          REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef
+          ! Variable to store outfluxes
+          type (multi_outfluxes), optional, intent(inout) :: outfluxes
+          logical, optional, intent(in) :: solving_compositional
+          !Non-linear iteration count
+          integer, optional, intent(in) :: nonlinear_iteration
+          ! ###################Local variables############################
+          REAL :: ZERO_OR_TWO_THIRDS
+          integer :: n_in_pres
+
+          !        ===>  LOGICALS  <===
+          ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
+          logical, PARAMETER :: integrate_other_side= .true.
+          ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
+          logical, PARAMETER :: correct_method_petrov_method= .true.
+          LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+          logical :: skip, GOT_T2, use_volume_frac_T2, symmetric_P, logical_igot_theta_flux
+          ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
+          ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
+          ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
+          ! Zhi try THETA_VEL_HAT = 1.0
+          real :: THETA_VEL_HAT = 1.0
+          ! if APPLY_ENO then apply ENO method to T and TOLD
+          LOGICAL :: APPLY_ENO
+          ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
+          ! if RECAL_C_CV_RHS, calculate the RHS for the Mmat%C_CV matrix
+          logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
+          LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
+          !Logical to check if we using a conservative method or not, to save cpu time
+          logical :: conservative_advection
+          ! GRAVTY is used in the free surface method only...
+          !        ===> GENEREIC INTEGERS <===
+          INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
+              CV_NODJ, ISWITCH, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
+          INTEGER :: I, IDIM, U_ILOC, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
+              IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
+          INTEGER, dimension(1) :: IDUM
+          integer, dimension(:), pointer :: neighbours
+          INTEGER, dimension(nphase) :: LOC_WIC_T_BC_ALL
+          !        ===>  GENERIC REALS  <===
+          REAL :: HDC, RSUM, THERM_FTHETA, W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta, auxR
+          REAL :: R, NDOTQ_HAT, DeltaP
+          REAL, dimension(nphase) :: FTHETA, FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, &
+              ROBIN1, ROBIN2, BCZERO,  T_ALL_J, TOLD_ALL_J
+          REAL :: GRAVTY
+          character( len = option_path_len ) :: option_path2
+          LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
+          integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC, SHAPE_CV_SNL
+          integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
+          integer, dimension (Mdims%u_nloc) ::U_OTHER_LOC
+          integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
+          integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
+          !Allocate only for get_CT
+          INTEGER, DIMENSION( : ), allocatable :: &
+              JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
+              C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
+
+          INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
+          REAL, DIMENSION( : ), allocatable ::  N
+          real, dimension (Mdims%cv_nonods) ::  SUM_CV
+          real, dimension (Mdims%totele) :: MASS_ELE
+          REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
+          REAL, DIMENSION( Mdims%ndim, Mdims%cv_nonods ) :: XC_CV_ALL
+          REAL, DIMENSION( Mdims%ndim,nphase,Mdims%u_nloc ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
+          REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
+          !###Variables for shape function calculation###
+          type (multi_dev_shape_funs) :: SdevFuns
+          type (multi_dev_shape_funs) :: FSdevFuns
+
+          ! Variables used to calculate CV face values and depend on NFIELD:
+          REAL, DIMENSION( :, : ), allocatable :: LOC_F, LOC_FEMF
+          REAL, DIMENSION( :, : ), allocatable :: SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF
+          REAL, DIMENSION( :, :, : ), allocatable :: LOC_UF
+          INTEGER, DIMENSION( : ), allocatable :: SELE_LOC_WIC_F_BC
+          REAL, DIMENSION( :, : ), allocatable :: SLOC_SUF_F_BC
+          REAL, DIMENSION( : ), allocatable :: FUPWIND_IN, FUPWIND_OUT, LIMF, F_INCOME, F_NDOTQ
+          ! Variables used in GET_INT_VEL_NEW:
+          REAL, DIMENSION ( Mdims%ndim, nphase, Mdims%u_nloc ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU, LOC_NUOLD, LOC2_NUOLD
+          REAL, DIMENSION ( Mdims%ndim, nphase, Mdims%u_snloc ) :: SLOC_NU, SLOC_NUOLD
+  				REAL, DIMENSION ( :, : ), allocatable :: LOC_U_HAT, LOC2_U_HAT
+          INTEGER :: CV_KNOD2, U_SNODK
+          REAL, DIMENSION ( nphase, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
+                                                              LOC_FEMT2OLD, LOC2_FEMT2OLD
+          ! nphase Variables:
+          REAL, DIMENSION( : ), allocatable ::  Porous_diff_coef_divdx, Porous_diff_coefold_divdx
+          real, dimension(nphase)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
+              INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
+          real, dimension(nphase, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
+          REAL, DIMENSION( Mdims%ndim,Mdims%ndim,nphase ) :: DUMMY_ZERO_NDIM_NDIM_NPHASE
+          REAL, DIMENSION( Mdims%ndim, nphase, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
+          REAL , DIMENSION( Mdims%ndim, nphase ) :: NUGI_ALL, NUOLDGI_ALL
+          real, dimension(nphase, Mspars%small_acv%ncol) :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
+              DENOLDUPWIND_MAT_ALL
+          real, dimension(:,:), allocatable :: T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
+          LOGICAL :: STORE, integrate_other_side_and_not_boundary
+          REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
+          LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
+          LOGICAL, DIMENSION( nphase, 6 ) :: IGOT_T_PACK, IGOT_T_CONST!variables for get_int_tden! Set up the fields...
+          REAL, DIMENSION(  nphase, 6 ) :: IGOT_T_CONST_VALUE!variables for get_int_tden! Set up the fields...
+          !Working variables
+          real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
+          real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
+          real, dimension(:,:), allocatable, target :: T_TEMP, TOLD_TEMP
+          real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL
+          real, dimension(:, :, :), pointer :: U_ALL, NU_ALL, NUOLD_ALL
+          real, dimension(nphase, Mdims%cv_nonods) :: T_ALL_KEEP
+
+          real, dimension( : ), allocatable :: DIAG_SCALE_PRES_phase
+          real, dimension( : ), allocatable :: R_PEACMAN
+          real, dimension( nphase ) :: ct_rhs_phase, CV_P_PHASE_NODI,CV_P_PHASE_NODJ,ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj,R_PRES,R_PHASE,MEAN_PORE_CV_PHASE
+
+          !! boundary_condition fields
+          type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
+          type(tensor_field) :: pressure_BCs
+          type(tensor_field) :: tracer_BCs_robin2, saturation_BCs_robin2
+          INTEGER, DIMENSION( 1 , Mdims%nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
+          INTEGER, DIMENSION( Mdims%ndim , Mdims%nphase , surface_element_count(tracer) ) :: WIC_U_BC_ALL
+          type( tensor_field ), pointer ::  pressure
+          INTEGER, DIMENSION ( 1,Mdims%npres,surface_element_count(tracer) ) :: WIC_P_BC_ALL
+          REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL,&
+              SUF_T_BC_ROB1_ALL, SUF_T_BC_ROB2_ALL
+          REAL, DIMENSION(:,:,: ), pointer :: SUF_D_BC_ALL,&
+              SUF_T2_BC_ALL, SUF_T2_BC_ROB1_ALL, SUF_T2_BC_ROB2_ALL
+          REAL, DIMENSION(:,:,: ), pointer :: SUF_U_BC_ALL
+          REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC,&
+              SUF_T_BC_ROB1, SUF_T_BC_ROB2
+          !Working variables for subroutines that are called several times
+          real, dimension( Mdims%ndim,nphase ) :: rdum_ndim_nphase_1
+          real, dimension( nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, LOC_CV_RHS_I, LOC_CV_RHS_J, THETA_VEL
+          REAL, DIMENSION( nphase ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
+                  wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
+          REAL, DIMENSION ( Mdims%ndim,nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
+          type( vector_field ), pointer :: MeanPoreCV
+          !! femdem
+          type( vector_field ), pointer :: delta_u_all, us_all
+          type( scalar_field ), pointer :: solid_vol_fra
+          real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
+          type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
+          type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
+          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field !Arash
+
+          ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
+          real :: reservoir_P( Mdims%npres ) ! this is the background reservoir pressure
+          real, dimension( :, :, : ), pointer :: fem_p
+          real :: dt_pipe_factor
+          real, save :: dumping_well_factor = -1.0 !This is used to include explicit term that stabilises the well implementation
+          real, dimension( : ), allocatable :: MASS_PIPE_FOR_COUP
+          real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS, PIPE_ABS
+          Real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS ! Define MASS_CV_PLUS for reservoir domain here,
+                                                                       ! this field is created so it can account for many pressures
+          !Permeability
+          type( tensor_field ), pointer :: perm
+          !Variables for Vanishing artificial diffusion (VAD)
+          logical :: VAD_activated, between_elements, on_domain_boundary
+          !Variables for get_int_vel_porous_vel
+          logical :: anisotropic_and_frontier, anisotropic_perm
+          real, dimension(nphase):: rsum_nodi, rsum_nodj
+          integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
+          REAL :: MM_GRAVTY
+          !Variable to decide, for porous media, whether to consider, locally, using high order methods or not
+          logical :: use_porous_limiter = .true., local_upwinding = .false.
+          !Variables to calculate flux across boundaries
+          logical :: calculate_flux
+          integer :: U_JLOC
+
+          logical :: have_absorption
+          !Variables for Flooding
+          real, dimension( : , : ), pointer :: DEN_ALL_DIVID
+          real :: RDUM, RDUM2
+          !Variables for get int_vel_porous_vel
+          logical :: iv_Incomming_flow
+          REAL, DIMENSION(Mdims%ndim) :: iv_SUF_SIG_DIAGTEN_BC_GI
+          INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE, iv_u_kloc2
+          real, dimension(Mdims%ndim, Mdims%ndim, nphase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
+          real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
+          ! ####Variables for outfluxes#####
+          real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
+          real, dimension( : , : ), pointer ::Imble_frac
+          real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
+          real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
+
+
+          !Define n_in_pres based on the local version of nphase
+          n_in_pres = nphase/Mdims%npres
+
+          !Check vanishing artificial diffusion options
+          VAD_activated = .false.
+          if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
+              VAD_activated = Phase_with_Pc >0
+          end if
+          !Retrieve only once the dumping well factor
+          if (dumping_well_factor<0) call get_option( "/porous_media/wells_and_pipes/well_option/dumping_well_factor", dumping_well_factor, default = 0.5 )
+          !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction, not for the continuity equation
+          local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional) .and. .not. getct
+          !this is true if the user is asking for high order advection scheme
+          use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
+          !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
+          !we only do this for the first non-linear iteration
+          if (present(nonlinear_iteration) .and. VAD_activated) use_porous_limiter = use_porous_limiter .and. nonlinear_iteration > 1
+          logical_igot_theta_flux = IGOT_THETA_FLUX == 1
+
+
+
+          have_absorption=.false.
+          if ( associated( absorbt_all ) ) have_absorption = .true.
+
+          if ( Mdims%npres > 1 )then
+              reservoir_P( 1 ) = 0.0 !1.0e+7
+              reservoir_P( 2 ) = 0.0
+          else
+              reservoir_P = 0.0
+          end if
+          dt_pipe_factor = 1.0
+          if ( Mdims%npres > 1 ) then
+              ! factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
+              call get_option( "/porous_media/wells_and_pipes/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
+          end if
+          !Check pressure matrix based on Control Volumes
+          !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
+          if (Mmat%CV_pressure) then
+              GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
+          else
+              GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
+          end if
+          symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )!not added yet in the new schema
+
+          option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"!not added yet linked with the new schema
+          apply_eno = have_option( option_path2 )
+
+          !THETA_VEL_HAT has to be zero for porous media flow
+          if ( is_porous_media ) then
+              THETA_VEL_HAT = 0.0
+          else
+              THETA_VEL_HAT = 1.0
+          end if
+
+          call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
+
+          !#################SET WORKING VARIABLES#################
+
+          call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
+              OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
+          if (.not. present_and_true(solving_compositional)) then
+            if (is_porous_media)   call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+          end if
+          !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
+          U_ALL => NU_ALL
+          old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+          old_density=>extract_tensor_field(packed_state,GetOldName(density))
+          if (present(saturation)) then
+              old_saturation=>extract_tensor_field(packed_state,&
+                  GetOldName(saturation))
+          end if
+          T_ALL =>tracer%val(1,:,:)
+          TOLD_ALL =>old_tracer%val(1,:,:)
+          if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
+          T_ALL_KEEP = T_ALL(1:nphase,:)!SPRINT_TO_DO this wont work for wells, if nphases-1 works, need to amend this
+
+         !################## END OF SET VARIABLES ##################
+
+          IF( GETCT ) THEN
+              IF( RETRIEVE_SOLID_CTY ) THEN
+                  ALLOCATE(VOL_FRA_FLUID(Mdims%cv_nonods))
+                  ALLOCATE(U_HAT_ALL(Mdims%ndim,Mdims%u_nonods))
+                  delta_u_all => extract_vector_field( packed_state, "delta_U" )
+                  u_hat_all = delta_u_all%val + u_all( :, 1, :) ! Mdims%ndim, Mdims%u_nonods
+                  us_all => extract_vector_field( packed_state, "solid_U" )
+                  Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
+                  VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! Mdims%cv_nonods
+                  ALLOCATE(T_TEMP(nphase,Mdims%cv_nonods), TOLD_TEMP(nphase,Mdims%cv_nonods))
+                  IF(nphase==1) THEN
+                      T_ALL_KEEP = 1.0
+                      do cv_inod = 1, Mdims%cv_nonods
+                          do iphase = 1, nphase
+                              ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
+                              T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                              TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                          end do
+                      end do
+                  ELSE
+                      T_TEMP= T_ALL(1:nphase,:)!SPRINT_TO_DO this wont work for wells, if nphases-1 works, need to amend this
+                      TOLD_TEMP=TOLD_ALL(1:nphase,:)!SPRINT_TO_DO this wont work for wells, if nphases-1 works, need to amend this
+                  ENDIF
+                  ! switch off caching of CV face values as this will be wrong.
+                  T_ALL=>T_TEMP
+                  TOLD_ALL=>TOLD_TEMP
+                  ! CONV = A*B ! conV is an allocatable target
+                  ! T_ALL=>CONV ! conV is an allocatable target
+                  call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
+              ENDIF
+          ENDIF
+          if (present(outfluxes)) then
+              ! Initialise the calculate_mass variables
+              !Allocate array to pass to store mass going through the boundaries
+              if (allocated( outfluxes%outlet_id )) then
+                  allocate(bcs_outfluxes(nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+              else
+                  allocate(bcs_outfluxes(nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+              end if
+
+              allocate ( calculate_mass_internal(nphase))
+              calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
+              !Extract temperature for outfluxes if required
+              if (has_temperature) then
+                  temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+                  if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
+              end if
+              !Arash
+              if (has_salt) then
+                  salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+                  if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
+              end if
+          end if
+          !! Get boundary conditions from field
+          call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+          call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
+          if (present(saturation))&
+              call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
+          call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
+          if(got_free_surf.or.is_porous_media .or. Mmat%CV_pressure) then
+              pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
+              call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
+          endif
+
+          !! reassignments to old arrays, to be discussed
+          SUF_T_BC_ALL=>tracer_BCs%val
+          SUF_T_BC_ROB1_ALL=>tracer_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
+          SUF_T_BC_ROB2_ALL=>tracer_BCs_robin2%val
+          SUF_D_BC_ALL=>density_BCs%val
+          SUF_U_BC_ALL=>velocity_BCs%val
+          if(present(saturation)) then
+              SUF_T2_BC_ALL=>saturation_BCs%val
+              SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
+              SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
+          end if
+           if (tracer%name == "PackedTemperature" &
+              .or. tracer%name == "PackedSoluteMassFraction")  then
+              allocate( suf_t_bc( 1,nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,nphase,Mdims%cv_snloc*Mdims%stotel ), &
+                  suf_t_bc_rob2( 1,nphase,Mdims%cv_snloc*Mdims%stotel ) )
+              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, nphase, &
+                  suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
+              SUF_T_BC_ALL=>suf_t_bc
+              SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
+              SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
+          end if
+          ! Arash
+         !  if (tracer%name == "PackedSoluteMassFraction" )  then
+         !     allocate( suf_t_bc( 1,nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,nphase,Mdims%cv_snloc*Mdims%stotel ), &
+         !         suf_t_bc_rob2( 1,nphase,Mdims%cv_snloc*Mdims%stotel ) )
+         !     call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, nphase, &
+         !         suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
+         !     SUF_T_BC_ALL=>suf_t_bc
+         !     SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
+         !     SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
+         ! end if
+
+          IDUM = 0
+          ewrite(3,*) 'In CV_ASSEMB'
+          GOT_DIFFUS = .false.
+          if (present(TDIFFUSION)) then
+              GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * nphase ) /= 0 )!<=I hate this thing...
+              call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
+          end if
+          call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
+          ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
+              CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
+          ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
+
+          !For flooding, only for the saturation equation we need to take out the density
+          !from the equations, we do so by forcing it to be 1, it needs to be recalculated
+          !after this before it is used somewhere else
+          if (is_flooding ) then
+              if (GETCV_DISC) then
+                  DEN_ALL(1:n_in_pres,:) = 1.0
+                  DENOLD_ALL(1:n_in_pres,:) = 1.0
+              end if
+          end if
+
+          !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
+          one_m_cv_beta = 1.0 - cv_beta
+          conservative_advection = abs(one_m_cv_beta) <= 1e-8
+          QUAD_OVER_WHOLE_ELE=.FALSE.
+          ! Allocate memory for the control volume surface shape functions, etc.
+          IF(GETCT) THEN
+              ALLOCATE( JCOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( JCOUNT_KLOC2( Mdims%u_nloc ))
+              ALLOCATE( ICOUNT_KLOC( Mdims%u_nloc ));ALLOCATE( ICOUNT_KLOC2( Mdims%u_nloc ))
+              IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
+                  ALLOCATE( C_JCOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_JCOUNT_KLOC2( Mdims%u_nloc ))
+                  ALLOCATE( C_ICOUNT_KLOC( Mdims%u_nloc )); ALLOCATE( C_ICOUNT_KLOC2( Mdims%u_nloc ))
+              ENDIF
+          ENDIF
+          DISTCONTINUOUS_METHOD = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
+          ! Quadratic elements
+          QUAD_ELEMENTS = ( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) )
+          !Pointer to permeability
+          if ( is_porous_media ) then
+              if (present(Permeability_tensor_field)) then
+                  perm => Permeability_tensor_field
+              else
+              perm=>extract_tensor_field(packed_state,"Permeability")
+              end if
+              !Check if the permeability is not isotropic and the method is DG
+              anisotropic_perm = .not.have_option('/porous_media/scalar_field::Permeability') .and. DISTCONTINUOUS_METHOD
+          end if
+          !Initialize Courant number for porous media
+          if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
+          CVNORMX_ALL=0.0; DUMMY_ZERO_NDIM_NDIM_NPHASE=0.0
+
+          ! The procity mapped to the CV nodes
+          D1 = ( Mdims%ndim == 1 )
+          D3 = ( Mdims%ndim == 3 )
+          GETMAT = .TRUE.
+          X_SHARE = .FALSE.
+          ! Determine FEMT (finite element wise) etc from T (control volume wise)
+          ! Also determine the CV mass matrix MASS_CV_PLUS and centre of the CV's XC_CV_ALL
+          ! This is for projecting to finite element basis functions...
+          IGETCT = 0
+          IF ( GETCT ) IGETCT = 1
+          GOT_T2=( IGOT_T2 == 1 )
+          use_volume_frac_T2=( IGOT_T2 == 1 .or. thermal )
+          i_use_volume_frac_t2= 0
+          if (use_volume_frac_T2) i_use_volume_frac_t2= 1
+
+
+          IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
+              PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
+
+          ! FOR packing as well as for detemining which variables to apply interface tracking**********
+          !          STORE=.TRUE.
+          STORE=.FALSE.
+          IF( GETCT .AND. RETRIEVE_SOLID_CTY) STORE=.FALSE. ! Avoid storing and retrieving solids voln frac. until we have sorted the code for this.
+          IGOT_T_PACK=.TRUE.
+          IGOT_T_CONST=.FALSE.
+          IGOT_T_CONST_VALUE=0.0
+          ! If we have any bc's then assume we ave a non-uniform field...
+          ! SPRINT_TO_DO this now fails if the domain is closed and no BCs are necessary
+          DO IPHASE=1,nphase
+              IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),Mdims%cv_nonods)
+          END DO
+          DO IPHASE=1,nphase
+              IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+          END DO
+          DO IPHASE=1,nphase
+              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),Mdims%cv_nonods)
+          END DO
+          DO IPHASE=1,nphase
+              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),Mdims%cv_nonods)
+          END DO
+          DO IPHASE=1,nphase
+              IF(use_volume_frac_t2) THEN
+                  IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
+                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),Mdims%cv_nonods)
+              ELSE
+                  IGOT_T_CONST(IPHASE,5)=.TRUE.
+                  IGOT_T_CONST_VALUE(IPHASE,5)=1.0
+              ENDIF
+          END DO
+          DO IPHASE=1,nphase
+              IF(use_volume_frac_t2) THEN
+                  IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
+                      CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),Mdims%cv_nonods)
+              ELSE
+                  IGOT_T_CONST(IPHASE,6)=.TRUE.
+                  IGOT_T_CONST_VALUE(IPHASE,6)=1.0
+              ENDIF
+          END DO
+          NFIELD=0
+          DO IFI=1,6
+              DO IPHASE=1,nphase
+                  IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
+              END DO
+          END DO
+          if (isparallel()) call allmax(NFIELD)!<=This should be unnecessary!
+
+          ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) ! To avoid the case of NFIELD=0
+          ! This logical needs to be expanded...
+          if (NFIELD>0 ) THEN
+              DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
+              IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
+          ENDIF
+
+          ! Determine IGOT_T_PACK(IPHASE,:):
+          IGOT_T_PACK=.FALSE.
+          DO ILOOP=1,6
+              DO IPHASE=1,nphase
+                  IF(.NOT.IGOT_T_CONST(IPHASE,ILOOP)) THEN
+                      ! here we might check to see if we have this in the local storage...
+                      IGOT_T_PACK(IPHASE,ILOOP)=.TRUE.
+                  ENDIF
+              END DO
+          END DO
+
+
+          ! F and LOC_U:
+          ALLOCATE(LOC_F(NFIELD,Mdims%cv_nloc));ALLOCATE(LOC_FEMF(NFIELD,Mdims%cv_nloc))
+          ALLOCATE(SLOC_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC_FEMF(NFIELD,Mdims%cv_snloc))
+          ALLOCATE(SLOC2_F(NFIELD,Mdims%cv_snloc));ALLOCATE(SLOC2_FEMF(NFIELD,Mdims%cv_snloc))
+          ALLOCATE(LOC_UF(Mdims%ndim,NFIELD,Mdims%u_nloc))
+          IF(GETCT.AND.RETRIEVE_SOLID_CTY)  ALLOCATE( LOC_U_HAT(Mdims%ndim, Mdims%u_nloc), LOC2_U_HAT(Mdims%ndim, Mdims%u_nloc) )
+          ! bc's:
+          ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) );ALLOCATE( SLOC_SUF_F_BC(NFIELD, Mdims%cv_snloc) )
+          ! limiting values...
+          ALLOCATE( FUPWIND_IN( NFIELD ) );ALLOCATE( FUPWIND_OUT( NFIELD ) )
+          ! limiting and upwinding:
+          ALLOCATE( LIMF( NFIELD ) );ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
+          ALLOCATE( F_CV_NODI( NFIELD ), F_CV_NODJ( NFIELD ) )
+
+          !###############Conditional allocations######################
+          ! NFIELD Variables:
+          if (thermal .and.is_porous_media) allocate(Porous_diff_coef_divdx(nphase), Porous_diff_coefold_divdx(nphase))
+          LIMT_HAT=0.0
+          IF ( VAD_activated) THEN
+              ALLOCATE( CAP_DIFFUSION( nphase, Mdims%mat_nonods ) )
+              !Introduce the information in CAP_DIFFUSION
+              CAP_DIFFUSION = 0.!Initialize to zero just in case
+              do ele = 1, Mdims%totele
+                  do CV_ILOC = 1, Mdims%cv_nloc
+                      CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                      MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                      CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
+                          - T_ALL(Phase_with_Pc, CV_NODI) * VAD_parameter(CV_NODI)
+                  end do
+              end do
+          ENDIF
+
+          if( is_flooding ) then
+              allocate(DEN_ALL_DIVID( nphase, Mdims%cv_nonods ))
+              DEN_ALL_DIVID = DEN_ALL
+              DEN_ALL_DIVID( 1, : ) = 1.0
+          else
+              DEN_ALL_DIVID => DEN_ALL
+          endif
+
+          ndotq = 0. ! ;         ndotqold = 0.
+          ! variables for get_int_tden********************
+          psi(1)%ptr=>tracer
+          psi(2)%ptr=>old_tracer
+          FEM_IT=2
+          if (.not. is_constant(density)) then
+              psi(FEM_IT+1)%ptr=>density
+              FEM_IT=FEM_IT+1
+          end if
+          if (.not. is_constant(old_density)) then
+              psi(FEM_IT+1)%ptr=>old_density
+              FEM_IT=FEM_IT+1
+          end if
+          if (present(saturation)) then
+              if (.not. is_constant(saturation)) then
+                  psi(FEM_IT+1)%ptr=>saturation
+                  FEM_IT=FEM_IT+1
+              end if
+              if (.not. is_constant(old_saturation)) then
+                  psi(FEM_IT+1)%ptr=>old_saturation
+                  FEM_IT=FEM_IT+1
+              end if
+          end if
+          do i=1,FEM_IT
+              if (has_tensor_field(packed_state,&
+                  GetFEMName(psi(i)%ptr))) then
+                  fempsi(i)%ptr=>extract_tensor_field(packed_state,&
+                      GetFEMName(psi(i)%ptr))
+              else
+                  allocate(fempsi(i)%ptr)
+                  call allocate(fempsi(i)%ptr,psi(i)%ptr%mesh,"FEMPSI"//trim(psi(i)%ptr%name),&
+                      dim=psi(i)%ptr%dim)
+              end if
+          end do
+          psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
+          psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
+          call PROJ_CV_TO_FEM(packed_state, &!sprint_to_do is it always necessary to have a Finite element representation of the Tracer?
+              FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
+              Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
+              IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
+              tracer,PSI_AVE, PSI_INT)
+          XC_CV_ALL=0.0
+          !sprint_to_do!use a pointer?
+          XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
+          MASS_CV_PLUS(1,:)         = psi_int(1)%ptr%val(1,:)
+          FEMT_ALL(:,:)             = FEMPSI(1)%ptr%val(1,1:nphase,:)
+          FEMTOLD_ALL(:,:)          = FEMPSI(2)%ptr%val(1,1:nphase,:)
+          FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
+          if (.not. is_constant(density)) then
+              FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,1:nphase,:)
+              tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
+              tfield%val = psi(FEM_IT)%ptr%val
+              FEM_IT=FEM_IT+1
+          else
+              FEMDEN_ALL=density%val(1,1:nphase,:)
+          end if
+          if (.not. is_constant(old_density)) then
+              FEMDENOLD_ALL=psi(FEM_IT)%ptr%val(1,1:nphase,:)
+              FEM_IT=FEM_IT+1
+          else
+              FEMDENOLD_ALL=old_density%val(1,1:nphase,:)
+          end if
+          IF ( present(saturation) ) then
+              if (.not. is_constant(saturation)) then
+                  FEMT2_ALL=psi(FEM_IT)%ptr%val(1,1:nphase,:)
+                  FEM_IT=FEM_IT+1
+              else
+                  FEMT2_ALL=saturation%val(1,1:nphase,:)
+              end if
+              if (.not. is_constant(old_saturation)) then
+                  FEMt2OLD_ALL=psi(FEM_IT)%ptr%val(1,1:nphase,:)
+                  FEM_IT=FEM_IT+1
+              else
+                  FEMt2OLD_ALL=old_saturation%val(1,1:nphase,:)
+              end if
+          end IF
+          do i=1,FEM_IT-1!<==============WHY TO -1
+              if (fempsi(i)%ptr%name(1:6)=='FEMPSI') then
+                  call deallocate(fempsi(i)%ptr)
+                  deallocate(fempsi(i)%ptr)
+              end if
+          end do
+          IF (PRESENT(MASS_ELE_TRANSP)) &
+              MASS_ELE_TRANSP = MASS_ELE
+
+          ! Calculate MEAN_PORE_CV
+          MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
+          DO ELE = 1, Mdims%totele
+              DO CV_ILOC = 1, Mdims%cv_nloc
+                  CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                  SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
+                  MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
+                      MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )
+              END DO
+          END DO
+          DO IPRES = 1, Mdims%npres
+              MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
+          END DO
+
+          ! Scale effectively the time step size used within the pipes...
+          ! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
+          DO IPRES = 2, Mdims%npres
+              MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
+          END DO
+          ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
+          MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+          MeanPoreCV%val=MEAN_PORE_CV
+
+          ALLOCATE( T2UPWIND_MAT_ALL( nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
+          IF ( CV_DISOPT < 5 ) THEN
+              ! Isotropic limiting - calculate far field upwind maticies...
+              CALL ISOTROPIC_LIMITER_ALL( &
+                  ! FOR SUB SURRO_CV_MINMAX:
+                  T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, nphase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
+                  Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
+                  MASS_CV_PLUS(1,:), &
+                  ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
+                  TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                  TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
+          ELSE
+              use_reflect = have_option("/numerical_methods/use_reflect_method")
+              CALL CALC_ANISOTROP_LIM( &
+                  ! Caculate the upwind values stored in matrix form...
+                  T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
+                  FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
+                  TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
+                  T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
+                  i_use_volume_frac_t2,nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
+                  Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
+                  ndgln%x,Mdims%x_nonods,Mdims%ndim, &
+                  X_ALL, XC_CV_ALL, use_reflect)
+          END IF
+          FACE_ELE = 0
+          CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
+              Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+              CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+          IF ( GOT_DIFFUS ) THEN
+              CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
+                  DTX_ELE_ALL, DTOLDX_ELE_ALL, &
+                  Mdims%ndim, nphase, Mdims%totele, ndgln%cv, &
+                  ndgln%x, Mdims%x_nloc, ndgln%x,&
+                  CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
+                  CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+                  CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+                  Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
+                  CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
+                  CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfeweigh, &
+                  CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly )
+          END IF
+          !     =============== DEFINE THETA FOR TIME-STEPPING ===================
+          ! Define the type of time integration:
+          ! Timopt is 0 if CV_DISOPT is even (theta specified);
+          ! Timopt is 1 if CV_DISOPT is odd (non-linear theta scheme)
+          TIMOPT = MOD( CV_DISOPT, 2 )
+          FTHETA(:) = CV_THETA
+          IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqns plus RHS
+              call zero(Mmat%CT_RHS)
+              Mmat%CT = 0.0
+              if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
+              if ( Mmat%CV_pressure ) MASS_SUF=0.0
+          END IF
+          IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
+              call zero(Mmat%CV_RHS)
+              IF ( GETMAT ) THEN
+                  call zero(Mmat%petsc_ACV)
+              END IF
+          END IF
+          GET_GTHETA = .FALSE.
+          IF ( logical_igot_theta_flux ) THEN
+              IF ( GET_THETA_FLUX ) THEN
+                  THETA_FLUX = 0.0
+                  ONE_M_THETA_FLUX = 0.0
+                  if(integrate_other_side) then
+                      THETA_FLUX_J = 0.0
+                      ONE_M_THETA_FLUX_J = 0.0
+                  endif
+                  !            IF ( IGOT_T2 == 1 ) THEN
+                  IF ( GOT_T2 ) THEN
+                      GET_GTHETA = .TRUE.
+                      THETA_GDIFF = 0.0
+                  END IF
+              END IF
+          END IF
+          GLOBAL_FACE = 0
+
+          if ( is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT) then
+              !Initialise mass conservation check; calculation of porevolume
+              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 1)
+          endif
+
+
+          !Allocate derivatives of the shape functions
+          call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
+
+          ! The above leads to CV_funs%NX_ALL equaling always to zero, which makes the negative diffusion ZERO (GET_INT_T_DEN_new( LIMF ))
+          ! In order to fix this, we use FE_funs - only when we calculate negative diffusion coefficient (cv_disopt >= 8_. [INTRO_NX_ALL]
+          if (NFIELD>0 ) THEN
+              IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
+    	            !Calculate the gauss integer numbers
+                  call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+
+                  !! Compute reference shape functions
+                  call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
+                  call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+                  call allocate_multi_dev_shape_funs(FE_funs%scvfenlx_all, FE_funs%sufenlx_all, FSdevFuns)
+              END IF
+          endif
+
+          !###########################################
+          Loop_Elements: DO ELE = 1, Mdims%totele
+              if (IsParallel()) then
+                  if (.not. assemble_ele(tracer,ele)) then
+                      skip=.true.
+                      neighbours=>ele_neigh(tracer,ele)
+                      do nb=1,size(neighbours)
+                          if (neighbours(nb)<=0) cycle
+                          if (assemble_ele(tracer,neighbours(nb))) then
+                              skip=.false.
+                              exit
+                          end if
+                      end do
+                      if (skip) cycle
+                  end if
+              end if
+
+              ! Generate some local F variables ***************
+              DO CV_KLOC = 1, Mdims%cv_nloc
+                  CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
+                  ! loc_f
+                  IPT=1
+                  CALL PACK_LOC( LOC_F(:, CV_KLOC), T_ALL( :, CV_NODK ),    nphase, IPT, IGOT_T_PACK(:,1) )
+                  CALL PACK_LOC( LOC_F(:, CV_KLOC), TOLD_ALL( :, CV_NODK ), nphase, IPT, IGOT_T_PACK(:,2) )
+                  CALL PACK_LOC( LOC_F(:, CV_KLOC), DEN_ALL( :, CV_NODK ),    nphase, IPT, IGOT_T_PACK(:,3) )
+                  CALL PACK_LOC( LOC_F(:, CV_KLOC), DENOLD_ALL( :, CV_NODK ), nphase, IPT, IGOT_T_PACK(:,4) )
+                  IF(use_volume_frac_T2) THEN
+                      CALL PACK_LOC( LOC_F(:, CV_KLOC), T2_ALL( :, CV_NODK ),    nphase, IPT, IGOT_T_PACK(:,5) )
+                      CALL PACK_LOC( LOC_F(:, CV_KLOC), T2OLD_ALL( :, CV_NODK ), nphase, IPT, IGOT_T_PACK(:,6) )
+                  ENDIF
+                  ! for FEM variables...
+                  IPT=1
+                  CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT_ALL( :, CV_NODK ),    nphase, IPT, IGOT_T_PACK(:,1) )
+                  CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMTOLD_ALL( :, CV_NODK ), nphase, IPT, IGOT_T_PACK(:,2) )
+                  CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDEN_ALL( :, CV_NODK ),    nphase, IPT, IGOT_T_PACK(:,3) )
+                  CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDENOLD_ALL( :, CV_NODK ), nphase, IPT, IGOT_T_PACK(:,4) )
+                  IF(use_volume_frac_T2) THEN
+                      CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2_ALL( :, CV_NODK ),    nphase, IPT, IGOT_T_PACK(:,5) )
+                      CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2OLD_ALL( :, CV_NODK ), nphase, IPT, IGOT_T_PACK(:,6) )
+                  ENDIF
+                  ! loc_femt:
+                  LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_NODK)
+                  LOC_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_NODK)
+                  IF ( use_volume_frac_t2 ) THEN
+                      LOC_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_NODK)
+                      LOC_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_NODK)
+                  END IF
+              END DO
+              DO U_KLOC = 1, Mdims%u_nloc
+                  U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                  ! LOC_UF
+                  IPT=1
+                  IFI=1
+                  DO ILOOP=1,3
+                      DO IPHASE=1,nphase
+                          IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! T:
+                              LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
+                              IPT=IPT+1
+                          END IF
+                      END DO
+                      IFI=IFI+1
+                      DO IPHASE=1,nphase
+                          IF(IGOT_T_PACK(IPHASE,IFI)) THEN ! Told:
+                              if(correct_method_petrov_method) then
+                                  LOC_UF(:, IPT, U_KLOC) =   NUOLD_ALL( :, IPHASE, U_NODK )
+                              else
+                                  LOC_UF(:, IPT, U_KLOC) =   U_ALL( :, IPHASE, U_NODK )
+                              endif
+                              IPT=IPT+1
+                          END IF
+                      END DO
+                      IFI=IFI+1
+                  END DO
+                  ! LOC_U, LOC_NU:
+                  LOC_U( :, :, U_KLOC)=U_ALL( :, 1:nphase, U_NODK)
+                  LOC_NU( :, :, U_KLOC)=NU_ALL( :, 1:nphase, U_NODK)
+                  LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, 1:nphase, U_NODK)
+                  IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( 1:nphase, U_NODK)
+              END DO
+              ! Generate some local F variables ***************...
+              !
+              !
+              Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
+
+                  ! Global node number of the local node
+                  CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                  X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
+                  MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                  IMID = Mspars%small_acv%mid(CV_NODI)
+
+                  ! Generate some local F variables ***************
+                  F_CV_NODI(:)= LOC_F(:, CV_ILOC)
+                  ! Generate some local F variables ***************
+                  ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
+                  Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
+                      ! CV_funs%colgpts stores the local Gauss-point number in the ELE
+                      GI = CV_funs%colgpts( GCOUNT )
+                      ! Get the neighbouring node for node ILOC and Gauss point GI
+                      CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
+                      ELE2 = 0
+                      SELE = 0
+                      CV_SILOC=0
+                      INTEGRAT_AT_GI = .TRUE.
+                      U_OTHER_LOC=0
+                      CV_OTHER_LOC=0
+                      Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
+                          ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
+                          ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
+                          ! Look for these nodes on the other elements.
+                          CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
+                              MAT_OTHER_LOC, INTEGRAT_AT_GI, &
+                              Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
+                              Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
+                              Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
+
+                          IF ( INTEGRAT_AT_GI ) THEN
+                              CV_JLOC = CV_OTHER_LOC( CV_ILOC )
+                              SELE = 0
+                              ELE3=0
+                              IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
+                                  CV_JLOC = CV_ILOC
+                                  ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
+                                  CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
+                                      FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
+                                      ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
+                              END IF
+                              INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
+                          END IF
+                      END IF Conditional_CheckingNeighbourhood
+                      !Avoid integrating across the middle of a CV on the boundaries of elements
+                      !For disconditnuous pressure this is always true
+                      Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
+                          between_elements = (ELE2 /= 0) .AND. (ELE2 /= ELE)
+                          on_domain_boundary = ( SELE /= 0 )
+
+                          !Check as well if the CV is neigbouring another CV with a different permeability and if any of those is anisotropic
+                          anisotropic_and_frontier = anisotropic_perm .and. between_elements
+                          !Check if the permeabilities are different, this may fail in the unlikely case where the contraction of
+                          !the difference also sum 0 despite being different permeabilities
+                          if (anisotropic_and_frontier) anisotropic_and_frontier = sum(perm%val(:,:,ele) - perm%val(:,:,ele2)) < &
+                              10.**(exponent(perm%val(1,1,ele))-9)
+                          IF ( between_elements ) THEN
+                              CV_NODJ = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                              X_NODJ = ndgln%x( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                              MAT_NODJ = ndgln%mat( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                          ELSE
+                              CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                              X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                              MAT_NODJ = ndgln%mat( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                          END IF
+
+                          !Decide whether to use high order advection or not, locally.
+                          !If the saturation is equal to the minimum, then no need to high order
+                          if (is_porous_media .and. local_upwinding) then
+                              use_porous_limiter = .true.
+                              do iphase = 1, nphase - 1
+                                  use_porous_limiter = use_porous_limiter &
+                                      .and. (abs(T_ALL(iphase, cv_nodi) - Imble_frac(iphase, ELE)) > 1e-8 .or. &
+                                      abs(T_ALL(iphase, CV_NODJ) - Imble_frac(iphase, ELE2)) > 1e-8)!neighbouring CV
+
+                              end do
+                              use_porous_limiter = use_porous_limiter .or. on_domain_boundary
+                          end if
+
+                          if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
+                              ! this is for DG and boundaries of the domain
+                              IF( between_elements ) THEN ! this is for DG
+                                  ! Calculate U_SLOC2LOC, CV_SLOC2LOC:
+                                  CV_SKLOC=0
+                                  DO CV_KLOC=1,Mdims%cv_nloc
+                                      CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+                                      IF(CV_KLOC2.NE.0) THEN
+                                          CV_SKLOC=CV_SKLOC+1
+                                          CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
+                                          SHAPE_CV_SNL(CV_SKLOC) = CV_funs%scvfen(CV_KLOC,GI)
+                                      ENDIF
+                                  END DO
+                                  U_SKLOC=0
+                                  DO U_KLOC=1,Mdims%u_nloc
+                                      U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                                      IF(U_KLOC2.NE.0) THEN
+                                          U_SKLOC=U_SKLOC+1
+                                          U_SLOC2LOC(U_SKLOC)=U_KLOC
+                                      ENDIF
+                                  END DO
+                              ENDIF ! ENDOF IF( between_elements ) THEN
+                              integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
+                              GLOBAL_FACE = GLOBAL_FACE + 1
+                              JMID = Mspars%small_acv%mid(CV_NODJ)
+                              ! Calculate the control volume normals at the Gauss pts.
+                              CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
+                              !Obtain the list of neighbouring nodes
+                              IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
+                                                              C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
+
+                              ! Compute the distance HDC between the nodes either side of the CV face
+                              ! (this is needed to compute the local courant number and the non-linear theta)
+                              IF ( on_domain_boundary) THEN
+                                  HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
+                              ELSE
+                                  HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
+                              END IF
+                              DO COUNT = Mspars%small_acv%fin( CV_NODI ), Mspars%small_acv%fin( CV_NODI + 1 ) - 1
+                                  IF ( Mspars%small_acv%col( COUNT ) == CV_NODJ ) THEN
+                                      count_out = COUNT
+                                      EXIT
+                                  END IF
+                              END DO
+                              DO COUNT = Mspars%small_acv%fin( CV_NODJ ), Mspars%small_acv%fin( CV_NODJ + 1 ) - 1
+                                  IF ( Mspars%small_acv%col( COUNT ) == CV_NODI ) THEN
+                                      count_in = COUNT
+                                      EXIT
+                                  END IF
+                              END DO
+                              ! Generate some local F variables ***************
+                              IPT=1
+                              CALL PACK_LOC( F_CV_NODJ(:), T_ALL( :, CV_NODJ ),    nphase, IPT, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( F_CV_NODJ(:), TOLD_ALL( :, CV_NODJ ), nphase, IPT, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( F_CV_NODJ(:), DEN_ALL( :, CV_NODJ ),    nphase, IPT, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( F_CV_NODJ(:), DENOLD_ALL( :, CV_NODJ ), nphase, IPT, IGOT_T_PACK(:,4) )
+                              IF(use_volume_frac_T2) THEN
+                                  CALL PACK_LOC( F_CV_NODJ(:), T2_ALL( :, CV_NODJ ),    nphase, IPT, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( F_CV_NODJ(:), T2OLD_ALL( :, CV_NODJ ), nphase, IPT, IGOT_T_PACK(:,6) )
+                              ENDIF
+                              ! Generate some local F variables ***************
+                              ! local surface information***********
+                              IF( between_elements .or. on_domain_boundary ) THEN
+                                  DO CV_SKLOC = 1, Mdims%cv_snloc
+                                      CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
+                                      SLOC_F(:, CV_SKLOC) = LOC_F(:, CV_KLOC)
+                                      SLOC_FEMF(:, CV_SKLOC) = LOC_FEMF(:, CV_KLOC)
+                                      !                   IF(ELE2>0) THEN
+                                      IF(between_elements) THEN
+                                          CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+                                          CV_NODK2 = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_KLOC2 )
+                                          IPT=1
+                                          CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T_ALL( :, CV_NODK2 ),    nphase, IPT, IGOT_T_PACK(:,1) )
+                                          CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), TOLD_ALL( :, CV_NODK2 ), nphase, IPT, IGOT_T_PACK(:,2) )
+                                          CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DEN_ALL( :, CV_NODK2 ),    nphase, IPT, IGOT_T_PACK(:,3) )
+                                          CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DENOLD_ALL( :, CV_NODK2 ), nphase, IPT, IGOT_T_PACK(:,4) )
+                                          IF(use_volume_frac_T2) THEN
+                                              CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2_ALL( :, CV_NODK2 ),    nphase, IPT, IGOT_T_PACK(:,5) )
+                                              CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2OLD_ALL( :, CV_NODK2 ), nphase, IPT, IGOT_T_PACK(:,6) )
+                                          ENDIF
+                                          ! femf:
+                                          IPT=1
+                                          CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT_ALL( :, CV_NODK2 ),    nphase, IPT, IGOT_T_PACK(:,1) )
+                                          CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMTOLD_ALL( :, CV_NODK2 ), nphase, IPT, IGOT_T_PACK(:,2) )
+                                          CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDEN_ALL( :, CV_NODK2 ),    nphase, IPT, IGOT_T_PACK(:,3) )
+                                          CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDENOLD_ALL( :, CV_NODK2 ), nphase, IPT, IGOT_T_PACK(:,4) )
+                                          IF(use_volume_frac_T2) THEN
+                                              CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2_ALL( :, CV_NODK2 ),    nphase, IPT, IGOT_T_PACK(:,5) )
+                                              CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2OLD_ALL( :, CV_NODK2 ), nphase, IPT, IGOT_T_PACK(:,6) )
+                                          ENDIF
+                                      ELSE
+                                          SLOC2_F(:, CV_SKLOC)    = SLOC_F(:, CV_SKLOC)
+                                          SLOC2_FEMF(:, CV_SKLOC) = SLOC_FEMF(:, CV_SKLOC)
+                                      ENDIF
+                                  END DO
+                              ENDIF ! ENDOF IF( between_elements .or. on_domain_boundary ) THEN ...
+                              IF( on_domain_boundary ) THEN
+                                  ! bcs:
+                                  ! Make allowances for no matrix stencil operating from outside the boundary.
+                                  !             BCZERO=1.0-INCOME
+                                  ! What type of b.c's -integer
+                                  IPT=1
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T_BC_ALL( : , : , SELE ),&
+                                      nphase, IPT, IGOT_T_PACK( :,1) )
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T_BC_ALL( : , :, SELE ),&
+                                      nphase, IPT, IGOT_T_PACK( :,2) )
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_D_BC_ALL( :,:, SELE ),&
+                                      nphase, IPT, IGOT_T_PACK( :,3) )
+                                  CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_D_BC_ALL( :,:, SELE ),&
+                                      nphase, IPT, IGOT_T_PACK( :,4) )
+                                  IF(use_volume_frac_T2) THEN
+                                      CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T2_BC_ALL( : , :, SELE ),&
+                                          nphase, IPT, IGOT_T_PACK( :,5) )
+                                      CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T2_BC_ALL( : , : , SELE ),&
+                                          nphase, IPT, IGOT_T_PACK( :,6) )
+                                  ENDIF
+                                  ! The b.c's values:
+                                  DO CV_SKLOC=1,Mdims%cv_snloc
+                                      IPT=1
+                                      CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    nphase, IPT, IGOT_T_PACK(:,1) )
+                                      CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1 ) ),    nphase, IPT, IGOT_T_PACK(:,2) )
+                                      CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    nphase, IPT, IGOT_T_PACK(:,3) )
+                                      CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    nphase, IPT, IGOT_T_PACK(:,4) )
+                                      IF(use_volume_frac_T2) THEN
+                                          CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    nphase, IPT, IGOT_T_PACK(:,5) )
+                                          CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    nphase, IPT, IGOT_T_PACK(:,6) )
+                                      ENDIF
+                                  END DO
+                              ENDIF ! IF( on_domain_boundary ) THEN
+                              ! local surface information***********
+                              ! limiting VALUES*************:
+                              IPT_IN =1
+                              IPT_OUT=1
+                              CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    nphase, IPT_IN, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    nphase, IPT_OUT, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    nphase, IPT_IN, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    nphase, IPT_OUT, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    nphase, IPT_IN, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    nphase, IPT_OUT, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    nphase, IPT_IN, IGOT_T_PACK(:,4) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    nphase, IPT_OUT, IGOT_T_PACK(:,4) )
+                              IF(use_volume_frac_T2) THEN
+                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    nphase, IPT_IN, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    nphase, IPT_OUT, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    nphase, IPT_IN, IGOT_T_PACK(:,6) )
+                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    nphase, IPT_OUT, IGOT_T_PACK(:,6) )
+                              ENDIF
+                              ! limiting VALUES*************:
+                              !     endif ! endof if(.false.) then
+                              !
+                              ! LOC2_U, LOC2_NU for GET_INT_VEL_NEW
+                              !       IF (ELE2/=0) THEN
+                              IF (between_elements) THEN
+                                  LOC2_U = 0.
+                                  LOC2_NU = 0.
+                                  LOC2_NUOLD = 0.
+                                  DO U_SKLOC = 1, Mdims%u_snloc
+                                      U_KLOC = U_SLOC2LOC(U_SKLOC)
+                                      U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                                      U_NODK2 = ndgln%u((ELE2-1)*Mdims%u_nloc+U_KLOC2)
+                                      LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
+                                      LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
+                                      LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
+                                      IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC2_U_HAT(:, U_KLOC) = U_HAT_ALL(:, U_NODK2)
+                                  END DO
+                                  DO CV_SKLOC=1,Mdims%cv_snloc
+                                      CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
+                                      CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+                                      CV_KNOD2 = ndgln%cv((ELE2-1)*Mdims%cv_nloc+CV_KLOC2)
+                                      LOC2_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD2)
+                                      LOC2_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD2)
+                                      IF (use_volume_frac_T2) THEN
+                                          LOC2_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_KNOD2)
+                                          LOC2_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_KNOD2)
+                                      END IF
+                                  END DO
+                              END IF ! ENDOF IF (between_elements) THEN
+                              IF ( on_domain_boundary ) THEN
+                                  DO U_SKLOC = 1, Mdims%u_snloc
+                                      U_KLOC = U_SLOC2LOC( U_SKLOC )
+                                      U_NODK = ndgln%u(( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                                      U_SNODK = ( SELE - 1 ) * Mdims%u_snloc + U_SKLOC
+                                      SLOC_NU(:, :, U_SKLOC) = NU_ALL(:, 1:nphase, U_NODK)
+                                      SLOC_NUOLD(:, :, U_SKLOC) = NUOLD_ALL(:, 1:nphase, U_NODK)
+                                  END DO
+                              END IF
+                              !------------------
+                              If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
+                                  ! This sub caculates the effective diffusion
+                                  ! coefficient DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+                                  T_ALL_J  =T_ALL(1:nphase, CV_NODJ)
+                                  TOLD_ALL_J=TOLD_ALL(1:nphase, CV_NODJ)
+                                  LOC_WIC_T_BC_ALL=0
+                                  !           IF(SELE.NE.0) THEN
+                                  IF(on_domain_boundary) THEN
+                                      DO IPHASE=1,nphase
+                                          LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
+                                          IF(LOC_WIC_T_BC_ALL(IPHASE)==WIC_T_BC_DIRICHLET) THEN
+                                              T_ALL_J( IPHASE ) = SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                              TOLD_ALL_J( IPHASE )=SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                          ENDIF
+                                      END DO
+                                  ENDIF
+                                  CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
+                                      Mdims%cv_nloc, Mdims%mat_nloc, nphase, ndgln%mat, &
+                                      CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
+                                      HDC, &
+                                      T_ALL_J( : ), T_ALL(:, CV_NODI), &
+                                      TOLD_ALL_J( : ), TOLD_ALL(:, CV_NODI), &
+                                      ELE, ELE2, CVNORMX_ALL( :, GI ), &
+                                      DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
+                                      LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
+                                      on_domain_boundary, between_elements )
+                              ELSE
+                                  DIFF_COEF_DIVDX = 0.0
+                                  DIFF_COEFOLD_DIVDX = 0.0
+                              END IF If_GOT_DIFFUS2
+                              NFACE_ITS = 1
+                              FACE_ITS = 1
+                              ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
+                              !Calling the functions directly instead inside a wrapper saves a around a 5%
+                              IF( GOT_T2 ) THEN
+                                  IF( is_porous_media ) THEN
+                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                          T2OLD_ALL(1:nphase, CV_NODI), T2OLD_ALL(1:nphase, CV_NODJ), LOC_FEMT2OLD, &
+                                          LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                          upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                          upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
+                                          NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
+                                          .false., anisotropic_and_frontier)
+                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
+                                          T2_ALL(1:nphase, CV_NODI), T2_ALL(1:nphase, CV_NODJ), LOC_FEMT2, &
+                                          LOC_NU, LOC2_NU, SLOC_NU, &
+                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                          upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                          upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
+                                          NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
+                                          .true., anisotropic_and_frontier)
+                                  else
+                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                          T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
+                                          LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
+                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
+                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
+                                          T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
+                                          LOC_NU, LOC2_NU, NUGI_ALL, &
+                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
+                                  end if
+                              ELSE
+                                  IF( is_porous_media ) THEN
+                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                          TOLD_ALL(1:nphase, CV_NODI), TOLD_ALL(1:nphase, CV_NODJ), LOC_FEMTOLD, &
+                                          LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                          upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                          upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
+                                          NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
+                                          .false., anisotropic_and_frontier)
+                                      CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
+                                          T_ALL(1:nphase, CV_NODI), T_ALL(1:nphase, CV_NODJ), LOC_FEMT, &
+                                          LOC_NU, LOC2_NU, SLOC_NU, &
+                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+                                          upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                          upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                          upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
+                                          NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
+                                          .true., anisotropic_and_frontier)
+                                  else
+                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+                                          TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
+                                          LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
+                                          UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
+                                      call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
+                                          T_ALL(:, CV_NODI), T_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
+                                          LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
+                                  end if
+                              ENDIF
+                              !Obtain income for cv_nodj
+                              !When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
+                              WHERE ( NDOTQ <= 0. )
+                                  INCOME_J = 0.
+                              ELSE WHERE
+                                  INCOME_J = 1.
+                              END WHERE
+                              !Calculate the courant number for porous media
+                              !SPRINT_TO_DO Currently if temperature/solutemassfraction multiphase we are doing this more than once...
+                              if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
+                                  !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
+                                  Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
+                                  !and the shock-front Courant number
+                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
+                                      !ndotq = velocity * normal
+                                      Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:n_in_pres)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
+                                  end if
+                              end if
+                              If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
+                                  IF(SELE == 0) THEN
+                                      CAP_DIFF_COEF_DIVDX = 0.
+                                      do iphase =1, nphase
+                                          rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
+                                              CVNORMX_ALL(:, GI) ))
+                                          rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
+                                              CVNORMX_ALL(:, GI) ))
+                                      end do
+                                      CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                          * rsum_nodi*(1.-INCOME(:)) +&
+                                          CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
+                                  ELSE
+                                      CAP_DIFF_COEF_DIVDX( : ) = 0.0
+                                  ENDIF
+                                  !Distribute the capillary coefficient over the phases to ensure mass conservation
+                                  !This is very important as it allows to use the over-relaxation parameter safely
+                                  !and reduce the cost of using capillary pressure in several orders of magnitude
+                                  CAP_DIFF_COEF_DIVDX(1:n_in_pres) =  CAP_DIFF_COEF_DIVDX(phase_with_pc)/n_in_pres
+
+                              ELSE
+                                  CAP_DIFF_COEF_DIVDX( : ) = 0.0
+                              END IF If_GOT_CAPDIFFUS
+                              ! Pack ndotq information:
+                              IPT=1
+                              CALL PACK_LOC( F_INCOME(:), INCOME( : ),    nphase, IPT, IGOT_T_PACK(:,1) ) ! t
+                              CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), nphase, IPT, IGOT_T_PACK(:,2) ) ! TOLD
+                              CALL PACK_LOC( F_INCOME(:), INCOME( : ),    nphase, IPT, IGOT_T_PACK(:,3) )  ! d
+                              CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), nphase, IPT, IGOT_T_PACK(:,4) )  ! DOLD
+                              IF ( use_volume_frac_T2 ) THEN
+                                  CALL PACK_LOC( F_INCOME(:), INCOME( : ),    nphase, IPT, IGOT_T_PACK(:,5) )  ! T2
+                                  CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), nphase, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
+                              ENDIF
+                              IPT=1
+                              CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    nphase, IPT, IGOT_T_PACK(:,1) ) ! t
+                              CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), nphase, IPT, IGOT_T_PACK(:,2) ) ! TOLD
+                              CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    nphase, IPT, IGOT_T_PACK(:,3) )  ! d
+                              CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), nphase, IPT, IGOT_T_PACK(:,4) )  ! DOLD
+                              IF ( use_volume_frac_T2 ) THEN
+                                  CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    nphase, IPT, IGOT_T_PACK(:,5) )  ! T2
+                                  CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), nphase, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
+                              ENDIF
+
+                                    !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
+                                    ! Calculate T and DEN on the CV face at quadrature point GI.
+
+                              ! Only when cvdispot>=8. See/Find [INTRO_NX_ALL] above.
+                              if (NFIELD>0 ) THEN
+                                  IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
+                                      call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, FE_funs%scvfeweigh, FE_funs%scvfen, FE_funs%scvfenlx_all, FSdevFuns)
+                                  END IF
+                              ENDIF
+                              IF(NFIELD.GT.0) THEN
+                                  CALL GET_INT_T_DEN_new( LIMF )
+                              ENDIF
+
+                              IF(APPLY_ENO) THEN
+                                  ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
+                                  call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
+                                  ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
+                                  ! Put the results in LIMF.
+                                  CALL APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
+                                      CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
+                                      ELE, Mdims%cv_nonods, Mdims%ndim, nphase,  &
+                                      Mdims%cv_nloc,Mdims%totele, ndgln%x, ndgln%cv,  &
+                                      X_ALL,FACE_ELE,CV_GIdims%nface,BETWEEN_ELEMENTS, CV_funs%scvfen, SdevFuns%NX_ALL, GI, SdevFuns%INV_JAC, &
+                                      NUGI_ALL, on_domain_boundary )
+                              ENDIF
+
+                              ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
+                              FVT(:)=T_ALL(1:nphase,CV_NODI)*(1.0-INCOME(:)) + T_ALL(1:nphase,CV_NODJ)*INCOME(:)
+                              !FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
+                              ! Generate some local F variables ***************
+                              ! loc_f - Unpack into the limiting variables LIMT and may be store them in the cache.
+                              IPT=1
+                              CALL UNPACK_LOC( LIMF(:), LIMT( : ),    nphase, IPT, IGOT_T_PACK(:,1), IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
+                              CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), nphase, IPT, IGOT_T_PACK(:,2), IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2))
+                              CALL UNPACK_LOC( LIMF(:), LIMD( : ),    nphase, IPT, IGOT_T_PACK(:,3), IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3))
+                              CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), nphase, IPT, IGOT_T_PACK(:,4), IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4))
+                              IF ( use_volume_frac_T2 ) THEN
+                                  CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    nphase, IPT, IGOT_T_PACK(:,5), IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5))
+                                  CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), nphase, IPT, IGOT_T_PACK(:,6), IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6))
+                              else
+                                  LIMT2( : )=1.0; LIMT2OLD( : )=1.0
+                              ENDIF
+                              IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
+                                  NDOTQ_HAT = 0.0
+                                  DO U_KLOC = 1, Mdims%u_nloc
+                                      IF (between_elements) THEN ! Between elements...
+                                          NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * 0.5 * SUM( CVNORMX_ALL(:, GI) * (LOC_U_HAT( :, U_KLOC ) + LOC2_U_HAT( :, U_KLOC )) )
+                                      ELSE
+                                          NDOTQ_HAT =  NDOTQ_HAT + CV_funs%sufen( U_KLOC, GI ) * SUM( CVNORMX_ALL(:, GI) * LOC_U_HAT( :, U_KLOC ) )
+                                      ENDIF
+                                  END DO
+                                  DO IPHASE=1,nphase
+                                      LIMT_HAT(IPHASE) = MAX(1.E-7,LIMT(IPHASE))
+                                  END DO
+                                  R=SUM(LIMT_HAT(:))
+                                  LIMT_HAT(:)=LIMT_HAT(:)/R
+                                  !                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
+                                  if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
+                                      NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
+                                  endif
+                              ENDIF
+                              LIMDT=LIMD*LIMT
+                              LIMDTOLD=LIMDOLD*LIMTOLD
+                              LIMDTT2=LIMD*LIMT*LIMT2
+                              LIMDTT2OLD=LIMDOLD*LIMTOLD*LIMT2OLD
+                              ! Generate some local F variables ***************...
+                              ! Make allowances for no matrix stencil operating from outside the boundary.
+                              BCZERO=1.0
+                              IF( on_domain_boundary ) BCZERO=1.0-INCOME
+                              ! Define face value of theta
+                              IF ( GOT_T2 ) THEN
+                                  FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, nphase, &
+                                      n_in_pres, NDOTQ, LIMDTT2, DIFF_COEF_DIVDX, &
+                                      T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ) * T2_ALL(:, CV_NODJ), &
+                                      T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI) * T2_ALL(:, CV_NODI), &
+                                      NDOTQOLD, LIMDTT2OLD, DIFF_COEFOLD_DIVDX, &
+                                      TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ) * T2OLD_ALL(:, CV_NODJ), &
+                                      TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI) * T2OLD_ALL(:, CV_NODI) )
+                              ELSE
+                                  FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, nphase, &
+                                      n_in_pres,NDOTQ, LIMDTT2, DIFF_COEF_DIVDX, &
+                                      T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ), &
+                                      T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI), &
+                                      NDOTQOLD, LIMDTT2OLD, DIFF_COEFOLD_DIVDX, &
+                                      TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ), &
+                                      TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI)  )
+                              END IF
+                              ! adjust the value of FTHETA for use with velocity only so we can use FTHETA=0.0 for voln frac.
+                              ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
+                              ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
+                              ! This determins how implicit velocity is in the cty eqn.
+                              THETA_VEL(:)=THETA_VEL_HAT
+                              IF(THETA_VEL_HAT<0.0) THEN
+                                  DO IPHASE=1,nphase
+                                      IF(FTHETA(IPHASE)>=0.5) THEN
+                                          THETA_VEL(IPHASE) = ABS(THETA_VEL_HAT)
+                                      ELSE
+                                          THETA_VEL(IPHASE) = MAX( (0.5-FTHETA(IPHASE))/(1.0-FTHETA(IPHASE)),  ABS(THETA_VEL_HAT))
+                                      ENDIF
+                                  END DO
+                              ENDIF
+                              NDOTQOLD = THETA_VEL*NDOTQ + (1.0-THETA_VEL)*NDOTQOLD
+                              FTHETA_T2(:) = FTHETA(:) * LIMT2(:)
+                              ONE_M_FTHETA_T2OLD(:) = (1.0-FTHETA(:)) * LIMT2OLD(:)
+                              FTHETA_T2_J(:) = FTHETA_T2(:)!FTHETA(:) * LIMT2(:)
+                              ONE_M_FTHETA_T2OLD_J(:) = ONE_M_FTHETA_T2OLD(:)!(1.0-FTHETA(:)) * LIMT2OLD(:)
+                              IF(logical_igot_theta_flux) THEN
+                                  IF ( GET_THETA_FLUX ) THEN
+                                      THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(:, CV_NODI)
+                                      ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(:, CV_NODI)
+                                      if(integrate_other_side) then ! for the flux on the other side of the CV face...
+                                          THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(:, CV_NODJ)
+                                          ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(:, CV_NODJ)
+                                      endif
+                                  END IF
+                                  IF ( USE_THETA_FLUX ) THEN
+                                      FTHETA_T2(:) = THETA_FLUX( :, GLOBAL_FACE )
+                                      ONE_M_FTHETA_T2OLD(:) = ONE_M_THETA_FLUX( :, GLOBAL_FACE )
+                                      if(integrate_other_side) then ! for the flux on the other side of the CV face...
+                                          FTHETA_T2_J(:) = THETA_FLUX_J( :, GLOBAL_FACE )
+                                          ONE_M_FTHETA_T2OLD_J(:) = ONE_M_THETA_FLUX_J( :, GLOBAL_FACE )
+                                      endif
+                                  END IF
+                              END IF
+                              !====================== ACV AND RHS ASSEMBLY ===================
+                              Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
+                                  IF ( got_free_surf ) THEN
+                                      IF ( on_domain_boundary ) THEN
+                                          IF ( .not.symmetric_P ) THEN
+                                              IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
+                                                  DO P_JLOC = 1, Mdims%cv_nloc
+                                                      P_JNOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + P_JLOC )
+                                                      ! Use the same sparcity as the MN matrix...
+                                                      COUNT_SUF = 0
+                                                      DO COUNT = Mspars%CMC%fin( CV_NODI ), Mspars%CMC%fin( CV_NODI + 1 ) - 1
+                                                          IF ( Mspars%CMC%col( COUNT ) == P_JNOD ) THEN
+                                                              COUNT_SUF = COUNT
+                                                              EXIT
+                                                          END IF
+                                                      END DO
+                                                      MM_GRAVTY = CVNORMX_ALL( 3, GI ) * CV_funs%scvfen( P_JLOC, GI ) * SdevFuns%DETWEI(GI) / ( DT**2 * GRAVTY )
+                                                      MASS_SUF( COUNT_SUF ) = MASS_SUF( COUNT_SUF ) + MM_GRAVTY
+                                                  END DO
+                                              END IF
+                                          END IF
+                                      END IF
+                                  END IF
+                                  ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
+
+                                  CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
+                                      Mdims, CV_funs, ndgln, Mmat, GI,  &
+                                      between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
+                                      JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
+                                      SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL_DIVID, CV_NODI, CV_NODJ, &
+                                      WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
+                                      UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
+                                      NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
+                                      FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
+                                      RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, THETA_VEL, &
+                                      rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, X_ALL, SUF_D_BC_ALL, gravty)
+                                  do ipres=1,Mdims%npres
+                                      call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*n_in_pres:ipres*n_in_pres) ))
+                                      if ( integrate_other_side_and_not_boundary ) then
+                                          call addto(Mmat%CT_RHS,ipres,cv_nodj,sum(ct_rhs_phase_cv_nodj(1+(ipres-1)*n_in_pres:ipres*n_in_pres) ))
+                                      end if
+                                  end do
+
+
+
+                              ENDIF Conditional_GETCT2
+
+                              if (present(outfluxes) .and. GETCT) then!Better to do it GETCV_DISC of each corresponding field...
+                                  !Store fluxes across all the boundaries either for mass conservation check or mass outflux
+                                  !velocity * area * density * saturation
+                                  if (on_domain_boundary ) then
+                                      if (surface_element_owned(old_tracer, sele)) then
+                                          !Store total outflux
+                                          bcs_outfluxes(1:n_in_pres, CV_NODI, 0) =  bcs_outfluxes(1:n_in_pres, CV_NODI,0) + &
+                                          ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres)!For the mass conservation check we need to consider mass!
+                                          if (outfluxes%calculate_flux)  then
+                                              do k = 1, size(outfluxes%outlet_id)!here below we just need a saturation
+                                                  if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
+                                                      bcs_outfluxes(1:n_in_pres, CV_NODI, k) =  bcs_outfluxes(1:n_in_pres, CV_NODI, k) + &
+                                                      ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMT(1:n_in_pres)
+                                                      if (has_temperature) then!Instead of max tem, maybe energy produced...
+                                                        ! do iphase = 1, nphase
+                                                        !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
+                                                        !     (ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres) &
+                                                        !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
+                                                        ! end do
+                                                          do iphase = 1, nphase
+                                                              outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                                                              outfluxes%totout(2, iphase, k)   )
+                                                          end do
+                                                      end if
+                                                      !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                                                      if (has_salt) then
+                                                          do iphase = 1, nphase
+                                                              outfluxes%totout(3, iphase, k) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                                                              outfluxes%totout(3, iphase, k)   )
+                                                          end do
+                                                      end if
+                                                  end if
+                                              end do
+                                          end if
+                                      end if
+                                  end if
+                              end if
+
+                              Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
+                                  ! Obtain the CV discretised advection/diffusion equations
+                                  ROBIN1=0.0; ROBIN2=0.0
+                                  IF( on_domain_boundary ) then
+                                      where ( WIC_T_BC_ALL(1,:,SELE) == WIC_T_BC_ROBIN )
+                                          ! this needs to be corrected (its correct but misleading)...
+                                          ROBIN1(:) = SUF_T_BC_ROB1_ALL(1,1:nphase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                          ROBIN2(:) = SUF_T_BC_ROB2_ALL(1,1:nphase, CV_SILOC+Mdims%cv_snloc*(sele-1))
+                                      end where
+                                  END IF
+                                  LOC_CV_RHS_I(:)=0.0
+                                  LOC_CV_RHS_J(:)=0.0
+                                  IF ( GETMAT ) THEN
+                                      ! - Calculate the integration of the limited, high-order flux over a face
+                                      ! Conservative discretisation. The matrix (PIVOT ON LOW ORDER SOLN)
+                                      IF ( on_domain_boundary ) THEN
+                                          DO IPHASE=1,nphase
+                                              IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
+                                                  LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
+                                                      + FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
+                                                      * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
+                                                  IF(GET_GTHETA) THEN
+                                                      THETA_GDIFF( IPHASE, CV_NODI ) =  THETA_GDIFF( IPHASE, CV_NODI ) &
+                                                          + FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
+                                                          * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
+                                                  END IF
+                                              END IF
+                                          END DO
+                                      ELSE
+                                          do iphase=1,nphase
+                                              !temporary to check a possible memory problem with Valgrind!!!
+                                              auxR = FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase)
+                                              call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,auxR) ! Advection
+                                              if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
+                                                              - FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
+                                              if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
+                                                              - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
+                                          end do
+                                           ! integrate the other CV side contribution (the sign is changed)...
+                                          if(integrate_other_side_and_not_boundary) then
+                                              do iphase=1,nphase
+                                                  call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
+                                                      - FTHETA_T2_J(IPHASE) * SdevFuns%DETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) ) ! Advection
+                                              if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
+                                                      - FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE))
+                                              if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi,&
+                                                             - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE))
+                                              end do
+                                          endif
+                                          IF ( GET_GTHETA ) THEN
+                                              THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
+                                                  + FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
+                                              ! integrate the other CV side contribution (the sign is changed)...
+                                              if(integrate_other_side_and_not_boundary) then
+                                                  THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                                      + FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) ! Diffusion contribution
+                                              endif
+                                          END IF
+                                      END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
+                                      do iphase=1,nphase
+                                          call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
+                                              +  FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) ) ! Advection
+
+                                          if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
+                                             +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
+                                          if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
+                                             +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
+                                          if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
+                                             - FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                          if (on_domain_boundary) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi,&
+                                                                  SdevFuns%DETWEI( GI ) * ROBIN1(iphase))
+                                      end do
+                                      if(integrate_other_side_and_not_boundary) then
+                                          do iphase=1,nphase
+                                              call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
+                                                  -  FTHETA_T2_J(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) ) ! Advection
+
+                                              if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
+                                                  +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
+                                              if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
+                                                  +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase))
+                                              if (.not.conservative_advection) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj,&
+                                                  + FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+
+                                          end do
+                                      endif
+                                      IF ( GET_GTHETA ) THEN
+                                          THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
+                                              -  FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) & ! Diffusion contribution
+                                              -  SdevFuns%DETWEI( GI ) * ROBIN1(:) * T_ALL(:, CV_NODI)  ! Robin bc
+                                          if(integrate_other_side_and_not_boundary) then
+                                              THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                                  -  FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
+                                          endif
+                                      END IF
+                                  END IF  ! ENDOF IF ( GETMAT ) THEN
+
+                                  ! Put results into the RHS vector
+                                  LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : )  &
+                                         ! subtract 1st order adv. soln.
+                                      + FTHETA_T2(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                                      -  SdevFuns%DETWEI( GI ) * ( FTHETA_T2(:) * NDOTQNEW(:) * LIMDT(:) &
+                                      + ONE_M_FTHETA_T2OLD(:)* NDOTQOLD(:) * LIMDTOLD(:) ) ! hi order adv
+                                  ! Subtract out 1st order term non-conservative adv.
+                                      if (GOT_DIFFUS) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
+                                          + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                          * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) )
+                                      if (VAD_activated) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
+                                          - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
+                                          * ( T_ALL(1:nphase, CV_NODJ) - T_ALL(1:nphase, CV_NODI) )
+                                      if (.not.conservative_advection) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
+                                          - FTHETA_T2(:) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(1:nphase, CV_NODI) &
+                                          + ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
+                                          * ( FTHETA_T2(:) * NDOTQNEW(:) * T_ALL(1:nphase, CV_NODI) * LIMD(:)  &
+                                          + ONE_M_FTHETA_T2OLD(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(1:nphase, CV_NODI) )
+                                      if (on_domain_boundary) LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
+                                          + SdevFuns%DETWEI( GI ) * ROBIN2(:)
+
+                                  if(integrate_other_side_and_not_boundary) then
+                                      LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
+                                             ! subtract 1st order adv. soln.
+                                          - FTHETA_T2_J(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                                          +  SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J(:) * NDOTQNEW(:) * LIMDT(:) &
+                                          + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDTOLD(:) )
+                                      if (GOT_DIFFUS) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
+                                          + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                          * ( TOLD_ALL(1:nphase, CV_NODI) - TOLD_ALL(1:nphase, CV_NODJ) )
+                                      if (VAD_activated) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
+                                          - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capillary pressure stabilization term..
+                                          * ( T_ALL(1:nphase, CV_NODI) - T_ALL(1:nphase, CV_NODJ) )
+                                      if (.not.conservative_advection) LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
+                                          + FTHETA_T2_J(:) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(1:nphase, CV_NODJ) &
+                                          - ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
+                                          * ( FTHETA_T2_J(:) * NDOTQNEW(:) * T_ALL(1:nphase, CV_NODJ) * LIMD(:)  &
+                                          + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(1:nphase, CV_NODJ) )
+                                  endif
+                                  IF ( GET_GTHETA ) THEN
+                                      THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
+                                          + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                          * ( TOLD_ALL(1:nphase, CV_NODJ) - TOLD_ALL(1:nphase, CV_NODI) ) &
+                                          ! Robin bc
+                                          + SdevFuns%DETWEI( GI ) * ROBIN2(:)
+                                      if(integrate_other_side_and_not_boundary) then
+                                          THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                                              + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                              * ( TOLD_ALL(1:nphase, CV_NODI) - TOLD_ALL(1:nphase, CV_NODJ) )
+                                      endif
+                                  END IF
+                                  ! this is for the internal energy equation source term..
+                                  ! This is to introduce the compressibility term due to expansion and therefore the divergence of the velocity is non-zero
+                                  !for wells this is not straightforward <= need to CHANGE THIS FOR COMPRESSIBILITY
+                                  IF ( THERMAL .and. Mdims%npres == 1) THEN
+                                      THERM_FTHETA = 1.0
+                                      !IF( RETRIEVE_SOLID_CTY ) THEN
+                                          !VOL_FRA_FLUID_I = VOL_FRA_FLUID(CV_NODI)!CJ215 Deactivate
+                                          !VOL_FRA_FLUID_J = VOL_FRA_FLUID(CV_NODJ)
+                                      !ELSE
+                                          VOL_FRA_FLUID_I = 1.0
+                                          VOL_FRA_FLUID_J = 1.0
+                                      !ENDIF
+                                      DO IPRES=1,Mdims%npres
+                                          CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
+                                          CV_P_PHASE_NODJ(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODJ )
+                                      END DO
+                                      LOC_CV_RHS_I = LOC_CV_RHS_I&
+                                          - CV_P_PHASE_NODI * SdevFuns%DETWEI( GI ) * ( &
+                                          THERM_FTHETA * NDOTQNEW * LIMT2 &
+                                          + ( 1. - THERM_FTHETA ) * NDOTQOLD * LIMT2OLD )*VOL_FRA_FLUID_I
+                                      if ( integrate_other_side_and_not_boundary ) then
+                                          LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
+                                              + CV_P_PHASE_NODJ( : ) * SdevFuns%DETWEI( GI ) * ( &
+                                              THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
+                                              + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
+                                      end if
+                                  END IF ! THERMAL
+                                  call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
+                                  call addto(Mmat%CV_RHS,CV_NODJ,LOC_CV_RHS_J)
+                              ENDIF Conditional_GETCV_DISC
+                          endif ! if(CV_NODJ.ge.CV_NODI) then
+                      END IF Conditional_integration
+                  END DO Loop_GCOUNT
+              END DO Loop_CV_ILOC
+          END DO Loop_Elements
+          IF(GET_GTHETA) THEN
+              DO CV_NODI = 1, Mdims%cv_nonods
+                  THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV_PLUS(1,CV_NODI)
+              END DO
+          ENDIF
+
+          !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
+          if (Mdims%npres >1) then
+            allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods)); MASS_PIPE_FOR_COUP = 0.
+            ALLOCATE( A_GAMMA_PRES_ABS( nphase, nphase, Mdims%cv_nonods ) ); A_GAMMA_PRES_ABS = 0.
+            ALLOCATE( PIPE_ABS( nphase, nphase, Mdims%cv_nonods ) ); PIPE_ABS = 0.
+
+            call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, nphase, Mdims, ndgln,   &
+                            WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,A_GAMMA_PRES_ABS,PIPE_ABS,&
+                            getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, MASS_PIPE_FOR_COUP, &
+                            eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, reservoir_P, INV_B, MASS_ELE, bcs_outfluxes, outfluxes )
+          end if
+
+          Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
+              Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
+                  LOC_CV_RHS_I=0.0
+                  DO IPRES = 1, Mdims%npres
+                      R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV_PLUS( IPRES, CV_NODI ) / DT
+                      CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                  END DO
+  !CJ215
+                  IF ( THERMAL .and. Mdims%npres == 1) THEN
+                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
+                          - CV_P_PHASE_NODI(:) * ( MASS_CV_PLUS(1, CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
+                  END IF
+
+                  IF ( GOT_T2 ) THEN
+                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
+                          + MASS_CV_PLUS(1,CV_NODI) * SOURCT_ALL( :, CV_NODI )
+                      if (thermal .and. is_porous_media) then
+                          !In this case for the time-integration term the effective rho Cp is a combination of the porous media
+                          ! and the fluids. Here we add the porous media contribution
+                          DO IPHASE = 1,n_in_pres
+                              call addto(Mmat%petsc_ACV,iphase,iphase,&
+                                  cv_nodi, cv_nodi,&
+                                  + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
+                                  * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI ))
+                                  !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
+                                      !we divide to remove that term and multiply by the correct term (1-porosity)
+                              LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
+                                  + (CV_BETA * porous_heat_coef( iphase, CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
+                                  + (ONE_M_CV_BETA) * porous_heat_coef( iphase, CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
+                                  * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                          END DO
+                      end if
+                      DO IPHASE = 1,nphase
+                          call addto(Mmat%petsc_ACV,iphase,iphase,&
+                              cv_nodi, cv_nodi,&
+                              + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
+                              * R_PHASE(IPHASE)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
+                      END DO
+
+
+                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
+                          + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
+                          + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
+                          * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
+                  ELSE
+                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
+                          + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( 1:nphase, CV_NODI )
+                      DO IPHASE = 1,nphase
+                          call addto(Mmat%petsc_ACV,iphase,iphase,&
+                              cv_nodi, cv_nodi,&
+                              + DEN_ALL( IPHASE, CV_NODI )  &
+                              * R_PHASE(IPHASE) )
+                      END DO
+                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
+                          + ( CV_BETA * DENOLD_ALL( 1:nphase, CV_NODI ) &
+                          + (ONE_M_CV_BETA) * DEN_ALL( 1:nphase, CV_NODI ) ) &
+                          * R_PHASE(:) * TOLD_ALL( 1:nphase, CV_NODI )
+                  END IF
+
+                  Conditional_GETMAT2: IF ( GETMAT ) THEN
+                      do jphase = 1, nphase
+                          do iphase=1,nphase
+                              IF ( Mdims%npres > 1 ) THEN
+                                  if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
+                                      call addto(Mmat%petsc_ACV,iphase,jphase, &
+                                          cv_nodi, cv_nodi, &
+                                          MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
+                                  else
+                                    !Some sort of predictor corrector. Implicit may be unstable, therefore the explicit acts as a Dumping term
                                     call addto(Mmat%petsc_ACV,iphase,jphase, &
                                         cv_nodi, cv_nodi, &
-                                        MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
-                                else
-                                  !Some sort of predictor correctoy. Implicit may be unstable, therefore the explicit acts as a Dumping term
-                                  call addto(Mmat%petsc_ACV,iphase,jphase, &
-                                      cv_nodi, cv_nodi, &
-                                        (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
+                                          (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
 
-                                      ! ! well mass exchange is introduced in the RHS so it is treated explictly
-                                      LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                                      + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
+                                        ! ! well mass exchange is introduced in the RHS so it is treated explictly
+                                        LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
+                                        + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
 
-                                    ! ! ! well mass exchange is introduced in the RHS so it is treated explictly <+ all explicit is too slow
-                                    ! LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                                    ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
-                                endif
-                            END IF
-                            if ( have_absorption ) then
-                               call addto(Mmat%petsc_ACV,iphase,jphase, &
-                                   cv_nodi, cv_nodi, &
-                                   MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
-                            end if
-                        end do
-                    end do
-                END IF Conditional_GETMAT2
-                call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
-            END DO Loop_CVNODI2
-        END IF Conditional_GETCV_DISC2
+                                      ! ! ! well mass exchange is introduced in the RHS so it is treated explictly <+ all explicit is too slow
+                                      ! LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
+                                      ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
+                                  endif
+                              END IF
+                              if ( have_absorption ) then
+                                 call addto(Mmat%petsc_ACV,iphase,jphase, &
+                                     cv_nodi, cv_nodi, &
+                                     MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                              end if
+                          end do
+                      end do
+                  END IF Conditional_GETMAT2
+                  call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
+              END DO Loop_CVNODI2
+          END IF Conditional_GETCV_DISC2
 
-        IF ( GETCT ) THEN
-            W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
-            W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
-            DIAG_SCALE_PRES = 0.0
-            allocate(DIAG_SCALE_PRES_phase(Mdims%nphase))
-            DIAG_SCALE_PRES_COUP=0.0
-            DO CV_NODI = 1, Mdims%cv_nonods
-                ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
-                DO IPRES=1,Mdims%npres
-                    R_PRES(IPRES) = MASS_CV_PLUS( IPRES, CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
-                    ! Add constraint to force sum of volume fracts to be unity...
-                       ! W_SUM_ONE==1 applies the constraint
-                       ! W_SUM_ONE==0 does NOT apply the constraint
-                    call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
-                        - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
-                    IF(RETRIEVE_SOLID_CTY) THEN
-                        ! VOL_FRA_FLUID is the old voln fraction of total fluid...
-                        ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
-                        call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
-                            + (1.-VOL_FRA_FLUID( CV_NODI )) * R_PRES(IPRES))
-                    ENDIF
-                    R_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=R_PRES(IPRES)
-                    MEAN_PORE_CV_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI )
-                    CV_P_PHASE_NODI(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=CV_P( 1, IPRES, CV_NODI )
-                END DO
-                ct_rhs_phase(:)=ct_rhs_phase(:) &
-                    - R_PHASE(:) * ( &
-                    + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
-                    + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
-                    - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL_DIVID(:, CV_NODI ) )
-                DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &
-                    +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
-                    / ( DT * DEN_ALL_DIVID(:, CV_NODI) )
-                ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                    + MASS_CV_PLUS(1,CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
-                IF ( HAVE_ABSORPTION ) THEN
-                   DO JPHASE = 1, Mdims%nphase
-                      ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                         - MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
-                   END DO
-                END IF
-                ! scaling coefficient...
-                IF ( Mdims%npres > 1 ) THEN
-                    DO IPRES=1,Mdims%npres
-                        DO JPRES=1,Mdims%npres
-                            DO jphase=1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
-                                ! dont divid the pipe to reservoir mass exchange term by density...
-                                DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi)  &
-                                    !+ sum( A_GAMMA_PRES_ABS( 1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres    , 1+(jpres-1)*Mdims%n_in_pres:jpres*Mdims%n_in_pres, CV_NODI ) )
-                                    + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres,JPHASE, CV_NODI )  )
-                            !   + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres,JPHASE, CV_NODI )  &
-                            !   / DEN_ALL( 1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres, CV_NODI ) )
-                            end do
-                        END DO
-                    END DO
-                END IF
-                DO IPRES = 1, Mdims%npres
-                    if ( Mdims%npres > 1 ) then
-                        call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) &
-                            - MASS_CV_PLUS(IPRES,CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : )) )
-                    else
-                        call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
-                    end if
-                    DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
-                        + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres))
-                END DO
-            END DO  ! endof DO CV_NODI = 1, Mdims%cv_nonods
-            deallocate(DIAG_SCALE_PRES_phase)
-           !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
-        END IF
+          IF ( GETCT ) THEN
+              W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
+              W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
+              DIAG_SCALE_PRES = 0.0
+              allocate(DIAG_SCALE_PRES_phase(nphase))
+              DIAG_SCALE_PRES_COUP=0.0
+              DO CV_NODI = 1, Mdims%cv_nonods
+                  ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
+                  DO IPRES=1,Mdims%npres
+                      R_PRES(IPRES) = MASS_CV_PLUS( IPRES, CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
+                      ! Add constraint to force sum of volume fracts to be unity...
+                         ! W_SUM_ONE==1 applies the constraint
+                         ! W_SUM_ONE==0 does NOT apply the constraint
+                      call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
+                          - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
+                      IF(RETRIEVE_SOLID_CTY) THEN
+                          ! VOL_FRA_FLUID is the old voln fraction of total fluid...
+                          ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
+                          call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
+                              + (1.-VOL_FRA_FLUID( CV_NODI )) * R_PRES(IPRES))
+                      ENDIF
+                      R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=R_PRES(IPRES)
+                      MEAN_PORE_CV_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI )
+                      CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
+                  END DO
+                  ct_rhs_phase(:)=ct_rhs_phase(:) &
+                      - R_PHASE(:) * ( &
+                      + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
+                      + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
+                      - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL_DIVID(:, CV_NODI ) )
+                  DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &
+                      +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
+                      / ( DT * DEN_ALL_DIVID(:, CV_NODI) )
+                  ct_rhs_phase(:)=ct_rhs_phase(:)  &
+                      + MASS_CV_PLUS(1,CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
+                  IF ( HAVE_ABSORPTION ) THEN
+                     DO JPHASE = 1, nphase
+                        ct_rhs_phase(:)=ct_rhs_phase(:)  &
+                           - MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
+                     END DO
+                  END IF
+                  ! scaling coefficient...
+                  IF ( Mdims%npres > 1 ) THEN
+                      DO IPRES=1,Mdims%npres
+                          DO JPRES=1,Mdims%npres
+                              DO jphase=1+(jpres-1)*n_in_pres, jpres*n_in_pres
+                                  ! dont divid the pipe to reservoir mass exchange term by density...
+                                  DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi)  &
+                                      + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI )  )
+                              end do
+                          END DO
+                      END DO
+                  END IF
+                  DO IPRES = 1, Mdims%npres
+                      if ( Mdims%npres > 1 ) then
+                          call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) &
+                              - MASS_CV_PLUS(IPRES,CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : )) )
+                      else
+                          call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) )
+                      end if
+                      DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
+                          + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
+                  END DO
+              END DO  ! endof DO CV_NODI = 1, Mdims%cv_nonods
+              deallocate(DIAG_SCALE_PRES_phase)
+             !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
+          END IF
 
-        if(is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT) then
-            !Calculate final outfluxes and mass balance in the domain
-            call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
-        end if
+          if(is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT) then
+              !Calculate final outfluxes and mass balance in the domain
+              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
+          end if
 
-        ! Deallocating temporary working arrays
-        IF(GETCT) THEN
-            DEALLOCATE( JCOUNT_KLOC )
-        ENDIF
-        DEALLOCATE(T2UPWIND_MAT_ALL)
-        DEALLOCATE(T2OLDUPWIND_MAT_ALL)
-        call deallocate_multi_dev_shape_funs(SdevFuns)
-        call deallocate(tracer_BCs)
-        call deallocate(tracer_BCs_robin2)
-        call deallocate(density_BCs)
-        call deallocate(velocity_BCs)
-        if(got_free_surf .or. is_porous_media .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
-        if (present(saturation)) then
-            call deallocate(saturation_BCs)
-            call deallocate(saturation_BCs_robin2)
-        end if
+          ! Deallocating temporary working arrays
+          IF(GETCT) THEN
+              DEALLOCATE( JCOUNT_KLOC )
+          ENDIF
+          DEALLOCATE(T2UPWIND_MAT_ALL)
+          DEALLOCATE(T2OLDUPWIND_MAT_ALL)
+          call deallocate_multi_dev_shape_funs(SdevFuns)
+          call deallocate(tracer_BCs)
+          call deallocate(tracer_BCs_robin2)
+          call deallocate(density_BCs)
+          call deallocate(velocity_BCs)
+          if(got_free_surf .or. is_porous_media .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
+          if (present(saturation)) then
+              call deallocate(saturation_BCs)
+              call deallocate(saturation_BCs_robin2)
+          end if
 
-         if (tracer%name == "PackedTemperature" )  then
-            deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
-        end if
-        ! Arash
-        if (tracer%name == "PackedSoluteMassFraction" )  then
-           deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
-       end if
-        if (VAD_activated) deallocate(CAP_DIFFUSION)
-        ewrite(3,*) 'Leaving CV_ASSEMB'
-        if (is_flooding) deallocate(DEN_ALL_DIVID)
-        if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
-        !Deallocate memory associated to well modelling
-        if (Mdims%npres >1) deallocate(MASS_PIPE_FOR_COUP, A_GAMMA_PRES_ABS, SIGMA_INV_APPROX, PIPE_ABS)
+           if (tracer%name == "PackedTemperature" )  then
+              deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
+          end if
+          ! Arash
+          if (tracer%name == "PackedSoluteMassFraction" )  then
+             deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
+         end if
+          if (VAD_activated) deallocate(CAP_DIFFUSION)
+          ewrite(3,*) 'Leaving CV_ASSEMB'
+          if (is_flooding) deallocate(DEN_ALL_DIVID)
+          if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
+          !Deallocate memory associated to well modelling
+          if (Mdims%npres >1) deallocate(MASS_PIPE_FOR_COUP, A_GAMMA_PRES_ABS, PIPE_ABS)
 
-        RETURN
-    contains
+          RETURN
+      contains
 
     SUBROUTINE APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
         CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
@@ -2957,18 +2964,18 @@ end if
             REAL, DIMENSION( :, :, : ), intent( in ) :: I_inv_adv_coef, J_inv_adv_coef
             REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
-            REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(Mdims%nphase)
+            REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(nphase)
             logical, intent(in) :: not_OLD_VEL, anisotropic_and_frontier
 
             UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
                 !Initialize variables
                 if (not_OLD_VEL) then
-                    forall (iv_iphase = 1:Mdims%nphase, iv_idim = 1:Mdims%ndim)
+                    forall (iv_iphase = 1:nphase, iv_idim = 1:Mdims%ndim)
                         ROW_SUM_INV_VI(iv_idim,iv_iphase)=SUM(I_inv_adv_coef(iv_idim,:,iv_iphase))
                     end forall
                 end if
-                DO iv_iphase = 1, Mdims%nphase
+                DO iv_iphase = 1, nphase
                     IPRES = 1 + (iv_iphase-1)/mdims%N_IN_PRES
                     IF( WIC_P_BC_ALL( 1, IPRES, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
                         !(vel * shape_functions)/sigma
@@ -3026,7 +3033,7 @@ end if
                 END DO ! PHASE LOOP
             ELSE IF( .not. between_elements) THEN!same element
                 !vel(GI) = (vel * shape_functions)/sigma
-                do iv_iphase = 1, Mdims%nphase
+                do iv_iphase = 1, nphase
                     UDGI_ALL(:, iv_iphase) = matmul(I_inv_adv_coef(:,:,iv_iphase),&
                         matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
                     UDGI2_ALL(:, iv_iphase) = matmul(J_inv_adv_coef(:,:,iv_iphase),&
@@ -3048,10 +3055,10 @@ end if
                     ! ************NEW LIMITER**************************
                     XI_LIMIT = 2.0
                      !Call the limiter to obtain the limited saturation value at the interface
-                    CALL ONVDLIM_ANO_MANY( Mdims%nphase, LIMT3, FEMTGI_IPHA, INCOME, &
+                    CALL ONVDLIM_ANO_MANY( nphase, LIMT3, FEMTGI_IPHA, INCOME, &
                         LOC_T_I, LOC_T_J,XI_LIMIT, TUPWIND_IN, TUPWIND_OUT )
                     !We perform: n' * sigma * n
-                    DO iv_iphase = 1, Mdims%nphase
+                    DO iv_iphase = 1, nphase
                         ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
                         GRAD_ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef_grad(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
                         ABS_CV_NODJ_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
@@ -3070,24 +3077,24 @@ end if
                     INCOME = MIN(1.0, MAX(0.0, (NDOTQ_TILDE - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
                 end if
                 !Finally we calculate the velocity at the interface
-                DO iv_iphase = 1, Mdims%nphase
+                DO iv_iphase = 1, nphase
                     !Calculate contributions from each side
                     UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase) * (1.0-INCOME(iv_iphase)) +&
                         UDGI2_ALL(:, iv_iphase) * INCOME(iv_iphase)
                 END DO ! PHASE LOOP
                 if (not_OLD_VEL) then
-                    forall (iv_iphase = 1:Mdims%nphase, iv_idim = 1:Mdims%ndim)
+                    forall (iv_iphase = 1:nphase, iv_idim = 1:Mdims%ndim)
                         ROW_SUM_INV_VI(iv_idim,iv_iphase)=SUM(I_inv_adv_coef(iv_idim,:,iv_iphase))
                         ROW_SUM_INV_VJ(iv_idim,iv_iphase)=SUM(J_inv_adv_coef(iv_idim,:,iv_iphase))
                     end forall
-                    DO iv_iphase = 1, Mdims%nphase
+                    DO iv_iphase = 1, nphase
                         UGI_COEF_ELE_ALL(:, iv_iphase, :)=SPREAD(ROW_SUM_INV_VI(:,iv_iphase)* (1.0-INCOME(iv_iphase)) &
                             +ROW_SUM_INV_VJ(:,iv_iphase)* INCOME(iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
                     END DO
                 end if
             ELSE !Method initially coded for between elements. Does not use a TVD limiter but a weighting method
                 !vel(GI) = (vel * shape_functions)/sigma
-                do iv_iphase = 1, Mdims%nphase
+                do iv_iphase = 1, nphase
                     !Velocity including sigma
                     UDGI_ALL(:, iv_iphase) = matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
                     !Normal flow including sigma, to know direction of flow
@@ -3096,7 +3103,7 @@ end if
                     UDGI_ALL(:, iv_iphase) = matmul(I_inv_adv_coef(:,:,iv_iphase),UDGI_ALL(:, iv_iphase))
                 end do
                 IF( between_elements ) THEN
-                    do iv_iphase = 1, Mdims%nphase
+                    do iv_iphase = 1, nphase
                         !Velocity including sigma
                         UDGI2_ALL(:, iv_iphase) = matmul(LOC2_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI ))
                         !Normal flow including sigma, to know direction of flow
@@ -3105,7 +3112,7 @@ end if
                         UDGI2_ALL(:, iv_iphase) = matmul(J_inv_adv_coef(:,:,iv_iphase),UDGI2_ALL(:, iv_iphase))
                     end do
                 else !same element
-                    do iv_iphase = 1, Mdims%nphase
+                    do iv_iphase = 1, nphase
                         UDGI2_ALL(:, iv_iphase) = matmul(J_inv_adv_coef(:,:,iv_iphase),&
                             matmul(LOC_NU( :, iv_iphase, : ), CV_funs%sufen( :, GI )))
                     end do
@@ -3120,7 +3127,7 @@ end if
                     end do
                     !Sigma averaged with the mass to be used as divisor
                     iv_sigma_aver = I_adv_coef*MASS_CV_I+J_adv_coef*MASS_CV_J
-                    do iv_iphase = 1, Mdims%nphase
+                    do iv_iphase = 1, nphase
                         call invert(iv_sigma_aver(:,:, iv_iphase))
                         !Calculate the contribution of each side, considering sigma and the volume of the CVs
                         if ( ( NDOTQ(iv_iphase) + NDOTQ2(iv_iphase) ) > 0.0 ) then
@@ -3153,17 +3160,17 @@ end if
                     end do
                     !Calculation of the coefficients at the GI point
                     if (not_OLD_VEL) then
-                        forall (iv_iphase = 1:Mdims%nphase, iv_idim = 1:Mdims%ndim)
+                        forall (iv_iphase = 1:nphase, iv_idim = 1:Mdims%ndim)
                             ROW_SUM_INV_VI(iv_idim,iv_iphase)=SUM(I_inv_adv_coef(iv_idim,:,iv_iphase))
                             ROW_SUM_INV_VJ(iv_idim,iv_iphase)=SUM(J_inv_adv_coef(iv_idim,:,iv_iphase))
                         end forall
                         IF( between_elements ) then
-                            DO iv_iphase = 1, Mdims%nphase
+                            DO iv_iphase = 1, nphase
                                 UGI_COEF_ELE_ALL(:, iv_iphase, :) = matmul(iv_aux_tensor(:,:,iv_iphase), SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc))
                                 UGI_COEF_ELE2_ALL(:, iv_iphase, :) = matmul(iv_aux_tensor2(:,:,iv_iphase),SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc))
                             END DO
                         else !same element
-                            DO iv_iphase = 1, Mdims%nphase
+                            DO iv_iphase = 1, nphase
                                 UGI_COEF_ELE_ALL(:, iv_iphase, :) = matmul(iv_aux_tensor(:,:,iv_iphase), SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)) +&
                                     matmul(iv_aux_tensor2(:,:,iv_iphase),SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc))
                             END DO
@@ -3172,7 +3179,7 @@ end if
                 ELSE !DG, not a CV neighbouring another CV with different permeability
                     !CV_DG_VEL_INT_OPT <= parameter to choose different options for DG
                     !We perform: n' * sigma * n
-                    DO iv_iphase = 1, Mdims%nphase
+                    DO iv_iphase = 1, nphase
                         ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
                         GRAD_ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef_grad(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
                         ABS_CV_NODJ_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
@@ -3206,17 +3213,17 @@ end if
                     end do
                     !Calculation of the coefficients at the GI point
                     if (not_OLD_VEL) then
-                        forall (iv_iphase = 1:Mdims%nphase, iv_idim = 1:Mdims%ndim)
+                        forall (iv_iphase = 1:nphase, iv_idim = 1:Mdims%ndim)
                             ROW_SUM_INV_VI(iv_idim,iv_iphase)=SUM(I_inv_adv_coef(iv_idim,:,iv_iphase))
                             ROW_SUM_INV_VJ(iv_idim,iv_iphase)=SUM(J_inv_adv_coef(iv_idim,:,iv_iphase))
                         end forall
                         IF( between_elements ) then
-                            DO iv_iphase = 1, Mdims%nphase
+                            DO iv_iphase = 1, nphase
                                 UGI_COEF_ELE_ALL(:, iv_iphase, :) = DT_I(iv_iphase) * SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
                                 UGI_COEF_ELE2_ALL(:, iv_iphase, :) = DT_J(iv_iphase) * SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
                             END DO
                         else !same element
-                            DO iv_iphase = 1, Mdims%nphase
+                            DO iv_iphase = 1, nphase
                                 UGI_COEF_ELE_ALL(:, iv_iphase, :) = DT_I(iv_iphase) * SPREAD(ROW_SUM_INV_VI(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc) +&
                                     DT_J(iv_iphase) * SPREAD(ROW_SUM_INV_VJ(:,iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
                             END DO
@@ -3233,7 +3240,7 @@ end if
             END WHERE
             ! Calculate NDOTQNEW from NDOTQ
             if (not_OLD_VEL) then
-                do iv_iphase = 1, Mdims%nphase
+                do iv_iphase = 1, nphase
                     NDOTQNEW(iv_iphase) = NDOTQ(iv_iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iv_iphase,:)*&
                         ( LOC_U(:,iv_iphase,:)-LOC_NU(:,iv_iphase,:))), CV_funs%sufen( :, GI ))
                 end do
@@ -6022,12 +6029,12 @@ end if
                 Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
 
                 !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
-                DO IPRES = 1, 1!Mdims%npres
+                DO IPRES = 1, 1!Mdims%npres! sprint_to_do why not npres???
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
                         DO U_SILOC = 1, Mdims%u_snloc
                             U_ILOC = U_SLOC2LOC( U_SILOC )
                             U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                            DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
+                            DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres!Will this work for Nphases-1
                                 !We give priority to velocity boundary conditions
                                 if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
                                     !Only in the boundaries with a defined pressure it needs to be added into
