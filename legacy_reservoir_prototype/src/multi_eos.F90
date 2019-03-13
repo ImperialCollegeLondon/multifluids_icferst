@@ -1427,7 +1427,6 @@ contains
         have_gravity = ( stat == 0 )
 
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
-
         if( have_gravity .and. .not.high_order_Ph ) then
             gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
             u_source_cv = 0.
