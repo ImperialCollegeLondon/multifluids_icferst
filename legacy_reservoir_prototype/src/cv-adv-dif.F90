@@ -6033,7 +6033,7 @@ end if
                                     !Only in the boundaries with a defined pressure it needs to be added into
                                     !the matrix and into the RHS
                                     !Arash
-                                    if (hydrostatic_bc) then
+                                    if (hydrostatic_bc) then!sprint_to_do redundant now that we have hydrostatic presure solver, should remove this
                                         if (Mdims%ndim == 2) then
                                             Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                             Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &

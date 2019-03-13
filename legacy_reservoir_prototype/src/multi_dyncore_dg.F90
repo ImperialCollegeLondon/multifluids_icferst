@@ -1233,7 +1233,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
-           call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_SOURCE_CV_ALL )
+           call calculate_u_source_cv( Mdims, state, DEN_ALL, U_SOURCE_CV_ALL )
         else
            if ( linearise_density ) then
               call linearise_field( DEN_ALL2, UDEN_ALL )
@@ -1250,7 +1250,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDEN3 = uden_all
            end if
            if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
-           call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, uden3, U_SOURCE_CV_ALL )
+           call calculate_u_source_cv( Mdims, state, uden3, U_SOURCE_CV_ALL )
            deallocate( uden3 )
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
@@ -1431,7 +1431,7 @@ end if
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA,&
-                U_ALL2%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL*0.0 ) ! No sources in the wells for now...
+                U_ALL2%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -1472,7 +1472,7 @@ end if
                 allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
                 call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
                 call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
-                call high_order_pressure_solve( Mdims, ndgln, Mmat%u_rhs, state, packed_state, Mdims%nphase, U_ABSORBIN*0.0 )
+                call high_order_pressure_solve( Mdims, ndgln, Mmat%u_rhs, state, packed_state, Mdims%n_in_pres, U_ABSORBIN*0.0 )
                 deallocate(U_ABSORBIN)
             end if
         end if
@@ -6496,7 +6496,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       real, dimension( :, :, : ), pointer :: other_fenlx_all
 
       real :: nxnx, gravity_magnitude, dt, zmax
-
+      type( scalar_field ), pointer  :: ph_pressure
       type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
@@ -6859,7 +6859,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             do iphase = 1, nphase
                ph( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
             end do
-
+            !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
+            ph_pressure => extract_scalar_field( state( 1 ), "Ph", stat )
+            if ( stat == 0 ) ph_pressure%val = ph_sol%val
          end if
 
       end do
