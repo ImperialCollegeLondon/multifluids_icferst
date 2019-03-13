@@ -122,7 +122,7 @@ popd
     stage( 'Import test results' )
     {
         junit 'legacy_reservoir_prototype/tests/multiphase_test_result*xml'
-        archiveArtifacts allowEmptyArchive: true, artifacts: 'legacy_reservoir_prototype/tests/multiphase_test_result*xml', onlyIfSuccessful: true
+        archiveArtifacts allowEmptyArchive: true, artifacts: 'legacy_reservoir_prototype/tests/multiphase_test_result*xml', onlyIfSuccessful: true, fingerprint: true
         [$class: 'TeamCollectResultsPostBuildAction', requestedResults: [ [includes: 'legacy_reservoir_prototype/tests/multiphase_test_result*xml', teamResultType: 'JUNIT'] ] ]
     }
 }
