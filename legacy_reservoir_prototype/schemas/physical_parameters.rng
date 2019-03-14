@@ -23,10 +23,9 @@
       <optional>
         <element name="hydrostatic_pressure_solver">
           <a:documentation>Solve the gravity component indendently from the pressure general solver
-this is to have higher precision when using P1DGP1. For inertia dominated only.
+this is very RECOMMENDED when running with gravity.
 
-IMPORTANT: for this to work a mesh and a field ph needs to be created. Check the test 
-Collapsing_Water_Column_hydrostatic_pressure for an example</a:documentation>
+NOTE: With this options, pressure boundary conditions must not be hydrostatic.</a:documentation>
           <empty/>
         </element>
       </optional>
