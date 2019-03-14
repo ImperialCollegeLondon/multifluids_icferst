@@ -352,7 +352,7 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!halos are updated within this subroutine
+        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .TRUE. )
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         Satura =>  sat_field%val(1,:,:)
         !Stablish minimum backtracking parameter
@@ -465,6 +465,9 @@ contains
                 aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
         end if
+        !Re-impose physical constraints
+        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .FALSE. )
+
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
 
@@ -642,7 +645,7 @@ contains
 
     end subroutine FPI_backtracking
 
-    subroutine Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)
+    subroutine Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
@@ -651,12 +654,13 @@ contains
         type(multi_ndgln), intent(in) :: ndgln
         type( state_type ), intent(inout) :: packed_state
         type( state_type ), dimension(:), intent(in) :: state
+        logical, optional, intent(in) :: do_not_update_halos
         !Local variables
         type(scalar_field), pointer :: pipe_diameter
-        type(tensor_field), pointer :: sat_field
-        integer :: iphase, cv_iloc, ele, cv_nod, i_start, i_end, ipres, stat
+        type(tensor_field), pointer :: sat_field, old_saturation_field
+        integer :: iphase, cv_iloc, ele, cv_nod, i_start, i_end, ipres, stat, k
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
-        real, dimension(:), allocatable :: Normalized_sat
+        real, dimension(Mdims%nphase) :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
 
@@ -667,8 +671,6 @@ contains
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
         if (Mdims%npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" , stat = stat)
-        !Allocate
-        allocate(Normalized_sat(Mdims%nphase))
         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
         do ipres = 1, Mdims%npres
             i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
@@ -682,6 +684,8 @@ contains
                     if (ipres>1 .and. stat == 0) then
                         if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
                     end if
+
+
                     moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
                     !Work in normalized saturation here
                     Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
@@ -690,8 +694,8 @@ contains
                     correction = (1.0 - sum_of_phases)
                     !Spread the error to all the phases weighted by their moveable presence in that CV
                     !Increase the range to look for solutions by allowing oscillations below 0.01 percent
-                    if (abs(correction) > 1d-8) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * (1.0 + correction/sum_of_phases))*&
-                        moveable_sat + Immobile_fraction(i_start:i_end, ele)
+                    if (abs(correction) > 1d-8) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * &
+                        (1.0 + correction/sum_of_phases))* moveable_sat + Immobile_fraction(i_start:i_end, ele)
                     !Make sure saturation is between bounds after the modification
                     do iphase = i_start, i_end
                         minsat = Immobile_fraction(iphase, ele)
@@ -701,15 +705,14 @@ contains
                 end do
             end do
         end do
+
+        if (present_and_true(do_not_update_halos)) return
         !Ensure cosistency across CPUs
         if (IsParallel())call halo_update(sat_field)
-        deallocate(Normalized_sat)
 
     end subroutine Set_Saturation_to_sum_one
 
     subroutine Ensure_initial_Saturation_to_sum_one(mdims, ndgln, packed_state)
-        !This subroutines eliminates the oscillations in the saturation that are bigger than a
-        !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
