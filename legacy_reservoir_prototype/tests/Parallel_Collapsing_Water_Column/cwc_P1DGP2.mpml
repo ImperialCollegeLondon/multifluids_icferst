@@ -107,6 +107,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -197,6 +200,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -208,6 +214,9 @@
             <real_value rank="0">1.</real_value>
           </constant>
         </initial_condition>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -230,6 +239,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -325,6 +337,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -437,6 +452,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -549,6 +567,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -661,6 +682,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -773,6 +797,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
