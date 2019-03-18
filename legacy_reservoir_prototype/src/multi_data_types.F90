@@ -165,7 +165,7 @@ module multi_data_types
         type (multi_sparsity) :: C       !C sparsity operating on pressure in force balance
         type (multi_sparsity) :: cmc     !pressure matrix for projection method
         type (multi_sparsity) :: m       !CV-FEM matrix
-        type (multi_sparsity) :: ph      !ph matrix
+        type (multi_sparsity) :: HydrostaticPressure      !HydrostaticPressure matrix
     end type multi_sparsities
 
     type multi_ndgln
@@ -1018,13 +1018,13 @@ contains
         if(.not.associated( Mspars%M%col))           allocate(  Mspars%M%col( mx_ncolm ))
         if(.not.associated( Mspars%M%mid))           allocate(  Mspars%M%mid( Mdims%cv_nonods ))
 
-        if(.not.associated(Mspars%ph%fin))           allocate(  Mspars%ph%fin( Mdims%ph_nonods + 1 ))
-        if(.not.associated(Mspars%ph%col))           allocate(  Mspars%ph%col( mx_ncolph ) )
-        if(.not.associated(Mspars%ph%mid))           allocate(  Mspars%ph%mid( Mdims%ph_nonods ))
+        if(.not.associated(Mspars%HydrostaticPressure%fin))           allocate(  Mspars%HydrostaticPressure%fin( Mdims%ph_nonods + 1 ))
+        if(.not.associated(Mspars%HydrostaticPressure%col))           allocate(  Mspars%HydrostaticPressure%col( mx_ncolph ) )
+        if(.not.associated(Mspars%HydrostaticPressure%mid))           allocate(  Mspars%HydrostaticPressure%mid( Mdims%ph_nonods ))
 
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0
-        Mspars%M%col = 0 ; Mspars%M%mid = 0 ; Mspars%ph%fin = 0 ; Mspars%ph%col = 0
+        Mspars%M%col = 0 ; Mspars%M%mid = 0 ; Mspars%HydrostaticPressure%fin = 0 ; Mspars%HydrostaticPressure%col = 0
 
     end subroutine allocate_multi_sparsities
 
@@ -1062,9 +1062,9 @@ contains
         if (associated(Mspars%M%col))         deallocate(Mspars%M%col)
         if (associated(Mspars%M%mid))         deallocate(Mspars%M%mid)
 
-        if (associated(Mspars%ph%fin))        deallocate(Mspars%ph%fin)
-        if (associated(Mspars%ph%col))        deallocate(Mspars%ph%col)
-        if (associated(Mspars%ph%mid))        deallocate(Mspars%ph%mid)
+        if (associated(Mspars%HydrostaticPressure%fin))        deallocate(Mspars%HydrostaticPressure%fin)
+        if (associated(Mspars%HydrostaticPressure%col))        deallocate(Mspars%HydrostaticPressure%col)
+        if (associated(Mspars%HydrostaticPressure%mid))        deallocate(Mspars%HydrostaticPressure%mid)
 
         !Proceed to nullify
         if (associated(Mspars%acv%fin))       nullify(Mspars%acv%fin)
@@ -1095,9 +1095,9 @@ contains
         if (associated(Mspars%M%col))         nullify(Mspars%M%col)
         if (associated(Mspars%M%mid))         nullify(Mspars%M%mid)
 
-        if (associated(Mspars%ph%fin))        nullify(Mspars%ph%fin)
-        if (associated(Mspars%ph%col))        nullify(Mspars%ph%col)
-        if (associated(Mspars%ph%mid))        nullify(Mspars%ph%mid)
+        if (associated(Mspars%HydrostaticPressure%fin))        nullify(Mspars%HydrostaticPressure%fin)
+        if (associated(Mspars%HydrostaticPressure%col))        nullify(Mspars%HydrostaticPressure%col)
+        if (associated(Mspars%HydrostaticPressure%mid))        nullify(Mspars%HydrostaticPressure%mid)
 
 
     end subroutine deallocate_multi_sparsities

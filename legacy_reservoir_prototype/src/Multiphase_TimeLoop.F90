@@ -884,16 +884,16 @@ contains
             type(mesh_type), pointer :: ph_mesh
             ! This creates sparsity for the Hydrostatic Pressure Solver
             ! It should work now in parallel
-            ph_mesh => extract_mesh( state( 1 ), "ph", stat )
+            ph_mesh => extract_mesh( state( 1 ), "HydrostaticPressure", stat )
             if (stat == 0) then
                 allocate( sparsity )
-                sfield => extract_scalar_field(state(1),"Ph")
+                sfield => extract_scalar_field(state(1),"HydrostaticPressure")
                 if (associated( sfield%mesh%halos)) then
-                    sparsity=wrap( Mspars%ph%fin, colm = Mspars%ph%col, name = "phsparsity",&
+                    sparsity=wrap( Mspars%HydrostaticPressure%fin, colm = Mspars%HydrostaticPressure%col, name = "phsparsity",&
                         row_halo=sfield%mesh%halos(2),&
                         column_halo=sfield%mesh%halos(2))
                 else
-                    sparsity = wrap( Mspars%ph%fin, colm = Mspars%ph%col, name = "phsparsity" )
+                    sparsity = wrap( Mspars%HydrostaticPressure%fin, colm = Mspars%HydrostaticPressure%col, name = "phsparsity" )
                 end if
                 call insert( packed_state, sparsity, "phsparsity" )
                 call deallocate( sparsity )
