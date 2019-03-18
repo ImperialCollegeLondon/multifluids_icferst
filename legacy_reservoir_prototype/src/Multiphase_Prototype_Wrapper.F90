@@ -787,7 +787,9 @@ contains
           end if
           option_path = "/solver_options/Linear_solver/iterative_method::gmres/restart"
           call add_option(trim(option_path), stat = stat)
-          call set_option(trim(option_path), 30)
+          k = 20!Probably this could be 1 with DCVFEM...
+          if (have_option( '/geometry/Advance_options/FE_Pressure' )) k = 30
+          call set_option(trim(option_path), k)
 
           !Preconditioner
           option_path = "/solver_options/Linear_solver/preconditioner::hypre/hypre_type[0]/name"
@@ -799,7 +801,9 @@ contains
           call add_option("/solver_options/Linear_solver/absolute_error", stat = stat)
           call set_option("/solver_options/Linear_solver/absolute_error", 1e-8)
           call add_option("/solver_options/Linear_solver/max_iterations", stat = stat)
-          call set_option("/solver_options/Linear_solver/max_iterations", 300)
+          k = 150
+          if (have_option( '/geometry/Advance_options/FE_Pressure' )) k = 300
+          call set_option("/solver_options/Linear_solver/max_iterations", k)
           !Copy an option that always exists to ensure ignore all solver failues
           call copy_option("/simulation_name","/solver_options/Linear_solver/ignore_all_solver_failures")
 
