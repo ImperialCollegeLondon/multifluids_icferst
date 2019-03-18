@@ -1330,23 +1330,23 @@ contains
             Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid)
         call resize(Mspars%ACV%col,Mspars%ACV%ncol)
         !-
-        !- Computing sparsity for ph (hydrostatic pressure)
+        !- Computing sparsity for HydrostaticPressure (hydrostatic pressure)
         !-
-        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
+        ph_mesh => extract_mesh( state( 1 ), "HydrostaticPressure", stat )
         if ( stat == 0 ) then
             Mdims%ph_nonods = node_count( ph_mesh )
             Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
             ph_ndgln => get_ndglno( ph_mesh )
-            Mspars%ph%fin = 0 ; Mspars%ph%col = 0
+            Mspars%HydrostaticPressure%fin = 0 ; Mspars%HydrostaticPressure%col = 0
             if ( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh   ! BUG HERE!!!
                call pousinmc2( Mdims%totele, Mdims%ph_nloc, Mdims%ph_nonods, Mdims%ph_nloc, &
-                    mx_ncolph, ph_ndgln, ph_ndgln, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid )
+                    mx_ncolph, ph_ndgln, ph_ndgln, Mspars%HydrostaticPressure%ncol, Mspars%HydrostaticPressure%fin, Mspars%HydrostaticPressure%col, Mspars%HydrostaticPressure%mid )
             else ! a DG pressure field mesh
                 call CT_DG_Sparsity( mx_nface_p1, Mdims%totele, Mdims%ph_nloc, Mdims%ph_nloc, &
                     Mdims%ph_nonods, ph_ndgln, ph_ndgln, Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
-                    mx_ncolph, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col )
+                    mx_ncolph, Mspars%HydrostaticPressure%ncol, Mspars%HydrostaticPressure%fin, Mspars%HydrostaticPressure%col )
             end if
-            call resize( Mspars%ph%col, Mspars%ph%ncol )
+            call resize( Mspars%HydrostaticPressure%col, Mspars%HydrostaticPressure%ncol )
         end if
         !-
         !- Deallocating temporary arrays
@@ -1547,5 +1547,3 @@ contains
     end subroutine checksparsity
 
 end module spact
-
-

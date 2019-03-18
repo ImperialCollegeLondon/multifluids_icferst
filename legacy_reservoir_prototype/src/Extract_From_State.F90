@@ -165,12 +165,12 @@ contains
             Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
         end if
         if( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
-            ph_mesh => extract_mesh( state( 1 ), 'ph', stat )
+            ph_mesh => extract_mesh( state( 1 ), 'HydrostaticPressure', stat )
             if ( stat == 0 ) then
                 Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
                 Mdims%ph_nonods = node_count( ph_mesh )
             else
-                FLAbort("You need a 'ph' mesh to use the high-order hydrostatic pressure solver.")
+                FLAbort("You need a 'HydrostaticPressure' mesh to use the high-order hydrostatic pressure solver.")
             end if
         else
             Mdims%ph_nloc = 0

@@ -6482,7 +6482,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       real, dimension( :, : ), allocatable :: alpha_cv, coef_alpha_cv
 
       real, dimension( :, :, : ), allocatable :: u_ph_source_ph, dx_ph_gi
-      real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, ph
+      real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, HydrostaticPressure
 
       real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
       real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi
@@ -6531,7 +6531,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       call get_option( '/timestepping/timestep', dt )
 
-      ! ph elements
+      ! HydrostaticPressure elements
       if ( Mdims%ndim == 2 ) then
         ph_ele_type = 4
         ph_nloc = 6 ; ph_snloc = 3
@@ -6539,9 +6539,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         ph_ele_type = 8
         ph_nloc = 10 ; ph_snloc = 6
       end if
-      call get_option("/geometry/mesh::ph/from_mesh/mesh_shape/polynomial_degree", i)
+      call get_option("/geometry/mesh::HydrostaticPressure/from_mesh/mesh_shape/polynomial_degree", i)
       if ( i == 1) then
-        ! ph elements
+        ! HydrostaticPressure elements
         if ( Mdims%ndim == 2 ) then
            ph_ele_type = 3
            ph_nloc = 3 ; ph_snloc = 3
@@ -6562,7 +6562,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       ph_ngi = phGIdims%cv_ngi
       x => extract_vector_field( packed_state, "PressureCoordinate" )
-      phmesh => extract_mesh( state( 1 ), "ph" )
+      phmesh => extract_mesh( state( 1 ), "HydrostaticPressure" )
       ph_ndgln => get_ndglno( phmesh )
       ph_nonods = node_count( phmesh )
 
@@ -6604,7 +6604,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       allocate( u_ph_source_ph( Mdims%ndim, nphase, ph_nonods ), &
            &    alpha_ph( nphase, ph_nonods ), &
-           &    ph( nphase, ph_nonods ), &
+           &    HydrostaticPressure( nphase, ph_nonods ), &
            &    coef_alpha_ph( nphase, ph_nonods ) )
 
       allocate( dx_ph_gi( ph_ngi, Mdims%ndim, nphase ) )
@@ -6723,7 +6723,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                      dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
                           phfenx_all( idim, ph_iloc, : ) * alpha_ph( iphase, ph_inod )
                      dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
-                          phfenx_all( idim, ph_iloc, : ) * ph( iphase, ph_inod )
+                          phfenx_all( idim, ph_iloc, : ) * HydrostaticPressure( iphase, ph_inod )
                   end do
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        ph_funs%cvfen( ph_iloc, : ) * coef_alpha_ph( iphase, ph_inod )
@@ -6857,10 +6857,10 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             if (IsParallel()) call halo_update(ph_sol)
 
             do iphase = 1, nphase
-               ph( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
+               HydrostaticPressure( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
             end do
             !This is to present the results in paraview; sprint_to_do mix this results with pressure before creating a vtu file and then remove them
-            ph_pressure => extract_scalar_field( state( 1 ), "Ph", stat )
+            ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
             if ( stat == 0 ) ph_pressure%val = ph_sol%val
          end if
 
@@ -6873,7 +6873,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       call deallocate( matrix )
       deallocate( u_ph_source_vel, u_ph_source_cv, alpha_cv, &
                   coef_alpha_cv, u_ph_source_ph, alpha_ph, &
-                  ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
+                  HydrostaticPressure, coef_alpha_ph, dx_ph_gi, u_s_gi, &
                   dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, &
                   sigma_gi, volfra_gi, &
                   tmp_cvfenx_all, other_fenx_all, detwei, ra )

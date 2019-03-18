@@ -19,7 +19,6 @@
     <simulation_quality>
       <string_value>precision</string_value>
     </simulation_quality>
-    <Advance_options/>
   </geometry>
   <solver_options/>
   <io>
@@ -834,4 +833,7 @@
       </tensor_field>
     </hr_adaptivity>
   </mesh_adaptivity>
+  <numerical_methods>
+    <lump_mass_matrix/>
+  </numerical_methods>
 </icferst_options>

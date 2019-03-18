@@ -754,8 +754,8 @@ contains
         end do
 
         if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
-          !Introduce the ph mesh, quadratic and continuous
-          option_path = "/geometry/mesh::ph/"
+          !Introduce the HydrostaticPressure mesh, quadratic and continuous
+          option_path = "/geometry/mesh::HydrostaticPressure/"
           call add_option(trim(option_path)//"from_mesh", stat=stat)
           call add_option(trim(option_path)//"from_mesh/mesh::CoordinateMesh", stat=stat)
           call add_option(trim(option_path)//"from_mesh/mesh_continuity", stat=stat)
@@ -770,7 +770,7 @@ contains
             call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
           end if
           call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
-          !Do we need the user to create a ph scalar field? maybe not
+          !Do we need the user to create a HydrostaticPressure scalar field? maybe not
         end if
 
 
@@ -920,14 +920,14 @@ contains
             end if
 
             if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
-              !Add a prognostic field named ph (do we need BCs or initial conditions for this?)
+              !Add a prognostic field named HydrostaticPressure (do we need BCs or initial conditions for this?)
               !This is only required for the first phase
-              option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Ph"
+              option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::HydrostaticPressure"
               if (.not.have_option (trim(option_path))) then
                 call add_option(trim(option_path),  stat=stat)
-                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Ph/prognostic"
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::HydrostaticPressure/prognostic"
 
-                call add_option(trim(option_path)//"/mesh::ph",  stat=stat)
+                call add_option(trim(option_path)//"/mesh::HydrostaticPressure",  stat=stat)
                 call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
                 call add_option(trim(option_path)//"/value::WholeMesh/constant",  stat=stat)
                 call set_option(trim(option_path)//"/value::WholeMesh/constant",  0.)
