@@ -19,6 +19,7 @@
     <simulation_quality>
       <string_value>precision</string_value>
     </simulation_quality>
+    <Advance_options/>
   </geometry>
   <solver_options/>
   <io>
