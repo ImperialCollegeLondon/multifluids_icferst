@@ -407,6 +407,7 @@ contains
                 wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
         REAL, DIMENSION ( Mdims%ndim,Mdims%nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
         type( vector_field ), pointer :: MeanPoreCV
+        real, dimension( max(Mdims%nphase, 100) *6 ) :: memory_limiters!Get biggest between maximum nunber of fields (100), or phases
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: solid_vol_fra
@@ -2801,7 +2802,10 @@ end if
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF(:), FEMFGI(:), F_INCOME(:), &
                             F_CV_NODI(:), F_CV_NODJ(:),XI_LIMIT(:),  &
-                            FUPWIND_IN(:), FUPWIND_OUT(:) )
+                            FUPWIND_IN(:), FUPWIND_OUT(:), &
+                            memory_limiters(1:NFIELD), memory_limiters(NFIELD + 1:NFIELD*2),&
+                            memory_limiters(2*NFIELD + 1:NFIELD*3), memory_limiters(3*NFIELD + 1:NFIELD*4),&
+                            memory_limiters(4*NFIELD + 1:NFIELD*5), memory_limiters(5*NFIELD + 1:NFIELD*6) )
                     ENDIF Conditional_CV_DISOPT_ELE2
             END SELECT
             RETURN
@@ -3046,7 +3050,10 @@ end if
                     XI_LIMIT = 2.0
                      !Call the limiter to obtain the limited saturation value at the interface
                     CALL ONVDLIM_ANO_MANY( Mdims%nphase, LIMT3, FEMTGI_IPHA, INCOME, &
-                        LOC_T_I, LOC_T_J,XI_LIMIT, TUPWIND_IN, TUPWIND_OUT )
+                        LOC_T_I, LOC_T_J,XI_LIMIT, TUPWIND_IN, TUPWIND_OUT,&
+                        memory_limiters(1:Mdims%nphase), memory_limiters(Mdims%nphase + 1:Mdims%nphase*2),&
+                        memory_limiters(2*Mdims%nphase + 1:Mdims%nphase*3), memory_limiters(3*Mdims%nphase + 1:Mdims%nphase*4),&
+                        memory_limiters(4*Mdims%nphase + 1:Mdims%nphase*5), memory_limiters(5*Mdims%nphase + 1:Mdims%nphase*6) )
                     !We perform: n' * sigma * n
                     DO iv_iphase = 1, Mdims%nphase
                         ABS_CV_NODI_IPHA(iv_iphase) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef(:,:,iv_iphase), CVNORMX_ALL(:, GI)))
@@ -3252,7 +3259,7 @@ end if
         PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
             TDLIM, TDCEN, INCOME, &
             ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
-            TUPWIN, TUPWI2 )
+            TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
             implicit none
             ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
             ! difference face values TDCEN(1...SNGI) using a NVD shceme.
@@ -3263,6 +3270,7 @@ end if
             ! PELEOT=element at other side of current face.
             ! ELEOT2=element at other side of the element ELEOTH.
             ! ELESID=element next to oposing current face.
+            ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
             ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
             ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
             !---------------------------------------------------
@@ -3277,10 +3285,9 @@ end if
             REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
             REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
             REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
+            real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
             ! Local variables
             REAL, PARAMETER :: TOLER=1.0E-10
-            REAL :: DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
-                CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
             ! Calculate normalisation parameters for incomming velocities
             DENOIN = ( ETDNEW_PELE - TUPWIN )
             where( ABS( DENOIN ) < TOLER )
