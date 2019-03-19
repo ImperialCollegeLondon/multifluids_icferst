@@ -1054,7 +1054,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     correction = (1.0 - sum_of_phases)
                     !Spread the error to all the phases weighted by their presence in that CV
                     !Increase the range to look for solutions by allowing oscillations below 0.1 percent
-                    if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
+                    if (abs(correction) > 1d-3) satura(i_start:i_end-1, cv_nod) = (satura(i_start:i_end-1, cv_nod) * (1.0 + correction/sum_of_phases))
+		    !if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
                     !Make sure saturation is between bounds after the modification
                     do iphase = i_start, i_end
                         satura(iphase,cv_nod) =  min(max(0., satura(iphase,cv_nod)),1.0)
