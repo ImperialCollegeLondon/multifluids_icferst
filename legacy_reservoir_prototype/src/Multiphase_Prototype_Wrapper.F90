@@ -67,14 +67,13 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use tictoc
     implicit none
 
-
-
+    !Local variables
     type(state_type), dimension(:), pointer :: state
 
     integer :: i, dump_no = 0
     integer :: ntsol, nonlinear_iterations
 
-    character(len = option_path_len) :: filename
+    character(len = option_path_len) :: filename, input_mpml
     character(len = option_path_len) :: simulation_name, dump_format
 
     real :: finish_time, nonlinear_iteration_tolerance, auxR, dump_period
@@ -83,6 +82,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call initialise_signals()
 
     call get_option("/simulation_name",filename)
+
 
     call set_simulation_start_times()
     call initialise_walltime
@@ -102,11 +102,17 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! Read state from .mpml file
     call populate_multi_state(state)
-!    call populate_state(state)
 
     !If desired by the user create a bin msh file
-    if (have_option("/geometry/create_binary_msh")) call create_bin_msh_file(state)
-
+    if (have_option("/geometry/create_binary_msh")) THEN
+      call create_bin_msh_file(state)
+      if (have_option("/geometry/create_binary_msh/write_mpml_file")) then
+        call get_option("/geometry/create_binary_msh/write_mpml_file", input_mpml)
+        call delete_option("/geometry/create_binary_msh")
+        call write_options(trim(input_mpml))
+        stop
+      end if
+    end if
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
 
@@ -743,6 +749,7 @@ contains
           end if
           call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
         end if
+
         !Extra meshes
         k = option_count("/geometry/Advance_options/mesh")
         do i =1, k
@@ -773,7 +780,8 @@ contains
           !Do we need the user to create a HydrostaticPressure scalar field? maybe not
         end if
 
-
+        !If we are just running one off to create a binary mesh then we don't want to read anymore
+        if (have_option("/geometry/create_binary_msh/write_mpml_file") ) return
         !#########GEOMETRY AND PRECISION OPTIONS#################
 
 !Sprint_to_do
@@ -790,9 +798,11 @@ contains
           call set_option(trim(option_path), 30)
 
           !Preconditioner
-          option_path = "/solver_options/Linear_solver/preconditioner::hypre/hypre_type[0]/name"
+          option_path = "/solver_options/Linear_solver/preconditioner::hypre/"
           call add_option(trim(option_path), stat = stat)
-          call set_option(trim(option_path), "boomeramg")
+          option_path = "/solver_options/Linear_solver/preconditioner::hypre/hypre_type::boomeramg"
+          call add_option(trim(option_path), stat = stat)
+
           !Convergence settings
           call add_option("/solver_options/Linear_solver/relative_error", stat = stat)
           call set_option("/solver_options/Linear_solver/relative_error", 1e-10)
@@ -820,13 +830,16 @@ contains
           call add_option(trim(option_path)//"/Infinite_norm_tol", stat = stat)
           call set_option(trim(option_path)//"/Infinite_norm_tol", 0.01)
           if (have_option("/porous_media_simulator")) then
+            !Add VAD options
+            call add_option(trim(option_path)//"/Vanishing_relaxation", stat=stat)
+            call set_option(trim(option_path)//"/Vanishing_relaxation",-1e2)
+            call add_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport", stat=stat)
+            call set_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport",-1e1)
             !If multiphase then the important thing is saturation!
             if ( nphase > 1.) then
               !Set up the non-linear solver to use an automatic backtracking method
               call add_option(trim(option_path)//"/Backtracking_factor", stat=stat)
               call set_option(trim(option_path)//"/Backtracking_factor",-10.)
-              call add_option(trim(option_path)//"/Vanishing_relaxation", stat=stat)
-              call set_option(trim(option_path)//"/Vanishing_relaxation",-1e2)
             else !single phase
               call add_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
               if (have_option('/material_phase[0]/scalar_field::Temperature')) then
@@ -836,8 +849,6 @@ contains
               else !If nothing, then pressure
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 1)
               end if
-              call add_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport", stat=stat)
-              call set_option(trim(option_path)//"/Vanishing_relaxation/Vanishing_for_transport",-1e1)
 
               call add_option(trim(option_path)//"/Impose_min_max", stat = stat)
             end if
