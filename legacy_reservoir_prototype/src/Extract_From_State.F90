@@ -548,7 +548,7 @@ contains
             Mdisopt%v_theta, default = default_theta )
 
         !!$ Velocity Field options
-        call get_option( trim(option_path)// '/Time_Discretisation::Velocity/Theta', Mdisopt%u_theta , default = default_theta )
+        call get_option( trim(option_path)// '/Time_Discretisation::Velocity/Theta', Mdisopt%u_theta , default = abs(default_theta) )!For velocity the default theta has to be implicit always
         call get_option( trim(option_path)// '/Conservative_formulation_settings::Velocity/conservative_advection', Mdisopt%u_beta , default = default_consv_vel)
         !!$ Solving Component Field
         !!$ Scaling factor for the momentum equation
