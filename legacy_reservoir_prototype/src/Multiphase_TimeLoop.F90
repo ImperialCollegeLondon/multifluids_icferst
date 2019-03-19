@@ -574,7 +574,8 @@ contains
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
 
                 PythonPhaseVolumeFractionSource => extract_vector_field(state(1),"VSource", python_stat)
-                if ( python_stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PythonPhaseVolumeFractionSource%val(:,:)
+                if ( python_stat == 0 ) ScalarField_Source_Store =  PythonPhaseVolumeFractionSource%val(:,:)
+
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
 
