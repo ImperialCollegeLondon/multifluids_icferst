@@ -1125,15 +1125,7 @@ geometry =
         ## Use Fluidity to overwrite the input .msh file into a binary .msh file.
         ##
         ## Useful to convert your ASCII msh files into binary to be able to decompose the mesh.
-        element create_binary_msh {
-           (
-           ## A new file with the input name here can be written after creating the binary mesh, then the simulation will stop.
-           ## This is useful when running in batches and want to run in parallel.
-           ## 
-           ## NOTE: To overwrite just specify the same name of the input mpml file (including the extension).
-           element write_mpml_file {string}?
-           )
-        }?
+        element create_binary_msh {empty}?
       }
    )
 

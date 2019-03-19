@@ -1426,15 +1426,7 @@ nonetheless the classical CVFEM can also be used.</a:documentation>
           <a:documentation>Use Fluidity to overwrite the input .msh file into a binary .msh file.
 
 Useful to convert your ASCII msh files into binary to be able to decompose the mesh.</a:documentation>
-          <optional>
-            <element name="write_mpml_file">
-              <a:documentation>A new file with the input name here can be written after creating the binary mesh, then the simulation will stop.
-This is useful when running in batches and want to run in parallel.
-
-NOTE: To overwrite just specify the same name of the input mpml file (including the extension).</a:documentation>
-              <data type="string" datatypeLibrary=""/>
-            </element>
-          </optional>
+          <empty/>
         </element>
       </optional>
     </element>
