@@ -2,7 +2,7 @@
 <testproblem>
   <name>Parallel_Collapsing_Water_Column</name>
   <owner userid="jrper"/>
-  <tags>disabled mpml parallel</tags>
+  <tags>mpml parallel</tags>
   <problem_definition length="short" nprocs="2">
     <command_line>make
 
