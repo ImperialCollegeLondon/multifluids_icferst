@@ -119,7 +119,7 @@ file.close()
 
 #TEMPORARY: Attempt to convert to binary by using gmsh
 try:
-    convert_to_binary_using_gmsh(fname[:-4])
+    #convert_to_binary_using_gmsh(fname[:-4])
 except:
     print "Failed to convert the output mesh to binary format."
 
