@@ -274,10 +274,27 @@ contains
            end if
 
            ! Check for a python-set absorption field when solving for temperature/internal energy
+ ! Assumes that python blocks are (nphase x nphase) and isotropic
+        velocity_absorption=0.0
+        python_tfield => extract_tensor_field( state(1), "UAbsorB", python_stat )
+        if (python_stat==0) then
+           ewrite(3,*)"Python UAbsorB"
+           velocity_absorption = 0.0
+           do iphase = 1, Mdims%nphase
+              do jphase = 1, Mdims%nphase
+                 do idim = 1, Mdims%ndim
+                    idx1 = idim+(iphase-1)*Mdims%ndim ; idx2 = idim+(jphase-1)*Mdims%ndim
+                    velocity_absorption( idx1, idx2, : ) = python_tfield%val( iphase, jphase, : )
+                    !ewrite(3,*) idx1, idx2, minval( velocity_absorption( idx1, idx2, : ) ), &
+                 end do
+              end do
+           end do
+        end if
+	
+	  ! Check for a python-set absorption field when solving for temperature/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
-           if (python_stat==0 .and. Field_selector==1) T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => python_tfield%val
-
-           ! Check for a python-set source field when solving for temperature/internal energy
+           if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
+	   
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
