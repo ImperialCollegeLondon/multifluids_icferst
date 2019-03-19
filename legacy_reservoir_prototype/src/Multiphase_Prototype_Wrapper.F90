@@ -104,15 +104,8 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call populate_multi_state(state)
 
     !If desired by the user create a bin msh file
-    if (have_option("/geometry/create_binary_msh")) THEN
-      call create_bin_msh_file(state)
-      if (have_option("/geometry/create_binary_msh/write_mpml_file")) then
-        call get_option("/geometry/create_binary_msh/write_mpml_file", input_mpml)
-        call delete_option("/geometry/create_binary_msh")
-        call write_options(trim(input_mpml))
-        stop
-      end if
-    end if
+    if (have_option("/geometry/create_binary_msh")) call create_bin_msh_file(state)
+
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
 
@@ -780,8 +773,6 @@ contains
           !Do we need the user to create a HydrostaticPressure scalar field? maybe not
         end if
 
-        !If we are just running one off to create a binary mesh then we don't want to read anymore
-        if (have_option("/geometry/create_binary_msh/write_mpml_file") ) return
         !#########GEOMETRY AND PRECISION OPTIONS#################
 
 !Sprint_to_do
