@@ -118,10 +118,10 @@ file.write("$EndElements\n")
 file.close()
 
 #TEMPORARY: Attempt to convert to binary by using gmsh
-try:
+#try:
     #convert_to_binary_using_gmsh(fname[:-4])
-except:
-    print "Failed to convert the output mesh to binary format."
+#except:
+#    print "Failed to convert the output mesh to binary format."
 
 
 print '...file created => '+ fname
