@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+ #!/usr/bin/env python
 
 #Created by James Percival
 #modified by:
@@ -7,6 +7,17 @@
 #This code has LGPL license
 import vtk
 import sys
+
+
+def convert_to_binary_using_gmsh(input_file):
+    #While this is a patch and will need to be directly 
+    #created in binary this will work for the time being
+    import os
+    string = "gmsh -convert " + input_file+ ".msh"+ " && "
+    string += "mv " + input_file+".msh_new" + " " + input_file+".msh"
+    os.system(string)
+    string = "NOTE: mesh converted into binary format using gmsh. If IC-FERST fails to load the mesh, try disabling the implicit conversion to binary."
+    print string
 
 fname=sys.argv[1]
 r=vtk.vtkExodusIIReader()
@@ -105,4 +116,12 @@ for k,ele in enumerate(ele_vol_dict):
     file.write("%d 4 2 %d %d %d %d %d %d\n"%(k+1,ele[0],ele[0],ele[1],ele[2],ele[3],ele[4]))
 file.write("$EndElements\n")
 file.close()
+
+#TEMPORARY: Attempt to convert to binary by using gmsh
+try:
+    convert_to_binary_using_gmsh(fname[:-4])
+except:
+    print "Failed to convert the output mesh to binary format."
+
+
 print '...file created => '+ fname
