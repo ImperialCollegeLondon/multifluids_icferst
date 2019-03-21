@@ -7,18 +7,79 @@
 #This code has LGPL license
 import vtk
 import sys
+import numpy
+import struct
+from ctypes import c_int, c_double
 
 
-def convert_to_binary_using_gmsh(input_file):
-    #While this is a patch and will need to be directly 
-    #created in binary this will work for the time being
-    import os
-    string = "gmsh -convert " + input_file+ ".msh"+ " && "
-    string += "mv " + input_file+".msh_new" + " " + input_file+".msh"
-    os.system(string)
-    string = "NOTE: mesh converted into binary format using gmsh. If IC-FERST fails to load the mesh, try disabling the implicit conversion to binary."
-    print string
+def write_in_binary_format(fname):
+    file=open(fname,'wb')
+    file.writelines(("$MeshFormat\n",
+                     "2.1 1 8\n"))
+    file.write(struct.pack("i", 1))
+    file.write("\n".encode("utf-8"))    
+    file.writelines(("$EndMeshFormat\n",
+                     "$Nodes\n",
+                    "%d\n"%len(node_dict)))
+    rnode_dict={}
+    rnode_dict = numpy.zeros((len(node_dict),3), dtype=float)
+    for k,v in node_dict.items():
+        rnode_dict[v-1][0]=k[0]
+        rnode_dict[v-1][1]=k[1]
+        rnode_dict[v-1][2]=k[2]
+    dtype = [("index", c_int), ("x", c_double, (3,))]
+    tmp = numpy.empty(len(node_dict), dtype=dtype)
+    tmp["index"] = 1 + numpy.arange(len(node_dict))
+    tmp["x"] = numpy.asarray(rnode_dict)
+    file.write(tmp.tostring())
 
+
+    file.write("\n".encode("utf-8"))    
+    file.write("$EndNodes\n")
+    file.write("$Elements\n")
+    file.write("%d\n"%(len(ele_face_dict)+len(ele_vol_dict)))
+    # header
+    file.write(struct.pack("i", 2))
+    file.write(struct.pack("i", len(ele_face_dict)))#or maybe +len(ele_face_dict)
+    file.write(struct.pack("i", 2))
+    for k,ele in enumerate(ele_face_dict):
+        file.write(struct.pack("iiiiii", k+1, ele[0], ele[0], ele[1], ele[2], ele[3]))
+
+
+    file.write(struct.pack("i", 4))
+    file.write(struct.pack("i", len(ele_vol_dict)))#or maybe +len(ele_face_dict)
+    file.write(struct.pack("i", 2))
+    for k,ele in enumerate(ele_vol_dict):
+        file.write(struct.pack("iiiiiii", k+1+len(ele_face_dict), ele[0], ele[0], ele[1], ele[2], ele[3], ele[4]))
+    file.write("\n".encode("utf-8"))
+    file.write("$EndElements\n")
+    file.close()
+
+
+def write_in_ASCII_format(fname):
+    file=open(fname,'w')
+
+    file.writelines(("$MeshFormat\n",
+                     "2.2 0 8\n",
+                     "$EndMeshFormat\n",
+                     "$Nodes\n",
+                    "%d\n"%len(node_dict)))
+    for k in range(len(node_dict)):
+        p=rnode_dict[k+1]
+        file.write("%d %f %f %f\n"%(k+1,p[0],p[1],p[2]))
+    file.write("$EndNodes\n")
+    file.write("$Elements\n")
+    file.write("%d\n"%(len(ele_face_dict)+len(ele_vol_dict)))
+    for k,ele in enumerate(ele_face_dict):
+        file.write("%d 2 2 %d %d %d %d %d\n"%(k+1,ele[0],ele[0],ele[1],ele[2],ele[3]))
+    for k,ele in enumerate(ele_vol_dict):
+        file.write("%d 4 2 %d %d %d %d %d %d\n"%(k+1,ele[0],ele[0],ele[1],ele[2],ele[3],ele[4]))
+    file.write("$EndElements\n")
+    file.close()
+    
+#It is better to use the binary format if possible as meshes can be directly decomposed with fldecomp, however it hasn't been as tested as the ASCII format    
+useBinaryFormat = True 
+   
 fname=sys.argv[1]
 r=vtk.vtkExodusIIReader()
 if (fname[-2:] == '-h'):
@@ -92,36 +153,11 @@ for j in range(data.GetBlock(0).GetNumberOfBlocks()):
                               node_dict[cp.GetPoint(1)],
                               node_dict[cp.GetPoint(2)],
                               node_dict[cp.GetPoint(3)]))
-        
-rnode_dict={}
-for k,v in node_dict.items():
-    rnode_dict[v]=k
-fname = fname[:-2]+'.msh'
-file=open(fname,'w')
+fname = fname[:-2]+'.msh'       
 
-file.writelines(("$MeshFormat\n",
-                 "2.2 0 8\n",
-                 "$EndMeshFormat\n",
-                 "$Nodes\n",
-                "%d\n"%len(node_dict)))
-for k in range(len(node_dict)):
-    p=rnode_dict[k+1]
-    file.write("%d %f %f %f\n"%(k+1,p[0],p[1],p[2]))
-file.write("$EndNodes\n")
-file.write("$Elements\n")
-file.write("%d\n"%(len(ele_face_dict)+len(ele_vol_dict)))
-for k,ele in enumerate(ele_face_dict):
-    file.write("%d 2 2 %d %d %d %d %d\n"%(k+1,ele[0],ele[0],ele[1],ele[2],ele[3]))
-for k,ele in enumerate(ele_vol_dict):
-    file.write("%d 4 2 %d %d %d %d %d %d\n"%(k+1,ele[0],ele[0],ele[1],ele[2],ele[3],ele[4]))
-file.write("$EndElements\n")
-file.close()
-
-#TEMPORARY: Attempt to convert to binary by using gmsh
-#try:
-    #convert_to_binary_using_gmsh(fname[:-4])
-#except:
-#    print "Failed to convert the output mesh to binary format."
-
+if useBinaryFormat:
+    write_in_binary_format(fname)
+else:
+    write_in_ASCII_format(fname)
 
 print '...file created => '+ fname
