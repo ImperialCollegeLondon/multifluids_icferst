@@ -2378,6 +2378,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
+
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             if (is_flooding) backtrack_or_convergence = ts_ref_val
@@ -2422,6 +2423,15 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   ewrite(show_FPI_conv,*) trim(output_message)
               end if
            end if
+
+
+           if (have_option("/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv/stop_at_min_ts")) then
+             if (its >= NonLinearIteration .and. max_calculate_mass_delta > calculate_mass_tol .and. abs(dt - min_ts)/min_ts < 1e-8) THEN
+               ewrite(0,*) trim(output_message)
+               FLAbort("WARNING: SIMULATION TERMINATED AS MASS IS NOT BEING CONSERVED AND THE MINIMUM TIME-STEP HAS BEEN REACHED. RE-RUN WITH DIFFERENT SETTINGS.")
+             end if
+           end if
+
 
             !If time adapted based on the non-linear solver then
             if (nonLinearAdaptTs .and. .not. adapting_within_happening_now) then!Do not adapt time if we are adapting the mesh within the FPI and

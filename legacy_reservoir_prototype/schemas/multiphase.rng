@@ -1569,6 +1569,11 @@ conservation of volume of each phase for the non-linear solver
 
 By default the tolerance is 1e-2</a:documentation>
                   <ref name="real"/>
+                  <optional>
+                    <element name="stop_at_min_ts">
+                      <empty/>
+                    </element>
+                  </optional>
                 </element>
               </optional>
               <optional>

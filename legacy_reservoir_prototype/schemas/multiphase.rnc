@@ -1255,7 +1255,10 @@ solver_options =
                 ## conservation of volume of each phase for the non-linear solver
             ##
 	    ## By default the tolerance is 1e-2
-                element Test_mass_consv{real}?
+                element Test_mass_consv{real,
+                (
+                element stop_at_min_ts{empty}?
+                )}?
               ),
               (
                 ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
