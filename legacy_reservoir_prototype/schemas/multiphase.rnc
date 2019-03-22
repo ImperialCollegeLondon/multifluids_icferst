@@ -1257,6 +1257,7 @@ solver_options =
 	    ## By default the tolerance is 1e-2
                 element Test_mass_consv{real,
                 (
+                ## Select this option if you want the simulation to terminate if after reaching the minimum time-step the non-linear solver fails to ensure mass convergence. Only works when adaptive time-step is on.
                 element stop_at_min_ts{empty}?
                 )}?
               ),
