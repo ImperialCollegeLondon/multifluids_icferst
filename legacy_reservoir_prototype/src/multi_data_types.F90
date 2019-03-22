@@ -197,6 +197,8 @@ module multi_data_types
         logical :: CV_pressure     !Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
         logical :: stored = .false.!Flag to be true when the storable matrices have been stored
         logical :: compact_PIVIT_MAT = .false. !Flag to know whether to use a compacted mass matrix or not
+        integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()!Stores locations used by the limiters
+        real, dimension(:), pointer :: limiters_ELEMATWEI=> null()!Stores weights used by the limiters
     end type multi_matrices
 
 
@@ -1146,6 +1148,13 @@ contains
 !        if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)!<=Should not need to deallocate anyway as it is done somewhere else
 !        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)!<=Should not need to deallocate anyway as it is done somewhere else
         if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
+        if (associated(Mmat%limiters_ELEMATPSI)) then
+       if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
+           deallocate (Mmat%limiters_ELEMATPSI); nullify(Mmat%limiters_ELEMATPSI)
+       end if
+       if (associated(Mmat%limiters_ELEMATWEI)) then
+           deallocate (Mmat%limiters_ELEMATWEI); nullify(Mmat%limiters_ELEMATWEI)
+       end if
         !Set flag to recalculate
         Mmat%stored = .false.
     end subroutine destroy_multi_matrices

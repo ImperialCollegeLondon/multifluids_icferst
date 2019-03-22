@@ -934,7 +934,7 @@ contains
               use_reflect = have_option("/numerical_methods/use_reflect_method")
               CALL CALC_ANISOTROP_LIM( &
                   ! Caculate the upwind values stored in matrix form...
-                  T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
+                  Mmat, T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
                   FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
                   TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
                   T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
@@ -6081,7 +6081,7 @@ end if
 
     SUBROUTINE CALC_ANISOTROP_LIM(&
         ! Caculate the upwind values stored in matrix form...
-        T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, T2_ALL, T2OLD_ALL, &
+        Mmat, T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, T2_ALL, T2OLD_ALL, &
         FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, USE_FEMT, &
         TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
         T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
@@ -6093,6 +6093,7 @@ end if
         ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
         ! value for each node pair is stored in the matrices TUPWIND AND
         IMPLICIT NONE
+        type (multi_matrices), intent(inout) :: Mmat
         INTEGER, intent( in ) :: CV_NONODS,X_NONODS,TOTELE,CV_NLOC, &
             NSMALL_COLM, NDIM,IGOT_T2,NPHASE
         REAL, DIMENSION( :, : ), intent( in ) :: T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL
@@ -6143,7 +6144,7 @@ end if
 
 
         !Find upwind field values for limiting
-        CALL CALC_ANISOTROP_LIM_VALS( F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
+        CALL CALC_ANISOTROP_LIM_VALS( Mmat, F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
             NFIELD,CV_NONODS,CV_NLOC,TOTELE,CV_NDGLN, SMALL_FINDRM,&
             SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL, use_reflect)
 
@@ -6170,7 +6171,7 @@ end if
 
             SUBROUTINE CALC_ANISOTROP_LIM_VALS( &
                 ! Caculate the upwind values stored in matrix form...
-                T_ALL, &
+                Mmat, T_ALL, &
                 FEMT_ALL, USE_FEMT, &
                 TUPWIND_ALL, &
                 NFIELD,NONODS,CV_NLOC,TOTELE,CV_NDGLN, &
@@ -6181,6 +6182,7 @@ end if
                 ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
                 ! value for each node pair is stored in the matrices TUPWIND AND
                 IMPLICIT NONE
+                type (multi_matrices), intent(inout) :: Mmat
                 INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,CV_NLOC,NSMALL_COLM,NFIELD,NDIM
                 REAL, DIMENSION( :, : ), intent( in ) :: T_ALL
                 REAL, DIMENSION( :, : ), intent( in ) :: FEMT_ALL
@@ -6271,7 +6273,7 @@ end if
                 ! ******************************************************************
                 CALL CALC_ANISOTROP_LIM_VALS2( &
                     ! Caculate the upwind values stored in matrix form...
-                    T_ALL, &
+                    Mmat, T_ALL, &
                     FEMT_ALL, USE_FEMT, &
                     TUPWIND_ALL,  &
                     NFIELD, NONODS, NLOC, NGI, SUB_TOTELE, SUB_NDGLNO, &
@@ -6289,7 +6291,7 @@ end if
 
             SUBROUTINE CALC_ANISOTROP_LIM_VALS2( &
                 ! Caculate the upwind values stored in matrix form...
-                T_ALL, &
+                Mmat, T_ALL, &
                 FEMT_ALL, USE_FEMT, &
                 TUPWIND_ALL,  &
                 NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
@@ -6301,6 +6303,7 @@ end if
                 ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
                 ! value for each node pair is stored in the matrices TUPWIND AND
                 IMPLICIT NONE
+                type (multi_matrices), intent(inout) :: Mmat
                 INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,NLOC,NGI,NCOLM,NFIELD,NDIM
                 REAL, DIMENSION( :,: ), intent( in ) :: T_ALL
                 REAL, DIMENSION(  :,: ), intent( in ) :: FEMT_ALL
@@ -6320,27 +6323,34 @@ end if
                 REAL, DIMENSION( NCOLM * NLOC  ) :: ELEMATWEI
                 ! Allocate memory for the interpolated upwind values
                 LOGICAL, PARAMETER :: BOUND  = .TRUE.! limiting options
-                integer, dimension(X_NONODS+1) :: NOD_FINDELE
-                integer, dimension(X_NONODS) ::NLIST, INLIST
-                INTEGER, DIMENSION( 20*TOTELE+500 ) :: NOD_COLELE! Over-estimate the size of the COLELE array
+                integer, dimension(:), allocatable :: NOD_FINDELE
+                integer, dimension(:), allocatable ::NLIST, INLIST
+                INTEGER, DIMENSION( : ), allocatable :: NOD_COLELE! Over-estimate the size of the COLELE array
                 INTEGER:: NCOLEL
+                logical :: recalculate_limiters
 
-                ! Calculate node element list - moved from (I)FINPTS
-                CALL PHILNODELE(X_NONODS,NOD_FINDELE,NOD_COLELE, &
-                    NCOLEL,SIZE(NOD_COLELE), &
-                    TOTELE,NLOC,X_NDGLN, &
-                    NLIST,INLIST)
+                !This memory is automatically cleaned after adapt so by checking if this is associated, it should be enough
+                recalculate_limiters = .not. associated(Mmat%limiters_ELEMATWEI)
+                !Associate local variables with memory stored in Mmat
+                if (recalculate_limiters) then
+                    allocate(Mmat%limiters_ELEMATWEI(NCOLM * NLOC))
+                    allocate(Mmat%limiters_ELEMATPSI(NCOLM))
+                    allocate(NOD_FINDELE(x_nonods+1), NLIST(x_nonods))
+                    allocate (NOD_COLELE(20*TOTELE+500), INLIST(x_nonods))! Over-estimate the size of the COLELE array
+                    ! Calculate node element list - moved from (I)FINPTS
+                    CALL PHILNODELE(X_NONODS,NOD_FINDELE,NOD_COLELE, NCOLEL,SIZE(NOD_COLELE), &
+                        TOTELE,NLOC,X_NDGLN, NLIST,INLIST)
 
+                    CALL FINPTSSTORE(T_ALL,FEMT_ALL,USE_FEMT,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
+                        TUPWIND_ALL,FINDRM,COLM,NCOLM,NDIM, X_NDGLN,X_NONODS, X_ALL, XC_CV_ALL, &
+                        N,NLX_ALL, WEIGHT, NOD_FINDELE,NOD_COLELE,NCOLEL, &
+                        Mmat%limiters_ELEMATPSI,Mmat%limiters_ELEMATWEI,1, BOUND, use_reflect)
 
-                CALL FINPTSSTORE(T_ALL,FEMT_ALL,USE_FEMT,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
-                    TUPWIND_ALL,FINDRM,COLM,NCOLM,NDIM, &
-                    X_NDGLN,X_NONODS, &
-                    X_ALL, XC_CV_ALL, &
-                    N,NLX_ALL, WEIGHT, &
-                    NOD_FINDELE,NOD_COLELE,NCOLEL, &
-                    ELEMATPSI,ELEMATWEI,1, &
-                    BOUND, use_reflect)
-
+                    deallocate(NOD_FINDELE, NLIST, INLIST, NOD_COLELE)
+                else
+                    call GETSTOREELEWEI(T_ALL,NFIELD,NONODS,NLOC,TOTELE,NDGLNO, &
+                     TUPWIND_ALL,FINDRM,COLM,NCOLM,BOUND,Mmat%limiters_ELEMATPSI,Mmat%limiters_ELEMATWEI)
+                end if
                 return
 
             END SUBROUTINE CALC_ANISOTROP_LIM_VALS2
