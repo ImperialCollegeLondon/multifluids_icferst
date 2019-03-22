@@ -264,7 +264,7 @@
     </scalar_field>
     <scalar_field name="Ph1" rank="0">
       <diagnostic>
-        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_galerkin_projection" source_field_name="Ph">
+        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_galerkin_projection" source_field_name="HydrostaticPressure">
           <solver>
             <relative_error>
               <real_value rank="0">1.0e-10</real_value>
@@ -323,7 +323,7 @@ for i in range (field.node_count):
     <vector_field name="DiagnosticCoordinate" rank="1">
       <diagnostic>
         <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="ph"/>
+        <mesh name="HydrostaticPressure"/>
         <stat>
           <include_in_stat/>
         </stat>
