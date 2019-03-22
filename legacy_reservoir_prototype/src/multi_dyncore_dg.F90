@@ -113,7 +113,6 @@ contains
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
-           logical :: lump_eqns
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
@@ -235,8 +234,6 @@ contains
                cv_beta = Mdisopt%v_beta
            end if
 
-           lump_eqns = have_option( '/numerical_methods/lump_mass_matrix' )
-
            RETRIEVE_SOLID_CTY = .false.
            if ( have_option( '/blasting' ) ) RETRIEVE_SOLID_CTY = .true.
 
@@ -353,40 +350,30 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
 
-               Conditional_Lumping: IF ( LUMP_EQNS ) THEN
-                   ! Lump the multi-phase flow eqns together
-                   ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )
-                   CV_RHS_SUB = 0.0
-                   DO IPHASE = 1, Mdims%nphase
-                       CV_RHS_SUB( : ) = CV_RHS_SUB( : )&
-                           + Mmat%CV_RHS%val(iphase,:)
-                   END DO
-               ELSE
-                   vtracer=as_vector(tracer,dim=2)
-                   call zero(vtracer)
-                   call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+               vtracer=as_vector(tracer,dim=2)
+               call zero(vtracer)
+               call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
 
-                    !Control how it is converging and decide
-                   if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
+                !Control how it is converging and decide
+               if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
 
-                   !Just after the solvers
-                   call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-                  !Update halo communications
-                  call halo_update(tracer)
+               !Just after the solvers
+               call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+              !Update halo communications
+              call halo_update(tracer)
 
-                   repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
-                   call allor(repeat_assemb_solve)
-                   !Checking solver not fully implemented
-                   if (repeat_assemb_solve ) then
-                       solver_not_converged = .true.
-                       tracer%val(1,:,:) = temp_bak!recover backup
-                       cycle!repeat
-                   else
-                       solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
-                       call allor(solver_not_converged)
-                       exit!good to go!
-                   end if
-               END IF Conditional_Lumping
+               repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
+               call allor(repeat_assemb_solve)
+               !Checking solver not fully implemented
+               if (repeat_assemb_solve ) then
+                   solver_not_converged = .true.
+                   tracer%val(1,:,:) = temp_bak!recover backup
+                   cycle!repeat
+               else
+                   solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                   call allor(solver_not_converged)
+                   exit!good to go!
+               end if
 
 
 
@@ -531,7 +518,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
-           logical :: lump_eqns
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, CDISPERSION
@@ -2557,11 +2543,11 @@ end if
 
         !For P1DGP1 the DCVFEM method does not work and requires P0DGP1. This is done through homogenisation
         !For historic reasons we always lump with the DCVFEM
-        if (Mmat%CV_pressure) then
+        if (Mmat%CV_pressure.and. is_porous_media) then
             lump_mass = .true.
             call get_option( &
             '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
-            if (j == 1.and. is_porous_media) then
+            if (j == 1) then
                 homogenize_mass_matrix = .true.
                 !For P1DGP1 the correct value is 100
                 lump_weight = 100.**(1./j)
