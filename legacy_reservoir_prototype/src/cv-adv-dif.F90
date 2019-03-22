@@ -929,11 +929,14 @@ contains
             use_reflect = have_option("/numerical_methods/use_reflect_method")
             CALL CALC_ANISOTROP_LIM( &
                 ! Caculate the upwind values stored in matrix form...
-                Mdims, Mmat, ndgln, Mspars, T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
+                T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
                 FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL,FEMT2_ALL,FEMT2OLD_ALL, (Mdims%cv_nonods.NE.Mdims%x_nonods), &
                 TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
                 T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-                i_use_volume_frac_t2, X_ALL, XC_CV_ALL, use_reflect)
+                i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
+                Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
+                ndgln%x,Mdims%x_nonods,Mdims%ndim, &
+                X_ALL, XC_CV_ALL, use_reflect)
         END IF
         FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
@@ -6062,21 +6065,20 @@ end if
 
     SUBROUTINE CALC_ANISOTROP_LIM(&
         ! Caculate the upwind values stored in matrix form...
-        Mdims, Mmat, ndgln, Mspars,  T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, T2_ALL, T2OLD_ALL, &
+        T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, T2_ALL, T2OLD_ALL, &
         FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, USE_FEMT, &
         TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, &
         T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
-        IGOT_T2, X_ALL, XC_CV_ALL, use_reflect)
-
+        IGOT_T2, NPHASE, CV_NONODS,CV_NLOC, TOTELE, CV_NDGLN, &
+        SMALL_FINDRM, SMALL_CENTRM, SMALL_COLM,NSMALL_COLM, &
+        X_NDGLN, X_NONODS, NDIM, &
+        X_ALL, XC_CV_ALL, use_reflect)
         ! For the anisotropic limiting scheme we find the upwind values
         ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
         ! value for each node pair is stored in the matrices TUPWIND AND
         IMPLICIT NONE
-        type(multi_dimensions), intent(in) :: Mdims
-        type(multi_ndgln), intent(in) :: ndgln
-        type (multi_matrices), intent(inout) :: Mmat
-        type(multi_sparsities), intent(in) :: Mspars
-        INTEGER, intent( in ) :: IGOT_T2
+        INTEGER, intent( in ) :: CV_NONODS,X_NONODS,TOTELE,CV_NLOC, &
+            NSMALL_COLM, NDIM,IGOT_T2,NPHASE
         REAL, DIMENSION( :, : ), intent( in ) :: T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL
         REAL, DIMENSION( :,:), intent( in ), pointer :: T2_ALL,T2OLD_ALL
         REAL, DIMENSION( :, :), intent( in ) :: FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL
@@ -6086,7 +6088,12 @@ end if
             DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
         REAL, DIMENSION( :,: ), intent( in ) :: X_ALL
-        REAL, DIMENSION( Mdims%NDIM, Mdims%CV_NONODS), intent( in ) :: XC_CV_ALL
+        INTEGER, DIMENSION(: ), intent( in ) :: X_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+        INTEGER, DIMENSION( : ), intent( in) :: SMALL_FINDRM
+        INTEGER, DIMENSION( : ), intent( in ) :: SMALL_COLM
+        INTEGER, DIMENSION( : ), intent( in) :: SMALL_CENTRM
+        REAL, DIMENSION( NDIM, CV_NONODS), intent( in ) :: XC_CV_ALL
         ! local variables...
         INTEGER :: NFIELD, IMID, NOD, IFIELD
         REAL, DIMENSION( :, : ), ALLOCATABLE :: F_ALL, FEMF_ALL, FUPWIND_MAT_ALL
@@ -6094,221 +6101,241 @@ end if
 
         ! Pack all the variables in:
         ! Always pack in the T & TOLD & T2, T2OLD variables
-        NFIELD=(4 + 2*IGOT_T2)*Mdims%nphase
+        NFIELD=(4 + 2*IGOT_T2)*NPHASE
 
-        ALLOCATE( FUPWIND_MAT_ALL(NFIELD,Mspars%small_acv%ncol) )
-        ALLOCATE( F_ALL(NFIELD, Mdims%CV_NONODS), FEMF_ALL(NFIELD, Mdims%CV_NONODS)  )
-        F_ALL(1:Mdims%nphase,            :)=T_ALL(1:Mdims%nphase, :)
-        F_ALL(1+Mdims%nphase:  2*Mdims%nphase, :)=TOLD_ALL(1:Mdims%nphase, :)
-        F_ALL(1+2*Mdims%nphase:3*Mdims%nphase, :)=DEN_ALL(1:Mdims%nphase, :)
-        F_ALL(1+3*Mdims%nphase:4*Mdims%nphase, :)=DENOLD_ALL(1:Mdims%nphase, :)
+        ALLOCATE( FUPWIND_MAT_ALL(NFIELD,NSMALL_COLM) )
+        ALLOCATE( F_ALL(NFIELD, CV_NONODS), FEMF_ALL(NFIELD, CV_NONODS)  )
+        F_ALL(1:NPHASE,            :)=T_ALL(1:NPHASE, :)
+        F_ALL(1+NPHASE:  2*NPHASE, :)=TOLD_ALL(1:NPHASE, :)
+        F_ALL(1+2*NPHASE:3*NPHASE, :)=DEN_ALL(1:NPHASE, :)
+        F_ALL(1+3*NPHASE:4*NPHASE, :)=DENOLD_ALL(1:NPHASE, :)
 
         IF(IGOT_T2.NE.0) THEN
-            F_ALL(1+4*Mdims%nphase:5*Mdims%nphase, :)=T2_ALL(1:Mdims%nphase, :)
-            F_ALL(1+5*Mdims%nphase:6*Mdims%nphase, :)=T2OLD_ALL(1:Mdims%nphase, :)
+            F_ALL(1+4*NPHASE:5*NPHASE, :)=T2_ALL(1:NPHASE, :)
+            F_ALL(1+5*NPHASE:6*NPHASE, :)=T2OLD_ALL(1:NPHASE, :)
         ENDIF
         ! femf:
-        FEMF_ALL(1:Mdims%nphase,            :)=FEMT_ALL(1:Mdims%nphase, :)
-        FEMF_ALL(1+Mdims%nphase:  2*Mdims%nphase, :)=FEMTOLD_ALL(1:Mdims%nphase, :)
-        FEMF_ALL(1+2*Mdims%nphase:3*Mdims%nphase, :)=FEMDEN_ALL(1:Mdims%nphase, :)
-        FEMF_ALL(1+3*Mdims%nphase:4*Mdims%nphase, :)=FEMDENOLD_ALL(1:Mdims%nphase, :)
+        FEMF_ALL(1:NPHASE,            :)=FEMT_ALL(1:NPHASE, :)
+        FEMF_ALL(1+NPHASE:  2*NPHASE, :)=FEMTOLD_ALL(1:NPHASE, :)
+        FEMF_ALL(1+2*NPHASE:3*NPHASE, :)=FEMDEN_ALL(1:NPHASE, :)
+        FEMF_ALL(1+3*NPHASE:4*NPHASE, :)=FEMDENOLD_ALL(1:NPHASE, :)
 
         IF(IGOT_T2.NE.0) THEN
-            FEMF_ALL(1+4*Mdims%nphase:5*Mdims%nphase, :)=FEMT2_ALL(1:Mdims%nphase, :)
-            FEMF_ALL(1+5*Mdims%nphase:6*Mdims%nphase, :)=FEMT2OLD_ALL(1:Mdims%nphase, :)
+            FEMF_ALL(1+4*NPHASE:5*NPHASE, :)=FEMT2_ALL(1:NPHASE, :)
+            FEMF_ALL(1+5*NPHASE:6*NPHASE, :)=FEMT2OLD_ALL(1:NPHASE, :)
         ENDIF
 
 
         !Find upwind field values for limiting
-        CALL CALC_ANISOTROP_LIM_VALS( Mdims, Mmat, ndgln, Mspars, F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
-            NFIELD, X_ALL, XC_CV_ALL, use_reflect)
+        CALL CALC_ANISOTROP_LIM_VALS( F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
+            NFIELD,CV_NONODS,CV_NLOC,TOTELE,CV_NDGLN, SMALL_FINDRM,&
+            SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL, use_reflect)
 
         ! make sure the diagonal is equal to the value:
-        DO NOD=1,Mdims%CV_NONODS
-            IMID=Mspars%small_acv%mid(NOD)
+        DO NOD=1,CV_NONODS
+            IMID=SMALL_CENTRM(NOD)
             DO IFIELD=1,NFIELD
                 FUPWIND_MAT_ALL( IFIELD, IMID)=F_ALL( IFIELD, NOD)
             END DO
         END DO
 
 
-        TUPWIND_MAT_ALL(1:Mdims%nphase,      :)=FUPWIND_MAT_ALL(1:Mdims%nphase, :)
-        TOLDUPWIND_MAT_ALL(1:Mdims%nphase,   :)=FUPWIND_MAT_ALL(1+Mdims%nphase:2*Mdims%nphase, :)
-        DENUPWIND_MAT_ALL(1:Mdims%nphase,    :)=FUPWIND_MAT_ALL(2*Mdims%nphase+1:3*Mdims%nphase, :)
-        DENOLDUPWIND_MAT_ALL(1:Mdims%nphase, :)=FUPWIND_MAT_ALL(3*Mdims%nphase+1:4*Mdims%nphase, :)
+        TUPWIND_MAT_ALL(1:NPHASE,      :)=FUPWIND_MAT_ALL(1:NPHASE, :)
+        TOLDUPWIND_MAT_ALL(1:NPHASE,   :)=FUPWIND_MAT_ALL(1+NPHASE:2*NPHASE, :)
+        DENUPWIND_MAT_ALL(1:NPHASE,    :)=FUPWIND_MAT_ALL(2*NPHASE+1:3*NPHASE, :)
+        DENOLDUPWIND_MAT_ALL(1:NPHASE, :)=FUPWIND_MAT_ALL(3*NPHASE+1:4*NPHASE, :)
 
         IF(IGOT_T2.NE.0) THEN
-            T2UPWIND_MAT_ALL(1:Mdims%nphase,    :)=FUPWIND_MAT_ALL(4*Mdims%nphase+1:5*Mdims%nphase, :)
-            T2OLDUPWIND_MAT_ALL(1:Mdims%nphase, :)=FUPWIND_MAT_ALL(5*Mdims%nphase+1:6*Mdims%nphase, :)
+            T2UPWIND_MAT_ALL(1:NPHASE,    :)=FUPWIND_MAT_ALL(4*NPHASE+1:5*NPHASE, :)
+            T2OLDUPWIND_MAT_ALL(1:NPHASE, :)=FUPWIND_MAT_ALL(5*NPHASE+1:6*NPHASE, :)
         ENDIF
         deallocate(FUPWIND_MAT_ALL, F_ALL, FEMF_ALL)
         contains
 
-          SUBROUTINE CALC_ANISOTROP_LIM_VALS( &
-              ! Caculate the upwind values stored in matrix form...
-              Mdims, Mmat, ndgln, Mspars, T_ALL, FEMT_ALL, USE_FEMT, &
-              TUPWIND_ALL,  NFIELD, X_ALL, XC_CV_ALL, use_reflect)
-              ! For the anisotropic limiting scheme we find the upwind values
-              ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
-              ! value for each node pair is stored in the matrices TUPWIND AND
-              IMPLICIT NONE
-              type(multi_dimensions), intent(in) :: Mdims
-              type(multi_ndgln), intent(in) :: ndgln
-              type (multi_matrices), intent(inout) :: Mmat
-              type(multi_sparsities), intent(in) :: Mspars
-              INTEGER, intent(in) :: NFIELD
-              REAL, DIMENSION( :, : ), intent( in ) :: T_ALL, FEMT_ALL
-              LOGICAL, intent( in ) :: USE_FEMT, use_reflect
-              REAL, DIMENSION( :, : ), intent( inout ) :: TUPWIND_ALL
-              REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
-              REAL, DIMENSION( Mdims%ndim, Mdims%CV_NONODS ), intent( in ) :: XC_CV_ALL
-              ! the centre of each CV is: XC_CV, YC_CV, ZC_CV
+            SUBROUTINE CALC_ANISOTROP_LIM_VALS( &
+                ! Caculate the upwind values stored in matrix form...
+                T_ALL, &
+                FEMT_ALL, USE_FEMT, &
+                TUPWIND_ALL, &
+                NFIELD,NONODS,CV_NLOC,TOTELE,CV_NDGLN, &
+                SMALL_FINDRM,SMALL_COLM,NSMALL_COLM, &
+                X_NDGLN,X_NONODS,NDIM, &
+                X_ALL, XC_CV_ALL, use_reflect)
+                ! For the anisotropic limiting scheme we find the upwind values
+                ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
+                ! value for each node pair is stored in the matrices TUPWIND AND
+                IMPLICIT NONE
+                INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,CV_NLOC,NSMALL_COLM,NFIELD,NDIM
+                REAL, DIMENSION( :, : ), intent( in ) :: T_ALL
+                REAL, DIMENSION( :, : ), intent( in ) :: FEMT_ALL
+                LOGICAL, intent( in ) :: USE_FEMT, use_reflect
+                REAL, DIMENSION( :, : ), intent( inout ) :: TUPWIND_ALL
+                INTEGER, DIMENSION( :  ), intent( in ) :: X_NDGLN
+                INTEGER, DIMENSION( :  ), intent( in ) :: CV_NDGLN
+                INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINDRM
+                INTEGER, DIMENSION( : ), intent( in ) :: SMALL_COLM
+                REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
+                REAL, DIMENSION( NDIM, NONODS ), intent( in ) :: XC_CV_ALL
+                ! the centre of each CV is: XC_CV, YC_CV, ZC_CV
 
-              ! Allocate memory for the interpolated upwind values
-              real, dimension( :, : ), allocatable :: N!, NLX, NLY, NLZ
-              real, dimension (:, :, :), allocatable :: NLX_ALL
-              real, dimension( : ), allocatable :: WEIGHT, L1, L2, L3, L4
-              integer, dimension (:), pointer :: SUB_NDGLNO, SUB_XNDGLNO
-              integer, dimension( : ), allocatable :: ndgln_p2top1
-              INTEGER :: SUB_TOTELE, NGI,NLOC, ELE, IL_LOC, IQ_LOC, &
-                  LOC_ELE, SUB_ELE, SUB_LIN_TOTELE
-
-
-              ! **********************Calculate linear shape functions...........
-              !By default we consider linear elements
-              NLOC = Mdims%ndim + 1
-              NGI = NLOC
-              IF(Mdims%ndim==1) NLOC = 1
+                ! Allocate memory for the interpolated upwind values
+                real, dimension( :, : ), allocatable :: N!, NLX, NLY, NLZ
+                real, dimension (:, :, :), allocatable :: NLX_ALL
+                real, dimension( : ), allocatable :: WEIGHT, L1, L2, L3, L4
+                integer, dimension( : ), allocatable :: SUB_NDGLNO, SUB_XNDGLNO, ndgln_p2top1
+                INTEGER :: SUB_TOTELE, NGI,NLOC, ELE, IL_LOC, IQ_LOC, &
+                    LOC_ELE, SUB_ELE, SUB_LIN_TOTELE
 
 
-              ALLOCATE( N(NLOC,NGI))
-              ALLOCATE( WEIGHT(NGI) )
-              ALLOCATE( L1(NGI), L2(NGI), L3(NGI), L4(NGI) )
-              allocate(NLX_ALL(size(X_ALL,1), NLOC, NGI))
-              !
-              ! Shape functions for triangles and tets...
-              CALL TRIQUAold( L1, L2, L3, L4, WEIGHT, Mdims%ndim==3, NGI )
-              ! Work out the shape functions and there derivatives...
-              call SHATRInew(L1, L2, L3, L4, WEIGHT,  NLOC,NGI,  N,NLX_ALL)
-              ! ******************************************************************
-              ! Calculate the sub elements for quadratic element SUB_NDGLNO ...
-              IF(Mdims%CV_NLOC==NLOC) THEN
-                  SUB_TOTELE=Mdims%TOTELE
-              ELSE
-                  IF(Mdims%ndim==1) THEN
-                      sub_lin_totele=2
-                  ELSE IF(Mdims%ndim==2) THEN
-                      sub_lin_totele=4
-                  ELSE IF(Mdims%ndim==3) THEN
-                      sub_lin_totele=8
-                  ENDIF
-                  SUB_TOTELE= sub_lin_totele * Mdims%TOTELE
+                ! **********************Calculate linear shape functions...
+                IF(NDIM==1) THEN
+                    NLOC=1
+                    NGI=2
+                ELSE IF(NDIM==2) THEN
+                    NLOC=3
+                    NGI=3
+                ELSE IF(NDIM==3) THEN
+                    NLOC=4
+                    NGI=4
+                ENDIF
+                ALLOCATE( N(NLOC,NGI))
+                ALLOCATE( WEIGHT(NGI) )
+                ALLOCATE( L1(NGI), L2(NGI), L3(NGI), L4(NGI) )
+                allocate(NLX_ALL(size(X_ALL,1), NLOC, NGI))
+                !
+                ! Shape functions for triangles and tets...
+                CALL TRIQUAold( L1, L2, L3, L4, WEIGHT, ndim==3, NGI )
+                ! Work out the shape functions and there derivatives...
+                call SHATRInew(L1, L2, L3, L4, WEIGHT,  NLOC,NGI,  N,NLX_ALL)
+                ! ******************************************************************
+                ! Calculate the sub elements for quadratic element SUB_NDGLNO ...
+                IF(CV_NLOC==NLOC) THEN
+                    SUB_TOTELE=TOTELE
+                ELSE
+                    IF(NDIM==1) THEN
+                        sub_lin_totele=2
+                    ELSE IF(NDIM==2) THEN
+                        sub_lin_totele=4
+                    ELSE IF(NDIM==3) THEN
+                        sub_lin_totele=8
+                    ENDIF
+                    SUB_TOTELE= sub_lin_totele * totele
 
-                  allocate( ndgln_p2top1( sub_lin_totele*nloc ) ) ; ndgln_p2top1 = 0
-                  call conv_quad_to_lin_tri_tet( ndgln_p2top1, nloc, Mdims%CV_NLOC, sub_lin_totele )
+                    allocate( ndgln_p2top1( sub_lin_totele*nloc ) ) ; ndgln_p2top1 = 0
+                    call conv_quad_to_lin_tri_tet( ndgln_p2top1, nloc, cv_nloc, sub_lin_totele )
 
-              ENDIF
+                ENDIF
 
+                ALLOCATE( SUB_NDGLNO( SUB_TOTELE*NLOC ) )
+                ALLOCATE( SUB_XNDGLNO( SUB_TOTELE*NLOC ) )
 
-              IF ( Mdims%CV_NLOC==NLOC ) THEN
-                  SUB_NDGLNO => ndgln%cv
-                  SUB_XNDGLNO => ndgln%x
-              ELSE
-                  ALLOCATE( SUB_NDGLNO( SUB_TOTELE*NLOC ) )
-                  ALLOCATE( SUB_XNDGLNO( SUB_TOTELE*NLOC ) )
+                IF ( CV_NLOC==NLOC ) THEN
+                    SUB_NDGLNO = CV_NDGLN
+                    SUB_XNDGLNO = X_NDGLN
+                ELSE
 
-                  SUB_ELE=0
-                  DO ELE = 1, Mdims%TOTELE
-                      DO LOC_ELE = 1, SUB_LIN_TOTELE
+                    SUB_ELE=0
+                    DO ELE = 1, TOTELE
+                        DO LOC_ELE = 1, SUB_LIN_TOTELE
 
-                          SUB_ELE = SUB_ELE + 1
+                            SUB_ELE = SUB_ELE + 1
 
-                          DO IL_LOC = 1, NLOC
-                              IQ_LOC = ndgln_p2top1( (loc_ELE-1)*NLOC + IL_LOC )
-                              SUB_NDGLNO( (sub_ele-1)*nloc + il_loc ) = ndgln%cv( (ele-1)*Mdims%CV_NLOC + iq_loc )
-                              SUB_XNDGLNO( (sub_ele-1)*nloc + il_loc ) = ndgln%x( (ele-1)*Mdims%CV_NLOC + iq_loc )
-                          END DO
+                            DO IL_LOC = 1, NLOC
+                                IQ_LOC = ndgln_p2top1( (loc_ELE-1)*NLOC + IL_LOC )
+                                SUB_NDGLNO( (sub_ele-1)*nloc + il_loc ) = cv_ndgln( (ele-1)*cv_nloc + iq_loc )
+                                SUB_XNDGLNO( (sub_ele-1)*nloc + il_loc ) = x_ndgln( (ele-1)*cv_nloc + iq_loc )
+                            END DO
 
-                      END DO
-                  END DO
-                  deallocate( ndgln_p2top1 )
-              END IF
+                        END DO
+                    END DO
+                    deallocate( ndgln_p2top1 )
+                END IF
 
-              ! Calculate the sub elements for quadratic element SUB_NDGLNO ...
-              ! ******************************************************************
-              CALL CALC_ANISOTROP_LIM_VALS2( &
-                  ! Caculate the upwind values stored in matrix form...
-                  Mdims, Mmat, ndgln, Mspars, T_ALL, FEMT_ALL, USE_FEMT, &
-                  TUPWIND_ALL, NFIELD, NLOC, NGI, SUB_TOTELE, SUB_NDGLNO, &
-                  SUB_XNDGLNO, X_ALL, XC_CV_ALL, N, NLX_ALL, WEIGHT, use_reflect)
-
-              !Deallocate pointers only if they have been allocated here
-              IF ( Mdims%CV_NLOC/=NLOC ) deallocate (SUB_NDGLNO, SUB_XNDGLNO)
-
-              DEALLOCATE( N, NLX_ALL, L1, L2, L3, L4, WEIGHT )
-              RETURN
-          END SUBROUTINE CALC_ANISOTROP_LIM_VALS
+                ! Calculate the sub elements for quadratic element SUB_NDGLNO ...
+                ! ******************************************************************
+                CALL CALC_ANISOTROP_LIM_VALS2( &
+                    ! Caculate the upwind values stored in matrix form...
+                    T_ALL, &
+                    FEMT_ALL, USE_FEMT, &
+                    TUPWIND_ALL,  &
+                    NFIELD, NONODS, NLOC, NGI, SUB_TOTELE, SUB_NDGLNO, &
+                    SMALL_FINDRM,SMALL_COLM, NSMALL_COLM, &
+                    SUB_XNDGLNO, X_NONODS, NDIM, &
+                    X_ALL, XC_CV_ALL, &
+                    N, NLX_ALL, WEIGHT, use_reflect)
 
 
-          SUBROUTINE CALC_ANISOTROP_LIM_VALS2( &
-              ! Caculate the upwind values stored in matrix form...
-              Mdims, Mmat, ndgln, Mspars, T_ALL, FEMT_ALL, USE_FEMT, &
-              TUPWIND_ALL,  NFIELD,NLOC,NGI, SUB_TOTELE, SUB_NDGLNO, &
-              SUB_XNDGLNO, X_ALL, XC_CV_ALL, N,NLX_ALL, WEIGHT, use_reflect)
-              ! For the anisotropic limiting scheme we find the upwind values
-              ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
-              ! value for each node pair is stored in the matrices TUPWIND AND
-              IMPLICIT NONE
-              type(multi_dimensions), intent(in) :: Mdims
-              type(multi_ndgln), intent(in) :: ndgln
-              type (multi_matrices), intent(inout) :: Mmat
-              type(multi_sparsities), intent(in) :: Mspars
-              INTEGER, intent(in) :: NLOC,NGI,NFIELD, SUB_TOTELE
-              REAL, DIMENSION( :,: ), intent( in ) :: T_ALL
-              REAL, DIMENSION(  :,: ), intent( in ) :: FEMT_ALL
-              LOGICAL, intent( in ) :: USE_FEMT, use_reflect
-              REAL, DIMENSION( :,:  ), intent( inout ) :: TUPWIND_ALL
-              INTEGER, DIMENSION( : ), INTENT(IN) :: SUB_NDGLNO, SUB_XNDGLNO
+                DEALLOCATE( N, NLX_ALL, L1, L2, L3, L4, &
+                    WEIGHT, SUB_NDGLNO, SUB_XNDGLNO )
+                RETURN
+            END SUBROUTINE CALC_ANISOTROP_LIM_VALS
 
-              REAL, DIMENSION(:,:), intent( in ) :: X_ALL
-              REAL, DIMENSION( :, : ), intent( in ) :: XC_CV_ALL
-              REAL, DIMENSION(:,:), INTENT(IN) :: N!,NLX,NLY,NLZ
-              REAL, DIMENSION(:,:,:), INTENT(IN) :: NLX_ALL!DIMENSION(Mdims%ndim, NLOC,NGI)
-              REAL, DIMENSION(:), INTENT(IN) :: WEIGHT
-              !Local variables
-              logical :: recalculate_limiters
-              LOGICAL, PARAMETER :: BOUND  = .TRUE.! limiting options
-              integer, dimension(:), allocatable :: NOD_FINDELE, NLIST, INLIST, NOD_COLELE
-              INTEGER:: NCOLEL
 
-              !This memory is automatically cleaned after adapt so by checking if this is associated, it should be enough
-              recalculate_limiters = .not. associated(Mmat%limiters_ELEMATWEI)
-              !Associate local variables with memory stored in Mmat
-              if (recalculate_limiters) then
-                  allocate(Mmat%limiters_ELEMATWEI(Mspars%small_acv%ncol * NLOC))
-                  allocate(Mmat%limiters_ELEMATPSI(Mspars%small_acv%ncol))
-                  allocate(NOD_FINDELE(Mdims%x_nonods+1), NLIST(Mdims%x_nonods))
-                  allocate (NOD_COLELE(20*SUB_TOTELE+500), INLIST(Mdims%x_nonods))! Over-estimate the size of the COLELE array
-                  ! Calculate node element list - moved from (I)FINPTS
-                  CALL PHILNODELE(Mdims%x_nonods,NOD_FINDELE,NOD_COLELE, &!sprint_to_do is this sparsity different to any of the stored ones?
-                  NCOLEL,SIZE(NOD_COLELE), SUB_TOTELE,NLOC,SUB_XNDGLNO, NLIST,INLIST)
+            SUBROUTINE CALC_ANISOTROP_LIM_VALS2( &
+                ! Caculate the upwind values stored in matrix form...
+                T_ALL, &
+                FEMT_ALL, USE_FEMT, &
+                TUPWIND_ALL,  &
+                NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
+                FINDRM,COLM,NCOLM, &
+                X_NDGLN,X_NONODS,NDIM, &
+                X_ALL, XC_CV_ALL,  &
+                N,NLX_ALL, WEIGHT, use_reflect)
+                ! For the anisotropic limiting scheme we find the upwind values
+                ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
+                ! value for each node pair is stored in the matrices TUPWIND AND
+                IMPLICIT NONE
+                INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,NLOC,NGI,NCOLM,NFIELD,NDIM
+                REAL, DIMENSION( :,: ), intent( in ) :: T_ALL
+                REAL, DIMENSION(  :,: ), intent( in ) :: FEMT_ALL
+                LOGICAL, intent( in ) :: USE_FEMT, use_reflect
+                REAL, DIMENSION( :,:  ), intent( inout ) :: TUPWIND_ALL
+                INTEGER, DIMENSION( : ), INTENT(IN) :: NDGLNO,X_NDGLN
+                INTEGER, DIMENSION( : ), INTENT(IN) :: FINDRM,COLM
 
-                  CALL FINPTSSTORE(T_ALL,FEMT_ALL,USE_FEMT,NFIELD,Mdims%CV_NONODS,NLOC,NGI,SUB_TOTELE,SUB_NDGLNO, &
-                      TUPWIND_ALL,Mspars%small_acv%fin,Mspars%small_acv%col,Mspars%small_acv%ncol,Mdims%ndim, &
-                      SUB_XNDGLNO,Mdims%x_nonods, X_ALL, XC_CV_ALL, N,NLX_ALL, WEIGHT, NOD_FINDELE,NOD_COLELE,NCOLEL, &
-                      Mmat%limiters_ELEMATPSI,Mmat%limiters_ELEMATWEI,.true., BOUND, use_reflect)
-                  deallocate(NOD_FINDELE, NLIST, INLIST, NOD_COLELE)
-              else
-                  call GETSTOREELEWEI(T_ALL,NFIELD,Mdims%CV_NONODS,NLOC,SUB_TOTELE,SUB_NDGLNO, &
-                   TUPWIND_ALL,Mspars%small_acv%fin,Mspars%small_acv%col,Mspars%small_acv%ncol,BOUND,&
-                   Mmat%limiters_ELEMATPSI,Mmat%limiters_ELEMATWEI)
-              end if
+                REAL, DIMENSION(:,:), intent( in ) :: X_ALL
+                REAL, DIMENSION( :, : ), intent( in ) :: XC_CV_ALL
+                REAL, DIMENSION(:,:), INTENT(IN) :: N!,NLX,NLY,NLZ
+                REAL, DIMENSION(:,:,:), INTENT(IN) :: NLX_ALL!DIMENSION(NDIM, NLOC,NGI)
+                REAL, DIMENSION(:), INTENT(IN) :: WEIGHT
+                !Local variables
 
-          END SUBROUTINE CALC_ANISOTROP_LIM_VALS2
+                INTEGER, DIMENSION( NCOLM ) :: ELEMATPSI
+                REAL, DIMENSION( NCOLM * NLOC  ) :: ELEMATWEI
+                ! Allocate memory for the interpolated upwind values
+                LOGICAL, PARAMETER :: BOUND  = .TRUE.! limiting options
+                integer, dimension(X_NONODS+1) :: NOD_FINDELE
+                integer, dimension(X_NONODS) ::NLIST, INLIST
+                INTEGER, DIMENSION( 20*TOTELE+500 ) :: NOD_COLELE! Over-estimate the size of the COLELE array
+                INTEGER:: NCOLEL
+
+                ! Calculate node element list - moved from (I)FINPTS
+                CALL PHILNODELE(X_NONODS,NOD_FINDELE,NOD_COLELE, &
+                    NCOLEL,SIZE(NOD_COLELE), &
+                    TOTELE,NLOC,X_NDGLN, &
+                    NLIST,INLIST)
+
+
+                CALL FINPTSSTORE(T_ALL,FEMT_ALL,USE_FEMT,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
+                    TUPWIND_ALL,FINDRM,COLM,NCOLM,NDIM, &
+                    X_NDGLN,X_NONODS, &
+                    X_ALL, XC_CV_ALL, &
+                    N,NLX_ALL, WEIGHT, &
+                    NOD_FINDELE,NOD_COLELE,NCOLEL, &
+                    ELEMATPSI,ELEMATWEI,1, &
+                    BOUND, use_reflect)
+
+                return
+
+            END SUBROUTINE CALC_ANISOTROP_LIM_VALS2
+
+
+
 
 
             SUBROUTINE GETSTOREELEWEI(PSI_ALL,NFIELD,NONODS,NLOC,TOTELE,NDGLNO, &
-                     MATPSI_ALL,FINDRM,COLM,NCOLM,BOUND,ELEMATPSI,ELEMATWEI)
+                &     MATPSI_ALL,FINDRM,COLM,NCOLM,BOUND,&
+                &     ELEMATPSI,ELEMATWEI)
                 ! use the stored interpolation coeffs to caclulate MATPSI.
                 !     This sub finds the matrix values MATPSI for a given point on the
                 !     stencil
@@ -6443,7 +6470,7 @@ end if
                 !     work space...
                 INTEGER, dimension(:),intent(in) :: FINDELE
                 INTEGER, dimension(:),intent(in) :: COLELE
-                logical, intent(in) :: IGETSTOR
+                INTEGER, intent(in) :: IGETSTOR
                 INTEGER, dimension(:), intent(inout) :: ELEMATPSI
                 REAL, dimension(:), intent(inout) :: ELEMATWEI
                 ! ELEWIC is the element to do interpolation from
@@ -6544,7 +6571,7 @@ end if
                                 FINDELE,COLELE,NCOLEL, &
                                 MINPSI,MAXPSI, &
                                 ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
-                            IF(IGETSTOR) THEN
+                            IF(IGETSTOR.EQ.1) THEN
                                 ELEMATPSI(COUNT)=ELEWIC
                                 DO ILOC=1,NLOC! Was loop
                                     ELEMATWEI((COUNT-1)*NLOC+ILOC)=LOCCORDSK(ILOC)
