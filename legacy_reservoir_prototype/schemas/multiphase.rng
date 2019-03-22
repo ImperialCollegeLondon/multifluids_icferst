@@ -1571,6 +1571,7 @@ By default the tolerance is 1e-2</a:documentation>
                   <ref name="real"/>
                   <optional>
                     <element name="stop_at_min_ts">
+                      <a:documentation>Select this option if you want the simulation to terminate if after reaching the minimum time-step the non-linear solver fails to ensure mass convergence. Only works when adaptive time-step is on.</a:documentation>
                       <empty/>
                     </element>
                   </optional>
