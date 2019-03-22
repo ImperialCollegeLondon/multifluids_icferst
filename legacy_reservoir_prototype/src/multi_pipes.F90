@@ -108,8 +108,7 @@ contains
         integer, dimension(Mdims%ndim+1, Mdims%ndim+1) :: CV_MID_SIDE, U_MID_SIDE
         real, dimension(:), allocatable:: cvweigh, cv_nodpos, u_nodpos, lcv_b, &
             PIPE_DIAM_GI_vol, PIPE_DIAM_GI_suf, suf_detwei, vol_detwei, vol_detwei2
-        !Variables to speed up memory allocations
-        real, dimension( max(Mdims%nphase, 100) *6 ) :: memory_limiters!Get biggest between maximum nunber of fields (100), or phases
+
         real, dimension(Mdims%ndim) :: direction, direction_NORM
         real, dimension(Mdims%nphase) :: INV_SIGMA_GI, TUPWIND_OUT,  DUPWIND_OUT, TUPWIND_in,  DUPWIND_in, ndotq, income, income_j,&
             FEMTGI, FEMdGI, T_CV_NODI, T_CV_NODJ, D_CV_NODI, D_CV_NODJ, limt, limd, fvt, limdt, bczero, LOC_CT_RHS_U_ILOC, xi_limit
@@ -622,18 +621,12 @@ contains
                             CALL ONVDLIM_ANO_MANY( Mdims%nphase, &
                                 LIMT, FEMTGI, INCOME, &
                                 T_CV_NODI, T_CV_NODJ, XI_LIMIT, &
-                                TUPWIND_IN, TUPWIND_OUT, &
-                                memory_limiters(1:Mdims%nphase), memory_limiters(Mdims%nphase + 1:Mdims%nphase*2),&
-                                memory_limiters(2*Mdims%nphase + 1:Mdims%nphase*3), memory_limiters(3*Mdims%nphase + 1:Mdims%nphase*4),&
-                                memory_limiters(4*Mdims%nphase + 1:Mdims%nphase*5), memory_limiters(5*Mdims%nphase + 1:Mdims%nphase*6) )
+                                TUPWIND_IN, TUPWIND_OUT )
                             ! Call the limiter for D...
                             CALL ONVDLIM_ANO_MANY( Mdims%nphase, &
                                 LIMD, FEMDGI, INCOME, &
                                 D_CV_NODI, D_CV_NODJ, XI_LIMIT, &
-                                DUPWIND_IN, DUPWIND_OUT, &
-                                memory_limiters(1:Mdims%nphase), memory_limiters(Mdims%nphase + 1:Mdims%nphase*2),&
-                                memory_limiters(2*Mdims%nphase + 1:Mdims%nphase*3), memory_limiters(3*Mdims%nphase + 1:Mdims%nphase*4),&
-                                memory_limiters(4*Mdims%nphase + 1:Mdims%nphase*5), memory_limiters(5*Mdims%nphase + 1:Mdims%nphase*6) )
+                                DUPWIND_IN, DUPWIND_OUT )
                         END IF
                         LIMDT = LIMD * LIMT
                         IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
@@ -826,58 +819,58 @@ contains
             end do
          end if
     CONTAINS
-      PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
-          TDLIM, TDCEN, INCOME, &
-          ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
-          TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
-          implicit none
-          ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-          ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-          ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-          ! LIBETA is the flux limiting parameter.
-          ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-          ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-          ! PELEOT=element at other side of current face.
-          ! ELEOT2=element at other side of the element ELEOTH.
-          ! ELESID=element next to oposing current face.
-          ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
-          ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-          ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-          !---------------------------------------------------
-          !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-          !---------------------------------------------------
-          ! TAIN         THALF       TAOUT
-          !---------------------------------------------------
-          !>TEXTIN
-          !TEXOUT<
-          !---------------------------------------------------
-          INTEGER, intent( in ) :: NFIELD
-          REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
-          REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
-          REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-          real, dimension( NFIELD ), intent(inout) :: DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU
-          ! Local variables
-          REAL, PARAMETER :: TOLER=1.0E-10
-          ! Calculate normalisation parameters for incomming velocities
-          DENOIN = ( ETDNEW_PELE - TUPWIN )
-          where( ABS( DENOIN ) < TOLER )
-              DENOIN = SIGN( TOLER, DENOIN )
-          end where
-          CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-          ! Calculate normalisation parameters for out going velocities
-          DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-          where( ABS( DENOOU ) < TOLER )
-              DENOOU = SIGN( TOLER, DENOOU )
-          end where
-          CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-          FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-          FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-          ! Velocity is going out of element
-          TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
-              + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
-          TDLIM = MAX( TDLIM, 0.0 )
-          RETURN
-      END SUBROUTINE ONVDLIM_ANO_MANY
+        PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
+            TDLIM, TDCEN, INCOME, &
+            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT, &
+            TUPWIN, TUPWI2 )
+            implicit none
+            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
+            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
+            ! LIBETA is the flux limiting parameter.
+            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
+            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
+            ! PELEOT=element at other side of current face.
+            ! ELEOT2=element at other side of the element ELEOTH.
+            ! ELESID=element next to oposing current face.
+            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
+            !---------------------------------------------------
+            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+            !---------------------------------------------------
+            ! TAIN         THALF       TAOUT
+            !---------------------------------------------------
+            !>TEXTIN
+            !TEXOUT<
+            !---------------------------------------------------
+            INTEGER, intent( in ) :: NFIELD
+            REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
+            REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
+            REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
+            ! Local variables
+            REAL, PARAMETER :: TOLER=1.0E-10
+            REAL :: DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
+                CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
+            ! Calculate normalisation parameters for incomming velocities
+            DENOIN = ( ETDNEW_PELE - TUPWIN )
+            where( ABS( DENOIN ) < TOLER )
+                DENOIN = SIGN( TOLER, DENOIN )
+            end where
+            CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
+            ! Calculate normalisation parameters for out going velocities
+            DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+            where( ABS( DENOOU ) < TOLER )
+                DENOOU = SIGN( TOLER, DENOOU )
+            end where
+            CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
+            FTILIN = ( TDCEN - TUPWIN ) / DENOIN
+            FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
+            ! Velocity is going out of element
+            TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
+                + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
+            TDLIM = MAX( TDLIM, 0.0 )
+            RETURN
+        END SUBROUTINE ONVDLIM_ANO_MANY
 
 
     real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
