@@ -4113,7 +4113,7 @@ end if
                 call set(psi_int_temp(it),psi_int(it)%ptr)
                 call zero(psi_int(it)%ptr)
             end do
-
+            !sprint_to_do we should not need to allocate this field unless .not. do_not_project
             sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
             call allocate(CV_funs%CV2FE,sparsity,[1,1],name="ProjectionMatrix")
             call zero(CV_funs%CV2FE)
@@ -4126,12 +4126,6 @@ end if
         call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
 
         Loop_Elements: do iele = 1, Mdims%totele
-            ! check parallelisation
-            ! if(isParallel()) then!we can avoid halo_updates by over-looping here in parallel
-                                    !because these matrices are local
-                ! if(.not.assemble_ele(psi_int(1)%ptr,iele)) cycle
-            ! end if
-
             ! calculate detwei,RA,NX,NY,NZ for the ith element
             call DETNLXR(iele, X, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
@@ -4139,8 +4133,6 @@ end if
 
             Loop_CV_iLoc: do cv_iloc = 1, Mdims%cv_nloc
                 cv_nodi = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_iloc)
-                !we can avoid halo_updates by over-looping here in parallel because these matrices are local
-                ! if(.not.node_owned(psi(1)%ptr,cv_nodi)) cycle
 
                 Loop_CV_jLoc: do cv_jloc = 1, Mdims%cv_nloc
                     cv_nodj = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_jloc)
@@ -4156,13 +4148,13 @@ end if
                     end do
 
                     if(cv_test_space) then
-                        if(is_to_update) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,mn)
+                        if(is_to_update.and. .not. do_not_project) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,mn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +mm*psi(it)%ptr%val(:,:,cv_nodj)
                         end do
                     else
-                        if(is_to_update) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,nn)
+                        if(is_to_update.and. .not. do_not_project) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,nn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +nm*psi(it)%ptr%val(:,:,cv_nodj)
@@ -4194,15 +4186,10 @@ end if
         !---------------------------------
         ! update the halo information
         if(is_to_update) then
-            ! call halo_update(cv_mass)!no need to update halos as these matrices are local
             call invert(cv_mass)
             do it = 1, size(psi_ave)
-              ! call halo_update(psi_ave(it)%ptr)!no need to update halos as these matrices are local
                 call scale(psi_ave(it)%ptr,cv_mass)
             end do
-            ! do it = 1, size(psi_int) !no need to update halos as these matrices are local
-                ! call halo_update(psi_int(it)%ptr)
-            ! end do
         end if
 
         ! solve the petsc matrix
