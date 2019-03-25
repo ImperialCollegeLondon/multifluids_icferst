@@ -692,8 +692,6 @@ contains
                       if (ipres>1) then
                         if(pipe_diameter%val(cv_nod)<=1d-8) cycle
                       end if                      !Do not go out of the wells domain!!!
-                      if (ipres>1 .and. pipe_diameter%val(cv_nod) <=1d-8) cycle
-
                       moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
                       !Work in normalized saturation here
                       Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
