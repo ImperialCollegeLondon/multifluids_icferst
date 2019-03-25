@@ -63,7 +63,7 @@ module solvers_module
     private
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
-         Ensure_initial_Saturation_to_sum_one, auto_backtracking
+         Ensure_Saturation_sums_one, auto_backtracking
 
 
 contains
@@ -663,6 +663,7 @@ contains
         real, dimension(Mdims%nphase) :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
+        logical, save :: Solve_all_phases = .true., first_time = .true.
 
         !Obtain saturation field from packed_state
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -670,41 +671,81 @@ contains
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
+        if ( first_time) then
+          Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
+          first_time = .false.
+        end if
+
         if (Mdims%npres > 1) pipe_diameter => extract_scalar_field( state(1), "DiameterPipe" , stat = stat)
         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
-        do ipres = 1, Mdims%npres
-            i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
-            i_end = ipres * Mdims%nphase/Mdims%npres
-            !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
-            !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
-            do ele = 1, Mdims%totele
-                do cv_iloc = 1, Mdims%cv_nloc
-                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                    if ( .not. node_owned( sat_field, cv_nod ) ) cycle
-                    if (ipres>1 .and. stat == 0) then
-                        if (pipe_diameter%val(cv_nod) <=1d-8) cycle!Do not go out of the wells domain!!!
-                    end if
+        if (Solve_all_phases) then
+          do ipres = 1, Mdims%npres
+              i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+              i_end = ipres * Mdims%nphase/Mdims%npres
+              !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
+              !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
+              do ele = 1, Mdims%totele
+                  do cv_iloc = 1, Mdims%cv_nloc
+                      cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                      if ( .not. node_owned( sat_field, cv_nod ) ) cycle
+                      !Do not go out of the wells domain!!!
+                      if (ipres>1) then
+                        if(pipe_diameter%val(cv_nod)<=1d-8) cycle
+                      end if                      !Do not go out of the wells domain!!!
+                      if (ipres>1 .and. pipe_diameter%val(cv_nod) <=1d-8) cycle
 
+                      moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
+                      !Work in normalized saturation here
+                      Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
+                          Immobile_fraction(i_start:i_end, ele))/moveable_sat
+                      sum_of_phases = sum(Normalized_sat(i_start:i_end))
+                      correction = (1.0 - sum_of_phases)
+                      !Spread the error to all the phases weighted by their moveable presence in that CV
+                      !Increase the range to look for solutions by allowing oscillations below 0.01 percent
+                      if (abs(correction) > 1d-8) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * &
+                          (1.0 + correction/sum_of_phases))* moveable_sat + Immobile_fraction(i_start:i_end, ele)
+                      !Make sure saturation is between bounds after the modification
+                      do iphase = i_start, i_end
+                          minsat = Immobile_fraction(iphase, ele)
+                          maxsat = moveable_sat + minsat
+                          satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+                      end do
+                  end do
+              end do
+          end do
+        else !Solving for nphases -1 requires first to limit the saturation between bounds and then impose sum phases = 1
+          do ipres = 1, Mdims%npres
+              i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+              i_end = ipres * Mdims%nphase/Mdims%npres
+              !Set saturation to be between bounds
+              !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
+              do ele = 1, Mdims%totele
+                  do cv_iloc = 1, Mdims%cv_nloc
+                      cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                      if ( .not. node_owned( sat_field, cv_nod ) ) cycle
+                      !Do not go out of the wells domain!!!
+                      if (ipres>1) then
+                        if(pipe_diameter%val(cv_nod)<=1d-8) cycle
+                      end if
+                      !Make sure saturation is between bounds before the modification
+                      do iphase = i_start, i_end
+                          minsat = Immobile_fraction(iphase, ele)
+                          maxsat = moveable_sat + minsat
+                          satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+                      end do
 
-                    moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
-                    !Work in normalized saturation here
-                    Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
-                        Immobile_fraction(i_start:i_end, ele))/moveable_sat
-                    sum_of_phases = sum(Normalized_sat(i_start:i_end))
-                    correction = (1.0 - sum_of_phases)
-                    !Spread the error to all the phases weighted by their moveable presence in that CV
-                    !Increase the range to look for solutions by allowing oscillations below 0.01 percent
-                    if (abs(correction) > 1d-8) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * &
-                        (1.0 + correction/sum_of_phases))* moveable_sat + Immobile_fraction(i_start:i_end, ele)
-                    !Make sure saturation is between bounds after the modification
-                    do iphase = i_start, i_end
-                        minsat = Immobile_fraction(iphase, ele)
-                        maxsat = moveable_sat + minsat
-                        satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
-                    end do
-                end do
-            end do
-        end do
+                      moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, ele))
+                      !Work in normalize saturation here
+                      Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
+                          Immobile_fraction(i_start:i_end, ele))/moveable_sat
+                      sum_of_phases = sum(Normalized_sat(i_start:i_end))
+                      !Ensure that the phases sum to 1.
+                      satura(i_end, cv_nod) = ((1.0 - sum_of_phases) + Normalized_sat(i_end))*&
+                          moveable_sat + Immobile_fraction(i_end, ele)
+                  end do
+              end do
+          end do
+        end if
 
         if (present_and_true(do_not_update_halos)) return
         !Ensure cosistency across CPUs
@@ -712,12 +753,13 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
-    subroutine Ensure_initial_Saturation_to_sum_one(mdims, ndgln, packed_state)
+    subroutine Ensure_Saturation_sums_one(mdims, ndgln, packed_state, find_scapegoat_phase)
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         type( state_type ), intent(inout) :: packed_state
+        logical, optional, intent(in) :: find_scapegoat_phase
         !Local variables
         integer :: iphase, cv_nod, cv_iloc, ele, i_start, i_end, ipres, scapegoat_phase
         real :: maxsat, minsat, sum_of_phases, moveable_sat
@@ -740,12 +782,14 @@ contains
             !First find a phase with values lower than -0.5 if that is so. This is a perturbation from opal and that needs to be considered
             !otherwise the last phase will be used to normalized
             scapegoat_phase = i_end
-            do iphase = i_start, i_end
-                if (maxval(satura(iphase,:))<-0.5) then
-                    scapegoat_phase = iphase
-                    exit
-                end if
-            end do
+            if (present_and_true(find_scapegoat_phase)) then
+              do iphase = i_start, i_end
+                  if (maxval(satura(iphase,:))<-0.5) then
+                      scapegoat_phase = iphase
+                      exit
+                  end if
+              end do
+            end if
             !Once the saturation is found then ensure that the saturations are between bounds
             !Set saturation to be between bounds
             !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
@@ -774,7 +818,7 @@ contains
         !Deallocate
         deallocate(Normalized_sat)
 
-    end subroutine Ensure_initial_Saturation_to_sum_one
+    end subroutine Ensure_Saturation_sums_one
 
 
     subroutine auto_backtracking(Mdims, backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration, I_am_temperature)

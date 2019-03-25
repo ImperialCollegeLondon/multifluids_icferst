@@ -429,6 +429,8 @@ contains
           type( tensor_field ), pointer :: perm
           !Variables for Vanishing artificial diffusion (VAD)
           logical :: VAD_activated, between_elements, on_domain_boundary
+          !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
+          logical :: Solve_all_phases
           !Variables for get_int_vel_porous_vel
           logical :: anisotropic_and_frontier, anisotropic_perm
           real, dimension(nphase):: rsum_nodi, rsum_nodj
@@ -460,6 +462,8 @@ contains
           !Define n_in_pres based on the local version of nphase
           n_in_pres = nphase/Mdims%npres
 
+          !Decide if we are solving for nphases-1
+          Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
           !Check vanishing artificial diffusion options
           VAD_activated = .false.
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
@@ -2035,8 +2039,10 @@ contains
           END IF Conditional_GETCV_DISC2
 
           IF ( GETCT ) THEN
-              W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
-              W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
+
+              W_SUM_ONE1 = 0.0 !If == 1.0 applies constraint to T
+              if (Solve_all_phases) W_SUM_ONE1 = 1.0
+              W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD !sprint_to_do Unnecessary, should be removed
               DIAG_SCALE_PRES = 0.0
               allocate(DIAG_SCALE_PRES_phase(nphase))
               DIAG_SCALE_PRES_COUP=0.0
@@ -2047,7 +2053,7 @@ contains
                       ! Add constraint to force sum of volume fracts to be unity...
                          ! W_SUM_ONE==1 applies the constraint
                          ! W_SUM_ONE==0 does NOT apply the constraint
-                      call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
+                      if ( Solve_all_phases) call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
                           - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
                       IF(RETRIEVE_SOLID_CTY) THEN
                           ! VOL_FRA_FLUID is the old voln fraction of total fluid...
