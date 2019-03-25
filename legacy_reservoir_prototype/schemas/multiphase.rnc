@@ -997,6 +997,10 @@ start =
             element max_sat_its {
                integer
             }?,
+           ## Decide to solve for nphases-1. This should be faster. Still in development.
+            element solve_nphases_minus_one {
+               empty
+            }?,
             ## For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
             ## activate this to also output the force_density
             element porous_output_force_density{

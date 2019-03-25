@@ -418,7 +418,7 @@ contains
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
-            call Ensure_initial_Saturation_to_sum_one(Mdims, ndgln, packed_state)
+            call Ensure_Saturation_sums_one(Mdims, ndgln, packed_state, find_scapegoat_phase = .true.)
         end if
 
         !!$ Starting Time Loop

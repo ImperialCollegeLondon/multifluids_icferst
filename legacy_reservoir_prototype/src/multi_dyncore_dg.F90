@@ -773,19 +773,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              real, dimension(Mdims%cv_nonods) :: OvRelax_param
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
-             integer :: number_of_normal_FPI = 3
              integer :: Max_sat_its, total_cv_nodes
              real, dimension(:,:), allocatable :: sat_bak, backtrack_sat
              real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
+             logical, save :: Solve_all_phases
              !Variables to control the PETCs solver
              integer, save :: max_allowed_its = -1
              integer :: its_taken
              !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
-
 
              solver_option_path = "/solver_options/Linear_solver"
              if (have_option('/solver_options/Custom_solver_configuration/field::PhaseVolumeFraction')) then
@@ -794,8 +793,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              if(max_allowed_its < 0)  then
                  call get_option( trim(solver_option_path)//"max_iterations",&
                   max_allowed_its, default = 500)
+                  Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
              end if
 
+             if (Solve_all_phases) then!For the number_of_normal_FPI FPIs we consider all the phases normally
+               nphase = Mdims%nphase
+               n_in_pres = Mdims%n_in_pres
+             else !For subsequent SFPI iterations just perform nphases - 1
+               !Define local nphase and n_in_pres
+               nphase = (Mdims%n_in_pres - 1 ) * Mdims%npres
+               n_in_pres = nphase/ Mdims%npres
+             end if
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -817,8 +825,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              Auto_max_backtrack = (backtrack_par_factor == -10)
              !Retrieve number of saturation fixed point iterations from diamond, by default 9
              call get_option( "/numerical_methods/max_sat_its", max_sat_its, default = 9)
-number_of_normal_FPI = max_sat_its
-max_sat_its = 9
              ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
              GET_THETA_FLUX = .FALSE.
              !####Create dummy variables required for_cv_assemb with no memory usage ####
@@ -849,51 +855,39 @@ max_sat_its = 9
              if (resold < 0 ) res = huge(res)!<=initialize res once
 
 
- nullify(DEN_ALL); nullify(DENOLD_ALL)
+            nullify(DEN_ALL); nullify(DENOLD_ALL)
+            allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Mdims%cv_nonods))
+            !Allocate residual, to compute the residual
+            if (backtrack_par_factor < 1.01) call allocate(residual,nphase,sat_field%mesh,"residual")
+            call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
+            call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
+            call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
 
-allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Mdims%cv_nonods))
+            IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
+              ! use DEN=1 because the density is already in the theta variables
+              ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods )); DEN_ALL = 1.
+              ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
+            ELSE
+              DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
+              DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+              if (is_flooding) then
+                !For Flooding the densities not in the pipes have to be equal to unity
+                ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods ))
+                ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods ))
+                do iphase = 1, n_in_pres
+                  DEN_ALL(iphase,:) = 1.0
+                  DENOLD_ALL(iphase,:) = 1.0
+                end do
+                do iphase = n_in_pres+1, nphase
+                  DEN_ALL(iphase,:) = DEN_ALL2%VAL( 1, iphase, : )
+                  DENOLD_ALL(iphase,:) = DENOLD_ALL2%VAL( 1, iphase, : )
+                end do
+              else
+                DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
+              end if
+            END IF
+
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
-                 if (its <= number_of_normal_FPI) then!For the number_of_normal_FPI FPIs we consider all the phases normally
-                   nphase = Mdims%nphase
-                   n_in_pres = Mdims%n_in_pres
-                 else !For subsequent SFPI iterations just perform nphases - 1
-                   !Define local nphase and n_in_pres
-                   nphase = (Mdims%n_in_pres - 1 ) * Mdims%npres
-                   n_in_pres = nphase/ Mdims%npres
-                 end if
-
-                 if (.not. associated(DEN_ALL)) then
-
-
-                     IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
-                         ! use DEN=1 because the density is already in the theta variables
-                         ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods )); DEN_ALL = 1.
-                         ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
-                     ELSE
-                         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
-                         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-                         if (is_flooding) then
-                            !For Flooding the densities not in the pipes have to be equal to unity
-                             ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods ))
-                             ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods ))
-                             do iphase = 1, n_in_pres
-                                 DEN_ALL(iphase,:) = 1.0
-                                 DENOLD_ALL(iphase,:) = 1.0
-                             end do
-                             do iphase = n_in_pres+1, nphase
-                                 DEN_ALL(iphase,:) = DEN_ALL2%VAL( 1, iphase, : )
-                                 DENOLD_ALL(iphase,:) = DENOLD_ALL2%VAL( 1, iphase, : )
-                             end do
-                         else
-                             DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
-                         end if
-                     END IF
-                     !Allocate residual, to compute the residual
-                     if (backtrack_par_factor < 1.01) call allocate(residual,nphase,sat_field%mesh,"residual")
-                     call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
-                     call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
-                     ! if (its == 1) call zero(solution)
-                end if
 
                 !Update solution field to calculate the residual
                   do ipres =1, mdims%npres
@@ -901,9 +895,6 @@ allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Md
                      solution%val(iphase+(ipres-1)*n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*n_in_pres,:)
                    end do
                  end do
-                 !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
-                 !it works, but it complains...
-                 call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
@@ -983,7 +974,6 @@ allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Md
 
                  !Set to zero the fields
                  call zero(Mmat%CV_RHS)
-                 call deallocate(Mmat%petsc_ACV)
                  !For non-porous media make sure all the phases sum to one
                  if (.not. is_porous_media) then
                         call non_porous_ensure_sum_to_one(packed_state)
@@ -1025,18 +1015,6 @@ allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Md
                      if (IsParallel()) call halo_update(sat_field)
                      exit Loop_NonLinearFlux
                  end if
-
-                 !Re-size arrays if we change from Nphases values to nphases-1 values
-                 if (its == number_of_normal_FPI) then
-                   ! DEALLOCATE( sat_bak, backtrack_sat )
-                   call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-                   if (backtrack_par_factor < 1.01) call deallocate(residual)
-                   if (IGOT_THETA_FLUX == 1 .or. is_flooding) then
-                     deallocate(DEN_ALL, DENOLD_ALL)
-                   end if
-                   nullify(DEN_ALL); nullify(DENOLD_ALL)
-                 end if
-
                  its = its + 1
                  useful_sats = useful_sats + 1
 
@@ -1071,7 +1049,7 @@ allocate (sat_bak(Mdims%nphase, Mdims%cv_nonods), backtrack_sat(Mdims%nphase, Md
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
-
+             call deallocate(Mmat%petsc_ACV)
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
