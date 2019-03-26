@@ -309,7 +309,8 @@ contains
           INTEGER :: COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
               CV_NODJ, ISWITCH, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
           INTEGER :: I, IDIM, U_ILOC, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
-              IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2
+              IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2,&
+              global_phase, compact_phase
           INTEGER, dimension(1) :: IDUM
           integer, dimension(:), pointer :: neighbours
           INTEGER, dimension(nphase) :: LOC_WIC_T_BC_ALL
@@ -1976,63 +1977,78 @@ contains
                                   * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
                           END DO
                       end if
-                      DO IPHASE = 1,nphase
-                          call addto(Mmat%petsc_ACV,iphase,iphase,&
-                              cv_nodi, cv_nodi,&
-                              + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                              * R_PHASE(IPHASE)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
-                      END DO
 
-
-                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                          + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
-                          + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
-                          * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
+                      do ipres = 1, Mdims%npres
+                        DO IPHASE=1,n_in_pres
+                          global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                          compact_phase = iphase + (ipres - 1)*n_in_pres
+                          call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
+                              cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) &
+                              * R_PHASE(compact_phase)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
+                        END DO
+                     end do
+                     do ipres = 1, Mdims%npres
+                       DO IPHASE=1,n_in_pres
+                         global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                         compact_phase = iphase + (ipres - 1)*n_in_pres
+                         LOC_CV_RHS_I(compact_phase)=LOC_CV_RHS_I(compact_phase)  &
+                              + (CV_BETA * DENOLD_ALL( global_phase, CV_NODI ) * T2OLD_ALL( global_phase, CV_NODI ) &
+                              + (ONE_M_CV_BETA) * DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) ) &
+                              * R_PHASE(compact_phase) * TOLD_ALL( global_phase, CV_NODI )
+                       end do
+                     end do
                   ELSE
-                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                          + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( 1:nphase, CV_NODI )
-                      DO IPHASE = 1,nphase
-                          call addto(Mmat%petsc_ACV,iphase,iphase,&
-                              cv_nodi, cv_nodi,&
-                              + DEN_ALL( IPHASE, CV_NODI )  &
-                              * R_PHASE(IPHASE) )
-                      END DO
-                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                          + ( CV_BETA * DENOLD_ALL( 1:nphase, CV_NODI ) &
-                          + (ONE_M_CV_BETA) * DEN_ALL( 1:nphase, CV_NODI ) ) &
-                          * R_PHASE(:) * TOLD_ALL( 1:nphase, CV_NODI )
+                    do ipres = 1, Mdims%npres
+                      DO IPHASE=1,n_in_pres
+                        global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                        compact_phase = iphase + (ipres - 1)*n_in_pres
+                        call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
+                            cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI )  &
+                            * R_PHASE(compact_phase) )
+
+                        LOC_CV_RHS_I(compact_phase)=LOC_CV_RHS_I(compact_phase)  &
+                          + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( global_phase, CV_NODI )&
+                          + ( CV_BETA * DENOLD_ALL( global_phase, CV_NODI ) &
+                          + (ONE_M_CV_BETA) * DEN_ALL( global_phase, CV_NODI ) ) &
+                          * R_PHASE(compact_phase) * TOLD_ALL( global_phase, CV_NODI )
+                        END DO
+                      end do
                   END IF
 
                   Conditional_GETMAT2: IF ( GETMAT ) THEN
-                      do jphase = 1, nphase
-                          do iphase=1,nphase
+
+                    do ipres = 1, Mdims%npres
+                      DO jphase=1,n_in_pres
+                        global_phase = jphase + (ipres - 1)*Mdims%n_in_pres
+                        compact_phase = jphase + (ipres - 1)*n_in_pres
+                          do iphase=1, nphase
                               IF ( Mdims%npres > 1 ) THEN
                                   if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
-                                      call addto(Mmat%petsc_ACV,iphase,jphase, &
+                                      call addto(Mmat%petsc_ACV,iphase,compact_phase, &
                                           cv_nodi, cv_nodi, &
-                                          MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
+                                          MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
                                   else
                                     !Some sort of predictor corrector. Implicit may be unstable, therefore the explicit acts as a Dumping term
-                                    call addto(Mmat%petsc_ACV,iphase,jphase, &
+                                    call addto(Mmat%petsc_ACV,iphase,compact_phase, &
                                         cv_nodi, cv_nodi, &
-                                          (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
+                                          (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
 
                                         ! ! well mass exchange is introduced in the RHS so it is treated explictly
                                         LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                                        + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
+                                        + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )* T_ALL(global_phase, CV_NODI)
 
                                       ! ! ! well mass exchange is introduced in the RHS so it is treated explictly <+ all explicit is too slow
                                       ! LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
-                                      ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(JPHASE, CV_NODI)
+                                      ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(global_phase, CV_NODI)
                                   endif
                               END IF
                               if ( have_absorption ) then
-                                 call addto(Mmat%petsc_ACV,iphase,jphase, &
-                                     cv_nodi, cv_nodi, &
-                                     MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                                 call addto(Mmat%petsc_ACV,iphase,jphase, cv_nodi, cv_nodi, &
+                                     MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))
                               end if
                           end do
                       end do
+                    end do
                   END IF Conditional_GETMAT2
                   call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
               END DO Loop_CVNODI2

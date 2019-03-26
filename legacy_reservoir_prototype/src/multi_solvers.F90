@@ -713,8 +713,8 @@ contains
           end do
         else !Solving for nphases -1 requires first to limit the saturation between bounds and then impose sum phases = 1
           do ipres = 1, Mdims%npres
-              i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
-              i_end = ipres * Mdims%nphase/Mdims%npres
+              i_start = 1 + (ipres-1) * Mdims%n_in_pres
+              i_end = ipres * Mdims%n_in_pres
               !Set saturation to be between bounds
               !to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
               do ele = 1, Mdims%totele
