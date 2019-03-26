@@ -956,11 +956,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                  call zero(solution)
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-
                 !Copy solution back to sat_field (not ideal...)
                   do ipres =1, mdims%npres
                     do iphase = 1 , n_in_pres
-                     sat_field%val(1,iphase+(ipres-1)*n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
+                     sat_field%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
                    end do
                  ! end do
                     if (backtrack_par_factor > 1.01) then

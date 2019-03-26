@@ -340,13 +340,13 @@ contains
                         global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
                         compact_phase = iphase + (ipres - 1)*n_in_pres
                           TMAX_ALL( compact_phase, CV_NODI ) = max( TMAX_ALL( compact_phase, CV_NODI ), &
-                                                                                    T_ALL%val( 1, global_phase, cv_nodj ) )
+                                                              T_ALL%val( 1, global_phase, cv_nodj ) )
                           TMIN_ALL( compact_phase, CV_NODI ) = min( TMIN_ALL( compact_phase, CV_NODI ),&
-                                                                                    T_ALL%val( 1, global_phase, cv_nodj ) )
+                                                              T_ALL%val( 1, global_phase, cv_nodj ) )
                           DENMAX_ALL( compact_phase, CV_NODI ) = max( DENMAX_ALL( compact_phase, CV_NODI ),&
-                                                                                    DEN_ALL%val( 1, global_phase, cv_nodj ) )
+                                                              DEN_ALL%val( 1, global_phase, cv_nodj ) )
                           DENMIN_ALL( compact_phase, CV_NODI ) = min( DENMIN_ALL( compact_phase, CV_NODI ),&
-                                                                                    DEN_ALL%val( 1, global_phase, cv_nodj ) )
+                                                              DEN_ALL%val( 1, global_phase, cv_nodj ) )
                       END DO
                     end do
                   END IF
@@ -677,7 +677,7 @@ contains
                           LIMD = D_CV_NODI*(1.0-INCOME) + D_CV_NODJ*INCOME
                       ELSE
                           ! Call the limiter for T...
-                          CALL ONVDLIM_ANO_MANY( nphase, &
+                          CALL ONVDLIM_ANO_MANY( nphase, &!Only do it for the phases within the pipe
                               LIMT, FEMTGI, INCOME, &
                               T_CV_NODI, T_CV_NODJ, XI_LIMIT, &
                               TUPWIND_IN, TUPWIND_OUT , &
@@ -767,7 +767,7 @@ contains
                       if (WIC_U_BC_ALL_NODS( iphase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
                           NDOTQ(compact_phase) = dot_product( direction_norm, SUF_U_BC_ALL_NODS(:,compact_phase,JCV_NOD) )
                       else
-                        global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                          global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
                           NDOTQ(compact_phase) = dot_product( direction_norm, U_ALL%val(:,global_phase,JU_NOD) )
                       end if
                     END DO
