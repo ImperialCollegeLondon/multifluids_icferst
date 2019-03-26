@@ -243,54 +243,49 @@ contains
           DO CV_SILOC = 1, Mdims%cv_snloc
               CV_NOD = ndgln%suf_cv( (SELE-1)*Mdims%cv_snloc + CV_SILOC )
               WIC_B_BC_ALL_NODS( CV_NOD ) = WIC_B_BC_DIRICHLET
-              do ipres = 2, Mdims%npres
-                DO IPHASE=1,n_in_pres
-                  global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                  compact_phase = iphase + (ipres - 1)*n_in_pres
-                        IF ( WIC_T_BC_ALL( 1,global_phase, SELE ) == WIC_T_BC_DIRICHLET ) THEN
-                            WIC_T_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_T_BC_DIRICHLET
-                            SUF_T_BC_ALL_NODS( compact_phase, CV_NOD ) = SUF_T_BC_ALL_NODS( compact_phase, CV_NOD ) +&
-                                    SUF_T_BC_ALL( 1,global_phase, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
-                            RVEC_SUM_T( compact_phase, CV_NOD ) = RVEC_SUM_T( compact_phase, CV_NOD ) + 1.0
-                        END IF
-                        IF ( WIC_D_BC_ALL( 1,global_phase, SELE ) == WIC_D_BC_DIRICHLET ) THEN
-                            WIC_D_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_D_BC_DIRICHLET
-                            SUF_D_BC_ALL_NODS( compact_phase, CV_NOD ) = SUF_D_BC_ALL_NODS( compact_phase, CV_NOD ) + &
-                                  SUF_D_BC_ALL( 1,global_phase, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
-                            RVEC_SUM_D( compact_phase, CV_NOD ) = RVEC_SUM_D( compact_phase, CV_NOD ) + 1.0
-                        END IF
-                end do
-              end do
-          END DO ! DO CV_SILOC=1,Mdims%cv_snloc
-          MEAN_U = 0.0
-          DO U_SILOC = 1, Mdims%u_snloc
-            U_NOD = ndgln%suf_u( (SELE-1)*Mdims%u_snloc + U_SILOC )
-            do ipres = 2, Mdims%npres
+              ipres = Mdims%npres
               DO IPHASE=1,n_in_pres
                 global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
                 compact_phase = iphase + (ipres - 1)*n_in_pres
-                IF ( WIC_U_BC_ALL( 1, global_phase, SELE ) == WIC_U_BC_DIRICHLET ) THEN
-                        MEAN_U(:,compact_phase) = MEAN_U(:,compact_phase) + &
-                              SUF_U_BC_ALL( :,global_phase, (SELE-1)*Mdims%u_snloc + U_SILOC ) / REAL(Mdims%u_snloc)
+                IF ( WIC_T_BC_ALL( 1,global_phase, SELE ) == WIC_T_BC_DIRICHLET ) THEN
+                    WIC_T_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_T_BC_DIRICHLET
+                    SUF_T_BC_ALL_NODS( compact_phase, CV_NOD ) = SUF_T_BC_ALL_NODS( compact_phase, CV_NOD ) +&
+                            SUF_T_BC_ALL( 1,global_phase, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                    RVEC_SUM_T( compact_phase, CV_NOD ) = RVEC_SUM_T( compact_phase, CV_NOD ) + 1.0
+                END IF
+                IF ( WIC_D_BC_ALL( 1,global_phase, SELE ) == WIC_D_BC_DIRICHLET ) THEN
+                    WIC_D_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_D_BC_DIRICHLET
+                    SUF_D_BC_ALL_NODS( compact_phase, CV_NOD ) = SUF_D_BC_ALL_NODS( compact_phase, CV_NOD ) + &
+                          SUF_D_BC_ALL( 1,global_phase, (SELE-1)*Mdims%cv_snloc + CV_SILOC )
+                    RVEC_SUM_D( compact_phase, CV_NOD ) = RVEC_SUM_D( compact_phase, CV_NOD ) + 1.0
                 END IF
               end do
+          END DO ! DO CV_SILOC=1,Mdims%cv_snloc
+          MEAN_U = 0.0!sprint_to_do why don't we do directly SUF_U_BC_ALL_NODS without MEAN_U???
+          DO U_SILOC = 1, Mdims%u_snloc
+            U_NOD = ndgln%suf_u( (SELE-1)*Mdims%u_snloc + U_SILOC )
+            ipres = Mdims%npres
+            DO IPHASE=1,n_in_pres
+              global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+              compact_phase = iphase + (ipres - 1)*n_in_pres
+              IF ( WIC_U_BC_ALL( 1, global_phase, SELE ) == WIC_U_BC_DIRICHLET ) THEN
+                  MEAN_U(:,compact_phase) = MEAN_U(:,compact_phase) + &
+                        SUF_U_BC_ALL( :,global_phase, (SELE-1)*Mdims%u_snloc + U_SILOC ) / REAL(Mdims%u_snloc)
+              END IF
             end do
-
           END DO ! DO U_SILOC=1,Mdims%u_snloc
           DO CV_SILOC = 1, Mdims%cv_snloc
             CV_NOD = ndgln%suf_cv( (SELE-1)*Mdims%cv_snloc + CV_SILOC )
 
-            do ipres = 2, Mdims%npres
-              DO IPHASE=1,n_in_pres
-                global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                compact_phase = iphase + (ipres - 1)*n_in_pres
-                IF ( WIC_U_BC_ALL( 1, global_phase, SELE ) == WIC_U_BC_DIRICHLET ) THEN
-                    WIC_U_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_U_BC_DIRICHLET
-                    SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) = SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) +&
-                              MEAN_U(:,compact_phase)
-                    RVEC_SUM_U( compact_phase, CV_NOD ) = RVEC_SUM_U( compact_phase, CV_NOD ) + 1.0
-                END IF
-              end do
+            DO IPHASE=1,n_in_pres
+              global_phase = iphase + (Mdims%npres - 1)*Mdims%n_in_pres
+              compact_phase = iphase + (Mdims%npres - 1)*n_in_pres
+              IF ( WIC_U_BC_ALL( 1, global_phase, SELE ) == WIC_U_BC_DIRICHLET ) THEN
+                  WIC_U_BC_ALL_NODS( compact_phase, CV_NOD ) = WIC_U_BC_DIRICHLET
+                  SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) = SUF_U_BC_ALL_NODS( :,compact_phase, CV_NOD ) +&
+                            MEAN_U(:,compact_phase)
+                  RVEC_SUM_U( compact_phase, CV_NOD ) = RVEC_SUM_U( compact_phase, CV_NOD ) + 1.0
+              END IF
             end do
 
           END DO ! DO CV_SILOC=1,Mdims%cv_snloc
@@ -762,7 +757,7 @@ contains
                   PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
                   NDOTQ = 0.0
                   do ipres = 2, Mdims%npres
-                    DO IPHASE=1,n_in_pres
+                    DO iphase=1,n_in_pres
                       compact_phase = iphase + (ipres - 1)*n_in_pres
                       if (WIC_U_BC_ALL_NODS( iphase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
                           NDOTQ(compact_phase) = dot_product( direction_norm, SUF_U_BC_ALL_NODS(:,compact_phase,JCV_NOD) )
@@ -858,20 +853,18 @@ contains
                   IF ( GETCV_DISC ) THEN ! this is on the boundary...
                       ! Put results into the RHS vector
                       LOC_CV_RHS_I = 0.0
-                      do ipres = 2, Mdims%npres
-                        DO IPHASE=1,n_in_pres
-                          compact_phase = iphase + (ipres - 1)*n_in_pres
-                          LOC_CV_RHS_I( compact_phase ) =  LOC_CV_RHS_I( compact_phase ) &
-                              ! subtract 1st order adv. soln.
-                              + suf_area  * NDOTQ(compact_phase) * ( 1. - INCOME(compact_phase) ) * LIMD(compact_phase) * FVT(compact_phase)  &
-                              - suf_area * NDOTQ(compact_phase) * LIMDT(compact_phase) ! hi order adv
-                            if (.not.conservative_advection)  then
-                              global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                              LOC_CV_RHS_I( compact_phase ) = LOC_CV_RHS_I( compact_phase ) &
-                                  - suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * T_ALL%val(1,global_phase,JCV_NOD) &
-                                  + suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * T_ALL%val(1,global_phase,JCV_NOD)
-                            end if
-                        end do
+                      DO IPHASE=1,n_in_pres
+                        compact_phase = iphase + (Mdims%npres - 1)*n_in_pres
+                        LOC_CV_RHS_I( compact_phase ) =  LOC_CV_RHS_I( compact_phase ) &
+                            ! subtract 1st order adv. soln.
+                            + suf_area  * NDOTQ(compact_phase) * ( 1. - INCOME(compact_phase) ) * LIMD(compact_phase) * FVT(compact_phase)  &
+                            - suf_area * NDOTQ(compact_phase) * LIMDT(compact_phase) ! hi order adv
+                          if (.not.conservative_advection)  then
+                            global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                            LOC_CV_RHS_I( compact_phase ) = LOC_CV_RHS_I( compact_phase ) &
+                                - suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * T_ALL%val(1,global_phase,JCV_NOD) &
+                                + suf_area * NDOTQ(compact_phase) * LIMD(compact_phase) * T_ALL%val(1,global_phase,JCV_NOD)
+                          end if
                       end do
                       ! Put into matrix...
                       do iphase = n_in_pres+1, nphase
