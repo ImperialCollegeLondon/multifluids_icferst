@@ -1224,9 +1224,6 @@ solver_options =
                 ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
                 element Backtracking_factor{
                 real
-                }?,
-                element Acceleration_exp{
-                real
                 }?
               ),
                 ## Introduce over-relaxation in the saturation equation.
