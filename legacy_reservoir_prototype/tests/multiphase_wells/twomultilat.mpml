@@ -757,4 +757,7 @@
       <well_from_file name="well02" file_path="well02"/>
     </wells_and_pipes>
   </porous_media>
+  <numerical_methods>
+    <solve_nphases_minus_one/>
+  </numerical_methods>
 </icferst_options>
