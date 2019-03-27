@@ -759,7 +759,7 @@ contains
                   do ipres = 2, Mdims%npres
                     DO iphase=1,n_in_pres
                       compact_phase = iphase + (ipres - 1)*n_in_pres
-                      if (WIC_U_BC_ALL_NODS( iphase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
+                      if (WIC_U_BC_ALL_NODS( compact_phase, JCV_NOD ) == WIC_U_BC_DIRICHLET ) then
                           NDOTQ(compact_phase) = dot_product( direction_norm, SUF_U_BC_ALL_NODS(:,compact_phase,JCV_NOD) )
                       else
                           global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
