@@ -549,7 +549,7 @@ contains
 
                 if( solve_force_balance) then
                     if ( is_porous_media ) then
-                        call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                        call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                             CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
