@@ -1000,7 +1000,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
-                             call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                             call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
                              !Also recalculate the Over-relaxation parameter
