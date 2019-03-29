@@ -880,7 +880,7 @@ contains
            call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 3, viscosities = viscosities)
        else
             allocate(viscosities(Mdims%nphase, 1))
-            call set_viscosity(nphase, state, viscosities(:,1))
+            call set_viscosity(nphase, Mdims, state, viscosities(:,1))
        end if
        call Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
               upwnd, inv_perm, viscosities)
@@ -942,18 +942,14 @@ contains
                    do cv_iloc = 1, Mdims%cv_nloc
                        icv = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
                        Max_sat(:) = 1. - sum(Immobile_fraction(:, ele)) + Immobile_fraction(:, ele)
-                       do ipres = 1, Mdims%npres
-                         DO IPHASE = 1, n_in_pres
-                             global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                             compact_phase = iphase + (ipres - 1)*n_in_pres
-                             SATURA2(compact_phase, icv) = SATURA(compact_phase, icv) + sign(PERT, satura(global_phase, icv)-OldSatura(global_phase, icv))
-                             !If out of bounds then we perturbate in the opposite direction
-                             if (satura2(compact_phase, icv) > Max_sat(global_phase) .or. &
-                                 satura2(compact_phase, icv) < Immobile_fraction(global_phase, ele)) then
-                                 SATURA2(compact_phase, icv) = SATURA2(compact_phase, icv) - 2. * sign(PERT, satura(global_phase, icv)-OldSatura(global_phase, icv))
-                             end if
-                           end do
-                         end do
+                       DO IPHASE = 1, n_in_pres!Not for wells
+                         SATURA2(IPHASE, icv) = SATURA(IPHASE, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+                         !If out of bounds then we perturbate in the opposite direction
+                         if (satura2(IPHASE, icv) > Max_sat(iphase) .or. &
+                             satura2(IPHASE, icv) < Immobile_fraction(iphase, ele)) then
+                             SATURA2(IPHASE, icv) = SATURA2(IPHASE, icv) - 2. * sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+                         end if
+                       end do
                    end do
                end do
 
@@ -964,7 +960,7 @@ contains
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma" )
-                   do iphase = Mdims%n_in_pres+1, nphase
+                   do iphase = 1, n_in_pres
                        do idim = 1, Mdims%ndim
                            ! set \sigma for the pipes here
                            call assign_val(PorousMedia_absorp%val(idim, idim, iphase + (ipres - 1)*Mdims%n_in_pres, :),Spipe%val)
@@ -994,7 +990,7 @@ contains
                                      end if
                                  END DO
                              !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
-                             upwnd%inv_adv_coef(:, :, IPHASE, IMAT) = inverse(upwnd%adv_coef(:, :, IPHASE, IMAT))!sprint_to_do: use
+                             upwnd%inv_adv_coef(:, :, global_phase, IMAT) = inverse(upwnd%adv_coef(:, :, global_phase, IMAT))!sprint_to_do: use
                            END DO
                          end do                                                                           !get_multi_field_inverse or think of a faster method
                        END DO
@@ -1111,22 +1107,26 @@ contains
            end subroutine calculate_SUF_SIG_DIAGTEN_BC
 
 
-        subroutine set_viscosity(nphase, state, visc_phases)
+        subroutine set_viscosity(nphase, Mdims, state, visc_phases)
             implicit none
             integer, intent(in) :: nphase
+            type( multi_dimensions ), intent( in ) :: Mdims
             type( state_type ), dimension( : ), intent( in ) :: state
             real, dimension(:), intent(inout) :: visc_phases
             !Local variables
-            integer :: iphase
+            integer :: iphase, ipres, global_phase, compact_phase
             real :: mobility
             type(tensor_field), pointer :: viscosity_ph
 
             !SPRINT_TO_DO what happens here if we have components???
-            DO IPHASE = 1, nphase!Get viscosity for all the phases
-                viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
-                visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
+            do ipres = 1, Mdims%npres
+              DO IPHASE = 1, nphase/Mdims%npres!Get viscosity for all the phases
+                  global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                  compact_phase = iphase + (ipres - 1)*n_in_pres
+                  viscosity_ph => extract_tensor_field( state( global_phase ), 'Viscosity' )
+                  visc_phases(compact_phase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
+              end do
             end do
-
 
         end subroutine set_viscosity
 
