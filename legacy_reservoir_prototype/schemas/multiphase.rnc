@@ -992,6 +992,9 @@ start =
             element get_all_in_mass_matrix {
                empty}?
             }?,
+            element no_matrix_store {
+              empty
+            }?,
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {
@@ -1281,7 +1284,7 @@ solver_options =
                     ## If this is off, a classical method based on the number of FPI performed is used instead.
                     element PID_controller {
                       empty,
-                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced here. 
+                        ## Time-step size is controlled to try to always perform the specified number of FPI introduced here.
                         ## By default this is the 20% of the maximum number of non-linear iterations.
                         element Aim_num_FPI {
                           integer
