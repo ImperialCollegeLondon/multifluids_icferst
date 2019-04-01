@@ -35,7 +35,7 @@ Physical Surface(3) = {41, 58, 75, 28}; // sides
 Physical Volume(4)  = {1, 2, 3, 4};     // volume
 
 Mesh.Algorithm = 4;
-Mesh.Remove4Triangles = 1;
+//Mesh.Remove4Triangles = 1;
 Mesh.RecombinationAlgorithm = 0;
 Mesh.CharacteristicLengthMin = 1;
 Mesh.CharacteristicLengthMax = 30;
