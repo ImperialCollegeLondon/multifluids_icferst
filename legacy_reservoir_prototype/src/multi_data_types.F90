@@ -1201,12 +1201,14 @@ contains
 !        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)!<=Should not need to deallocate anyway as it is done somewhere else
         if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
         if (associated(Mmat%limiters_ELEMATPSI)) then
-       if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
            deallocate (Mmat%limiters_ELEMATPSI); nullify(Mmat%limiters_ELEMATPSI)
-       end if
-       if (associated(Mmat%limiters_ELEMATWEI)) then
+        end if
+        if (associated(Mmat%limiters_ELEMATWEI)) then
            deallocate (Mmat%limiters_ELEMATWEI); nullify(Mmat%limiters_ELEMATWEI)
-       end if
+        end if
+        if (associated(Mmat%ICOLOR)) then
+            deallocate(Mmat%ICOLOR); nullify(Mmat%ICOLOR)
+        end if
         !Set flag to recalculate
         Mmat%stored = .false.
     end subroutine destroy_multi_matrices

@@ -1049,6 +1049,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
              call deallocate(Mmat%petsc_ACV)
+             call deallocate(solution)
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
@@ -1247,7 +1248,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         call allocate(deltaP,Mdims%npres,pressure%mesh,"DeltaP")
         call allocate(rhs_p,Mdims%npres,pressure%mesh,"PressureCorrectionRHS")
-        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
+        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         JUST_BL_DIAG_MAT = .false.
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
@@ -1483,7 +1484,7 @@ end if
         pipes_aux, got_free_surf,  MASS_SUF, symmetric_P )
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
-        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
+        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
 
         ! solve using a projection method
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
