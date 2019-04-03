@@ -1049,6 +1049,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
              call deallocate(Mmat%petsc_ACV)
+             call deallocate(solution)
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
