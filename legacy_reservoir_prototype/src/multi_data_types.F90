@@ -1154,6 +1154,9 @@ contains
         if (associated(Mmat%limiters_ELEMATWEI)) then
            deallocate (Mmat%limiters_ELEMATWEI); nullify(Mmat%limiters_ELEMATWEI)
         end if
+        if (associated(Mmat%ICOLOR)) then
+            deallocate(Mmat%ICOLOR); nullify(Mmat%ICOLOR)
+        end if
         !Set flag to recalculate
         Mmat%stored = .false.
     end subroutine destroy_multi_matrices
