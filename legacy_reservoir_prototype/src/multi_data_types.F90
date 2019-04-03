@@ -211,14 +211,16 @@ module multi_data_types
     type multi_field
         real, dimension( :, :, :, : ), pointer :: val => null()
 
-        logical :: have_field = .false. ! do we need this field for this simulation?
+        logical :: have_field =  .false. ! do we need this field for this simulation?
         logical :: is_constant = .false. ! if ( .true. ) nonods = 1 for what follows     -   DELETE THIS MAYBE ???
 
-        integer :: memory_type = -1 ! 0 Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods )
-                                    ! 1 Isotropic - ( 1, 1, nphase, nonods ) - diagonal
-                                    ! 2 Anisotropic - ( ndim, ndim, nphase, nonods )
-                                    ! 3 Isotropic coupled - ( 1, nphase, nphase, nonods )
-                                    ! 4 Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods )
+        integer :: memory_type = -1 ! 0  Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods )
+                                    ! 1  Isotropic - ( 1, 1, nphase, nonods ) - diagonal
+                                    ! 2  Anisotropic - ( ndim, ndim, nphase, nonods )
+                                    ! 3  Isotropic coupled - ( 1, nphase, nphase, nonods )
+                                    ! 4  Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods )
+                                    ! 6 Isotropic coupled - ( 1, ndim, nphase, nonods )
+                                    !    This is for porous media. We assume isotropic properties like permiability to be diagonal
 
         integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 ! dimensions of field
 
@@ -227,7 +229,8 @@ module multi_data_types
 
     type multi_absorption
         !Comprises all the absorption terms that migth be required
-        type (multi_field) :: PorousMedia ! <= Always memory_type = 2
+        type (multi_field) :: PorousMedia ! <= Memory_type = 2 -> Fully Anisotropic tensors.
+                                          !    Memory_type = 6-> Isotropic Symmetric tensors
         type (multi_field) :: Components
         type (multi_field) :: Temperature
         !! Arash
@@ -316,7 +319,9 @@ contains
         else if ( have_option(trim(tfield%option_path) // "/type/Isotropic" ) ) then
             mfield%memory_type = 1
             if ( trim( tfield%name ) == "Viscosity" ) mfield%memory_type = 0
-        else
+        else if ( have_option(trim(tfield%option_path) // "/type/PorousMedia_Isotropic_coupled" ) ) then  !Andreas
+            mfield%memory_type = 6
+       else
             FLAbort( "Wrong memory type selected." )
         end if
 
@@ -329,6 +334,8 @@ contains
                 mfield%ndim1 = 1    ; mfield%ndim2 = nphase      ; mfield%ndim3 = nphase
             case( 4 )    ! Anisotropic coupled
                 mfield%ndim1 = 1    ; mfield%ndim2 = ndim*nphase ; mfield%ndim3 = ndim*nphase
+            case( 6 )    ! Porous media isotropic coupled
+                  mfield%ndim1 = 1    ; mfield%ndim2 = ndim      ; mfield%ndim3 = nphase     !Andreas
             case default
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select
@@ -361,15 +368,21 @@ contains
         if (present(field_name)) then
             !Depending on the field, different possibilities
             if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
-                mfield%is_constant = .false.!For porous media it cannot be constant
-                mfield%memory_type = 2 !We force this memory despite not being the most comprised
-                !because it enables us to remove copies of memory and because for real 3D problems it is very unlikely that
-                !the permeability will be isotropic in all the regions
+                mfield%is_constant = .false. !For porous media it cannot be constant
+!Andreas        if (Porous Media General Term) then
+                  mfield%memory_type = 2 ! We force this memory despite not being the most comprised
+                                       ! because it enables us to remove copies of memory and because for real 3D problems it is very unlikely that
+                                       ! the permeability will be isotropic in all the regions
+!              else if (Porous media isotropic diagonal terms)
+!                 mfield%memory_type = 6
+!              else
+!                 FLAbort( "Wrong memory type selected." )
+!              end if
             end if
 
             if (trim(field_name)=="Flooding_AbsorptionTerm") then
                 mfield%is_constant = .false.!It cannot be constant
-                mfield%memory_type = 1!The absorption is always isotropic
+                mfield%memory_type = 1      !The absorption is always isotropic
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then
@@ -383,6 +396,7 @@ contains
                 mfield%is_constant = .false.
             end if
         end if
+
         select case ( mfield%memory_type )
             case( 0, 1 ) ! Isotropic ( full and diagonal )
                 mfield%ndim1 = 1    ; mfield%ndim2 = 1           ; mfield%ndim3 = nphase
@@ -393,7 +407,9 @@ contains
             case( 4 )    ! Anisotropic coupled
                 mfield%ndim1 = 1    ; mfield%ndim2 = ndim*nphase ; mfield%ndim3 = ndim*nphase
             case ( 5 )   !Source term
-                mfield%ndim1 = ndim    ; mfield%ndim2 = nphase ; mfield%ndim3 = 1
+                mfield%ndim1 = ndim ; mfield%ndim2 = nphase      ; mfield%ndim3 = 1
+            case( 6 )    ! Porous media isotropic coupled
+                mfield%ndim1 = 1    ; mfield%ndim2 = ndim        ; mfield%ndim3 = nphase     !Andreas
             case default
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select
@@ -416,10 +432,10 @@ contains
 
         nullify(mfield%val)
         mfield%memory_type = 0
-        mfield%have_field = .false.
+        mfield%have_field  = .false.
         mfield%is_constant = .false.
         mfield%memory_type = -1
-        mfield%ndim1 = -1; mfield%ndim2 = -1; mfield%ndim3 = -1
+        mfield%ndim1       = -1;     mfield%ndim2 = -1; mfield%ndim3 = -1
 
     end subroutine deallocate_multi_field
 
@@ -443,8 +459,8 @@ contains
     subroutine get_multi_field(mfield, inode_in, output)
         implicit none
         integer, intent(in) :: inode_in
-        type( multi_field ), intent( in ) :: mfield
-        real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
+        type( multi_field ), intent( in )    :: mfield
+        real, dimension(:,:),intent( inout ) :: output !must have size(ndim*nphase, ndim*nphase)
         !local variables
         integer :: iphase, jphase, idim, jdim, ndim, inode
 
@@ -480,6 +496,13 @@ contains
                         do idim = 1, ndim
                             output(idim+(iphase-1)*ndim ,idim+(jphase-1)*ndim) = mfield%val(1,iphase,jphase,inode)
                         end do
+                    end do
+                end do
+            case (6)! porous media isotropic diagonal term                     !Andreas
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3 !nphase
+                    do idim = 1, ndim
+                        output(idim+(iphase-1)*ndim ,idim+(iphase-1)*ndim) = mfield%val(1,idim,iphase,inode)
                     end do
                 end do
             case default !Anisotropic coupled
@@ -521,6 +544,13 @@ contains
                         do idim = 1, ndim
                             output(idim+(iphase-1)*ndim, idim+(jphase-1)*ndim) = 1./mfield%val(1,iphase,jphase,inode)
                         end do
+                    end do
+                end do
+            case (6)! porous media isotropic diagonal term                     !Andreas
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3
+                    do idim = 1, ndim
+                        output(idim+(iphase-1)*ndim, idim+(iphase-1)*ndim) = 1./mfield%val(1,idim,iphase,inode)
                     end do
                 end do
             case default !Anisotropic coupled
@@ -587,6 +617,13 @@ contains
                          b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim)
                     end do
                 end do
+            case (6)! porous media isotropic diagonal term                     !Andreas
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim
+                  do idim = 1 + (xpos-1)/iphase, fxpos/mfield%ndim3
+                    mfield%val(1,idim,iphase,inode) = mfield%val(1,idim,iphase,inode)  &
+                                                    + b(idim+(iphase-1)*mfield%ndim2,idim+(iphase-1)*mfield%ndim2)
+                  end do
+                end do
             case default !Anisotropic coupled
                 mfield%val(1,xpos:fxpos,ypos:fypos,inode) = mfield%val(1,xpos:fxpos,ypos:fypos,inode) + b(xpos:fxpos,ypos:fypos)
         end select
@@ -620,7 +657,7 @@ contains
                 do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
                     b(1+(xpos-1)/ndim+(iphase-1)*ndim: fxpos/mfield%ndim3 +(iphase-1)*ndim,1+(ypos-1)/ndim+(iphase-1)*ndim:fxpos/mfield%ndim3 +(iphase-1)*ndim)=&
                     b(1+(xpos-1)/ndim+(iphase-1)*ndim: fxpos/mfield%ndim3 +(iphase-1)*ndim,1+(ypos-1)/ndim+(iphase-1)*ndim:fxpos/mfield%ndim3 +(iphase-1)*ndim)+&
-                        + a * mfield%val(1,1,iphase,inode)
+                         a * mfield%val(1,1,iphase,inode)
                 end do
             case (1)!Isotropic
                 do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
@@ -648,6 +685,14 @@ contains
                         end do
                     end do
                 end do
+            case (6)! porous media isotropic diagonal term                      !Andreas
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim  !1, mfield%ndim3
+                    do idim = 1 + (xpos-1)/mfield%ndim3, fxpos/mfield%ndim3
+                        b(idim+(iphase-1)*ndim ,idim+(iphase-1)*ndim) = &
+                        b(idim+(iphase-1)*ndim ,idim+(iphase-1)*ndim) + a * mfield%val(1,idim,iphase,inode)
+                    end do
+                end do
+
             case default !Anisotropic coupled
                 b(xpos:fxpos,ypos:fypos) = b(xpos:fxpos,ypos:fypos) + a * mfield%val(1,xpos:fxpos,ypos:fypos,inode)
         end select
@@ -661,7 +706,7 @@ contains
         type( multi_field ), intent( inout ) :: mfield
         real, dimension(:,:), intent(in) :: b
         !Local variables
-        integer ::  iphase, ndim, jphase
+        integer ::  iphase, ndim, jphase, idim
         real, dimension(:,:), allocatable :: miniB
 
         ndim = size(b,2)/mfield%ndim3
@@ -686,6 +731,13 @@ contains
                 end do
                 mfield%val(1,:,:,inode) = matmul(mfield%val(1,:,:,inode),miniB)
                 deallocate(miniB)
+            case (6)! porous media isotropic diagonal term                      !Andreas
+                do iphase = 1, mfield%ndim3 !nphase
+                  do idim = 1, ndim
+                      mfield%val(1,idim,iphase,inode) = mfield%val(1,idim,iphase,inode) * &
+                                                        b(idim+(iphase-1)*mfield%ndim2,idim+(iphase-1)*mfield%ndim2)
+                  end do
+                end do
             case default !Anisotropic coupled
                 mfield%val(1,:,:,inode) = matmul(mfield%val(1,:,:,inode),b)
         end select
