@@ -5363,10 +5363,18 @@ end if
                                     IF(LUMP_DIAG_MOM) THEN
                                       IF(LUMP_PIVIT_ON_ALL) THEN
                                         ! lumping of stabilization worth trying...
-                                        Mmat%PIVIT_MAT( I,I, ELE )  = Mmat%PIVIT_MAT( I,I, ELE ) +abs(DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) )
+                                        Mmat%PIVIT_MAT( I,I, ELE )  = Mmat%PIVIT_MAT( I,I, ELE ) +abs(DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) )
+                                      ELSE
+                                        Mmat%PIVIT_MAT( I,J, ELE )  = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )
+                                      ENDIF
                                     ELSE
+                                      IF(LUMP_PIVIT_ON_ALL) THEN
+                                        ! lumping of stabilization worth trying...
+                                        Mmat%PIVIT_MAT( I,I, ELE )  = Mmat%PIVIT_MAT( I,I, ELE ) +abs(DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) )
+                                      ELSE
                                         Mmat%PIVIT_MAT( I,J, ELE )  = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )
-                                    ENDIF
+                                      ENDIF
+                                    END IF
                                 END DO
                             END DO ! ENDOF DO IDIM = 1, Mdims%ndim
                         END DO
