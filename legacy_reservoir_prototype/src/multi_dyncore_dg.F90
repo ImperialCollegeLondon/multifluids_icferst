@@ -2410,7 +2410,7 @@ end if
         REAL :: JTT_INV
         REAL :: VLKNN, zero_or_two_thirds
         INTEGER :: P_INOD, IDIM_VEL
-        logical :: mom_conserv, lump_mass, lump_mass2, lump_absorption, BETWEEN_ELE_STAB
+        logical :: mom_conserv, lump_mass, lump_mass2, lump_absorption, BETWEEN_ELE_STAB, LUMP_DIAG_MOM
         real :: beta
         INTEGER :: FILT_DEN, J2, JU2_NOD_DIM_PHA
         LOGICAL :: SIMPLE_DIFF_CALC
@@ -2881,9 +2881,16 @@ end if
         IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
         if (.not.got_c_matrix) Mmat%C = 0.0
         Mmat%U_RHS = 0.0
-        IF (.NOT.Mmat%NO_MATRIX_STORE ) THEN!Only for inertia flow
+
+        LUMP_DIAG_MOM=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices DIAG_BIGM_CON and BIGM_CON !!IF(LUMP_DIAG_MOM) THEN
+        IF (.NOT.Mmat%NO_MATRIX_STORE ) THEN!Only for inertia flow !matrix being allocated
+          IF(LUMP_DIAG_MOM) THEN
+            ALLOCATE( DIAG_BIGM_CON( 1, Mdims%ndim, 1, Mdims%nphase, 1,Mdims%u_nloc,Mdims%totele ) ) !-ao making diagonals of the mom matrix (1)
+            ALLOCATE( BIGM_CON(1, Mdims%ndim, 1, Mdims%nphase,1, Mdims%u_nloc, Mspars%ELE%ncol ) ) !-ao making diagonals of the mom matrix (2)
+          ELSE
             ALLOCATE( DIAG_BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mspars%ELE%ncol ) )
+          END IF
             DIAG_BIGM_CON = 0.0
             BIGM_CON = 0.0
         END IF
@@ -3460,9 +3467,9 @@ end if
                                         END IF
                                         IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
                                             IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
-                                                IF ( LUMP_MASS ) THEN
-                                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
-                                                        DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
+                                                IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
+                                                    DIAG_BIGM_CON( 1 , JDIM, 1, JPHASE, 1, U_ILOC, ELE ) =  &
+                                                        DIAG_BIGM_CON(1, JDIM,1, JPHASE, 1, U_ILOC, ELE )  &
                                                         + NN_SIGMAGI_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                         + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                         + NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT
