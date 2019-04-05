@@ -3612,9 +3612,17 @@ end if
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                     - STRESS_IJ_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
                                             ELSE
+
+                                              IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
+                                                DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
+                                                    = DIAG_BIGM_CON(1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
+                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                              ELSE
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                                     + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                              ENDIF
+
                                             END IF
                                             IF(PIVIT_ON_VISC) THEN
                                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
@@ -3646,22 +3654,38 @@ end if
                                             END DO
                                         ENDIF
                                     ELSE
+                                      IF(LUMP_DIAG_MOM) THEN
+                                        DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
+                                            = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) + VLN( IPHASE )
+                                      ELSE
                                         DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                             = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLN( IPHASE )
+                                      ENDIF
                                         IF(GOT_VIRTUAL_MASS) THEN
                                             DO KPHASE = 1, Mdims%nphase
+                                              IF(LUMP_DIAG_MOM) THEN
+                                                DIAG_BIGM_CON( 1, JDIM, 1, KPHASE, 1, U_JLOC, ELE ) &
+                                                    = DIAG_BIGM_CON( 1, JDIM,1, KPHASE, 1, U_JLOC, ELE ) + VLN_CVM( IPHASE, KPHASE )
+                                              ELSE
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) + VLN_CVM( IPHASE, KPHASE )
+                                              ENDIF
                                             END DO
                                         ENDIF
+
                                     END IF
                                     IF ( .NOT.STRESS_FORM ) THEN
                                         IF ( Mmat%NO_MATRIX_STORE ) THEN
                                             LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 - VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
                                         ELSE
+                                          IF(LUMP_DIAG_MOM) THEN
+                                            DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
+                                                = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) + VLK_ELE( IPHASE, U_ILOC, U_JLOC )
+                                          ELSE
                                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                                 = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK_ELE( IPHASE, U_ILOC, U_JLOC )
+                                          ENDIF
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
@@ -3915,9 +3939,15 @@ end if
                                 JPHASE = IPHASE
                                 DO IDIM = 1, Mdims%ndim
                                     DO JDIM = 1, Mdims%ndim
+                                      IF(LUMP_DIAG_MOM) THEN
+                                        DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
+                                        = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
+                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                      ELSE
                                         DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
-                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                            + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                        = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                      END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
@@ -3951,8 +3981,13 @@ end if
                                             LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 - VLK_UVW( IDIM ) * LOC_U( IDIM, IPHASE, U_JLOC )
                                         ELSE
+                                          IF(LUMP_DIAG_MOM) THEN
+                                            DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) + VLK_UVW( IDIM )
+                                          ELSE
                                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
-                                                = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK_UVW( IDIM )
+                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK_UVW( IDIM )
+                                          END IF
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
@@ -4773,8 +4808,15 @@ end if
                                     U_ILOC =U_SLOC2LOC(U_SILOC)
                                     DO IPHASE = 1, Mdims%nphase
                                         JPHASE = IPHASE
+                                        IF(LUMP_DIAG_MOM) THEN
+                                          DO IDIM=1,Mdims%ndim
+                                          DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
+                                              =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )
+                                          END DO
+                                        ELSE
                                         DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                            =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)       + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
+                                            =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
+                                        END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             DO IDIM=1,Mdims%ndim
                                                 DO JDIM=1,Mdims%ndim
@@ -4786,8 +4828,15 @@ end if
                                             END DO
                                         ENDIF
                                         ! Contributions from the other element...
-                                        BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
-                                            =BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)     + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
+                                        IF(LUMP_DIAG_MOM) THEN
+                                          DO IDIM=1,Mdims%ndim
+                                            BIGM_CON( 1,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
+                                            =BIGM_CON( 1,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
+                                          END DO
+                                        ELSE
+                                          BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
+                                          =BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
+                                        END IF
                                     END DO
                                 END DO
                             END DO
@@ -4803,8 +4852,13 @@ end if
                                             DO U_JLOC=1,Mdims%u_nloc
                                                 U_JLOC2 = U_JLOC
                                                 DO IDIM=1,Mdims%ndim
+                                                    IF(LUMP_DIAG_MOM) THEN
+                                                      DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)  &
+                                                          =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )
+                                                    ELSE
                                                     DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)       + STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )
+                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )
+                                                    END IF
                                                     IF(PIVIT_ON_VISC) THEN
                                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                         J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
@@ -4917,16 +4971,44 @@ end if
                                                 STOP 1811
                                             ENDIF
                                         ELSE
+                                          IF(LUMP_DIAG_MOM) THEN !!-ao
+                                            IF(MOM_CONSERV) THEN
+                                                DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)  &
+                                                    =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ NN_SNDOTQ_OUT
+                                                BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC2,COUNT_ELE)  &
+                                                    =BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC2,COUNT_ELE)+ NN_SNDOTQ_IN
+                                            ELSE
+                                                DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)  &
+                                                    =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)- NN_SNDOTQ_IN
+                                                BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC2,COUNT_ELE)  &
+                                                    =BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC2,COUNT_ELE)+ NN_SNDOTQ_IN
+                                            ENDIF
+                                            IF(GOT_VIRTUAL_MASS) THEN
+                                                DO KPHASE=1,Mdims%nphase
+                                                    DIAG_BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC,ELE)  &
+                                                        =DIAG_BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC,ELE)+ CVM_BETA*CVM_NN_SNDOTQ_OUT(KPHASE) &
+                                                        - (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
+                                                    BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC2,COUNT_ELE)  &
+                                                        =BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC2,COUNT_ELE)+ CVM_BETA*CVM_NN_SNDOTQ_IN(KPHASE) &
+                                                        + (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
+                                                END DO
+                                            ENDIF
+                                            ! viscosity...
+                                            DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)  &
+                                                =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ VLM_NEW
+                                            BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC2,COUNT_ELE)  &
+                                                =BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC2,COUNT_ELE)- VLM_NEW
+                                          ELSE ! no lumping
                                             IF(MOM_CONSERV) THEN
                                                 DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)       + NN_SNDOTQ_OUT
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ NN_SNDOTQ_OUT
                                                 BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
-                                                    =BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)     + NN_SNDOTQ_IN
+                                                    =BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ NN_SNDOTQ_IN
                                             ELSE
                                                 DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)     - NN_SNDOTQ_IN
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)- NN_SNDOTQ_IN
                                                 BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
-                                                    =BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)   + NN_SNDOTQ_IN
+                                                    =BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ NN_SNDOTQ_IN
                                             ENDIF
                                             IF(GOT_VIRTUAL_MASS) THEN
                                                 DO KPHASE=1,Mdims%nphase
@@ -4943,6 +5025,7 @@ end if
                                                 =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)       + VLM_NEW
                                             BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
                                                 =BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)     - VLM_NEW
+                                          END IF !end of lumping
                                         ENDIF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
@@ -4977,8 +5060,13 @@ end if
                                                 LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                                     =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) - VLM_NEW * SLOC_U( IDIM,IPHASE,U_SJLOC )
                                             else
+                                              IF(LUMP_DIAG_MOM) THEN
+                                                DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)  &
+                                                    =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) + VLM_NEW
+                                              ELSE
                                                 DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
                                                     =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + VLM_NEW
+                                              END IF
                                             end if
                                             IF(PIVIT_ON_VISC) THEN
                                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
@@ -4998,8 +5086,14 @@ end if
                                                 LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                                     - VLM * SUF_U_ROB1_BC_ALL( IDIM,IPHASE,U_SJLOC + Mdims%u_snloc* ( SELE2 - 1 ) )*SLOC_U( IDIM,IPHASE,U_SJLOC )
                                             ELSE
+                                                IF(LUMP_DIAG_MOM) THEN
+                                                DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) &
+                                                      =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ VLM * SUF_U_ROB1_BC_ALL( IDIM,IPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) )
+                                                ELSE
                                                 DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) &
                                                     =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ VLM * SUF_U_ROB1_BC_ALL( IDIM,IPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) )
+                                                END IF
+
                                             !  DGM_PHA( COUNT )  =  DGM_PHA( COUNT )  + VLM * SUF_U_ROB1_BC_ALL( IDIM,IPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) )
                                             ENDIF
                                             IF(PIVIT_ON_VISC) THEN
@@ -5017,8 +5111,13 @@ end if
                                         IF( WIC_MOMU_BC_ALL( IDIM, IPHASE, SELE2 ) == WIC_U_BC_DIRICHLET ) THEN
                                             IF(MOM_CONSERV) THEN
                                                 IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
+                                                  IF(LUMP_DIAG_MOM) THEN
+                                                    DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) &
+                                                    =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ NN_SNDOTQ_OUT
+                                                  ELSE
                                                     DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) &
-                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ NN_SNDOTQ_OUT
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ NN_SNDOTQ_OUT
+                                                  END IF
                                                 ELSE
                                                     LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                                         - NN_SNDOTQ_OUT * SLOC_U( IDIM,IPHASE,U_SJLOC )
@@ -5029,9 +5128,14 @@ end if
                                                ! ENDOF IF(MOM_CONSERV) THEN...
                                             ELSE
                                                 IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
+                                                  IF(LUMP_DIAG_MOM) THEN
+                                                    DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) &
+                                                    =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) - NN_SNDOTQ_IN
+                                                  ELSE
                                                     DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) &
-                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) - NN_SNDOTQ_IN
-                                                !   DGM_PHA( COUNT )  =  DGM_PHA( COUNT )  - NN_SNDOTQ_IN
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) - NN_SNDOTQ_IN
+                                                    !   DGM_PHA( COUNT )  =  DGM_PHA( COUNT )  - NN_SNDOTQ_IN
+                                                  END IF
                                                 ELSE
                                                     LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                                         + NN_SNDOTQ_IN * SLOC_U( IDIM,IPHASE,U_SJLOC )
@@ -5049,9 +5153,14 @@ end if
                                                ! ENDOF IF(MOM_CONSERV) THEN...
                                             ELSE
                                                 IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
+                                                  IF(LUMP_DIAG_MOM) THEN
+                                                    DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) &
+                                                    =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE) - (NN_SNDOTQ_IN + NN_SNDOTQ_OUT)
+                                                  ELSE
                                                     DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) &
-                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) - (NN_SNDOTQ_IN + NN_SNDOTQ_OUT)
-                                                !   DGM_PHA( COUNT )  =  DGM_PHA( COUNT )  - (NN_SNDOTQ_IN + NN_SNDOTQ_OUT)
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) - (NN_SNDOTQ_IN + NN_SNDOTQ_OUT)
+                                                    !   DGM_PHA( COUNT )  =  DGM_PHA( COUNT )  - (NN_SNDOTQ_IN + NN_SNDOTQ_OUT)
+                                                  END IF
                                                 ELSE
                                                     LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                                         + (NN_SNDOTQ_IN + NN_SNDOTQ_OUT) * SLOC_U( IDIM,IPHASE,U_SJLOC )
@@ -5065,27 +5174,51 @@ end if
                                         ENDIF
                                         IF(GOT_VIRTUAL_MASS) THEN
                                             DO KPHASE=1,Mdims%nphase
+                                              IF(LUMP_DIAG_MOM) THEN
                                                 IF( WIC_MOMU_BC_ALL( IDIM, KPHASE, SELE2 ) == WIC_U_BC_DIRICHLET ) THEN
-                                                    DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) &
-                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE)+ CVM_BETA*CVM_NN_SNDOTQ_OUT(KPHASE) &
-                                                        - (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
-                                                    LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
-                                                        - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
-                                                        - CVM_BETA*CVM_NN_SNDOTQOLD_OUT(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC) &
-                                                        ! non-conservative form...
-                                                        - (1.-CVM_BETA)*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
-                                                        + (1.-CVM_BETA)*CVM_NN_SNDOTQOLD_IN(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
-                                                   ! BC for incoming and outgoing momentum (NO leaking of momentum into or out of domain for example)...
+                                                  DIAG_BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC,ELE) &
+                                                  =DIAG_BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC,ELE)+ CVM_BETA*CVM_NN_SNDOTQ_OUT(KPHASE) &
+                                                  - (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
+                                                  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
+                                                  - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
+                                                  - CVM_BETA*CVM_NN_SNDOTQOLD_OUT(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC) &
+                                                  ! non-conservative form...
+                                                  - (1.-CVM_BETA)*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
+                                                  + (1.-CVM_BETA)*CVM_NN_SNDOTQOLD_IN(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
+                                                  ! BC for incoming and outgoing momentum (NO leaking of momentum into or out of domain for example)...
                                                 ELSE IF( WIC_MOMU_BC_ALL( IDIM, KPHASE, SELE2 ) == WIC_U_BC_DIRICHLET_INOUT ) THEN
-                                                    LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
-                                                        - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) )  &
-                                                        ! non-conservative form...
-                                                        - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
-                                                        + (1.-CVM_BETA)*(CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE)) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
+                                                  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
+                                                  - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) )  &
+                                                  ! non-conservative form...
+                                                  - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
+                                                  + (1.-CVM_BETA)*(CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE)) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
+                                                  DIAG_BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC,ELE) &
+                                                  =DIAG_BIGM_CON(1,JDIM,1,KPHASE,1,U_JLOC,ELE) - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE))
+                                                  ! END OF IF( WIC_MOMU_BC(SELE2+(KPHASE-1)*Mdims%stotel) == WIC_U_BC_DIRICHLET) THEN ELSE...
+                                                ELSE !no lumping
+                                                  IF( WIC_MOMU_BC_ALL( IDIM, KPHASE, SELE2 ) == WIC_U_BC_DIRICHLET ) THEN
                                                     DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) &
-                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE))
-                                                   ! END OF IF( WIC_MOMU_BC(SELE2+(KPHASE-1)*Mdims%stotel) == WIC_U_BC_DIRICHLET) THEN ELSE...
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE)+ CVM_BETA*CVM_NN_SNDOTQ_OUT(KPHASE) &
+                                                    - (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
+                                                    LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
+                                                    - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
+                                                    - CVM_BETA*CVM_NN_SNDOTQOLD_OUT(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC) &
+                                                    ! non-conservative form...
+                                                    - (1.-CVM_BETA)*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
+                                                    + (1.-CVM_BETA)*CVM_NN_SNDOTQOLD_IN(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
+                                                    ! BC for incoming and outgoing momentum (NO leaking of momentum into or out of domain for example)...
+                                                  ELSE IF( WIC_MOMU_BC_ALL( IDIM, KPHASE, SELE2 ) == WIC_U_BC_DIRICHLET_INOUT ) THEN
+                                                    LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
+                                                    - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) )  &
+                                                    ! non-conservative form...
+                                                    - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + Mdims%u_snloc * ( SELE2 - 1 ) ) &
+                                                    + (1.-CVM_BETA)*(CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE)) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
+                                                    DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) &
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE))
+                                                    ! END OF IF( WIC_MOMU_BC(SELE2+(KPHASE-1)*Mdims%stotel) == WIC_U_BC_DIRICHLET) THEN ELSE...
+                                                  END IF
                                                 ENDIF
+                                              END IF !END LUMPING
                                             END DO ! ENDOF DO KPHASE=1,Mdims%nphase
                                         ENDIF ! ENDOF IF(GOT_VIRTUAL_MASS) THEN
                                     ENDIF
@@ -5108,13 +5241,21 @@ end if
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
         IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
+          IF(LUMP_DIAG_MOM)THEN
+          CALL COMB_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
+              Mmat%DGM_petsc, &
+              Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
+          ELSE
             CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
                 Mmat%DGM_petsc, &
                 Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
+          END IF
+
                 IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
                     call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS) !This subroutine introduces in the pivit matrix the temporal terms
             DEALLOCATE( DIAG_BIGM_CON )
             DEALLOCATE( BIGM_CON)
+
         ENDIF
         DEALLOCATE( UD, UD_ND )
         DEALLOCATE( UDOLD, UDOLD_ND )
@@ -5219,7 +5360,8 @@ end if
                                 DO JDIM = 1, Mdims%ndim
                                     I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                    IF(LUMP_PIVIT_ON_ALL) THEN
+                                    IF(LUMP_DIAG_MOM) THEN
+                                      IF(LUMP_PIVIT_ON_ALL) THEN
                                         ! lumping of stabilization worth trying...
                                         Mmat%PIVIT_MAT( I,I, ELE )  = Mmat%PIVIT_MAT( I,I, ELE ) +abs(DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) )
                                     ELSE
@@ -5962,21 +6104,15 @@ end if
      INTEGER, DIMENSION( : ), intent( in ) :: COLELE
      type( tensor_field ) :: velocity
      type( tensor_field ) :: pressure
-
      INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
      INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
      INTEGER :: COUNT_ELE,JCOLELE
      real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
-
      integer, dimension(:), pointer :: neighbours
      integer :: nb
      logical :: skip
-
-
      ALLOCATE(LOC_DGM_PHA(NDIM_VEL,NDIM_VEL,NPHASE,NPHASE,U_NLOC,U_NLOC))
-
      Loop_Elements20: DO ELE = 1, TOTELE
-
          if (IsParallel()) then
              if (.not. assemble_ele(pressure,ele)) then
                  skip=.true.
@@ -5991,14 +6127,11 @@ end if
                  if (skip) cycle
              end if
          end if
-
          ELE_ROW_START=FINELE(ELE)
          ELE_ROW_START_NEXT=FINELE(ELE+1)
          ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
-
          ! Block diagonal and off diagonal terms...
          Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
-
              JCOLELE=COLELE(COUNT_ELE)
 
              IF(JCOLELE==ELE) THEN
@@ -6028,17 +6161,90 @@ end if
                      END DO
                  END DO
              END DO
-
-
          END DO Between_Elements_And_Boundary20
-
      END DO Loop_Elements20
-
-
      RETURN
  END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST
 
+ SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
+     DGM_PETSC, &
+     FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
+     ! This subroutine combines the distributed and block diagonal for an element
+     ! into the matrix DGM_PHA.
+     IMPLICIT NONE
+     INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
+     !
+     REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
+     REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
+     type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
+     INTEGER, DIMENSION(: ), intent( in ) :: FINELE
+     INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+     type( tensor_field ) :: velocity
+     type( tensor_field ) :: pressure
+     INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
+     INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
+     INTEGER :: COUNT_ELE,JCOLELE
+     real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
+     integer, dimension(:), pointer :: neighbours
+     integer :: nb
+     logical :: skip
+     ALLOCATE(LOC_DGM_PHA(NDIM_VEL,NDIM_VEL,NPHASE,NPHASE,U_NLOC,U_NLOC))
+     Loop_Elements20: DO ELE = 1, TOTELE
+         if (IsParallel()) then
+             if (.not. assemble_ele(pressure,ele)) then
+                 skip=.true.
+                 neighbours=>ele_neigh(pressure,ele)
+                 do nb=1,size(neighbours)
+                     if (neighbours(nb)<=0) cycle
+                     if (assemble_ele(pressure,neighbours(nb))) then
+                         skip=.false.
+                         exit
+                     end if
+                 end do
+                 if (skip) cycle
+             end if
+         end if
+         ELE_ROW_START=FINELE(ELE)
+         ELE_ROW_START_NEXT=FINELE(ELE+1)
+         ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
+         ! Block diagonal and off diagonal terms...
+         Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
+             JCOLELE=COLELE(COUNT_ELE)
 
+            IF(JCOLELE==ELE) THEN
+                 ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+                 LOC_DGM_PHA(:,:,:, :,:,:) = DIAG_BIGM_CON(:,:,:, :,:,:, ELE) + BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
+             ELSE
+                 LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
+             ENDIF
+
+            DO U_JLOC=1,U_NLOC
+              DO JPHASE=1,NPHASE
+                DO JDIM=1,NDIM_VEL
+                  ! New for rapid code ordering of variables...
+                  J=JDIM + (JPHASE-1)*NDIM_VEL
+                  GLOBI=(ELE-1)*U_NLOC + U_JLOC
+                  GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+                  ! IF(JCOLELE==ELE) THEN
+                  !   ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, ELE) &
+                  !   + BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
+                  ! ELSE
+                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
+                  ! ENDIF
+                  if (.not. node_owned(velocity,globi)) cycle
+                  call addto(dgm_petsc, J , J , globi , globj , &
+                  LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC))
+                END DO
+              END DO
+            END DO
+         END DO Between_Elements_And_Boundary20
+     END DO Loop_Elements20
+
+
+     deallocate(LOC_DGM_PHA)
+     RETURN
+ END SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump
 
 
 
