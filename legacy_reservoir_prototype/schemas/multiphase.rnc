@@ -995,6 +995,9 @@ start =
             element no_matrix_store {
               empty
             }?,
+            element lump_momentum_inertia {
+              empty
+            }?,
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {
