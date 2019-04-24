@@ -160,8 +160,8 @@ if test "$fcompiler" = "ifort" ; then
     if ifort -v 2>&1 |grep 11.1; then 
       AC_MSG_WARN(Early versions of intel 11.1 are bugged and cannot be used to compile Fluidity. Make sure you have at least version 11.1.073.)
     fi
-    FFLAGS="$FFLAGS -vec-report=0"
-    FCFLAGS="$FCFLAGS -vec-report=0"
+    FFLAGS="$FFLAGS -vec-report0"
+    FCFLAGS="$FCFLAGS -vec-report0"
 fi
 
 AC_PROG_CC(icc ecc suncc pgcc gcc cc clang)
