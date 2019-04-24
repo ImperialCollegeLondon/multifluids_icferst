@@ -294,8 +294,7 @@ contains
         allocate( &
             !!$
             suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
-            mass_ele( Mdims%totele ), &
-            )
+            mass_ele( Mdims%totele ) )
         !!$
         suf_sig_diagten_bc=0.
         mass_ele=0.
