@@ -359,6 +359,7 @@ contains
         if( PhaseVolumeFraction_max_iterations /= 0 ) solve_PhaseVolumeFraction = .true.
         !!$ Setting up variables for the Time- and NonLinear Iterations-Loops:
         call get_option( '/timestepping/current_time', acctim )
+        mdims%init_time = acctim
         call get_option( '/timestepping/timestep', dt )
         call get_option( '/timestepping/finish_time', finish_time )
         if ( have_option('/io/dump_period_in_timesteps') ) then
@@ -772,7 +773,7 @@ contains
                 !we control the maximum time-step size to ensure that at some point the ts changes to provide that precise time
                 !Original solution slowed down simulations due to having to build up dt again after forced reduction, now fixed by using stored_dt when appropiate
                 if (have_option('/io/dump_period')) then
-                    maxc = max(min(maxc, abs(current_time - dump_period*dump_no)), 1d-15)
+                    maxc = max(min(maxc, abs(current_time - mdims%init_time - dump_period*dump_no)), 1d-15)
                     ! Make sure we dump at the required time and we don't get dt = 0
                     ! Storing current dt before reduction by period_dump when necessary, so we can go back to it after dump
                     if (dt>maxc) then
@@ -1072,8 +1073,8 @@ contains
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
                 ! dump based on the prescribed period of real time
-                Conditional_Dump_RealTime: if( (abs(current_time - dump_period*dump_no) < 1d-12 .or. current_time >= dump_period*dump_no)&
-                    .and. current_time/=finish_time) then
+                Conditional_Dump_RealTime: if( (abs(current_time-mdims%init_time - dump_period*dump_no) < 1d-12 .or. current_time-mdims%init_time >= dump_period*dump_no)&
+                    .and. current_time-mdims%init_time/=finish_time) then
                     if (do_checkpoint_simulation(dump_no)) then
                         CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
                         FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")

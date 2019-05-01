@@ -82,6 +82,7 @@ module multi_data_types
         integer :: nphase     !Total number of phases
         integer :: npres      !Total number of pressure
         integer :: n_in_pres  !nphase/npres
+        real    :: init_time  !Initial time
 
     end type multi_dimensions
 
