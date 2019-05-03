@@ -2182,9 +2182,9 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     if (have_option('/io/dump_period/constant')) then
         call get_option( '/io/dump_period/constant', dump_period )
         !First get the next time for a vtu dump
-        auxR = dble(ceiling(acctim/dump_period)) * dump_period
-        if (abs(auxR-acctim) > 1e-12) then
-            max_ts = max(min(max_ts, abs(acctim-auxR)), min_ts*1d-3)!Make sure we dump at the required time and we don't get dt = 0
+        auxR = dble(ceiling((acctim-mdims%init_time)/dump_period)) * dump_period
+        if (abs(auxR-(acctim-mdims%init_time)) > 1e-12) then
+            max_ts = max(min(max_ts, abs((acctim-mdims%init_time)-auxR)), min_ts*1d-3)!Make sure we dump at the required time and we don't get dt = 0
         else
             max_ts = min(max_ts, dump_period)
         end if
