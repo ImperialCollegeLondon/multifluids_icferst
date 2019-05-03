@@ -57,6 +57,10 @@ def write_in_binary_format(fname):
 
 
 def write_in_ASCII_format(fname):
+    rnode_dict={}
+    for k,v in node_dict.items():
+        rnode_dict[v]=k
+    fname = fname[:-2]+'.msh'
     file=open(fname,'w')
 
     file.writelines(("$MeshFormat\n",
