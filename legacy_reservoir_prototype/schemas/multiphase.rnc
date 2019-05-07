@@ -34,6 +34,11 @@ start =
                 element porous_media_simulator{comment}|
                 ## Magma flow simulator
                 element magma_simulator{comment}|
+                ## Poro-elasticity simulator:
+                ## This requires to define through diamond the tensor field in phase 1 UAbsorB
+                ## as an absorption term and also the RHS that should include the second time-derivative for the solid phase
+                ## and also the coupling terms. The first phase is considered the solid phase.
+                element poroelasticity{comment}|
                 ## Flooding simulator
                 element flooding_simulator{comment}
              ),
