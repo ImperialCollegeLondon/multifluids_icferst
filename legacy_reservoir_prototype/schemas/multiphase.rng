@@ -3295,6 +3295,14 @@ less accurate but faster and might give smoother result.</a:documentation>
         <attribute name="name">
           <data type="string"/>
         </attribute>
+        <optional>
+          <element name="nphase">
+            <a:documentation>This option is used to specify a dimension different to ndim (typically number of phases), which is the default.
+To be used only with the tensor name UAbsorB. Which is a tensor type used
+to impose an absorption term for the momentum equation using a diagnostic tensor using python.</a:documentation>
+            <ref name="integer"/>
+          </element>
+        </optional>
         <choice>
           <a:documentation>Field type</a:documentation>
           <element name="prescribed">
