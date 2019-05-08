@@ -2289,18 +2289,18 @@ contains
 
        ! If we want to defer allocation (for sam), don't allocate the value space yet
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_DEFERRED)
+          field_type=FIELD_TYPE_DEFERRED,dim=[ndim_tensor,ndim_tensor])
 
     else if(is_constant .and. .not. backward_compatibility) then
 
        ! Allocate as constant field if possible (and we don't need backward compatibility)
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_CONSTANT)
+          field_type=FIELD_TYPE_CONSTANT,dim=[ndim_tensor,ndim_tensor])
        call zero(field)
     else
 
        ! Allocate field
-       call allocate(field, mesh, trim(field_name))
+       call allocate(field, mesh, trim(field_name),dim=[ndim_tensor,ndim_tensor])
        call zero(field)
     end if
 

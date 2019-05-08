@@ -2715,7 +2715,11 @@ tensor_field_choice =
          ## Generic field variable (tensor)
          element tensor_field {
             attribute rank { "2" },
-            attribute name { xsd:string },
+            attribute name { xsd:string },	
+ 	        ## This option is used to specify a dimension different to ndim (typically number of phases), which is the default.
+ 	        ## To be used only with the tensor name UAbsorB. Which is a tensor type used
+ 	        ## to impose an absorption term for the momentum equation using a diagnostic tensor using python.
+            element nphase { integer }?,            
             ## Field type
             (
                element prescribed {

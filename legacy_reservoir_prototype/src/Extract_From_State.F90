@@ -2346,7 +2346,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
                     !Analyse the difference
-                    inf_norm_val = inf_norm_scalar_normalised(pressure(1,1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
+                    inf_norm_val = inf_norm_scalar_normalised(pressure(1,1:Mdims%npres,:), reference_field(1,1:Mdims%npres,:), 1.0, totally_min_max)
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
             end select
