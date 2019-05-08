@@ -18,7 +18,7 @@ import os
 
 
 #SETTINGS ANALYTICAL SOLUTION
-t = 1.
+t = 0.1
 nodes = 202
 gamma = 1.
 pi = 3.141596
@@ -30,6 +30,17 @@ binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
 os.system(binpath + ' ' + path + '/*mpml')
 
+
+def analytical_solution(X_coords):
+    coords = np.asarray(X_coords)
+    term1=erfc((coords-(gamma*t))/(2.*sqrt(t)))
+    term2=(np.exp(gamma*coords))*erfc((coords+(gamma*t))/(2.*sqrt(t)))
+    term3=1.+(0.5*gamma*(2.-coords+(gamma*t)))
+    term4=erfc((2.-coords+(gamma*t))/(2.*sqrt(t)))
+    term5=gamma*(sqrt(t/pi))*np.exp(-((2.-coords+(gamma*t))**2.)/(4.*t))
+    analytical=(0.5*(term1+term2))+(np.exp(gamma)*((term3*term4)-term5))
+
+    return analytical
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
@@ -149,23 +160,21 @@ for j in range(points.GetNumberOfPoints()):
 Experimental_X = np.linspace(0, 1.0, num=nodes, endpoint=True, retstep=False, dtype=None)
 
 
-Analytical_X = []
-Analytical_Y = []
-Analytical=file('Analytical','r')
+#Analytical_X = []
+#Analytical_Y = []
+#Analytical=file('Analytical','r')
+#while True:
+#    cadena=Analytical.readline()
+#    if len(cadena) ==0:
+#        break # EOF
+#    if len(cadena) <2:
+#        continue # If a line is empty       
+#    lista = cadena.split()
+#    Analytical_X.append(float(lista[0]))
+#    Analytical_Y.append(float(lista[1]))
+#Analytical.close
 
-
-while True:
-    cadena=Analytical.readline()
-
-    if len(cadena) ==0:
-        break # EOF
-    if len(cadena) <2:
-        continue # If a line is empty       
-    lista = cadena.split()
-    Analytical_X.append(float(lista[0]))
-    Analytical_Y.append(float(lista[1]))
-
-Analytical.close
+Analytical_Y = analytical_solution(Experimental_X)
 
 #Compare results
 #Convert tuple to array
@@ -174,7 +183,7 @@ for item in FS:
     Experimental_Y.extend(item)
     
 #Create spline curve
-f = interp1d(Analytical_X, Analytical_Y,kind ='cubic')
+f = interp1d(Experimental_X, Analytical_Y,kind ='cubic')
 L1_sum = 0.0
 N_shock = 0
 Infinite_Norm = 0.0
@@ -217,7 +226,7 @@ if (showPlot):
 #    for i in range(len(detector)):
 #        x.append(float(detector[i][0]))
 #        Analytical.append(float(FS[i][0]))
-    line = plt.Line2D(Analytical_X, Analytical_Y, color='black', linewidth=2)
+    line = plt.Line2D(Experimental_X, Analytical_Y, color='black', linewidth=2)
     line2 = plt.Line2D(Experimental_X, FS, color='blue', linewidth=2)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)

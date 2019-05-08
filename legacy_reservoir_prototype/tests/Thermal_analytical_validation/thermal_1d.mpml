@@ -125,6 +125,9 @@
             <real_value rank="0">0</real_value>
           </constant>
         </initial_condition>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <no_interpolation/>
       </prognostic>
     </scalar_field>
@@ -216,6 +219,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -238,6 +244,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -277,6 +286,9 @@
             </order_one_coefficient>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -322,7 +334,7 @@
         <mesh name="P0DG"/>
         <value name="WholeMesh">
           <constant>
-            <real_value rank="0">0.20</real_value>
+            <real_value rank="0">0.2</real_value>
           </constant>
         </value>
         <stat/>
