@@ -202,9 +202,9 @@ bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90
 
 static: fluidity_library
 
-shared: lib/shared/$(SLIB_FLUIDITY).1
+shared: lib/shared/$(SLIB_FLUIDITY).1 lib/shared_libraries.1
 
-lib/shared/$(SLIB_FLUIDITY).1: fluidity_library 
+lib/shared/$(SLIB_FLUIDITY).1: fluidity_library
 	@echo "BUILD shared libfluidity"
 	@rm -rf tmp
 	@mkdir -p tmp lib/shared
@@ -214,6 +214,15 @@ lib/shared/$(SLIB_FLUIDITY).1: fluidity_library
 	@$(EVAL) $(LINKER) -shared -Wl,-soname,$(SLIB_FLUIDITY).1 -o lib/shared/$(SLIB_FLUIDITY).1 tmp/* -L./lib -lvtkfortran 
 	@rm -rf tmp
 	@cd lib/shared; ln -sf $(SLIB_FLUIDITY).1 $(SLIB_FLUIDITY); cd ../..
+
+
+lib/shared_libraries.1:
+	@echo '    MKDIR lib'; mkdir -p lib/shared
+	echo '    MAKE libvtkfortran'
+	@cd libvtkfortran/ && make shared && cd ../ && cp libvtkfortran/libvtkfortran.so.1  lib/shared/ && cp libvtkfortran/*.mod include/
+	@rm -rf tmp
+	@cd lib/shared; ln -sf libvtkfortran.so.1 libvtkfortran.so; cd ../..
+
 
 fltools: fluidity_library
 	@$(MAKE) fldecomp
