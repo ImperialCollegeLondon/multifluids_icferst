@@ -73,19 +73,14 @@ lib/libmphase.a: $(OBJS)
 	@echo "BUILD libmphase"
 	@echo "    MKDIR lib"
 	@mkdir -p lib
-	@echo "    MAKE src pre_diagnostics"
-	@cd src; 	 $(MAKE) pre_diagnostics
-	@echo "    MAKE diagnostics"
-	@cd diagnostics; $(MAKE)
-	@echo "    MAKE src post_diagnostics"
-	@cd src; 	 $(MAKE) post_diagnostics
-	@$(AR) $(ARFLAGS) lib/libmphase.a src/*.o diagnostics/*.o
+	@echo "    MAKE src"
+	@cd src; 	 $(MAKE) 
+	@$(AR) $(ARFLAGS) lib/libmphase.a src/*.o
 
 clean:
 	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a 
 	@rm -rf bin/
 	@cd src;   make clean
-	@cd diagnostics; make clean
 	@cd tests; PYTHONPATH=../python ../tools/testharness_MultiphasePrototype.py --clean >/dev/null
 	@cd unittest; make clean
 

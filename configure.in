@@ -1826,6 +1826,5 @@ AC_OUTPUT(Makefile
           libvtkfortran/Makefile
 	  tests/tools.mk
    	  legacy_reservoir_prototype/Makefile
-          legacy_reservoir_prototype/diagnostics/Makefile
           legacy_reservoir_prototype/src/Makefile
           legacy_reservoir_prototype/unittest/Makefile)
