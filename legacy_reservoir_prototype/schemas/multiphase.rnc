@@ -1455,23 +1455,7 @@ rotation_matrix_components =
 velocity_components_choice =
    (
       (
-         element align_bc_with_surface {
-            element normal_component {
-               input_choice_real
-            }?,
-            element tangent_component_1 {
-               input_choice_real
-            }?,
-            element tangent_component_2 {
-               input_choice_real
-            }?,
-            rotation_matrix_components,
-            ## this will calculate the determinant of the
-            ## rotation matrix for every boundary node
-            ## and dump a vtu with the node
-            ## normals and tangenials 1/2
-            element debugging_mode{empty}?
-         }|
+
          element align_bc_with_cartesian {
             element x_component {
                input_choice_real_bc_component

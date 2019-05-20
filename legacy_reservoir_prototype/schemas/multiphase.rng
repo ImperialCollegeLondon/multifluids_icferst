@@ -1797,52 +1797,23 @@ If on the tangents vectors must also be specified.</a:documentation>
     </optional>
   </define>
   <define name="velocity_components_choice">
-    <choice>
-      <element name="align_bc_with_surface">
-        <optional>
-          <element name="normal_component">
-            <ref name="input_choice_real"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="tangent_component_1">
-            <ref name="input_choice_real"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="tangent_component_2">
-            <ref name="input_choice_real"/>
-          </element>
-        </optional>
-        <ref name="rotation_matrix_components"/>
-        <optional>
-          <element name="debugging_mode">
-            <a:documentation>this will calculate the determinant of the
-rotation matrix for every boundary node
-and dump a vtu with the node
-normals and tangenials 1/2</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-      </element>
-      <element name="align_bc_with_cartesian">
-        <optional>
-          <element name="x_component">
-            <ref name="input_choice_real_bc_component"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="y_component">
-            <ref name="input_choice_real_bc_component"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="z_component">
-            <ref name="input_choice_real_bc_component"/>
-          </element>
-        </optional>
-      </element>
-    </choice>
+    <element name="align_bc_with_cartesian">
+      <optional>
+        <element name="x_component">
+          <ref name="input_choice_real_bc_component"/>
+        </element>
+      </optional>
+      <optional>
+        <element name="y_component">
+          <ref name="input_choice_real_bc_component"/>
+        </element>
+      </optional>
+      <optional>
+        <element name="z_component">
+          <ref name="input_choice_real_bc_component"/>
+        </element>
+      </optional>
+    </element>
   </define>
   <define name="velocity_boundary_conditions">
     <choice>
