@@ -185,23 +185,15 @@ contains
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
 
-!!-Variables related to the detection and correction of bad elements
-        real, save :: Max_bad_angle = -1 ! set in timeloop from diamond input
-        integer :: i, k
-        real, dimension(:,:), pointer:: X_ALL
-        real, dimension(:), allocatable :: quality_table
-        integer, dimension(:), allocatable :: diagnostics ! number of bad elements - used to generate a diagnostics table
-        integer, dimension(2) :: shape
-        logical :: mesh_diagnostics = .false., bad_element = .false. ! print out mesh diagnostics / change properties of bad elements to improve deltaP calculations for bad meshes (with large angles)
-
         !!-Variable to keep track of dt reduction for meeting dump_period requirements
         real, save :: stored_dt = -1
         real :: old_acctim
 
         !! Variables to initialise porous media models
         logical :: exit_initialise_porous_media = .false.
-
-
+        !Generic variables
+        integer :: i, k
+        real :: auxR
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -405,6 +397,13 @@ contains
         if (is_porous_media) then
             !Check that all the elements have permeability defined
             perm_field => extract_tensor_field(packed_state,"Permeability")
+            auxR = minval(perm_field%val, MASK = perm_field%val> 1e-50)
+            if (abs(log(maxval(perm_field%val)/auxR) )/log(10.)> 12.) then
+              if(getprocno() == 1) then
+                ewrite(0,*) "WARNING: The code supports double precision and your Permeability field is trying to span more than 12 orders of magnitude."
+                ewrite(0,*) "This may lead to convergence errors. Check your permeability values."
+              end if
+            end if
             do its = 1, size(perm_field%val,3)
                 do its2 = 1, size(perm_field%val,2)
                     if (perm_field%val(its2,its2,its)< 1e-30) then
