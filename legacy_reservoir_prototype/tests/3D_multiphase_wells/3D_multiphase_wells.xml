@@ -8,15 +8,15 @@
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="3D_multiphase_wells" language="python">3D_multiphase_wells = False
+    <test name="3D_multiphase_wells" language="python">D3_multiphase_wells = False
 with open("log", "rb") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
 f.close 
 
-if 'OK' in last: 3D_multiphase_wells = True
+if 'OK' in last: D3_multiphase_wells = True
 
-assert(3D_multiphase_wells)</test>
+assert(D3_multiphase_wells)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

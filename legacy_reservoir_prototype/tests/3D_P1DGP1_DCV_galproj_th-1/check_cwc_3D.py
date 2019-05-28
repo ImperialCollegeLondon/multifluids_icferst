@@ -84,7 +84,7 @@ for x in range(len(xarray)):
 	  pylab.legend(("Experiment", "Model"), loc="upper left")
 	  pylab.savefig("water_gauge_"+warray[x]+".png")
 
-  print str(warray[x]),"TOL=",TOLERANCE_H,", ERROR=",abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))
+  #print str(warray[x]),"TOL=",TOLERANCE_H,", ERROR=",abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))
   H_check=abs(numpy.std(numpy.array(experiment[:,2])-numpy.array(results[:,2+x])))<TOLERANCE_H
   if H_check==False:
       print "H_check=",H_check
