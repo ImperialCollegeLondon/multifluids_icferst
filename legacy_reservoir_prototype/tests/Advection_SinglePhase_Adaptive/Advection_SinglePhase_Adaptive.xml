@@ -51,12 +51,12 @@ TempRef_Square_Integral_Max = max(s["phase1"]["Temperature_Reference"]["integral
   </variables>
   <pass_tests>
     <test name="Solvers converged" language="python">assert(solvers_converged)</test>
-    <test name="Adaptive: Temperature Integral Max Comparison is smaller than 1.e-4" language="python">from math import pi
-assert abs(Temp_Adapt_Integral_Max - TempRef_Adapt_Integral_Max) &lt; 1.e-4</test>
+    <test name="Adaptive: Temperature Integral Max Comparison is smaller than 5.e-3" language="python">from math import pi
+assert abs(Temp_Adapt_Integral_Max - TempRef_Adapt_Integral_Max) &lt; 5.e-3</test>
     <test name="Adaptive: Temperature Integral Final Comparison is smaller than 1.e-1" language="python">assert abs(Temp_Adapt_Integral_Final - TempRef_Adapt_Integral_Final) &lt; 1.0e-1</test>
-    <test name="Unstructured: Temperature Integral Max Comparison is smaller than 1.e-4" language="python">from math import pi
+    <test name="Unstructured: Temperature Integral Max Comparison is smaller than 5.e-3" language="python">from math import pi
 assert abs(Temp_Unstruct_Integral_Max - TempRef_Unstruct_Integral_Max) &lt; 5.e-3</test>
-    <test name="Unstructured: Temperature Integral Final Comparison is smaller than 1.e-1" language="python">assert abs(Temp_Unstruct_Integral_Final - TempRef_Unstruct_Integral_Final) &lt; 1.0e-2</test>
+    <test name="Unstructured: Temperature Integral Final Comparison is smaller than 1.e-2" language="python">assert abs(Temp_Unstruct_Integral_Final - TempRef_Unstruct_Integral_Final) &lt; 1.0e-2</test>
     <test name="Square Adaptive: Temperature Integral Max Comparison is smaller than 8.e-3" language="python">from math import pi
 assert abs(Temp_Square_Integral_Max - TempRef_Square_Integral_Max) &lt; 8.e-3</test>
     <test name="Square Adaptive: Temperature Integral Final Comparison is smaller than 8.e-3" language="python">assert abs(Temp_Square_Integral_Final - TempRef_Square_Integral_Final) &lt; 8.e-3</test>

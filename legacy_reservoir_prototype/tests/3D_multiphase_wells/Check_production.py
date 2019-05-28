@@ -39,7 +39,7 @@ with open(filename, 'rb') as csvfile:
             continue
 
 #Check last cumulative production
-diff = (abs(phase2_out[-1]) - 40051615.959)/40051615.959
+diff = abs(phase2_out[-1] - 40051615.959)/40051615.959
 
 
 print 'Compare production with stored value: ' + str(diff)
