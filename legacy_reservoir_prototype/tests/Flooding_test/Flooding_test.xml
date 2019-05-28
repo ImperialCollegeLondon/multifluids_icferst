@@ -15,7 +15,6 @@ max_rho = stat("Flooding_test.stat")["phase1"]["Density"]["max"][-1]</variable>
 min_rho = stat("Flooding_test.stat")["phase1"]["Density"]["min"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max pressure" language="python">assert(abs(max_P - 18.2)/18.2 &lt; 0.01)</test>
     <test name="Assert final max density" language="python">assert(abs(max_rho - 1.84) &lt; 0.05)</test>
     <test name="Assert final min density" language="python">assert(abs(min_rho + 0.0) &lt; 0.001)</test>
   </pass_tests>
