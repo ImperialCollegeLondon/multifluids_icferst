@@ -99,12 +99,12 @@ time = results["ElapsedTime"]["value"]
 for p in range(len(parray)):
 	
   data_o = results["phase1"]["Pressure"][parray[p]]
-  if "Ph" in results["phase1"]:
-      data_o+=results["phase1"]["Ph"][parray[p]]
+  if "HydrostaticPressure" in results["phase1"]:
+      data_o+=results["phase1"]["HydrostaticPressure"][parray[p]]
   experiment = numpy.load(parray[p]+".npy")
   data=experiment.item(0)["phase1"]["Pressure"][parray[p]]
-  if "Ph" in experiment.item(0)["phase1"]:
-      data+=experiment.item(0)["phase1"]["Ph"][parray[p]]
+  if "HydrostaticPressure" in experiment.item(0)["phase1"]:
+      data+=experiment.item(0)["phase1"]["HydrostaticPressure"][parray[p]]
 
 # We need to calculate pressures at dump file steps
   data_o2=[]
