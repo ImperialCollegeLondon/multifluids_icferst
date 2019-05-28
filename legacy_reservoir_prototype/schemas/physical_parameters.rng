@@ -25,6 +25,8 @@
           <a:documentation>Solve the gravity component indendently from the pressure general solver
 this is very RECOMMENDED when running with gravity.
 
+Internally it creates a field named HydrostaticPressure and a mesh with the same name.
+
 NOTE: With this options, pressure boundary conditions must not be hydrostatic.</a:documentation>
           <empty/>
         </element>
