@@ -14,7 +14,7 @@ phase1_pressure_min = stat("twm.stat")["phase1"]["Pressure"]["min"][-1]</variabl
     <variable name="phase1_pressure_max_ref" language="python">phase1_pressure_max_ref = 1e8</variable>
     <variable name="phase1_pressure_min_ref" language="python">phase1_pressure_min_ref = 1e5</variable>
     <variable name="tolerance" language="python">tolerance = 0.1</variable>
-    <variable name="tolerance2" language="python">tolerance2 = 0.201</variable>
+    <variable name="tolerance2" language="python">tolerance2 = 0.15</variable>
     <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
 max_sat1 = stat("twm.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
     <variable name="max_sat2" language="python">from fluidity_tools import stat_parser as stat
