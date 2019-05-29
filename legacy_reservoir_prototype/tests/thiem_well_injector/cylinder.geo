@@ -26,7 +26,7 @@ Line Loop(15) = {7, 3, -8};
 Plane Surface(16) = {15};
 
 Extrude {0, 0, 20} {
-  Surface{16, 10, 12, 14}; Layers{8};
+  Surface{16, 10, 12, 14}; Layers{4};
 }
 
 Physical Surface(1) = {33, 50, 67, 84}; // top
@@ -38,4 +38,4 @@ Mesh.Algorithm = 4;
 //Mesh.Remove4Triangles = 1;
 Mesh.RecombinationAlgorithm = 0;
 Mesh.CharacteristicLengthMin = 1;
-Mesh.CharacteristicLengthMax = 30;
+Mesh.CharacteristicLengthMax = 15;
