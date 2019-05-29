@@ -34,7 +34,6 @@
         <Vanishing_relaxation>
           <real_value rank="0">-1e2</real_value>
         </Vanishing_relaxation>
-        <Show_Convergence/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
           <PID_controller>
@@ -136,6 +135,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -206,6 +208,9 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -239,6 +244,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -435,6 +443,9 @@
           </diagnostic>
           <default_absorption/>
         </vector_field>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -468,6 +479,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
