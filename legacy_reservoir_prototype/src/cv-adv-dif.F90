@@ -6036,10 +6036,14 @@ end if
             !Local variables
             integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC, P_ILOC, CV_ILOC
             logical, save :: show_warn_msg = .true.
-            logical :: hydrostatic_bc
+            logical, save :: have_been_read = .false.
+            logical, save :: hydrostatic_bc
             !By default no modification is required
             Bound_ele_correct = 1.0
-            hydrostatic_bc = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )
+            if ( .not. have_been_read ) then
+              hydrostatic_bc = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )
+              have_been_read = .true.
+            end if
             IF ( on_domain_boundary ) THEN
                 !By default the position must not be added to the matrix
                 Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
