@@ -409,6 +409,13 @@ number. Timestep adapts occur at the end of each
 timestep and after a mesh adapt.</a:documentation>
               <ref name="real"/>
             </element>
+            <optional>
+              <element name="requested_cfl_pressure">
+                <a:documentation>Multiplier of the requested CFL based on which the pressure and velocity fields
+will be recalculated. Otherwise, the pressure will not be updated.</a:documentation>
+                <ref name="integer"/>
+              </element>
+            </optional>
             <ref name="timestep_cfl_number_options"/>
             <optional>
               <element name="minimum_timestep">

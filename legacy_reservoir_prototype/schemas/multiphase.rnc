@@ -354,7 +354,12 @@ start =
                ## timestep and after a mesh adapt.
                element requested_cfl {
                   real
-               },
+               },    
+               ## Multiplier of the requested CFL based on which the pressure and velocity fields
+               ## will be recalculated. Otherwise, the pressure will not be updated.
+               element requested_cfl_pressure {
+                  integer
+               }?,
                timestep_cfl_number_options,
                ## Minimum time step size.
                ## Manual suggests 0.0

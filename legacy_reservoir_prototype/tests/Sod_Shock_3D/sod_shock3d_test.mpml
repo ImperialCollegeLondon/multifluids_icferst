@@ -32,7 +32,11 @@
       </Conservative_formulation_settings>
     </Advance_options>
   </geometry>
-  <solver_options/>
+  <solver_options>
+    <Non_Linear_Solver>
+      <integer_value rank="0">3</integer_value>
+    </Non_Linear_Solver>
+  </solver_options>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
@@ -99,7 +103,7 @@
           <include_pressure>
             <real_value rank="0">1</real_value>
           </include_pressure>
-          <tensor_form/>
+          <stress_form/>
         </Petrov_Galerkin_stabilisation>
       </Stabilisation>
     </phase_properties>
