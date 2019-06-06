@@ -1,12 +1,15 @@
-Point(1) = {0., 0., 0., 0.01};
+Point(1) = {0., 0., 0.};
 Extrude {1, 0, 0} {
   Point{1};
+Layers{150};
 }
 Extrude {0, 0.025, 0} {
   Line{1};
+Layers{1};
 }
 Extrude {0, 0, 0.025} {
   Surface{5};
+Layers{1};
 }
 // Inflow
 Physical Surface(1) = {26}; //left
