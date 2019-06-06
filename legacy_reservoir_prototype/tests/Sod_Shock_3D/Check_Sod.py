@@ -69,8 +69,8 @@ os.system(binpath + ' ' + path + '/sod_shock3d_test.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-tol = 1e-2
-
+Tolerance_L1_NORM = 0.02
+Tolerance_L2_NORM = 0.0015
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
@@ -224,11 +224,12 @@ for i in range(len(Experimental_X)):
 
 
 L1_norm= L1_sum / len(Experimental_X)
-
+L2_norm = L2_sum**0.5 / len(Experimental_X)
 
 Passed = True
-if (abs(L1_norm - 0.029)/0.029 > tol): Passed = False
-#print L1_norm, abs(L1_norm - 0.029)/0.029
+
+if (L1_norm > Tolerance_L1_NORM): Passed = False
+if (L2_norm > Tolerance_L2_NORM): Passed = False
 #Check the experiment has finished
 if (AutoNumber < 16): Passed = False
 

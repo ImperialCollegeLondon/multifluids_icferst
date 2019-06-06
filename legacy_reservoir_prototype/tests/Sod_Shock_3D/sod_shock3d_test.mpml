@@ -22,14 +22,15 @@
     <Advance_options>
       <Conservative_formulation_settings name="Velocity">
         <conservative_advection>
-          <real_value rank="0">1</real_value>
+          <real_value rank="0">0.0</real_value>
         </conservative_advection>
       </Conservative_formulation_settings>
       <Conservative_formulation_settings name="Temperature">
         <conservative_advection>
-          <real_value rank="0">0</real_value>
+          <real_value rank="0">0.0</real_value>
         </conservative_advection>
       </Conservative_formulation_settings>
+      <FE_Pressure/>
     </Advance_options>
   </geometry>
   <solver_options>
