@@ -30,7 +30,6 @@
           <real_value rank="0">0.0</real_value>
         </conservative_advection>
       </Conservative_formulation_settings>
-      <FE_Pressure/>
     </Advance_options>
   </geometry>
   <solver_options>
