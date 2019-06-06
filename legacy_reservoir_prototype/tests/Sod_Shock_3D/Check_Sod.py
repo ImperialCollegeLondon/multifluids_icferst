@@ -69,8 +69,8 @@ os.system(binpath + ' ' + path + '/sod_shock3d_test.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.02
-Tolerance_L2_NORM = 0.0015
+Tolerance_L1_NORM = 0.03
+Tolerance_L2_NORM = 0.002
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
