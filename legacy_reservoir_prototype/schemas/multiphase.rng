@@ -1226,6 +1226,16 @@ it has a simmilar effect as the artificial diffusion. Default value = 1e-1.</a:d
         <element name="numerical_methods">
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
           <optional>
+            <element name="do_not_bound_after_adapt">
+              <a:documentation>Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field 
+is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation 
+that otherwise might have been cut off. Enable this option to avoid doing this operation.
+
+This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="use_reflect_method">
               <a:documentation>Use a method to avoid distortion due to boundaries</a:documentation>
               <empty/>
