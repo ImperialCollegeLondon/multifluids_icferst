@@ -980,6 +980,14 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
+            ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field 
+            ## is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation 
+            ## that otherwise might have been cut off. Enable this option to avoid doing this operation.
+            ##
+            ## This option is useful if your field is suddenly changing after adapting the mesh.
+            element do_not_bound_after_adapt {
+               empty
+            }?,
             ## Use a method to avoid distortion due to boundaries
             element use_reflect_method {
                empty
