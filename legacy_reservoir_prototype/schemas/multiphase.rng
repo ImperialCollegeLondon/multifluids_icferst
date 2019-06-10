@@ -816,8 +816,10 @@ ONLY specify for the wetting phase</a:documentation>
                   <ref name="material_mesh_choice"/>
                   <ref name="prescribed_scalar_field"/>
                 </element>
-                <element name="aliased">
-                  <ref name="generic_aliased_field"/>
+                <element name="diagnostic">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                  <ref name="diagnostic_scalar_field"/>
                 </element>
               </choice>
             </element>
@@ -825,19 +827,33 @@ ONLY specify for the wetting phase</a:documentation>
               <attribute name="name">
                 <value>Permeability</value>
               </attribute>
-              <element name="prescribed">
-                <ref name="material_mesh_choice"/>
-                <ref name="prescribed_vector_field"/>
-              </element>
+              <choice>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_vector_field"/>
+                </element>
+                <element name="diagnostic">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="vector_python_diagnostic_algorithm"/>
+                  <ref name="diagnostic_vector_field"/>
+                </element>
+              </choice>
             </element>
             <element name="tensor_field">
               <attribute name="name">
                 <value>Permeability</value>
               </attribute>
-              <element name="prescribed">
-                <ref name="material_mesh_choice"/>
-                <ref name="prescribed_tensor_field"/>
-              </element>
+              <choice>
+                <element name="prescribed">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="prescribed_tensor_field"/>
+                </element>
+                <element name="diagnostic">
+                  <ref name="material_mesh_choice"/>
+                  <ref name="tensor_python_diagnostic_algorithm"/>
+                  <ref name="diagnostic_tensor_field"/>
+                </element>
+              </choice>
             </element>
           </choice>
           <optional>

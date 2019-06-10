@@ -657,24 +657,40 @@ start =
                         material_mesh_choice,
                         prescribed_scalar_field
                      }|
-                     element aliased {
-                        generic_aliased_field
-                     }
+                    element diagnostic {
+                    material_mesh_choice,
+                    scalar_python_diagnostic_algorithm,
+                    diagnostic_scalar_field
+                  }
                   )
                }|
                element vector_field {
                   attribute name { "Permeability" },
+                  (
                   element prescribed {
                      material_mesh_choice,
                      prescribed_vector_field
+                  }|
+                    element diagnostic {
+                    material_mesh_choice,
+                    vector_python_diagnostic_algorithm,
+                    diagnostic_vector_field
                   }
+                  )
                }|
                element tensor_field {
                   attribute name { "Permeability" },
+                  (
                   element prescribed {
                      material_mesh_choice,
                      prescribed_tensor_field
+                  }|
+                    element diagnostic {
+                    material_mesh_choice,
+                    tensor_python_diagnostic_algorithm,
+                    diagnostic_tensor_field
                   }
+                  )
                }
             ),
             ## Specify scalar field Longitudinal Dispersivity
