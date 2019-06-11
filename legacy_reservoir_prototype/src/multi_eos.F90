@@ -52,6 +52,8 @@ module multiphase_EOS
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
+    use multi_magma
+
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5

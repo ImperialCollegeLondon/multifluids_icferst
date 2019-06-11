@@ -71,6 +71,7 @@ module multiphase_time_loop
     use vtk_interfaces
     use multi_interpolation
     use multi_pipes
+    use multi_magma
     use momentum_diagnostic_fields, only: calculate_densities
 
 #ifdef HAVE_ZOLTAN
