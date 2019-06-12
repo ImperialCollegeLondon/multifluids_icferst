@@ -1004,6 +1004,10 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
+            element use_ENO_scheme {
+               empty
+            }?,            
             ## Use a method to avoid distortion due to boundaries
             element use_reflect_method {
                empty

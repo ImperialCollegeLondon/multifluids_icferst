@@ -505,9 +505,7 @@ contains
               GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
           end if
           FEM_continuity_equation = have_option( '/geometry/Advance_options/FE_Pressure/FEM_continuity_equation' )
-
-          option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"!sprint_to_do not added yet linked with the new schema
-          apply_eno = have_option( option_path2 )
+          apply_eno = have_option( "/numerical_methods/use_ENO_scheme" )
 
           !THETA_VEL_HAT has to be zero for porous media flow
           if ( is_porous_media ) then
