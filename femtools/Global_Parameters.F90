@@ -176,7 +176,9 @@ module global_parameters
   !! Multiphase prototype, flooding simulator
   logical :: is_flooding = .false.
   !! Multiphase prototype, magma simulator
-  logical :: is_magma = .false.
+  logical :: is_magma = .false.!sprint_to_do: DEPRECATED, NEED TO SEE WHAT WE DO WITH THE ASSOCIATED CODE
+  !! Multiphase prototype, magma simulator
+  logical :: is_magma_modelling = .false.
   !! Multiphase prototype, poro-elasticity simulator
   logical :: is_poroelasticity = .false.
   !! Checking multifracture
