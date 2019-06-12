@@ -1160,7 +1160,16 @@ geometry =
             ## By default ICFERST uses a DCVFEM because it is more robust (Salinas et al. 2018),
             ## nonetheless the classical CVFEM can also be used.
             element FE_Pressure {
-               empty
+            (
+            ## This option uses FE to solve the continuity equation. This creates a symmetric Pressure
+            ## matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless, 
+            ## it may create inconsistencies for multiphase flow and conservative formulations.
+            ##
+            element FEM_continuity_equation {
+                empty
+            }?
+            )
+
             }?
         }?,
 

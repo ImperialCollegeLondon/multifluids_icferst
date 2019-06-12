@@ -219,7 +219,7 @@ contains
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, &
-        symmetric_P )
+        FEM_continuity_equation )
         !use multiphase_1D_engine
         !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
         implicit none
@@ -230,7 +230,7 @@ contains
         type (multi_matrices), intent(inout) :: Mmat
         LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
         INTEGER, intent( in ) :: IGOT_CMC_PRECON
-        LOGICAL, intent( in ) :: got_free_surf, symmetric_P
+        LOGICAL, intent( in ) :: got_free_surf, FEM_continuity_equation
         REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
         type(petsc_csr_matrix), intent(inout)::  CMC_petsc
@@ -261,14 +261,14 @@ contains
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 pipes_aux%MASS_PIPE, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_CVFEM2PIPE_TRUE, &
-                got_free_surf,  MASS_SUF, ndpset, symmetric_P )
+                got_free_surf,  MASS_SUF, ndpset, FEM_continuity_equation )
         ELSE
             ! Slow but memory efficient...
             CALL COLOR_GET_CMC_PHA_SLOW( Mdims,Mspars, ndgln, Mmat,&
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 pipes_aux%MASS_PIPE, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_CVFEM2PIPE_TRUE, &
-                got_free_surf,  MASS_SUF, ndpset, symmetric_P )
+                got_free_surf,  MASS_SUF, ndpset, FEM_continuity_equation )
         END IF
         !Re-assemble just in case
         CMC_petsc%is_assembled=.false.
@@ -280,7 +280,7 @@ contains
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-            got_free_surf,  MASS_SUF, ndpset, symmetric_P )
+            got_free_surf,  MASS_SUF, ndpset, FEM_continuity_equation )
             !use multiphase_1D_engine
             implicit none
             ! form pressure matrix CMC using a colouring approach
@@ -290,7 +290,7 @@ contains
             type (multi_matrices), intent(inout) :: Mmat
             INTEGER, intent( in ) :: IGOT_CMC_PRECON
             LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
-            LOGICAL, intent( in ) :: got_free_surf, symmetric_P
+            LOGICAL, intent( in ) :: got_free_surf, FEM_continuity_equation
             INTEGER, DIMENSION( : ), intent( in ) :: ndpset
             REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
             REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
@@ -462,7 +462,7 @@ contains
                     END IF
                 END DO
                 !Put into matrix CMC
-                if ( .not.symmetric_P ) then
+                if ( .not.FEM_continuity_equation ) then
                     ! original method
                     DO CV_NOD = 1, Mdims%cv_nonods
                         DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
@@ -477,7 +477,7 @@ contains
                             END DO
                         END DO
                     END DO
-                else  ! endof if ( .not.symmetric_P ) then
+                else  ! endof if ( .not.FEM_continuity_equation ) then
                     ! symmetric P matrix
                     DO CV_NOD = 1, Mdims%cv_nonods
                         DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
@@ -492,7 +492,7 @@ contains
                             END DO
                         END DO
                     END DO
-                end if  ! endof if ( .not.symmetric_P ) then else
+                end if  ! endof if ( .not.FEM_continuity_equation ) then else
                 UNDONE = ANY( NEED_COLOR )
                 ewrite(3,*)'************ rsum,undone,NCOLOR=', rsum, undone, NCOLOR
             END DO Loop_while
@@ -610,7 +610,7 @@ contains
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
             MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE,  &
-            got_free_surf,  MASS_SUF, ndpset, symmetric_P )
+            got_free_surf,  MASS_SUF, ndpset, FEM_continuity_equation )
             implicit none
             ! form pressure matrix CMC using a colouring approach
             type(multi_dimensions), intent(in) :: Mdims
@@ -619,7 +619,7 @@ contains
             type (multi_matrices), intent(inout) :: Mmat
             INTEGER, intent( in ) :: IGOT_CMC_PRECON
             LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
-            LOGICAL, intent( in ) :: got_free_surf, symmetric_P
+            LOGICAL, intent( in ) :: got_free_surf, FEM_continuity_equation
             INTEGER, DIMENSION( : ), intent( in ) :: ndpset
             REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
             REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
@@ -845,7 +845,7 @@ contains
                 END IF
             END DO
             !Put into matrix CMC
-            if ( .not.symmetric_P ) then
+            if ( .not.FEM_continuity_equation ) then
                 ! original method
                 DO CV_NOD = 1, Mdims%cv_nonods
                     DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
