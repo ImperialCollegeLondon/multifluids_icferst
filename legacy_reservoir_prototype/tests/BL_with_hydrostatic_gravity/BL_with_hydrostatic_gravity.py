@@ -25,7 +25,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-tol = 5e-3
+Reference_val = 0.0085
 
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
@@ -206,8 +206,8 @@ L1_norm= L1_sum / len(Experimental_X)
 
 Passed = True
 
-if (abs(L1_norm - 0.0085)/0.0085 > tol): Passed = False
-#print abs(L1_norm - 0.0085)/0.0085, abs(L1_norm - 0.0085)/0.0085 < tol
+if (L1_norm > Reference_val): Passed = False
+#print L1_norm
 if (Passed): 
     print 'BL with gravity works OK'
 else:
