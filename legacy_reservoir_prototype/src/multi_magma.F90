@@ -208,25 +208,7 @@ contains
     end subroutine enthalpy_to_temperature
 
 
-    ! Subroutine for porosity.
-    !
-    ! z1,z2 - boundary nodes
-    ! ha - enthalpy at t+1
-    ! pa - porosity at t+1
-    ! ca - bulk composition at t+1
-    ! Hs - Solidus enthalpy
-    ! Hl - Liquidus enthalpy
-    ! Lf - Latent heat
-    ! Cp - specific heat capacity
-    ! Tl - Liquidus temperature
-    ! Ts - Solidus Temperature
-    ! Ae - Eutetic
-    ! A1, B1, C1, A2, B2, C2 - phase behaviour parameters
-    !
-
-
-
-    !========================================================
+    !Compute porosity given an enthalpy field and a BulkComposition
     subroutine porossolve(Mdims, packed_state, state)
     implicit none
     !Global variables
@@ -237,20 +219,20 @@ contains
     !Local variables
     integer :: cv_nodi, iphase, k
                                                       !Temporary until deciding if creating a Cp in packed_state as well
-    type( tensor_field ), pointer :: enthalpy, temperature, den, Density_Cp, saturation
+    type( tensor_field ), pointer :: enthalpy, den, Density_Cp, saturation
     type (scalar_field), pointer :: BulkComposition
     real, dimension(Mdims%cv_nonods) :: enthalpy_dim
-    real, parameter :: tol = 1e-5
-    real :: test_poro!Temporary porosity
+    real :: test_poro_prev, test_poro!Temporary porosity
     real :: fx, fdashx, Loc_Cp
-
+    !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
+    real, parameter :: tol = 1e-2
+    integer, parameter :: max_its = 25
       !Temporary until deciding if creating a Cp in packed_state as well
       den => extract_tensor_field( packed_state,"PackedDensity" )
       Density_Cp =>  extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
       enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
-      temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
       saturation =>  extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )!First phase is rock presence
-      BulkComposition => extract_scalar_field(state(1), "BulkComposition")! I
+      BulkComposition => extract_scalar_field(state(1), "BulkComposition")
 
       iphase = 1
       call magma_field_nondim_to_dim(enthalpy%val(1,iphase,:), enthalpy_dim, Hs, Hl)
@@ -274,14 +256,12 @@ contains
 
         !In dimensional space we save some computations, it should not matter... ask MATT or double check this
         if(enthalpy_dim(cv_nodi) > get_Enthalpy_Liquidus( BulkComposition%val(cv_nodi), Loc_Cp) ) then
-      		test_poro = 1
-          saturation%val(1,iphase,cv_nodi) = 1 - test_poro
+          saturation%val(1,iphase,cv_nodi) = 0.
           cycle
       	end if
 
       	if(enthalpy_dim(cv_nodi) > get_Enthalpy_Solidus(BulkComposition%val(cv_nodi), Loc_Cp)) then
-      		test_poro = 0
-          saturation%val(1,iphase,cv_nodi) = 1 - test_poro
+          saturation%val(1,iphase,cv_nodi) = 1.
           cycle
       	end if
 
@@ -289,20 +269,21 @@ contains
         test_poro = 1.0
         ! There is an iteration here to update porosity pa based on composition.  Does not use velocity.
       	if (BulkComposition%val(cv_nodi) < Ae) then
-
-          do k = 1,25!Why 25?, maybe better until test_poro does not vary more than 1%?
+          k = 1 ; test_poro_prev = 0.
+          do while (k < max_its .and. abs(test_poro - test_poro_prev) < tol)
       			fx = (Lf/Loc_Cp)*test_poro**3 + (C1-enthalpy_dim(cv_nodi)/Loc_Cp)*test_poro**2 + (B1*BulkComposition%val(cv_nodi))*&
                                     test_poro + A1*BulkComposition%val(cv_nodi)**2
 
             fdashx = 3*(Lf/Loc_Cp)*test_poro**2 + 2*(C1-enthalpy_dim(cv_nodi)/Loc_Cp)*test_poro + (B1*BulkComposition%val(cv_nodi))
 
+            test_poro_prev = test_poro!Store to check convergence the previous value
             test_poro = test_poro - fx/fdashx
+            k = k + 1
       		end do
 
       	else
-
-      		do k = 1,25!Why 25?, maybe better until test_poro does not vary more than 1%?
-
+          k = 1 ; test_poro_prev = 0.
+          do while (k < max_its .and. abs(test_poro - test_poro_prev) < tol)
         		fx = (Lf/Loc_Cp)*test_poro**3 + (C2-enthalpy_dim(cv_nodi)/Loc_Cp + A2 + B2)*test_poro**2 + &
                   (2.*A2*BulkComposition%val(cv_nodi) - 2.*A2 + B2*BulkComposition%val(cv_nodi) - B2)*test_poro + &
                   A2*(BulkComposition%val(cv_nodi)**2-2.*BulkComposition%val(cv_nodi) + 1.)
@@ -310,8 +291,9 @@ contains
         		fdashx = 3.*(Lf/Loc_Cp)*test_poro**2 + 2.*(C2-enthalpy_dim(cv_nodi)/Loc_Cp + A2 + B2)*test_poro +&
                   (2.*A2*BulkComposition%val(cv_nodi) - 2.*A2 + B2*BulkComposition%val(cv_nodi) - B2)
 
+            test_poro_prev = test_poro!Store to check convergence the previous value
       			test_poro = test_poro - fx/fdashx
-
+            k = k + 1
       			if(test_poro >= 1.0) then
       				test_poro = 1.0
               saturation%val(1,iphase,cv_nodi) = 1. - test_poro
@@ -326,8 +308,9 @@ contains
       end do
 
       !Assign now the liquid saturation
-      iphase = 2 !I think this current formula only accepts two phases
-      saturation%val(1,iphase,:) = 1. - saturation%val(1,1,:)
+      do iphase = 2, Mdims%ndim!I think this current formula only accepts two phases
+        saturation%val(1,iphase,:) = 1. - saturation%val(1,1,:)
+      end do
     end subroutine
 
 
