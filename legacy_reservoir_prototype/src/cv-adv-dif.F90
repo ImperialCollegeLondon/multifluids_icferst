@@ -290,7 +290,7 @@ contains
           ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
           logical, PARAMETER :: correct_method_petrov_method= .true.
           LOGICAL :: GETMAT, D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, GET_GTHETA, QUAD_OVER_WHOLE_ELE
-          logical :: skip, GOT_T2, use_volume_frac_T2, symmetric_P, logical_igot_theta_flux
+          logical :: skip, GOT_T2, use_volume_frac_T2, FEM_continuity_equation, logical_igot_theta_flux
           ! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
           ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.
           ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
@@ -504,9 +504,9 @@ contains
           else
               GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
           end if
-          symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )!not added yet in the new schema
+          FEM_continuity_equation = have_option( '/geometry/Advance_options/FE_Pressure/FEM_continuity_equation' )
 
-          option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"!not added yet linked with the new schema
+          option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"!sprint_to_do not added yet linked with the new schema
           apply_eno = have_option( option_path2 )
 
           !THETA_VEL_HAT has to be zero for porous media flow
@@ -975,7 +975,7 @@ contains
           IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqns plus RHS
               call zero(Mmat%CT_RHS)
               Mmat%CT = 0.0
-              if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
+              if ( got_free_surf .and. .not.FEM_continuity_equation ) MASS_SUF=0.0
               if ( Mmat%CV_pressure ) MASS_SUF=0.0
           END IF
           IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
@@ -1663,7 +1663,7 @@ contains
                               Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
                                   IF ( got_free_surf ) THEN
                                       IF ( on_domain_boundary ) THEN
-                                          IF ( .not.symmetric_P ) THEN
+                                          IF ( .not.FEM_continuity_equation ) THEN
                                               IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
                                                   DO P_JLOC = 1, Mdims%cv_nloc
                                                       P_JNOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + P_JLOC )

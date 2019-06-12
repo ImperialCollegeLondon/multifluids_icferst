@@ -1171,7 +1171,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
         type(halo_type), pointer :: halo
-        logical :: cty_proj_after_adapt, high_order_Ph, symmetric_P, boussinesq, fem_density_buoyancy
+        logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
@@ -1205,7 +1205,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
-        symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
+        FEM_continuity_equation = have_option( "/geometry/Advance_options/FE_Pressure/FEM_continuity_equation" )
         cty_proj_after_adapt = have_option( "/mesh_adaptivity/hr_adaptivity/project_continuity" )
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
@@ -1218,7 +1218,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
         end do
         IGOT_CMC_PRECON = 0
-        if ( symmetric_P ) IGOT_CMC_PRECON = 1
+        if ( FEM_continuity_equation ) IGOT_CMC_PRECON = 1
         !sprint_to_do!this looks like a place than can be easily optimized
         ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
         UDEN_ALL = 0.; UDENOLD_ALL = 0.
@@ -1446,7 +1446,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,symmetric_P, boussinesq, calculate_mass_delta, outfluxes)
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
         deallocate(UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -1487,7 +1487,7 @@ end if
         CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-        pipes_aux, got_free_surf,  MASS_SUF, symmetric_P )
+        pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
 ! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
@@ -1537,7 +1537,7 @@ end if
         ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-            if ( .not.symmetric_P ) then ! original
+            if ( .not.FEM_continuity_equation ) then ! original
                 ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
                 DO IPHASE = 1, Mdims%nphase
                     CALL CT_MULT2( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
@@ -1558,7 +1558,7 @@ end if
                 END DO
             END DO
         ELSE
-            if ( .not.symmetric_P ) then ! original
+            if ( .not.FEM_continuity_equation ) then ! original
                 DO IPRES = 1, Mdims%npres
                     CALL CT_MULT2( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
@@ -1795,7 +1795,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        symmetric_P, boussinesq, calculate_mass_delta, outfluxes)
+        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1815,7 +1815,7 @@ end if
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
-        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
+        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,FEM_continuity_equation,boussinesq
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
@@ -1878,7 +1878,7 @@ end if
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
                 IPLIKE_GRAD_SOU, &
-                P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
+                P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, FEM_continuity_equation=FEM_continuity_equation)
         end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
@@ -2223,7 +2223,7 @@ end if
         UDIFFUSION, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
         P,&
-        got_free_surf, mass_suf, symmetric_P )
+        got_free_surf, mass_suf, FEM_continuity_equation )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2251,7 +2251,7 @@ end if
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION( :, :, : ), intent( in ) :: P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
-        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, symmetric_P
+        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, FEM_continuity_equation
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
@@ -2901,7 +2901,7 @@ end if
             BIGM_CON = 0.0
         END IF
         if ( got_free_surf ) then
-            if ( symmetric_P ) then
+            if ( FEM_continuity_equation ) then
                 MASS_SUF=0.0
             end if
         end if
@@ -4471,7 +4471,7 @@ end if
                         END DO Loop_JLOC2
                     END DO Loop_ILOC2
                     if ( got_free_surf ) then
-                        if ( symmetric_P ) then ! us this if not the other formation of MASS_SUF in cv_adv_dif
+                        if ( FEM_continuity_equation ) then ! us this if not the other formation of MASS_SUF in cv_adv_dif
                             if ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_FREE ) then ! on the free surface...
                                 DO P_SILOC = 1, Mdims%p_snloc
                                     P_ILOC = CV_SLOC2LOC( P_SILOC )

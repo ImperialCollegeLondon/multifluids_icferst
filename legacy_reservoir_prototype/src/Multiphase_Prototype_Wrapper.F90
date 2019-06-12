@@ -904,7 +904,7 @@ contains
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Thermal_Conductivity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
             end if
-!Easiest way to create the heatcapacity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
+!Easiest way to create the heatcapacity field is to move where it was inside temperature!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity")) then
                 if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
                     FLAbort("HeatCapacity specified but no prognostic temperature field specified.")

@@ -33,7 +33,6 @@ module multiphase_EOS
     use unittest_tools
     use state_module
     use fields
-    use state_module
     use global_parameters
     use spud
     use futils, only: int2str

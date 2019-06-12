@@ -1472,7 +1472,15 @@ Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
             <element name="FE_Pressure">
               <a:documentation>By default ICFERST uses a DCVFEM because it is more robust (Salinas et al. 2018),
 nonetheless the classical CVFEM can also be used.</a:documentation>
-              <empty/>
+              <optional>
+                <element name="FEM_continuity_equation">
+                  <a:documentation>This option uses FE to solve the continuity equation. This creates a symmetric Pressure
+matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless, 
+it may create inconsistencies for multiphase flow and conservative formulations.
+</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
           </optional>
         </element>
