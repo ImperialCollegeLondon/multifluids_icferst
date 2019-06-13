@@ -25,7 +25,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Reference_val = 0.0085
+Reference_val = 0.01
 
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
