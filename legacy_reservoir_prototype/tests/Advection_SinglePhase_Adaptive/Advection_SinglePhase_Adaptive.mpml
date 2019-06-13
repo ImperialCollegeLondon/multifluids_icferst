@@ -19,52 +19,21 @@
     <simulation_quality>
       <string_value>precision</string_value>
     </simulation_quality>
+    <Advance_options>
+      <Conservative_formulation_settings name="Velocity">
+        <conservative_advection>
+          <real_value rank="0">0.0</real_value>
+        </conservative_advection>
+      </Conservative_formulation_settings>
+      <Conservative_formulation_settings name="Tracer">
+        <conservative_advection>
+          <real_value rank="0">0.0</real_value>
+        </conservative_advection>
+      </Conservative_formulation_settings>
+      <FE_Pressure/>
+    </Advance_options>
   </geometry>
-  <solver_options>
-    <Linear_solver>
-      <iterative_method name="gmres">
-        <restart>
-          <integer_value rank="0">30</integer_value>
-        </restart>
-      </iterative_method>
-      <preconditioner name="hypre">
-        <hypre_type name="boomeramg"/>
-      </preconditioner>
-      <relative_error>
-        <real_value rank="0">1e-10</real_value>
-      </relative_error>
-      <max_iterations>
-        <integer_value rank="0">300</integer_value>
-      </max_iterations>
-      <ignore_all_solver_failures/>
-      <diagnostics>
-        <monitors/>
-      </diagnostics>
-      <Custom_solver_configuration>
-        <Pressure>
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
-          </preconditioner>
-          <relative_error>
-            <real_value rank="0">1e-10</real_value>
-          </relative_error>
-          <max_iterations>
-            <integer_value rank="0">300</integer_value>
-          </max_iterations>
-          <remove_null_space/>
-          <ignore_all_solver_failures/>
-          <diagnostics>
-            <monitors/>
-          </diagnostics>
-        </Pressure>
-      </Custom_solver_configuration>
-    </Linear_solver>
-  </solver_options>
+  <solver_options/>
   <io>
     <dump_format>
       <string_value>vtk</string_value>
@@ -137,6 +106,17 @@
   return val</comment>
           </python>
         </initial_condition>
+        <boundary_conditions name="outlet">
+          <surface_ids>
+            <integer_value shape="1" rank="1">7</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">0</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
         <detectors>
           <exclude_from_detectors/>
         </detectors>
@@ -180,27 +160,7 @@
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">1.0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
                   <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="right">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">1.0</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -220,7 +180,7 @@
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">1.0</real_value>
+                  <real_value rank="0">0</real_value>
                 </constant>
               </x_component>
               <y_component>
