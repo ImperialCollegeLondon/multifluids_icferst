@@ -6036,12 +6036,15 @@ end if
             logical, save :: show_warn_msg = .true.
             logical, save :: have_been_read = .false.
             logical, save :: hydrostatic_bc
+            real :: top_domain
             !By default no modification is required
             Bound_ele_correct = 1.0
             if ( .not. have_been_read ) then
               hydrostatic_bc = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )
               have_been_read = .true.
             end if
+            !Get vertical coordinate of top of the domain
+            top_domain = maxval(X_ALL(Mdims%ndim, :))
             IF ( on_domain_boundary ) THEN
                 !By default the position must not be added to the matrix
                 Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
@@ -6059,21 +6062,13 @@ end if
                                     !the matrix and into the RHS
                                     !Arash
                                     if (hydrostatic_bc) then!sprint_to_do redundant now that we have hydrostatic presure solver, should remove this
-                                        if (Mdims%ndim == 2) then
-                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
-                                                SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*(-1.0*X_ALL(2, CV_NODI))*&
-                                                CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
-                                        else
-                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
-                                            Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                                - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                                * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
-                                                SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*(-1.0*X_ALL(3, CV_NODI))*&
-                                                CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
-                                        endif
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) ) - (gravty*&
+                                            SUF_D_BC_ALL( 1, 1, 1 + Mdims%cv_snloc* ( SELE - 1 ) )*&
+                                            (top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
+                                            CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
                                     else
                                         Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
