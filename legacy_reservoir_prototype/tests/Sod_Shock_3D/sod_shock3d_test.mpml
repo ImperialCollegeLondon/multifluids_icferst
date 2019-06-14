@@ -33,6 +33,25 @@
     </Advance_options>
   </geometry>
   <solver_options>
+    <Linear_solver>
+      <iterative_method name="gmres">
+        <restart>
+          <integer_value rank="0">30</integer_value>
+        </restart>
+      </iterative_method>
+      <preconditioner name="sor"/>
+      <relative_error>
+        <real_value rank="0">1e-6</real_value>
+      </relative_error>
+      <max_iterations>
+        <integer_value rank="0">500</integer_value>
+      </max_iterations>
+      <ignore_all_solver_failures/>
+      <diagnostics>
+        <monitors/>
+      </diagnostics>
+      <Custom_solver_configuration/>
+    </Linear_solver>
     <Non_Linear_Solver>
       <integer_value rank="0">3</integer_value>
     </Non_Linear_Solver>
