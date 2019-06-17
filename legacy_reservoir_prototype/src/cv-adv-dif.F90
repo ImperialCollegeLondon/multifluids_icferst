@@ -6036,19 +6036,18 @@ end if
             logical, save :: show_warn_msg = .true.
             logical, save :: have_been_read = .false.
             logical, save :: hydrostatic_bc
-            real :: top_domain
+            real, save :: top_domain
             !By default no modification is required
             Bound_ele_correct = 1.0
             if ( .not. have_been_read ) then
               hydrostatic_bc = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )
+              top_domain = maxval(X_ALL(Mdims%ndim, :))
               have_been_read = .true.
             end if
             !Get vertical coordinate of top of the domain
-            top_domain = maxval(X_ALL(Mdims%ndim, :))
             IF ( on_domain_boundary ) THEN
                 !By default the position must not be added to the matrix
                 Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
-
                 !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
                 DO IPRES = 1, 1!Mdims%npres! sprint_to_do why not npres???
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
