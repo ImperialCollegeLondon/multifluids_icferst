@@ -1052,7 +1052,7 @@ contains
         integer :: Vdegree, Pdegree
         !By default it is inertia dominated
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
-        is_magma_modelling = have_option('/magma_simulator') !is_magma flag is now disconnected waiting to see what we do with that code 
+        is_magma_modelling = have_option('/magma_simulator') !is_magma flag is now disconnected waiting to see what we do with that code
         is_flooding = have_option('/flooding_simulator')
         is_poroelasticity = have_option('/poroelasticity')
         !Flag to set up the coupling with femdem
