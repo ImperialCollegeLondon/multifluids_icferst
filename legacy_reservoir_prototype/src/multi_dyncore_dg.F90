@@ -1198,11 +1198,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Retrieve solver setting configurations
         solver_option_pressure = "/solver_options/Linear_solver"
         solver_option_velocity = "/solver_options/Linear_solver"
-        if (have_option('/solver_options/Custom_solver_configuration/field::Pressure')) then
-          solver_option_pressure = '/solver_options/Custom_solver_configuration/field::Pressure'
+        if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/Pressure')) then
+          solver_option_pressure = '/solver_options/Linear_solver/Custom_solver_configuration/Pressure'
         end if
-        if (have_option('/solver_options/Custom_solver_configuration/field::Velocity')) then
-          solver_option_velocity = '/solver_options/Custom_solver_configuration/field::Velocity'
+        if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/Velocity')) then
+          solver_option_velocity = '/solver_options/Linear_solver/Custom_solver_configuration/Velocity'
         end if
         if(max_allowed_P_its < 0)  then
             call get_option( trim(solver_option_pressure)//'/max_iterations',&
