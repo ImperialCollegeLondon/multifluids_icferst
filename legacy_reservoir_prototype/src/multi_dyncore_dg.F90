@@ -296,12 +296,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Select solver options
            solver_option_path = "/solver_options/Linear_solver"
            IF ( IGOT_T2 == 1) THEN
-             if (have_option('/solver_options/Custom_solver_configuration/field::Compositional')) then
-               solver_option_path = '/solver_options/Custom_solver_configuration/field::Compositional'
+             if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Compositional')) then
+               solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::Compositional'
              end if
            else
-             if (have_option('/solver_options/Custom_solver_configuration/field::Temperature')) then
-               solver_option_path = '/solver_options/Custom_solver_configuration/field::Temperature'
+             if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Temperature')) then
+               solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::Temperature'
              end if
            end if
            if(max_allowed_its < 0)  then
@@ -630,8 +630,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
 
            solver_option_path = "/solver_options/Linear_solver"
-           if (have_option('/solver_options/Custom_solver_configuration/field::SoluteMassFraction')) then
-             solver_option_path = '/solver_options/Custom_solver_configuration/field::SoluteMassFraction'
+           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::SoluteMassFraction')) then
+             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::SoluteMassFraction'
            end if
            if(max_allowed_its < 0)  then
                call get_option( trim(solver_option_path)//"max_iterations",&
@@ -795,8 +795,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
              solver_option_path = "/solver_options/Linear_solver"
-             if (have_option('/solver_options/Custom_solver_configuration/field::PhaseVolumeFraction')) then
-               solver_option_path = '/solver_options/Custom_solver_configuration/field::PhaseVolumeFraction'
+             if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction')) then
+               solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::PhaseVolumeFraction'
              end if
              if(max_allowed_its < 0)  then
                  call get_option( trim(solver_option_path)//"max_iterations",&
