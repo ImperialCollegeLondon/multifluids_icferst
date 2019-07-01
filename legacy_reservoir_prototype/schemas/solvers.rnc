@@ -40,6 +40,7 @@ advanced_solver_options_asym =
          pcicc_options|
          pclu_options|
          pcmg_options|
+         pcjacobi_options|
          pcbjacobi_options|
          pcpbjacobi_options|
          pcasm_options|
@@ -59,7 +60,7 @@ advanced_solver_options_sym =
          kspgmres_options|
          ksppreonly_options|
          ksprichardson_options|
-         kspother_options 
+         kspother_options
       ),
       ## Preconditioner to be used in combination with the iterative method.
       (
@@ -71,6 +72,7 @@ advanced_solver_options_sym =
          pcicc_options|
          pclu_options|
          pcmg_options|
+         pcjacobi_options|
          pcbjacobi_options|
          pcpbjacobi_options|
          pcasm_options|
@@ -101,7 +103,7 @@ kspgmres_options =
          }
       }
    )
-   
+
 kspcg_options =
    (
       ## Conjugate gradient method
@@ -122,7 +124,7 @@ ksppreonly_options =
          attribute name { "preonly" }
       }
    )
-   
+
 ksprichardson_options =
    (
       ## Richardson iteration
@@ -132,7 +134,7 @@ ksprichardson_options =
          attribute name { "richardson" }
       }
    )
-   
+
 kspother_options =
    (
       ## Other methods
@@ -144,7 +146,7 @@ kspother_options =
          attribute name { xsd:string }
       }
    )
-   
+
 # ####################################################################
 #
 # options for the different preconditioners
@@ -160,7 +162,7 @@ pcsor_options =
          attribute name { "sor" }
       }
    )
-   
+
 pceisenstat_options =
    (
       ## The Eisenstat method
@@ -175,15 +177,15 @@ pceisenstat_options =
          attribute name { "eisenstat" }
       }
    )
-   
-pcilu_options = 
+
+pcilu_options =
    (
       ## Incomplete LU decomposition
       element preconditioner {
          attribute name { "ilu" }
       }
    )
-   
+
 pcicc_options =
    (
       ## Incomplete Cholesky decomposition (only works for symmetric matrices)
@@ -191,7 +193,7 @@ pcicc_options =
          attribute name { "icc" }
       }
    )
-   
+
 pclu_options =
    (
       ## LU direct solver
@@ -248,7 +250,7 @@ pcmg_options =
          }?,
          ## Only useful for solves on meshes that are not P1 continuous. This
          ## option makes the first coarsening step of mg consist of a reduction
-         ## from the Pn>=1 discontinuous or Pn>1 continuous mesh to a P1 
+         ## from the Pn>=1 discontinuous or Pn>1 continuous mesh to a P1
          ## continous mesh. Currently only works for the Pressure solve,
          ## and the advection-diffusion solve of prognostic scalar fields.
          element higher_order_lumping {
@@ -281,12 +283,42 @@ pchypre_options =
          )
       }
    )
+pcjacobi_options =
+  (
+     ## Jacobi (i.e. diagonal scaling preconditioning)
+     element preconditioner {
+        attribute name { "jacobi" },
+        (
+        ##  Jacobi preconditioner to use either the diagonal,
+        ##   the maximum entry in each row,
+        ##   of the sum of rows entries
+        ##   for the diagonal preconditioner
+           element jacobi_type {
+              attribute name { "rowmax" }
+           }|
+           ##  Jacobi preconditioner to use either the diagonal,
+           ##   the maximum entry in each row,
+           ##   of the sum of rows entries
+           ##   for the diagonal preconditioner
+           element jacobi_type {
+              attribute name { "rowsum" }
+           }|
+           ##  Jacobi preconditioner to use either the diagonal,
+           ##   the maximum entry in each row,
+           ##   of the sum of rows entries
+           ##   for the diagonal preconditioner
+            element jacobi_type {
+              attribute name { "diagonal" }
+           }
+        )
+     }
+  )
 pcpbjacobi_options =
    (
       ## Point Block Jacobi
       ##
       ## Jacobi preconditioner for block-matrices
-      ## 
+      ##
       element preconditioner {
          attribute name { "pbjacobi" }
       }
@@ -299,7 +331,7 @@ pcbjacobi_options =
       ## locally within each domain. This means within the domain you can
       ## choose whatever preconditioner you would choose in serial. Because
       ## there is no coupling between the domains in the preconditioning
-      ## the performance may be less than in serial and degrade with 
+      ## the performance may be less than in serial and degrade with
       ## increasing number of processors/decreasing local domain size.
       element preconditioner {
          attribute name { "bjacobi" },
@@ -337,7 +369,7 @@ subpc_options =
          pcother_options
       )
    )
-   
+
 pcother_options =
    (
       ## Other preconditioners
@@ -349,15 +381,15 @@ pcother_options =
          attribute name { string }
       }
    )
-   
+
 pcksp_options =
    (
       ## This only makes sense for solves where a different approximated preconditioner
-      ## matrix is provided. For instance when solving pressure with the 
+      ## matrix is provided. For instance when solving pressure with the
       ## option full_schur_complement and using a masslumped schur complement
       ## as preconditioner matrix.
       ##
-      ## NOTE: If you are using a krylov method (cg/gmres) for this preconditioner 
+      ## NOTE: If you are using a krylov method (cg/gmres) for this preconditioner
       ## solve you either need to set your tolerances much stricter for it
       ## than in the outer solve (so that the preconditioner is close to an
       ## exact matrix inversion), or use fgmres in the outer solve.
@@ -396,6 +428,7 @@ pc_ksp_solver_options =
          pcmg_options|
          pcgamg_options|
          pchypre_options|
+         pcjacobi_options|
          pcbjacobi_options|
          pcasm_options|
          pcother_options
@@ -414,9 +447,9 @@ pcgamg_options =
          (
             ## This parameter has a strong effect on the efficiency of the algorithm,
             ## it controls the elative threshold to use for dropping edges in aggregation graph.
-            ## 
+            ##
             ## Usage: Try different values from 0 to 0.5
-            ## 
+            ##
             ## Negative values implement stronger smoothers and the value used is the absolute
             ##
             ## Default : 0.1
@@ -491,7 +524,7 @@ generic_solver_options =
             element true_residual {
                empty
             }?,
-             ## Same as true_residual option plus also show the 
+             ## Same as true_residual option plus also show the
              ## min/max singular values (eigenvalues).
             element singular_values {
                empty
@@ -526,8 +559,8 @@ generic_solver_options =
          }?
       }
    )
-   
-galerkin_projection_mass_options =  
+
+galerkin_projection_mass_options =
    (
       ## Lump the mass matrix
       element lump_mass {
@@ -540,7 +573,7 @@ galerkin_projection_mass_options =
       }
    )
 
-galerkin_projection_mass_options_submesh =  
+galerkin_projection_mass_options_submesh =
    (
       ## Lump the mass matrix
       element lump_mass {

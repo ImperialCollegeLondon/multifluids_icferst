@@ -1952,6 +1952,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
   integer, optional, intent(in) :: internal_smoothing_option
   ! if present and true, don't setup sor and eisenstat as subpc (again)
   logical, optional, intent(in) :: is_subpc
+  character( len = option_path_len ) :: opt
 
     KSP:: subksp
     PC:: subpc
@@ -1959,6 +1960,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PCType:: pctype, hypretype
     MatSolverPackage:: matsolverpackage
     PetscErrorCode:: ierr
+    PCJacobiType:: pc_jacobi_type
 
     call get_option(trim(option_path)//'/name', pctype)
 
@@ -2059,6 +2061,16 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call setup_fieldsplit_preconditioner(pc, option_path, &
             petsc_numbering=petsc_numbering)
 
+    else if (pctype==PCJACOBI) then !!-ao JACBO ROW MAX
+      call PCSetType(pc, pctype, ierr)
+          if (trim( opt ) == "rowmax" ) then
+            pc_jacobi_type =  PC_JACOBI_ROWMAX
+          else if (trim( opt ) == "rowsum" )  then
+            pc_jacobi_type =  PC_JACOBI_ROWSUM
+          else
+            pc_jacobi_type =  PC_JACOBI_DIAGONAL
+          end if
+        call PCJacobiSetType(pc,pc_jacobi_type, ierr)
     else
 
        ! this doesn't work for hypre
