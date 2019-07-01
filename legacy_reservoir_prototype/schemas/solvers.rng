@@ -39,6 +39,7 @@ by the PETSc library. Many more methods are provided.
       <ref name="pcicc_options"/>
       <ref name="pclu_options"/>
       <ref name="pcmg_options"/>
+      <ref name="pcjacobi_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcpbjacobi_options"/>
       <ref name="pcasm_options"/>
@@ -68,6 +69,7 @@ by the PETSc library. Many more methods are provided.
       <ref name="pcicc_options"/>
       <ref name="pclu_options"/>
       <ref name="pcmg_options"/>
+      <ref name="pcjacobi_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcpbjacobi_options"/>
       <ref name="pcasm_options"/>
@@ -262,7 +264,7 @@ but improves the solution quite a lot for difficult meshes.</a:documentation>
         <element name="higher_order_lumping">
           <a:documentation>Only useful for solves on meshes that are not P1 continuous. This
 option makes the first coarsening step of mg consist of a reduction
-from the Pn&gt;=1 discontinuous or Pn&gt;1 continuous mesh to a P1 
+from the Pn&gt;=1 discontinuous or Pn&gt;1 continuous mesh to a P1
 continous mesh. Currently only works for the Pressure solve,
 and the advection-diffusion solve of prognostic scalar fields.</a:documentation>
           <empty/>
@@ -300,6 +302,43 @@ and the advection-diffusion solve of prognostic scalar fields.</a:documentation>
       </choice>
     </element>
   </define>
+  <define name="pcjacobi_options">
+    <element name="preconditioner">
+      <a:documentation>Jacobi (i.e. diagonal scaling preconditioning)</a:documentation>
+      <attribute name="name">
+        <value>jacobi</value>
+      </attribute>
+      <choice>
+        <element name="jacobi_type">
+          <a:documentation> Jacobi preconditioner to use either the diagonal,
+  the maximum entry in each row,
+  of the sum of rows entries
+  for the diagonal preconditioner</a:documentation>
+          <attribute name="name">
+            <value>rowmax</value>
+          </attribute>
+        </element>
+        <element name="jacobi_type">
+          <a:documentation> Jacobi preconditioner to use either the diagonal,
+  the maximum entry in each row,
+  of the sum of rows entries
+  for the diagonal preconditioner</a:documentation>
+          <attribute name="name">
+            <value>rowsum</value>
+          </attribute>
+        </element>
+        <element name="jacobi_type">
+          <a:documentation> Jacobi preconditioner to use either the diagonal,
+  the maximum entry in each row,
+  of the sum of rows entries
+  for the diagonal preconditioner</a:documentation>
+          <attribute name="name">
+            <value>diagonal</value>
+          </attribute>
+        </element>
+      </choice>
+    </element>
+  </define>
   <define name="pcpbjacobi_options">
     <element name="preconditioner">
       <a:documentation>Point Block Jacobi
@@ -319,7 +358,7 @@ This option is for parallel runs. A preconditioner is applied
 locally within each domain. This means within the domain you can
 choose whatever preconditioner you would choose in serial. Because
 there is no coupling between the domains in the preconditioning
-the performance may be less than in serial and degrade with 
+the performance may be less than in serial and degrade with
 increasing number of processors/decreasing local domain size.</a:documentation>
       <attribute name="name">
         <value>bjacobi</value>
@@ -373,11 +412,11 @@ http://www-unix.mcs.anl.gov/petsc/petsc-2/snapshots/petsc-dev/docs/manualpages/P
   <define name="pcksp_options">
     <element name="preconditioner">
       <a:documentation>This only makes sense for solves where a different approximated preconditioner
-matrix is provided. For instance when solving pressure with the 
+matrix is provided. For instance when solving pressure with the
 option full_schur_complement and using a masslumped schur complement
 as preconditioner matrix.
 
-NOTE: If you are using a krylov method (cg/gmres) for this preconditioner 
+NOTE: If you are using a krylov method (cg/gmres) for this preconditioner
 solve you either need to set your tolerances much stricter for it
 than in the outer solve (so that the preconditioner is close to an
 exact matrix inversion), or use fgmres in the outer solve.</a:documentation>
@@ -415,6 +454,7 @@ by the PETSc library. Many more methods are provided.
       <ref name="pcmg_options"/>
       <ref name="pcgamg_options"/>
       <ref name="pchypre_options"/>
+      <ref name="pcjacobi_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcasm_options"/>
       <ref name="pcother_options"/>
@@ -525,7 +565,7 @@ PETSc has to do extra computations.</a:documentation>
         </optional>
         <optional>
           <element name="singular_values">
-            <a:documentation>Same as true_residual option plus also show the 
+            <a:documentation>Same as true_residual option plus also show the
 min/max singular values (eigenvalues).</a:documentation>
             <empty/>
           </element>
