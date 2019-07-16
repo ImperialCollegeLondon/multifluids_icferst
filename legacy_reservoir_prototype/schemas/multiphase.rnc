@@ -3402,12 +3402,12 @@ phase_properties_options =
                     element linearise_viscosity {empty}?,
                element viscosity_scheme {
                   (
-                     ## Tensor form
-                     element tensor_form {
-                        empty
-                     }|
                      ## Stress form
                      element stress_form {
+                        empty
+                     }| 
+					 ## Tensor form
+                     element tensor_form {
                         empty
                      }|
                      ## Compact discontinuous Galerkin scheme.
