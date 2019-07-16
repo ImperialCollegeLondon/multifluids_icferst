@@ -4066,12 +4066,12 @@ Component properties overwrite the ones given for a phase and are mandatory for 
         </optional>
         <element name="viscosity_scheme">
           <choice>
-            <element name="tensor_form">
-              <a:documentation>Tensor form</a:documentation>
-              <empty/>
-            </element>
             <element name="stress_form">
               <a:documentation>Stress form</a:documentation>
+              <empty/>
+            </element>
+            <element name="tensor_form">
+              <a:documentation>Tensor form</a:documentation>
               <empty/>
             </element>
             <element name="compact_discontinuous_galerkin">
