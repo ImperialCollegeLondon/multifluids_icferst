@@ -25,7 +25,7 @@
           <real_value rank="0">0.0</real_value>
         </conservative_advection>
       </Conservative_formulation_settings>
-      <Conservative_formulation_settings name="Temperature">
+      <Conservative_formulation_settings name="Tracer">
         <conservative_advection>
           <real_value rank="0">0.0</real_value>
         </conservative_advection>
@@ -89,7 +89,7 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
+          <stress_form/>
           <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
