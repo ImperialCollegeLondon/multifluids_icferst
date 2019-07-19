@@ -362,7 +362,6 @@ contains
           real, dimension(nphase/Mdims%npres)::NDOTQ, INCOME, CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, NDOTQNEW, LIMT2OLD, LIMDTOLD, &
               INCOMEOLD, NDOTQOLD, LIMT2, LIMTOLD, LIMT, LIMT_HAT, LIMDOLD, LIMDTT2OLD, FVT, FVT2, FVD, LIMD, LIMDT, LIMDTT2, INCOME_J
           real, dimension(nphase/Mdims%npres, Mdims%cv_nonods) :: FEMT_ALL, FEMTOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
-          REAL, DIMENSION( Mdims%ndim,Mdims%ndim,nphase ) :: DUMMY_ZERO_NDIM_NDIM_NPHASE
           REAL, DIMENSION( Mdims%ndim, nphase/Mdims%npres, Mdims%cv_nloc, Mdims%totele ) :: DTX_ELE_ALL, DTOLDX_ELE_ALL
           REAL , DIMENSION( Mdims%ndim, nphase/Mdims%npres ) :: NUGI_ALL, NUOLDGI_ALL
           real, dimension(nphase/Mdims%npres, Mspars%small_acv%ncol) :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
@@ -383,7 +382,8 @@ contains
 
           real, dimension( : ), allocatable :: DIAG_SCALE_PRES_phase
           real, dimension( : ), allocatable :: R_PEACMAN
-          real, dimension( nphase/Mdims%npres ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj,R_PRES
+          real, dimension( nphase/Mdims%npres ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
+          real, dimension(Mdims%npres) :: R_PRES
           real, dimension( nphase ) :: R_PHASE, MEAN_PORE_CV_PHASE, CV_P_PHASE_NODI,CV_P_PHASE_NODJ, ct_rhs_phase
 
           !! boundary_condition fields
@@ -460,7 +460,7 @@ contains
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
           real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
           !Local variable n_in_pres
-          integer :: n_in_pres 
+          integer :: n_in_pres
           n_in_pres = nphase/Mdims%npres
 
 
@@ -690,7 +690,7 @@ contains
           end if
           !Initialize Courant number for porous media
           if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
-          CVNORMX_ALL=0.0; DUMMY_ZERO_NDIM_NDIM_NPHASE=0.0
+          CVNORMX_ALL=0.0
 
           ! The procity mapped to the CV nodes
           D1 = ( Mdims%ndim == 1 )
@@ -870,7 +870,7 @@ contains
           FEMTOLD_ALL(:,:)          = FEMPSI(2)%ptr%val(1,1:n_in_pres,:)
           FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
           if (.not. is_constant(density)) then
-              FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,1:nphase,:)
+              FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,1:n_in_pres,:)
               tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
               tfield%val = psi(FEM_IT)%ptr%val
               FEM_IT=FEM_IT+1
@@ -960,7 +960,7 @@ contains
           IF ( GOT_DIFFUS ) THEN
               CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
                   DTX_ELE_ALL, DTOLDX_ELE_ALL, &
-                  Mdims%ndim, nphase, Mdims%totele, ndgln%cv, &
+                  Mdims%ndim, n_in_pres, Mdims%totele, ndgln%cv, &
                   ndgln%x, Mdims%x_nloc, ndgln%x,&
                   CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
                   CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
@@ -1383,12 +1383,12 @@ contains
                               If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
                                   ! This sub caculates the effective diffusion
                                   ! coefficient DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-                                  T_ALL_J  =T_ALL(1:nphase, CV_NODJ)
-                                  TOLD_ALL_J=TOLD_ALL(1:nphase, CV_NODJ)
+                                  T_ALL_J  =T_ALL(1:n_in_pres, CV_NODJ)
+                                  TOLD_ALL_J=TOLD_ALL(1:n_in_pres, CV_NODJ)
                                   LOC_WIC_T_BC_ALL=0
                                   !           IF(SELE.NE.0) THEN
                                   IF(on_domain_boundary) THEN
-                                      DO IPHASE=1,nphase
+                                      DO IPHASE=1,n_in_pres
                                           LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
                                           IF(LOC_WIC_T_BC_ALL(IPHASE)==WIC_T_BC_DIRICHLET) THEN
                                               T_ALL_J( IPHASE ) = SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
@@ -1397,8 +1397,8 @@ contains
                                       END DO
                                   ENDIF
                                   CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
-                                      Mdims%cv_nloc, Mdims%mat_nloc, nphase, ndgln%mat, &
-                                      CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
+                                      Mdims%cv_nloc, Mdims%mat_nloc, n_in_pres, ndgln%mat, &
+                                      CV_funs%scvfen, CV_funs%scvfen, GI, Mdims%ndim, TDIFFUSION, &
                                       HDC, &
                                       T_ALL_J( : ), T_ALL(:, CV_NODI), &
                                       TOLD_ALL_J( : ), TOLD_ALL(:, CV_NODI), &
@@ -4657,7 +4657,7 @@ end if
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
 
                 ELSE
-                    APPLYBC = ( WIC_T_BC( 1, :, SELE2 ) == WIC_T_BC_DIRICHLET )
+                    APPLYBC = ( WIC_T_BC( 1, 1:nphase, SELE2 ) == WIC_T_BC_DIRICHLET )
                 END IF
 
 
@@ -4739,7 +4739,7 @@ end if
 
     SUBROUTINE DIFFUS_CAL_COEFF(DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
         CV_NLOC, MAT_NLOC, NPHASE, MAT_NDGLN, &
-        SMATFEN, SCVFEN, GI, NDIM, TDIFFUSION, DIFF_GI_ADDED, &
+        SMATFEN, SCVFEN, GI, NDIM, TDIFFUSION, &
         HDC, &
         T_CV_NODJ, T_CV_NODI, &
         TOLD_CV_NODJ, TOLD_CV_NODI, &
@@ -4766,7 +4766,6 @@ end if
         REAL, DIMENSION( :, : ), intent( in ) :: SMATFEN
         REAL, DIMENSION( :, : ), intent( in ) :: SCVFEN
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
-        REAL, DIMENSION( :, :, : ), intent( in ) :: DIFF_GI_ADDED
         REAL, DIMENSION( NDIM, NPHASE, CV_NLOC ), intent( in ) :: LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL
         REAL, DIMENSION( : ), intent( in ) :: CVNORMX_ALL
 
@@ -4807,7 +4806,6 @@ end if
                         + SMATFEN( MAT_KLOC, GI ) * TDIFFUSION( MAT_NODK, :, :, IPHASE )
                 END DO
             END DO
-            DIFF_GI = DIFF_GI + DIFF_GI_ADDED
             DIFF_GI = MAX( 0.0, DIFF_GI )
 
             DO IPHASE = 1, NPHASE
