@@ -80,7 +80,8 @@
           <value name="WholeMesh">
             <isotropic>
               <constant>
-                <real_value rank="0">0.</real_value>
+                <real_value rank="0">1e-5</real_value>
+                <comment>The case requires no conductivity, but in this way this test case will check as well if modifications to the code actually affect that section of the code</comment>
               </constant>
             </isotropic>
           </value>
@@ -108,6 +109,9 @@
             <real_value rank="0">1e6</real_value>
           </constant>
         </initial_condition>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <adaptivity_options>
           <relative_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -173,6 +177,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -195,6 +202,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
@@ -226,6 +236,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -315,6 +328,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
@@ -360,6 +376,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -382,6 +401,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <galerkin_projection>
           <continuous>
             <bounded name="Diffuse">
@@ -413,6 +435,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
