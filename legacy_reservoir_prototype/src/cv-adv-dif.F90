@@ -934,7 +934,7 @@ contains
               ! Isotropic limiting - calculate far field upwind maticies...
               CALL ISOTROPIC_LIMITER_ALL( &
                   ! FOR SUB SURRO_CV_MINMAX:
-                  T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, nphase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
+                  T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, n_in_pres, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
                   Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
                   MASS_CV_PLUS(1,:), &
                   ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
