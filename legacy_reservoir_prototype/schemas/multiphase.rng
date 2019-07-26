@@ -910,7 +910,7 @@ ONLY specify for the wetting phase</a:documentation>
                 </choice>
               </element>
               <element name="scalar_field">
-                <a:documentation>Specify scalar field heat capacity of the porous media</a:documentation>
+                <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
                 <attribute name="name">
                   <value>porous_heat_capacity</value>
                 </attribute>
@@ -925,7 +925,7 @@ ONLY specify for the wetting phase</a:documentation>
                 </choice>
               </element>
               <element name="tensor_field">
-                <a:documentation>Specify field Thermal conductivity of the porous media</a:documentation>
+                <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
                 <attribute name="name">
                   <value>porous_thermal_conductivity</value>
                 </attribute>
@@ -4157,7 +4157,7 @@ alternating directions. Devised by C.Pain.</a:documentation>
       </optional>
       <optional>
         <element name="scalar_field">
-          <a:documentation>Specific heat capacity for field</a:documentation>
+          <a:documentation>Specific heat capacity for field ( in S.I. J/(kg K) )</a:documentation>
           <attribute name="name">
             <value>HeatCapacity</value>
           </attribute>
