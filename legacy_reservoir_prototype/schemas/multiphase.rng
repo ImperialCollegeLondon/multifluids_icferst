@@ -1316,6 +1316,12 @@ By default this number is 9. Recommended range: 3 to 9.</a:documentation>
             </element>
           </optional>
           <optional>
+            <element name="VAD_two_levels">
+              <a:documentation>This is for stratified flows, experimental but it seems to work better than the default</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="porous_output_force_density">
               <a:documentation>For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
 activate this to also output the force_density</a:documentation>
