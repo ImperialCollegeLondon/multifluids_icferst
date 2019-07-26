@@ -735,7 +735,7 @@ start =
                       }
                    )
                 },
-                ## Specify scalar field heat capacity of the porous media
+                ## Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )
                 element scalar_field {
                    attribute name { "porous_heat_capacity" },
                    (
@@ -748,7 +748,7 @@ start =
                       }
                    )
                 },
-                ## Specify field Thermal conductivity of the porous media
+                ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
                element tensor_field {
                   attribute name { "porous_thermal_conductivity" },
                   element prescribed {
@@ -3468,7 +3468,7 @@ phase_properties_options =
                     }
                  )
               }?,
-              ## Specific heat capacity for field
+              ## Specific heat capacity for field ( in S.I. J/(kg K) )
               element scalar_field {
                  attribute name { "HeatCapacity" },
                  attribute rank { "0" },
