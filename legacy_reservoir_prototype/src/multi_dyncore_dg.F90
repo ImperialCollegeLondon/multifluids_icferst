@@ -6677,8 +6677,18 @@ end if
                      call allmax(Pe_max)
                      call allmin(Pe_min)
                  end if
-                 !Homogenise the value, this seems to be better to avoid problems
-                 Pe = (Pe_max+Pe_min)/2.
+
+                 if (have_option('/numerical_methods/VAD_two_levels')) then
+                   !Homogenise using two values only, if below the average value then use the lowest value possible (this is for stratified flows)
+                   where (Pe > 0.5*Pe_max + 0.5*Pe_min)
+                     Pe = Pe_max
+                   elsewhere
+                     Pe = Pe_min
+                   end where
+                 else
+                   !Homogenise the value, this seems to be better to avoid problems (method used for the CMAME paper)
+                   Pe = (Pe_max+Pe_min)/2.
+                 end if
              else
                  Pe = Pe_aux
              end if

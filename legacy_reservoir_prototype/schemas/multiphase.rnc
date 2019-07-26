@@ -1045,6 +1045,10 @@ start =
             element solve_nphases_minus_one {
                empty
             }?,
+            ## This is for stratified flows, experimental but it seems to work better than the default
+            element VAD_two_levels {
+               empty
+            }?,
             ## For porous media only the Darcy velocity is outputed as the normal velocity is actually the force density
             ## activate this to also output the force_density
             element porous_output_force_density{
