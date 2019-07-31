@@ -195,6 +195,10 @@ contains
         !Generic variables
         integer :: i, k
         real :: auxR
+        ! Andreas. Declare the parameters required for skipping pressure solve
+        Integer:: rcp           !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
+        Logical:: EnterSolve    !Flag to either enter or not the pressure solve
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -547,14 +551,15 @@ contains
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
-                if( solve_force_balance) then
+          !Andreas. Always Update AbsorptionTerms
+          !      if( solve_force_balance) then
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                             CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
-                end if
+          !      end if
 
 
 
@@ -579,13 +584,37 @@ contains
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
 
+                !#=================================================================================================================
+                !# Andreas. Here we find if we have asked for a requested_cfl_pressure (rcp_)
+                !#          That meens that the code will skip the pressure solve for every rcp (eg rcp=3) time steps.
+                !#          We check the the input value has an approprate value and if not assigns the default
+                !#=================================================================================================================
+
+                EnterSolve = .true.
+                if ( have_option( '/timestepping/adaptive_timestep/requested_cfl_pressure' ) ) then
+                  call get_option( '/timestepping/adaptive_timestep/requested_cfl_pressure', rcp )
+                  if (itime ==1 .or. mod(itime,rcp)==0 ) then
+                    EnterSolve = .true.
+                  else
+                    EnterSolve = .false.
+                  end if
+                end if
+                !#=================================================================================================================
+
+                !#=================================================================================================================
+                !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
+                !#=================================================================================================================
+                call set_nu_to_u( packed_state )
+
+                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
+
+                !#=================================================================================================================
+                !# Andreas. I added a flag in the Conditional_ForceBalanceEquation to eiher enter or not.
+                !#    TODO. This has to be updated with adaptivity as well.
+                !#=================================================================================================================
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
-                Conditional_ForceBalanceEquation: if ( solve_force_balance ) then
-
-                    call set_nu_to_u( packed_state )
-
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
+                Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
@@ -599,6 +628,9 @@ contains
 
                 end if Conditional_ForceBalanceEquation
 
+                !#=================================================================================================================
+                !# End Pressure Solve -> Move to -> Saturation
+                !#=================================================================================================================
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
 
@@ -610,8 +642,16 @@ contains
 
                 end if Conditional_PhaseVolumeFraction
 
+                !#=================================================================================================================
+                !# End Saturation -> Move to -> Velocity Update
+                !#=================================================================================================================
+
                 !!$ Calculate Darcy velocity with the most up-to-date information
                 if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+
+                !#=================================================================================================================
+                !# End Velocity Update -> Move to ->the rest
+                !#=================================================================================================================
 
                 !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
