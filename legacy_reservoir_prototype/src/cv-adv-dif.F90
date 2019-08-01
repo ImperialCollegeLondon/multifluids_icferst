@@ -6046,6 +6046,7 @@ end if
             if ( .not. have_been_read ) then
               hydrostatic_bc = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )
               top_domain = maxval(X_ALL(Mdims%ndim, :))
+              call allmax(top_domain)
               have_been_read = .true.
             end if
             !Get vertical coordinate of top of the domain
