@@ -410,10 +410,18 @@ timestep and after a mesh adapt.</a:documentation>
               <ref name="real"/>
             </element>
             <optional>
-              <element name="requested_cfl_pressure">
+              <element name="cfl_pressure">
                 <a:documentation>Multiplier of the requested CFL based on which the pressure and velocity fields
 will be recalculated. Otherwise, the pressure will not be updated.</a:documentation>
                 <ref name="integer"/>
+                <optional>
+                  <element name="at_mesh_adapt">
+                    <a:documentation>Requested CFL for Pressure is forced to match the hr-adaptive period.
+Any value given for cfl_pressure will be overwritten with the value 
+of hr-adaptive period.  </a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
               </element>
             </optional>
             <ref name="timestep_cfl_number_options"/>

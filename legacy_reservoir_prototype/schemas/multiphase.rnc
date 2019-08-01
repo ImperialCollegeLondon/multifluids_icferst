@@ -357,8 +357,16 @@ start =
                },    
                ## Multiplier of the requested CFL based on which the pressure and velocity fields
                ## will be recalculated. Otherwise, the pressure will not be updated.
-               element requested_cfl_pressure {
-                  integer
+               element cfl_pressure {
+		(
+		integer,
+                ##Requested CFL for Pressure is forced to match the hr-adaptive period.
+		##Any value given for cfl_pressure will be overwritten with the value 
+		##of hr-adaptive period.  
+            	element at_mesh_adapt {
+                   empty
+            	}?
+		)
                }?,
                timestep_cfl_number_options,
                ## Minimum time step size.
