@@ -165,7 +165,7 @@ contains
         !Array to map nodes to region ids
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         !Working pointers
-        type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
+        type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field,velocity_field_test, velocityL, velocityM, velocityB   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
@@ -181,7 +181,7 @@ contains
         type (multi_outfluxes) :: outfluxes
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields_CVGalerkin_interp = -1
-        real :: t_adapt_threshold
+        real :: t_adapt_threshold, alpha
         !Variables for FPI acceleration for flooding
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
@@ -195,10 +195,8 @@ contains
         !Generic variables
         integer :: i, k
         real :: auxR
-        ! Andreas. Declare the parameters required for skipping pressure solve
-        Integer:: rcp           !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
-        Logical:: EnterSolve    !Flag to either enter or not the pressure solve
-
+        !HH
+        character(20) :: head, field_path
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -470,6 +468,7 @@ contains
            call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
+        !HH initilize Enthalpy from the temperature
 
         !!$ Time loop
         Loop_Time: do
@@ -551,15 +550,14 @@ contains
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
 
-          !Andreas. Always Update AbsorptionTerms
-          !      if( solve_force_balance) then
+                if( solve_force_balance) then
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                             CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                     else if (is_flooding) then
                         call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
-          !      end if
+                end if
 
 
 
@@ -584,37 +582,13 @@ contains
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
 
-                !#=================================================================================================================
-                !# Andreas. Here we find if we have asked for a requested_cfl_pressure (rcp_)
-                !#          That meens that the code will skip the pressure solve for every rcp (eg rcp=3) time steps.
-                !#          We check the the input value has an approprate value and if not assigns the default
-                !#=================================================================================================================
-
-                EnterSolve = .true.
-                if ( have_option( '/timestepping/adaptive_timestep/requested_cfl_pressure' ) ) then
-                  call get_option( '/timestepping/adaptive_timestep/requested_cfl_pressure', rcp )
-                  if (itime ==1 .or. mod(itime,rcp)==0 ) then
-                    EnterSolve = .true.
-                  else
-                    EnterSolve = .false.
-                  end if
-                end if
-                !#=================================================================================================================
-
-                !#=================================================================================================================
-                !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
-                !#=================================================================================================================
-                call set_nu_to_u( packed_state )
-
-                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-
-                !#=================================================================================================================
-                !# Andreas. I added a flag in the Conditional_ForceBalanceEquation to eiher enter or not.
-                !#    TODO. This has to be updated with adaptivity as well.
-                !#=================================================================================================================
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
-                Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
+                Conditional_ForceBalanceEquation: if ( solve_force_balance ) then
+
+                    call set_nu_to_u( packed_state )
+
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
@@ -628,11 +602,8 @@ contains
 
                 end if Conditional_ForceBalanceEquation
 
-                !#=================================================================================================================
-                !# End Pressure Solve -> Move to -> Saturation
-                !#=================================================================================================================
 
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma)) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -642,41 +613,82 @@ contains
 
                 end if Conditional_PhaseVolumeFraction
 
-                !#=================================================================================================================
-                !# End Saturation -> Move to -> Velocity Update
-                !#=================================================================================================================
-
                 !!$ Calculate Darcy velocity with the most up-to-date information
                 if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
-                !#=================================================================================================================
-                !# End Velocity Update -> Move to ->the rest
-                !#=================================================================================================================
-
-                !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, Porosity_field%val, &
-                        !!$
-                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = .true.,&
-                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
+                !! HH $ Solve advection of the scalar 'Temperature'or 'Enthalpy' in both cases there must be a temperature field:
+                Conditional_ScalarAdvectionField: if( have_temperature_field ) then
+                  call set_nu_to_u( packed_state )
+                  !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  !if ( .not. has_enthalpy) then
+                      ewrite(3,*)'Now advecting Temperature Field'
+                      tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                      velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                      call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                      tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                      suf_sig_diagten_bc, Porosity_field%val, &
+                      !!$
+                      0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                      THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                      option_path = '/material_phase[0]/scalar_field::Temperature', &
+                      thermal = .true.,&
+                      ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                      saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                    !else
+                      call set_nu_to_u( packed_state )
+                      ewrite(3,*)'Now advecting Enthalpy Field'
+                      tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
+                      velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                      !print  *, maxval(velocity_field%val-velocity_field_test%val), minval(velocity_field%val-velocity_field_test%val)
+                      call ENTHALPY_COMPOSITION_ASSEM_SOLVE( state, packed_state, &
+                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                      tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                      suf_sig_diagten_bc, Porosity_field%val, &  !HH Porosity term in this formulation need to be 1 when the speed field is bulk velocity
+                      !!$
+                      0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                      THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                      option_path = '/material_phase[0]/scalar_field::Enthalpy', &
+                      thermal = .true.,&
+                      ! thermal = have_option( '/material_phase[0]/scalar_field::Enthalpy/prognostic/equation::InternalEnergy'),&
+                      saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                    !end if
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
+
+                !HH   Solve advection of the scalar Composition
+                  Conditional_ScalarAdvectionField3: if( have_option( '/material_phase[0]/scalar_field::Composition/') .and. have_option( '/material_phase[1]/scalar_field::Composition/' ) ) then
+                    call set_nu_to_u( packed_state )
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    ewrite(3,*)'Now advecting composition Field'
+                    tracer_field=>extract_tensor_field(packed_state,"PackedComposition")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    call ENTHALPY_COMPOSITION_ASSEM_SOLVE( state, packed_state, &
+                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                    suf_sig_diagten_bc, Porosity_field%val, &
+                    !!$
+                    0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                    THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                    option_path = '/material_phase[0]/scalar_field::Composition', &
+                    thermal = .false.,&
+                    saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+
+                  end if Conditional_ScalarAdvectionField3
+               !
+               ! !HH
+               ! ! Update bulk composition
+               ! call cal_bulkcomposition(state,packed_state)
+               ! ! Calculate porosity from phase diagram
+               ! call porossolve(state,packed_state, Mdims, ndgln)
+               ! ! Update the temperature field
+               ! call enthalpy_to_temperature(Mdims, packed_state)
+               ! Update the fluid and matrix composition
+               !call cal_solidfluidcomposition(state, packed_state, Mdims)
 
                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 

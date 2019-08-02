@@ -726,7 +726,7 @@ contains
 
         type(state_type), dimension(:,:), pointer :: multi_state
         type(scalar_field), pointer :: pressure, sfield, ldfield, tdfield
-        type(vector_field), pointer :: velocity, position, vfield, ldvfield, tdvfield
+        type(vector_field), pointer :: velocity, velocityM, velocityB, position, vfield, ldvfield, tdvfield
         type(tensor_field), pointer :: tfield, p2, d2, drhodp
         type(vector_field) :: porosity, vec_field, porous_density, porous_heat_capacity, &
              Longitudinal_Dispersivity, Transverse_Dispersivity
@@ -825,7 +825,7 @@ contains
         ndim=mesh_dim(position)
         call insert(packed_state,position%mesh,"CoordinateMesh")
 
-        if(has_scalar_field(state(1),"Porosity")) then
+        if(has_scalar_field(state(1),"Porosity")) then  !HH not sure if this is still needed for magma
             sfield=>extract_scalar_field(state(1),"Porosity")
             element_mesh=>sfield%mesh
             call insert(packed_state,element_mesh,'P0DG')
@@ -942,6 +942,18 @@ contains
             call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
+        !!HH
+        if (option_count("/material_phase/scalar_field::Enthalpy")>0) then
+            call insert_sfield(packed_state,"Enthalpy",1,nphase,&
+                add_source=.true.,add_absorption=.true.)
+            call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
+        end if
+        if (option_count("/material_phase/scalar_field::Composition")>0) then
+            call insert_sfield(packed_state,"Composition",1,nphase,&
+                add_source=.true.,add_absorption=.true.)
+            call insert_sfield(packed_state,"FEComposition",1,nphase)
+        end if
+
         !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
@@ -978,6 +990,7 @@ contains
             call deallocate(ten_field)
         end if
 
+
         ! pack continuous velocity mesh
         velocity=>extract_vector_field(state(1),"Velocity")
         call insert(packed_state,velocity%mesh,"VelocityMesh")
@@ -1001,6 +1014,7 @@ contains
             call insert(packed_state,u_position,"VelocityCoordinate")
             call deallocate(u_position)
         end if
+
 
         if (.not.has_mesh(state(1),"PressureMesh_Continuous")) then
             nullify(ovmesh)
@@ -1047,8 +1061,12 @@ contains
         call insert(packed_state,velocity%mesh,"InternalVelocityMesh")
         call insert_vfield(packed_state,"Velocity",add_source=.true.)
         call insert_vfield(packed_state,"NonlinearVelocity",zerod=.true.)
+
         call insert(state(1),velocity%mesh,"InternalVelocityMesh")
         call unpack_multiphase(packed_state,multiphase_state)
+
+
+
         if (ncomp>0) then
             call insert_sfield(packed_state,"ComponentDensity",ncomp,nphase)
             call insert_sfield(packed_state,"ComponentMassFraction",ncomp,&
@@ -1073,7 +1091,6 @@ contains
 
 
 
-
         call allocate(porosity,npres,element_mesh,"Porosity")
         do ipres = 1, npres
             call set(porosity,ipres,1.0)
@@ -1091,7 +1108,6 @@ contains
             sfield=>extract_scalar_field(state(1),"Pipe")
             call assign_val(vfield%val(2,:),sfield%val)
         end if
-
         !Arash
         if (has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
           call allocate(Longitudinal_Dispersivity,npres,element_mesh,"Longitudinal_Dispersivity")
@@ -1125,8 +1141,8 @@ contains
               end if
             end if
         end if
-
         !!!!!!!!
+
 
 
 
@@ -1135,11 +1151,14 @@ contains
             call allocate(permeability,element_mesh,"Permeability",&
                 dim=[mesh_dim(position),mesh_dim(position)])
             call zero(permeability)
+            sfield=>extract_scalar_field(state(1),"Porosity")
             sfield=>extract_scalar_field(state(1),"Permeability")
             do idim=1,mesh_dim(position)
                 call set(permeability,idim,idim,sfield)
             end do
+
             call insert(packed_state,permeability,"Permeability")
+
             call deallocate(permeability)
         else if(has_vector_field(state(1),"Permeability")) then
             call allocate(permeability,element_mesh,"Permeability",&
@@ -1174,10 +1193,13 @@ contains
             call deallocate(permeability)
         end if
 
+
         !!$ pack multi_state information
         has_density=has_scalar_field(state(1),"Density")
         has_phase_volume_fraction=has_scalar_field(state(1),"PhaseVolumeFraction")
         iphase=1; icomp=1
+
+
         do i = 1, size(state)
             if(have_option(trim(state(i)%option_path)&
                 //'/is_multiphase_component')) then
@@ -1231,6 +1253,34 @@ contains
                     call unpack_sfield(state(i),packed_state,"Temperature",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
+                !!HH
+                if(have_option(trim(state(i)%option_path)&
+                    //'/scalar_field::Enthalpy')) then
+                    call unpack_sfield(state(i),packed_state,"OldEnthalpy",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Enthalpy"),&
+                        extract_scalar_field(state(i),"OldEnthalpy")))
+                    call unpack_sfield(state(i),packed_state,"IteratedEnthalpy",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Enthalpy"),&
+                        extract_scalar_field(state(i),"IteratedEnthalpy")))
+                    call unpack_sfield(state(i),packed_state,"EnthalpySource",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"EnthalpyAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"Enthalpy",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
+                end if
+                if(have_option(trim(state(i)%option_path)&
+                    //'/scalar_field::Composition')) then
+                    call unpack_sfield(state(i),packed_state,"OldComposition",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Composition"),&
+                        extract_scalar_field(state(i),"OldComposition")))
+                    call unpack_sfield(state(i),packed_state,"IteratedComposition",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Composition"),&
+                        extract_scalar_field(state(i),"IteratedComposition")))
+                    call unpack_sfield(state(i),packed_state,"CompositionSource",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"CompositionAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"Composition",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Composition"),"Composition")
+                end if
+
                 !! Arash
                 if(have_option(trim(state(i)%option_path)&
                     //'/scalar_field::SoluteMassFraction')) then
@@ -1259,6 +1309,9 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"PhaseVolumeFraction"),"PhaseVolumeFraction")
                 end if
 
+                !HH test
+                tfield=>extract_tensor_field(packed_state,"PackedIteratedVelocity")
+
                 call unpack_vfield(state(i),packed_state,"IteratedVelocity",iphase,&
                     check_vpaired(extract_vector_field(state(i),"Velocity"),&
                     extract_vector_field(state(i),"IteratedVelocity")))
@@ -1272,8 +1325,11 @@ contains
                 call insert(multi_state(1,iphase),extract_vector_field(state(i),"Velocity"),"Velocity")
 
                 iphase=iphase+1
+
+
             end if
         end do
+
 
         n_in_pres=nphase/npres
         do ipres = 1, npres
@@ -1284,6 +1340,13 @@ contains
 
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
+        end if
+        !!HH
+        if (option_count("/material_phase/scalar_field::Enthalpy")>0) then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
+        end if
+        if (option_count("/material_phase/scalar_field::Composition")>0) then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Composition")
         end if
 
         !! Arash
@@ -1308,6 +1371,7 @@ contains
             call deallocate(multi_state)
             deallocate(multi_state)
         end if
+
 
         !!$ memory allocation for darcy velocity
 !        if(is_porous_media) then!Since this is created as a diagnostic, linking memory gives problems when deallocating the different states
@@ -2103,7 +2167,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
-    real, dimension(:,:), pointer :: phasevolumefraction, temperature, solutemassfraction
+    real, dimension(:,:), pointer :: phasevolumefraction, temperature, solutemassfraction, enthalpy
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message =''
     !Variables for automatic non-linear iterations
@@ -2258,6 +2322,22 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                       end if
                       reference_field(1,:,:) = solutemassfraction
                       reference_field(2,:,:) = phasevolumefraction
+                      !!HH
+                    case (6)!Enthalpy
+                        call get_var_from_packed_state(packed_state, Enthalpy = Enthalpy)
+                        if (allocated(reference_field)) then
+                            if (size(reference_field,2) /= size(Enthalpy,1) .or. &
+                                size(reference_field,3) /= size(Enthalpy,2) ) then
+                                deallocate(reference_field)
+                                !If Enthalpy, also keep and eye on saturation with the other convergence criterion
+                                allocate (reference_field(2,size(Enthalpy,1),size(Enthalpy,2) ))
+                            end if
+                        else
+                            allocate (reference_field(2,size(Enthalpy,1),size(Enthalpy,2) ))
+                        end if
+                        reference_field(1,:,:) = Enthalpy
+                        reference_field(2,:,:) = phasevolumefraction
+
 
                 case default !Default as pressure is always defined and changes more smoothly than velocity
                     if (allocated(reference_field)) then
@@ -2322,8 +2402,19 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   !!!!!!!
                   ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))!/backtrack_or_convergence
                   inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
-!                  backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
-
+                 !backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
+                 case (6)!Enthalpy
+                      call get_var_from_packed_state(packed_state, Enthalpy = Enthalpy)
+                      !Calculate normalized infinite norm of the difference
+                                                              !This Mask is important because otherwise it gets the lowest saturation value
+                      totally_min_max(1)=minval(reference_field(1,:,:))
+                      totally_min_max(2)=maxval(reference_field(1,:,:))!use stored Enthalpy
+                      !For parallel
+                      call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+                      !Analyse the difference !Calculate infinite norm, not consider wells
+                      ts_ref_val = inf_norm_scalar_normalised(Enthalpy(1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
+                      !Calculate value of the l infinitum for the saturation as well
+                      inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
                   ! !Calculate value of the functional (considering wells and reservoir)
                   ! ts_ref_val = get_Convergence_Functional(tracer, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
                   ! backtrack_or_convergence = get_Convergence_Functional(tracer, reference_field(1,:,:), backtrack_or_convergence)
@@ -2375,6 +2466,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else if (is_porous_media .and. variable_selection == 5) then! concentration
                 write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Concentration (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
+            else if (is_porous_media .and. variable_selection == 6) then! Enthalpy
+                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Enthalpy (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
@@ -2392,6 +2485,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 case (5)!For temperature only infinite norms for saturation and temperature
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
+                !HH
+                case (6)!For Enthalpy only infinite norms for saturation and Enthalpy
+                          ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
+                              .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                     case default
                         !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                         !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
@@ -2803,7 +2900,9 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
     EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, SoluteMassFraction,&
-    OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction)
+    OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
+    Enthalpy,OldEnthalpy, IteratedEnthalpy,FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
+    Composition,OldComposition, IteratedComposition,FEComposition, OldFEComposition, IteratedFEComposition)
     !This subroutine returns a pointer to the desired values of a variable stored in packed state
     !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
     !and also all of them are optional, hence you can obtaine whichever you want
@@ -2826,6 +2925,8 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
+        Enthalpy, OldEnthalpy, IteratedEnthalpy, FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
+        Composition,OldComposition, IteratedComposition,FEComposition, OldFEComposition, IteratedFEComposition,&
         SoluteMassFraction, OldSoluteMassFraction, IteratedSoluteMassFraction, FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
@@ -2953,6 +3054,57 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
         IteratedFETemperature =>  tfield%val(1,:,:)
     end if
+    !!HH
+    if (present(Enthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedEnthalpy" )
+        Enthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(OldEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldEnthalpy" )
+        OldEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedEnthalpy" )
+        IteratedEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(FEEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedFEEnthalpy" )
+        FEEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(OldFEEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldFEEnthalpy" )
+        OldFEEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedFEEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedFEEnthalpy" )
+        IteratedFEEnthalpy =>  tfield%val(1,:,:)
+    end if
+
+    if (present(Composition)) then
+        tfield => extract_tensor_field( packed_state, "PackedComposition" )
+        Composition =>  tfield%val(1,:,:)
+    end if
+    if (present(OldComposition)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldComposition" )
+        OldComposition =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedComposition)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedComposition" )
+        IteratedComposition =>  tfield%val(1,:,:)
+    end if
+    if (present(FEComposition)) then
+        tfield => extract_tensor_field( packed_state, "PackedFEComposition" )
+        FEComposition =>  tfield%val(1,:,:)
+    end if
+    if (present(OldFEComposition)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldFEComposition" )
+        OldFEComposition =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedFEComposition)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedFEComposition" )
+        IteratedFEComposition =>  tfield%val(1,:,:)
+    end if
+
     !Arash
     if (present(SoluteMassFraction)) then
         tfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
@@ -3004,6 +3156,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedNonlinearVelocity" )
         IteratedNonlinearVelocity => tfield%val(:,:,:)
     end if
+
     if (present(ComponentDensity)) then
         tfield => extract_tensor_field( packed_state, "PackedComponentDensity" )
         ComponentDensity => tfield%val(:,:,:)

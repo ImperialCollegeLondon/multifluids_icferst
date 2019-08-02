@@ -12637,7 +12637,7 @@ $as_echo "$as_me: WARNING: No PETSC_DIR set - do you need to load a petsc module
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: Using PETSC_DIR=$PETSC_DIR" >&5
 $as_echo "$as_me: Using PETSC_DIR=$PETSC_DIR" >&6;}
-
+PETSC_DIR=/usr/lib/petscdir/3.8.3
 PETSC_LINK_LIBS=`make -s -f petsc_makefile_old getlinklibs 2> /dev/null || make -s -f petsc_makefile getlinklibs`
 LIBS="$PETSC_LINK_LIBS $LIBS"
 
