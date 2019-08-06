@@ -187,6 +187,8 @@ module global_parameters
   logical :: is_fracturing = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
+  !HH
+  logical :: has_enthalpy = .false.
   !! Arash
   !! Multiphase prototype, models salt concentration
   logical :: has_salt = .false.
