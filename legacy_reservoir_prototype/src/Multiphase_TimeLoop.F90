@@ -124,8 +124,6 @@ contains
         !! Arash
         logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
-        !!$ Defining solver options
-        integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
         !!$ Shape function related fields:
         integer :: scvngi_theta, igot_t2, igot_theta_flux
         !!$ Adaptivity related fields and options:
@@ -347,13 +345,8 @@ contains
             Mmat%compact_PIVIT_MAT = (i == (k - 1))!This does not include the P1DG(BL)P1DG(CV) element pair...maybe we should include it as well
         end if
         !!$ Defining problem to be solved:
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
-            velocity_max_iterations,  default =  500 )
-        call get_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/solver/max_iterations', &
-            PhaseVolumeFraction_max_iterations,  default =  500 )
-        solve_force_balance = .false. ; solve_PhaseVolumeFraction = .false.
-        if( velocity_max_iterations /= 0 ) solve_force_balance = .true.
-        if( PhaseVolumeFraction_max_iterations /= 0 ) solve_PhaseVolumeFraction = .true.
+        solve_PhaseVolumeFraction = have_option("/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic")
+        solve_force_balance = have_option("/material_phase[0]/scalar_field::Pressure/prognostic")
         !!$ Setting up variables for the Time- and NonLinear Iterations-Loops:
         call get_option( '/timestepping/current_time', acctim )
         mdims%init_time = acctim
