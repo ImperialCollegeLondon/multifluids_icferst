@@ -919,13 +919,13 @@ contains
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! (this could be cleaned up in the future)
         call add_new_memory(packed_state,pressure,"Dummy")
-
-        call insert_sfield(packed_state,"FEDensity",1,nphase)
-        d2=>extract_tensor_field(packed_state,"PackedFEDensity")
-        do icomp = 1, ncomp
-            call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
-        end do
-
+        if (.not. is_porous_media) then
+          call insert_sfield(packed_state,"FEDensity",1,nphase)
+          d2=>extract_tensor_field(packed_state,"PackedFEDensity")
+          do icomp = 1, ncomp
+              call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
+          end do
+        end if
         call insert_sfield(packed_state,"Density",1,nphase,&
             add_source=.false.)
         !Check for phase 1, but all the phases should have this selected
@@ -2265,10 +2265,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     if (allocated(reference_field)) then
                         if (size(reference_field,3) /= size(pressure,3) ) then
                             deallocate(reference_field)
-                            allocate (reference_field(1,1,size(pressure,3) ))
+                            allocate (reference_field(1,size(pressure,2),size(pressure,3) ))
                         end if
                     else
-                        allocate (reference_field(1,1,size(pressure,3) ))
+                        allocate (reference_field(1,size(pressure,2),size(pressure,3) ))
                     end if
                     reference_field(1,1,:) = pressure(1,1,:)
             end select

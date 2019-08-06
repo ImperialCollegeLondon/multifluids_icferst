@@ -232,9 +232,9 @@ contains
         end do ! icomp
 
         if ( ncomp > 1 ) then
-           if ( harmonic_average ) DensityCp_Bulk = 1.0 / DensityCp_Bulk
+           if ( harmonic_average .and. compute_rhoCP) DensityCp_Bulk = 1.0 / DensityCp_Bulk
            call Cap_Bulk_Rho( state, ncomp, nphase, &
-                cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk )
+                cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk, compute_rhoCP )
         end if
 
         field1 => extract_tensor_field( packed_state, "PackedDensity" )
@@ -273,7 +273,7 @@ contains
 
 
     subroutine Cap_Bulk_Rho( state, ncomp, nphase, &
-        cv_nonods, Density_Component, Density, Density_Cp )
+        cv_nonods, Density_Component, Density, Density_Cp , compute_rhoCP)
 
         implicit none
 
@@ -281,6 +281,7 @@ contains
         integer, intent( in ) :: nphase, ncomp, cv_nonods
         real, dimension( cv_nonods * nphase * ncomp ), intent( in ) :: Density_Component
         real, dimension( cv_nonods * nphase ), intent( inout ) :: Density, Density_Cp
+        logical, intent(in) :: compute_rhoCP
 
         real, dimension( :, : ), allocatable :: Density_Component_Min, Density_Component_Max
         real, dimension( :, : ), allocatable :: Density_Cp_Component_Min, Density_Cp_Component_Max
@@ -290,10 +291,11 @@ contains
 
         allocate( Density_Component_Min( nphase, cv_nonods ) ) ; Density_Component_Min = 1.0e+15
         allocate( Density_Component_Max( nphase, cv_nonods ) ) ; Density_Component_Max = 0.0
-        allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.0e+15
-        allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.0
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
-
+        if (compute_rhoCP) then
+          allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.0e+15
+          allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.0
+          allocate( Cp( cv_nonods ) ) ; Cp = 1.0
+        end if
         do iphase = 1, nphase
             do icomp = 1, ncomp
                 sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
@@ -301,14 +303,15 @@ contains
 
                 Density_Component_Min( iphase, : ) = min( Density_Component_Min( iphase, : ), Density_Component( sc : ec ) )
                 Density_Component_Max( iphase, : ) = max( Density_Component_Max( iphase, : ), Density_Component( sc : ec ) )
+                if (compute_rhoCP) then
+                  Cp = 1.0
+                  Cp_s => extract_scalar_field( state( nphase + icomp ), &
+                      'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                  if( stat == 0 ) Cp = Cp_s % val
 
-                Cp = 1.0
-                Cp_s => extract_scalar_field( state( nphase + icomp ), &
-                    'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                if( stat == 0 ) Cp = Cp_s % val
-
-                Density_Cp_Component_Min( iphase, : ) = min( Density_Cp_Component_Min( iphase, : ), Density_Component( sc : ec ) * Cp )
-                Density_Cp_Component_Max( iphase, : ) = max( Density_Cp_Component_Max( iphase, : ), Density_Component( sc : ec ) * Cp )
+                  Density_Cp_Component_Min( iphase, : ) = min( Density_Cp_Component_Min( iphase, : ), Density_Component( sc : ec ) * Cp )
+                  Density_Cp_Component_Max( iphase, : ) = max( Density_Cp_Component_Max( iphase, : ), Density_Component( sc : ec ) * Cp )
+                end if
             end do
         end do
 
@@ -318,13 +321,15 @@ contains
 
             Density( sp : ep ) = min( Density( sp : ep ), Density_Component_Max( iphase, : ) )
             Density( sp : ep ) = max( Density( sp : ep ), Density_Component_Min( iphase, : ) )
-
-            Density_Cp( sp : ep ) = min( Density_Cp( sp : ep ), Density_Cp_Component_Max( iphase, : ) )
-            Density_Cp( sp : ep ) = max( Density_Cp( sp : ep ), Density_Cp_Component_Min( iphase, : ) )
+            if (compute_rhoCP) then
+              Density_Cp( sp : ep ) = min( Density_Cp( sp : ep ), Density_Cp_Component_Max( iphase, : ) )
+              Density_Cp( sp : ep ) = max( Density_Cp( sp : ep ), Density_Cp_Component_Min( iphase, : ) )
+            end if
         end do
-
-        deallocate( Cp )
-        deallocate( Density_Cp_Component_Min, Density_Cp_Component_Max )
+        if (compute_rhoCP) then
+          deallocate( Cp )
+          deallocate( Density_Cp_Component_Min, Density_Cp_Component_Max )
+        end if
         deallocate( Density_Component_Min, Density_Component_Max )
 
     end subroutine Cap_Bulk_Rho
