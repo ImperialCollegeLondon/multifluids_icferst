@@ -941,14 +941,14 @@ contains
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FETemperature",1,nphase)
+        if (.not. is_porous_media) call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
         !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
+        if (.not. is_porous_media) call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
         end if
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
@@ -959,7 +959,7 @@ contains
 
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
-        call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
+        if (.not. is_porous_media) call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
         if (ncomp>1) then
            call insert_sfield(packed_state,"PhaseVolumeFractionComponentSource",1,nphase)
         end if
@@ -1249,12 +1249,12 @@ contains
                 end if
 
                 if(has_phase_volume_fraction) then
-                    call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
-                        extract_scalar_field(state(i),"PhaseVolumeFraction")))
                     call unpack_sfield(state(i),packed_state,"OldPhaseVolumeFraction",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
                         extract_scalar_field(state(i),"OldPhaseVolumeFraction")))
+                    call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
+                        extract_scalar_field(state(i),"PhaseVolumeFraction")))
                     call unpack_sfield(state(i),packed_state,"PhaseVolumeFraction",1,iphase)
                     ! call unpack_sfield(state(i),packed_state,"PhaseVolumeFractionSource",1,iphase)!sprint_to_do Diagnostic fields do not get along with this...
                                                                                                     !should we do the same with the other sources and absorptions?
@@ -1629,6 +1629,7 @@ contains
         end subroutine insert_vfield
 
         subroutine unpack_sfield(nstate,mstate,name,icomp, iphase,free)
+          !Deallocates the memory from state and points it to packed_state
             type(state_type), intent(inout) :: nstate, mstate
             character(len=*) :: name
             integer :: icomp,iphase, stat
@@ -1644,7 +1645,6 @@ contains
             else
                 lfree=.true.
             end if
-            lfree=.false.
 
             if (trim(name)=="Pressure") then
                 mfield=>extract_tensor_field(mstate,"PackedFE"//name)
@@ -1654,7 +1654,6 @@ contains
             end if
 
             nfield=>extract_scalar_field(nstate,name,stat)
-
             if (stat==0) then
                 if (size(nfield%val(:))>1) then
                     mfield%val(icomp,iphase,1:size(nfield%val))=nfield%val(:)
@@ -1664,7 +1663,7 @@ contains
                 if (icomp==1 .and. iphase == 1) then
                     mfield%option_path=nfield%option_path
                 end if
-                if (lfree .and. associated(nfield%val)) then
+                if (lfree) then
 #ifdef HAVE_MEMORY_STATS
                     call register_deallocation("scalar_field", "real", &
                         size(nfield%val), nfield%name)
@@ -1715,11 +1714,11 @@ contains
                 end if
                 if (lfree) then
 #ifdef HAVE_MEMORY_STATS
-                call register_deallocation("vector_field", "real", &
-                    size(nfield%val), name=nfield%name)
+                  call register_deallocation("vector_field", "real", &
+                      size(nfield%val), name=nfield%name)
 #endif
-                deallocate(nfield%val)
-            end if
+                  deallocate(nfield%val)
+                end if
                 nfield%val=>mfield%val(:,iphase,:)
                 nfield%wrapped=.true.
             else
@@ -2151,6 +2150,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     if (have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
         call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
             variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
+    end if
+    if (variable_selection == 3 .and. .not. have_option("/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic")) then
+        ewrite(0,*) "WARNING: Not prognostic saturation should not be used to control the FPI convergence, changed to pressure."
+        variable_selection = 1
     end if
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
         increaseFactor, default = 1.1 )

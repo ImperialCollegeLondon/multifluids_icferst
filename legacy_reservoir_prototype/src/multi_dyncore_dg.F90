@@ -1164,7 +1164,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type(petsc_csr_matrix)::  CMC_petsc
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: IPRES, JPRES, iphase_real, jphase_real
-        REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL, UDEN3
+        REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3!, test12
@@ -1273,8 +1273,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDEN_ALL = DEN_ALL2%VAL( 1, :, : )
               UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
            end if
-           if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
-           call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
+           if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
+                call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
