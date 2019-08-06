@@ -910,11 +910,11 @@ contains
             call insert(multicomponent_state(icomp),p2,"PackedFEPressure")
         end do
 
-        call insert_sfield(packed_state,"CVPressure",1,npres)
-        p2=>extract_tensor_field(packed_state,"PackedCVPressure")
-        do ipres = 1, npres
-            p2%val(1,ipres,:)=pressure%val
-        end do
+        ! call insert_sfield(packed_state,"CVPressure",1,npres)
+        ! p2=>extract_tensor_field(packed_state,"PackedCVPressure")
+        ! do ipres = 1, npres
+        !     p2%val(1,ipres,:)=pressure%val
+        ! end do
 
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! (this could be cleaned up in the future)
@@ -2802,7 +2802,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
     IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
-    Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
+    Pressure,FEPressure, OldFEPressure,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
     EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, SoluteMassFraction,&
     OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction)
@@ -2832,7 +2832,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
-    real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
+    real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure
     !Local variables
     type(scalar_field), pointer :: sfield
     type(vector_field), pointer :: vfield
@@ -2850,14 +2850,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     if (present(OldFEPressure)) then
         tfield => extract_tensor_field( packed_state, "PackedOldFEPressure" )
         OldFEPressure => tfield%val(:,:,:)
-    end if
-    if (present(CVPressure)) then
-        tfield => extract_tensor_field( packed_state, "PackedCVPressure" )
-        CVPressure => tfield%val(:,:,:)
-    end if
-    if (present(OldCVPressure)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldCVPressure" )
-        OldCVPressure => tfield%val(:,:,:)
     end if
 
     !Vectors stored
