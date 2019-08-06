@@ -1358,11 +1358,6 @@ contains
               end if
            end do
         end if
-        !HH
-        if (is_magma) then
-          call allocate_and_insert_scalar_field('/material_phase::Fluid/scalar_field::Composition', &
-          states(1), field_name='BulkComposition')
-        end if
     end if
 
     if (have_option("/porous_media/wells_and_pipes")) then
@@ -2781,7 +2776,7 @@ contains
 
           end if
 
-          if(trim(vfield%name)=="Velocity" .or. trim(vfield%name)=="MatrixVelocity" .or. trim(vfield%name)=="BulkVelocity") then
+          if(trim(vfield%name)=="Velocity") then
 
             if(iterations>1 .or. prescribed) then
 

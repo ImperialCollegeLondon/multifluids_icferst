@@ -187,7 +187,6 @@ module global_parameters
   logical :: is_fracturing = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
-  logical :: has_enthalpy = .false.
   !! Arash
   !! Multiphase prototype, models salt concentration
   logical :: has_salt = .false.
@@ -208,8 +207,7 @@ module global_parameters
 
   !!Public string containing a generic warning and tips to get the code working
   character(len=OPTION_PATH_LEN) :: multi_generic_warning =""
-  !HH
-  integer:: to_debug=0
+
 contains
 
   function get_surface_radius() bind(c)
