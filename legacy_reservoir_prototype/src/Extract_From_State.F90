@@ -928,7 +928,9 @@ contains
 
         call insert_sfield(packed_state,"Density",1,nphase,&
             add_source=.false.)
-        call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
+        !Check for phase 1, but all the phases should have this selected
+        if (have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")) &
+                call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
         drhodp=>extract_tensor_field(packed_state,"PackedDRhoDPressure")

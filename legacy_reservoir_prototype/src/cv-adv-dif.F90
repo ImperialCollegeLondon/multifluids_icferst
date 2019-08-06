@@ -420,7 +420,6 @@ contains
 
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
           real :: reservoir_P( Mdims%npres ) ! this is the background reservoir pressure
-          real, dimension( :, :, : ), pointer :: fem_p
           real :: dt_pipe_factor
           real, save :: dumping_well_factor = -1.0 !This is used to include explicit term that stabilises the well implementation
           real, dimension( : ), allocatable :: MASS_PIPE_FOR_COUP
@@ -520,7 +519,7 @@ contains
           !#################SET WORKING VARIABLES#################
 
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
-              OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
+              OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
           if (.not. present_and_true(solving_compositional)) then
             if (is_porous_media)   call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
           end if

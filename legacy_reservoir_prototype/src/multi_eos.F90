@@ -51,7 +51,7 @@ module multiphase_EOS
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
-    
+
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5
@@ -76,7 +76,7 @@ contains
         type( tensor_field ), pointer :: field1, field2, field3, field4
         type( scalar_field ), pointer :: Cp_s, Density
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
-        logical :: boussinesq
+        logical :: boussinesq, compute_rhoCP
         logical, parameter :: harmonic_average=.false.
 
 
@@ -91,7 +91,7 @@ contains
             end if
         end if
 
-
+        compute_rhoCP = have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
@@ -122,10 +122,12 @@ contains
         end if
 
         allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
+        if (compute_rhoCP) then
+          allocate( Cp( cv_nonods ) ) ; Cp = 1.0
+          allocate( DensityCp_Bulk( nphase * cv_nonods ) ); DensityCp_Bulk = 0.0
+        end if
         allocate( Density_Component( ncomp * nphase * cv_nonods ) )
-        allocate( Density_Bulk( nphase * cv_nonods ), DensityCp_Bulk( nphase * cv_nonods ) )
-        Density_Bulk = 0.0 ; DensityCp_Bulk = 0.0
+        allocate( Density_Bulk( nphase * cv_nonods ) ); Density_Bulk = 0.0
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
 
@@ -137,7 +139,7 @@ contains
               sp = ( iphase - 1 ) * cv_nonods + 1
               ep = iphase * cv_nonods
 
-              Rho=0. ; dRhodP=0. ; Cp=1.
+              Rho=0. ; dRhodP=0.
               call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
                    nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP )
 
@@ -184,8 +186,10 @@ contains
 
                     Cp_s => extract_scalar_field( state( nphase + icomp ), &
                          'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                    if ( stat == 0 ) call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
-                    DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
+                    if ( stat == 0 .and. compute_rhoCP ) then
+                      call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
+                      DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
+                    end if
 
                  else
 
@@ -198,13 +202,14 @@ contains
                     ! rho = rho + 1.0 / ( a_i / rho_i )
                     Cp_s => extract_scalar_field( state( nphase + icomp ), &
                          'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                    if ( stat == 0 ) call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
+                    if ( stat == 0 .and. compute_rhoCP) then
+                      call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
 
-                    do cv_nod = 1, cv_nonods
-                       ip = ( iphase - 1 ) * cv_nonods + cv_nod
-                       DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) )
-                    end do
-
+                      do cv_nod = 1, cv_nonods
+                         ip = ( iphase - 1 ) * cv_nonods + cv_nod
+                         DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) )
+                      end do
+                    end if
                  end if
 
               else
@@ -214,13 +219,13 @@ contains
 
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
                  !Cp_s => extract_scalar_field( state( iphase ), 'SoluteMassFractionHeatCapacity', stat )
-                 if ( stat == 0 ) call assign_val(Cp,Cp_s % val)
-                 DensityCp_Bulk( sp : ep ) = Rho * Cp
-
-                 !Arash
-                 if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
-                 DensityCp_Bulk( sp : ep ) = Rho
-
+                 if ( stat == 0 .and. compute_rhoCP) then
+                   call assign_val(Cp,Cp_s % val)
+                   DensityCp_Bulk( sp : ep ) = Rho * Cp
+                   !Arash
+                   if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
+                   DensityCp_Bulk( sp : ep ) = Rho
+                 end if
               end if
 
            end do ! iphase
@@ -233,7 +238,7 @@ contains
         end if
 
         field1 => extract_tensor_field( packed_state, "PackedDensity" )
-        field2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+        if (compute_rhoCP) field2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
         if( ncomp > 1 ) field3 => extract_tensor_field( packed_state, "PackedComponentDensity" )
 
         do iphase = 1, nphase
@@ -241,7 +246,7 @@ contains
            ep = iphase * cv_nonods
 
            field1 % val ( 1, iphase, : ) = Density_Bulk( sp : ep )
-           field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )
+           if (compute_rhoCP) field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )
 
            if ( ncomp > 1 ) then
               do icomp = 1, ncomp
@@ -254,10 +259,10 @@ contains
 
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         !if ( boussinesq ) field2 % val = 1.0
-        deallocate( Rho, dRhodP, Cp, Component_l)
-        deallocate( Density_Component, Density_Bulk, DensityCp_Bulk )
+        deallocate( Rho, dRhodP, Component_l)
+        deallocate( Density_Component, Density_Bulk )
         deallocate( eos_option_path )
-
+        if (compute_rhoCP) deallocate(Cp, DensityCp_Bulk)
         !sprint_to_do copying meory to itself...
         do iphase = 1, nphase
            Density => extract_scalar_field( state( iphase ), "Density" )
