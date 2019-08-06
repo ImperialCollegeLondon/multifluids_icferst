@@ -1273,19 +1273,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               UDEN_ALL = DEN_ALL2%VAL( 1, :, : )
               UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
            end if
-           allocate(  uden3( Mdims%nphase, Mdims%cv_nonods )  )
-           if ( fem_density_buoyancy ) then
-              DEN_ALL3 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEDensity" )
-              UDEN3 = DEN_ALL3 % VAL( 1, :, : )
-           else
-              UDEN3 = uden_all
-           end if
            if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
-           call calculate_u_source_cv( Mdims, state, uden3, U_SOURCE_CV_ALL )
-           deallocate( uden3 )
+           call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
-
            end if
             if (is_poroelasticity) then
                 !We disable the first order time derivative of the first phase (solid phase)
@@ -6829,11 +6820,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       u_ph_source_cv = 0.0
 
       ! set the gravity term
-      if ( have_option( "/physical_parameters/gravity/fem_density_buoyancy" ) ) then
-         rho => extract_tensor_field( packed_state, "PackedFEDensity" )
-      else
-         rho => extract_tensor_field( packed_state, "PackedDensity" )
-      end if
+      rho => extract_tensor_field( packed_state, "PackedDensity" )
       volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )

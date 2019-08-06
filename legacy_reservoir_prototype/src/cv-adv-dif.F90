@@ -871,7 +871,11 @@ contains
           FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
           if (.not. is_constant(density)) then
               FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,1:n_in_pres,:)
-              tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
+              if (is_porous_media) then
+                tfield => extract_tensor_field( packed_state, "PackedDensity" )
+              else
+                tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
+              end if
               tfield%val = psi(FEM_IT)%ptr%val
               FEM_IT=FEM_IT+1
           else
@@ -906,7 +910,7 @@ contains
 
 
 !###############################TO HERE###############################
-!IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
+!SPRINT_TO_DO IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
 !CERTAINLY FOR POROUS MEDIA IT IS USELESS AND CURRENTLY IN THIS SECTION WE ARE COPYING FIELDS FOR THE SAKE OF IT...
 !THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES, WHICH I THINK CAN ALSO BE DONE IN A MORE EFFICIENT WAY
 ! (USING GEOMETRIC INFORMATION) RATHER THAN USING THE SHAPE FUNCTIONS... IT WOULD REDUCE THE AUTOMATIC FLEXIBILITY WE CURRENTLY HAVE, BUT JUST A BIT...
@@ -930,6 +934,7 @@ contains
           END DO
 
           ! Scale effectively the time step size used within the pipes...
+          !SPRINT_TO_DO THIS THING DOES NOT PROVIDE ANY BENEFIT WHATSOEVER...  TO BE REMOVED COMPLETELY
           ! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
           DO IPRES = 2, Mdims%npres
               MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
