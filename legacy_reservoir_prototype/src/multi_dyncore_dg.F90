@@ -170,7 +170,8 @@ contains
 
             if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
-               p => extract_tensor_field( packed_state, "PackedCVPressure" )
+               p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
+               if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
                if (is_porous_media) then
                     !Check that the extra parameters required for porous media thermal simulations are present
                     if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
@@ -582,7 +583,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
            IGOT_T2_loc = 0
 
-           p => extract_tensor_field( packed_state, "PackedCVPressure" )
+           p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
            if (boussinesq) then
                den_all = 1
@@ -1248,8 +1249,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-        CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
-
+        !For porous media we do not need PackedCVPressure
+        if (.not. is_porous_media) then
+          CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
+        else
+          CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
+        end if
         linearise_density = have_option_for_any_phase('phase_properties/Density/linearise_density', Mdims%n_in_pres)
 
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
@@ -1667,7 +1672,7 @@ end if
         call DEALLOCATE( CDP_tensor )
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
-        call calc_CVPres_from_FEPres()
+        if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
 !
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
