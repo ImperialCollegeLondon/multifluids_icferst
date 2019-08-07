@@ -126,7 +126,7 @@ contains
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
-           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
+           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat, stat
            type(vector_field)  :: vtracer, residual
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
@@ -183,8 +183,12 @@ contains
                     !Start with the process to apply the min max principle
                     call force_min_max_principle(1)
                 end if
-               den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+               den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
+               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
+               if (stat /= 0) then
+                 den_all2 => extract_tensor_field( packed_state, "PackedDensity", stat )
+                 denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+               end if
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
 			   	if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
@@ -2403,7 +2407,8 @@ end if
         type(tensor_field), pointer :: gradU
 
 
-        fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
+        fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction", stat )
+        if (stat/=0) fem_vol_frac_f => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction", stat )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
 
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
