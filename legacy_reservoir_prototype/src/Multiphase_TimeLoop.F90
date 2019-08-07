@@ -180,7 +180,6 @@ contains
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields_CVGalerkin_interp = -1
         real :: t_adapt_threshold
-        !Variables for FPI acceleration for flooding
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
 
@@ -239,25 +238,6 @@ contains
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
         call prepare_absorptions(state, Mdims, multi_absorp)
-        !Since this is a hack for Flooding, we want to do this before we actually start using the density as the height
-        !which depends on the pressure. However, for th initial condition we need to use the density to set up the initial Pressure
-        !Therefore, we correct the initial condition for the pressure before anything is modified
-        !If it is flooding we impose the initial pressure to match the equation P = gravity * (height+bathymetry)
-        !The height is the initial condition of the density
-!        if (is_flooding .and. have_option('/material_phase[0]/scalar_field::Temperature')) then
-!            density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
-!            FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-!            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
-!            FE_Pressure%val(1,1,:) =  9.80665 * (density_field%val(1,1,:) + bathymetry%val(1))
-!        end if
-        !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
-        if (is_flooding) then
-            call get_FloodingProp(state, packed_state)
-            if (have_option( "/physical_parameters/gravity/magnitude")) then
-                ewrite(1,*) "ERROR: For flooding DO NOT define gravity, it is already defined in the code"
-                stop
-            end if
-        end if
         call set_boundary_conditions_values(state, shift_time=.true.)
 
         !  Access boundary conditions via a call like
@@ -543,8 +523,6 @@ contains
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                             CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-                    else if (is_flooding) then
-                        call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
           !      end if
 
@@ -555,13 +533,6 @@ contains
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
                    ScalarField_Source_Store = PhaseVolumeFractionComponentSource%val(1,:,:)
                 end if
-                if (is_flooding) then
-                    do iphase = 1, size(state)
-                        DensitySource => extract_scalar_field(state(iphase),"DensitySource", stat)
-                        if ( stat == 0 ) ScalarField_Source_Store(iphase,:) = ScalarField_Source_Store(iphase,:) + DensitySource%val
-                    end do
-                end if
-
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
 
@@ -1221,17 +1192,6 @@ contains
                 deallocate(multicomponent_state)
                 call deallocate_projection_matrices(CV_funs)
                 call deallocate_projection_matrices(FE_funs)
-if (is_flooding) then
-    !sprint_to_do HACK (we should solve this properly): Reconstruct pressure from density because the pressure is uncorrectly interpolated between meshes
-    s_field => extract_scalar_field( state(1), "Density" )
-    s_field2 => extract_scalar_field( state(1), "Bathymetry" )
-    s_field3 => extract_scalar_field( state(1), "Pressure" )
-    if (size(s_field2%val)/=size(s_field%val)) then
-        s_field3%val(:) = 9.81 * (s_field%val(:) + s_field2%val(1))
-    else
-        s_field3%val(:) = 9.81 * (s_field%val(:) + s_field2%val(:))
-    end if
-end if
                 !!$ Compute primary scalars used in most of the code
                 call Get_Primary_Scalars_new( state, Mdims )
                 !Check if the user wants to store the outfluxes
@@ -1239,8 +1199,6 @@ end if
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call prepare_absorptions(state, Mdims, multi_absorp)
-                !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
-                if (is_flooding) call get_FloodingProp(state, packed_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
                 !!$ Deallocating array variables:
                 deallocate( &
