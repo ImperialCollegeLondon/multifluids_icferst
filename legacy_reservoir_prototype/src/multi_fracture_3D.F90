@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!
+!    
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -135,18 +135,18 @@ print *,  'inside blasting: finish initialise femdem'
     r_nonods = node_count( positions_r )
     v_nonods = node_count( positions_v )
 
-
+   
  print *, 'r_nonods:  ', r_nonods
  print *, 'v_nonods:  ', v_nonods
 
     allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
                f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
                uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ), p_v(v_nonods) )
-
-
+             
+  
 print *,  'inside blasting: finish allocate'
     p_r=0.0 ; uf_r=0.0 ; muf_r=0.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0; p_v=0.0;
-
+  
 print *,  'inside blasting: in interpolate_fields_out_r'
 
     call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
@@ -157,7 +157,7 @@ print *,  'inside blasting: in interpolate_fields_out_v'
     call get_option( "/timestepping/timestep", dt )
 
     call y3dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), uf_r( 3, : ),&
-                     uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), &
+                     uf_v( 1, : ), uf_v( 2, : ), uf_v( 3, : ), du_s( 1, : ), du_s( 2, : ), du_s( 3, : ), & 
                      u_s( 1, : ), u_s( 2, : ), u_s( 3, : ), &
                      muf_r, f( 1, : ), f( 2, : ),f( 3, : ), u(1, : ), u(2, : ),u(3, : ), a( 1, 1, : ), &
                      a( 1, 2, : ), a( 2 ,2 , : ), a( 1, 3, : ), a( 2, 3, : ), a( 3, 3, : ), p_v)
@@ -367,7 +367,7 @@ print *,  'inside initialise_femdem'
 !!-PY changed it for 3D_fracture_coupling_with_multiphase
     femdem_mesh_name = trim( femdem_mesh_name ) // ".Y3D"
     elseif ( have_option('/blasting') ) then
-    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name )
+    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name ) 
     femdem_mesh_name = trim( femdem_mesh_name ) // ".Y3D"
     end if
 
@@ -390,7 +390,7 @@ print *,  'inside initialise_femdem'
 
 
     if (have_option('/femdem_fracture') ) then
-
+    
     iflag(2)=1
     print *, "/femdem_fracture"
     print *, "iflag"
@@ -493,7 +493,7 @@ print *, "----------------------------"
             (/ ele1_r(i)+1, ele2_r(i)+1, ele3_r(i)+1, ele4_r(i)+1 /)
    end do
 
-
+ 
    allocate( sndglno_r( edges_r * sloc ) ) ; sndglno_r = 0
    allocate( boundary_ids_r( edges_r ) ) ; boundary_ids_r = 666
 
@@ -515,7 +515,7 @@ print *, "----------------------------"
 
     ! create the volume mesh
     call allocate( mesh_v, nodes_v, elements_v, shape, name="CoordinateMesh" )
-
+  
     call allocate( positions_v, ndim, mesh_v, name="Coordinate" )
     positions_v%val( 1, : ) = x_v
     positions_v%val( 2, : ) = y_v
@@ -530,7 +530,7 @@ print *, "----------------------------"
 !print *, 'ele1_v(i)+1: ', ele4_v(i)+1
 
     end do
-
+  
     allocate( sndglno_v( edges_v * sloc ) ) ; sndglno_v = 0
 
     allocate( boundary_ids_v( edges_v ) ) ; boundary_ids_v = 666
@@ -874,8 +874,8 @@ print *,  'leaving calculate_absorption'
     ! also add an isotropic, background/matrix permeability
 
 	print*, "---------------------------- after projecting ---------------------"
-	print *, minval(field_fl_p11)
-	print *, maxval(field_fl_p11)
+	print *, minval(field_fl_p11)	
+	print *, maxval(field_fl_p11)	
 
 	print *, minval(field_fl_p22)
 	print *, maxval(field_fl_p22)
@@ -896,7 +896,7 @@ print *,  'leaving calculate_absorption'
     do ele=1, totele
        ! if ((rvf % val (ele) > 0.0) .AND. ((field_fl_p11%val(ele)>bg_perm) .or. (field_fl_p22%val(ele)>bg_perm) .or. (field_fl_p33%val(ele)>bg_perm))) then
 
-       if ((rvf % val (ele) > 0.0)) then
+       if ((rvf % val (ele) > 0.0)) then 
              if (field_fl_p11%val(ele)>bg_perm) then
                 perm( 1, 1, ele ) = field_fl_p11 % val (ele)
             end if
@@ -939,7 +939,7 @@ print *,  'leaving calculate_absorption'
     porosity => extract_vector_field( packed_state, "Porosity" )
     vf => extract_scalar_field( packed_state, "SolidConcentration" )
 
-
+ 
     ! for adaptivity (bound perm field)
     perm_val => extract_scalar_field( state(1), "Dummy" )
     allocate(perm_val%val(totele))
@@ -951,7 +951,7 @@ print *,  'leaving calculate_absorption'
     call zero( perm2_val)
 
     FracMap => extract_tensor_field( state(1), "FractureMap" )
-    allocate( FracMap%val(ndim, ndim, totele) )
+    allocate( FracMap%val(ndim, ndim, totele) ) 
     call zero( FracMap)
 !!-ao comment - porosity is not scaled due to problems arising in the wall
 !               where porosities (rvf) can arise lower than background porosity
@@ -962,10 +962,10 @@ print *,  'leaving calculate_absorption'
 	! Dummy for adaptivity (bound fracture field)
         if ((0.5 > rvf%val(ele)) .AND. (rvf%val(ele) > 0.0)) perm_val % val (ele)=rvf%val(ele)
         if (rvf%val(ele)>= 0.5) perm_val % val (ele)=1
-      	if ( maxval( permeability % val( :, :, ele ) ) < bg_perm ) perm_val % val (ele) = 0 !
-
+      	if ( maxval( permeability % val( :, :, ele ) ) < bg_perm ) perm_val % val (ele) = 0 !     
+	
 	!visualising permeability in 'totalflux'Dummy field
-        perm2_val % val (ele) = maxval( permeability % val( :, :, ele ) ) !
+        perm2_val % val (ele) = maxval( permeability % val( :, :, ele ) ) !    
 
 	!-ao FRACTURE MAPING IS DONE HERE
 !	 if (rvf % val (ele) > 0.0 .AND. maxval( permeability % val( :, :, ele ) ) >= bg_perm ) then
@@ -980,8 +980,8 @@ print *,  'leaving calculate_absorption'
 
     call bound_volume_fraction( vf%val )
 
-
-    ! deallocate
+    
+    ! deallocate    
     deallocate( perm)
 
 !    call deallocate( field_fl_p22 )
@@ -1001,7 +1001,7 @@ print *,  'leaving calculate_absorption'
 
 
     ewrite(3,*) "leaving calculate_phi_and_perm"
-     print  *, "leaving calculate_phi_and_perm"
+     print  *, "leaving calculate_phi_and_perm"	    
 	return
   end subroutine calculate_phi_and_perm
 
@@ -1023,7 +1023,7 @@ print *,  'leaving calculate_absorption'
          &                  field_ext_p, field_ext_u, field_ext_v,field_ext_w, field_ext_mu, &
          &                  u_dg, v_dg, w_dg
     !!type( scalar_field ), pointer :: pressure
-
+    
     type( vector_field ), pointer :: fl_positions
     type( tensor_field ), pointer :: velocity, viscosity , pressure
     type( state_type ) :: alg_ext, alg_fl
@@ -1039,11 +1039,11 @@ print *,  'leaving calculate_absorption'
 !    call print_state(packed_state)
 
     cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
-
+    
 
     pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
  !   pressure => extract_tensor_field( packed_state, "PressureMesh" )
-
+    
     cv_nloc = ele_loc( pressure, 1 )
 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
@@ -1083,10 +1083,10 @@ print *,  'leaving calculate_absorption'
 
        call allocate( field_fl_w, fl_mesh, "Velocity3" )
      call zero( field_fl_w )
-
+ 
     call allocate( field_fl_mu, fl_mesh, "Viscosity" )
       call zero( field_fl_mu )
-
+     
       print *, 'cv_nloc',' ',cv_nloc
 
     ! deal with pressure and viscosity
@@ -1116,9 +1116,9 @@ print *,  'leaving calculate_absorption'
           field_fl_p % val( fl_ele_nodes( 2 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
            field_fl_p % val( fl_ele_nodes( 3 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
           field_fl_p % val( fl_ele_nodes( 4 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 10 ) )
-
-!!-PY this is a big problem
-
+          
+!!-PY this is a big problem 
+         
           if ( constant_mu ) then
                  field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, 1 )
                  field_fl_mu % val(fl_ele_nodes( 2 ) ) = viscosity % val( 1, 1, 1 )
@@ -1187,7 +1187,7 @@ u_dg % val = u_tmp( 1, 1, : ) ;  v_dg % val = u_tmp( 2, 1, : ) ;   w_dg % val = 
    !!!!! print *, 'v_dg',' ', size(v_dg%val)
   !!!!!  print *, 'w_dg',' ', size(w_dg%val)
   !!!!!  print *, 'u_nonods',' ', u_nonods
-
+ 
    !call project_field( u_dg, field_fl_u, fl_positions )
     !call project_field( v_dg, field_fl_v, fl_positions )
 
@@ -1296,7 +1296,7 @@ print *,  'interpolate_fields_out_r, 08-0'
     mu_r = field_ext_mu % val
 
    print *,  'interpolate_fields_out_r, 09'
-
+ 
     ! deallocate
     call deallocate( field_fl_p )
     call deallocate( field_fl_u )
@@ -1348,7 +1348,7 @@ print *,  'interpolate_fields_out_r, 08-0'
 
     u_v = 0.0
  print *,  'interpolate_fields_out_v, 01'
-
+ 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
@@ -1417,7 +1417,7 @@ print *,  'interpolate_fields_out_r, 08-0'
     field_ext_u % option_path = path
     call insert( alg_ext, field_ext_u, "Velocity1" )
 
- !!!!
+ !!!! 
     call allocate( field_ext_v, positions_v%mesh, "Velocity2" )
     call zero( field_ext_v )
     field_ext_v % option_path = path
@@ -1432,11 +1432,11 @@ print *,  'interpolate_fields_out_r, 08-0'
     ewrite(3,*) "...interpolating"
 
  print *,  'interpolate_fields_out_v, 02'
-
+ 
     ! interpolate
     call interpolation_galerkin_femdem( alg_fl, alg_ext, femdem_out = .true. )
  print *,  'interpolate_fields_out_v, 03'
-
+ 
     ! copy memory
     u_v( 1, : ) = field_ext_u % val
     u_v( 2, : ) = field_ext_v % val
@@ -1485,7 +1485,7 @@ print *,  'interpolate_fields_out_r, 08-0'
     integer :: stat, idim
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
-
+    
 
     call set_solver_options( path, &
          ksptype = "gmres", &
@@ -1645,7 +1645,7 @@ print *,  'interpolate_fields_out_r, 08-0'
 
        f => extract_scalar_field( alg_fl, "SolidConcentration")
        call linear2quadratic_field(f, f3)
-
+       
 !!print *, "size(f % val)", size(f % val)
 !!print *, "size(f3 % val)", size(f3 % val)
 !!print *, "size(solid % val)", size(solid % val)
@@ -1653,8 +1653,8 @@ print *,  'interpolate_fields_out_r, 08-0'
 
        solid % val = f3 % val
 
-
-
+      
+ 
 
 
 
@@ -1691,8 +1691,8 @@ print *,  'interpolate_fields_out_r, 08-0'
 
   subroutine interpolate_fields_in_r( packed_state, fin, ain )
 
-
-
+  
+   
     implicit none
 
     type( state_type ), intent( in ) :: packed_state
@@ -1827,7 +1827,7 @@ print *,  'ready to interpolate_fields_in_r03'
 
 print *,  'ready to interpolate_fields_in_r04'
 
-    p_mesh => extract_mesh( packed_state, "PressureMesh" )
+    p_mesh => extract_mesh( packed_state, "PressureMesh" ) 
     call allocate( f2, p_mesh, "dummy" )
 
     f_x => extract_vector_field( packed_state, "f_x" )
@@ -1886,7 +1886,7 @@ print *,  ' interpolate_fields_in_v 02'
     call deallocate( field_ext_a13 )
     call deallocate( field_ext_a23 )
     call deallocate( field_ext_a33 )
-
+ 
 
     call deallocate( alg_fl )
     call deallocate( alg_ext )
@@ -1916,7 +1916,7 @@ print *,  ' interpolate_fields_in_v 02'
 
     do i = 1, n
        do j = n, i + 1, -1
-          p = a( j - 1 )
+          p = a( j - 1 ) 
           q = a( j )
           if ( p > q ) then
               a( j - 1 ) = q
@@ -2061,7 +2061,7 @@ print *,  ' interpolate_fields_in_v 02'
 
        nele = element_count( f )
 
-       allocate( ndglno( nloc * nele ), sndglno( snloc * nbcs ) )
+       allocate( ndglno( nloc * nele ), sndglno( snloc * nbcs ) ) 
        allocate( ele_nodes( nloc ), ele2_nodes( nloc ) )
        allocate( n( snloc ), bc(snloc ) )
 
@@ -2095,7 +2095,7 @@ print *,  ' interpolate_fields_in_v 02'
                    on_the_wall = .true.
                    exit
                 end if
-                ! if one node is on the wall
+                ! if one node is on the wall 
                 ! figure out which one it is
                 st = -666
                 if ( any( n == bc ) .and. .not.on_the_wall ) then
@@ -2179,7 +2179,7 @@ print *,  ' interpolate_fields_in_v 02'
 
           if ( area < 0.0 ) then
              ! swap 2nd and 3rd nodes
-             ndglno_s( ( ele - 1 ) * nloc + 2 : ele * nloc ) = (/ ele_nodes( 3 ), ele_nodes( 2 ) /)
+             ndglno_s( ( ele - 1 ) * nloc + 2 : ele * nloc ) = (/ ele_nodes( 3 ), ele_nodes( 2 ) /) 
           end if
        end do
 
@@ -2324,8 +2324,8 @@ print *,  ' interpolate_fields_in_v 02'
     c3=z3-z4
     a3=z1-z4
     x4=0.0
-    y4=0.0
-    z4=0.0
+    y4=0.0   
+    z4=0.0 
 
  !   triangle_area = 0.5 * ( ( x2 * y3 - y2 * x3 ) - x1 * ( y3 - y2 ) + y1 * ( x3 - x2 ) )
  triangle_area =  ( ( a1*b2*c3 + b1*c2*a3 + c1*a2*b3-a1*c2*b3-b1*a2*c3-c1*b2*a3) ) / 6
@@ -2414,10 +2414,10 @@ print *,  ' interpolate_fields_in_v 02'
                 field_p2_loc( 2 ) =field_p1_loc( 2 )
                 field_p2_loc( 3 ) =field_p1_loc( 3 )
 
-
+                
 
                 if ( p2_nloc == 4 ) then
-           !print *, 'p2_nloc',' ',p2_nloc
+           !print *, 'p2_nloc',' ',p2_nloc 
                     field_p2_loc( 4 ) =field_p1_loc( 4 )
            !         field_p2_loc( 5 ) =field_p1_loc( 5 )
            !         field_p2_loc( 6 ) =field_p1_loc( 6 )
@@ -2430,11 +2430,11 @@ print *,  ' interpolate_fields_in_v 02'
 
             end do
 
-
+            
 
 
            else
-
+            
 
 
 ! we have not called this routine with a p2 field
@@ -2478,9 +2478,13 @@ deallocate( field_p1_loc, field_p2_loc)
 
         !    call print_state(packed_state)
 
-        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
+        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )	
 
-     		pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+    if ( have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix')) then !with pore_fluid presure
+        	pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
+	else
+       		pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+	end if 
 
 
 
@@ -2599,7 +2603,11 @@ subroutine interpolate_fields_out_v_pf( packed_state, nphase, p_v)
 
     cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
 
-    pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+    if ( have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix')) then !with pore_fluid presure
+            pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
+    else
+            pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+    end if
 
     cv_nloc = ele_loc( pressure, 1 )
 

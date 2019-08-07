@@ -167,9 +167,10 @@ contains
 
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
            IGOT_T2_loc = 0
-           p => extract_tensor_field( packed_state, "PackedFEPressure" )
+
             if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
+               p => extract_tensor_field( packed_state, "PackedCVPressure" )
                if (is_porous_media) then
                     !Check that the extra parameters required for porous media thermal simulations are present
                     if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
@@ -197,12 +198,13 @@ contains
                end if
                IGOT_T2_loc = 1
             else if ( lcomp > 0 ) then
+               p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
                den_all = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1,  :, : )
            else
-
+               p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all=1.0
                denold_all=1.0
            end if
@@ -580,7 +582,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
            IGOT_T2_loc = 0
 
-           p => extract_tensor_field( packed_state, "PackedFEPressure" )
+           p => extract_tensor_field( packed_state, "PackedCVPressure" )
 
            if (boussinesq) then
                den_all = 1
@@ -815,7 +817,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                n_in_pres = nphase/ Mdims%npres
              end if
              !Extract variables from packed_state
-             call get_var_from_packed_state(packed_state,FEPressure = P)
+             !call get_var_from_packed_state(packed_state,FEPressure = P)
+             call get_var_from_packed_state(packed_state,CVPressure = P)
              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
              Satura =>  sat_field%val(1,:,:)
@@ -1245,7 +1248,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-        CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
+        CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
 
         linearise_density = have_option_for_any_phase('phase_properties/Density/linearise_density', Mdims%n_in_pres)
 
@@ -1664,7 +1667,7 @@ end if
         call DEALLOCATE( CDP_tensor )
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
-        ! call calc_CVPres_from_FEPres()
+        call calc_CVPres_from_FEPres()
 !
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
@@ -1689,6 +1692,90 @@ end if
 
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
+
+    contains
+
+        subroutine calc_CVPres_from_FEPres()
+            !This is for FE pressure
+            implicit none
+            integer stat_cvp
+
+            if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV... (for some reason this does not work for flooding...)
+                CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
+                !...inside the wells it is still FE pressure
+                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+                    IPRES = Mdims%npres
+                    CVP_ALL%VAL(1,ipres,:) = 0.
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
+                            END DO
+                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                end if
+            else
+                CVP_ALL%VAL = 0.0
+                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+                    MASS_CV = 0.0
+                    IPRES = 1
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                            END DO
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                    MASS_CV = 0.0
+                    IPRES = Mdims%npres
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
+                            END DO
+                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                ELSE
+                    MASS_CV = 0.0
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                            END DO
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    DO IPRES = 1, Mdims%npres
+                        CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                    END DO
+                ENDIF
+            end if
+            !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
+             ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
+
+            cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
+            if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
+
+        end subroutine calc_CVPres_from_FEPres
+
+
+
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
