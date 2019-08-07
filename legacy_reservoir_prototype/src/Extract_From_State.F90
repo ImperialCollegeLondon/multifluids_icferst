@@ -864,13 +864,6 @@ contains
         call insert(packed_state,ten_field,"PackedRockFluidProp")
         call deallocate(ten_field)
 
-        ! For Flooding: Manning coefficient
-        if(have_option('/flooding')) then
-            call allocate(ten_field,element_mesh,"PackedManningcoef",dim=[1,nphase])
-            call insert(packed_state,ten_field,"PackedManningcoef")
-            call deallocate(ten_field)
-        end if
-
         pressure=>extract_scalar_field(state(1),"Pressure")
         call insert(packed_state,pressure%mesh,"PressureMesh")
 
@@ -1977,10 +1970,6 @@ contains
              call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
 !            if ( ncomp > 0 ) !"Not ready yet"
         end if
-        !Need to add this
-        if (is_flooding) then
-             call allocate_multi_field( Mdims, multi_absorp%Flooding, ovmesh%nodes, field_name="Flooding_AbsorptionTerm")
-        end if
 
     end subroutine prepare_absorptions
 
@@ -2387,7 +2376,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
-            if (is_flooding) backtrack_or_convergence = ts_ref_val
             !Automatic non-linear iteration checking
             if (is_porous_media) then
                 select case (variable_selection)

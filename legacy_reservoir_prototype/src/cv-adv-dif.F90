@@ -444,9 +444,6 @@ contains
           integer :: U_JLOC
 
           logical :: have_absorption
-          !Variables for Flooding
-          real, dimension( : , : ), pointer :: DEN_ALL_DIVID
-          real :: RDUM, RDUM2
           !Variables for get int_vel_porous_vel
           logical :: iv_Incomming_flow
           REAL, DIMENSION(Mdims%ndim) :: iv_SUF_SIG_DIAGTEN_BC_GI
@@ -519,7 +516,7 @@ contains
           !#################SET WORKING VARIABLES#################
 
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
-              OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
+             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
           if (.not. present_and_true(solving_compositional)) then
             if (is_porous_media)   call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
           end if
@@ -650,16 +647,6 @@ contains
           ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS:', &
               CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, GOT_DIFFUS
           ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
-
-          !For flooding, only for the saturation equation we need to take out the density
-          !from the equations, we do so by forcing it to be 1, it needs to be recalculated
-          !after this before it is used somewhere else
-          if (is_flooding ) then
-              if (GETCV_DISC) then
-                  DEN_ALL(1:n_in_pres,:) = 1.0
-                  DENOLD_ALL(1:n_in_pres,:) = 1.0
-              end if
-          end if
 
           !cv_beta == 1 means conservative, meaning that everything multiplied by one_m_cv_beta can be ignored
           one_m_cv_beta = 1.0 - cv_beta
@@ -811,14 +798,6 @@ contains
                   end do
               end do
           ENDIF
-
-          if( is_flooding ) then
-              allocate(DEN_ALL_DIVID( nphase, Mdims%cv_nonods ))
-              DEN_ALL_DIVID = DEN_ALL
-              DEN_ALL_DIVID( 1, : ) = 1.0
-          else
-              DEN_ALL_DIVID => DEN_ALL
-          endif
 
           ndotq = 0. ! ;         ndotqold = 0.
           ! variables for get_int_tden********************
@@ -1662,11 +1641,11 @@ contains
                               ONE_M_FTHETA_T2OLD_J(:) = ONE_M_FTHETA_T2OLD(:)!(1.0-FTHETA(:)) * LIMT2OLD(:)
                               IF(logical_igot_theta_flux) THEN
                                   IF ( GET_THETA_FLUX ) THEN
-                                      THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(1:n_in_pres, CV_NODI)
-                                      ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(1:n_in_pres, CV_NODI)
+                                      THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL(1:n_in_pres, CV_NODI)
+                                      ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL(1:n_in_pres, CV_NODI)
                                       if(integrate_other_side) then ! for the flux on the other side of the CV face...
-                                          THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL_DIVID(1:n_in_pres, CV_NODJ)
-                                          ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL_DIVID(1:n_in_pres, CV_NODJ)
+                                          THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL(1:n_in_pres, CV_NODJ)
+                                          ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL(1:n_in_pres, CV_NODJ)
                                       endif
                                   END IF
                                   IF ( USE_THETA_FLUX ) THEN
@@ -1707,7 +1686,7 @@ contains
                                       Mdims, CV_funs, ndgln, Mmat, GI,  &
                                       between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
                                       JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
-                                      SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL_DIVID(1:n_in_pres,:), CV_NODI, CV_NODJ, &
+                                      SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL(1:n_in_pres,:), CV_NODI, CV_NODJ, &
                                       WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                       UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
                                       NDOTQNEW, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
@@ -2104,16 +2083,16 @@ contains
                       - R_PHASE(:) * ( &
                       + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                       + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
-                      - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL_DIVID(:, CV_NODI ) )
+                      - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL(:, CV_NODI ) )
                   DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &
                       +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
-                      / ( DT * DEN_ALL_DIVID(:, CV_NODI) )
+                      / ( DT * DEN_ALL(:, CV_NODI) )
                   ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                      + MASS_CV_PLUS(1,CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
+                      + MASS_CV_PLUS(1,CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL(:, CV_NODI)
                   IF ( HAVE_ABSORPTION ) THEN
                      DO JPHASE = 1, nphase
                         ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                           - MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL_DIVID(:, CV_NODI)
+                           - MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL(:, CV_NODI)
                      END DO
                   END IF
                   ! scaling coefficient...
@@ -2174,7 +2153,6 @@ contains
          end if
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
-          if (is_flooding) deallocate(DEN_ALL_DIVID)
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
           !Deallocate memory associated to well modelling
           if (Mdims%npres >1) deallocate(MASS_PIPE_FOR_COUP, A_GAMMA_PRES_ABS, PIPE_ABS)
@@ -5824,7 +5802,7 @@ end if
         ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
         C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
         U_SLOC2LOC, CV_SLOC2LOC,  &
-        SCVDETWEI, CVNORMX_ALL, DEN_ALL_DIVID, CV_NODI, CV_NODJ, &
+        SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
         UGI_COEF_ELE2_ALL,  &
@@ -5856,7 +5834,7 @@ end if
         REAL, DIMENSION( :, :, : ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI, MASS_ELE
         REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL_DIVID
+        REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL
         REAL, DIMENSION( : ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMDT, LIMDTOLD, LIMT_HAT
         REAL, intent( in ) :: NDOTQ_HAT
         REAL, DIMENSION( : ), intent( in ) :: THETA_VEL
@@ -5906,7 +5884,7 @@ end if
         END IF ! For solid modelling...
         DO U_KLOC = 1, Mdims%u_nloc
             RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODI )
+                * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
             IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                 RCON(:) = RCON(:) + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                     * CV_funs%sufen( U_KLOC, GI )
@@ -5940,7 +5918,7 @@ end if
             ! flux from the other side (change of sign because normal is -ve)...
             if ( integrate_other_side_and_not_boundary ) then
                 RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))  &
-                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODJ )
+                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
                 IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
                     RCON_J(:) = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                         * CV_funs%sufen( U_KLOC, GI )
@@ -5980,18 +5958,18 @@ end if
                 - SCVDETWEI( GI ) * (  ( &
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * (NDOTQOLD(:) -NDOTQ_IMP(:)*THETA_VEL(:)) &
                 + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
-                ) / DEN_ALL_DIVID( :, CV_NODI ) )
+                ) / DEN_ALL( :, CV_NODI ) )
         ELSE
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
                 - SCVDETWEI( GI ) * (  ( &
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
-                ) / DEN_ALL_DIVID( :, CV_NODI )   )
+                ) / DEN_ALL( :, CV_NODI )   )
             ! flux from the other side (change of sign because normal is -ve)...
             if ( integrate_other_side_and_not_boundary ) then
                 ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
                     + SCVDETWEI( GI ) * ( ( &
                     ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
-                    ) / DEN_ALL_DIVID( :, CV_NODJ ) )
+                    ) / DEN_ALL( :, CV_NODJ ) )
             end if
         END IF
         IF ( between_elements ) THEN
@@ -6000,7 +5978,7 @@ end if
                 U_KLOC = U_SLOC2LOC(U_SKLOC)
                 U_KLOC2 = U_OTHER_LOC( U_KLOC )
                 RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODI  )
+                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI  )
                 IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                     RCON(:)    = RCON(:)    + SCVDETWEI( GI )  * (LIMT_HAT(:) - LIMT(:))  &
                         * CV_funs%sufen( U_KLOC, GI )
@@ -6021,7 +5999,7 @@ end if
                 ! flux from the other side (change of sign because normal is -ve)...
                 if ( integrate_other_side_and_not_boundary ) then
                     RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                        * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL_DIVID( :, CV_NODJ )
+                        * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
                     IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
                         RCON_J(:)    = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                             * CV_funs%sufen( U_KLOC, GI )

@@ -818,8 +818,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                n_in_pres = nphase/ Mdims%npres
              end if
              !Extract variables from packed_state
-             !call get_var_from_packed_state(packed_state,FEPressure = P)
-             call get_var_from_packed_state(packed_state,CVPressure = P)
+             call get_var_from_packed_state(packed_state,FEPressure = P)
              sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
 
              Satura =>  sat_field%val(1,:,:)
@@ -883,21 +882,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             ELSE
               DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
               DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-              if (is_flooding) then
-                !For Flooding the densities not in the pipes have to be equal to unity
-                ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods ))
-                ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods ))
-                do iphase = 1, n_in_pres
-                  DEN_ALL(iphase,:) = 1.0
-                  DENOLD_ALL(iphase,:) = 1.0
-                end do
-                do iphase = n_in_pres+1, nphase
-                  DEN_ALL(iphase,:) = DEN_ALL2%VAL( 1, iphase, : )
-                  DENOLD_ALL(iphase,:) = DENOLD_ALL2%VAL( 1, iphase, : )
-                end do
-              else
-                DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
-              end if
+              DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
             END IF
 
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
@@ -1057,7 +1042,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
-             if (IGOT_THETA_FLUX == 1 .or. is_flooding) then
+             if (IGOT_THETA_FLUX == 1 ) then
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
@@ -1387,12 +1372,6 @@ if (associated(multi_absorp%PorousMedia%val))then!sprint_to_do AVOID THESE CONVE
         call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
 end if
-!Temporary conversion
-if (associated(multi_absorp%Flooding%val))then!sprint_to_do AVOID THESE CONVERSIONS...
-    do cv_nod = 1, size(multi_absorp%Flooding%val,4)
-        call add_multi_field_to_array(multi_absorp%Flooding, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
-    end do
-end if
 
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
@@ -1705,7 +1684,7 @@ end if
             implicit none
             integer stat_cvp
 
-            if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV... (for some reason this does not work for flooding...)
+            if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV...
                 CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
                 !...inside the wells it is still FE pressure
                 IF(Mdims%npres>1.AND.PIPES_1D) THEN
@@ -2612,7 +2591,6 @@ end if
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/vector_field::Absorption/lump_absorption') &
             ) lump_absorption = .true.
-        if (is_flooding) lump_absorption = .true.!<=This has to be be between these two options
         lump_mass2 = .false.
         if ( lump_absorption ) lump_mass2 = .true.
         ! This applies a non-linear shock capturing scheme which
@@ -2636,7 +2614,7 @@ end if
         ! =1.0 include the pressure term.
         call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/method', &
             RESID_BASED_STAB_DIF, default=0 )
-        BETWEEN_ELE_STAB = RESID_BASED_STAB_DIF/=0 .and..not.is_flooding! Always switch on between element diffusion if using non-linear
+        BETWEEN_ELE_STAB = RESID_BASED_STAB_DIF/=0 ! Always switch on between element diffusion if using non-linear
         call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/nonlinear_velocity_coefficient', &
             U_NONLIN_SHOCK_COEF, default=1.)
         call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/include_pressure', &
@@ -3122,10 +3100,6 @@ end if
                     LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD )
                     LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
                 ENDIF
-                if (is_flooding) then
-                    LOC_UDEN( :, CV_ILOC ) = 1.0
-                    LOC_UDENOLD( :, CV_ILOC) = 1.0
-                end if
                 IF(GOT_VIRTUAL_MASS) THEN
                     LOC_VIRTUAL_MASS( :,:, CV_ILOC )         = VIRTUAL_MASS( :,:, CV_INOD )
                     LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )     = VIRTUAL_MASS_OLD( :,:, CV_INOD )
@@ -4254,12 +4228,6 @@ end if
                         SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD )
                         SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 )
                     ENDIF
-                    if (is_flooding) then
-                        SLOC_UDEN( :, CV_SILOC )  = 1.0
-                        SLOC2_UDEN( :, CV_SILOC ) = 1.0
-                        SLOC_UDENOLD( :, CV_SILOC ) = 1.0
-                        SLOC2_UDENOLD( :, CV_SILOC ) = 1.0
-                    end if
                     IF(GOT_VIRTUAL_MASS) THEN
                         SLOC_VIRTUAL_MASS( :,:, CV_SILOC )   = VIRTUAL_MASS( :,:, CV_INOD )
                         SLOC2_VIRTUAL_MASS( :,:, CV_SILOC )  = VIRTUAL_MASS( :,:, CV_INOD2 )
@@ -6989,7 +6957,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  if ( boussinesq .or. is_flooding ) then
+                  if ( boussinesq ) then
                      den_gi( :, iphase ) = 1.0
                   else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
