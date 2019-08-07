@@ -910,12 +910,13 @@ contains
             call insert(multicomponent_state(icomp),p2,"PackedFEPressure")
         end do
 
-        call insert_sfield(packed_state,"CVPressure",1,npres)
-        p2=>extract_tensor_field(packed_state,"PackedCVPressure")
-        do ipres = 1, npres
-            p2%val(1,ipres,:)=pressure%val
-        end do
-
+        if (.not. is_porous_media) then!For porous media we prefentially use CVPressure, therefore this second field is redundant
+          call insert_sfield(packed_state,"CVPressure",1,npres)!Tried to remove this field but some inertia cases were failing...
+          p2=>extract_tensor_field(packed_state,"PackedCVPressure")
+          do ipres = 1, npres
+              p2%val(1,ipres,:)=pressure%val
+          end do
+        end if
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! (this could be cleaned up in the future)
         call add_new_memory(packed_state,pressure,"Dummy")

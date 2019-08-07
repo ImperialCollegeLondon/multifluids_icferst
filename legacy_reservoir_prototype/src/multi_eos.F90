@@ -412,7 +412,9 @@ contains
         !!$ Den = Den0 * exp[ c0 * ( P - P0 ) ] :: Exponential_1 EOS
         !!$ Den = c0 * P** c1                   :: Exponential_2 EOS
 
-        pressure => extract_tensor_field( packed_state, 'PackedCVPressure' )
+        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )
+        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+
         temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
         have_temperature_field = ( stat == 0 )
         !! Arash

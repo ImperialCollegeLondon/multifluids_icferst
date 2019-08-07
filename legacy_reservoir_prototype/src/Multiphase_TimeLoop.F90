@@ -427,13 +427,8 @@ contains
 ! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
              if (do_checkpoint_simulation(dump_no)) then
                   checkpoint_number=0
-                  CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                  FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                  pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-                  call set(pressure_field,FE_Pressure)
                   call checkpoint_simulation(state,cp_no=checkpoint_number,&
                                                protect_simulation_name=.true.,file_type='.mpml')
-                  call set(pressure_field,CV_Pressure)
              end if
              !not_to_move_det_yet = .false. ;
 !-------------------------------------------------------------------------------
@@ -1089,13 +1084,9 @@ contains
                 ! dump based on the prescribed period of time steps
                 Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
                     if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
                         call checkpoint_simulation(state,cp_no=checkpoint_number,&
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
@@ -1108,13 +1099,9 @@ contains
                 Conditional_Dump_RealTime: if( (abs(current_time-mdims%init_time - dump_period*dump_no) < 1d-12 .or. current_time-mdims%init_time >= dump_period*dump_no)&
                     .and. current_time-mdims%init_time/=finish_time) then
                     if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
                         call checkpoint_simulation(state,cp_no=checkpoint_number,&
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
                     end if
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
@@ -1403,9 +1390,11 @@ end if
         tfield=>extract_tensor_field(packed_state,"PackedOldFEPressure")
         ntfield=>extract_tensor_field(packed_state,"PackedFEPressure")
         tfield%val=ntfield%val
-        tfield=>extract_tensor_field(packed_state,"PackedOldCVPressure")
-        ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
-        tfield%val=ntfield%val
+        if (.not. is_porous_media) then
+          tfield=>extract_tensor_field(packed_state,"PackedOldCVPressure")
+          ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
+          tfield%val=ntfield%val
+        end if
     end subroutine copy_packed_new_to_old
 
     subroutine set_nu_to_u(packed_state)
