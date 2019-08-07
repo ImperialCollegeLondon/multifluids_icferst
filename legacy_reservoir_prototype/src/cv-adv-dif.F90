@@ -336,6 +336,7 @@ contains
           real, dimension (Mdims%cv_nonods) ::  SUM_CV
           real, dimension (Mdims%totele) :: MASS_ELE
           REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
+          REAL, DIMENSION( Mdims%ndim, Mdims%cv_nonods ) :: XC_CV_ALL
           REAL, DIMENSION( Mdims%ndim,nphase,Mdims%u_nloc ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
           REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
           !###Variables for shape function calculation###
@@ -414,7 +415,7 @@ contains
           type( scalar_field ), pointer :: solid_vol_fra
           real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
-          type( vector_field_pointer ), dimension(1) :: XC_CV_ALL,PSI_INT
+          type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
           type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field !Arash
 
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
@@ -857,14 +858,15 @@ contains
               end if
           end do
           psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
-          XC_CV_ALL(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
+          psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
           call PROJ_CV_TO_FEM(packed_state, &!For porous media we are just pointing memory from PSI to FEMPSI
               FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &!we need to get rid of all of this... check if for inertia is there any gain at all
               Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
               IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-              tracer,XC_CV_ALL, PSI_INT)
+              tracer,PSI_AVE, PSI_INT)
+          XC_CV_ALL=0.0
           !sprint_to_do!use the pointers instead! pointer?
-          ! XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
+          XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
           MASS_CV_PLUS(1,:)         = psi_int(1)%ptr%val(1,:)
           FEMT_ALL(:,:)             = FEMPSI(1)%ptr%val(1,1:n_in_pres,:)
           FEMTOLD_ALL(:,:)          = FEMPSI(2)%ptr%val(1,1:n_in_pres,:)
@@ -874,7 +876,7 @@ contains
               if (is_porous_media) then
                 tfield => extract_tensor_field( packed_state, "PackedDensity" )
               else
-                tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
+              tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
               end if
               tfield%val = psi(FEM_IT)%ptr%val
               FEM_IT=FEM_IT+1
@@ -910,7 +912,7 @@ contains
 
 
 !###############################TO HERE###############################
-!SPRINT_TO_DO IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
+!IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
 !CERTAINLY FOR POROUS MEDIA IT IS USELESS AND CURRENTLY IN THIS SECTION WE ARE COPYING FIELDS FOR THE SAKE OF IT...
 !THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES, WHICH I THINK CAN ALSO BE DONE IN A MORE EFFICIENT WAY
 ! (USING GEOMETRIC INFORMATION) RATHER THAN USING THE SHAPE FUNCTIONS... IT WOULD REDUCE THE AUTOMATIC FLEXIBILITY WE CURRENTLY HAVE, BUT JUST A BIT...
@@ -934,7 +936,6 @@ contains
           END DO
 
           ! Scale effectively the time step size used within the pipes...
-          !SPRINT_TO_DO THIS THING DOES NOT PROVIDE ANY BENEFIT WHATSOEVER...  TO BE REMOVED COMPLETELY
           ! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
           DO IPRES = 2, Mdims%npres
               MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
@@ -965,7 +966,7 @@ contains
                   i_use_volume_frac_t2,n_in_pres,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
                   Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
                   ndgln%x,Mdims%x_nonods,Mdims%ndim, &
-                  X_ALL, XC_CV_ALL(1)%ptr%val, use_reflect)
+                  X_ALL, XC_CV_ALL, use_reflect)
           END IF
           FACE_ELE = 0
           CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
@@ -1233,7 +1234,7 @@ contains
                               GLOBAL_FACE = GLOBAL_FACE + 1
                               JMID = Mspars%small_acv%mid(CV_NODJ)
                               ! Calculate the control volume normals at the Gauss pts.
-                              CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL(1)%ptr%val( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
+                              CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
                               !Obtain the list of neighbouring nodes
                               IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
                                                               C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
@@ -1241,9 +1242,9 @@ contains
                               ! Compute the distance HDC between the nodes either side of the CV face
                               ! (this is needed to compute the local courant number and the non-linear theta)
                               IF ( on_domain_boundary) THEN
-                                  HDC = SQRT( SUM( (XC_CV_ALL(1)%ptr%val(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
+                                  HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-X_ALL(1:Mdims%ndim,X_NODI))**2) )
                               ELSE
-                                  HDC = SQRT( SUM( (XC_CV_ALL(1)%ptr%val(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1)%ptr%val(1:Mdims%ndim,CV_NODJ))**2) )
+                                  HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
                               END IF
                               DO COUNT = Mspars%small_acv%fin( CV_NODI ), Mspars%small_acv%fin( CV_NODI + 1 ) - 1
                                   IF ( Mspars%small_acv%col( COUNT ) == CV_NODJ ) THEN
