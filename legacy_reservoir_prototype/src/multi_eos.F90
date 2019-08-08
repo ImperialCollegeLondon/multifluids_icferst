@@ -412,7 +412,9 @@ contains
         !!$ Den = Den0 * exp[ c0 * ( P - P0 ) ] :: Exponential_1 EOS
         !!$ Den = c0 * P** c1                   :: Exponential_2 EOS
 
-        pressure => extract_tensor_field( packed_state, 'PackedFEPressure' )
+        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )
+        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+
         temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
         have_temperature_field = ( stat == 0 )
         !! Arash
@@ -505,9 +507,6 @@ contains
             !Retrieve coefficients
             call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
             call initialise_field(sfield, trim( option_path_comp )//"/linear_in_pressure/coefficient_B" , position)
-            !If it is flooding, then the second coefficient is the bathymetry and it has to be negative.
-            !The formula becomes: rho = P * eos_coefs( 1 ) - bathymetry
-            if (is_flooding .and. minval(sfield%val, sfield%val> 0.) > 0.) sfield%val = - sfield%val
             Rho = eos_coefs( 1 ) * pressure % val(1,1,:) + sfield%val
             perturbation_pressure = 1.
             !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) + eos_coefs( 2 )
@@ -676,9 +675,6 @@ contains
             FLAbort( 'No option given for choice of EOS' )
         end if Conditional_EOS_Option
 
-        !For flooding ensure that the height (density of phase 1) is non-zero and positive
-        if (is_flooding .and. iphase == 1) Rho = max(Rho, flooding_hmin)
-
         deallocate( perturbation_pressure, RhoPlus, RhoMinus )
 
         !No need to update halos as all the operations are local, and all the
@@ -746,92 +742,6 @@ contains
 
         return
     end subroutine Assign_Equation_of_State
-
-    subroutine Calculate_flooding_absorptionTerm(state, packed_state, Flooding_absorp, Mdims, ndgln)
-        implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
-        type (multi_field) :: Flooding_absorp
-        type( multi_dimensions ), intent( in ) :: Mdims
-        type(multi_ndgln), intent(in) :: ndgln
-        !Local variables
-        integer :: ipres, iphase, idim, loc
-        type( scalar_field ), pointer :: Spipe
-
-        if(.not.is_flooding) return !Nothing to do here, return
-
-        !Initialise
-        Flooding_absorp%val=0.
-        !For the non-pipe phases, add manually the manning coefficient use equation 13 from the manual (the one that defines the b)
-        call calculate_manning_coef(Flooding_absorp)
-
-        !The following part is the absorption for the pipes
-        if (Mdims%npres > 1) then
-            Spipe => extract_scalar_field( state(1), "Sigma" )
-            do iphase = Mdims%n_in_pres + 1, Mdims%nphase
-                ! set \sigma for the pipes here
-                call assign_val(Flooding_absorp%val( 1,1, iphase, : ),Spipe%val)
-            end do
-        end if
-
-        contains
-
-        subroutine calculate_manning_coef(Flooding_absorp)
-            implicit none
-            type (multi_field) :: Flooding_absorp
-            !Local variables
-            real, parameter :: hmin = max(flooding_hmin, 1d-8) * 1.1!The velocity solver is very sensitive to this parameter
-            real, parameter :: u_min = 1d-2 !increase it if having problems to converge
-            real, parameter :: g = 9.80665!Set default value if not specified by the user
-            integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
-            type( tensor_field ), pointer :: velocity, Nm, density
-            type(vector_field), pointer :: gravity_direction
-            real, dimension(mdims%cv_nloc) :: bathymetry, Nm_aux
-            real, dimension(:), allocatable :: r_nod_count
-            logical :: averaging
-            real :: shallow_drag
-
-            !Check whether to use the harmonic mean of the bathymetry
-            averaging = have_option('/flooding/averaging')
-            !Strenght shallow_drag
-            call get_option('/flooding/shallow_drag', shallow_drag, default = 1d-1)
-
-            Nm => extract_tensor_field( packed_state, "PackedManningcoef" )!Defined element-wise
-            velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-            density => extract_tensor_field( packed_state, "PackedDensity" )!For flooding the first phase is the height
-            iphase = 1!First phase of velocity only
-
-            allocate(r_nod_count(size(Flooding_absorp%val,4))); r_nod_count = 0.
-            do ele = 1, Mdims%totele
-                do cv_iloc = 1, Mdims%cv_nloc
-                    !Create bathymetry field just in case of using the mean
-                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                    bathymetry(cv_iloc) = max(hmin, density%val(1,1,cv_nod))
-                end do                               !Normal mean                          !Harmonic mean
-                if (averaging) bathymetry = (sum(bathymetry) / dble(Mdims%cv_nloc))!(sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
-                do cv_iloc = 1, Mdims%cv_nloc
-                    mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
-                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                    r_nod_count(mat_nod) = r_nod_count(mat_nod) + 1
-                    Nm_aux(cv_iloc) = Nm%val(1,1,ele) + max(flooding_hmin, shallow_drag*(2*hmin-density%val(1,1,cv_nod))/hmin)
-                    do u_iloc = 1, mdims%u_nloc
-                        u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
-                        !Since Flooding_absorp is of memory_type 1 we can populate it directly
-                        do i = 1, Mdims%n_in_pres!Only for the phases not in the pipes
-                            Flooding_absorp%val(1,1,i, mat_nod) = Flooding_absorp%val(1,1,i, mat_nod) + Nm_aux(cv_iloc)**2. * g *&
-                                max(u_min,sqrt(dot_product(velocity%val(1:2,iphase,u_nod),velocity%val(1:2,iphase,u_nod))))&!We are using only two dimensions of the velocity because
-                                /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average         !<= this is a 2D model if used in 3D, the third dimension is time!
-                        end do
-                    end do
-                end do
-            end do
-            !Average considering times node has been visited
-            do i = 1, Mdims%n_in_pres
-                Flooding_absorp%val(1, 1, i, :) = Flooding_absorp%val(1, 1, i, :) / r_nod_count
-            end do
-            deallocate(r_nod_count)
-        end subroutine calculate_manning_coef
-    end subroutine Calculate_flooding_absorptionTerm
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                       upwnd, suf_sig_diagten_bc )
@@ -2295,58 +2205,6 @@ contains
 
         call deallocate(targ_Store)
     end subroutine get_RockFluidProp
-
-
-    subroutine get_FloodingProp(state, packed_state)
-        !Gets flooding manning coefficient
-        implicit none
-        type(state_type), dimension(:), intent(inout) :: state
-        type( state_type ), intent( inout ) :: packed_state
-        !Local variables
-        type (tensor_field), pointer :: t_field
-        type (scalar_field), target :: targ_Store
-        type (scalar_field), pointer :: s_field
-        type (vector_field), pointer :: position
-        type(mesh_type), pointer :: fl_mesh
-        type(mesh_type) :: Auxmesh
-        integer :: iphase, nphase
-        character(len=500) :: path
-
-        t_field=>extract_tensor_field(packed_state,"PackedManningcoef")
-        !By default the pressure mesh (position 1)
-        s_field => extract_scalar_field(state(1),1)
-        position => get_external_coordinate_field(packed_state, s_field%mesh)
-
-        fl_mesh => extract_mesh( state(1), "P0DG" )
-        Auxmesh = fl_mesh
-        call allocate (targ_Store, Auxmesh, "Temporary_Manningcoef")
-
-        !Retrieve Manning coefficent
-        path = "/flooding/scalar_field::manning_coef/prescribed/value"
-        if (have_option(trim(path))) then
-            call initialise_field_over_regions(targ_Store, trim(path) , position)
-            t_field%val(1,1,:) = targ_Store%val(:)
-        end if
-        call deallocate(targ_Store)
-
-
-        fl_mesh => extract_mesh( state(1), "PressureMesh" )
-        Auxmesh = fl_mesh
-        call allocate (targ_Store, Auxmesh, "Temporary_Bathymetry")
-        !Retrieve Bathymetry coefficent
-        path = "/material_phase[0]/scalar_field::Bathymetry/prescribed/value"
-        if (have_option(trim(path))) then
-            t_field=>extract_tensor_field(packed_state,"PackedBathymetry")
-            call initialise_field_over_regions(targ_Store, trim(path) , position)
-            t_field%val(1,1,:) = targ_Store%val(:)
-        end if
-
-        call deallocate(targ_Store)
-     end subroutine get_FloodingProp
-
-
-
-
     !!JWL equation functions
 
     function JWL( A, B, w, R1, R2, E0, p,  roe, ro) result(fro)

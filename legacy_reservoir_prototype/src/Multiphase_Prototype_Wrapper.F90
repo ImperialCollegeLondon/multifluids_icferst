@@ -1043,8 +1043,7 @@ contains
         integer :: Vdegree, Pdegree
         !By default it is inertia dominated
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media') .or. have_option('/magma_simulator')
-        is_magma = have_option('/magma_simulator') 
-        is_flooding = have_option('/flooding_simulator')
+        is_magma = have_option('/magma_simulator')
         is_poroelasticity = have_option('/poroelasticity')
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/femdem_fracture' )
@@ -1054,7 +1053,7 @@ contains
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         !Arash
         has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
-        !HH
+
         has_enthalpy = have_option( '/material_phase[0]/scalar_field::Enthalpy/' )
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")

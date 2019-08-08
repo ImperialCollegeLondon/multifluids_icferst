@@ -46,10 +46,6 @@ as an absorption term and also the RHS that should include the second time-deriv
 and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
           <ref name="comment"/>
         </element>
-        <element name="flooding_simulator">
-          <a:documentation>Flooding simulator</a:documentation>
-          <ref name="comment"/>
-        </element>
       </choice>
       <ref name="geometry"/>
       <ref name="solver_options"/>
@@ -1097,26 +1093,6 @@ This will over-write the field specified in Sigma1.</a:documentation>
                     </element>
                   </optional>
                   <optional>
-                    <element name="dumping_well_factor">
-                      <a:documentation>(ONLY FOR CONSERVATIVE FORMULATIONS) This term is used to control a combination of implicit/explicit implementation in this way:
-(1 + dumping_well_factor) Implicit - dumping_well_factor (Explicit)
-
-Values above 0 imply that explicit is used to dump the effect of the implicit term (which may be unstable);
-
-A Value of 0 =&gt; Fully implicit; A Value of -1 implies only Explicit
-
-Recommended values are 0.0 (Fully implicit), 0.25 or 0.5 (Some dumping but primarily implicit)
-By default this is 0.5                   </a:documentation>
-                      <ref name="real"/>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="dt_pipe_factor">
-                      <a:documentation>Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}</a:documentation>
-                      <ref name="real"/>
-                    </element>
-                  </optional>
-                  <optional>
                     <element name="switch_wells_on_and_off">
                       <a:documentation>Switches wells on and off to optimise production</a:documentation>
                       <element name="phase_exclude">
@@ -1210,38 +1186,6 @@ The following must be specified:
           <optional>
             <element name="include_pore_pressure">
               <empty/>
-            </element>
-          </optional>
-        </element>
-      </optional>
-      <optional>
-        <element name="flooding">
-          <a:documentation>Flooding parameters</a:documentation>
-          <element name="scalar_field">
-            <a:documentation>This is the term Nm of the manning formula:
-b = Nm^2*g * |u|/h^1.33;
-Nm is the manning coefficent. Values between [0.01 and 0.025];
-Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
-For no friction set this to zero or do not activate it.</a:documentation>
-            <attribute name="name">
-              <value>manning_coef</value>
-            </attribute>
-            <element name="prescribed">
-              <ref name="material_mesh_choice"/>
-              <ref name="prescribed_scalar_field"/>
-            </element>
-          </element>
-          <optional>
-            <element name="averaging">
-              <a:documentation>Perform the mean of the bathymetry when calculating the Manning formula;</a:documentation>
-              <ref name="comment"/>
-            </element>
-          </optional>
-          <optional>
-            <element name="shallow_drag">
-              <a:documentation>Factor that controls the strenght of the drag introduced in the dry areas;
-it has a simmilar effect as the artificial diffusion. Default value = 1e-1.</a:documentation>
-              <ref name="real"/>
             </element>
           </optional>
         </element>
@@ -3888,9 +3832,7 @@ Defaults to zero at machine tolerance (epsilon(0.0)) if not selected.</a:documen
             <element name="linear_in_pressure">
               <a:documentation>Linear in Pressure EOS
 
-DEN = A * P + B
-
-Use this option for flooding, being A = 1/gravity and B the bathymetry</a:documentation>
+DEN = A * P + B</a:documentation>
               <element name="coefficient_A">
                 <ref name="real"/>
               </element>

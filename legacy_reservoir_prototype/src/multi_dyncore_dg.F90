@@ -127,7 +127,7 @@ contains
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
-           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
+           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat, stat
            type(vector_field)  :: vtracer, residual
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
@@ -168,9 +168,11 @@ contains
 
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
            IGOT_T2_loc = 0
-           p => extract_tensor_field( packed_state, "PackedFEPressure" )
+
             if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
+               p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
+               if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
                if (is_porous_media) then
                     !Check that the extra parameters required for porous media thermal simulations are present
                     if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
@@ -184,8 +186,12 @@ contains
                     !Start with the process to apply the min max principle
                     call force_min_max_principle(1)
                 end if
-               den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+               den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
+               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
+               if (stat /= 0) then
+                 den_all2 => extract_tensor_field( packed_state, "PackedDensity", stat )
+                 denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+               end if
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
 			   	if(have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
@@ -194,12 +200,13 @@ contains
                end if
                IGOT_T2_loc = 1
             else if ( lcomp > 0 ) then
+               p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
                den_all = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1,  :, : )
            else
-
+               p => extract_tensor_field( packed_state, "PackedFEPressure" )
                den_all=1.0
                denold_all=1.0
            end if
@@ -1244,21 +1251,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             ELSE
               DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
               DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-              if (is_flooding) then
-                !For Flooding the densities not in the pipes have to be equal to unity
-                ALLOCATE( DEN_ALL( nphase, Mdims%cv_nonods ))
-                ALLOCATE( DENOLD_ALL( nphase, Mdims%cv_nonods ))
-                do iphase = 1, n_in_pres
-                  DEN_ALL(iphase,:) = 1.0
-                  DENOLD_ALL(iphase,:) = 1.0
-                end do
-                do iphase = n_in_pres+1, nphase
-                  DEN_ALL(iphase,:) = DEN_ALL2%VAL( 1, iphase, : )
-                  DENOLD_ALL(iphase,:) = DENOLD_ALL2%VAL( 1, iphase, : )
-                end do
-              else
-                DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
-              end if
+              DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
             END IF
 
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
@@ -1418,7 +1411,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
              if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
-             if (IGOT_THETA_FLUX == 1 .or. is_flooding) then
+             if (IGOT_THETA_FLUX == 1 ) then
                  deallocate(DEN_ALL, DENOLD_ALL)
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
@@ -1610,8 +1603,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-        CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-
+        !For porous media we do not need PackedCVPressure
+        if (.not. is_porous_media) then
+          CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
+        else
+          CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
+        end if
         linearise_density = have_option_for_any_phase('phase_properties/Density/linearise_density', Mdims%n_in_pres)
 
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
@@ -1742,12 +1739,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 if (associated(multi_absorp%PorousMedia%val))then!sprint_to_do AVOID THESE CONVERSIONS...
     do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)
         call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
-    end do
-end if
-!Temporary conversion
-if (associated(multi_absorp%Flooding%val))then!sprint_to_do AVOID THESE CONVERSIONS...
-    do cv_nod = 1, size(multi_absorp%Flooding%val,4)
-        call add_multi_field_to_array(multi_absorp%Flooding, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
 end if
 
@@ -2029,7 +2020,7 @@ end if
         call DEALLOCATE( CDP_tensor )
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
-        ! call calc_CVPres_from_FEPres()
+        if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
 !
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
@@ -2054,6 +2045,90 @@ end if
 
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
+
+    contains
+
+        subroutine calc_CVPres_from_FEPres()
+            !This is for FE pressure
+            implicit none
+            integer stat_cvp
+
+            if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV...
+                CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
+                !...inside the wells it is still FE pressure
+                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+                    IPRES = Mdims%npres
+                    CVP_ALL%VAL(1,ipres,:) = 0.
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
+                            END DO
+                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                end if
+            else
+                CVP_ALL%VAL = 0.0
+                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+                    MASS_CV = 0.0
+                    IPRES = 1
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                            END DO
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                    MASS_CV = 0.0
+                    IPRES = Mdims%npres
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
+                            END DO
+                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                ELSE
+                    MASS_CV = 0.0
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        if (node_owned(CVP_all,CV_NOD)) then
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, Mspars%CMC%col( COUNT ) )
+                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                            END DO
+                        else
+                            Mass_CV(CV_NOD)=1.0
+                        end if
+                    END DO
+                    DO IPRES = 1, Mdims%npres
+                        CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+                    END DO
+                ENDIF
+            end if
+            !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
+             ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
+
+            cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
+            if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
+
+        end subroutine calc_CVPres_from_FEPres
+
+
+
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
@@ -2772,7 +2847,8 @@ end if
         type(tensor_field), pointer :: gradU
 
 
-        fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
+        fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction", stat )
+        if (stat/=0) fem_vol_frac_f => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction", stat )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
 
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
@@ -2884,7 +2960,6 @@ end if
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/vector_field::Absorption/lump_absorption') &
             ) lump_absorption = .true.
-        if (is_flooding) lump_absorption = .true.!<=This has to be be between these two options
         lump_mass2 = .false.
         if ( lump_absorption ) lump_mass2 = .true.
         ! This applies a non-linear shock capturing scheme which
@@ -2908,7 +2983,7 @@ end if
         ! =1.0 include the pressure term.
         call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/method', &
             RESID_BASED_STAB_DIF, default=0 )
-        BETWEEN_ELE_STAB = RESID_BASED_STAB_DIF/=0 .and..not.is_flooding! Always switch on between element diffusion if using non-linear
+        BETWEEN_ELE_STAB = RESID_BASED_STAB_DIF/=0 ! Always switch on between element diffusion if using non-linear
         call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/nonlinear_velocity_coefficient', &
             U_NONLIN_SHOCK_COEF, default=1.)
         call get_option('/material_phase[0]/phase_properties/Stabilisation/Petrov_Galerkin_stabilisation/include_pressure', &
@@ -3394,10 +3469,6 @@ end if
                     LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD )
                     LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
                 ENDIF
-                if (is_flooding) then
-                    LOC_UDEN( :, CV_ILOC ) = 1.0
-                    LOC_UDENOLD( :, CV_ILOC) = 1.0
-                end if
                 IF(GOT_VIRTUAL_MASS) THEN
                     LOC_VIRTUAL_MASS( :,:, CV_ILOC )         = VIRTUAL_MASS( :,:, CV_INOD )
                     LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )     = VIRTUAL_MASS_OLD( :,:, CV_INOD )
@@ -4526,12 +4597,6 @@ end if
                         SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD )
                         SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 )
                     ENDIF
-                    if (is_flooding) then
-                        SLOC_UDEN( :, CV_SILOC )  = 1.0
-                        SLOC2_UDEN( :, CV_SILOC ) = 1.0
-                        SLOC_UDENOLD( :, CV_SILOC ) = 1.0
-                        SLOC2_UDENOLD( :, CV_SILOC ) = 1.0
-                    end if
                     IF(GOT_VIRTUAL_MASS) THEN
                         SLOC_VIRTUAL_MASS( :,:, CV_SILOC )   = VIRTUAL_MASS( :,:, CV_INOD )
                         SLOC2_VIRTUAL_MASS( :,:, CV_SILOC )  = VIRTUAL_MASS( :,:, CV_INOD2 )
@@ -7261,7 +7326,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  if ( boussinesq .or. is_flooding ) then
+                  if ( boussinesq ) then
                      den_gi( :, iphase ) = 1.0
                   else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
