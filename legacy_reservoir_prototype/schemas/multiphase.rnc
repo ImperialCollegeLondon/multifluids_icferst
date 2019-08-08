@@ -895,18 +895,6 @@ start =
                       # Defaults to 1.0e-6.
                       element pipe_roughness{ real }?
                    }?,
-                   ## (ONLY FOR CONSERVATIVE FORMULATIONS) This term is used to control a combination of implicit/explicit implementation in this way:
-                   ## (1 + dumping_well_factor) Implicit - dumping_well_factor (Explicit)
-                   ##
-                   ## Values above 0 imply that explicit is used to dump the effect of the implicit term (which may be unstable);
-                   ##
-                   ## A Value of 0 => Fully implicit; A Value of -1 implies only Explicit
-                   ##
-                   ## Recommended values are 0.0 (Fully implicit), 0.25 or 0.5 (Some dumping but primarily implicit)
-                   ## By default this is 0.5                   
-                   element dumping_well_factor{ real }?,
-                   ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
-                   element dt_pipe_factor{ real }?,
                    ## Switches wells on and off to optimise production
                    element switch_wells_on_and_off{
                       element phase_exclude{ integer }
