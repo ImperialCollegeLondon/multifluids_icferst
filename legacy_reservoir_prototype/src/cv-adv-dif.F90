@@ -5859,7 +5859,7 @@ end if
         IF ( on_domain_boundary ) THEN
             UDGI_IMP_ALL=0.0
             DO U_KLOC = 1, Mdims%u_nloc
-                DO IPHASE = 1, Mdims%nphase
+                DO IPHASE = 1, Mdims%n_in_pres
                     UDGI_IMP_ALL(:,IPHASE) = UDGI_IMP_ALL(:,IPHASE) + CV_funs%sufen( U_KLOC, GI ) * &
                         UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * LOC_U( :, IPHASE, U_KLOC )
                 END DO
