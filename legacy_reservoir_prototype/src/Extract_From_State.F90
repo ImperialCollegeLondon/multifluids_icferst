@@ -864,13 +864,6 @@ contains
         call insert(packed_state,ten_field,"PackedRockFluidProp")
         call deallocate(ten_field)
 
-        ! For Flooding: Manning coefficient
-        if(have_option('/flooding')) then
-            call allocate(ten_field,element_mesh,"PackedManningcoef",dim=[1,nphase])
-            call insert(packed_state,ten_field,"PackedManningcoef")
-            call deallocate(ten_field)
-        end if
-
         pressure=>extract_scalar_field(state(1),"Pressure")
         call insert(packed_state,pressure%mesh,"PressureMesh")
 
@@ -910,25 +903,28 @@ contains
             call insert(multicomponent_state(icomp),p2,"PackedFEPressure")
         end do
 
-        call insert_sfield(packed_state,"CVPressure",1,npres)
-        p2=>extract_tensor_field(packed_state,"PackedCVPressure")
-        do ipres = 1, npres
-            p2%val(1,ipres,:)=pressure%val
-        end do
-
+        if (.not. is_porous_media) then!For porous media we prefentially use CVPressure, therefore this second field is redundant
+          call insert_sfield(packed_state,"CVPressure",1,npres)!Tried to remove this field but some inertia cases were failing...
+          p2=>extract_tensor_field(packed_state,"PackedCVPressure")
+          do ipres = 1, npres
+              p2%val(1,ipres,:)=pressure%val
+          end do
+        end if
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! (this could be cleaned up in the future)
         call add_new_memory(packed_state,pressure,"Dummy")
-
-        call insert_sfield(packed_state,"FEDensity",1,nphase)
-        d2=>extract_tensor_field(packed_state,"PackedFEDensity")
-        do icomp = 1, ncomp
-            call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
-        end do
-
+        if (.not. is_porous_media) then
+          call insert_sfield(packed_state,"FEDensity",1,nphase)
+          d2=>extract_tensor_field(packed_state,"PackedFEDensity")
+          do icomp = 1, ncomp
+              call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
+          end do
+        end if
         call insert_sfield(packed_state,"Density",1,nphase,&
             add_source=.false.)
-        call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
+        !Check for phase 1, but all the phases should have this selected
+        if (have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")) &
+                call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
         drhodp=>extract_tensor_field(packed_state,"PackedDRhoDPressure")
@@ -939,7 +935,7 @@ contains
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FETemperature",1,nphase)
+        if (.not. is_porous_media) call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
         !!HH
@@ -958,7 +954,7 @@ contains
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
+        if (.not. is_porous_media) call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
         end if
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
@@ -969,7 +965,7 @@ contains
 
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
-        call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
+        if (.not. is_porous_media) call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
         if (ncomp>1) then
            call insert_sfield(packed_state,"PhaseVolumeFractionComponentSource",1,nphase)
         end if
@@ -1287,12 +1283,12 @@ contains
                 end if
 
                 if(has_phase_volume_fraction) then
-                    call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
-                        extract_scalar_field(state(i),"PhaseVolumeFraction")))
                     call unpack_sfield(state(i),packed_state,"OldPhaseVolumeFraction",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
                         extract_scalar_field(state(i),"OldPhaseVolumeFraction")))
+                    call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
+                        extract_scalar_field(state(i),"PhaseVolumeFraction")))
                     call unpack_sfield(state(i),packed_state,"PhaseVolumeFraction",1,iphase)
                     ! call unpack_sfield(state(i),packed_state,"PhaseVolumeFractionSource",1,iphase)!sprint_to_do Diagnostic fields do not get along with this...
                                                                                                     !should we do the same with the other sources and absorptions?
@@ -1674,6 +1670,7 @@ contains
         end subroutine insert_vfield
 
         subroutine unpack_sfield(nstate,mstate,name,icomp, iphase,free)
+          !Deallocates the memory from state and points it to packed_state
             type(state_type), intent(inout) :: nstate, mstate
             character(len=*) :: name
             integer :: icomp,iphase, stat
@@ -1689,7 +1686,6 @@ contains
             else
                 lfree=.true.
             end if
-            lfree=.false.
 
             if (trim(name)=="Pressure") then
                 mfield=>extract_tensor_field(mstate,"PackedFE"//name)
@@ -1699,7 +1695,6 @@ contains
             end if
 
             nfield=>extract_scalar_field(nstate,name,stat)
-
             if (stat==0) then
                 if (size(nfield%val(:))>1) then
                     mfield%val(icomp,iphase,1:size(nfield%val))=nfield%val(:)
@@ -1709,7 +1704,7 @@ contains
                 if (icomp==1 .and. iphase == 1) then
                     mfield%option_path=nfield%option_path
                 end if
-                if (lfree .and. associated(nfield%val)) then
+                if (lfree) then
 #ifdef HAVE_MEMORY_STATS
                     call register_deallocation("scalar_field", "real", &
                         size(nfield%val), nfield%name)
@@ -1760,11 +1755,11 @@ contains
                 end if
                 if (lfree) then
 #ifdef HAVE_MEMORY_STATS
-                call register_deallocation("vector_field", "real", &
-                    size(nfield%val), name=nfield%name)
+                  call register_deallocation("vector_field", "real", &
+                      size(nfield%val), name=nfield%name)
 #endif
-                deallocate(nfield%val)
-            end if
+                  deallocate(nfield%val)
+                end if
                 nfield%val=>mfield%val(:,iphase,:)
                 nfield%wrapped=.true.
             else
@@ -2022,10 +2017,6 @@ contains
              call allocate_multi_field( Mdims, multi_absorp%PorousMedia, ovmesh%nodes, field_name="PorousMedia_AbsorptionTerm")
 !            if ( ncomp > 0 ) !"Not ready yet"
         end if
-        !Need to add this
-        if (is_flooding) then
-             call allocate_multi_field( Mdims, multi_absorp%Flooding, ovmesh%nodes, field_name="Flooding_AbsorptionTerm")
-        end if
 
     end subroutine prepare_absorptions
 
@@ -2156,7 +2147,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
-        Infinite_norm_tol, calculate_mass_tol
+        Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres
     !! local variable, holds the maximum mass error
     real :: max_calculate_mass_delta
     real, dimension(2) :: totally_min_max
@@ -2187,6 +2178,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     !Tolerance for the infinite norm
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Infinite_norm_tol',&
         Infinite_norm_tol, default = 0.01 )
+    !For the time being the pressure is 10% or based on the saturation
+    Infinite_norm_tol_pres = max(Infinite_norm_tol * 5., 0.1)
     !retrieve number of Fixed Point Iterations
     call get_option( '/solver_options/Non_Linear_Solver', NonLinearIteration, default = 3 )
     !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
@@ -2196,6 +2189,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     if (have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear')) then
         call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
             variable_selection, default = 3)!by default saturation so it is effectively disabled for single phase
+    end if
+    if (variable_selection == 3 .and. .not. have_option("/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic")) then
+        ewrite(0,*) "WARNING: Not prognostic saturation should not be used to control the FPI convergence, changed to pressure."
+        variable_selection = 1
     end if
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
         increaseFactor, default = 1.1 )
@@ -2270,11 +2267,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                         if (size(reference_field,2) /= size(phasevolumefraction,1) .or. &
                             size(reference_field,3) /= size(phasevolumefraction,2) ) then
                             deallocate(reference_field)
-                            allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+                            allocate (reference_field(0:1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                         end if
                     else
-                        allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+                        allocate (reference_field(0:1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                     end if
+                    reference_field(0,1,:) = pressure(1,1,:)
                     reference_field(1,:,:) = phasevolumefraction
                 case (4)!Temperature
                     call get_var_from_packed_state(packed_state, temperature = temperature)
@@ -2283,11 +2281,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                             size(reference_field,3) /= size(temperature,2) ) then
                             deallocate(reference_field)
                             !If temperature, also keep and eye on saturation with the other convergence criterion
-                            allocate (reference_field(2,size(temperature,1),size(temperature,2) ))
+                            allocate (reference_field(0:2,size(temperature,1),size(temperature,2) ))
                         end if
                     else
-                        allocate (reference_field(2,size(temperature,1),size(temperature,2) ))
+                        allocate (reference_field(0:2,size(temperature,1),size(temperature,2) ))
                     end if
+                    reference_field(0,1,:) = pressure(1,1,:)
                     reference_field(1,:,:) = temperature
                     reference_field(2,:,:) = phasevolumefraction
                     !! Arash
@@ -2298,11 +2297,12 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                               size(reference_field,3) /= size(solutemassfraction,2) ) then
                               deallocate(reference_field)
                               !If temperature, also keep and eye on saturation with the other convergence criterion
-                              allocate (reference_field(2,size(solutemassfraction,1),size(solutemassfraction,2) ))
+                              allocate (reference_field(0:2,size(solutemassfraction,1),size(solutemassfraction,2) ))
                           end if
                       else
-                          allocate (reference_field(2,size(solutemassfraction,1),size(solutemassfraction,2) ))
+                          allocate (reference_field(0:2,size(solutemassfraction,1),size(solutemassfraction,2) ))
                       end if
+                      reference_field(0,1,:) = pressure(1,1,:)
                       reference_field(1,:,:) = solutemassfraction
                       reference_field(2,:,:) = phasevolumefraction
                       !!HH
@@ -2326,10 +2326,10 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     if (allocated(reference_field)) then
                         if (size(reference_field,3) /= size(pressure,3) ) then
                             deallocate(reference_field)
-                            allocate (reference_field(1,1,size(pressure,3) ))
+                            allocate (reference_field(1,size(pressure,2),size(pressure,3) ))
                         end if
                     else
-                        allocate (reference_field(1,1,size(pressure,3) ))
+                        allocate (reference_field(1,size(pressure,2),size(pressure,3) ))
                     end if
                     reference_field(1,1,:) = pressure(1,1,:)
             end select
@@ -2348,6 +2348,19 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             Repeat_time_step = .false.
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
                 phasevolumefraction = phasevolumefraction)
+
+            inf_norm_pres = 0
+            !Consider pressure in all the cases but velocity
+            if (variable_selection>2) then
+              !Calculate normalized infinite norm of the difference
+              !For parallel
+              totally_min_max(1)=0.!minval(reference_field(0,1,:))!use stored pressure
+              totally_min_max(2)=maxval(reference_field(0,1,:))!use stored pressure
+              call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+
+              !Analyse the difference
+              inf_norm_pres = inf_norm_scalar_normalised(pressure(1,1:1,:), reference_field(0,1:1,:), 1.0, totally_min_max)
+            end if
 
             select case (variable_selection)
 
@@ -2385,33 +2398,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   !!!!!!!
                   ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))!/backtrack_or_convergence
                   inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
-                 !backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
-                 case (6)!Enthalpy
-                      call get_var_from_packed_state(packed_state, Enthalpy = Enthalpy)
-                      !Calculate normalized infinite norm of the difference
-                                                              !This Mask is important because otherwise it gets the lowest saturation value
-                      totally_min_max(1)=minval(reference_field(1,:,:))
-                      totally_min_max(2)=maxval(reference_field(1,:,:))!use stored Enthalpy
-                      !For parallel
-                      call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                      !Analyse the difference !Calculate infinite norm, not consider wells
-                      ts_ref_val = inf_norm_scalar_normalised(Enthalpy(1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
-                      !Calculate value of the l infinitum for the saturation as well
-                      inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
-                  ! !Calculate value of the functional (considering wells and reservoir)
-                  ! ts_ref_val = get_Convergence_Functional(tracer, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
-                  ! backtrack_or_convergence = get_Convergence_Functional(tracer, reference_field(1,:,:), backtrack_or_convergence)
-                  ! !call get_var_from_packed_state(packed_state, tracer = tracer)
-                  !Calculate normalized infinite norm of the difference
-                                                          !This Mask is important because otherwise it gets the lowest saturation value
-                  !totally_min_max(1)=minval(reference_field, MASK = reference_field > 0.000001)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
-                  !totally_min_max(2)=maxval(reference_field)!use stored temperature
-                  !For parallel
-                  !call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                  !Analyse the difference !Calculate infinite norm, not consider wells
-                  !ts_ref_val = inf_norm_scalar_normalised(tracer(:,:), reference_field(1,:,:), 1.0, totally_min_max)
-                  !Calculate value of the l infinitum for the saturation as well
-                  !inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+!                  backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
 
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
@@ -2441,32 +2428,24 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                inf_norm_val = 0.0; max_calculate_mass_delta= 0.
            end if
 
-
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
-                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"FPI convergence: ",ts_ref_val,"; L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection == 4) then!temperature
-                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection == 5) then! concentration
-                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Concentration (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection == 6) then! Enthalpy
-                write(output_message, '(a, E10.3,a,E10.3, a, i0, a, E10.3)' )"Enthalpy (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
+                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Saturation (Relative L2): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, &
+                  "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
+            else if (is_porous_media .and. variable_selection >= 4) then!temperature
+                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
+                 "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
 
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
-            if (is_flooding) backtrack_or_convergence = ts_ref_val
             !Automatic non-linear iteration checking
             if (is_porous_media) then
                 select case (variable_selection)
-                case (4)!For temperature only infinite norms for saturation and temperature
-                        ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
-                            .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-                !Arash
-                case (5)!For temperature only infinite norms for saturation and temperature
-                        ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
+                case (4, 5)!For temperature only infinite norms for saturation and temperature
+                        ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                 !HH
                 case (6)!For Enthalpy only infinite norms for saturation and Enthalpy
@@ -2479,11 +2458,11 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                             ts_ref_val = tolerance_between_non_linear/2.
 !                            if (getprocno() == 1) output_message = trim(output_message)// "; Infinite norm 5 times better than requested. Ignoring FPI convergence tolerance."
                         end if
-                        ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Infinite_norm_tol &
+                        ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                 end select
             else
-                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol) .or. its >= NonLinearIteration
+                ExitNonLinearLoop = (inf_norm_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres) .or. its >= NonLinearIteration
             end if
             !At least two non-linear iterations
             ExitNonLinearLoop =  ExitNonLinearLoop .and. its >= 2
@@ -2727,15 +2706,14 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     real, dimension(2), intent(in) :: totally_min_max
     !Local variables
     integer :: cv_inod, iphase
-    !Same as normilising values but should be quicker
-    inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))/max((totally_min_max(2)-totally_min_max(1)), 1d-8)
+    !Same as normalising values but should be quicker
+    inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))/max((totally_min_max(2)-totally_min_max(1)), 1e-5)
+
     call allmax(inf_norm_scalar_normalised)
     !rescale with accumulated dumping, if no dumping just pass down a 1.0
     inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
 
 end function
-
-
 
 real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
     !We create a potential to optimize F = sum (f**2), so the solution is when this potential

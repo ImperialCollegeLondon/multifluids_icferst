@@ -2,7 +2,7 @@
 <testproblem>
   <name>BL_2D</name>
   <owner userid="jefferson.gomes"/>
-  <tags>mpml</tags>
+  <tags>mpml advection</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst Advection_SinglePhase.mpml</command_line>
   </problem_definition>

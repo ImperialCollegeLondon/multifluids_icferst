@@ -76,7 +76,7 @@ contains
         type( tensor_field ), pointer :: field1, field2, field3, field4
         type( scalar_field ), pointer :: Cp_s, Density
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
-        logical :: boussinesq
+        logical :: boussinesq, compute_rhoCP
         logical, parameter :: harmonic_average=.false.
 
 
@@ -91,7 +91,7 @@ contains
             end if
         end if
 
-
+        compute_rhoCP = have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
@@ -122,10 +122,12 @@ contains
         end if
 
         allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
+        if (compute_rhoCP) then
+          allocate( Cp( cv_nonods ) ) ; Cp = 1.0
+          allocate( DensityCp_Bulk( nphase * cv_nonods ) ); DensityCp_Bulk = 0.0
+        end if
         allocate( Density_Component( ncomp * nphase * cv_nonods ) )
-        allocate( Density_Bulk( nphase * cv_nonods ), DensityCp_Bulk( nphase * cv_nonods ) )
-        Density_Bulk = 0.0 ; DensityCp_Bulk = 0.0
+        allocate( Density_Bulk( nphase * cv_nonods ) ); Density_Bulk = 0.0
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
 
@@ -137,7 +139,7 @@ contains
               sp = ( iphase - 1 ) * cv_nonods + 1
               ep = iphase * cv_nonods
 
-              Rho=0. ; dRhodP=0. ; Cp=1.
+              Rho=0. ; dRhodP=0.
               call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
                    nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP )
 
@@ -184,8 +186,10 @@ contains
 
                     Cp_s => extract_scalar_field( state( nphase + icomp ), &
                          'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                    if ( stat == 0 ) call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
-                    DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
+                    if ( stat == 0 .and. compute_rhoCP ) then
+                      call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
+                      DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
+                    end if
 
                  else
 
@@ -198,13 +202,14 @@ contains
                     ! rho = rho + 1.0 / ( a_i / rho_i )
                     Cp_s => extract_scalar_field( state( nphase + icomp ), &
                          'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                    if ( stat == 0 ) call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
+                    if ( stat == 0 .and. compute_rhoCP) then
+                      call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
 
-                    do cv_nod = 1, cv_nonods
-                       ip = ( iphase - 1 ) * cv_nonods + cv_nod
-                       DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) )
-                    end do
-
+                      do cv_nod = 1, cv_nonods
+                         ip = ( iphase - 1 ) * cv_nonods + cv_nod
+                         DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) )
+                      end do
+                    end if
                  end if
 
               else
@@ -214,26 +219,26 @@ contains
 
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
                  !Cp_s => extract_scalar_field( state( iphase ), 'SoluteMassFractionHeatCapacity', stat )
-                 if ( stat == 0 ) call assign_val(Cp,Cp_s % val)
-                 DensityCp_Bulk( sp : ep ) = Rho * Cp
-
-                 !Arash
-                 if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
-                 DensityCp_Bulk( sp : ep ) = Rho
-
+                 if ( stat == 0 .and. compute_rhoCP) then
+                   call assign_val(Cp,Cp_s % val)
+                   DensityCp_Bulk( sp : ep ) = Rho * Cp
+                   !Arash
+                   if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
+                   DensityCp_Bulk( sp : ep ) = Rho
+                 end if
               end if
 
            end do ! iphase
         end do ! icomp
 
         if ( ncomp > 1 ) then
-           if ( harmonic_average ) DensityCp_Bulk = 1.0 / DensityCp_Bulk
+           if ( harmonic_average .and. compute_rhoCP) DensityCp_Bulk = 1.0 / DensityCp_Bulk
            call Cap_Bulk_Rho( state, ncomp, nphase, &
-                cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk )
+                cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk, compute_rhoCP )
         end if
 
         field1 => extract_tensor_field( packed_state, "PackedDensity" )
-        field2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+        if (compute_rhoCP) field2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
         if( ncomp > 1 ) field3 => extract_tensor_field( packed_state, "PackedComponentDensity" )
 
         do iphase = 1, nphase
@@ -241,7 +246,7 @@ contains
            ep = iphase * cv_nonods
 
            field1 % val ( 1, iphase, : ) = Density_Bulk( sp : ep )
-           field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )
+           if (compute_rhoCP) field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )
 
            if ( ncomp > 1 ) then
               do icomp = 1, ncomp
@@ -254,10 +259,10 @@ contains
 
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         !if ( boussinesq ) field2 % val = 1.0
-        deallocate( Rho, dRhodP, Cp, Component_l)
-        deallocate( Density_Component, Density_Bulk, DensityCp_Bulk )
+        deallocate( Rho, dRhodP, Component_l)
+        deallocate( Density_Component, Density_Bulk )
         deallocate( eos_option_path )
-
+        if (compute_rhoCP) deallocate(Cp, DensityCp_Bulk)
         !sprint_to_do copying meory to itself...
         do iphase = 1, nphase
            Density => extract_scalar_field( state( iphase ), "Density" )
@@ -268,7 +273,7 @@ contains
 
 
     subroutine Cap_Bulk_Rho( state, ncomp, nphase, &
-        cv_nonods, Density_Component, Density, Density_Cp )
+        cv_nonods, Density_Component, Density, Density_Cp , compute_rhoCP)
 
         implicit none
 
@@ -276,6 +281,7 @@ contains
         integer, intent( in ) :: nphase, ncomp, cv_nonods
         real, dimension( cv_nonods * nphase * ncomp ), intent( in ) :: Density_Component
         real, dimension( cv_nonods * nphase ), intent( inout ) :: Density, Density_Cp
+        logical, intent(in) :: compute_rhoCP
 
         real, dimension( :, : ), allocatable :: Density_Component_Min, Density_Component_Max
         real, dimension( :, : ), allocatable :: Density_Cp_Component_Min, Density_Cp_Component_Max
@@ -285,10 +291,11 @@ contains
 
         allocate( Density_Component_Min( nphase, cv_nonods ) ) ; Density_Component_Min = 1.0e+15
         allocate( Density_Component_Max( nphase, cv_nonods ) ) ; Density_Component_Max = 0.0
-        allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.0e+15
-        allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.0
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
-
+        if (compute_rhoCP) then
+          allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.0e+15
+          allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.0
+          allocate( Cp( cv_nonods ) ) ; Cp = 1.0
+        end if
         do iphase = 1, nphase
             do icomp = 1, ncomp
                 sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
@@ -296,14 +303,15 @@ contains
 
                 Density_Component_Min( iphase, : ) = min( Density_Component_Min( iphase, : ), Density_Component( sc : ec ) )
                 Density_Component_Max( iphase, : ) = max( Density_Component_Max( iphase, : ), Density_Component( sc : ec ) )
+                if (compute_rhoCP) then
+                  Cp = 1.0
+                  Cp_s => extract_scalar_field( state( nphase + icomp ), &
+                      'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                  if( stat == 0 ) Cp = Cp_s % val
 
-                Cp = 1.0
-                Cp_s => extract_scalar_field( state( nphase + icomp ), &
-                    'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                if( stat == 0 ) Cp = Cp_s % val
-
-                Density_Cp_Component_Min( iphase, : ) = min( Density_Cp_Component_Min( iphase, : ), Density_Component( sc : ec ) * Cp )
-                Density_Cp_Component_Max( iphase, : ) = max( Density_Cp_Component_Max( iphase, : ), Density_Component( sc : ec ) * Cp )
+                  Density_Cp_Component_Min( iphase, : ) = min( Density_Cp_Component_Min( iphase, : ), Density_Component( sc : ec ) * Cp )
+                  Density_Cp_Component_Max( iphase, : ) = max( Density_Cp_Component_Max( iphase, : ), Density_Component( sc : ec ) * Cp )
+                end if
             end do
         end do
 
@@ -313,13 +321,15 @@ contains
 
             Density( sp : ep ) = min( Density( sp : ep ), Density_Component_Max( iphase, : ) )
             Density( sp : ep ) = max( Density( sp : ep ), Density_Component_Min( iphase, : ) )
-
-            Density_Cp( sp : ep ) = min( Density_Cp( sp : ep ), Density_Cp_Component_Max( iphase, : ) )
-            Density_Cp( sp : ep ) = max( Density_Cp( sp : ep ), Density_Cp_Component_Min( iphase, : ) )
+            if (compute_rhoCP) then
+              Density_Cp( sp : ep ) = min( Density_Cp( sp : ep ), Density_Cp_Component_Max( iphase, : ) )
+              Density_Cp( sp : ep ) = max( Density_Cp( sp : ep ), Density_Cp_Component_Min( iphase, : ) )
+            end if
         end do
-
-        deallocate( Cp )
-        deallocate( Density_Cp_Component_Min, Density_Cp_Component_Max )
+        if (compute_rhoCP) then
+          deallocate( Cp )
+          deallocate( Density_Cp_Component_Min, Density_Cp_Component_Max )
+        end if
         deallocate( Density_Component_Min, Density_Component_Max )
 
     end subroutine Cap_Bulk_Rho
@@ -402,7 +412,9 @@ contains
         !!$ Den = Den0 * exp[ c0 * ( P - P0 ) ] :: Exponential_1 EOS
         !!$ Den = c0 * P** c1                   :: Exponential_2 EOS
 
-        pressure => extract_tensor_field( packed_state, 'PackedCVPressure' )
+        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )
+        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+
         temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
         have_temperature_field = ( stat == 0 )
         !! Arash
@@ -495,9 +507,6 @@ contains
             !Retrieve coefficients
             call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
             call initialise_field(sfield, trim( option_path_comp )//"/linear_in_pressure/coefficient_B" , position)
-            !If it is flooding, then the second coefficient is the bathymetry and it has to be negative.
-            !The formula becomes: rho = P * eos_coefs( 1 ) - bathymetry
-            if (is_flooding .and. minval(sfield%val, sfield%val> 0.) > 0.) sfield%val = - sfield%val
             Rho = eos_coefs( 1 ) * pressure % val(1,1,:) + sfield%val
             perturbation_pressure = 1.
             !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) + eos_coefs( 2 )
@@ -666,9 +675,6 @@ contains
             FLAbort( 'No option given for choice of EOS' )
         end if Conditional_EOS_Option
 
-        !For flooding ensure that the height (density of phase 1) is non-zero and positive
-        if (is_flooding .and. iphase == 1) Rho = max(Rho, flooding_hmin)
-
         deallocate( perturbation_pressure, RhoPlus, RhoMinus )
 
         !No need to update halos as all the operations are local, and all the
@@ -736,92 +742,6 @@ contains
 
         return
     end subroutine Assign_Equation_of_State
-
-    subroutine Calculate_flooding_absorptionTerm(state, packed_state, Flooding_absorp, Mdims, ndgln)
-        implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
-        type (multi_field) :: Flooding_absorp
-        type( multi_dimensions ), intent( in ) :: Mdims
-        type(multi_ndgln), intent(in) :: ndgln
-        !Local variables
-        integer :: ipres, iphase, idim, loc
-        type( scalar_field ), pointer :: Spipe
-
-        if(.not.is_flooding) return !Nothing to do here, return
-
-        !Initialise
-        Flooding_absorp%val=0.
-        !For the non-pipe phases, add manually the manning coefficient use equation 13 from the manual (the one that defines the b)
-        call calculate_manning_coef(Flooding_absorp)
-
-        !The following part is the absorption for the pipes
-        if (Mdims%npres > 1) then
-            Spipe => extract_scalar_field( state(1), "Sigma" )
-            do iphase = Mdims%n_in_pres + 1, Mdims%nphase
-                ! set \sigma for the pipes here
-                call assign_val(Flooding_absorp%val( 1,1, iphase, : ),Spipe%val)
-            end do
-        end if
-
-        contains
-
-        subroutine calculate_manning_coef(Flooding_absorp)
-            implicit none
-            type (multi_field) :: Flooding_absorp
-            !Local variables
-            real, parameter :: hmin = max(flooding_hmin, 1d-8) * 1.1!The velocity solver is very sensitive to this parameter
-            real, parameter :: u_min = 1d-2 !increase it if having problems to converge
-            real, parameter :: g = 9.80665!Set default value if not specified by the user
-            integer :: iphase, ele, cv_iloc, u_iloc, mat_nod, cv_nod, u_nod,  stat, i
-            type( tensor_field ), pointer :: velocity, Nm, density
-            type(vector_field), pointer :: gravity_direction
-            real, dimension(mdims%cv_nloc) :: bathymetry, Nm_aux
-            real, dimension(:), allocatable :: r_nod_count
-            logical :: averaging
-            real :: shallow_drag
-
-            !Check whether to use the harmonic mean of the bathymetry
-            averaging = have_option('/flooding/averaging')
-            !Strenght shallow_drag
-            call get_option('/flooding/shallow_drag', shallow_drag, default = 1d-1)
-
-            Nm => extract_tensor_field( packed_state, "PackedManningcoef" )!Defined element-wise
-            velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-            density => extract_tensor_field( packed_state, "PackedDensity" )!For flooding the first phase is the height
-            iphase = 1!First phase of velocity only
-
-            allocate(r_nod_count(size(Flooding_absorp%val,4))); r_nod_count = 0.
-            do ele = 1, Mdims%totele
-                do cv_iloc = 1, Mdims%cv_nloc
-                    !Create bathymetry field just in case of using the mean
-                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                    bathymetry(cv_iloc) = max(hmin, density%val(1,1,cv_nod))
-                end do                               !Normal mean                          !Harmonic mean
-                if (averaging) bathymetry = (sum(bathymetry) / dble(Mdims%cv_nloc))!(sum(bathymetry**-1) / dble(Mdims%cv_nloc))**-1
-                do cv_iloc = 1, Mdims%cv_nloc
-                    mat_nod = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + cv_iloc)
-                    cv_nod = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                    r_nod_count(mat_nod) = r_nod_count(mat_nod) + 1
-                    Nm_aux(cv_iloc) = Nm%val(1,1,ele) + max(flooding_hmin, shallow_drag*(2*hmin-density%val(1,1,cv_nod))/hmin)
-                    do u_iloc = 1, mdims%u_nloc
-                        u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
-                        !Since Flooding_absorp is of memory_type 1 we can populate it directly
-                        do i = 1, Mdims%n_in_pres!Only for the phases not in the pipes
-                            Flooding_absorp%val(1,1,i, mat_nod) = Flooding_absorp%val(1,1,i, mat_nod) + Nm_aux(cv_iloc)**2. * g *&
-                                max(u_min,sqrt(dot_product(velocity%val(1:2,iphase,u_nod),velocity%val(1:2,iphase,u_nod))))&!We are using only two dimensions of the velocity because
-                                /(bathymetry(cv_iloc)**(4./3.)*dble(mdims%u_nloc))!This last term to get an average         !<= this is a 2D model if used in 3D, the third dimension is time!
-                        end do
-                    end do
-                end do
-            end do
-            !Average considering times node has been visited
-            do i = 1, Mdims%n_in_pres
-                Flooding_absorp%val(1, 1, i, :) = Flooding_absorp%val(1, 1, i, :) / r_nod_count
-            end do
-            deallocate(r_nod_count)
-        end subroutine calculate_manning_coef
-    end subroutine Calculate_flooding_absorptionTerm
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                       upwnd, suf_sig_diagten_bc )
@@ -2285,58 +2205,6 @@ contains
 
         call deallocate(targ_Store)
     end subroutine get_RockFluidProp
-
-
-    subroutine get_FloodingProp(state, packed_state)
-        !Gets flooding manning coefficient
-        implicit none
-        type(state_type), dimension(:), intent(inout) :: state
-        type( state_type ), intent( inout ) :: packed_state
-        !Local variables
-        type (tensor_field), pointer :: t_field
-        type (scalar_field), target :: targ_Store
-        type (scalar_field), pointer :: s_field
-        type (vector_field), pointer :: position
-        type(mesh_type), pointer :: fl_mesh
-        type(mesh_type) :: Auxmesh
-        integer :: iphase, nphase
-        character(len=500) :: path
-
-        t_field=>extract_tensor_field(packed_state,"PackedManningcoef")
-        !By default the pressure mesh (position 1)
-        s_field => extract_scalar_field(state(1),1)
-        position => get_external_coordinate_field(packed_state, s_field%mesh)
-
-        fl_mesh => extract_mesh( state(1), "P0DG" )
-        Auxmesh = fl_mesh
-        call allocate (targ_Store, Auxmesh, "Temporary_Manningcoef")
-
-        !Retrieve Manning coefficent
-        path = "/flooding/scalar_field::manning_coef/prescribed/value"
-        if (have_option(trim(path))) then
-            call initialise_field_over_regions(targ_Store, trim(path) , position)
-            t_field%val(1,1,:) = targ_Store%val(:)
-        end if
-        call deallocate(targ_Store)
-
-
-        fl_mesh => extract_mesh( state(1), "PressureMesh" )
-        Auxmesh = fl_mesh
-        call allocate (targ_Store, Auxmesh, "Temporary_Bathymetry")
-        !Retrieve Bathymetry coefficent
-        path = "/material_phase[0]/scalar_field::Bathymetry/prescribed/value"
-        if (have_option(trim(path))) then
-            t_field=>extract_tensor_field(packed_state,"PackedBathymetry")
-            call initialise_field_over_regions(targ_Store, trim(path) , position)
-            t_field%val(1,1,:) = targ_Store%val(:)
-        end if
-
-        call deallocate(targ_Store)
-     end subroutine get_FloodingProp
-
-
-
-
     !!JWL equation functions
 
     function JWL( A, B, w, R1, R2, E0, p,  roe, ro) result(fro)

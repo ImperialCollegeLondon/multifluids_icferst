@@ -124,8 +124,6 @@ contains
         !! Arash
         logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
-        !!$ Defining solver options
-        integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
         !!$ Shape function related fields:
         integer :: scvngi_theta, igot_t2, igot_theta_flux
         !!$ Adaptivity related fields and options:
@@ -182,7 +180,6 @@ contains
         ! Variables used in the CVGalerkin interpolation calculation
         integer, save :: numberfields_CVGalerkin_interp = -1
         real :: t_adapt_threshold
-        !Variables for FPI acceleration for flooding
         ! Calculate_mass_delta to store the change in mass calculated over the whole domain
         real, allocatable, dimension(:,:) :: calculate_mass_delta
 
@@ -220,7 +217,6 @@ contains
         ! A SWITCH TO DELAY MESH ADAPTIVITY UNTIL SPECIFIED UNSER INPUT TIME t_adapt_threshold
         call get_option("/mesh_adaptivity/hr_adaptivity/t_adapt_delay", t_adapt_threshold, default = 0.0 )
 
-
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
             if(have_option("/solver_options/Non_Linear_Solver/nonlinear_iterations_at_adapt")) then
@@ -245,25 +241,6 @@ contains
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
         call prepare_absorptions(state, Mdims, multi_absorp)
-        !Since this is a hack for Flooding, we want to do this before we actually start using the density as the height
-        !which depends on the pressure. However, for th initial condition we need to use the density to set up the initial Pressure
-        !Therefore, we correct the initial condition for the pressure before anything is modified
-        !If it is flooding we impose the initial pressure to match the equation P = gravity * (height+bathymetry)
-        !The height is the initial condition of the density
-!        if (is_flooding .and. have_option('/material_phase[0]/scalar_field::Temperature')) then
-!            density_field => extract_tensor_field( packed_state, "PackedDensity" )!Equivalent to height
-!            FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-!            bathymetry => extract_scalar_field( state(1), "Temperature" )!bathymetry
-!            FE_Pressure%val(1,1,:) =  9.80665 * (density_field%val(1,1,:) + bathymetry%val(1))
-!        end if
-        !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
-        if (is_flooding) then
-            call get_FloodingProp(state, packed_state)
-            if (have_option( "/physical_parameters/gravity/magnitude")) then
-                ewrite(1,*) "ERROR: For flooding DO NOT define gravity, it is already defined in the code"
-                stop
-            end if
-        end if
         call set_boundary_conditions_values(state, shift_time=.true.)
 
         !  Access boundary conditions via a call like
@@ -350,13 +327,8 @@ contains
             Mmat%compact_PIVIT_MAT = (i == (k - 1))!This does not include the P1DG(BL)P1DG(CV) element pair...maybe we should include it as well
         end if
         !!$ Defining problem to be solved:
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
-            velocity_max_iterations,  default =  500 )
-        call get_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/solver/max_iterations', &
-            PhaseVolumeFraction_max_iterations,  default =  500 )
-        solve_force_balance = .false. ; solve_PhaseVolumeFraction = .false.
-        if( velocity_max_iterations /= 0 ) solve_force_balance = .true.
-        if( PhaseVolumeFraction_max_iterations /= 0 ) solve_PhaseVolumeFraction = .true.
+        solve_PhaseVolumeFraction = have_option("/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic")
+        solve_force_balance = have_option("/material_phase[0]/scalar_field::Pressure/prognostic")
         !!$ Setting up variables for the Time- and NonLinear Iterations-Loops:
         call get_option( '/timestepping/current_time', acctim )
         mdims%init_time = acctim
@@ -438,13 +410,8 @@ contains
 ! To allow checkpointing at the 0 timestep - taken from later in the subroutine (find write_state)
              if (do_checkpoint_simulation(dump_no)) then
                   checkpoint_number=0
-                  CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                  FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                  pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-                  call set(pressure_field,FE_Pressure)
                   call checkpoint_simulation(state,cp_no=checkpoint_number,&
                                                protect_simulation_name=.true.,file_type='.mpml')
-                  call set(pressure_field,CV_Pressure)
              end if
              !not_to_move_det_yet = .false. ;
 !-------------------------------------------------------------------------------
@@ -560,8 +527,6 @@ contains
                     if ( is_porous_media ) then
                         call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                             CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-                    else if (is_flooding) then
-                        call Calculate_flooding_absorptionTerm(state, packed_state, multi_absorp%Flooding, Mdims, ndgln)
                     end if
           !      end if
 
@@ -572,13 +537,6 @@ contains
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
                    ScalarField_Source_Store = PhaseVolumeFractionComponentSource%val(1,:,:)
                 end if
-                if (is_flooding) then
-                    do iphase = 1, size(state)
-                        DensitySource => extract_scalar_field(state(iphase),"DensitySource", stat)
-                        if ( stat == 0 ) ScalarField_Source_Store(iphase,:) = ScalarField_Source_Store(iphase,:) + DensitySource%val
-                    end do
-                end if
-
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
 
@@ -925,6 +883,7 @@ contains
             first_time_step = .false.
 
         end do Loop_Time
+
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &
@@ -963,7 +922,6 @@ contains
         endif
         !***************************************
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
-
         return
     contains
 
@@ -1150,13 +1108,9 @@ contains
                 ! dump based on the prescribed period of time steps
                 Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
                     if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
                         call checkpoint_simulation(state,cp_no=checkpoint_number,&
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
@@ -1169,13 +1123,9 @@ contains
                 Conditional_Dump_RealTime: if( (abs(current_time-mdims%init_time - dump_period*dump_no) < 1d-12 .or. current_time-mdims%init_time >= dump_period*dump_no)&
                     .and. current_time-mdims%init_time/=finish_time) then
                     if (do_checkpoint_simulation(dump_no)) then
-                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                        call set(pressure_field,FE_Pressure)
                         call checkpoint_simulation(state,cp_no=checkpoint_number,&
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
-                        call set(pressure_field,CV_Pressure)
                     end if
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
@@ -1295,17 +1245,6 @@ contains
                 deallocate(multicomponent_state)
                 call deallocate_projection_matrices(CV_funs)
                 call deallocate_projection_matrices(FE_funs)
-if (is_flooding) then
-    !sprint_to_do HACK (we should solve this properly): Reconstruct pressure from density because the pressure is uncorrectly interpolated between meshes
-    s_field => extract_scalar_field( state(1), "Density" )
-    s_field2 => extract_scalar_field( state(1), "Bathymetry" )
-    s_field3 => extract_scalar_field( state(1), "Pressure" )
-    if (size(s_field2%val)/=size(s_field%val)) then
-        s_field3%val(:) = 9.81 * (s_field%val(:) + s_field2%val(1))
-    else
-        s_field3%val(:) = 9.81 * (s_field%val(:) + s_field2%val(:))
-    end if
-end if
                 !!$ Compute primary scalars used in most of the code
                 call Get_Primary_Scalars_new( state, Mdims )
                 !Check if the user wants to store the outfluxes
@@ -1313,8 +1252,6 @@ end if
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call prepare_absorptions(state, Mdims, multi_absorp)
-                !Retrieve manning coefficient for flooding, this has to be called just after creating pack_multistate
-                if (is_flooding) call get_FloodingProp(state, packed_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
                 !!$ Deallocating array variables:
                 deallocate( &
@@ -1464,9 +1401,11 @@ end if
         tfield=>extract_tensor_field(packed_state,"PackedOldFEPressure")
         ntfield=>extract_tensor_field(packed_state,"PackedFEPressure")
         tfield%val=ntfield%val
-        tfield=>extract_tensor_field(packed_state,"PackedOldCVPressure")
-        ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
-        tfield%val=ntfield%val
+        if (.not. is_porous_media) then
+          tfield=>extract_tensor_field(packed_state,"PackedOldCVPressure")
+          ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
+          tfield%val=ntfield%val
+        end if
     end subroutine copy_packed_new_to_old
 
     subroutine set_nu_to_u(packed_state)

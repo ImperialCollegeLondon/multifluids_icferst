@@ -153,15 +153,6 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     call initialise_field_lists_from_options(state, ntsol)
 
-
-    ! For multiphase simulations, we have to call calculate_diagnostic_phase_volume_fraction *before*
-    ! copy_to_stored(state,"Old") is called below. Otherwise, OldPhaseVolumeFraction (in the phase
-    ! containing the diagnostic PhaseVolumeFraction) will be zero and
-    ! NonlinearPhaseVolumeFraction will be calculated incorrectly at t=0.
-    if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
-        call calculate_diagnostic_phase_volume_fraction(state)
-    end if
-
     ! set the nonlinear timestepping options, needs to be before the adapt at first timestep
     call get_option('/solver_options/Non_Linear_Solver',nonlinear_iterations,&
         & default=1)

@@ -38,9 +38,7 @@ start =
                 ## This requires to define through diamond the tensor field in phase 1 UAbsorB
                 ## as an absorption term and also the RHS that should include the second time-derivative for the solid phase
                 ## and also the coupling terms. The first phase is considered the solid phase.
-                element poroelasticity{comment}|
-                ## Flooding simulator
-                element flooding_simulator{comment}
+                element poroelasticity{comment}
              ),
          geometry,
 	     solver_options,
@@ -357,8 +355,16 @@ start =
                },    
                ## Multiplier of the requested CFL based on which the pressure and velocity fields
                ## will be recalculated. Otherwise, the pressure will not be updated.
-               element requested_cfl_pressure {
-                  integer
+               element cfl_pressure {
+		(
+		integer,
+                ##Requested CFL for Pressure is forced to match the hr-adaptive period.
+		##Any value given for cfl_pressure will be overwritten with the value 
+		##of hr-adaptive period.  
+            	element at_mesh_adapt {
+                   empty
+            	}?
+		)
                }?,
                timestep_cfl_number_options,
                ## Minimum time step size.
@@ -889,18 +895,6 @@ start =
                       # Defaults to 1.0e-6.
                       element pipe_roughness{ real }?
                    }?,
-                   ## (ONLY FOR CONSERVATIVE FORMULATIONS) This term is used to control a combination of implicit/explicit implementation in this way:
-                   ## (1 + dumping_well_factor) Implicit - dumping_well_factor (Explicit)
-                   ##
-                   ## Values above 0 imply that explicit is used to dump the effect of the implicit term (which may be unstable);
-                   ##
-                   ## A Value of 0 => Fully implicit; A Value of -1 implies only Explicit
-                   ##
-                   ## Recommended values are 0.0 (Fully implicit), 0.25 or 0.5 (Some dumping but primarily implicit)
-                   ## By default this is 0.5                   
-                   element dumping_well_factor{ real }?,
-                   ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
-                   element dt_pipe_factor{ real }?,
                    ## Switches wells on and off to optimise production
                    element switch_wells_on_and_off{
                       element phase_exclude{ integer }
@@ -966,32 +960,6 @@ start =
                empty
 	    }?
          )
-         }?,
-         ## Flooding parameters
-            element flooding{
-             ## This is the term Nm of the manning formula:
-             ## b = Nm^2*g * |u|/h^1.33;
-             ## Nm is the manning coefficent. Values between [0.01 and 0.025];
-             ## Nm = 0.011 for smooth asphal and Nm = 0.024 to rubble.
-             ## For no friction set this to zero or do not activate it.
-                 element scalar_field {
-                    attribute name { "manning_coef" },
-                    (
-                       element prescribed {
-                          material_mesh_choice,
-                          prescribed_scalar_field
-              }
-                    )
-                 },
-               ##Perform the mean of the bathymetry when calculating the Manning formula;
-               element averaging {
-               comment
-            }?,
-               ##Factor that controls the strenght of the drag introduced in the dry areas;
-               ## it has a simmilar effect as the artificial diffusion. Default value = 1e-1.
-               element shallow_drag {
-               real
-            }?
          }?,
 
          ## Advanced options that are kept for debugging purposes
@@ -3241,8 +3209,7 @@ element Density{(
                         ## Linear in Pressure EOS
                         ##
                         ## DEN = A * P + B
-                        ##
-                        ## Use this option for flooding, being A = 1/gravity and B the bathymetry
+
                         element linear_in_pressure {
                            element coefficient_A {
                               real
