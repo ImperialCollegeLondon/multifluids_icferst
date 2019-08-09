@@ -267,14 +267,6 @@ contains
               T_ABSORB => Component_Absorption%val
            end if
 
-           ! calculate T_ABSORB
-
-           ! if (is_magma) then
-           !    ! set the absorption for magma sims here
-           !    sfield => extract_scalar_field( state(1), "TemperatureAbsorption")
-           !    T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => sfield%val ! only phase 1
-           ! end if
-
            ! Check for a python-set absorption field when solving for temperature/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
@@ -1688,40 +1680,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ! update velocity absorption
         call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
-
-
-        ! if ( is_magma ) then
-        !    ndim = Mdims%ndim
-        !
-        !    beta => extract_scalar_field( state( 1 ), "beta" )
-        !
-        !    iphase=1 ; jphase=1
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = beta%val
-        !    end do
-        !
-        !    iphase=1 ; jphase=2
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = -beta%val
-        !    end do
-        !
-        !    iphase=2 ; jphase=1
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = -beta%val
-        !    end do
-        !
-        !    iphase=2 ; jphase=2
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = beta%val
-        !    end do
-        !
-        ! end if
-
-
         ! Check for a python-set absorption field
         ! Assumes that python blocks are (nphase x nphase) and isotropic
         python_tfield => extract_tensor_field( state(1), "UAbsorB", python_stat )
@@ -1794,9 +1752,6 @@ end if
             CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, &
                 PLIKE_GRAD_SOU_COEF%val, PLIKE_GRAD_SOU_GRAD%val, IPLIKE_GRAD_SOU)
         end if
-
-        ! solid pressure term - use the surface tension code
-        ! if ( is_magma ) IPLIKE_GRAD_SOU = 2
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
@@ -3357,19 +3312,10 @@ end if
                 ENDIF
                 !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-! if ( is_magma ) then
-!    sfield => extract_scalar_field( state(1), "VolumetricViscosity" ) ! this should be on a material mesh
-!    UDIFFUSION_VOL_ALL(2,:) = sfield%val
-! end if
                 UDIFFUSION_VOL_ALL = UDIFFUSION_VOL_ALL + LES_UDIFFUSION_VOL
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-! if ( is_magma ) then
-!    sfield => extract_scalar_field( state(1), "Ksi_s" ) ! this is the volumetric viscosity
-!    UDIFFUSION_VOL_ALL(2,:) = sfield%val                ! and it should be on a material mesh
-!
-! end if
             ENDIF
         ENDIF
         if( RETRIEVE_SOLID_CTY ) THEN
