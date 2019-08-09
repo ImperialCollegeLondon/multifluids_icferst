@@ -145,7 +145,7 @@ module sparse_tools_petsc
      zero, addto, addto_diag, scale, &
      extract_diagonal, assemble, incref_petsc_csr_matrix, &
      ptap, mult, mult_T, lift_boundary_conditions, dump_matrix, &
-     csr2petsc_csr, dump_petsc_csr_matrix
+     csr2petsc_csr, dump_petsc_csr_matrix, petsc_compact_matrix
 
 contains
 
@@ -794,7 +794,40 @@ contains
     matrix%is_assembled=.false.
 
   end subroutine petsc_csr_vaddto
-  
+
+  !HH
+  subroutine petsc_compact_matrix(matrixi, matrixj, nphase)
+    !!< compact a nphase matrixj into a one phase and add to matrixi
+    type(petsc_csr_matrix), intent(inout) :: matrixi, matrixj
+    integer :: iphase,blocki,blockj
+    integer, intent(in) :: nphase
+
+    PetscScalar, dimension(:,:), allocatable:: v
+    PetscInt, allocatable:: jdxm(:), idxm(:)
+    PetscInt, allocatable:: jdxn(:), idxn(:)
+    PetscInt :: msizei, msizej
+    PetscErrorCode:: ierr
+
+    call MatAssemblyBegin(matrixj%M, MAT_FINAL_ASSEMBLY, ierr)
+    call MatAssemblyEnd(matrixj%M, MAT_FINAL_ASSEMBLY, ierr)
+    msizej=size(matrixj%row_numbering%gnn2unn,1)
+    msizei=size(matrixi%row_numbering%gnn2unn,1)
+    allocate(jdxm(msizej),jdxn(msizej))
+    allocate(idxm(msizei),idxn(msizei),v(msizei,msizei))
+
+    idxm=matrixi%row_numbering%gnn2unn(:,1)
+    idxn=matrixi%column_numbering%gnn2unn(:,1)
+    do iphase=1,nphase
+      jdxm=matrixj%row_numbering%gnn2unn(:,iphase)
+      jdxn=matrixj%column_numbering%gnn2unn(:,iphase)
+
+      call MatGetValues(matrixj%M, msizei, jdxm, msizei, jdxn, v, ierr)
+      call MatSetValues(matrixi%M, msizei, idxm, msizei, idxn, v, ADD_VALUES, ierr)
+    end do
+    matrixi%is_assembled=.false.
+
+  end subroutine petsc_compact_matrix
+
   subroutine petsc_csr_block_addto(matrix, i, j, val)
     !!< Adds a local matrix for all components of entry (i,j) in the matrix
     

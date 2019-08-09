@@ -56,7 +56,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = True
+showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'Temperature'
