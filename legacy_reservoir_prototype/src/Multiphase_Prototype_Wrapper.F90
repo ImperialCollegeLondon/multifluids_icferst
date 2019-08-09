@@ -1053,7 +1053,7 @@ contains
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         !Arash
         has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
-        !HH
+
         has_enthalpy = have_option( '/material_phase[0]/scalar_field::Enthalpy/' )
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")

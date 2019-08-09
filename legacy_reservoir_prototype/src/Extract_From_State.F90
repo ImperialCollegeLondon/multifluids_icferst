@@ -1239,7 +1239,7 @@ contains
                     call unpack_sfield(state(i),packed_state,"Temperature",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
-                !!HH
+                !! Arash
                 if(have_option(trim(state(i)%option_path)&
                     //'/scalar_field::Enthalpy')) then
                     call unpack_sfield(state(i),packed_state,"OldEnthalpy",1,iphase,&
@@ -1321,7 +1321,7 @@ contains
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
         end if
-        !!HH
+
         if (option_count("/material_phase/scalar_field::Enthalpy")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
         end if
@@ -2428,29 +2428,24 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                inf_norm_val = 0.0; max_calculate_mass_delta= 0.
            end if
 
+
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Saturation (Relative L2): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, &
                   "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection >= 4) then!temperature
-                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
+            else if (is_porous_media .and. variable_selection >= 4) then!Tracer
+                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
                  "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
 
-            !TEMPORARY, re-use of global variable backtrack_or_convergence to send
-            !information about convergence to the trust_region_method
             !Automatic non-linear iteration checking
             if (is_porous_media) then
                 select case (variable_selection)
-                case (4, 5)!For temperature only infinite norms for saturation and temperature
+                case (4, 5, 6)!For tracers infinite norms for saturation, tracer and pressure
                         ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_pres < Infinite_norm_tol_pres .and. inf_norm_val < Infinite_norm_tol &
                             .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
-                !HH
-                case (6)!For Enthalpy only infinite norms for saturation and Enthalpy
-                          ExitNonLinearLoop = ((ts_ref_val < Infinite_norm_tol .and. inf_norm_val < Infinite_norm_tol &
-                              .and. max_calculate_mass_delta < calculate_mass_tol ) .or. its >= NonLinearIteration )
                     case default
                         !For very tiny time-steps ts_ref_val may not be good as is it a relative value
                         !So if the infinity norm is 5 times better than the tolerance, we consider that the convergence have been achieved
@@ -2706,7 +2701,7 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     real, dimension(2), intent(in) :: totally_min_max
     !Local variables
     integer :: cv_inod, iphase
-    !Same as normalising values but should be quicker
+    !Same as normilising values but should be quicker
     inf_norm_scalar_normalised = maxval(abs(reference_tracer-tracer))/max((totally_min_max(2)-totally_min_max(1)), 1e-5)
 
     call allmax(inf_norm_scalar_normalised)
@@ -2714,6 +2709,8 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
 
 end function
+
+
 
 real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
     !We create a potential to optimize F = sum (f**2), so the solution is when this potential
