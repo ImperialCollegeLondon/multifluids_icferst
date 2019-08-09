@@ -2398,19 +2398,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   !!!!!!!
                   ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))!/backtrack_or_convergence
                   inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
-                 !backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
-                 case (6)!Enthalpy
-                      call get_var_from_packed_state(packed_state, Enthalpy = Enthalpy)
-                      !Calculate normalized infinite norm of the difference
-                                                              !This Mask is important because otherwise it gets the lowest saturation value
-                      totally_min_max(1)=minval(reference_field(1,:,:))
-                      totally_min_max(2)=maxval(reference_field(1,:,:))!use stored Enthalpy
-                      !For parallel
-                      call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                      !Analyse the difference !Calculate infinite norm, not consider wells
-                      ts_ref_val = inf_norm_scalar_normalised(Enthalpy(1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
-                      !Calculate value of the l infinitum for the saturation as well
-                      inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
+!                  backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
 
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference

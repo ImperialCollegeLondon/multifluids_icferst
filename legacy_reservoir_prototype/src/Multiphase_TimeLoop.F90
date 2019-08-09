@@ -594,7 +594,7 @@ contains
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
 
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma)) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &

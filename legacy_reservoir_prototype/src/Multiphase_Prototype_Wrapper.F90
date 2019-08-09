@@ -1042,8 +1042,13 @@ contains
         implicit none
         integer :: Vdegree, Pdegree
         !By default it is inertia dominated
+<<<<<<< HEAD
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media') !.or. have_option('/magma_simulator')
         is_magma = have_option('/magma_simulator')
+=======
+        is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media') .or. have_option('/magma_simulator')
+        is_magma = have_option('/magma_simulator') 
+>>>>>>> aa18286b7c5970a4d1d82df784880b02288545b7
         is_poroelasticity = have_option('/poroelasticity')
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/femdem_fracture' )
