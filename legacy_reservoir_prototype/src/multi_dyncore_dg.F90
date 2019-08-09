@@ -269,12 +269,6 @@ contains
 
            ! calculate T_ABSORB
 
-           ! if (is_magma) then
-           !    ! set the absorption for magma sims here
-           !    sfield => extract_scalar_field( state(1), "TemperatureAbsorption")
-           !    T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => sfield%val ! only phase 1
-           ! end if
-
            ! Check for a python-set absorption field when solving for temperature/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
@@ -1682,38 +1676,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
 
 
-        ! if ( is_magma ) then
-        !    ndim = Mdims%ndim
-        !
-        !    beta => extract_scalar_field( state( 1 ), "beta" )
-        !
-        !    iphase=1 ; jphase=1
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = beta%val
-        !    end do
-        !
-        !    iphase=1 ; jphase=2
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = -beta%val
-        !    end do
-        !
-        !    iphase=2 ; jphase=1
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = -beta%val
-        !    end do
-        !
-        !    iphase=2 ; jphase=2
-        !    do idim = 1, ndim
-        !       idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-        !       velocity_absorption( idx1, idx2, : ) = beta%val
-        !    end do
-        !
-        ! end if
-
-
         ! Check for a python-set absorption field
         ! Assumes that python blocks are (nphase x nphase) and isotropic
         python_tfield => extract_tensor_field( state(1), "UAbsorB", python_stat )
@@ -1786,9 +1748,6 @@ end if
             CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, &
                 PLIKE_GRAD_SOU_COEF%val, PLIKE_GRAD_SOU_GRAD%val, IPLIKE_GRAD_SOU)
         end if
-
-        ! solid pressure term - use the surface tension code
-        ! if ( is_magma ) IPLIKE_GRAD_SOU = 2
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
@@ -3349,19 +3308,10 @@ end if
                 ENDIF
                 !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-! if ( is_magma ) then
-!    sfield => extract_scalar_field( state(1), "VolumetricViscosity" ) ! this should be on a material mesh
-!    UDIFFUSION_VOL_ALL(2,:) = sfield%val
-! end if
                 UDIFFUSION_VOL_ALL = UDIFFUSION_VOL_ALL + LES_UDIFFUSION_VOL
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
-! if ( is_magma ) then
-!    sfield => extract_scalar_field( state(1), "Ksi_s" ) ! this is the volumetric viscosity
-!    UDIFFUSION_VOL_ALL(2,:) = sfield%val                ! and it should be on a material mesh
-!
-! end if
             ENDIF
         ENDIF
         if( RETRIEVE_SOLID_CTY ) THEN
@@ -3489,6 +3439,8 @@ end if
             END DO
             LOC_U_ABSORB = 0.0
             IF(RETRIEVE_SOLID_CTY) LOC_U_ABS_STAB_SOLID_RHS=0.0
+
+
             DO MAT_ILOC = 1, Mdims%mat_nloc
                 MAT_INOD = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + MAT_ILOC )
                 IF(is_porous_media) THEN ! Set to the identity - NOT EFFICIENT BUT GOOD ENOUGH FOR NOW AS ITS SIMPLE...
@@ -3519,6 +3471,7 @@ end if
                     ! ENDOF IF(RETRIEVE_SOLID_CTY) THEN...
                     ENDIF
                 END IF
+
                 LOC_U_ABS_STAB( :, :, MAT_ILOC ) = 0.
                 ! Switch on for solid fluid-coupling apply stabilization term...
                 IF(RETRIEVE_SOLID_CTY) THEN
@@ -5626,10 +5579,10 @@ end if
                 Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
           END IF
 
-                IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
-                    call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS) !This subroutine introduces in the pivit matrix the temporal terms
-            DEALLOCATE( DIAG_BIGM_CON )
-            DEALLOCATE( BIGM_CON)
+              IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
+                  call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS) !This subroutine introduces in the pivit matrix the temporal terms
+          DEALLOCATE( DIAG_BIGM_CON )
+          DEALLOCATE( BIGM_CON)
 
         ENDIF
         DEALLOCATE( UD, UD_ND )
@@ -6569,9 +6522,14 @@ end if
      INTEGER :: COUNT_ELE,JCOLELE
      real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
      integer, dimension(:), pointer :: neighbours
-     integer :: nb
+     integer :: nb, final_phase
      logical :: skip
-     ALLOCATE(LOC_DGM_PHA(NDIM_VEL,NDIM_VEL,NPHASE,NPHASE,U_NLOC,U_NLOC))
+     ALLOCATE(LOC_DGM_PHA(1,NDIM_VEL,1,NPHASE,1,U_NLOC))
+
+     final_phase = NPHASE
+     !For magma we only want to apply Stokes to the solid phase
+     if (is_magma) final_phase = 1
+
      Loop_Elements20: DO ELE = 1, TOTELE
          if (IsParallel()) then
              if (.not. assemble_ele(pressure,ele)) then
@@ -6602,25 +6560,35 @@ end if
              ENDIF
 
             DO U_JLOC=1,U_NLOC
-              DO JPHASE=1,NPHASE
+              DO JPHASE=1,final_phase
                 DO JDIM=1,NDIM_VEL
                   ! New for rapid code ordering of variables...
                   J=JDIM + (JPHASE-1)*NDIM_VEL
                   GLOBI=(ELE-1)*U_NLOC + U_JLOC
                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                  ! IF(JCOLELE==ELE) THEN
-                  !   ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
-                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, ELE) &
-                  !   + BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
-                  ! ELSE
-                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
-                  ! ENDIF
                   if (.not. node_owned(velocity,globi)) cycle
                   call addto(dgm_petsc, J , J , globi , globj , &
                   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC))
                 END DO
               END DO
             END DO
+
+            if (is_magma) then
+              !For magma add ones in the diagonal
+              DO U_JLOC=1,U_NLOC
+                DO JPHASE=final_phase+1, NPHASE
+                  DO JDIM=1,NDIM_VEL
+                    ! New for rapid code ordering of variables...
+                    J=JDIM + (JPHASE-1)*NDIM_VEL
+                    GLOBI=(ELE-1)*U_NLOC + U_JLOC
+                    GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+                    if (.not. node_owned(velocity,globi)) cycle
+                    call addto(dgm_petsc, J , J , globi , globj ,1.0)
+                  END DO
+                END DO
+              END DO
+
+            end if
          END DO Between_Elements_And_Boundary20
      END DO Loop_Elements20
 

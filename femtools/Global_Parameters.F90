@@ -174,7 +174,7 @@ module global_parameters
   !! Porous media model initialisation (Gravity capillary equilibration)
   logical :: is_porous_initialisation = .false.
   !! Multiphase prototype, magma simulator
-  logical :: is_magma = .false.!sprint_to_do: DEPRECATED, NEED TO SEE WHAT WE DO WITH THE ASSOCIATED CODE
+  logical :: is_magma = .false.
   !! Multiphase prototype, magma simulator
   logical :: is_magma_modelling = .false.
   !! Multiphase prototype, poro-elasticity simulator
