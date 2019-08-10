@@ -575,8 +575,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
 
-           call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+           if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
+             call allocate_global_multiphase_petsc_csr(cv_m_one,sparsity,tracer, 1)
+             t_one=>extract_scalar_field(state(1), "Enthalpy")
+             call allocate(cv_rhs_one,t_one%mesh,"ONE_PHASE_RHS")
+           end if
+           !Solves a PETSC warning saying that we are storing information out of range
+           call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+           call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
+
+
+
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
@@ -617,8 +627,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            cv_beta = Mdisopt%t_beta
            !print *,cv_disopt, cv_dg_vel_int_opt,cv_theta,cv_beta
 
-           RETRIEVE_SOLID_CTY = .false.
-           if ( have_option( '/blasting' ) ) RETRIEVE_SOLID_CTY = .true.
+           ! RETRIEVE_SOLID_CTY = .false.
+           ! if ( have_option( '/blasting' ) ) RETRIEVE_SOLID_CTY = .true.
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0
@@ -628,7 +638,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)
                 !TDIFFUSION(:,:,:1)=0  ! Only one phase should have the diffusivity term this is done in the multi_eos
            else
-                TDIFFUSION=1   !TOC Chemical diffusivity needs to be defined.
+                call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)!TOC Chemical diffusivity needs to be defined.
            end if
 
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
@@ -664,7 +674,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call get_option( trim(solver_option_path)//"max_iterations",&
                 max_allowed_its, default = 500)
            end if
-
+           T_source=0
            if( tracer%name=="PackedEnthalpy" ) then
              ! Calculate the source term of the enthalpy equation
              !   call get_option( '/material_phase[0]/scalar_field::Enthalpy/prognostic/temporal_discretisation/' // &
@@ -701,11 +711,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !T_source( 2, : ) = 0
              ! to_debug=0
            else
-             call get_option( '/material_phase[0]/scalar_field::Composition/prognostic/temporal_discretisation/' // &
-             'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-             Field_selector = 1
-             Q => extract_tensor_field( packed_state, "PackedCompositionSource" )
-             T_source( :, : ) = Q % val( 1, :, : )
+             ! call get_option( '/material_phase[0]/scalar_field::Composition/prognostic/temporal_discretisation/' // &
+             ! 'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+             ! Field_selector = 1
+             ! Q => extract_tensor_field( packed_state, "PackedCompositionSource" )
+             ! T_source( :, : ) = Q % val( 1, :, : )
            end if
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
@@ -719,11 +729,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 Phase_with_Ovrel = -1
                end if
 
-               !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
-               call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
-
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -748,12 +754,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
 
 
-               if (tracer%name=="PackedEnthalpy") then
-                 call allocate_global_multiphase_petsc_csr(cv_m_one,sparsity,tracer, 1)
-                 t_one=>extract_scalar_field(state(1), "Enthalpy")
-                 call allocate(cv_rhs_one,t_one%mesh,"ONE_PHASE_RHS")
-                 call zero(cv_m_one)
+               if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
                  cv_rhs_one%val = Mmat%CV_RHS%val(1,:)+Mmat%CV_RHS%val(2,:)
+                 call zero(cv_m_one)
                  call petsc_compact_matrix(cv_m_one, Mmat%petsc_ACV, Mdims%nphase)
 
                  call petsc_solve(t_one,cv_m_one,cv_rhs_one,trim(solver_option_path), iterations_taken = its_taken)
@@ -790,6 +793,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+           if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
+             call deallocate(cv_m_one); nullify(cv_rhs_one%val)
+           end if
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
            ewrite(3,*) 'Leaving ENTHALPY_COMPOSITION_ASSEM_SOLVE'
 
