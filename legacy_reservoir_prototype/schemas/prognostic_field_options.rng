@@ -407,6 +407,7 @@ only if the mass matrix is lumped (lump_mass_matrix).</a:documentation>
         </choice>
       </element>
     </optional>
+    <ref name="prognostic_velocity_stat_options_reduced"/>
     <ref name="prognostic_detector_options"/>
     <ref name="adaptivity_options_prognostic_vector_field"/>
     <ref name="interpolation_algorithm_vector"/>
