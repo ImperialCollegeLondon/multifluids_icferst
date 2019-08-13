@@ -1827,8 +1827,8 @@ end if
         if ( high_order_Ph ) then
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                 allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
-                call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
-                call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
+                ! call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )!unnecessary as it is zeroed
+                ! call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
                 call high_order_pressure_solve( Mdims, ndgln, Mmat%u_rhs, state, packed_state, Mdims%n_in_pres, U_ABSORBIN*0.0 )
                 deallocate(U_ABSORBIN)
             end if

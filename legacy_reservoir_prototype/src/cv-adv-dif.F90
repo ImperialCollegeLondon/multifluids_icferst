@@ -2021,6 +2021,8 @@ contains
                   end do
                   !Introduce into the RHS
                   call addto(Mmat%CT_RHS, 1, cv_nodi, SUM( ct_rhs_phase(1:n_in_pres)) )
+                  !and diagonal scaling
+                  DIAG_SCALE_PRES( 1,CV_NODI ) = DIAG_SCALE_PRES( 1,CV_NODI ) + sum( DIAG_SCALE_PRES_phase(1:n_in_pres))
               END DO  ! endof DO CV_NODI = 1, Mdims%cv_nonods
               deallocate(DIAG_SCALE_PRES_phase)
           END IF

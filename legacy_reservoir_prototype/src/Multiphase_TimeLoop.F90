@@ -167,7 +167,7 @@ contains
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
-        type(scalar_field), pointer :: DensitySource, T
+        type(scalar_field), pointer :: DensitySource, T, ph_pressure
         !Variables that are used to define the pipe pos
         type(pipe_coords), dimension(:), allocatable:: eles_with_pipe
         type (multi_pipe_package) :: pipes_aux
@@ -1102,36 +1102,60 @@ contains
 
         subroutine create_dump_vtu_and_checkpoints()
 
+          logical :: create_outputs
+
+            create_outputs = .false.
             ! sprint to do: check this routine - why are we swapping pressure fields??
             !!$ Write outputs (vtu and checkpoint files)
             if (have_option('/io/dump_period_in_timesteps')) then
                 ! dump based on the prescribed period of time steps
                 Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
-                    if (do_checkpoint_simulation(dump_no)) then
-                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                            protect_simulation_name=.true.,file_type='.mpml')
-                        checkpoint_number=checkpoint_number+1
-                    end if
-                    call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    not_to_move_det_yet = .false. ;
-
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    create_outputs = .true.
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
                 ! dump based on the prescribed period of real time
                 Conditional_Dump_RealTime: if( (abs(current_time-mdims%init_time - dump_period*dump_no) < 1d-12 .or. current_time-mdims%init_time >= dump_period*dump_no)&
                     .and. current_time-mdims%init_time/=finish_time) then
-                    if (do_checkpoint_simulation(dump_no)) then
-                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                            protect_simulation_name=.true.,file_type='.mpml')
-                        checkpoint_number=checkpoint_number+1
-                    end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    not_to_move_det_yet = .false. ;
-                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                    create_outputs = .true.
                 end if Conditional_Dump_RealTime
             end if
+
+
+            if (create_outputs) then
+              if (do_checkpoint_simulation(dump_no)) then
+                  call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                      protect_simulation_name=.true.,file_type='.mpml')
+                  checkpoint_number=checkpoint_number+1
+              end if
+              call get_option( '/timestepping/current_time', current_time ) ! Find the current time
+              if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
+              not_to_move_det_yet = .false. ;
+
+              !Hydrostatic solver adds the gravity effects but the pressure looks decoupled, which is confusing for the users
+              if (have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )) then
+                !Adjust pressure so it looks correct (only if it is in the same mesh, i.e. porous_media)
+                ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
+                pressure_field => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+                
+                if (size(ph_pressure%val)  ==  size(pressure_field%val, 3)) then
+                  auxR = minval(ph_pressure%val); call allmin(auxR)
+                  !Only for the reservoir domain include the hydrostatic values
+                  pressure_field%val(1,1,:) = pressure_field%val(1,1,:) + ( ph_pressure%val - auxR )
+                end if
+              end if
+
+              call write_state( dump_no, state ) ! Now writing into the vtu files
+              !Now undo!
+              if (have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )) then
+                !Adjust pressure so it looks correct (only if it is in the same mesh, i.e. porous_media)
+                if (size(ph_pressure%val)  ==  size(pressure_field%val, 3)) then
+                  !Only for the reservoir domain remove the hydrostatic values
+                  pressure_field%val(1,1,:) = pressure_field%val(1,1,:) - ( ph_pressure%val - auxR )
+                end if
+              end if
+
+            end if
+
         end subroutine create_dump_vtu_and_checkpoints
 
         !This subroutine performs all the necessary steps to adapt the mesh and create new memory

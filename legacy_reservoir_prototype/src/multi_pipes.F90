@@ -1425,7 +1425,7 @@ contains
             !Only go through the nodes that have a well
             if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
 
-            
+
               ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
               IPRES= Mdims%npres
               R_PRES(IPRES) = MASS_CV_PLUS( IPRES, CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
@@ -1464,11 +1464,11 @@ contains
                       end do
                   END DO
               END DO
-              DO IPRES=1,Mdims%npres
-                call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)))
-                DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
-                    + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
-              end do
+              IPRES= Mdims%npres
+              !Introduce into RHS and scaling coefficient
+              call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)))
+              DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
+                  + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
           END DO  ! endof DO CV_NODI = 1, Mdims%cv_nonods
       END IF
 

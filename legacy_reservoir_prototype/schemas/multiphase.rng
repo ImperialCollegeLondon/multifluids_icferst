@@ -2276,10 +2276,12 @@ iteration in the .stat file.</a:documentation>
   </define>
   <!-- Diagnostic statistics for prognostic vector fields -->
   <define name="prognostic_velocity_stat_options">
-    <element name="stat">
-      <a:documentation>Specify what is added to .stat files</a:documentation>
-      <ref name="prognostic_velocity_stat_options.stat"/>
-    </element>
+    <optional>
+      <element name="stat">
+        <a:documentation>Specify what is added to .stat files</a:documentation>
+        <ref name="prognostic_velocity_stat_options.stat"/>
+      </element>
+    </optional>
   </define>
   <!-- Diagnostic statistics for all other vector fields -->
   <define name="prognostic_vector_stat_no_old_or_nonlinear_options">
@@ -2359,6 +2361,41 @@ IN PROGRESS - Does not include all terms!</a:documentation>
   <!-- Combining of stat elements for tensor fields -->
   <define name="prognostic_tensor_stat_no_old_or_nonlinear_options.stat">
     <ref name="tensor_field_stat_options_enabled_default"/>
+  </define>
+  <!-- Diagnostic statistics for prognostic vector fields -->
+  <define name="prognostic_velocity_stat_options_reduced">
+    <optional>
+      <element name="stat">
+        <a:documentation>Specify what is added to .stat files</a:documentation>
+        <ref name="prognostic_velocity_stat_options_reduced.stat"/>
+      </element>
+    </optional>
+  </define>
+  <!-- Combining of stat elements for vector fields -->
+  <define name="prognostic_velocity_stat_options.stat">
+    <ref name="prognostic_vector_stat_no_old_or_nonlinear_options.stat"/>
+  </define>
+  <define name="prognostic_velocity_stat_options_reduced.stat" combine="interleave">
+    <zeroOrMore>
+      <element name="compute_body_forces_on_surfaces">
+        <attribute name="name">
+          <data type="string"/>
+        </attribute>
+        <group>
+          <element name="surface_ids">
+            <a:documentation>What surface IDs do you want to do the calculation over?</a:documentation>
+            <ref name="integer_vector"/>
+          </element>
+          <optional>
+            <element name="output_terms">
+              <a:documentation>Enable to output the pressure and viscous terms separately (as well
+as the total force)</a:documentation>
+              <ref name="comment"/>
+            </element>
+          </optional>
+        </group>
+      </element>
+    </zeroOrMore>
   </define>
   <!-- Convergence options for prognostic scalar fields -->
   <define name="scalar_convergence_options">

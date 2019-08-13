@@ -1862,7 +1862,7 @@ prognostic_velocity_stat_options =
          (
             prognostic_velocity_stat_options.stat
          )
-      }
+      }?
    )
 
 # Diagnostic statistics for all other vector fields
@@ -1933,6 +1933,35 @@ prognostic_tensor_stat_no_old_or_nonlinear_options.stat =
       tensor_field_stat_options_enabled_default
    )
 
+   # Diagnostic statistics for prognostic vector fields
+   prognostic_velocity_stat_options_reduced =
+      (
+         ## Specify what is added to .stat files
+         element stat {
+            (
+               prognostic_velocity_stat_options_reduced.stat
+            )
+         }?
+      )
+   # Combining of stat elements for vector fields
+   prognostic_velocity_stat_options.stat = prognostic_vector_stat_no_old_or_nonlinear_options.stat
+   prognostic_velocity_stat_options_reduced.stat &=
+      (
+      element compute_body_forces_on_surfaces {
+        attribute name { xsd:string },
+        (
+          ## What surface IDs do you want to do the calculation over?
+          element surface_ids {
+            integer_vector
+          },
+          ## Enable to output the pressure and viscous terms separately (as well
+          ## as the total force)
+          element output_terms {
+             comment
+          }?
+        )
+        }*
+        )
 # Convergence options for prognostic scalar fields
 scalar_convergence_options =
    (
