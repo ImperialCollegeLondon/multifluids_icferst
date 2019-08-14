@@ -576,7 +576,7 @@ contains
                 !#    TODO. This has to be updated with adaptivity as well.
                 !#=================================================================================================================
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
-                Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
+                Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve .and. itime==1 ) then
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
@@ -594,7 +594,7 @@ contains
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
 
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. itime==1 ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -617,7 +617,7 @@ contains
 
                 !! HH $ Solve advection of the scalar 'Temperature'or 'Enthalpy' in both cases there must be a temperature field:
                 Conditional_ScalarAdvectionField: if( have_temperature_field ) then
-                  both_t_and_h = .true.
+                  both_t_and_h = .FALSE.
                   call set_nu_to_u( packed_state )
                   !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
@@ -654,40 +654,31 @@ contains
                     thermal = .true.,&
                     saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
                   end if
-                call Calculate_All_Rhos( state, packed_state, Mdims )
-              end if Conditional_ScalarAdvectionField
-
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if Conditional_ScalarAdvectionField
+                
                 !HH   Solve advection of the scalar Composition
-                  Conditional_ScalarAdvectionField3: if( have_option( '/material_phase[0]/scalar_field::Composition/') .and. have_option( '/material_phase[1]/scalar_field::Composition/' ) ) then
-                    call set_nu_to_u( packed_state )
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    ewrite(3,*)'Now advecting composition Field'
-                    tracer_field=>extract_tensor_field(packed_state,"PackedComposition")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    call ENTHALPY_COMPOSITION_ASSEM_SOLVE( state, packed_state, &
-                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                    suf_sig_diagten_bc, Porosity_field%val, &
-                    !!$
-                    0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                    THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                    option_path = '/material_phase[0]/scalar_field::Composition', &
-                    thermal = .false.,&
-                    saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-
-                  end if Conditional_ScalarAdvectionField3
-               !
-               ! !HH
-               ! ! Update bulk composition
-               ! call cal_bulkcomposition(state,packed_state)
-               ! ! Calculate porosity from phase diagram
-               ! call porossolve(state,packed_state, Mdims, ndgln)
-               ! ! Update the temperature field
-               ! call enthalpy_to_temperature(Mdims, packed_state)
-               ! Update the fluid and matrix composition
-               !call cal_solidfluidcomposition(state, packed_state, Mdims)
+                Conditional_ScalarAdvectionField3: if( have_option( '/material_phase[0]/scalar_field::Composition/') .and. have_option( '/material_phase[1]/scalar_field::Composition/' ) ) then
+                  call set_nu_to_u( packed_state )
+                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  ewrite(3,*)'Now advecting composition Field'
+                  tracer_field=>extract_tensor_field(packed_state,"PackedComposition")
+                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                  call ENTHALPY_COMPOSITION_ASSEM_SOLVE( state, packed_state, &
+                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                  suf_sig_diagten_bc, Porosity_field%val, &
+                  !!$
+                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                  option_path = '/material_phase[0]/scalar_field::Composition', &
+                  thermal = .false.,&
+                  saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
+                  
+                end if Conditional_ScalarAdvectionField3
+                !
 
                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
@@ -752,6 +743,18 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+            
+            ! !HH
+            if (is_magma) then
+              ! Update bulk composition
+              call cal_bulkcomposition(state,packed_state)
+              ! Calculate porosity from phase diagram
+              call porossolve(state,packed_state, Mdims, ndgln)
+              ! Update the temperature field
+              call enthalpy_to_temperature(Mdims, packed_state)
+              !Update the composition
+              ! call cal_solidfluidcomposition(state, packed_state, Mdims)
+            end if
 
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
             if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0

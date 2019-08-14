@@ -249,7 +249,6 @@ contains
       iphase = 1
       !Calculate temperature using the generic formula T = (H - Lf*porosity)/Cp
       temperature%val(1,1,:) = (enthalpy%val(1,1,:) - Lf * saturation%val(1,2,:))/Density_Cp%val(1,iphase,:)
-
       !Now add corrections if required
       where (saturation%val(1,2, :)>0.) !If porosity > 0.
         where (temperature%val(1,1,:) < Ts ) !If there is mixture, temperature cannot be below the solidus
@@ -258,15 +257,10 @@ contains
       ! elsewhere  !not necesarry
       !   temperature%val(1,1,:) = enthalpy_dim* den%val(1,iphase,:)/Density_Cp%val(1,iphase,:)
       end where
-
-      !Convert to dimensionles temperature
-      !call magma_field_dim_to_nondim(temperature%val(1,iphase,:), temperature%val(1,iphase,:), Ts, Tl)
-
       !Now for consistency populate the temperature of all the phase
-      ! do iphase = 2, Mdims%ndim
-      !   temperature%val(1,iphase,:) = temperature%val(1,1,:)
-      ! end do
-
+      do iphase = 2, Mdims%ndim
+        temperature%val(1,iphase,:) = temperature%val(1,1,:)
+      end do
     end subroutine enthalpy_to_temperature
 
 
@@ -280,13 +274,10 @@ contains
     type(multi_ndgln), intent(in) :: ndgln
     !Local variables
     integer ::  iphase, k, i
-                                                      !Temporary until deciding if creating a Cp in packed_state as well
+    real :: test_poro, test_poro_prev                                                  !Temporary until deciding if creating a Cp in packed_state as well
     type( tensor_field ), pointer :: enthalpy, den, Density_Cp, saturation
-    type (tensor_field), pointer :: FluidComposition, MatrixComposition
-    type (vector_field), pointer :: porosity, FEMporosity
     type (scalar_field), pointer :: BC !BUlk compositon
     !real, dimension(Mdims%cv_nonods) :: enthalpy_dim
-    real :: test_poro_prev, test_poro!Temporary porosity
     real :: fx, fdashx, Loc_Cp, rho
     !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
     real, parameter :: tol = 1e-2
@@ -297,9 +288,7 @@ contains
       den => extract_tensor_field( packed_state,"PackedDensity" )
       Density_Cp =>  extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
       enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
-      !saturation =>  extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )!First phase is rock presence
-      porosity=>extract_vector_field(packed_state,"MeanPoreCV") !use mean CV porosity calculation
-      FEMporosity=>extract_vector_field(packed_state,"Porosity") !update the porosity in the end
+      saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       BC=> extract_scalar_field(state(1), "BulkComposition")
       iphase = 1
       ! cv_nodi = 1
@@ -309,24 +298,28 @@ contains
         Loc_Cp = Density_Cp%val(1,iphase,cv_nodi)/den%val(1,iphase,cv_nodi)!Temporary until we decide if we create a Cp field
         rho=den%val(1,iphase,cv_nodi)
         IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BC%val(cv_nodi),Loc_Cp, rho)) then
-          porosity%val(1, cv_nodi)=1.
+          saturation%val(1,2, cv_nodi)=1.
+          saturation%val(1,1, cv_nodi)=0.
         ELSE IF (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho)) then
-          porosity%val(1, cv_nodi)=0.
+          saturation%val(1,2, cv_nodi)=0.
+          saturation%val(1,1, cv_nodi)=1.
         ELSE
-          if (BC%val(cv_nodi) < Ae) then
+          if (BC%val(cv_nodi) <= Ae) then            
             k=1
             test_poro = 1.0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) < tol)
-              fx = (Lf/Loc_Cp)*test_poro**3 + (C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + B1*BC%val(cv_nodi)*&
-              test_poro + A1*BC%val(cv_nodi)
+            test_poro_prev=0
+            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol)
+              fx = (Lf/Loc_Cp)*test_poro**3 + (C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + B1*BC%val(cv_nodi)*test_poro + A1*BC%val(cv_nodi)**2
+              fdashx=3*Lf/Loc_Cp*test_poro**2+2*(C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+B1*BC%val(cv_nodi)
               test_poro_prev = test_poro
               test_poro = test_poro - fx/fdashx
               k=k+1
             end do
-          else if (BC%val(cv_nodi) >= Ae) then
+          else if (BC%val(cv_nodi) > Ae) then
             k=1
             test_poro = 1.0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) < tol .and. test_poro<=1)
+            test_poro_prev=0
+            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol .and. test_poro<=1)
               fx= (Lf/Loc_Cp)**test_poro**3+(C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+A2+B2)*test_poro**2+(2*A2*BC%val(cv_nodi)-2*A2+&
               B2*BC%val(cv_nodi)-B2)*test_poro+A2*(BC%val(cv_nodi)-1)**2
 
@@ -338,19 +331,10 @@ contains
               k=k+1
             end do
           end if
-          porosity%val(1, cv_nodi)=test_poro
+          saturation%val(1,2, cv_nodi)=test_poro
+          saturation%val(1,1, cv_nodi)=1-test_poro
         END IF
       end do
-
-      !HH Project CV_porosity to FEM_porosity, TOC
-      DO ELE = 1, Mdims%totele
-          FEMporosity%val(1,ELE)=0.
-        DO CV_ILOC = 1, Mdims%cv_nloc
-          CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-          FEMporosity%val(1,ELE)=FEMporosity%val(1,ELE)+1./Mdims%cv_nloc*Porosity%val(1,CV_NODI)
-        END DO
-      END DO
-
     end subroutine
 
 
