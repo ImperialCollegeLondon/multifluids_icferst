@@ -92,42 +92,15 @@ contains
   subroutine cal_bulkcomposition(state,packed_state)
     type( state_type ), dimension( : ), intent( inout ) :: state
     type( state_type ), intent( inout ) :: packed_state
-    type( tensor_field), pointer :: FluidComposition, MatrixComposition
-    type( vector_field), pointer :: porosity
+    type( tensor_field), pointer :: Composition, saturation
     type( scalar_field), pointer :: BulkComposition
-    FluidComposition => extract_tensor_field(packed_state, "PackedFluidComposition")
-    MatrixComposition => extract_tensor_field(packed_state, "PackedMatrixComposition")
-    porosity=>extract_vector_field(packed_state,"MeanPoreCV")
+    Composition=>extract_tensor_field(packed_state,"PackedComposition")
+    saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
     BulkComposition=> extract_scalar_field(state(1),"BulkComposition")
 
-    BulkComposition%val=FluidComposition%val(1,1,:)*porosity%val(1,:)+MatrixComposition%val(1,1,:)*(1.-porosity%val(1,:))
+    BulkComposition%val=Composition%val(1,1,:)*saturation%val(1,1,:)+Composition%val(1,2,:)*saturation%val(1,2,:)
   end subroutine
-    !========================================================
-    !Subroutine to convert between Dimensional and Non-Dimensional fields (temperature or enthalpy)
-    !We store dimentional values
-    !========================================================
-    ! subroutine magma_field_nondim_to_dim(field, field_dim, field_solidus,field_liquidus)
-    ! implicit none
-    ! real, dimension(:), intent(in):: field
-    ! real, dimension(:), intent(inout):: field_dim
-    ! real, intent(in):: field_solidus,field_liquidus
-    ! !Local variables
-    !     field_dim = field*(field_liquidus-field_solidus) + field_solidus
-    !
-    ! end subroutine
-    !
-    ! subroutine magma_field_dim_to_nondim(field, field_nondim, field_solidus,field_liquidus)
-    ! implicit none
-    ! real, dimension(:), intent(in):: field
-    ! real, dimension(:), intent(inout):: field_nondim
-    ! real, intent(in):: field_solidus,field_liquidus
-    !
-    !     field_nondim = (field - field_solidus)/(field_liquidus-field_solidus)
-    !
-    ! end subroutine
-
-    ! Function for the liquidus (temp)
-    real function get_Liquidus(Bulk_comp)
+      real function get_Liquidus(Bulk_comp)
       implicit none
       real, intent(in) :: Bulk_comp
 
@@ -143,10 +116,8 @@ contains
     real function get_Solidus(Bulk_comp)
       implicit none
       real, intent(in) :: Bulk_comp
-
       !Currently we consider a flat line
       get_Solidus = Ts
-
     end function
 
 
@@ -161,7 +132,6 @@ contains
     real function get_Enthalpy_Solidus(Bulk_comp, Cp, rho)
     implicit none
     real, intent(in) :: Bulk_comp, Cp, rho
-
     !Currently we consider a flat line
       get_Enthalpy_Solidus = get_Solidus(Bulk_comp) * Cp!* rho
 
@@ -196,39 +166,38 @@ contains
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
       type( multi_dimensions), intent( in ) :: Mdims
-      type( tensor_field), pointer :: FluidComposition, MatrixComposition, temperature
+      type( tensor_field), pointer :: Composition, temperature
       type( vector_field), pointer :: porosity
       type( scalar_field), pointer :: BC !bulk composition
 
       integer :: cv_nodi
 
       BC=> extract_scalar_field(state(1), "BulkComposition")
-      FluidComposition=>extract_tensor_field(packed_state,"PackedFluidComposition")
-      MatrixComposition=>extract_tensor_field(packed_state,"PackedMatrixComposition")
+      Composition=>extract_tensor_field(packed_state,"PackedComposition")
       temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
 
       do cv_nodi = 1, Mdims%cv_nonods
           if (temperature%val(1,1,cv_nodi)>get_Liquidus(BC%val(cv_nodi))) then
             if(BC%val(cv_nodi)>Ae) then
-              MatrixComposition%val(1,1,cv_nodi)=1.0
+              Composition%val(1,1,cv_nodi)=1.0 !solid
             else
-              MatrixComposition%val(1,1,cv_nodi)=0.0
+              Composition%val(1,1,cv_nodi)=0.0
             end if
 
-            FluidComposition%Val(1,1,cv_nodi)=BC%val(cv_nodi)
+            Composition%Val(1,2,cv_nodi)=BC%val(cv_nodi)!fluid
 
           else if(temperature%val(1,1,cv_nodi)<get_Solidus(BC%val(cv_nodi))) then
-            MatrixComposition%val(1,1,cv_nodi)=BC%val(cv_nodi)
-            FluidComposition%val(1,1,cv_nodi)=Ae
+            Composition%val(1,1,cv_nodi)=BC%val(cv_nodi)
+            Composition%val(1,2,cv_nodi)=Ae
           else
             if(BC%val(cv_nodi)>Ae) then
-              MatrixComposition%val(1,1,cv_nodi)=1.0
-              ! now that A2=B2=0, this expression is meaningless for fluid compositino
-              FluidComposition%val(1,1,cv_nodi)= 1.0
+              Composition%val(1,1,cv_nodi)=1.0
+              ! now that A2=B2=0, this expression is meaningless for fluid compositino and will get a error for devide A2 (=0)
+              Composition%val(1,2,cv_nodi)= 1.0
               !FluidComposition%val(1,1,cv_nodi)=(-B2 + sqrt(( B1**2 ) - 4. * A2 * ( C2 - temperature%val(1,1,cv_nodi)))) / ( 2. * A2)
             else
-              MatrixComposition%val(1,1,cv_nodi)=0.0
-              FluidComposition%val(1,1,cv_nodi)=(-B1 - sqrt(( B1**2 ) - 4. * A1 * ( C1 - temperature%val(1,1,cv_nodi)))) / ( 2. * A1)
+              Composition%val(1,1,cv_nodi)=0.0
+              Composition%val(1,2,cv_nodi)=(-B1 - sqrt(( B1**2 ) - 4. * A1 * ( C1 - temperature%val(1,1,cv_nodi)))) / ( 2. * A1)
             end if
           end if
       end do
@@ -265,7 +234,6 @@ contains
     !Local variables
     integer :: cv_nodi, iphase                          !Temporary until deciding if creating a Cp in packed_state as well
     type( tensor_field ), pointer :: enthalpy, temperature,  saturation, FluidComposition, Density_Cp , den
-    type( vector_field ), pointer :: porosity
     real, dimension(Mdims%cv_nonods) :: enthalpy_dim
     !real, parameter :: tol = 1e-5
       !Temporary until deciding if creating a Cp in packed_state as well
@@ -273,19 +241,17 @@ contains
       Density_Cp =>  extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
       enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
       temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
-      porosity=>extract_vector_field(packed_state,"MeanPoreCV") !use mean porosity which is defined on the pressure mesh
+      saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       !saturation =>  extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )!First phase is rock presence
 
   !IT CONSIDERS ONE SINGLE TEMPERATURE!!! WHICH MAKE SENSE BECAUSE AT THAT TIME SCALE THINGS ARE IN EQUILIBRIUM...
       ! do iphase =1, nphase
       iphase = 1
-      !call magma_field_nondim_to_dim(enthalpy%val(1,iphase,:), enthalpy_dim, Hs, Hl) !HH we store dimentional values
-
-      !Calculate temperature using the generic formula T = (H - Lf*porosity*density)/Cp     !1 - saturation == to porosity ?HH I don't think so,  now saturation=1...
-      temperature%val(1,1,:) = (enthalpy%val(1,1,:) - Lf * porosity%val(1,:)*den%val(1,iphase, :))/Density_Cp%val(1,iphase,:)
+      !Calculate temperature using the generic formula T = (H - Lf*porosity)/Cp
+      temperature%val(1,1,:) = (enthalpy%val(1,1,:) - Lf * saturation%val(1,2,:))/Density_Cp%val(1,iphase,:)
 
       !Now add corrections if required
-      where (porosity%val(1,:)>0.) !If porosity > 0.
+      where (saturation%val(1,2, :)>0.) !If porosity > 0.
         where (temperature%val(1,1,:) < Ts ) !If there is mixture, temperature cannot be below the solidus
           temperature%val(1,1,:) = Ts!It seems that the Solidus line is flat
         end where

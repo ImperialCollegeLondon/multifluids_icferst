@@ -622,7 +622,7 @@ contains
                   !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                 velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                   if ((.not. has_enthalpy) .or. both_t_and_h) then
                     ewrite(3,*)'Now advecting Temperature Field'
                     tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")

@@ -637,10 +637,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            if ( tracer%name=="PackedEnthalpy") then
                 !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-                call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)
+                call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
                 !TDIFFUSION(:,:,:1)=0  ! Only one phase should have the diffusivity term this is done in the multi_eos
            else
-                call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)!TOC Chemical diffusivity needs to be defined.
+                call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TOC Chemical diffusivity needs to be defined.
            end if
 
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
