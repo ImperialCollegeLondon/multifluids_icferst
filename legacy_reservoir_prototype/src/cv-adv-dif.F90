@@ -353,7 +353,7 @@ contains
           ! Variables used in GET_INT_VEL_NEW:
           REAL, DIMENSION ( Mdims%ndim, nphase, Mdims%u_nloc ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU, LOC_NUOLD, LOC2_NUOLD
           REAL, DIMENSION ( Mdims%ndim, nphase, Mdims%u_snloc ) :: SLOC_NU, SLOC_NUOLD
-  				REAL, DIMENSION ( :, : ), allocatable :: LOC_U_HAT, LOC2_U_HAT
+          REAL, DIMENSION ( :, : ), allocatable :: LOC_U_HAT, LOC2_U_HAT
           INTEGER :: CV_KNOD2, U_SNODK
           REAL, DIMENSION ( nphase/Mdims%npres, Mdims%cv_nloc ) :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_FEMT2, LOC2_FEMT2, &
                                                               LOC_FEMT2OLD, LOC2_FEMT2OLD
@@ -452,7 +452,11 @@ contains
           real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
           !Local variable n_in_pres
           integer :: n_in_pres
+          !HH
+          REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
+
           n_in_pres = nphase/Mdims%npres
+
 
 
           !Decide if we are solving for nphases-1
@@ -502,7 +506,11 @@ contains
           end if
           !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
           U_ALL => NU_ALL
-          old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+          if (tracer%name=="ES") then
+            old_tracer=>tracer
+          else
+            old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+          end if
           old_density=>extract_tensor_field(packed_state,GetOldName(density))
           if (present(saturation)) then
               old_saturation=>extract_tensor_field(packed_state,&
@@ -574,20 +582,23 @@ contains
               end if
           end if
           !! Get boundary conditions from field
-          call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
           call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
           if (present(saturation))&
-              call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
+          call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
+
+          if (tracer%name=="ES") then
+            call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+          else
+            call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+          end if
+
           call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
           if(got_free_surf.or.is_porous_media .or. Mmat%CV_pressure) then
-              pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
-              call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
+            pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
+            call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
           endif
 
           !! reassignments to old arrays, to be discussed
-          SUF_T_BC_ALL=>tracer_BCs%val
-          SUF_T_BC_ROB1_ALL=>tracer_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
-          SUF_T_BC_ROB2_ALL=>tracer_BCs_robin2%val
           SUF_D_BC_ALL=>density_BCs%val
           SUF_U_BC_ALL=>velocity_BCs%val
           if(present(saturation)) then
@@ -595,8 +606,29 @@ contains
               SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
               SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
           end if
+
+          !HH
+          if (tracer%name=="ES") then
+            allocate(SUF_T2_BC_value(1,Mdims%nphase, size(saturation_BCs%val,3)),SUF_T_BC_ROB2_value(1,Mdims%nphase, size(saturation_BCs%val,3)))
+            SUF_T2_BC_value=saturation_BCs%val
+            SUF_T2_BC_value(:,1,:)=SUF_T2_BC_value(:,2,:)+1
+            SUF_T_BC_ALL=>SUF_T2_BC_value
+
+            SUF_T_BC_ROB1_ALL=>SUF_T2_BC_value
+
+            SUF_T_BC_ROB2_value=saturation_BCs_robin2%val
+            SUF_T_BC_ROB2_value(:,1,:)=SUF_T_BC_ROB2_value(:,2,:) ! !!not +1
+            SUF_T_BC_ROB2_ALL=>SUF_T_BC_ROB2_value
+          else
+            SUF_T_BC_ALL=>tracer_BCs%val
+            SUF_T_BC_ROB1_ALL=>tracer_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
+            SUF_T_BC_ROB2_ALL=>tracer_BCs_robin2%val
+          end if
+
            if (tracer%name == "PackedTemperature" &
-              .or. tracer%name == "PackedSoluteMassFraction")  then
+              .or. tracer%name == "PackedSoluteMassFraction" &
+              .or. tracer%name == "PackedEnthalpy" &
+              .or. tracer%name == "PackedComposition")  then
               allocate( suf_t_bc( 1,nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,nphase,Mdims%cv_snloc*Mdims%stotel ), &
                   suf_t_bc_rob2( 1,nphase,Mdims%cv_snloc*Mdims%stotel ) )
               call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, nphase, &
@@ -662,6 +694,8 @@ contains
           D1 = ( Mdims%ndim == 1 )
           D3 = ( Mdims%ndim == 3 )
           GETMAT = .TRUE.
+          !HH
+          if (tracer%name=="ES") GETMAT = .FALSE.
           X_SHARE = .FALSE.
           ! Determine FEMT (finite element wise) etc from T (control volume wise)
           ! Also determine the CV mass matrix MASS_CV_PLUS and centre of the CV's XC_CV_ALL
@@ -977,7 +1011,7 @@ contains
           ! In order to fix this, we use FE_funs - only when we calculate negative diffusion coefficient (cv_disopt >= 8_. [INTRO_NX_ALL]
           if (NFIELD>0 ) THEN
               IF( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) ) THEN
-    	            !Calculate the gauss integer numbers
+                  !Calculate the gauss integer numbers
                   call retrieve_ngi( FE_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
 
                   !! Compute reference shape functions
@@ -1705,7 +1739,11 @@ contains
                                       end if
                                   end if
                               end if
-
+                              if (tracer%name=="ES") then
+                                FTHETA(:)=1.0
+                                FTHETA_T2(:)=1.0
+                                FTHETA_T2_J(:)=1.0
+                              end if
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                   ! Obtain the CV discretised advection/diffusion equations
                                   ROBIN1=0.0; ROBIN2=0.0
@@ -1802,7 +1840,6 @@ contains
                                           endif
                                       END IF
                                   END IF  ! ENDOF IF ( GETMAT ) THEN
-
                                   ! Put results into the RHS vector
                                   LOC_CV_RHS_I( 1:n_in_pres ) =  LOC_CV_RHS_I( 1:n_in_pres )  &
                                          ! subtract 1st order adv. soln.
@@ -1895,7 +1932,7 @@ contains
               END DO
           ENDIF
 
-          Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
+          Conditional_GETCV_DISC2: IF( GETCV_DISC .and. tracer%name/="ES") THEN ! Obtain the CV discretised advection/diffusion equations
               Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
                   LOC_CV_RHS_I=0.0
                   IPRES = 1
@@ -1913,27 +1950,32 @@ contains
                           !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                           ! and the fluids. Here we add the porous media contribution
                           DO IPHASE = 1,n_in_pres
-                              call addto(Mmat%petsc_ACV,iphase,iphase,&
-                                  cv_nodi, cv_nodi,&
-                                  + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                                  * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI ))
-                                  !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
-                                      !we divide to remove that term and multiply by the correct term (1-porosity)
+                              !HH
+                              if (GETMAT) then
+                                call addto(Mmat%petsc_ACV,iphase,iphase,&
+                                cv_nodi, cv_nodi,&
+                                + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
+                                * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI ))
+                                !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
+                                !we divide to remove that term and multiply by the correct term (1-porosity)
+                              end if
                               LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                                   + (CV_BETA * porous_heat_coef( iphase, CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
                                   + (ONE_M_CV_BETA) * porous_heat_coef( iphase, CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
                                   * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
                           END DO
                       end if
-
-                      ipres = 1
-                      DO IPHASE=1,n_in_pres
-                        global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                        compact_phase = iphase + (ipres - 1)*n_in_pres
-                        call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
-                            cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) &
-                            * R_PHASE(compact_phase)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
-                      END DO
+                      !HH
+                      if (GETMAT) then
+                        ipres = 1
+                        DO IPHASE=1,n_in_pres
+                          global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                          compact_phase = iphase + (ipres - 1)*n_in_pres
+                          call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
+                          cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) &
+                          * R_PHASE(compact_phase)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
+                        END DO
+                      end if
                      ipres = 1
                      DO IPHASE=1,n_in_pres
                        global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
@@ -1948,9 +1990,12 @@ contains
                     DO IPHASE=1,n_in_pres
                       global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
                       compact_phase = iphase + (ipres - 1)*n_in_pres
-                      call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
-                          cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI )  &
-                          * R_PHASE(compact_phase) )
+                      !HH
+                      if (GETMAT) then
+                        call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
+                        cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI )  &
+                        * R_PHASE(compact_phase) )
+                      end if
 
                       LOC_CV_RHS_I(compact_phase)=LOC_CV_RHS_I(compact_phase)  &
                         + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( global_phase, CV_NODI )&

@@ -807,7 +807,7 @@ contains
     PetscInt, allocatable:: jdxn(:), idxn(:)
     PetscInt :: msizei, msizej
     PetscErrorCode:: ierr
-    PetscViewer viewer1, viewer2
+    !PetscViewer viewer1, viewer2
 
     call MatAssemblyBegin(matrixj%M, MAT_FINAL_ASSEMBLY, ierr)
     call MatAssemblyEnd(matrixj%M, MAT_FINAL_ASSEMBLY, ierr)

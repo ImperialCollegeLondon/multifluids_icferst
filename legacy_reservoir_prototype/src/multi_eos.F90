@@ -1583,11 +1583,11 @@ contains
       diffS => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
       saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       porosity=>extract_scalar_field(state(1), "Porosity")
-      if (tracer%name=="PackedEnthalpy") then
+      IF (tracer%name=="PackedEnthalpy") then
         if (Mdims%nphase>1) then
           densityL => extract_scalar_field( state(2), "Density")
           capacityL => extract_scalar_field( state(2), 'TemperatureHeatCapacity', stat )
-          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)    
+          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)
           ScalarAdvectionField_Diffusion = 0.
           do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the defusivity term
             do ele = 1, Mdims%totele
@@ -1604,7 +1604,7 @@ contains
                 end do
               end do
             end do
-          end do      
+          end do
         else
           densityL => extract_scalar_field( state(1), "Density")
           capacityL => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
@@ -1627,9 +1627,9 @@ contains
             end do
           end do
         end if
-        
 
-      else  ! for composition
+
+      ELSE  ! for composition
         densityS => extract_scalar_field( state(1), "porous_density" )
         capacityS => extract_scalar_field( state(1), 'porous_heat_capacity', stat )
         diffS => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
@@ -1637,15 +1637,15 @@ contains
         if (Mdims%nphase>1) then
           densityL => extract_scalar_field( state(2), "Density")
           capacityL => extract_scalar_field( state(2), 'TemperatureHeatCapacity', stat )
-          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)          
+          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)
         else
           densityL => extract_scalar_field( state(1), "Density")
           capacityL => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
           diffL => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
         end if
-          
+
         ScalarAdvectionField_Diffusion = 0.
-        do iphase = 1, Mdims%nphase !calculate all phases but scale if with their saturations
+        do iphase = 1, Mdims%nphase !calculate all phases but scale it with their saturations
           do ele = 1, Mdims%totele
             do iloc = 1, Mdims%mat_nloc
               mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
@@ -1661,8 +1661,8 @@ contains
             end do
           end do
         end do
-      end if
-      
+      END IF
+
       if ( harmonic_average ) then
          ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
          do iphase = 1, Mdims%nphase

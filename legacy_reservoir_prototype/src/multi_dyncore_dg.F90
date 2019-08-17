@@ -562,7 +562,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(petsc_csr_matrix):: cv_m_one   !one phase cv matrix
            type(scalar_field) :: cv_rhs_one    !one phase cv rhs
            type(scalar_field), pointer :: t_one
-
+           type(tensor_field):: tracer3
+           type (multi_matrices):: Mmat2
 
            if (Mdims%nphase==1) then
              loc_thermal= .true.
@@ -578,14 +579,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if ( present( icomp ) ) lcomp = icomp
 
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-           if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
-             call allocate_global_multiphase_petsc_csr(cv_m_one,sparsity,tracer, 1)
-             t_one=>extract_scalar_field(state(1), "Enthalpy")
-             call allocate(cv_rhs_one,t_one%mesh,"ONE_PHASE_RHS")
-           end if
-           !Solves a PETSC warning saying that we are storing information out of range
-           call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
-           call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
 
 
 
@@ -641,6 +634,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 !TDIFFUSION(:,:,:1)=0  ! Only one phase should have the diffusivity term this is done in the multi_eos
            else
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TOC Chemical diffusivity needs to be defined.
+                TDIFFUSION=0!TDIFFUSION/10
            end if
 
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
@@ -679,38 +673,35 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            T_source=0
            if( tracer%name=="PackedEnthalpy" ) then
              ! Calculate the source term of the enthalpy equation
-             !   call get_option( '/material_phase[0]/scalar_field::Enthalpy/prognostic/temporal_discretisation/' // &
-             !   'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-             !   Field_selector = 1
-             !   Q => extract_tensor_field( packed_state, "PackedEnthalpySource" )
-             ! call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
-             ! call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
-             !
-             ! tracer2=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-             T_source=0
              ! to_debug=1
-             ! call CV_ASSEMB( state, packed_state, &
-             !     Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-             !     tracer2, velocity, density, multi_absorp, & !tracer2=saturation
-             !     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-             !     DEN_ALL, DENOLD_ALL, &
-             !     cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
-             !     SUF_SIG_DIAGTEN_BC, &
-             !     DERIV%val(1,:,:), P%val, &
-             !     T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-             !     GETCV_DISC, GETCT, &
-             !     0,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, & ! GOT_T2=0
-             !     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-             !     MeanPoreCV%val, &
-             !     mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &  !thermal=.false.
-             !     .false.,  mass_Mn_pres, &
-             !     mass_ele_transp, &
-             !     TDIFFUSION = TDIFFUSION,&
-             !     saturation=saturation, Permeability_tensor_field = perm,&
-             !     eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-             !     porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
-             !     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-             !T_source( 2, : ) = 0
+             call tracer_gen(tracer3)
+             call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+             !call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
+             !call zero(Mmat%petsc_ACV);
+             Mmat%CV_RHS%val = 0.0
+             call CV_ASSEMB( state, packed_state, &
+                 Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                 tracer3, velocity, density, multi_absorp, & !tracer3=[saturation, 1+saturation]
+                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                 DEN_ALL, DENOLD_ALL, &
+                 cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                 SUF_SIG_DIAGTEN_BC, &
+                 DERIV%val(1,:,:), P%val, &
+                 T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+                 GETCV_DISC, GETCT, &
+                 1, IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, & ! GOT_T2=1
+                 THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                 MeanPoreCV%val, &
+                 mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &  !thermal=.false.
+                 .false.,  mass_Mn_pres, &
+                 mass_ele_transp, &
+                 TDIFFUSION = TDIFFUSION,&
+                 saturation=saturation, Permeability_tensor_field = perm,&
+                 eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
+                 porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
+                 VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
+             T_source = -Mmat%CV_RHS%val
+
              ! to_debug=0
            else
              ! call get_option( '/material_phase[0]/scalar_field::Composition/prognostic/temporal_discretisation/' // &
@@ -719,7 +710,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ! Q => extract_tensor_field( packed_state, "PackedCompositionSource" )
              ! T_source( :, : ) = Q % val( 1, :, : )
            end if
-
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                !Get information for capillary pressure to be use in CV_ASSEMB
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
@@ -730,6 +720,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                else
                 Phase_with_Ovrel = -1
                end if
+
+               if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
+                 call allocate_global_multiphase_petsc_csr(cv_m_one,sparsity,tracer, 1)
+                 t_one=>extract_scalar_field(state(1), "Enthalpy")
+                 call allocate(cv_rhs_one,t_one%mesh,"ONE_PHASE_RHS")
+               end if
+               !Solves a PETSC warning saying that we are storing information out of range
+               call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+               call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
 
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
@@ -802,6 +801,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ewrite(3,*) 'Leaving ENTHALPY_COMPOSITION_ASSEM_SOLVE'
 
       contains
+
+        subroutine tracer_gen(tracer3)
+           type(tensor_field), intent(inout) :: tracer3
+            tracer3%name="ES"
+            tracer3%mesh=tracer%mesh
+            tracer3%dim=tracer%dim
+            allocate(tracer3%val(tracer3%dim(1), tracer3%dim(2), node_count(tracer3%mesh)))
+            tracer3%val=tracer%val
+            tracer3%val(1,1,:)=tracer3%val(1,2,:)+1    ! For the first phase, tracer value is 1+phi
+            tracer3%wrapped=.true.
+        end subroutine
 
       real function convergence_check(Enthalpy, reference_temp)
           implicit none

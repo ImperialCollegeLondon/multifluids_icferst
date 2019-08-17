@@ -304,7 +304,7 @@ contains
           saturation%val(1,2, cv_nodi)=0.
           saturation%val(1,1, cv_nodi)=1.
         ELSE
-          if (BC%val(cv_nodi) <= Ae) then            
+          if (BC%val(cv_nodi) <= Ae) then
             k=1
             test_poro = 1.0
             test_poro_prev=0

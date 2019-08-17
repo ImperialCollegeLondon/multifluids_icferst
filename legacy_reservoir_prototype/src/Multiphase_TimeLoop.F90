@@ -198,6 +198,8 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp           !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve    !Flag to either enter or not the pressure solve
+        !HH
+        Integer:: its_energy, energyiteration
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -615,6 +617,10 @@ contains
                 !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================
 
+                ! magma energy loop
+                its_energy=1
+                energyiteration=2
+                Magma_energy_loop: do  while (its_energy <= energyiteration)
                 !! HH $ Solve advection of the scalar 'Temperature'or 'Enthalpy' in both cases there must be a temperature field:
                 Conditional_ScalarAdvectionField: if( have_temperature_field ) then
                   both_t_and_h = .FALSE.
@@ -656,7 +662,7 @@ contains
                   end if
                   call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
-                
+
                 !HH   Solve advection of the scalar Composition
                 Conditional_ScalarAdvectionField3: if( have_option( '/material_phase[0]/scalar_field::Composition/') .and. have_option( '/material_phase[1]/scalar_field::Composition/' ) ) then
                   call set_nu_to_u( packed_state )
@@ -676,10 +682,21 @@ contains
                   thermal = .false.,&
                   saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
                   call Calculate_All_Rhos( state, packed_state, Mdims )
-                  
-                end if Conditional_ScalarAdvectionField3
-                !
 
+                end if Conditional_ScalarAdvectionField3
+                !HH
+                if (is_magma) then
+                  ! Update bulk composition
+                  call cal_bulkcomposition(state,packed_state)
+                  ! Calculate porosity from phase diagram
+                  call porossolve(state,packed_state, Mdims, ndgln)
+                  ! Update the temperature field
+                  call enthalpy_to_temperature(Mdims, packed_state)
+                  !Update the composition
+                  call cal_solidfluidcomposition(state, packed_state, Mdims)
+                end if
+                its_energy=its_energy+1
+              end do Magma_energy_loop
                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
                !!$ Arash
@@ -743,18 +760,8 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
-            
-            ! !HH
-            if (is_magma) then
-              ! Update bulk composition
-              call cal_bulkcomposition(state,packed_state)
-              ! Calculate porosity from phase diagram
-              call porossolve(state,packed_state, Mdims, ndgln)
-              ! Update the temperature field
-              call enthalpy_to_temperature(Mdims, packed_state)
-              !Update the composition
-              ! call cal_solidfluidcomposition(state, packed_state, Mdims)
-            end if
+
+
 
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
             if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
@@ -1139,7 +1146,7 @@ contains
                 !Adjust pressure so it looks correct (only if it is in the same mesh, i.e. porous_media)
                 ph_pressure => extract_scalar_field( state( 1 ), "HydrostaticPressure", stat )
                 pressure_field => extract_tensor_field( packed_state, "PackedFEPressure", stat )
-                
+
                 if (size(ph_pressure%val)  ==  size(pressure_field%val, 3)) then
                   auxR = minval(ph_pressure%val); call allmin(auxR)
                   !Only for the reservoir domain include the hydrostatic values
