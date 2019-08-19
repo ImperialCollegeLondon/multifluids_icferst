@@ -522,7 +522,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: nits_flux_lim, its_flux_lim
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION, TDIFFUSION_ES
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
@@ -632,9 +632,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
                 !TDIFFUSION(:,:,:1)=0  ! Only one phase should have the diffusivity term this is done in the multi_eos
+                TDIFFUSION_ES=TDIFFUSION*Lf  ! diffusion for the enthalpy source term
            else
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TOC Chemical diffusivity needs to be defined.
-                TDIFFUSION=0!TDIFFUSION/10
+                TDIFFUSION=TDIFFUSION/10
            end if
 
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
@@ -678,10 +679,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
              !call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
              !call zero(Mmat%petsc_ACV);
+
              Mmat%CV_RHS%val = 0.0
              call CV_ASSEMB( state, packed_state, &
                  Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                 tracer3, velocity, density, multi_absorp, & !tracer3=[saturation, 1+saturation]
+                 tracer3, velocity, density, multi_absorp, & !tracer3=[1+saturation, saturation]
                  DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                  DEN_ALL, DENOLD_ALL, &
                  cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
@@ -695,13 +697,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &  !thermal=.false.
                  .false.,  mass_Mn_pres, &
                  mass_ele_transp, &
-                 TDIFFUSION = TDIFFUSION,&
+                 TDIFFUSION = TDIFFUSION_ES,&
                  saturation=saturation, Permeability_tensor_field = perm,&
                  eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                  porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-             T_source = -Mmat%CV_RHS%val
-
+             T_source =-Mmat%CV_RHS%val
              ! to_debug=0
            else
              ! call get_option( '/material_phase[0]/scalar_field::Composition/prognostic/temporal_discretisation/' // &
@@ -769,12 +770,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                end if
 
-                !Control how it is converging and decide
+               !Control how it is converging and decide
                if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-              !Update halo communications
-              call halo_update(tracer)
+               !Update halo communications
+               call halo_update(tracer)
 
                repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
                call allor(repeat_assemb_solve)

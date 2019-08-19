@@ -619,8 +619,8 @@ contains
 
                 ! magma energy loop
                 its_energy=1
-                energyiteration=2
-                Magma_energy_loop: do  while (its_energy <= energyiteration)
+                energyiteration=10
+                Magma_energy_loop: do  while (its_energy <= energyiteration .and. is_magma)
                 !! HH $ Solve advection of the scalar 'Temperature'or 'Enthalpy' in both cases there must be a temperature field:
                 Conditional_ScalarAdvectionField: if( have_temperature_field ) then
                   both_t_and_h = .FALSE.
