@@ -200,6 +200,8 @@ contains
         Logical:: EnterSolve    !Flag to either enter or not the pressure solve
         !HH
         Integer:: its_energy, energyiteration
+        real:: Improvement
+        real, dimension(:), pointer :: saturation_check
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -619,8 +621,10 @@ contains
 
                 ! magma energy loop
                 its_energy=1
-                energyiteration=10
-                Magma_energy_loop: do  while (its_energy <= energyiteration .and. is_magma)
+                energyiteration=100
+                Improvement=1
+                allocate(saturation_check(Mdims%cv_nonods))
+                Magma_energy_loop: do  while (its_energy <= energyiteration .and. is_magma .and. Improvement>2e-4)
                 !! HH $ Solve advection of the scalar 'Temperature'or 'Enthalpy' in both cases there must be a temperature field:
                 Conditional_ScalarAdvectionField: if( have_temperature_field ) then
                   both_t_and_h = .FALSE.
@@ -684,19 +688,21 @@ contains
                   call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 end if Conditional_ScalarAdvectionField3
-                !HH
-                if (is_magma) then
-                  ! Update bulk composition
-                  call cal_bulkcomposition(state,packed_state)
-                  ! Calculate porosity from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln)
-                  ! Update the temperature field
-                  call enthalpy_to_temperature(Mdims, packed_state)
-                  !Update the composition
-                  call cal_solidfluidcomposition(state, packed_state, Mdims)
-                end if
+                saturation_check=saturation_field%val(1,2,:)
+                ! Update bulk composition
+                call cal_bulkcomposition(state,packed_state)
+                ! Calculate porosity from phase diagram
+                call porossolve(state,packed_state, Mdims, ndgln)
+                ! Update the temperature field
+                call enthalpy_to_temperature(Mdims, packed_state)
+                !Update the composition
+                call cal_solidfluidcomposition(state, packed_state, Mdims)
+
                 its_energy=its_energy+1
+                Improvement=maxval(abs(saturation_check-saturation_field%val(1,2,:)))
               end do Magma_energy_loop
+              print *, "NO_magma_iteration", its_energy
+              
                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
                !!$ Arash

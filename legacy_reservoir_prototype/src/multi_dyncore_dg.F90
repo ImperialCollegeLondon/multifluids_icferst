@@ -647,7 +647,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
+NITS_FLUX_LIM = 1!<= currently looping here more does not add anything as RHS and/or velocity are not updated
                 !we set up 5 iterations but if it converges => we exit straigth away
 temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the petsc bug hits us here, we can retry
 
