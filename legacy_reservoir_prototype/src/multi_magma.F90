@@ -47,10 +47,12 @@ module multi_magma
     ! Lf - latent heat
     !Parameters waiting to be decided if they will become fields or inputs from diamond as scalars
     !I would rather have some more descriptive names for these parameters
-    real, parameter :: Hs = 0.,Hl = 1e5,Ts = 1123.15,Tl = 1e3, Lf = 550000.0
+    real, parameter :: Lf = 550000.0
     ! Ae - eutetic
     ! A1,B1,C1,A2,B2,C2 - phase behaviour parameters
     real, parameter :: A1= 50.,B1= -360,C1= 1433.15,A2= 0.,B2= 0.,C2 = 0., Ae = 1.0
+    real, parameter :: Ts = 1123.15
+    integer, parameter :: PhaseRes=200
 contains
 
   subroutine initilize_enthalpy_from_temperature(state, packed_state, Mdims)
@@ -144,19 +146,19 @@ contains
     ! real, intent(in) :: Bulk_comp, Temperature
     !
     !   if (Temperature > get_Liquidus(Bulk_comp)) then
-    !   	if (Bulk_comp > Ae) then
-    !   		get_Solid_Composition = 1.0
-    !   	else
-    !   		get_Solid_Composition = 0.0
-    !   	end if
+    !     if (Bulk_comp > Ae) then
+    !       get_Solid_Composition = 1.0
+    !     else
+    !       get_Solid_Composition = 0.0
+    !     end if
     !   else if (Temperature < get_Solidus(Bulk_comp)) then
-    !   	get_Solid_Composition = Bulk_comp
+    !     get_Solid_Composition = Bulk_comp
     !   else
-    !   	if (Bulk_comp > Ae) then
-    !   		get_Solid_Composition = 1.0
-    !   	else
-    !   		get_Solid_Composition = 0.0
-    !   	end if
+    !     if (Bulk_comp > Ae) then
+    !       get_Solid_Composition = 1.0
+    !     else
+    !       get_Solid_Composition = 0.0
+    !     end if
     !   end if
     !
     ! end function
@@ -210,17 +212,17 @@ contains
     ! implicit none
     ! real, intent(in) :: Bulk_comp, Temperature
     !
-    ! 	if (Temperature > get_Liquidus(Bulk_comp)) then
-    ! 		get_Liquid_Composition = Bulk_comp
-    ! 	else if (Temperature < get_Solidus(Bulk_comp)) then
-    ! 		get_Liquid_Composition = Ae
-    ! 	else
-    ! 		if (Bulk_comp < Ae) then
-    ! 			get_Liquid_Composition = (-B1 - sqrt(( B1**2 ) - 4. * A1 * ( C1 - Temperature ))) / ( 2. * A1)
-    ! 		else
-    ! 			get_Liquid_Composition = (-B2 + sqrt(( B1**2 ) - 4. * A2 * ( C2 - Temperature ))) / ( 2. * A2)
-    ! 		end if
-    ! 	end if
+    !   if (Temperature > get_Liquidus(Bulk_comp)) then
+    !     get_Liquid_Composition = Bulk_comp
+    !   else if (Temperature < get_Solidus(Bulk_comp)) then
+    !     get_Liquid_Composition = Ae
+    !   else
+    !     if (Bulk_comp < Ae) then
+    !       get_Liquid_Composition = (-B1 - sqrt(( B1**2 ) - 4. * A1 * ( C1 - Temperature ))) / ( 2. * A1)
+    !     else
+    !       get_Liquid_Composition = (-B2 + sqrt(( B1**2 ) - 4. * A2 * ( C2 - Temperature ))) / ( 2. * A2)
+    !     end if
+    !   end if
     !
     ! end function
 
@@ -280,10 +282,10 @@ contains
     !real, dimension(Mdims%cv_nonods) :: enthalpy_dim
     real :: fx, fdashx, Loc_Cp, rho
     !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
-    real, parameter :: tol = 1e-2
+    real, parameter :: tol = 1e-6 !Need to be at least 1e-5 to obtain a relative stable result
     integer, parameter :: max_its = 25
     !!
-    real :: ELE,CV_ILOC, cv_nodi
+    real :: ELE,CV_ILOC, cv_nodi, He
       !Temporary until deciding if creating a Cp in packed_state as well
       den => extract_tensor_field( packed_state,"PackedDensity" )
       Density_Cp =>  extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
@@ -305,37 +307,127 @@ contains
           saturation%val(1,1, cv_nodi)=1.
         ELSE
           if (BC%val(cv_nodi) <= Ae) then
-            k=1
-            test_poro = 1.0
-            test_poro_prev=0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol)
-              fx = (Lf/Loc_Cp)*test_poro**3 + (C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + B1*BC%val(cv_nodi)*test_poro + A1*BC%val(cv_nodi)**2
-              fdashx=3*Lf/Loc_Cp*test_poro**2+2*(C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+B1*BC%val(cv_nodi)
-              test_poro_prev = test_poro
-              test_poro = test_poro - fx/fdashx
-              k=k+1
-            end do
+            He=get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho)+Lf*BC%val(cv_nodi)/Ae
+            if (enthalpy%val(1,1,cv_nodi)<=He) then
+              test_poro=BC%val(cv_nodi)*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho))/(He-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho))/Ae
+            else
+              k=1
+              test_poro = 1.0
+              test_poro_prev=0
+              do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol)
+                fx = (Lf/Loc_Cp)*test_poro**3 + (C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + B1*BC%val(cv_nodi)*test_poro + A1*BC%val(cv_nodi)**2
+                fdashx=3*Lf/Loc_Cp*test_poro**2+2*(C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+B1*BC%val(cv_nodi)
+                test_poro_prev = test_poro
+                test_poro = test_poro - fx/fdashx
+                k=k+1
+              end do
+            end if
           else if (BC%val(cv_nodi) > Ae) then
-            k=1
-            test_poro = 1.0
-            test_poro_prev=0
-            do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol .and. test_poro<=1)
-              fx= (Lf/Loc_Cp)**test_poro**3+(C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+A2+B2)*test_poro**2+(2*A2*BC%val(cv_nodi)-2*A2+&
-              B2*BC%val(cv_nodi)-B2)*test_poro+A2*(BC%val(cv_nodi)-1)**2
+            He=get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho)+Lf*(1-BC%val(cv_nodi))/(1-Ae)
+            if (enthalpy%val(1,1,cv_nodi)<=He) then
+              test_poro=(1-BC%val(cv_nodi))*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho))/(He-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho))/(1-Ae)
+            else
+              k=1
+              test_poro = 1.0
+              test_poro_prev=0
+              do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol .and. test_poro<=1)
+                fx= (Lf/Loc_Cp)**test_poro**3+(C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+A2+B2)*test_poro**2+(2*A2*BC%val(cv_nodi)-2*A2+&
+                B2*BC%val(cv_nodi)-B2)*test_poro+A2*(BC%val(cv_nodi)-1)**2
 
-              fdashx = 3.*(Lf/Loc_Cp)*test_poro**2 + 2.*(C2-enthalpy%val(1,iphase, cv_nodi)/Loc_Cp + A2 + B2)*test_poro +&
-              (2.*A2*BC%val(cv_nodi) - 2.*A2 + B2*BC%val(cv_nodi) - B2)
+                fdashx = 3.*(Lf/Loc_Cp)*test_poro**2 + 2.*(C2-enthalpy%val(1,iphase, cv_nodi)/Loc_Cp + A2 + B2)*test_poro +&
+                (2.*A2*BC%val(cv_nodi) - 2.*A2 + B2*BC%val(cv_nodi) - B2)
 
-              test_poro_prev = test_poro!Store to check convergence the previous value
-              test_poro = test_poro - fx/fdashx
-              k=k+1
-            end do
+                test_poro_prev = test_poro!Store to check convergence the previous value
+                test_poro = test_poro - fx/fdashx
+                k=k+1
+              end do
+            end if
           end if
           saturation%val(1,2, cv_nodi)=test_poro
           saturation%val(1,1, cv_nodi)=1-test_poro
         END IF
       end do
     end subroutine
+
+    ! subroutine PhaseGen(state, packed_state, PhaseDiagram)
+    !   implicit none
+    !   type( state_type ), intent( in ) :: packed_state
+    !   type( state_type ), dimension(:), intent( in ) :: state
+    !
+    !   type( tensor_field ), pointer :: den, Density_Cp
+    !   !Local variables
+    !   integer ::  i, j, k
+    !   real :: test_poro, test_poro_prev                                                  !Temporary until deciding if creating a Cp in packed_state as well
+    !   !real, dimension(Mdims%cv_nonods) :: enthalpy_dim
+    !   real :: fx, fdashx, Loc_Cp, rho
+    !   !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
+    !   real, parameter :: tol = 1e-6 !Need to be at least 1e-5 to obtain a relative stable result
+    !   integer, parameter :: max_its = 25
+    !   real, dimension(:,:), pointer :: PhaseDiagram
+    !   real, DIMENSION(PhaseRes+1) :: BC, ent !BUlk compositon and enthalpy
+    !   real ::maxH, minH, He
+    !
+    !   allocate(PhaseDiagram(PhaseRes+1,PhaseRes+1))
+    !   den => extract_tensor_field( packed_state,"PackedDensity" )
+    !   Density_Cp =>  extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+    !   BC=(/((i/PhaseRes),i=0,PhaseRes)/)
+    !   Loc_Cp = Density_Cp%val(1,1,1)/den%val(1,1,1)
+    !   rho=den%val(1,1,1)
+    !   maxH=maxval((/A1+B1+C1, C1, C2, A2+B2+C2/))*Loc_cp+Lf
+    !   minH=get_Enthalpy_Liquidus(0.,Loc_Cp, rho)
+    !   ent=(/((minH+i/PhaseRes*(maxH-minH)),i=0,PhaseRes)/)
+    !
+    !   do i =1, PhaseRes+1  !Ent loop
+    !     do j=1, PhaseRes+1 !BC loop
+    !       if (ent(i)>get_Enthalpy_Liquidus(BC(j),Loc_Cp, rho)) then
+    !         test_poro=1
+    !       elseif (ent(i)<get_Enthalpy_Solidus(BC(j),Loc_Cp, rho)) then
+    !         test_poro=0
+    !       else
+    !         if (BC(j) <= Ae) then
+    !           He=get_Enthalpy_Solidus(BC(j),Loc_Cp, rho)+Lf*BC(j)/Ae
+    !           if (Ent(i)<=He) then
+    !             test_poro=BC(j)*(Ent(i)-get_Enthalpy_Solidus(BC(j),Loc_Cp, rho))/(He-get_Enthalpy_Solidus(BC(j),Loc_Cp, rho))/Ae
+    !           else
+    !             k=1
+    !             test_poro = 1.0
+    !             test_poro_prev=0
+    !             do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol)
+    !               fx = (Lf/Loc_Cp)*test_poro**3 + (C1-ent(i)/Loc_Cp)*test_poro**2 + B1*BC(j)*test_poro + A1*BC(j)**2
+    !               fdashx=3*Lf/Loc_Cp*test_poro**2+2*(C1-ent(i)/Loc_Cp)*test_poro+B1*BC(j)
+    !               test_poro_prev = test_poro
+    !               test_poro = test_poro - fx/fdashx
+    !               k=k+1
+    !             end do
+    !           end if
+    !         else if (BC(j) > Ae) then
+    !           He=get_Enthalpy_Solidus(BC(j),Loc_Cp, rho)+Lf*(1-BC(j))/(1-Ae)
+    !           if (Ent(i)<=He) then
+    !             test_poro=(1-BC(j))*(Ent(i)-get_Enthalpy_Solidus(BC(j),Loc_Cp, rho))/(He-get_Enthalpy_Solidus(BC(j),Loc_Cp, rho))/(1-Ae)
+    !           else
+    !             k=1
+    !             test_poro = 1.0
+    !             test_poro_prev=0
+    !             do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol .and. test_poro<=1)
+    !               fx= (Lf/Loc_Cp)**test_poro**3+(C2-ent(i)/Loc_Cp+A2+B2)*test_poro**2+(2*A2*BC(j)-2*A2+&
+    !               B2*BC(j)-B2)*test_poro+A2*(BC(j)-1)**2
+    !
+    !               fdashx = 3.*(Lf/Loc_Cp)*test_poro**2 + 2.*(C2-ent(i)/Loc_Cp + A2 + B2)*test_poro +&
+    !               (2.*A2*BC(j) - 2.*A2 + B2*BC(j) - B2)
+    !
+    !               test_poro_prev = test_poro!Store to check convergence the previous value
+    !               test_poro = test_poro - fx/fdashx
+    !               k=k+1
+    !             end do
+    !           end if
+    !         end if
+    !       end if
+    !       PhaseDiagram(i,j)=test_poro
+    !     end do
+    !   end do
+    ! end subroutine
+
+
 
 
 end module multi_magma

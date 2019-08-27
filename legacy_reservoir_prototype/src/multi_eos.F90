@@ -1563,7 +1563,7 @@ contains
     !HH
     subroutine calculate_enthalpy_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion,tracer)
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), intent( in ) :: packed_state
       !type( state_type ), intent( in ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln

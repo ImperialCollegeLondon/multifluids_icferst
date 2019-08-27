@@ -637,7 +637,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TOC Chemical diffusivity needs to be defined.
                 TDIFFUSION=TDIFFUSION/10
            end if
-
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
@@ -702,7 +701,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                  porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-             T_source =-Mmat%CV_RHS%val
+             ! T_source =-Mmat%CV_RHS%val
              ! to_debug=0
            else
              ! call get_option( '/material_phase[0]/scalar_field::Composition/prognostic/temporal_discretisation/' // &

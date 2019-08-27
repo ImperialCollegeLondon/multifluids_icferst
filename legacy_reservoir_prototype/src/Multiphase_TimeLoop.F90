@@ -210,7 +210,6 @@ contains
       assert(ierr == ZOLTAN_OK)
 #endif
 
-
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
@@ -246,7 +245,6 @@ contains
             multicomponent_state )
         call prepare_absorptions(state, Mdims, multi_absorp)
         call set_boundary_conditions_values(state, shift_time=.true.)
-
         !  Access boundary conditions via a call like
         !  call get_entire_boundary_condition(extract_tensor_field(packed_state,"Packed"//name),["weakdirichlet"],tfield,bc_type_list)
         !  where tfield is type(tensor_field) and bc_type_list is integer, dimension(tfield%dim(1),tfield%dim(2),nonods)
@@ -403,7 +401,6 @@ contains
             !Ensure that the initial condition for the saturation sum to 1.
             call Ensure_Saturation_sums_one(Mdims, ndgln, packed_state, find_scapegoat_phase = .true.)
         end if
-
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -444,7 +441,6 @@ contains
            call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
-        !HH initilize Enthalpy from the temperature
 
         !!$ Time loop
         Loop_Time: do
@@ -574,7 +570,6 @@ contains
 
                 velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                 pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-
                 !#=================================================================================================================
                 !# Andreas. I added a flag in the Conditional_ForceBalanceEquation to eiher enter or not.
                 !#    TODO. This has to be updated with adaptivity as well.
@@ -597,8 +592,7 @@ contains
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
-
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. itime==1 ) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma)) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -619,13 +613,13 @@ contains
                 !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================
 
-                ! magma energy loop
+                ! HH magma energy loop
                 its_energy=1
-                energyiteration=100
+                energyiteration=200
                 Improvement=1
                 allocate(saturation_check(Mdims%cv_nonods))
-                Magma_energy_loop: do  while (its_energy <= energyiteration .and. is_magma .and. Improvement>2e-4)
-                !! HH $ Solve advection of the scalar 'Temperature'or 'Enthalpy' in both cases there must be a temperature field:
+                Magma_energy_loop: do  while (its_energy <= energyiteration .and. is_magma .and. Improvement>1e-2)
+                !!$ Solve advection of the scalar 'Temperature'or 'Enthalpy' in both cases there must be a temperature field:
                 Conditional_ScalarAdvectionField: if( have_temperature_field ) then
                   both_t_and_h = .FALSE.
                   call set_nu_to_u( packed_state )
@@ -661,7 +655,7 @@ contains
                     0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                     THETA_GDIFF, eles_with_pipe, pipes_aux, &
                     option_path = '/material_phase[0]/scalar_field::Enthalpy', &
-                    thermal = .true.,&
+                    thermal = .false.,&
                     saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
                   end if
                   call Calculate_All_Rhos( state, packed_state, Mdims )
@@ -691,18 +685,18 @@ contains
                 saturation_check=saturation_field%val(1,2,:)
                 ! Update bulk composition
                 call cal_bulkcomposition(state,packed_state)
-                ! Calculate porosity from phase diagram
+                ! ! Calculate porosity from phase diagram
                 call porossolve(state,packed_state, Mdims, ndgln)
-                ! Update the temperature field
+                ! ! Update the temperature field
                 call enthalpy_to_temperature(Mdims, packed_state)
-                !Update the composition
+                ! ! Update the composition
                 call cal_solidfluidcomposition(state, packed_state, Mdims)
 
                 its_energy=its_energy+1
                 Improvement=maxval(abs(saturation_check-saturation_field%val(1,2,:)))
               end do Magma_energy_loop
-              print *, "NO_magma_iteration", its_energy
-              
+              print *, "NO_magma_iteration", its_energy-1
+
                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
                !!$ Arash
