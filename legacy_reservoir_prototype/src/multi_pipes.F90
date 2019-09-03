@@ -1270,13 +1270,13 @@ contains
           END DO ! DO CV_NODI = 1, Mdims%cv_nonods
       endif ! if(GETCV_DISC) then
       IF ( GETCT ) THEN
-          INV_B = DT * PIPE_ABS!SPRINT_TO_DO IS INV_B USED, it is used to calculate the CMC matrix ...
+          ! INV_B = DT * PIPE_ABS!SPRINT_TO_DO IS INV_B USED, it is used to calculate the CMC matrix ...
             DO IPHASE = 1, nphase
-                INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) + DEN_ALL( IPHASE, : )
+                INV_B( IPHASE, IPHASE, : ) = 1./DEN_ALL( IPHASE, : )
             END DO
-          DO CV_NODI = 1, Mdims%cv_nonods
-              CALL INVERT( INV_B( :, :, CV_NODI ) )
-          END DO
+          ! DO CV_NODI = 1, Mdims%cv_nonods
+          !     CALL INVERT( INV_B( :, :, CV_NODI ) )
+          ! END DO
       ENDIF ! ENDOF IF ( GETCT ) THEN
 
 
