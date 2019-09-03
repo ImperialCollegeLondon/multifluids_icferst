@@ -759,7 +759,7 @@ contains
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
        !Local variables
        real, save :: kv_kh_ratio = -1
-       type( tensor_field ), pointer :: perm
+       type( tensor_field ), pointer :: perm, state_viscosity
        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
        real, dimension(:,:), allocatable :: viscosities
        integer :: i, j, ele, n_in_pres
@@ -798,6 +798,17 @@ contains
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
            allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))!sprint_to_do remove extended_Black_Oil
            call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 3, viscosities = viscosities)
+
+       else if (have_option_for_any_phase("phase_properties/Viscosity/tensor_field::Viscosity/diagnostic", Mdims%nphase)) then
+           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
+
+           do i = 1,  Mdims%nphase
+             state_viscosity => extract_tensor_field( state( i ), 'Viscosity' )
+             viscosities(i, :) = state_viscosity%val(1,1,:)!Take the first term only as for porous media we consider only scalar
+           end do
+           do i =1, Mdims%cv_nonods
+
+           end do
        else
             allocate(viscosities(Mdims%nphase, 1))
             call set_viscosity(nphase, Mdims, state, viscosities(:,1))
@@ -1038,6 +1049,7 @@ contains
             real :: mobility
             type(tensor_field), pointer :: viscosity_ph
 
+
             !SPRINT_TO_DO what happens here if we have components???
             do ipres = 1, Mdims%npres
               DO IPHASE = 1, nphase/Mdims%npres!Get viscosity for all the phases
@@ -1047,7 +1059,6 @@ contains
                   visc_phases(compact_phase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
               end do
             end do
-
         end subroutine set_viscosity
 
 
