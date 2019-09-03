@@ -1096,7 +1096,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes)
+        calculate_mass_delta, outfluxes, pres_its_taken)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1123,6 +1123,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
+        integer, intent(inout) :: pres_its_taken
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
@@ -1619,6 +1620,8 @@ end if
         call zero(deltaP)!;call zero_non_owned(rhs_p)
         !Solve the system to obtain dP (difference of pressure)
         call petsc_solve(deltap,cmc_petsc,rhs_p,option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+pres_its_taken = its_taken
+
         if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
         ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
 

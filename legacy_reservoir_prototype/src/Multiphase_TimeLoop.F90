@@ -141,7 +141,7 @@ contains
             Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken
+        integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken, pres_its_taken
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
         type( scalar_field ), pointer :: cfl, rc_field
@@ -579,7 +579,7 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes)
+                        calculate_mass_delta, outfluxes, pres_its_taken)
 
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
@@ -699,6 +699,8 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
+
+            ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
 
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
             if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
