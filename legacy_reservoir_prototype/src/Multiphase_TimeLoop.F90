@@ -699,9 +699,9 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
-
-            ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
-
+            if (have_option( '/io/Show_Convergence')) then 
+              ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
+            end if
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
             if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
             FPI_eq_taken = dble(its) + dble(SFPI_taken)/3.!SFPI cost 1/3 roughly, this needs to be revisited when solving for nphases-1
