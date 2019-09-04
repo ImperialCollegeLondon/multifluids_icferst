@@ -699,7 +699,7 @@ contains
                 its = its + 1
                 first_nonlinear_time_step = .false.
             end do Loop_NonLinearIteration
-            if (have_option( '/io/Show_Convergence')) then 
+            if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
             !Store the combination of Nonlinear iterations performed. Only account of SFPI if multiphase porous media flow
@@ -729,7 +729,7 @@ contains
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
-            if (is_porous_media) then
+            if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
                     ewrite(0,*) "Courant_number and shock-front Courant number", Courant_number
                 else !printout only in the log
