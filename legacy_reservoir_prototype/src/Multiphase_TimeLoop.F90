@@ -276,7 +276,8 @@ contains
 
         !!$ Calculate diagnostic fields
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-        call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
+        ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!Disable, redundant and working worse... at least for viscosity
+                                                                                            !in this case the pressure from state is zeroed...
         !!$
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
@@ -736,7 +737,7 @@ contains
 
             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-            call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
+            ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
