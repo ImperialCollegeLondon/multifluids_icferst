@@ -40,8 +40,6 @@ module multiphase_EOS
     use python_state
     use Copy_Outof_State
     use multi_tools !!!!! WHY is the bad_elements type not being picked up by Copy_Outof_State??????
-
-    use global_parameters, only: domain_bbox
     use shape_functions_Linear_Quadratic
     use sparse_tools
     use Multiphase_module
@@ -801,13 +799,9 @@ contains
 
        else if (have_option_for_any_phase("phase_properties/Viscosity/tensor_field::Viscosity/diagnostic", Mdims%nphase)) then
            allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
-
            do i = 1,  Mdims%nphase
              state_viscosity => extract_tensor_field( state( i ), 'Viscosity' )
              viscosities(i, :) = state_viscosity%val(1,1,:)!Take the first term only as for porous media we consider only scalar
-           end do
-           do i =1, Mdims%cv_nonods
-
            end do
        else
             allocate(viscosities(Mdims%nphase, 1))

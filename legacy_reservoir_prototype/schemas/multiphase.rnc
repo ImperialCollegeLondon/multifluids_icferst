@@ -1270,7 +1270,7 @@ solver_options =
                 ##
                 ## If negative, the input value is Peclet number desired.
                 ##
-                ## Recommended value for Saturation => -1e2
+                ## Recommended value for Saturation => -3e2
                 ##
                 ## Tip: If running with temperature and single phase disable this setting it to 0.
                 element Vanishing_relaxation{
