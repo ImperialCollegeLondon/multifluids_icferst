@@ -315,6 +315,16 @@ contains
         if (.not. Mmat%CV_pressure .and. ((Mdims%ndim==2 .and. Mdims%u_nloc == 4) .or. (Mdims%ndim==3 .and. Mdims%u_nloc == 5))) then
             ewrite(0, *) "WARNING: the only tested element pair using bubble shape functions is the P1DG(BL)P1DG(CV)"
         end if
+        !Warning message for compressible flows. If one phase has compressibility all of them must be define as compressible
+        if (have_option_for_any_phase("phase_properties/Density/compressible", Mdims%ndim) .or. &
+          have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim)) then
+          do i = 1, Mdims%nphase
+            if (getprocno() == 1 .and. have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/incompressible')) then
+                ewrite(0, *) "WARNING: All the phases must be defined as compressible. You can use the linear option with A ~ 0."
+                exit
+            end if
+          end do
+        end if
         !Check if we want to use a compacted mass matrix
         if ((Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')) &
                     .and. is_porous_media .and. Mdims%npres == 1) then

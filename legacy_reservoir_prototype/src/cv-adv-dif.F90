@@ -2079,6 +2079,8 @@ contains
                       MEAN_PORE_CV_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI )
                       CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
                   END DO
+                  !This section is to add compressibility, DERIV is the derivative of density against pressure
+                  !and DIAG_SCALE_PRES is the implicit part of the implementation
                   ct_rhs_phase(:)=ct_rhs_phase(:) &
                       - R_PHASE(:) * ( &
                       + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
@@ -2114,6 +2116,7 @@ contains
                       else
                           call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) )
                       end if
+
                       DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
                           + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
                   END DO
