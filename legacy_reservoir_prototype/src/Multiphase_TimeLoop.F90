@@ -320,7 +320,7 @@ contains
           have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim)) then
           do i = 1, Mdims%nphase
             if (getprocno() == 1 .and. have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/incompressible')) then
-                ewrite(0, *) "WARNING: All the phases must be defined as compressible. You can use the linear option with A ~ 0."
+                ewrite(0, *) "WARNING: All the phases must be defined as compressible. You can use the linear option with A ~ 0 for the incompressible phase."
                 exit
             end if
           end do
