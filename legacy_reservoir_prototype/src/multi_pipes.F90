@@ -1447,6 +1447,7 @@ contains
 
         DO k = 1, size(eles_with_pipe)
             ELE = eles_with_pipe(k)%ele!Element with pipe
+
             X_ALL_CORN(:,1:NCORNER) = x%val(:, ndgln%x( ( ELE - 1 ) * Mdims%cv_nloc + CV_LOC_CORNER(1:NCORNER)) )
             DO IPIPE = 1, eles_with_pipe(k)%npipes
                 ! DEFINE CV_LILOC:
@@ -1843,7 +1844,7 @@ contains
         integer, dimension(Mdims%ndim + 1) :: CV_LOC_CORNER!NCORNER
         logical, dimension(Mdims%ndim + 1) :: PIPE_INDEX_LOGICAL!NCORNER
         !Variables to read from input files
-        integer :: number_well_files, edge, stat
+        integer :: number_well_files, edge, stat, nb
         real :: diam
         character( len = option_path_len ):: file_path
         real, dimension(:,:), allocatable :: nodes
@@ -1851,7 +1852,9 @@ contains
         integer, dimension(:), allocatable :: pipe_seeds
         type( tensor_field ), pointer:: tfield
         type (scalar_field), pointer :: well_domains
+        logical :: skip
         logical, save :: dump_vtu_zero = .true.
+        integer, dimension(:), pointer :: neighbours
         !Initialise
         AUX_eles_with_pipe%ele = -1
         k = 1; NCORNER = Mdims%ndim + 1
@@ -1888,12 +1891,28 @@ contains
                 deallocate(pipe_seeds)
             end do
 
-            if (.not.allocated(eles_with_pipe))allocate(eles_with_pipe(0)) !This if is important for parallel so it exists and the loops are skipped
+            if (.not.allocated(eles_with_pipe)) allocate(eles_with_pipe(0)) !This if is important for parallel so it exists and the loops are skipped
             !Re-populate properly PIPE_DIAMETER
             PIPE_DIAMETER%val = 0.
             !Copy values back to PIPE_DIAMETER from diameter_of_the_pipe_aux. This should go over less than 1% of the nodes
 
             do ele = 1, size(eles_with_pipe)
+              !For parallel we only assign a diameter value if the node is owned by the processor
+              if (IsParallel()) then
+                  if (.not. assemble_ele(PIPE_DIAMETER,ele)) then
+                      skip=.true.
+                      neighbours=>ele_neigh(PIPE_DIAMETER,ele)
+                      do nb=1,size(neighbours)
+                          if (neighbours(nb)<=0) cycle
+                          if (assemble_ele(PIPE_DIAMETER,neighbours(nb))) then
+                              skip=.false.
+                              exit
+                          end if
+                      end do
+                      if (skip) cycle
+                  end if
+              end if
+
                 do k = 1, eles_with_pipe(ele)%npipes
                     x_iloc = eles_with_pipe(ele)%pipe_corner_nds1(k)
                     PIPE_DIAMETER%val(ndgln%cv( ( eles_with_pipe(ele)%ele - 1 ) * Mdims%cv_nloc + x_iloc )) = &
@@ -1906,6 +1925,24 @@ contains
 
         else
             do ele = 1, Mdims%totele
+
+              !For parallel we only assign a diameter value if the node is owned by the processor
+              if (IsParallel()) then
+                  if (.not. assemble_ele(PIPE_DIAMETER,ele)) then
+                      skip=.true.
+                      neighbours=>ele_neigh(PIPE_DIAMETER,ele)
+                      do nb=1,size(neighbours)
+                          if (neighbours(nb)<=0) cycle
+                          if (assemble_ele(PIPE_DIAMETER,neighbours(nb))) then
+                              skip=.false.
+                              exit
+                          end if
+                      end do
+                      if (skip) cycle
+                  end if
+              end if
+
+
                 ! Look for pipe indicator in element:
                 PIPE_INDEX_LOGICAL=.FALSE.
                 PIPE_NOD_COUNT=0

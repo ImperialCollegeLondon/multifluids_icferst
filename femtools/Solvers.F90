@@ -135,7 +135,7 @@ subroutine petsc_solve_scalar(x, matrix, rhs, option_path, &
 
   character(len=OPTION_PATH_LEN):: solver_option_path
   type(petsc_numbering_type) petsc_numbering
-  integer literations
+  integer literations, ierr
   logical lstartfromzero
 
   assert(size(x%val)==size(rhs%val))
@@ -155,6 +155,8 @@ subroutine petsc_solve_scalar(x, matrix, rhs, option_path, &
   end if
 #endif
 
+  ! call PetscOptionsInsertString("-log_view:filename.py:ascii_info_detail", ierr)
+  
   ! setup PETSc object and petsc_numbering from options and
   call petsc_solve_setup(y, A, b, ksp, petsc_numbering, &
         solver_option_path, lstartfromzero, &
@@ -168,6 +170,8 @@ subroutine petsc_solve_scalar(x, matrix, rhs, option_path, &
   ! copy array into PETSc vecs
   call petsc_solve_copy_vectors_from_scalar_fields(y, b, x, &
        & matrix, rhs, petsc_numbering, lstartfromzero)
+
+
 
   ! the solve and convergence check
   call petsc_solve_core(y, A, b, ksp, petsc_numbering, &
@@ -1961,6 +1965,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     MatSolverPackage:: matsolverpackage
     PetscErrorCode:: ierr
     PCJacobiType:: pc_jacobi_type
+
+
 
     call get_option(trim(option_path)//'/name', pctype)
 
