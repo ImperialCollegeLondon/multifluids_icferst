@@ -445,7 +445,7 @@ contains
         if (Mdims%npres > 1) then
            !Retrieve the elements with pipes and the corresponding coordinates
            call retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
-           call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
+           ! call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
 
@@ -454,7 +454,10 @@ contains
             ewrite(2,*) '    NEW DT', itime+1
 
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
+            !Prepapre the pipes
+            if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)!Re-read pipe properties such as gamma
             call initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
+
             if (exit_initialise_porous_media) exit Loop_Time
 
             !Check first time step
