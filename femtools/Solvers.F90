@@ -2085,7 +2085,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
           abs=PETSC_FALSE
         end if
         call PCJacobiSetUseAbs(pc,abs, ierr)
-        STOP
     else
 
        ! this doesn't work for hypre
