@@ -1965,6 +1965,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     MatSolverPackage:: matsolverpackage
     PetscErrorCode:: ierr
     PCJacobiType:: pc_jacobi_type
+    PetscBool :: abs
 
 
 
@@ -2069,14 +2070,22 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
     else if (pctype==PCJACOBI) then !!-ao JACBO ROW MAX
       call PCSetType(pc, pctype, ierr)
-          if (trim( opt ) == "rowmax" ) then
+      call get_option(trim(option_path)//'/jacobi_type/name', opt)
+          if (opt == "rowmax" ) then
             pc_jacobi_type =  PC_JACOBI_ROWMAX
-          else if (trim( opt ) == "rowsum" )  then
+          else if ( opt  == "rowsum" )  then
             pc_jacobi_type =  PC_JACOBI_ROWSUM
           else
             pc_jacobi_type =  PC_JACOBI_DIAGONAL
           end if
         call PCJacobiSetType(pc,pc_jacobi_type, ierr)
+        if (have_option(trim(option_path)//'/use_absolute_values')) then
+          abs=PETSC_TRUE
+        else
+          abs=PETSC_FALSE
+        end if
+        call PCJacobiSetUseAbs(pc,abs, ierr)
+        STOP
     else
 
        ! this doesn't work for hypre

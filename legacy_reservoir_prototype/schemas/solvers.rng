@@ -337,6 +337,11 @@ and the advection-diffusion solve of prognostic scalar fields.</a:documentation>
           </attribute>
         </element>
       </choice>
+      <optional>
+        <element name="use_absolute_values">
+          <empty/>
+        </element>
+      </optional>
     </element>
   </define>
   <define name="pcpbjacobi_options">

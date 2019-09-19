@@ -310,6 +310,11 @@ pcjacobi_options =
             element jacobi_type {
               attribute name { "diagonal" }
            }
+        ),
+        (
+        element use_absolute_values {
+           empty
+        }?
         )
      }
   )
