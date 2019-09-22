@@ -1774,7 +1774,7 @@ contains
                                           do iphase=1,n_in_pres
                                               !temporary to check a possible memory problem with Valgrind!!!
                                               auxR = FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase)
-                                              call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,auxR) ! Advection
+                                              call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,auxR) ! advection
                                               if (GOT_DIFFUS) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
                                                               - FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase))
                                               if (VAD_activated) call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj,&
@@ -1943,6 +1943,8 @@ contains
                             eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, reservoir_P, INV_B, MASS_ELE, bcs_outfluxes, outfluxes )
           end if
 
+
+          !Add compressibility to the transport equation
           Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
               Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
                   LOC_CV_RHS_I=0.0
@@ -2000,10 +2002,11 @@ contains
                       DO IPHASE=1,n_in_pres
                         global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
                         compact_phase = iphase + (ipres - 1)*n_in_pres
+
+                        !Variation of saturation terms
                         call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
                             cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI )  &
                             * R_PHASE(compact_phase) )
-
                         LOC_CV_RHS_I(compact_phase)=LOC_CV_RHS_I(compact_phase)  &
                           + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( global_phase, CV_NODI )&
                           + ( CV_BETA * DENOLD_ALL( global_phase, CV_NODI ) &
@@ -2080,13 +2083,13 @@ contains
                       CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
                   END DO
                   !This section is to add compressibility, DERIV is the derivative of density against pressure
-                  !and DIAG_SCALE_PRES is the implicit part of the implementation
+                  !and DIAG_SCALE_PRES is the implicit part of the implementation, obtaine dby using first order taylor expansion series 
                   ct_rhs_phase(:)=ct_rhs_phase(:) &
                       - R_PHASE(:) * ( &
                       + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                       + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
-                      - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL(:, CV_NODI ) )
-                  DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &
+                      - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL(:, CV_NODI ) )!First order taylor expansion series
+                  DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &                                             !To treat density implicitly
                       +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
                       / ( DT * DEN_ALL(:, CV_NODI) )
                   ct_rhs_phase(:)=ct_rhs_phase(:)  &

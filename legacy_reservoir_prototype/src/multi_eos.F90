@@ -1147,7 +1147,7 @@ contains
         real, optional, intent(inout) :: inv_mat_absorp
         real, optional, intent(in) :: PERM
         !Local variables
-        real, parameter :: epsilon = 1d-10!This value should in theory never be used, the real lower limit
+        real, parameter :: epsilon = 1d-8!This value should in theory never be used, the real lower limit
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
 
         select case (nphase)

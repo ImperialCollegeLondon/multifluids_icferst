@@ -142,7 +142,7 @@ contains
           U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k, iofluxes, n_in_pres, compact_phase, global_phase
       real, dimension(nphase, Mdims%cv_nonods):: tmax_all, tmin_all, denmax_all, denmin_all
       type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2, t2_all, only_den_all
-      type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
+      type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield, wells_receptivity
       type(vector_field), pointer :: X
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
@@ -309,6 +309,8 @@ contains
       X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
       sigma1_pipes => extract_scalar_field( state(1), "Sigma" )
       TMAX_ALL=-INFINY; TMIN_ALL=+INFINY; DENMAX_ALL=-INFINY; DENMIN_ALL = +INFINY
+      !For well outfluxes we need to consider if the well is open or not. This may lead otherwise to show instabilities in the results
+      wells_receptivity=>extract_scalar_field(state(1),"Gamma",ipres)
 
       if (thermal) then
           !Change pointers
@@ -815,7 +817,7 @@ contains
                       if (element_owned(T_ALL, ele)) then
                           !Store total outflux for mass conservation check
                           bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, 0) =  bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD,0) + &
-                          NDOTQ(n_in_pres+1:nphase) * suf_area * LIMDT(n_in_pres+1:nphase)
+                          NDOTQ(n_in_pres+1:nphase) * suf_area * LIMDT(n_in_pres+1:nphase) * wells_receptivity%val(JCV_NOD)
                           if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
                               !If we want to output the outfluxes of the pipes we fill the array here with the information
                               sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
@@ -823,7 +825,7 @@ contains
                                   if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
                                       bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, iofluxes) =  &
                                       bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, iofluxes) + &
-                                      NDOTQ(n_in_pres+1:nphase) * suf_area * LIMT(n_in_pres+1:nphase)
+                                      NDOTQ(n_in_pres+1:nphase) * suf_area * LIMT(n_in_pres+1:nphase)* wells_receptivity%val(JCV_NOD)
                                   end if
                               end do
                           end if

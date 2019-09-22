@@ -953,7 +953,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  end if
 
                  call zero(solution)
+
+                 !########Solve the system#############
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+ ! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
                 !Copy solution back to sat_field (not ideal...)
                   do ipres =1, mdims%npres
                     do iphase = 1 , n_in_pres
@@ -1855,7 +1858,7 @@ pres_its_taken = its_taken
             !Only the Mass matrix and the RHS of the Darcy equation is assembled here
             CALL porous_assemb_force_cty( packed_state, pressure, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
-        else!Normal and more general method
+        else !Normal and more general method
 
             CALL ASSEMB_FORCE_CTY( state, packed_state, &
                 Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
