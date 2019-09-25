@@ -321,6 +321,14 @@ start =
                   empty
                }?
             }?,
+            ## Disable dump at simulation start
+            element disable_dump_at_start {
+               comment
+            }?,
+            ## Disable dump at simulation end
+            element disable_dump_at_end {
+               comment
+            }?,
             ## Printout the number of elements and percentage that contain an angle
             ## equal or bigger than the ones specified here
 	    ## Note: This may slow down your simulation should be used as a diagnostic tool

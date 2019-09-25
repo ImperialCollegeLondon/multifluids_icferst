@@ -371,6 +371,18 @@ NOTE: Requires -v2</a:documentation>
           </element>
         </optional>
         <optional>
+          <element name="disable_dump_at_start">
+            <a:documentation>Disable dump at simulation start</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
+          <element name="disable_dump_at_end">
+            <a:documentation>Disable dump at simulation end</a:documentation>
+            <ref name="comment"/>
+          </element>
+        </optional>
+        <optional>
           <element name="Mesh_Diagnostics_Angles">
             <a:documentation>Printout the number of elements and percentage that contain an angle
 equal or bigger than the ones specified here
