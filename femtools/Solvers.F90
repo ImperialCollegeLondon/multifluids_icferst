@@ -155,8 +155,8 @@ subroutine petsc_solve_scalar(x, matrix, rhs, option_path, &
   end if
 #endif
 
-  ! call PetscOptionsInsertString("-log_view:filename.py:ascii_info_detail", ierr)
-  
+
+
   ! setup PETSc object and petsc_numbering from options and
   call petsc_solve_setup(y, A, b, ksp, petsc_numbering, &
         solver_option_path, lstartfromzero, &
@@ -2093,6 +2093,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        end if
 
       if (pctype==PCGAMG) then
+        ! call PetscOptionsInsertString("-pc_gamg_sym_graph true", ierr)
+        call PCGAMGSetSymGraph(pc, .true., ierr)
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
