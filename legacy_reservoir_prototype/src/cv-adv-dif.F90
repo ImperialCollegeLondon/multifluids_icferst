@@ -1451,7 +1451,7 @@ contains
                                           upwnd%inv_adv_coef(:,:,1:n_in_pres,MAT_NODI), upwnd%inv_adv_coef(:,:,1:n_in_pres,MAT_NODJ), &
                                           NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
                                           TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                          .false., anisotropic_and_frontier)
+                                          .false., anisotropic_and_frontier)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
                                           T_ALL(1:n_in_pres, CV_NODI), T_ALL(1:n_in_pres, CV_NODJ), LOC_FEMT, &
                                           LOC_NU, LOC2_NU, SLOC_NU, &
@@ -2083,7 +2083,7 @@ contains
                       CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
                   END DO
                   !This section is to add compressibility, DERIV is the derivative of density against pressure
-                  !and DIAG_SCALE_PRES is the implicit part of the implementation, obtaine dby using first order taylor expansion series 
+                  !and DIAG_SCALE_PRES is the implicit part of the implementation, obtaine dby using first order taylor expansion series
                   ct_rhs_phase(:)=ct_rhs_phase(:) &
                       - R_PHASE(:) * ( &
                       + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &

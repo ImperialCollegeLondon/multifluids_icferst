@@ -275,9 +275,8 @@ contains
         !!$
 
         !!$ Calculate diagnostic fields
+        call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!allocates the memory for a fixed mesh
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-        ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!Disable, redundant and working worse... at least for viscosity
-                                                                                            !in this case the pressure from state is zeroed...
         !!$
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
@@ -740,7 +739,8 @@ contains
 
             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-            ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
+            ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!Disable, redundant and working worse... at least for viscosity
+                                                                                                !in this case the pressure from state is zeroed...
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
@@ -1402,7 +1402,6 @@ contains
 
         !!$ Starting loop over components
         Loop_Components: do icomp = 1, Mdims%ncomp
-
             tracer_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentMassFraction")
             density_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentDensity",stat)
 
