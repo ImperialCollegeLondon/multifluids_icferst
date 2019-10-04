@@ -2676,7 +2676,7 @@ end if
                 P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
                 RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
             real :: CONVECTION_ADVECTION_COEFF = 1.0 !default behaviour = 1.0
-            real :: CAcoeff = 1.0
+            real :: CAcoeff = 0.0
             logical :: ULTRA_COMPRESSIVE = .false.
             ! No limiting if CV_DISOPT is 6 or 7  (why not just define limt=femt and skip to assembly?)
             NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
@@ -2846,7 +2846,7 @@ end if
                           case (1) !! more dispersive
                             FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
                             FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
-                          case (2)!! MOST COMPRESSIVE
+                          case (2)!! MOST COMPRESSIVE (CAcoeff of 0.5 is a good in-between, otherwise CAcoeff should be 1)
                             FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ(:)-F_CV_NODI(:))))
                             FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI(:)-F_CV_NODJ(:))))
                           case (3) !! more dispersive
