@@ -514,6 +514,12 @@ contains
                 else
                   Mdisopt%compcoeff=1.0
                 end if
+                if (have_option( trim(option_path2)// '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive')) then
+                    Mdisopt%compopt=.true.
+                    call get_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive/value', Mdisopt%compoptval, default=0.0)
+                else
+                    Mdisopt%compopt=.false.
+                end if
             else
                 if( have_option( trim( option_path2 ) // 'upwind' ) ) &
                     Mdisopt%t_disopt = 1
@@ -536,6 +542,13 @@ contains
                 else
                   Mdisopt%compcoeff=1.0
                 end if
+                if (have_option( trim(option_path2)// '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive')) then
+                    Mdisopt%compopt=.true.
+                    call get_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive/value', Mdisopt%compoptval, default=0.0)
+                else
+                    Mdisopt%compopt=.false.
+                end if
+
             else
                 if( have_option( trim( option_path2 ) // 'upwind' ) ) &
                     Mdisopt%v_disopt = 0

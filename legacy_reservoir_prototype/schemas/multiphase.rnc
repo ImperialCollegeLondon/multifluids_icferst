@@ -360,15 +360,15 @@ start =
                ## timestep and after a mesh adapt.
                element requested_cfl {
                   real
-               },    
+               },
                ## Multiplier of the requested CFL based on which the pressure and velocity fields
                ## will be recalculated. Otherwise, the pressure will not be updated.
                element cfl_pressure {
 		(
 		integer,
                 ##Requested CFL for Pressure is forced to match the hr-adaptive period.
-		##Any value given for cfl_pressure will be overwritten with the value 
-		##of hr-adaptive period.  
+		##Any value given for cfl_pressure will be overwritten with the value
+		##of hr-adaptive period.
             	element at_mesh_adapt {
                    empty
             	}?
@@ -912,7 +912,7 @@ start =
                    ## A Value of 0 => Fully implicit; A Value of -1 implies only Explicit
                    ##
                    ## Recommended values are 0.0 (Fully implicit), 0.25 or 0.5 (Some dumping but primarily implicit)
-                   ## By default this is 0.5                   
+                   ## By default this is 0.5
                    element dumping_well_factor{ real }?,
                    ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
                    element dt_pipe_factor{ real }?,
@@ -985,8 +985,8 @@ start =
 
          ## Advanced options that are kept for debugging purposes
          element numerical_methods {
-            ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field 
-            ## is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation 
+            ## Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
+            ## is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
             ## that otherwise might have been cut off. Enable this option to avoid doing this operation.
             ##
             ## This option is useful if your field is suddenly changing after adapting the mesh.
@@ -996,7 +996,7 @@ start =
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
                empty
-            }?,            
+            }?,
             ## Use a method to avoid distortion due to boundaries
             element use_reflect_method {
                empty
@@ -1164,7 +1164,7 @@ geometry =
             element FE_Pressure {
             (
             ## This option uses FE to solve the continuity equation. This creates a symmetric Pressure
-            ## matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless, 
+            ## matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless,
             ## it may create inconsistencies for multiphase flow and conservative formulations.
             ##
             element FEM_continuity_equation {
@@ -2739,11 +2739,11 @@ tensor_field_choice =
          ## Generic field variable (tensor)
          element tensor_field {
             attribute rank { "2" },
-            attribute name { xsd:string },	
+            attribute name { xsd:string },
  	        ## This option is used to specify a dimension different to ndim (typically number of phases), which is the default.
  	        ## To be used only with the tensor name UAbsorB. Which is a tensor type used
  	        ## to impose an absorption term for the momentum equation using a diagnostic tensor using python.
-            element nphase { integer }?,            
+            element nphase { integer }?,
             ## Field type
             (
                element prescribed {
@@ -2858,6 +2858,13 @@ InterfaceCapturing_options =
      ## Defaults to full negative diffusion (= 1.0) if unselected
      element value {
         real
+     }?,
+     ## Force interface to be compressive, limited to neither
+     ## 1 or 0
+     element ultra_compressive{
+        element value {
+           real
+        }?
      }?
    )
 
@@ -3402,7 +3409,7 @@ phase_properties_options =
                      ## Stress form
                      element stress_form {
                         empty
-                     }| 
+                     }|
 					 ## Tensor form
                      element tensor_form {
                         empty

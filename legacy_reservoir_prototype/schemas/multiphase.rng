@@ -425,8 +425,8 @@ will be recalculated. Otherwise, the pressure will not be updated.</a:documentat
                 <optional>
                   <element name="at_mesh_adapt">
                     <a:documentation>Requested CFL for Pressure is forced to match the hr-adaptive period.
-Any value given for cfl_pressure will be overwritten with the value 
-of hr-adaptive period.  </a:documentation>
+Any value given for cfl_pressure will be overwritten with the value
+of hr-adaptive period.</a:documentation>
                     <empty/>
                   </element>
                 </optional>
@@ -1115,7 +1115,7 @@ Values above 0 imply that explicit is used to dump the effect of the implicit te
 A Value of 0 =&gt; Fully implicit; A Value of -1 implies only Explicit
 
 Recommended values are 0.0 (Fully implicit), 0.25 or 0.5 (Some dumping but primarily implicit)
-By default this is 0.5                   </a:documentation>
+By default this is 0.5</a:documentation>
                       <ref name="real"/>
                     </element>
                   </optional>
@@ -1228,8 +1228,8 @@ The following must be specified:
           <a:documentation>Advanced options that are kept for debugging purposes</a:documentation>
           <optional>
             <element name="do_not_bound_after_adapt">
-              <a:documentation>Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field 
-is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation 
+              <a:documentation>Automatically after adapting the mesh and interpolating the fields a method to ensure boundeness of the field
+is run to guarantee physically plausible solutions. Nonetheless this may spread errors occurred during the interpolation
 that otherwise might have been cut off. Enable this option to avoid doing this operation.
 
 This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
@@ -1479,7 +1479,7 @@ nonetheless the classical CVFEM can also be used.</a:documentation>
               <optional>
                 <element name="FEM_continuity_equation">
                   <a:documentation>This option uses FE to solve the continuity equation. This creates a symmetric Pressure
-matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless, 
+matrix which is more stable than the normal CVFEM formulation and more accurate. Nonetheless,
 it may create inconsistencies for multiphase flow and conservative formulations.
 </a:documentation>
                   <empty/>
@@ -3446,6 +3446,17 @@ Journal on Numerical Analysis, 21, 995-1011</a:documentation>
         <a:documentation>Controls the negative diffusion added to the interface
 Defaults to full negative diffusion (= 1.0) if unselected</a:documentation>
         <ref name="real"/>
+      </element>
+    </optional>
+    <optional>
+      <element name="ultra_compressive">
+        <a:documentation>Force interface to be compressive, limited to neither
+1 or 0</a:documentation>
+        <optional>
+          <element name="value">
+            <ref name="real"/>
+          </element>
+        </optional>
       </element>
     </optional>
   </define>

@@ -2665,6 +2665,7 @@ end if
             ! In tests they all produce similar results.
             !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
             INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
+            INTEGER, PARAMETER :: UCOMPRESSIVE_version = 2
             real, parameter :: tolerance = 1.e-10
             LOGICAL :: NOLIMI
             INTEGER :: CV_KLOC, &
@@ -2675,6 +2676,8 @@ end if
                 P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
                 RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
             real :: CONVECTION_ADVECTION_COEFF = 1.0 !default behaviour = 1.0
+            real :: CAcoeff = 1.0
+            logical :: ULTRA_COMPRESSIVE = .false.
             ! No limiting if CV_DISOPT is 6 or 7  (why not just define limt=femt and skip to assembly?)
             NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
             ! Make a guess at the CV face value of advected field variable and density
@@ -2745,7 +2748,7 @@ end if
                                             END IF
                                             A_STAR_F(IFIELD) = 0.0
                                             A_STAR_X_ALL(:,IFIELD) = COEF(IFIELD) * FXGI_ALL(:,IFIELD)
-                                            RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC
+                                            RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC !HDC is the distance between the nodes
                                             VEC_VEL2(1:Mdims%ndim,IFIELD) = matmul( FSdevFuns%INV_JAC(:,:,GI), A_STAR_X_ALL(1:Mdims%ndim,IFIELD) )
                                             ! Needs 0.25 for quadratic elements...Chris
                                             P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
@@ -2831,9 +2834,27 @@ end if
                                     FEMFGI(IFIELD) = FEMFGI_CENT(IFIELD)
                                 ELSE
                                     FEMFGI(IFIELD) = FEMFGI_UP(IFIELD)
+
                                 ENDIF
                             END DO
                         ENDIF ! ENDOF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN ELSE
+
+                        ULTRA_COMPRESSIVE = Mdisopt%compopt
+                        if(ULTRA_COMPRESSIVE) then  !! use ultra-compression of interfaces
+                          CAcoeff=Mdisopt%compoptval !! this coefficient says how ultra-compressive we need to be (default=0.0, very)
+                          select case(UCOMPRESSIVE_version)
+                          case (1) !! more dispersive
+                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
+                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
+                          case (2)!! MOST COMPRESSIVE
+                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ(:)-F_CV_NODI(:))))
+                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI(:)-F_CV_NODJ(:))))
+                          case (3) !! more dispersive
+                            FUPWIND_IN(:)  = CAcoeff*FUPWIND_IN(:)  +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODI(:))))
+                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODJ(:))))
+                          end select
+                        end if
+
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF(:), FEMFGI(:), F_INCOME(:), &
                             F_CV_NODI(:), F_CV_NODJ(:),XI_LIMIT(:),  &
@@ -2841,7 +2862,20 @@ end if
                             memory_limiters(1:NFIELD), memory_limiters(NFIELD + 1:NFIELD*2),&
                             memory_limiters(2*NFIELD + 1:NFIELD*3), memory_limiters(3*NFIELD + 1:NFIELD*4),&
                             memory_limiters(4*NFIELD + 1:NFIELD*5), memory_limiters(5*NFIELD + 1:NFIELD*6) )
+
+                      ! print *, "2:", CAcoeff
+                      ! print *, NFIELD
+                      ! print *, FUPWIND_IN(0)
+                      ! print *, FUPWIND_IN(1)
+                      ! print *, FUPWIND_OUT(0)
+                      ! print *, FUPWIND_OUT(1)
+                      ! Print *, FEMFGI(:)
+                      !STOP
+
                     ENDIF Conditional_CV_DISOPT_ELE2
+
+
+
             END SELECT
             RETURN
         END SUBROUTINE GET_INT_T_DEN_NEW
