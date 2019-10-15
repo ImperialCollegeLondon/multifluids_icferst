@@ -488,7 +488,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-       option_path, &
        mass_ele_transp, &
        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
@@ -514,7 +513,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, intent( in ) :: DT
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-           character( len = * ), intent( in ), optional :: option_path
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
            type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
@@ -616,14 +614,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0
            CDISPERSION=0.0
+           !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
+           call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer, &
+           calculate_solute_diffusivity = .true.)
 
-           if (trim( option_path ) == '/material_phase[0]/scalar_field::SoluteMassFraction') then
-             !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-             call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer, &
-             calculate_solute_diffusivity = .true.)
-           end if
-
-           !Arash
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
            if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
              call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION, tracer)

@@ -1445,45 +1445,55 @@ contains
         endif
         !Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
         if ( stat == 0 ) then
-
           if (is_porous_media) then
+            !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
             sfield=>extract_scalar_field(state(1),"Porosity")
-            tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
             ScalarAdvectionField_Diffusion = 0.
-            ! Calculation of the averaged thermal diffusivity as
-            ! lambda = porosity * lambda_f + (1-porosity) * lambda_p
-            ! Since lambda_p is defined element-wise and lambda_f CV-wise we perform an average
-            ! as it is stored cv-wise
-            ! NOTE: that we are considering a unified lambda for all the phases
-            do iphase = 1, Mdims%nphase
-              if (present_and_true(calculate_solute_diffusivity)) then
-                diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFraction', stat )
-              else
+
+            if (present_and_true(calculate_solute_diffusivity)) then
+              do iphase = 1, Mdims%nphase
+                diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                do ele = 1, Mdims%totele
+                  ele_nod = min(size(sfield%val), ele)
+                  do iloc = 1, Mdims%mat_nloc
+                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                      do idim = 1, Mdims%ndim
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ))
+                      enddo
+                  end do
+                end do
+              end do
+            else
+              ! Calculation of the averaged thermal diffusivity as
+              ! lambda = porosity * lambda_f + (1-porosity) * lambda_p
+              ! Since lambda_p is defined element-wise and lambda_f CV-wise we perform an average
+              ! as it is stored cv-wise
+              ! NOTE: that we are considering a unified lambda for all the phases
+              do iphase = 1, Mdims%nphase
                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-              endif
-              do ele = 1, Mdims%totele
-                ele_nod = min(size(sfield%val), ele)
-                t_ele_nod = min(size(tfield%val, 3), ele)
-                do iloc = 1, Mdims%mat_nloc
-                  mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                  cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                  if (present_and_true(calculate_solute_diffusivity)) then
-                    do idim = 1, Mdims%ndim
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                      (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ))
-                    enddo
-                  else
+                tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+                do ele = 1, Mdims%totele
+                  ele_nod = min(size(sfield%val), ele)
+                  t_ele_nod = min(size(tfield%val, 3), ele)
+                  do iloc = 1, Mdims%mat_nloc
+                    mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                    cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                     do idim = 1, Mdims%ndim
                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
                       (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
                       +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
                     enddo
-                  endif
+                  end do
                 end do
               end do
-            end do
+            endif
+          !####UP TO HERE DIFFUSIVITY FOR POROUS MEDIA ONLY####
+
+
           else if (have_option( '/femdem_thermal/coupling/ring_and_volume') .OR. have_option( '/femdem_thermal/coupling/volume_relaxation') ) then
             sfield=> extract_scalar_field( state(1), "SolidConcentration" )
             !tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
