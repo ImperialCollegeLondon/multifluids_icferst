@@ -419,8 +419,9 @@ start =
             ## Specify whether this phase is actually a component
             element is_multiphase_component {
                (
-                  ## Specify the weighting for the component equation
-                  ## between 0 and 1. Test cases have 1.
+                  ## The Equations of State are enforced over the lenght of a time-step
+                  ## using the a formula containing different fields.
+                  ## This parameter multiplies this formula. For inert components use 0. For non-inert use 1.0
                   element alpha_beta { real },
                   ## Enable this option to use sigmoid method for finding equilibrium
                   element KComp_Sigmoid {
@@ -1027,6 +1028,11 @@ start =
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {
+               integer
+            }?,
+           ## Impose a maximum number of iterations for the compositional loop 
+           ## By default this number is 1. STILL TESTING THIS PARAMETER
+            element Max_compositional_its {
                integer
             }?,
            ## Decide to solve for nphases-1. This should be faster. Still in development.

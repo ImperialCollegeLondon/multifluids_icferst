@@ -360,9 +360,7 @@ contains
             !!$
             call Calculate_All_Rhos( state, packed_state, Mdims )
             if( have_component_field ) then
-                call get_option( '/material_phase[' // int2str( istate - 1 ) // 'scalar_field::' // &
-                    'ComponentMassFractionPhase1/prognostic/temporal_discretisation/control_volumes' // &
-                    '/number_advection_iterations', NonLinearIteration_Components, default = 3 )
+                call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
             end if
         end do
         simple_black_oil_model = .false.

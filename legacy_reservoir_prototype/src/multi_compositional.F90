@@ -46,7 +46,7 @@ contains
 
         !!$ Calculate compositional model linkage between the phase expressed in COMP_ABSORB.
         !!$ Use values from the previous time step so its easier to converge.
-        !!$ ALPHA_BETA is the scaling coeff. of the compositional model e.g. =1.0
+        !!$ alpha_beta is the scaling coeff. of the compositional model e.g. =1.0
 
         implicit none
         type( state_type ), intent( inout ) :: packed_state
@@ -111,6 +111,9 @@ contains
 
         MIN_K = max( 1.e-1, MINVAL( K_COMP( ICOMP, : , : )))
         MAX_K = MAXVAL( K_COMP( ICOMP, : , : ) )
+
+
+
         CALL Calc_KComp2( Mdims%cv_nonods, Mdims%nphase, icomp, KComp_Sigmoid, &
             min( 1., max( 0., satura )), K_Comp, max_k, min_k, &
             K_Comp2 )
@@ -119,7 +122,7 @@ contains
         DO CV_NOD = 1, Mdims%cv_nonods
             DO IPHASE = 1, Mdims%nphase
                 DO JPHASE = IPHASE + 1, Mdims%nphase
-                    ALPHA= ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
+                    ALPHA= alpha_beta * VOLFRA_PORE_NOD( CV_NOD ) * &
                         ( max( 0.0, SATURA( IPHASE, CV_NOD ) * &
                         DENOLD( 1, IPHASE, CV_NOD ) ) / &
                         K_COMP2( ICOMP, CV_NOD, IPHASE, JPHASE ) + &
@@ -140,7 +143,7 @@ contains
             DO IPHASE = 1, Mdims%nphase
                 DO JPHASE = 1, IPHASE - 1
 
-                    ALPHA= ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
+                    ALPHA= alpha_beta * VOLFRA_PORE_NOD( CV_NOD ) * &
                         ( max(0.0,SATURA (IPHASE, CV_NOD ) * &
                         DENOLD( 1, IPHASE, CV_NOD ) ) + &
                         max(0.0,SATURA (JPHASE, CV_NOD ) * &
@@ -157,6 +160,7 @@ contains
             END DO
 
         END DO
+
 
         do cv_nod = 1, Mdims%cv_nonods
             if( satura( 1, cv_nod ) > 0.95 ) then
@@ -431,7 +435,7 @@ contains
         real, dimension( :, :, :, : ), intent( inout ) :: K_Comp2
         ! Local variables
         integer :: iphase, jphase, cv_nod
-        real, parameter :: Width = 0.1, Err = 1.e-6, Sat = 0.9
+        real, parameter :: Width = 0.1, Err = 1.e-6, Sat = 0.9!Not sure about the nature of this numbers
         real :: Sat0
 
         K_Comp2 = 0.
@@ -446,9 +450,7 @@ contains
                     end do
                 end do
             end do
-
         else
-
             Sat0 = Sat
             do cv_nod = 1, cv_nonods
                 do iphase = 1, nphase

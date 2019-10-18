@@ -689,7 +689,7 @@ contains
           IGETCT = 0
           IF ( GETCT ) IGETCT = 1
           GOT_T2=( IGOT_T2 == 1 )
-          use_volume_frac_T2=( IGOT_T2 == 1 .or. thermal )
+          use_volume_frac_T2=( IGOT_T2 == 1 .or. thermal )    
           i_use_volume_frac_t2= 0
           if (use_volume_frac_T2) i_use_volume_frac_t2= 1
 
