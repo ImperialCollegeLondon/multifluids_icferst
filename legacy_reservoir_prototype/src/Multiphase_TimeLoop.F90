@@ -735,10 +735,6 @@ contains
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
 
-            !!$ Calculate diagnostic fields
-            call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-            ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!Disable, redundant and working worse... at least for viscosity
-                                                                                                !in this case the pressure from state is zeroed...
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
