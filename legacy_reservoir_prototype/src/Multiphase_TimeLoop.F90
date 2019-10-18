@@ -498,6 +498,13 @@ contains
             end if
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
+
+            !!$ Calculate diagnostic fields
+            call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
+            ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!Disable, redundant and working worse... at least for viscosity
+                                                                                                !in this case the pressure from state is zeroed...
+
+
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
             its = 1
