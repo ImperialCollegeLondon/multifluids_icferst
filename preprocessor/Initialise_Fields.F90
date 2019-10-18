@@ -381,7 +381,7 @@ contains
     real, optional, intent(in):: time
     character(len=*), intent(in), optional :: phase_path
 
-    integer :: i, j
+    integer :: i
     logical :: is_isotropic, is_diagonal, is_symmetric
     ! name of python function
     character(len=OPTION_PATH_LEN) :: func
@@ -417,9 +417,7 @@ contains
           ! Put constant on diagonal of tensor
           call get_option(trim(tpath)//"/constant", const)
           do i=1, field%dim(1)
-            do j=1, field%dim(1)
-            const_array(i,j)=const
-          end do
+            const_array(i,i)=const
           end do
           call set(field, const_array)
        else if(have_option(trim(tpath)//"/python")) then
