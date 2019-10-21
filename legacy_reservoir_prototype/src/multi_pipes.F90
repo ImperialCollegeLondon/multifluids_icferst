@@ -142,7 +142,7 @@ contains
           U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k, iofluxes, n_in_pres, compact_phase, global_phase
       real, dimension(nphase, Mdims%cv_nonods):: tmax_all, tmin_all, denmax_all, denmin_all
       type(tensor_field), pointer :: t_all, den_all, u_all, aux_tensor_pointer, tfield, tfield2, t2_all, only_den_all
-      type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield, wells_receptivity
+      type(scalar_field), pointer :: pipe_diameter, sigma1_pipes, sfield
       type(vector_field), pointer :: X
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
@@ -309,8 +309,6 @@ contains
       X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
       sigma1_pipes => extract_scalar_field( state(1), "Sigma" )
       TMAX_ALL=-INFINY; TMIN_ALL=+INFINY; DENMAX_ALL=-INFINY; DENMIN_ALL = +INFINY
-      !For well outfluxes we need to consider if the well is open or not. This may lead otherwise to show instabilities in the results
-      wells_receptivity=>extract_scalar_field(state(1),"Gamma",ipres)
 
       if (thermal) then
           !Change pointers
@@ -817,7 +815,7 @@ contains
                       if (element_owned(T_ALL, ele)) then
                           !Store total outflux for mass conservation check
                           bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, 0) =  bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD,0) + &
-                          NDOTQ(n_in_pres+1:nphase) * suf_area * LIMDT(n_in_pres+1:nphase) * wells_receptivity%val(JCV_NOD)
+                          NDOTQ(n_in_pres+1:nphase) * suf_area * LIMDT(n_in_pres+1:nphase)
                           if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
                               !If we want to output the outfluxes of the pipes we fill the array here with the information
                               sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
@@ -825,7 +823,7 @@ contains
                                   if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
                                       bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, iofluxes) =  &
                                       bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, iofluxes) + &
-                                      NDOTQ(n_in_pres+1:nphase) * suf_area * LIMT(n_in_pres+1:nphase)* wells_receptivity%val(JCV_NOD)
+                                      NDOTQ(n_in_pres+1:nphase) * suf_area * LIMT(n_in_pres+1:nphase)
                                   end if
                               end do
                           end if
@@ -953,10 +951,10 @@ contains
 
   END SUBROUTINE MOD_1D_CT_AND_ADV
 
-  subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, nphase, Mdims, ndgln,   &
-                  WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, A_GAMMA_PRES_ABS,PIPE_ABS,&
-                  getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, MASS_PIPE_FOR_COUP, &
-                  eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, reservoir_P, INV_B, MASS_ELE, bcs_outfluxes, outfluxes )
+  subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, nphase, Mdims, ndgln, DERIV, CV_P, &
+                  SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
+                  getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
+                  mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef )
       ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
@@ -967,22 +965,31 @@ contains
       type (multi_sparsities), intent(in) :: Mspars
       type (porous_adv_coefs), intent(inout) :: upwnd
       type (multi_pipe_package), intent(in) :: pipes_aux
+      REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
+      REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (nphase,Mdims%cv_nonods)
+      REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
+      REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
       integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
-      real, dimension(:,:,:), intent( inout ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, INV_B, A_GAMMA_PRES_ABS, PIPE_ABS
-      real, dimension(:,:),intent( inout ) :: den_all, MASS_CV_PLUS
-      real, dimension(:),intent( inout ) :: MASS_PIPE_FOR_COUP, reservoir_P, MASS_ELE
+      real, dimension(:,:,:), intent( inout ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, INV_B, DIAG_SCALE_PRES_COUP
+      real, dimension(:,:),intent( inout ) :: den_all, MASS_CV_PLUS, denold_all, DIAG_SCALE_PRES
+      REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
+      real, dimension(:),intent( inout ) :: MASS_ELE
       logical, intent( in ) :: getcv_disc, getct, thermal, GOT_T2
       real, intent(in) :: DT, CV_BETA
       integer, intent(in) :: nphase
+
       !Variables that are used to define the pipe pos.
       type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
       !variables to store the pipe outfluxes if asked by the user
       real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
       type (multi_outfluxes), intent(inout) :: outfluxes
+      REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef
       ! Local variables
-      real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N
+      ! Local variables
+      real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta
       INTEGER :: u_lnloc, ele, i, jpres, n_in_pres, u_iloc, x_iloc, idim, cv_lkloc, u_knod, u_lngi, &
-          U_NOD, U_SILOC, MAT_NODI, ipres, k, CV_NODI, IPHASE, COUNT, cv_iloc, jphase, iphase_ipres, jphase_jpres
+          U_NOD, U_SILOC, MAT_NODI, ipres, k, CV_NODI, IPHASE, COUNT, cv_iloc, jphase, iphase_ipres, jphase_jpres,&
+          compact_phase, global_phase
 
       !Variables for boundary conditions
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
@@ -997,7 +1004,7 @@ contains
       real, dimension( :, :, : ), pointer :: fem_p
       real, dimension( Mdims%cv_nonods ) :: N
       !Logical to check if we using a conservative method or not, to save cpu time
-      logical :: conservative_advection
+      logical :: conservative_advection, have_absorption
       !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
       !Parameters of the simulation
       real, parameter :: INFINY=1.0E+20
@@ -1005,17 +1012,22 @@ contains
       !
       ! !variables for pipes, allocatable because they are big and barely used
       type( scalar_field ), pointer :: pipe_Diameter, conductivity_pipes, well_thickness
-      logical :: has_conductivity_pipes
-      REAL, DIMENSION( nphase ) ::  RSUM_VEC
+      logical :: has_conductivity_pipes, Solve_all_phases
+      REAL, DIMENSION( nphase ) ::  RSUM_VEC, LOC_CV_RHS_I, LOC_CV_RHS_J, DIAG_SCALE_PRES_phase, MEAN_PORE_CV_PHASE, ct_rhs_phase,&
+                                    r_pres
       real, dimension( nphase, nphase, Mdims%cv_nonods ) :: GAMMA_PRES_ABS2
       REAL , DIMENSION( nphase, Mdims%cv_nonods) :: opt_vel_upwind_coefs_new_cv
-      real, dimension(nphase):: SAT_FOR_PIPE, DEN_FOR_PIPE_PHASE
+      real, dimension(nphase):: SAT_FOR_PIPE, DEN_FOR_PIPE_PHASE, R_PHASE
       real, dimension(nphase):: PRES_FOR_PIPE_PHASE, PRES_FOR_PIPE_PHASE_FULL
       REAL , DIMENSION( nphase, Mdims%cv_nonods ) :: SIGMA_INV_APPROX
-
+      real, dimension( Mdims%cv_nonods ) :: MASS_PIPE_FOR_COUP
+      real, dimension( nphase, nphase, Mdims%cv_nonods ) :: A_GAMMA_PRES_ABS, PIPE_ABS
       !#################SET WORKING VARIABLES#################
       !Define n_in_pres based on the local version of nphase
       n_in_pres = nphase/Mdims%npres
+      have_absorption = associated( absorbt_all )
+      one_m_cv_beta = 1.0 - cv_beta
+      Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
 
       call get_var_from_packed_state(packed_state, NonlinearVelocity = U_ALL, FEPressure = FEM_P)
       !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
@@ -1070,6 +1082,7 @@ contains
           SIGMA_INV_APPROX = 1.0
       end if
 
+      MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
           getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
           SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes)
@@ -1112,7 +1125,7 @@ contains
             end do
           end do
           DO IPRES = 1, Mdims%npres
-             PRES_FOR_PIPE_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+             PRES_FOR_PIPE_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = FEM_P( 1, IPRES, CV_NODI )
           END DO
           PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
 
@@ -1171,7 +1184,7 @@ contains
                 end do
               end do
               DO IPRES = 1, Mdims%npres
-                 PRES_FOR_PIPE_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
+                 PRES_FOR_PIPE_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = FEM_P( 1, IPRES, CV_NODI )
                  !####For Chris: This option below changes the results, IF that is what we want we need to update the test case####
       !                       PRES_FOR_PIPE_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
               END DO
@@ -1279,6 +1292,184 @@ contains
           ! DO CV_NODI = 1, Mdims%cv_nonods
           !     CALL INVERT( INV_B( :, :, CV_NODI ) )
           ! END DO
+      !Introduce terms into the matrix and the RHS
+      end if
+      Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
+          Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
+              !Only go through the nodes that have a well
+              if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+
+
+              LOC_CV_RHS_I=0.0
+              IPRES = Mdims%npres
+              R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV_PLUS( IPRES, CV_NODI ) / DT
+!CJ215
+              IF ( THERMAL .and. Mdims%npres == 1) THEN
+                DO IPHASE = n_in_pres + 1, nphase
+                  LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase) &
+                      - CV_P(1, Mdims%npres, cv_nodi) * ( MASS_CV_PLUS(1, CV_NODI ) / DT ) * ( T2_ALL( iphase, CV_NODI ) - T2OLD_ALL( iphase, CV_NODI ) )
+                end do
+              END IF
+
+              IF ( GOT_T2 ) THEN
+                  DO IPHASE = n_in_pres + 1, nphase
+                    LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
+                        + MASS_CV_PLUS(1,CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
+                  end do
+                  if (thermal .and. is_porous_media) then
+                      !In this case for the time-integration term the effective rho Cp is a combination of the porous media
+                      ! and the fluids. Here we add the porous media contribution
+                      DO IPHASE = n_in_pres + 1, nphase
+                          call addto(Mmat%petsc_ACV,iphase,iphase,&
+                              cv_nodi, cv_nodi,&
+                              + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
+                              * R_PHASE(IPHASE) * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI ))
+                              !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
+                                  !we divide to remove that term and multiply by the correct term (1-porosity)
+                          LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
+                              + (CV_BETA * porous_heat_coef( iphase, CV_NODI ) * T2OLD_ALL( iphase, CV_NODI ) &
+                              + (ONE_M_CV_BETA) * porous_heat_coef( iphase, CV_NODI ) * T2_ALL( iphase, CV_NODI ) ) &
+                              * R_PHASE(iphase) * TOLD_ALL( iphase, CV_NODI )* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+                      END DO
+                  end if
+
+                  ipres = Mdims%npres
+                  DO IPHASE=1, n_in_pres
+                    global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                    compact_phase = iphase + (ipres - 1)*n_in_pres
+                    call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
+                        cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) &
+                        * R_PHASE(compact_phase)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
+                  END DO
+                 ipres = Mdims%npres
+                 DO IPHASE = 1, n_in_pres
+                   global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                   compact_phase = iphase + (ipres - 1)*n_in_pres
+                   LOC_CV_RHS_I(compact_phase)=LOC_CV_RHS_I(compact_phase)  &
+                        + (CV_BETA * DENOLD_ALL( global_phase, CV_NODI ) * T2OLD_ALL( global_phase, CV_NODI ) &
+                        + (ONE_M_CV_BETA) * DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) ) &
+                        * R_PHASE(compact_phase) * TOLD_ALL( global_phase, CV_NODI )
+                 end do
+              ELSE
+                ipres = Mdims%npres
+                DO IPHASE=1, n_in_pres
+                  global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                  compact_phase = iphase + (ipres - 1)*n_in_pres
+                  call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
+                      cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI )  &
+                      * R_PHASE(compact_phase) )
+
+                  LOC_CV_RHS_I(compact_phase)=LOC_CV_RHS_I(compact_phase)  &
+                    + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( global_phase, CV_NODI )&
+                    + ( CV_BETA * DENOLD_ALL( global_phase, CV_NODI ) &
+                    + (ONE_M_CV_BETA) * DEN_ALL( global_phase, CV_NODI ) ) &
+                    * R_PHASE(compact_phase) * TOLD_ALL( global_phase, CV_NODI )
+                  END DO
+              END IF
+
+              !Here we add the coupling term between phases for the wells, so we have to iterate over all the phases
+              do ipres = 1, Mdims%npres
+                DO jphase=1,n_in_pres
+                  global_phase = jphase + (ipres - 1)*Mdims%n_in_pres
+                  compact_phase = jphase + (ipres - 1)*n_in_pres
+                    do iphase=1, nphase
+                      !Implicit method in all the cases
+                      call addto(Mmat%petsc_ACV,iphase,compact_phase, &
+                          cv_nodi, cv_nodi, &
+                          MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
+                          ! if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
+                          !     call addto(Mmat%petsc_ACV,iphase,compact_phase, &
+                          !         cv_nodi, cv_nodi, &
+                          !         MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
+                          ! else
+                          !   !Some sort of predictor corrector. Implicit may be unstable, therefore the explicit acts as a Dumping term
+                          !   call addto(Mmat%petsc_ACV,iphase,compact_phase, &
+                          !       cv_nodi, cv_nodi, &
+                          !         (1. + dumping_well_factor) * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
+                          !
+                          !       ! ! well mass exchange is introduced in the RHS so it is treated explictly
+                          !       LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
+                          !       + dumping_well_factor * MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI )* T_ALL(global_phase, CV_NODI)
+                          !
+                          !     ! ! ! well mass exchange is introduced in the RHS so it is treated explictly <+ all explicit is too slow
+                          !     ! LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
+                          !     ! - MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI )* T_ALL(global_phase, CV_NODI)
+                          ! endif
+                    end do
+                end do
+              end do
+
+              if ( have_absorption ) then
+                ipres = Mdims%npres
+                DO jphase=1,n_in_pres
+                  compact_phase = jphase + (ipres - 1)*n_in_pres
+                    do iphase=n_in_pres+1, nphase
+                         call addto(Mmat%petsc_ACV,iphase,jphase, cv_nodi, cv_nodi, &
+                             MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))
+                    end do
+                end do
+            end if
+
+              call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
+          END DO Loop_CVNODI2
+      END IF Conditional_GETCV_DISC2
+
+      IF ( GETCT ) THEN
+
+          W_SUM_ONE1 = 0.0 !If == 1.0 applies constraint to T
+          if (Solve_all_phases) W_SUM_ONE1 = 1.0
+          W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD !sprint_to_do Unnecessary, should be removed
+          DIAG_SCALE_PRES = 0.0
+          DIAG_SCALE_PRES_COUP=0.0
+          DO CV_NODI = 1, Mdims%cv_nonods
+            !Only go through the nodes that have a well
+            if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
+
+
+              ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
+              IPRES= Mdims%npres
+              R_PRES(IPRES) = MASS_CV_PLUS( IPRES, CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
+              ! Add constraint to force sum of volume fracts to be unity...
+                 ! W_SUM_ONE==1 applies the constraint
+                 ! W_SUM_ONE==0 does NOT apply the constraint
+              if ( Solve_all_phases) call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
+                  - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
+              R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=R_PRES(IPRES)
+              MEAN_PORE_CV_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI )
+              do iphase = n_in_pres + 1, nphase
+                ct_rhs_phase(iphase) = ct_rhs_phase(iphase) &
+                    - R_PHASE(iphase) * ( &
+                    + (1.0-W_SUM_ONE1) * T_ALL( iphase, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( iphase, CV_NODI ) &
+                    + ( TOLD_ALL( iphase, CV_NODI ) * ( DEN_ALL( iphase, CV_NODI ) - DENOLD_ALL( iphase, CV_NODI ) ) &
+                    - DERIV( iphase, CV_NODI ) * CV_P(1, Mdims%npres, cv_nodi ) * T_ALL( iphase, CV_NODI ) ) / DEN_ALL(iphase, CV_NODI ) )
+                DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
+                    +  MEAN_PORE_CV_PHASE(iphase) * T_ALL( iphase, CV_NODI ) * DERIV( iphase, CV_NODI ) &
+                    / ( DT * DEN_ALL(iphase, CV_NODI) )
+                ct_rhs_phase(iphase)=ct_rhs_phase(iphase) &
+                    + MASS_CV_PLUS(1,CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
+                IF ( HAVE_ABSORPTION ) THEN!No absorption in the wells for the time being
+                   DO JPHASE = n_in_pres + 1, nphase
+                      ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
+                         - MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL(iphase, CV_NODI)
+                   END DO
+                END IF
+            end do
+              ! scaling coefficient...
+              DO IPRES=1,Mdims%npres
+                  DO JPRES=1,Mdims%npres
+                      DO jphase=1+(jpres-1)*n_in_pres, jpres*n_in_pres
+                          ! dont divid the pipe to reservoir mass exchange term by density...
+                          DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi)  &
+                              + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI )  )
+                      end do
+                  END DO
+              END DO
+              IPRES= Mdims%npres
+              !Introduce into RHS and scaling coefficient
+              call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)))
+              DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
+                  + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
+          END DO  ! endof DO CV_NODI = 1, Mdims%cv_nonods
       ENDIF ! ENDOF IF ( GETCT ) THEN
 
 

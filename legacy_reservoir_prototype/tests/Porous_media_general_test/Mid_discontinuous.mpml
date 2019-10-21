@@ -55,6 +55,7 @@
       </constant>
     </dump_period_in_timesteps>
     <PropertiesFromFile>substances_properties</PropertiesFromFile>
+    <Show_Convergence/>
   </io>
   <timestepping>
     <current_time>
@@ -72,6 +73,7 @@
       <magnitude>
         <real_value rank="0">9.81</real_value>
       </magnitude>
+      <hydrostatic_pressure_solver/>
       <vector_field name="GravityDirection" rank="1">
         <prescribed>
           <mesh name="CoordinateMesh"/>

@@ -26,14 +26,13 @@
       <Fixed_Point_Iteration>
         <real_value rank="0">1e-2</real_value>
         <Infinite_norm_tol>
-          <real_value rank="0">0.25</real_value>
-          <comment>DISABLED</comment>
+          <real_value rank="0">0.05</real_value>
         </Infinite_norm_tol>
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>
         </Backtracking_factor>
         <Vanishing_relaxation>
-          <real_value rank="0">-1e2</real_value>
+          <real_value rank="0">-3e2</real_value>
         </Vanishing_relaxation>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">3</integer_value>
@@ -839,4 +838,7 @@
       <well_from_file name="well02" file_path="well02"/>
     </wells_and_pipes>
   </porous_media>
+  <numerical_methods>
+    <VAD_two_levels/>
+  </numerical_methods>
 </icferst_options>

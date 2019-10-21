@@ -1106,26 +1106,6 @@ This will over-write the field specified in Sigma1.</a:documentation>
                     </element>
                   </optional>
                   <optional>
-                    <element name="dumping_well_factor">
-                      <a:documentation>(ONLY FOR CONSERVATIVE FORMULATIONS) This term is used to control a combination of implicit/explicit implementation in this way:
-(1 + dumping_well_factor) Implicit - dumping_well_factor (Explicit)
-
-Values above 0 imply that explicit is used to dump the effect of the implicit term (which may be unstable);
-
-A Value of 0 =&gt; Fully implicit; A Value of -1 implies only Explicit
-
-Recommended values are 0.0 (Fully implicit), 0.25 or 0.5 (Some dumping but primarily implicit)
-By default this is 0.5</a:documentation>
-                      <ref name="real"/>
-                    </element>
-                  </optional>
-                  <optional>
-                    <element name="dt_pipe_factor">
-                      <a:documentation>Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}</a:documentation>
-                      <ref name="real"/>
-                    </element>
-                  </optional>
-                  <optional>
                     <element name="switch_wells_on_and_off">
                       <a:documentation>Switches wells on and off to optimise production</a:documentation>
                       <element name="phase_exclude">
