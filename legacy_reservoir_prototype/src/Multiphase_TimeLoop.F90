@@ -522,9 +522,6 @@ contains
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
-              !!$ Calculate diagnostic fields (Within the non-linear loop to ensure consistency)
-              call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-              call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
               !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
@@ -534,6 +531,9 @@ contains
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
+                !!$ Calculate diagnostic fields (Within the non-linear loop to ensure consistency)
+                call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
+                call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
           !Andreas. Always Update AbsorptionTerms
           !      if( solve_force_balance) then
