@@ -757,7 +757,7 @@ contains
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
        !Local variables
        real, save :: kv_kh_ratio = -1
-       type( tensor_field ), pointer :: perm, state_viscosity
+       type( tensor_field ), pointer :: perm, state_viscosity, tfield
        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
        real, dimension(:,:), allocatable :: viscosities
        integer :: i, j, ele, n_in_pres
@@ -796,7 +796,6 @@ contains
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
            allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))!sprint_to_do remove extended_Black_Oil
            call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 3, viscosities = viscosities)
-
        else if (have_option_for_any_phase("phase_properties/Viscosity/tensor_field::Viscosity/diagnostic", Mdims%nphase)) then
            allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
            do i = 1,  Mdims%nphase

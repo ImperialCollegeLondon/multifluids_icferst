@@ -499,11 +499,6 @@ contains
 #endif
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
 
-            !!$ Calculate diagnostic fields
-            call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-            ! call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!Disable, redundant and working worse... at least for viscosity
-                                                                                                !in this case the pressure from state is zeroed...
-
 
             !!$ Start non-linear loop
             first_nonlinear_time_step = .true.
@@ -527,6 +522,10 @@ contains
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
+              !!$ Calculate diagnostic fields (Within the non-linear loop to ensure consistency)
+              call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
+              call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
+              !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
                 if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)

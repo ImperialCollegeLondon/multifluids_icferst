@@ -37,7 +37,7 @@ with open(filename, 'rb') as csvfile:
             phase2_out.append(float(row[18]))#Cumulative production of oil
         except:
             continue
-
+print phase2_out[-1]
 #Check last cumulative production
 diff = abs(phase2_out[-1] - 40533441.917)/40533441.917
 
