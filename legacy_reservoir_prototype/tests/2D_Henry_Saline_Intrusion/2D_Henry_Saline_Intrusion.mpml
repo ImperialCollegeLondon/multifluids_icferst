@@ -41,7 +41,6 @@
           </Vanishing_for_transport>
         </Vanishing_relaxation>
         <Impose_min_max/>
-        <Show_Convergence/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">5</integer_value>
           <PID_controller>
@@ -166,6 +165,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -217,6 +219,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
@@ -239,6 +244,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -272,6 +280,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -315,6 +326,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -404,16 +418,8 @@
         </value>
       </prescribed>
     </tensor_field>
-    <dispersivity>
-      <longitudinal>
-        <real_value rank="0">0.0</real_value>
-      </longitudinal>
-      <transverse>
-        <real_value rank="0">0.0</real_value>
-      </transverse>
-    </dispersivity>
-    <thermal_porous>
-      <scalar_field name="porous_density">
+    <Dispersion>
+      <scalar_field name="Longitudinal_Dispersivity">
         <prescribed>
           <mesh name="P0DG"/>
           <value name="WholeMesh">
@@ -427,7 +433,7 @@
           </detectors>
         </prescribed>
       </scalar_field>
-      <scalar_field name="porous_heat_capacity">
+      <scalar_field name="Transverse_Dispersivity">
         <prescribed>
           <mesh name="P0DG"/>
           <value name="WholeMesh">
@@ -441,18 +447,6 @@
           </detectors>
         </prescribed>
       </scalar_field>
-      <tensor_field name="porous_thermal_conductivity">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <isotropic>
-              <constant>
-                <real_value rank="0">0</real_value>
-              </constant>
-            </isotropic>
-          </value>
-        </prescribed>
-      </tensor_field>
-    </thermal_porous>
+    </Dispersion>
   </porous_media>
 </icferst_options>

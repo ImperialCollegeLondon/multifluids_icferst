@@ -139,8 +139,7 @@ contains
             ScalarField_Source_Store
         real, dimension( :, :, : ), allocatable :: &
             Velocity_Absorption, Temperature_Absorption
-        real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
-            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
+        real, dimension( :, : ), allocatable ::sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
         integer :: stat, python_stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod, vtu_its_counter, SFPI_taken, pres_its_taken
         real, dimension( : ), allocatable :: rsum
         real, dimension(:, :), allocatable :: SUF_SIG_DIAGTEN_BC
@@ -149,8 +148,6 @@ contains
         !Variables for adaptive time stepping based on non-linear iterations
         logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
         real, dimension(:,:,:), allocatable  :: reference_field
-        type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
-        type( tensor_field ), pointer :: MFC_s, MFCOLD_s
         !! face value storage
         integer :: ncv_faces
         !Courant number for porous media
@@ -165,7 +162,7 @@ contains
         !Working pointers
         type(tensor_field), pointer :: tracer_field, tracer_field2, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
-        type(tensor_field), pointer :: Component_Absorption, perm_field
+        type(tensor_field), pointer :: perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV, PythonPhaseVolumeFractionSource
         type(scalar_field), pointer :: DensitySource, T
         !Variables that are used to define the pipe pos
@@ -295,11 +292,7 @@ contains
         call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%u_ele_type, quad_over_whole_ele = .true. )
         !Obtain the number of faces in the control volume space
         ncv_faces=CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIDIMS = CV_GIdims)
-        allocate( theta_flux( Mdims%nphase, ncv_faces * igot_theta_flux ), &
-            one_m_theta_flux( Mdims%nphase, ncv_faces * igot_theta_flux ), &
-            theta_flux_j( Mdims%nphase, ncv_faces * igot_theta_flux ), &
-            one_m_theta_flux_j( Mdims%nphase, ncv_faces * igot_theta_flux ), &
-            sum_theta_flux( Mdims%nphase, ncv_faces * igot_theta_flux ), &
+        allocate( sum_theta_flux( Mdims%nphase, ncv_faces * igot_theta_flux ), &
             sum_one_m_theta_flux( Mdims%nphase, ncv_faces * igot_theta_flux ), &
             sum_theta_flux_j( Mdims%nphase, ncv_faces * igot_theta_flux ), &
             sum_one_m_theta_flux_j( Mdims%nphase, ncv_faces * igot_theta_flux ), &
@@ -681,7 +674,13 @@ contains
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
-                if ( have_component_field ) call calc_components()
+                !Solve for componenets if necessary
+                if (have_component_field) call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
+                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+                     multi_absorp, DT, SUF_SIG_DIAGTEN_BC, &
+                     Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
+                     theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
+                     sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
 
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
@@ -854,7 +853,6 @@ contains
             !!$ Working arrays
             theta_gdiff, ScalarField_Source_Store, &
             mass_ele,&
-            theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
         ! Dump at end, unless explicitly disabled
         if(.not. have_option("/io/disable_dump_at_end")) then
@@ -1103,7 +1101,7 @@ contains
             type( scalar_field ), pointer :: s_field, s_field2, s_field3
             integer                       :: idim
             real, dimension(2)            :: min_max_limits_before, solute_min_max_limits_before
-            type (tensor_field), pointer  :: tempfield
+            type (tensor_field), pointer  :: tempfield, ComponentMassFraction
             type (tensor_field), pointer  :: saltfield
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
@@ -1222,7 +1220,6 @@ contains
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
                     mass_ele, &
-                    theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
                 !Deallocate sparsities
                 call deallocate_multi_sparsities(Mspars)
@@ -1294,11 +1291,7 @@ contains
                 end if
                 scvngi_theta = CV_GIdims%scvngi
                 ncv_faces = CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIdims)
-                allocate( theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    one_m_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    one_m_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    sum_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                allocate( sum_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
                     sum_one_m_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
                     sum_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
                     sum_one_m_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
@@ -1309,18 +1302,20 @@ contains
                 ScalarField_Source_Store=0.
 !                allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
 !                allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.
+
+                !SPRINT_TO_DO THIS SHOULD BE DONE LIKE IT IS FOR POROUS MEDIA, DIFFUSING THE FIELD TO ENSURE MASS CONSERVATION
                 if( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                     ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                     ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
-                    MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
-                    MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
+                    ComponentMassFraction  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+                    ComponentMassFraction % val = min ( max ( ComponentMassFraction % val, 0.0), 1.0)
                     ALLOCATE( RSUM( Mdims%nphase ) )
                     DO CV_INOD = 1, Mdims%cv_nonods
                         DO IPHASE = 1, Mdims%nphase
-                            RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
+                            RSUM( IPHASE ) = SUM (ComponentMassFraction % val (:, IPHASE, CV_INOD) )
                         END DO
                         DO IPHASE = 1, Mdims%nphase
-                            MFC_s % val (:, IPHASE, CV_INOD) = MFC_s % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
+                            ComponentMassFraction % val (:, IPHASE, CV_INOD) = ComponentMassFraction % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
                         END DO
                     END DO
                     DEALLOCATE( RSUM )
@@ -1381,131 +1376,6 @@ contains
         nu % val = u % val
         nuold % val = uold % val
     end subroutine set_nu_to_u
-
-
-    subroutine calc_components()
-        implicit none
-
-        perm_field => extract_tensor_field(packed_state,"Permeability")
-        PhaseVolumeFractionComponentSource%val = 0.0
-        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-        old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
-
-        PhaseVolumeFractionComponentSource%val = 0.0
-        D_s  => extract_tensor_field( packed_state, "PackedDensity" )
-        DC_s  => extract_tensor_field( packed_state, "PackedComponentDensity" )
-        DCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
-        MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
-        MFCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
-
-
-        !!$ Starting loop over components
-        Loop_Components: do icomp = 1, Mdims%ncomp
-            tracer_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentMassFraction")
-            density_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentDensity",stat)
-
-            if( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
-                ']/is_multiphase_component/KComp_Sigmoid' ) .and. Mdims%nphase > 1 ) then
-
-                !!$ Computing the absorption term for the multi-components equation
-
-                Component_Absorption => extract_tensor_field( multicomponent_state(icomp), "ComponentAbsorption")
-
-                call Calculate_ComponentAbsorptionTerm( packed_state, icomp, ndgln%cv, &
-                     Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
-
-            end if
-            !!$ NonLinear iteration for the components advection:
-            Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
-
-                Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
-                call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                    SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
-                    igot_t2, igot_theta_flux, &
-                    Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &
-                    theta_gdiff, eles_with_pipe, pipes_aux,&
-                    thermal = .false.,& ! the false means that we don't add an extra source term
-                    theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
-                    icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
-
-                tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
-            end do Loop_NonLinearIteration_Components
-
-            sum_theta_flux = sum_theta_flux + theta_flux
-            sum_one_m_theta_flux = sum_one_m_theta_flux + one_m_theta_flux
-            sum_theta_flux_j = sum_theta_flux_j + theta_flux_j
-            sum_one_m_theta_flux_j = sum_one_m_theta_flux_j + one_m_theta_flux_j
-
-            ! We have divided through by density
-            PhaseVolumeFractionComponentSource%val(1,:,:) = PhaseVolumeFractionComponentSource%val(1,:,:) + THETA_GDIFF
-
-        end do Loop_Components
-
-        if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
-            ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
-            ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
-            MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
-            ALLOCATE( RSUM( Mdims%nphase ) )
-            DO CV_INOD = 1, Mdims%cv_nonods
-                DO IPHASE = 1, Mdims%nphase
-                    RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
-                END DO
-                DO IPHASE = 1, Mdims%nphase
-                    MFC_s % val (:, IPHASE, CV_INOD) = MFC_s % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
-                END DO
-            END DO
-            DEALLOCATE( RSUM )
-        end if
-
-        MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
-
-        do icomp = 1, Mdims%ncomp
-
-            if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
-                ']/is_multiphase_component/KComp_Sigmoid' ) .and. Mdims%nphase > 1 ) then
-
-                call Calculate_ComponentAbsorptionTerm( packed_state, icomp, ndgln%cv, &
-                     Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
-
-                do cv_nodi = 1, Mdims%cv_nonods
-                    Loop_Phase_SourceTerm1: do iphase = 1, Mdims%nphase
-                        Loop_Phase_SourceTerm2: do jphase = 1, Mdims%nphase
-                            PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) = &
-                                PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) &
-                                - Component_Absorption%val( iphase, jphase, cv_nodi ) &
-                                * MFC_s%val( icomp, jphase, cv_nodi ) &
-                                / DC_s%val( icomp, iphase, cv_nodi )
-                        end do Loop_Phase_SourceTerm2
-                    end do Loop_Phase_SourceTerm1
-                end do
-
-            end if
-
-            ! For compressibility
-            do iphase = 1, Mdims%nphase
-                do cv_nodi = 1, Mdims%cv_nonods
-                    PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) =  &
-                        PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) &
-                        + MeanPoreCV%val( 1, cv_nodi ) * MFCOLD_s%val( icomp, iphase, cv_nodi ) &
-                        * ( DCOLD_s%val( icomp, iphase, cv_nodi ) - DC_s%val( icomp, iphase, cv_nodi ) ) &
-                        * old_saturation_field%val( 1, IPHASE, Mdims%cv_nonods ) &
-                        / ( DC_s%val( ICOMP, IPHASE, CV_NODI ) * DT )
-                end do
-            end do
-
-        end do ! icomp
-
-        if ( is_porous_media .and. have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
-            ']/is_multiphase_component/Comp_Sum2One' ) .and. ( Mdims%ncomp > 1 ) ) then
-            call Cal_Comp_Sum2One_Sou( packed_state, Mdims )
-        end if
-
-
-    end subroutine calc_components
-
 
     subroutine adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, flag)
         implicit none
