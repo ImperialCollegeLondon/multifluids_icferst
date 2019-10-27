@@ -717,14 +717,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   END SUBROUTINE SOLUTE_ASSEM_SOLVE
 
-    subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
+    subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, SFPI_taken, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
-             type( state_type ), dimension( : ), intent( inout ) :: state
+             type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
              type( state_type ) :: packed_state
              type(multi_dimensions), intent(in) :: Mdims
              type(multi_GI_dimensions), intent(in) :: CV_GIdims
@@ -1086,6 +1086,22 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         end subroutine non_porous_ensure_sum_to_one
 
+
+        subroutine update_components()
+          !This internal subroutine deals with the components within the Saturation Fixed Point iterations
+          implicit none
+          real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
+
+          call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
+               Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+               multi_absorp, DT, &
+               SUF_SIG_DIAGTEN_BC, &
+               Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
+               comp_theta_gdiff, eles_with_pipe, pipes_aux, mass_ele_transp, &
+               THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
+
+        end subroutine update_components
+
     end subroutine VolumeFraction_Assemble_Solve
 
 
@@ -1129,6 +1145,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          type(vector_field), pointer :: porosity_field, MeanPoreCV
          real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j
 
+
          !Obtain the number of faces in the control volume space
          ncv_faces=CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIDIMS = CV_GIdims)
          allocate(theta_flux( Mdims%nphase, ncv_faces  ), &
@@ -1142,20 +1159,19 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          call get_option( '/numerical_methods/Max_compositional_its', NonLinearIteration_Components, default = 1 )
         !Retrieve fields
         perm_field => extract_tensor_field(packed_state,"Permeability")
-        PhaseVolumeFractionComponentSource%val = 0.0
         velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
         saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
         MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
         porosity_field=>extract_vector_field(packed_state,"Porosity")
         PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
+        PhaseVolumeFractionComponentSource%val = 0.0
 
         PhaseDensity  => extract_tensor_field( packed_state, "PackedDensity" )
         ComponentDensity  => extract_tensor_field( packed_state, "PackedComponentDensity" )
         OldComponentDensity  => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
         ComponentMassFraction  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
         OldComponentMassFraction  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
-
 
         !!$ Starting loop over components
         Loop_Components: do icomp = 1, Mdims%ncomp

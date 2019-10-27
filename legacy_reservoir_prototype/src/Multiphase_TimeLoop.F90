@@ -602,7 +602,7 @@ contains
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
 
-                    call VolumeFraction_Assemble_Solve( state, packed_state, &
+                    call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
