@@ -1758,9 +1758,9 @@ contains
                         end if
                         do iloc = 1, Mdims%cv_nloc
                            cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
-                           cv_nod = cv_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                            momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( 1, 1, iloc ) ! isotropic only - to be deleted...
+                           cv_nod = cv_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
                            t_field%val( :, :, cv_nod ) = t_field%val( :, :, cv_nod ) + mu_tmp( :, :, iloc )/dble(Mdims%cv_nloc)
                         end do
                      end do
@@ -1783,11 +1783,10 @@ contains
                      end if
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                        mat_nod = mat_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                         !!-PY: changed it for the index problem
                         !!t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
-
+                        mat_nod = mat_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
                         if ( have_option( '/blasting' ) ) then
                            t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
                         else
