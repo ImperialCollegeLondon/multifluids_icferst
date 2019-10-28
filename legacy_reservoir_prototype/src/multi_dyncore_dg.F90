@@ -976,6 +976,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  if (backtrack_par_factor < 1.01) then
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
+                         !If we have components (and it is multiphase, obviously)
+                         !update components before the acceleration steps of the non-linear solver
+                         if (Mdims%ncomp > 0) call update_components()
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
                          call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
@@ -1088,10 +1091,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
 
         subroutine update_components()
-          !This internal subroutine deals with the components within the Saturation Fixed Point iterations
+          !This internal subroutine deals with the components within the Saturation Fixed Point Iteration
           implicit none
           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
 
+          !First, impose physical constrains to the saturation (important to update halos here)
+          call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .false. )
+          !Next, update compoents
           call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
                multi_absorp, DT, &
@@ -1204,8 +1210,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                     icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
 
-                !This is to ensure boundedness of the ComponentMassFraction SPRINT_TO_DO: IMPLEMENT SOMETHING BETTER, SIMILAR TO THE SATURATION CASE
-                tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
+                !This is to ensure boundedness of the ComponentMassFraction (OLD METHOD)
+                ! tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
+
             end do Loop_NonLinearIteration_Components
 
             !These variables below are computed but never used...
@@ -1219,6 +1226,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         end do Loop_Components
 
+        !New method to ensure that components sum to one, similar to the saturation method
+        call ensure_components_sum_to_one(packed_state)
+
+        !OLD METHOD BELOW (SPRINT_TO_DO REMOVE IT IF THE NEW ONE WORKS BETTER)
         if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
             ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
             ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
@@ -1278,6 +1289,48 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         end if
 
         deallocate(theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j)
+
+
+      contains
+
+        subroutine ensure_components_sum_to_one(packed_state)
+            !This subroutines eliminates the oscillations in the component that are bigger than a
+            !certain tolerance and also sets the component to be between bounds
+            Implicit none
+            !Global variables
+            type( state_type ), intent(inout) :: packed_state
+            !Local variables
+            integer :: iphase, cv_nod, i_start, i_end, ipres
+            real :: correction, sum_of_components
+            type(tensor_field), pointer :: ComponentMassFraction
+
+            ComponentMassFraction  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+
+            !Impose sat to be between bounds for blocks of ComponentMassFraction (this is for multiple pressure, otherwise there is just one block)
+            do ipres = 1, Mdims%npres
+                i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+                i_end = ipres * Mdims%nphase/Mdims%npres
+                !Set ComponentMassFraction to be between bounds
+                do iphase = i_start, i_end
+                  do cv_nod = 1, size(ComponentMassFraction%val, 3)
+                      sum_of_components = sum(ComponentMassFraction%val(:, iphase, cv_nod))
+                      correction = (1.0 - sum_of_components)
+                      !Spread the error to all the components weighted by their presence in that CV
+                      !Increase the range to look for solutions by allowing oscillations below 0.1 percent
+                      if (abs(correction) > 1d-3) ComponentMassFraction%val(:,iphase, cv_nod) = &
+                            (ComponentMassFraction%val(:,iphase, cv_nod) * (1.0 + correction/sum_of_components))
+                      !Make sure ComponentMassFraction%val is between bounds after the modification
+                      ComponentMassFraction%val(:,iphase,cv_nod) =  min(max(0., ComponentMassFraction%val(:, iphase,cv_nod)),1.0)
+                  end do
+                end do
+            end do
+            if (IsParallel()) call halo_update(ComponentMassFraction)
+
+        end subroutine ensure_components_sum_to_one
+
+
+
+
     end subroutine Compositional_Assemble_Solve
 
 

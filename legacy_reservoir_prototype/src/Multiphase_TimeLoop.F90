@@ -1220,7 +1220,7 @@ contains
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
                     mass_ele, &
-                    sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
+                    sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
                 !Deallocate sparsities
                 call deallocate_multi_sparsities(Mspars)
                 !Deallocate ndgln
