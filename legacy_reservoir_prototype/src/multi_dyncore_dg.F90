@@ -363,7 +363,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
 
                !Just after the solvers
-               call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+               call deallocate(Mmat%petsc_ACV)
               !Update halo communications
               call halo_update(tracer)
 
@@ -866,8 +866,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             !Allocate residual, to compute the residual
             if (backtrack_par_factor < 1.01) call allocate(residual,nphase,sat_field%mesh,"residual")
             call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
-            call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
             call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+            call allocate(solution,nphase,sat_field%mesh,"Saturation")!; call zero(solution)
 
             IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
               ! use DEN=1 because the density is already in the theta variables
@@ -972,17 +972,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  if (.not. is_porous_media) then
                         call non_porous_ensure_sum_to_one(packed_state)
                  end if
+                 ! ! !If we have components (and it is multiphase, obviously) update components
+                 ! if (Mdims%ncomp > 0) call update_components()
                  !Correct the solution obtained to make sure we are on track towards the final solution
                  if (backtrack_par_factor < 1.01) then
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
-                         !If we have components (and it is multiphase, obviously)
-                         !update components before the acceleration steps of the non-linear solver
-                         if (Mdims%ncomp > 0) call update_components()
+
                          !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
                          call FPI_backtracking(nphase, Mdims, ndgln, state,packed_state, sat_bak(1:nphase, :), backtrack_sat(1:nphase, :), backtrack_par_factor,&
                              Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration,&
-                             useful_sats,res, res/resold, first_res)!halos are updated within this subroutine
+                             useful_sats,res, res/resold, first_res) !halos are updated within this subroutine
 
                          !Store the accumulated updated done
                          updating = updating + new_backtrack_par
@@ -1007,6 +1007,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          else
                              exit Loop_NonLinearFlux
                          end if
+
                      end if
                  else !Just one iteration
                      if (IsParallel()) call halo_update(sat_field)
@@ -1098,6 +1099,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           !First, impose physical constrains to the saturation (important to update halos here)
           call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .false. )
           !Next, update compoents
+          !Deallocate memory re-used for the compositional assembly solve; SPRINT_TO_DO: this can be done better!
+          call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val); call deallocate(Mmat%petsc_ACV)
           call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
                multi_absorp, DT, &
@@ -1105,6 +1108,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
                comp_theta_gdiff, eles_with_pipe, pipes_aux, mass_ele_transp, &
                THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
+
+           !Re-allocate the fields so the saturation loop has consistency with what it expects. SPRINT_TO_DO: this can be done better!
+           call allocate(Mmat%CV_RHS,nphase,sat_field%mesh,"RHS")
+           call allocate_global_multiphase_petsc_csr(Mmat%petsc_ACV,sparsity,sat_field, nphase)
+
+           !First, impose physical constrains to the saturation (important to update halos here)
+           call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .false. )
 
         end subroutine update_components
 
@@ -1151,13 +1161,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          type(vector_field), pointer :: porosity_field, MeanPoreCV
          real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j
 
-
          !Obtain the number of faces in the control volume space
          ncv_faces=CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIDIMS = CV_GIdims)
          allocate(theta_flux( Mdims%nphase, ncv_faces  ), &
             one_m_theta_flux( Mdims%nphase, ncv_faces ), &
             theta_flux_j( Mdims%nphase, ncv_faces ), &
             one_m_theta_flux_j( Mdims%nphase, ncv_faces  ))
+
           theta_flux = 0.;one_m_theta_flux = 0.; theta_flux_j = 0; one_m_theta_flux_j = 0
          !Quick check to ensure that we need to solve for components
          if( Mdims%ncomp == 0 ) return
@@ -1211,7 +1221,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
 
                 !This is to ensure boundedness of the ComponentMassFraction (OLD METHOD)
-                ! tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
+                tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
 
             end do Loop_NonLinearIteration_Components
 
@@ -1227,7 +1237,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         end do Loop_Components
 
         !New method to ensure that components sum to one, similar to the saturation method
-        call ensure_components_sum_to_one(packed_state)
+        ! call ensure_components_sum_to_one(packed_state)
 
         !OLD METHOD BELOW (SPRINT_TO_DO REMOVE IT IF THE NEW ONE WORKS BETTER)
         if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
@@ -1291,11 +1301,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         deallocate(theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j)
 
 
+        !First, impose physical constrains to the saturation (important to update halos here)
+        if (is_porous_media .and. Mdims%n_in_pres > 1) call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .false. )
+
       contains
 
         subroutine ensure_components_sum_to_one(packed_state)
             !This subroutines eliminates the oscillations in the component that are bigger than a
             !certain tolerance and also sets the component to be between bounds
+            !It is currently not working well...better to use Chris' method which uses a RHS 
             Implicit none
             !Global variables
             type( state_type ), intent(inout) :: packed_state

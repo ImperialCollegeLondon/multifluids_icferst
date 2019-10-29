@@ -591,9 +591,6 @@ contains
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes, pres_its_taken)
 
-                    !!$ Calculate Density_Component for compositional
-                    if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
-
                 end if Conditional_ForceBalanceEquation
 
                 !#=================================================================================================================
@@ -646,7 +643,8 @@ contains
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
 
-               sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+
 
                !!$ Arash
                !!$ Solve advection of the scalar 'SoluteMassFraction':
@@ -672,16 +670,21 @@ contains
                 end if Conditional_ScalarAdvectionField2
 
 
-                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
-                !Solve for componenets if necessary
-                if (have_component_field) call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
+                !Solve for components here
+                if (have_component_field) then
+
+                     !!$ Calculate Density_Component for compositional
+                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
+
+                     sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+                     call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
                      multi_absorp, DT, SUF_SIG_DIAGTEN_BC, &
                      Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-
+                end if
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
