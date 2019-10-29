@@ -2707,7 +2707,42 @@ contains
     end subroutine initialise_porous_media
 
 
+    subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln)
+      !This subroutine calculates the coupling term for the magma modelling
+      !and adds it to the absorptiont term to impose the coupling between phase
+      !It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
+      implicit none
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type (multi_field) :: Magma_absorp
+      type( multi_dimensions ), intent( in ) :: Mdims
+      type(multi_ndgln), intent(in) :: ndgln
+      !Local variables
+      integer :: mat_nod, ele, CV_ILOC, cv_inod, magma_coupling, iphase, jphase
+      real, dimension(:,:), pointer :: Satura
 
+      !Get from packed_state
+      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
+
+      !Give for granted we are in memory type = 3 for magma
+      DO ELE = 1, Mdims%totele
+          DO CV_ILOC = 1, Mdims%cv_nloc
+              mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+              cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+              DO IPHASE = 1, Mdims%nphase
+                magma_coupling = Satura(iphase, cv_inod) * 0.!Haiyang to include his C here
+                do jphase = 1, Mdims%nphase
+                  if (jphase == 1) then
+                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
+                  else
+                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = - magma_coupling
+                  end if
+                end do
+              end do
+          END DO
+      END DO
+
+    end subroutine calculate_Magma_absorption
 
 
 end module multiphase_EOS

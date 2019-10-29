@@ -528,15 +528,12 @@ contains
                 call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
                 call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
-          !Andreas. Always Update AbsorptionTerms
-          !      if( solve_force_balance) then
-                    if ( is_porous_media ) then
-                        call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
-                            CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
-                    end if
-          !      end if
+                if ( is_porous_media ) then
+                    call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                        CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
+                end if
 
-
+                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then

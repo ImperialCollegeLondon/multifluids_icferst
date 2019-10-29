@@ -237,6 +237,8 @@ module multi_data_types
         !! Arash
         type (multi_field) :: SaltConcentration
         type (multi_field) :: Velocity
+        !Magma absorption
+        type (multi_field) :: Magma !Initially to use memory type = 3  Isotropic coupled
     end type multi_absorption
 
     type multi_transport_scalar
@@ -452,7 +454,8 @@ contains
         if (associated(multi_absorp%Components%val))  call deallocate_multi_field(multi_absorp%Components, and_destroy2)
         if (associated(multi_absorp%Temperature%val)) call deallocate_multi_field(multi_absorp%Temperature, and_destroy2)
         if (associated(multi_absorp%Velocity%val))    call deallocate_multi_field(multi_absorp%Velocity, and_destroy2)
-
+        if (associated(multi_absorp%SaltConcentration%val))call deallocate_multi_field(multi_absorp%SaltConcentration, and_destroy2)
+        if (associated(multi_absorp%Magma%val))    call deallocate_multi_field(multi_absorp%Magma, and_destroy2)
     end subroutine deallocate_multi_absorption
 
     subroutine get_multi_field(mfield, inode_in, output)
