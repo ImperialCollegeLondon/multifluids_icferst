@@ -53,13 +53,13 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">5e-4</real_value>
+      <real_value rank="0">50e-5</real_value>
     </timestep>
     <finish_time>
       <real_value rank="0">0.075</real_value>
     </finish_time>
   </timestepping>
-  <material_phase name="phase1">
+  <material_phase name="Air">
     <phase_properties>
       <Density>
         <compressible>
@@ -78,33 +78,43 @@
       </Density>
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
-          <prescribed>
-            <value name="WholeMesh">
-              <isotropic>
-                <constant>
-                  <real_value rank="0">1</real_value>
-                </constant>
-              </isotropic>
-            </value>
-          </prescribed>
+          <diagnostic>
+            <algorithm name="tensor_python_diagnostic" material_phase_support="single">
+              <string_value lines="20" type="code" language="python">import math
+Temperature = state.scalar_fields["Temperature"]
+
+#Loop over all the nodes of the input field
+for i in range(field.node_count):
+ c = Temperature.node_val(i)
+ 
+ #Formula
+ val0=0.0
+ val = ((1.45*c**(3/2))/(c+110))*(1.0*10**(-6.0))+val0 #Sutherland's Formula
+ viscosity =  [[val, val, val],[val, val, val], [val, val, val]]
+ #viscosity =  [[val, 0, 0],[0, val, 0], [0, 0, val]]
+ #Assign the dummy field
+ field.set( i, viscosity )</string_value>
+            </algorithm>
+            <mesh name="PressureMesh"/>
+            <stat>
+              <include_in_stat/>
+            </stat>
+          </diagnostic>
         </tensor_field>
         <viscosity_scheme>
-          <stress_form/>
+          <compact_discontinuous_galerkin/>
           <nonlinear_scheme/>
         </viscosity_scheme>
       </Viscosity>
       <Stabilisation>
         <Petrov_Galerkin_stabilisation>
           <method>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </method>
           <nonlinear_velocity_coefficient>
             <real_value rank="0">1</real_value>
           </nonlinear_velocity_coefficient>
-          <include_pressure>
-            <real_value rank="0">1</real_value>
-          </include_pressure>
-          <stress_form/>
+          <tensor_form/>
         </Petrov_Galerkin_stabilisation>
       </Stabilisation>
     </phase_properties>
@@ -115,7 +125,8 @@
           <python>
             <string_value lines="20" type="code" language="python">def val(X, t):
   val=0.1
-  if (X[0]&lt;0.5): val=1.
+  if (X[0]&lt;0.5): 
+    val=1
   return val</string_value>
           </python>
         </initial_condition>
@@ -144,9 +155,9 @@
             <real_value shape="3" dim1="dim" rank="1">0.0 0.0 0.0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="left">
+        <boundary_conditions name="sides">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="2" rank="1">2 3</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -169,9 +180,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="sides">
+        <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="2" rank="1">2 3</integer_value>
+            <integer_value shape="1" rank="1">1</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -238,7 +249,7 @@
         </initial_condition>
         <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="4" rank="1">1 2 3 4</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -260,11 +271,13 @@
           <python>
             <string_value lines="20" type="code" language="python">def val(X, t):
   g=1.4
+  R=287.05
   p=0.1
   rho=0.125
   if(X[0]&lt;0.5):
    p=1.0
    rho=1.
+  #return p/((R)*rho)
   return p/((g-1.)*rho)</string_value>
           </python>
         </initial_condition>
@@ -277,8 +290,10 @@
             <python>
               <string_value lines="20" type="code" language="python">def val(X, t):
   g=1.4
+  R=287.05
   p=0.1
   rho=0.125
+  #return p/((R)*rho)
   return p/((g-1.)*rho)</string_value>
             </python>
           </type>
@@ -289,23 +304,5 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <multiphase_properties>
-      <immobile_fraction>
-        <scalar_field name="value">
-          <prescribed>
-            <mesh name="P0DG"/>
-            <value name="WholeMesh">
-              <constant>
-                <real_value rank="0">0.3</real_value>
-              </constant>
-            </value>
-            <stat/>
-            <detectors>
-              <exclude_from_detectors/>
-            </detectors>
-          </prescribed>
-        </scalar_field>
-      </immobile_fraction>
-    </multiphase_properties>
   </material_phase>
 </icferst_options>
