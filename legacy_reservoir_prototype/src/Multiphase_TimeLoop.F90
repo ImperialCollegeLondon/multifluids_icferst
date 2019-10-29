@@ -191,7 +191,7 @@ contains
         real :: auxR
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp           !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
-        Logical:: EnterSolve=.true., Enter_flag_for_adapt=.true.    !Flag to either enter or not the pressure solve
+        Logical:: EnterSolve=.true., Enter_flag_for_adapt=.false.    !Flag to either enter or not the pressure solve
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
