@@ -382,9 +382,9 @@ contains
 !              end if
             end if
 
-            if (trim(field_name)=="Flooding_AbsorptionTerm") then
+            if (trim(field_name)=="Magma_AbsorptionTerm") then
                 mfield%is_constant = .false.!It cannot be constant
-                mfield%memory_type = 1      !The absorption is always isotropic
+                mfield%memory_type = 3      !The absorption is always Isotropic coupled
             end if
 
             if (trim(field_name)=="ComponentAbsorption") then
