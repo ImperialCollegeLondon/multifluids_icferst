@@ -1580,7 +1580,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           call allocate_multi_field( Mdims, u_source_all, Mdims%u_nonods, "SourceTerm")
           call update_velocity_source( state, Mdims, u_source_all )
         end if
-        
+
 !Temporary conversion
 if (associated(multi_absorp%PorousMedia%val))then!sprint_to_do AVOID THESE CONVERSIONS...
     do cv_nod = 1, size(multi_absorp%PorousMedia%val,4)

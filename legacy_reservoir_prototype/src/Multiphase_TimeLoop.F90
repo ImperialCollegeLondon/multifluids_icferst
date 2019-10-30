@@ -192,6 +192,11 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp           !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve=.true., Enter_flag_for_adapt=.false.    !Flag to either enter or not the pressure solve
+        !! HH for magma c coefficients
+        real,allocatable, dimension(:) :: c_phi_series
+        integer :: c_phi_length
+
+
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -438,7 +443,10 @@ contains
            ! call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
-
+        !HH Calculate the c coefficient seires
+        c_phi_length=1e6
+        allocate(c_phi_series(c_phi_length))
+        if ( is_magma )         call c_gen(c_phi_series,c_phi_length)
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
@@ -533,7 +541,7 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln)
+                if ( is_magma )                call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln,c_phi_series)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
