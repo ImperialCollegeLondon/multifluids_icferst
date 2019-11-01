@@ -481,20 +481,7 @@ contains
             end if
             deallocate( eos_coefs )
 
-         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
-            !!$ Den = C0 * P/T +C1
-            if( .not. have_temperature_field ) FLAbort( 'Temperature Field not defined' )
-            allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
-            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_A', eos_coefs( 1 ) )
-            call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', eos_coefs( 2 ) )
-            Rho = eos_coefs( 1 ) * pressure % val(1,1,:) / temperature % val + eos_coefs( 2 )
-            perturbation_pressure = 1.
-            !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) / &
-            !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
-            !RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) / &
-            !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
-            dRhodP =  eos_coefs( 1 ) / temperature % val !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
-            deallocate( eos_coefs )
+
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
             !!$ Den = C0 * P +C1
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
@@ -512,6 +499,27 @@ contains
             dRhodP = eos_coefs( 1 ) !0.5 * ( DensityPlus - DensityMinus ) / perturbation_pressure
             deallocate( eos_coefs )
             call deallocate(sfield)
+
+
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
+             !!$ Den = C0 * P/T +C1
+             if( .not. have_temperature_field ) FLAbort( 'Temperature Field not defined' )
+             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
+             call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_A', eos_coefs( 1 ) )
+             call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', eos_coefs( 2 ) )
+
+
+             Rho = eos_coefs( 1 ) * pressure % val(1,1,:) / temperature % val + eos_coefs( 2 )
+             perturbation_pressure = 1.
+             RhoPlus = eos_coefs( 1 ) * ( pressure % val(1,1,:) + perturbation_pressure ) / &
+                  ( max( toler, temperature % val ) ) + eos_coefs( 2 )
+             RhoMinus = eos_coefs( 1 ) * ( pressure % val(1,1,:) - perturbation_pressure ) / &
+                  ( max( toler, temperature % val ) ) + eos_coefs( 2 )
+             !dRhodP =  eos_coefs( 1 ) / temperature % val
+             dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
+             deallocate( eos_coefs )
+
+
         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
             !!$ Den = C0 * ( P ^ C1 )
             allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
@@ -1723,7 +1731,6 @@ contains
         end if
          momentum_diffusion=0.0
          t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
-
          !Multiplier to control the index for the viscosity when the viscosity is constant
          multiplier = 1
          if (size(t_field%val,3) == 1)  multiplier = 0
@@ -1783,10 +1790,13 @@ contains
                      end if
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
+                        cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        !!-PY: changed it for the index problem
-                        !!t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
-                        mat_nod = mat_nod * multiplier + (1 - multiplier)!index has to be one if viscosity is constant
+                        if(have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')) then
+                          mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
+                        else
+                          mat_nod = mat_nod * multiplier + (1 - multiplier)! this is for DG
+                        end if
                         if ( have_option( '/blasting' ) ) then
                            t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
                         else
