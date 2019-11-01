@@ -260,9 +260,9 @@ contains
     type(tensor_field) :: new_metric
 
     ! Buffer factor to emulate behaviour of legacy expected elements function
-    real, parameter :: expected_elements_buffer = 1.2
+    real, parameter :: expected_elements_buffer = 10.
     ! Buffer factor for max. nodes
-    real, parameter :: mxnods_buffer = 1.5
+    real, parameter :: mxnods_buffer = 10.
 
     ! if we're parallel we'll need to reorder the region ids after the halo derivation
     integer, dimension(:), allocatable :: old_new_region_ids, renumber_permutation
@@ -524,16 +524,20 @@ contains
     if (present_and_true(adapt_error) .and. use_conservative_settings) then
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
-        nsweep = 50!Increase drastically the number of sweeps
+        nsweep = 500!Increase drastically the number of sweeps
         !Disable all techniques but the very basics
-        mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+        ! mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
         if (second_try) then
-			mshopt(1) = .false.! <= Leave only r-adaptivity
-			!Relax tolerance
-			dotop = dotop * 1.2
-		end if
+          !Disable all techniques but the very basics
+          mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+    			mshopt(1) = .false.! <= Leave only r-adaptivity
+    			!Relax convergence
+    			dotop = dotop * 1.2; !MINCHG = MINCHG / 1.5
+  		  end if
         !Set this to true just in case we have to repeat one second time
         second_try = .true.
+        !Relax convergence
+        dotop = dotop *1.2; MINCHG = MINCHG / 1.5
     else
         !Re-set second-try to false the first time we enter in this subroutine
         second_try = .false.

@@ -116,7 +116,7 @@ contains
     !variable to retry mesh adapt if there is an error
     logical :: adapt_error
     integer :: i
-
+    logical, save :: Message_shown = .false.
     assert(.not. mesh_periodic(old_positions))
 
     if(isparallel()) then
@@ -159,11 +159,11 @@ contains
                       case (3)!Last time, back to original mesh...
                           !This can also be potentially improved by only forcing the cpu domain that has failed to go back to the old mesh...
                           if (getprocno() == 1) then
-                            ewrite(0,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used."
+                            ewrite(1,*) "WARNING 3: Mesh adaptivity failed to create a mesh again. Original mesh will be re-used."
                           end if
                           if (adapt_error) then !For the sections that this failed, re-use old mesh
                             if(isparallel()) then
-                              ewrite(0,*) "Domain associated to processor number", getprocno()," has failed to adapt the mesh"
+                              ewrite(1,*) "Domain associated to processor number", getprocno()," has failed to adapt the mesh"
                             end if
                             call allocate(new_positions,old_positions%dim,old_positions%mesh,name=trim(old_positions%name))
                             call set(new_positions,old_positions)
@@ -186,9 +186,13 @@ contains
                           if (getprocno() == 1) then
                             select case (i)
                               case (1)
-                                ewrite(0,*) "WARNING 1: Mesh adaptivity failed to create a mesh, trying again with more conservative settings."
+                                if (.not. Message_shown) then
+                                  ewrite(0,*) "+++ NOTIFICATION: Mesh adaptivity failed to create a new mesh, fail-safe method activated for the rest of the simulation."
+                                  ewrite(1,*) "WARNING: Mesh adaptivity failed to create a mesh, increasing the number of sweeps and changing the convergence settings."
+                                  Message_shown = .true.
+                                end if
                               case default
-                                ewrite(0,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, trying only with r-adaptivity."
+                                ewrite(1,*) "WARNING 2: Mesh adaptivity failed again to create a mesh, trying only with r-adaptivity."
                             end select
                           end if
                           if(isparallel()) then
