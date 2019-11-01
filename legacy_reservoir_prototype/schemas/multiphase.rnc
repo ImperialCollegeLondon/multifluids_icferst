@@ -1241,7 +1241,7 @@ solver_options =
                     ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
                     ##
                     ## A Variable to check has to be chosen:
-                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature
+                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction
                     ##
                     ## The field selected in "adaptive_timestep_nonlinear" has preference over this
                     element adaptive_non_linear_iterations{
@@ -1308,7 +1308,7 @@ solver_options =
                 ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
                 ##
                 ## A Variable to check has to be chosen:
-                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature
+                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction
                 element adaptive_timestep_nonlinear{
                     integer,
                   (
