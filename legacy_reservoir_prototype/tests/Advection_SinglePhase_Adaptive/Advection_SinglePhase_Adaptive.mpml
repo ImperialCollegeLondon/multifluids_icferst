@@ -89,11 +89,11 @@
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
-            <mesh name="PressureMesh_Discontinuous"/>
+            <mesh name="PressureMesh"/>
             <value name="WholeMesh">
               <isotropic>
                 <constant>
-                  <real_value rank="0">0.</real_value>
+                  <real_value rank="0">0</real_value>
                 </constant>
               </isotropic>
             </value>
@@ -129,6 +129,17 @@
   return val</comment>
           </python>
         </initial_condition>
+        <boundary_conditions name="outlet">
+          <surface_ids>
+            <integer_value shape="1" rank="1">7</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">0</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
         <detectors>
           <exclude_from_detectors/>
         </detectors>
@@ -172,27 +183,7 @@
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">1.0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
                   <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="right">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">1.0</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -212,7 +203,7 @@
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">1.0</real_value>
+                  <real_value rank="0">0</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -229,42 +220,6 @@
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
-    <scalar_field name="Density" rank="0">
-      <prognostic>
-        <mesh name="PressureMesh"/>
-        <initial_condition name="WholeMesh">
-          <constant>
-            <real_value rank="0">1.0</real_value>
-          </constant>
-        </initial_condition>
-        <boundary_conditions name="right">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">1.0</real_value>
-            </constant>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="top">
-          <surface_ids>
-            <integer_value shape="1" rank="1">9</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">1.0</real_value>
-            </constant>
-          </type>
-        </boundary_conditions>
-        <detectors>
-          <include_in_detectors/>
-        </detectors>
-        <consistent_interpolation/>
-      </prognostic>
-    </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
