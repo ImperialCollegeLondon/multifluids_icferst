@@ -2583,7 +2583,7 @@ end if
             ! In tests they all produce similar results.
             !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
             INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
-            INTEGER, PARAMETER :: UCOMPRESSIVE_version = 2
+            INTEGER, PARAMETER :: UCOMPRESSIVE_version = 1
             real, parameter :: tolerance = 1.e-10
             LOGICAL :: NOLIMI
             INTEGER :: CV_KLOC, &
@@ -2762,8 +2762,10 @@ end if
                           CAcoeff=Mdisopt%compoptval !! this coefficient says how ultra-compressive we need to be (default=0.0, very)
                           select case(UCOMPRESSIVE_version)
                           case (1) !! more dispersive
-                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
-                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
+                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODI(:) + 2.*(F_CV_NODJ(:)-F_CV_NODI(:))))
+                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODJ(:) + 2.*(F_CV_NODI(:)-F_CV_NODJ(:))))
+                            ! FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
+                            ! FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
                           case (2)!! MOST COMPRESSIVE (CAcoeff of 0.5 is a good in-between, otherwise CAcoeff should be 1)
                             FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ(:)-F_CV_NODI(:))))
                             FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI(:)-F_CV_NODJ(:))))
