@@ -2592,7 +2592,7 @@ end if
             REAL, dimension(Mdims%ndim,NFIELD) :: FXGI_ALL, UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
             REAL, dimension(NFIELD) :: courant_or_minus_one_new, XI_LIMIT,&
                 P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
-                RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
+                RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP, UBCZERO
             real :: CONVECTION_ADVECTION_COEFF = 1.0 !default behaviour = 1.0
             real :: CAcoeff = 0.0
             logical :: ULTRA_COMPRESSIVE = .false.
@@ -2757,23 +2757,29 @@ end if
                             END DO
                         ENDIF ! ENDOF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN ELSE
 
+                        !! ultra compressive operations - C Pain and A Obeysekara
                         ULTRA_COMPRESSIVE = Mdisopt%compopt
                         if(ULTRA_COMPRESSIVE) then  !! use ultra-compression of interfaces
                           CAcoeff=Mdisopt%compoptval !! this coefficient says how ultra-compressive we need to be (default=0.0, very)
-                          select case(UCOMPRESSIVE_version)
-                          case (1) !! more dispersive
-                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODI(:) + 2.*(F_CV_NODJ(:)-F_CV_NODI(:))))
-                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODJ(:) + 2.*(F_CV_NODI(:)-F_CV_NODJ(:))))
-                            ! FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
-                            ! FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
-                          case (2)!! MOST COMPRESSIVE (CAcoeff of 0.5 is a good in-between, otherwise CAcoeff should be 1)
-                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ(:)-F_CV_NODI(:))))
-                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI(:)-F_CV_NODJ(:))))
-                          case (3) !! more dispersive
-                            FUPWIND_IN(:)  = CAcoeff*FUPWIND_IN(:)  +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODI(:))))
-                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODJ(:))))
-                          end select
-                        end if
+                        !  (CAcoeff of 0.5 is a good in-between, otherwise CAcoeff should be 1)
+                          UBCZERO=1.0
+                          if(on_domain_boundary) UBCZERO=1.0-F_INCOME !!-asiri 051119 attempt to remove compressive oepration on boundary_condition
+                            select case(UCOMPRESSIVE_version)
+                            case (1) !! compressive new default - 0411149
+                              FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODI(:) + 2.*(F_CV_NODJ(:)-F_CV_NODI(:))))
+                              FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODJ(:) + 2.*(F_CV_NODI(:)-F_CV_NODJ(:))))
+                              FUPWIND_IN(:) = UBCZERO(:)*FUPWIND_IN(:)
+                              FUPWIND_OUT(:) = UBCZERO(:)*FUPWIND_OUT(:)
+                              ! FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
+                              ! FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
+                            case (2)!! COMPRESSIVE - older version
+                              FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ(:)-F_CV_NODI(:))))
+                              FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI(:)-F_CV_NODJ(:))))
+                            case (3) !! more dispersive
+                              FUPWIND_IN(:)  = CAcoeff*FUPWIND_IN(:)  +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODI(:))))
+                              FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODJ(:))))
+                            end select
+                      end if
 
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF(:), FEMFGI(:), F_INCOME(:), &
