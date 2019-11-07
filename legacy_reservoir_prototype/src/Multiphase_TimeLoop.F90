@@ -191,7 +191,7 @@ contains
         real :: auxR
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
-        Logical:: EnterSolve = .true., after_adapt_itime = .false.  !Flag to either enter or not the pressure solve
+        Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -554,8 +554,8 @@ contains
                 !#          That meens that the code will skip the pressure solve for every rcp (eg rcp=3) time steps.
                 !#          We check the input value has an approprate value and if not assigns the default
                 !#=================================================================================================================
-
-                call EnterForceBalanceEquation(EnterSolve, its, itime, acctim, adapt_time_steps, t_adapt_threshold, after_adapt, after_adapt_itime)
+                if ( have_option( '/timestepping/adaptive_timestep/cfl_pressure' ) ) &
+                  call EnterForceBalanceEquation(EnterSolve, its, itime, acctim, t_adapt_threshold, after_adapt, after_adapt_itime, Courant_number(1))
 
                 !#=================================================================================================================
 
@@ -1461,63 +1461,6 @@ contains
         end select
 
     end subroutine adapt_mesh_within_FPI
-
-    !==Andreas============================================================================================
-    !--A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not                 =
-    !- given a requested_cfl_pressure it will skip the ForceBalanceEquation that many times              =
-    !- while if I have adaptive mesh it will solve the ForceBalanceEquation after each adapt_time_steps  =
-    !- The Subroutive also account for delaying adaptivity and swich between cfl_pressure and after_adapt=
-    !=====================================================================================================
-    subroutine EnterForceBalanceEquation(EnterSolve, its, itime, acctim, &
-                                          adapt_time_steps,t_adapt_threshold, after_adapt, after_adapt_itime)
-       implicit none
-       logical, intent(inout) :: EnterSolve, after_adapt, after_adapt_itime
-       integer, intent(inout) :: its, itime
-       integer, intent(in), optional :: adapt_time_steps
-       real   , intent(in), optional :: t_adapt_threshold, acctim
-       logical                       :: flag_enter_after_adapt
-
-       !Initialization===============================================================
-       EnterSolve             = .true.
-       flag_enter_after_adapt = .false.
-       !End Initialization===========================================================
-
-       ! Main Subroutine=============================================================
-       ! Read requested pressure cfl------------------------------------------------
-       if ( have_option( '/timestepping/adaptive_timestep/cfl_pressure' ) ) then
-         call get_option( '/timestepping/adaptive_timestep/cfl_pressure', rcp )
-       else
-         return  !If I dont have rcp, then return with EnterSolve =.TRUE.
-       end if
-
-       ! Enter Pressure always for the 1st time step and
-       !       for every multiple of the requested_cfl_pressure then after-----------
-       if (itime ==1 .or. mod(itime,rcp)==0) then
-         EnterSolve = .true.
-       else
-         EnterSolve = .false.
-       end if
-
-       ! Check if I have Adaptive Mesh-----------------------------------------------
-       if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
-         if (acctim >= t_adapt_threshold) then    !If I have Time Delay in Mesh Adapt
-           if ( have_option( '/timestepping/adaptive_timestep/cfl_pressure/at_mesh_adapt' ) ) then
-             if (its ==1) after_adapt_itime = after_adapt !This was we keep the logical consant for the whole itime
-           else
-            if (itime ==1 .and. its ==1) print*, "WARNING! Add 'at_mesh_adapt' option."
-            return
-           end if
-           flag_enter_after_adapt = after_adapt_itime
-           ! Enter the Pressure solve when "after_adapt" and always on itime=1:
-           if (itime/=1) EnterSolve = flag_enter_after_adapt
-         end if
-       end if
-
-       !print*, "In the end of Sub:", EnterSolve, after_adapt_itime , after_adapt, itime, its !, acctim, t_adapt_threshold
-    end subroutine EnterForceBalanceEquation
-
-
-
 
  end subroutine MultiFluids_SolveTimeLoop
 
