@@ -71,7 +71,8 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
+        EnterForceBalanceEquation
 
 
     interface Get_SNdgln
@@ -3491,6 +3492,60 @@ end subroutine get_DarcyVelocity
         write(89,*), trim(whole_line)
         close (89)
     end subroutine dump_outflux
+
+    !==Andreas============================================================================================
+    !--A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not                 =
+    !- given a requested_cfl_pressure it will skip the ForceBalanceEquation that many times              =
+    !- while if I have adaptive mesh it will solve the ForceBalanceEquation after each adapt_time_steps  =
+    !- The Subroutive also account for delaying adaptivity and swich between cfl_pressure and after_adapt=
+    !=====================================================================================================
+    subroutine EnterForceBalanceEquation(EnterSolve, its, itime, acctim, &
+                                         t_adapt_threshold, after_adapt, after_adapt_itime, PVF_cfl)
+       implicit none
+       logical, intent(inout) :: EnterSolve, after_adapt_itime
+       logical, intent(in)    :: after_adapt
+       integer, intent(in)    :: its, itime
+       real   , intent(in)    :: t_adapt_threshold, acctim, PVF_cfl
+       logical                :: flag_enter_after_adapt
+       real                   :: epsilon, rc
+       integer                :: rcp
+
+       !Initialization===============================================================
+       EnterSolve             = .true.
+       flag_enter_after_adapt = .false.
+       epsilon                =  1e-3
+       !End Initialization===========================================================
+
+       ! Main Subroutine=============================================================
+       ! Read requested pressure cfl and cfl for pressure----------------------------
+       call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
+       call get_option( '/timestepping/adaptive_timestep/cfl_pressure' , rcp )
+
+       ! Enter Pressure always for the 1st time step and until the cfl is smaller than the requested_cfl
+       !       and for every multiple of the requested_cfl_pressure then after-----------
+       if (itime ==1 .or. mod(itime,rcp)==0 .or. PVF_cfl>=(rc+epsilon)) then
+         EnterSolve = .true.
+       else
+         EnterSolve = .false.
+       end if
+
+       ! Check if I have Adaptive Mesh-----------------------------------------------
+       if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
+         if (acctim >= t_adapt_threshold) then    !If I have Time Delay in Mesh Adapt
+           if ( have_option( '/timestepping/adaptive_timestep/cfl_pressure/at_mesh_adapt' ) ) then
+             if (its ==1) after_adapt_itime = after_adapt !This was we keep the logical consant for the whole itime
+           else
+            if (itime ==1 .and. its ==1) print*, "WARNING! Add 'at_mesh_adapt' option."
+            return
+           end if
+           flag_enter_after_adapt = after_adapt_itime
+           ! Enter the Pressure solve when "after_adapt" and always on itime=1:
+           if (itime/=1) EnterSolve = flag_enter_after_adapt
+         end if
+       end if
+       !print*, "In the end of Sub:", EnterSolve, after_adapt_itime , after_adapt, itime, its !, acctim, t_adapt_threshold
+    end subroutine EnterForceBalanceEquation
+
 
 
 end module Copy_Outof_State
