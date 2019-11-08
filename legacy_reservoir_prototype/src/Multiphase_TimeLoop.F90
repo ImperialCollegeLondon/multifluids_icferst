@@ -514,7 +514,7 @@ contains
             if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
 
             !Initialise mass conservation check for this time-level
-            call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
+            if (is_porous_media) call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
               CV_funs, Mspars, ndgln, upwnd, SUF_SIG_DIAGTEN_BC, outfluxes, calculate_mass_delta, .true.)
 
             !Initialise to zero the SFPI counter
@@ -687,7 +687,7 @@ contains
                 end if
 
                 !Just before the check of the non-linear solver, compute mass and fluxes
-                call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
+                if (is_porous_media) call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
                   CV_funs, Mspars, ndgln, upwnd, SUF_SIG_DIAGTEN_BC, outfluxes, calculate_mass_delta, .false.)
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
@@ -714,7 +714,7 @@ contains
                 after_adapt=.false.
                 its = its + 1
                 first_nonlinear_time_step = .false.
-            end do Loop_NonLinearIteration            
+            end do Loop_NonLinearIteration
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
