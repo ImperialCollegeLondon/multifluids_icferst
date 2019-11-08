@@ -85,7 +85,7 @@
           </diagnostic>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
+          <stress_form/>
           <linear_scheme>
             <high_order/>
           </linear_scheme>
@@ -372,8 +372,10 @@ for i in range (field.node_count):
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -403,8 +405,10 @@ for i in range (field.node_count):
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <stress_form/>
+              <linear_scheme>
+                <high_order/>
+              </linear_scheme>
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -488,8 +492,10 @@ for i in range (field.node_count):
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -519,8 +525,10 @@ for i in range (field.node_count):
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <stress_form/>
+              <linear_scheme>
+                <high_order/>
+              </linear_scheme>
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -604,8 +612,10 @@ for i in range (field.node_count):
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -635,8 +645,10 @@ for i in range (field.node_count):
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <stress_form/>
+              <linear_scheme>
+                <high_order/>
+              </linear_scheme>
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -720,8 +732,10 @@ for i in range (field.node_count):
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -751,8 +765,10 @@ for i in range (field.node_count):
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <stress_form/>
+              <linear_scheme>
+                <high_order/>
+              </linear_scheme>
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -836,8 +852,10 @@ for i in range (field.node_count):
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -867,8 +885,10 @@ for i in range (field.node_count):
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <stress_form/>
+              <linear_scheme>
+                <high_order/>
+              </linear_scheme>
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>

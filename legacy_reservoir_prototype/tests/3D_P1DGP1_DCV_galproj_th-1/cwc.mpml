@@ -58,7 +58,7 @@
           </stat>
         </from_mesh>
       </mesh>
-      <mesh name="ph">
+      <mesh name="HydrostaticPressure">
         <from_mesh>
           <mesh name="PressureMesh"/>
           <mesh_shape>
@@ -217,17 +217,19 @@
         <tensor_field name="Viscosity" rank="2">
           <prescribed>
             <value name="WholeMesh">
-              <isotropic>
+              <anisotropic_asymmetric>
                 <constant>
-                  <real_value rank="0">1.</real_value>
+                  <real_value symmetric="false" dim2="dim" shape="3 3" dim1="dim" rank="2">1 1 1 1 1 1 1 1 1</real_value>
                 </constant>
-              </isotropic>
+              </anisotropic_asymmetric>
             </value>
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -685,9 +687,9 @@
         </steady_state>
       </diagnostic>
     </scalar_field>
-    <scalar_field name="Ph" rank="0">
+    <scalar_field name="HydrostaticPressure" rank="0">
       <prognostic>
-        <mesh name="ph"/>
+        <mesh name="HydrostaticPressure"/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0</real_value>
@@ -733,7 +735,7 @@
     <vector_field name="DiagnosticCoordinate" rank="1">
       <diagnostic>
         <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="ph"/>
+        <mesh name="HydrostaticPressure"/>
         <stat>
           <include_in_stat/>
         </stat>
@@ -786,8 +788,10 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -816,8 +820,10 @@
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <stress_form/>
+              <linear_scheme>
+                <high_order/>
+              </linear_scheme>
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
@@ -906,8 +912,10 @@
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
-          <nonlinear_scheme/>
+          <stress_form/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
@@ -936,8 +944,10 @@
               </prescribed>
             </tensor_field>
             <viscosity_scheme>
-              <tensor_form/>
-              <nonlinear_scheme/>
+              <stress_form/>
+              <linear_scheme>
+                <high_order/>
+              </linear_scheme>
             </viscosity_scheme>
           </Viscosity>
         </phase_properties>
