@@ -77,7 +77,7 @@ contains
 
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, nphase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                  INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes )
+                  INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA)
       ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
@@ -95,9 +95,6 @@ contains
       real, intent(in) :: DT, CV_BETA
       !Variables that are used to define the pipe pos.
       type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
-      !variables to store the pipe outfluxes if asked by the user
-      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
-      type (multi_outfluxes), intent(inout) :: outfluxes
       integer, intent(in) :: nphase
       ! Local variables
       INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase
@@ -146,7 +143,6 @@ contains
       type(vector_field), pointer :: X
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection
-      !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
       !Parameters of the simulation
       logical, parameter :: UPWIND_PIPES = .false.! Used for testing...
       logical, parameter :: PIPE_MIN_DIAM=.true. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
@@ -159,8 +155,6 @@ contains
       n_in_pres = nphase/Mdims%npres
 
       conservative_advection = abs(cv_beta) > 0.99
-
-      !if allocated then calculate outfluxes
 
       CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
       NCORNER = Mdims%ndim + 1
@@ -234,7 +228,7 @@ contains
           CVN_VOL_ADJ(3)=0.25
       ENDIF
 
-      ! SET UP THE SURFACE B.Mmat%C'S
+      ! SET UP THE SURFACE BC'S
       WIC_B_BC_ALL_NODS=0; WIC_T_BC_ALL_NODS=0; WIC_D_BC_ALL_NODS=0
       WIC_U_BC_ALL_NODS=0; RVEC_SUM_T=0.0; RVEC_SUM_D=0.0
       RVEC_SUM_U=0.0; SUF_T_BC_ALL_NODS=0.0
@@ -810,25 +804,6 @@ contains
                           sum( LOC_CT_RHS_U_ILOC( 1+(Mdims%npres-1)*n_in_pres : Mdims%npres*n_in_pres ) ) )
                   END IF ! IF ( GETCT ) THEN
 
-                  !Calculate fluxes to check mass conservation and outflux
-                  IF ( GETCT ) THEN
-                      if (element_owned(T_ALL, ele)) then
-                          !Store total outflux for mass conservation check
-                          bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, 0) =  bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD,0) + &
-                          NDOTQ(n_in_pres+1:nphase) * suf_area * LIMDT(n_in_pres+1:nphase)
-                          if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
-                              !If we want to output the outfluxes of the pipes we fill the array here with the information
-                              sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
-                              do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
-                                  if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
-                                      bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, iofluxes) =  &
-                                      bcs_outfluxes(n_in_pres+1:nphase, JCV_NOD, iofluxes) + &
-                                      NDOTQ(n_in_pres+1:nphase) * suf_area * LIMT(n_in_pres+1:nphase)
-                                  end if
-                              end do
-                          end if
-                      end if
-                  end if
                   IF ( GETCV_DISC ) THEN ! this is on the boundary...
                       ! Put results into the RHS vector
                       LOC_CV_RHS_I = 0.0
@@ -954,7 +929,7 @@ contains
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, nphase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
-                  mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef )
+                  mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, INV_B, MASS_ELE, porous_heat_coef )
       ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
@@ -980,9 +955,6 @@ contains
 
       !Variables that are used to define the pipe pos.
       type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
-      !variables to store the pipe outfluxes if asked by the user
-      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
-      type (multi_outfluxes), intent(inout) :: outfluxes
       REAL, DIMENSION( : , : ), optional, intent(in) :: porous_heat_coef
       ! Local variables
       ! Local variables
@@ -1005,7 +977,6 @@ contains
       real, dimension( Mdims%cv_nonods ) :: N
       !Logical to check if we using a conservative method or not, to save cpu time
       logical :: conservative_advection, have_absorption
-      !Variables to control if we want to store the outfluxes to later on store it in the output .csv file
       !Parameters of the simulation
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
@@ -1085,7 +1056,7 @@ contains
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
           getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-          SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes)
+          SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta)
 
       ! Used for pipe modelling...
       DO CV_NODI = 1, Mdims%cv_nonods

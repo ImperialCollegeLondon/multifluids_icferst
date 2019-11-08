@@ -1354,7 +1354,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken)
+        pres_its_taken)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1379,8 +1379,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
         REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        type (multi_outfluxes), intent(inout) :: outfluxes
-        real, dimension(:,:), intent(inout) :: calculate_mass_delta
         integer, intent(inout) :: pres_its_taken
         ! Local Variables
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
@@ -1660,7 +1658,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq)
         deallocate(UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -2011,7 +2009,7 @@ pres_its_taken = its_taken
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
+        FEM_continuity_equation, boussinesq)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -2053,8 +2051,6 @@ pres_its_taken = its_taken
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION_ALL
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL_ALL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
-        type (multi_outfluxes), intent(inout) :: outfluxes
-        real, dimension(:,:), intent(inout) :: calculate_mass_delta
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -2131,8 +2127,7 @@ pres_its_taken = its_taken
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
-            eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
-            calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
+            eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux)
 
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )

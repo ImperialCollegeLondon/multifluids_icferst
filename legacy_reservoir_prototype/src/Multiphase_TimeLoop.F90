@@ -318,6 +318,7 @@ contains
             end if
           end do
         end if
+
         !Check if we want to use a compacted mass matrix
         if ((Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')) &
                     .and. is_porous_media .and. Mdims%npres == 1) then
@@ -511,6 +512,11 @@ contains
             !since for consistency, (later it is called as well) it uses the old values of pressure,
             !however, they have to be the most updated at this point
             if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
+
+            !Initialise mass conservation check for this time-level
+            call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
+              CV_funs, Mspars, ndgln, upwnd, SUF_SIG_DIAGTEN_BC, outfluxes, calculate_mass_delta, .true.)
+
             !Initialise to zero the SFPI counter
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
@@ -545,7 +551,6 @@ contains
 
                 PythonPhaseVolumeFractionSource => extract_vector_field(state(1),"VSource", python_stat)
                 if ( python_stat == 0 ) ScalarField_Source_Store =  PythonPhaseVolumeFractionSource%val(:,:)
-
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
 
@@ -601,7 +606,7 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken)
+                        pres_its_taken)
 
                 end if Conditional_ForceBalanceEquation
 
@@ -703,7 +708,9 @@ contains
                     exit Loop_NonLinearIteration
                 end if
 
-
+                !Just before the check of the non-linear solver, compute mass and fluxes
+                call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
+                  CV_funs, Mspars, ndgln, upwnd, SUF_SIG_DIAGTEN_BC, outfluxes, calculate_mass_delta, .false.)
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &
@@ -729,7 +736,7 @@ contains
                 after_adapt=.false.
                 its = its + 1
                 first_nonlinear_time_step = .false.
-            end do Loop_NonLinearIteration
+            end do Loop_NonLinearIteration            
             if (have_option( '/io/Show_Convergence') .and. getprocno() == 1) then
               ewrite(0,*) "Iterations taken by the pressure linear solver:", pres_its_taken
             end if
@@ -737,7 +744,7 @@ contains
             if (.not. is_porous_media .or. mdims%n_in_pres == 1) SFPI_taken = 0
             FPI_eq_taken = dble(its) + dble(SFPI_taken)/3.!SFPI cost 1/3 roughly, this needs to be revisited when solving for nphases-1
 
-            ! If calculating boundary fluxes, dump them to outfluxes.txt
+            ! If calculating boundary fluxes, dump them to outfluxes.csv
             if(outfluxes%calculate_flux .and..not.Repeat_time_step) then
                 if(getprocno() == 1) call dump_outflux(acctim,itime,outfluxes)
             endif
