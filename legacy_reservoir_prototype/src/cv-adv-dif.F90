@@ -2503,7 +2503,7 @@ end if
             ! In tests they all produce similar results.
             !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
             INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
-            INTEGER, PARAMETER :: UCOMPRESSIVE_version = 2
+            INTEGER, PARAMETER :: UCOMPRESSIVE_version = 1
             real, parameter :: tolerance = 1.e-10
             LOGICAL :: NOLIMI
             INTEGER :: CV_KLOC, &
@@ -2512,14 +2512,15 @@ end if
             REAL, dimension(Mdims%ndim,NFIELD) :: FXGI_ALL, UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
             REAL, dimension(NFIELD) :: courant_or_minus_one_new, XI_LIMIT,&
                 P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
-                RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
+                RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP, UBCZERO
             real :: CONVECTION_ADVECTION_COEFF = 1.0 !default behaviour = 1.0
-            real :: CAcoeff = 0.0
+            real :: CAcoeff = 0.0, NRBC2
             logical :: ULTRA_COMPRESSIVE = .false.
             ! No limiting if CV_DISOPT is 6 or 7  (why not just define limt=femt and skip to assembly?)
             NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
             ! Make a guess at the CV face value of advected field variable and density
             ! (Depends on discetisation option, CV_DISOPT)
+            UBCZERO=1.0 !-ao
             SELECT CASE( CV_DISOPT / 2 )
                 !    CASE( 0 ) ! First-order upwinding is achived through the limiting
                 !       FEMFGI(:)    = FVF(:)
@@ -2677,21 +2678,35 @@ end if
                             END DO
                         ENDIF ! ENDOF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN ELSE
 
+                        !! ultra compressive operations - C Pain and A Obeysekara
                         ULTRA_COMPRESSIVE = Mdisopt%compopt
                         if(ULTRA_COMPRESSIVE) then  !! use ultra-compression of interfaces
                           CAcoeff=Mdisopt%compoptval !! this coefficient says how ultra-compressive we need to be (default=0.0, very)
-                          select case(UCOMPRESSIVE_version)
-                          case (1) !! more dispersive
-                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
-                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
-                          case (2)!! MOST COMPRESSIVE (CAcoeff of 0.5 is a good in-between, otherwise CAcoeff should be 1)
-                            FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ(:)-F_CV_NODI(:))))
-                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI(:)-F_CV_NODJ(:))))
-                          case (3) !! more dispersive
-                            FUPWIND_IN(:)  = CAcoeff*FUPWIND_IN(:)  +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODI(:))))
-                            FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODJ(:))))
-                          end select
-                        end if
+                        !  (CAcoeff of 0.5 is a good in-between)
+
+                          UBCZERO(:)=1.0-F_INCOME(:) !-ao method (1)
+                          if(BCZERO(1) >= 0.0) NRBC2 = BCZERO(1) !!method (2)
+
+                            select case(UCOMPRESSIVE_version) !! case 1 is the newest and most compressive, so is case 2, case 3 is not compressive at all - 051119
+                            case (1) !! compressive new default - 0411149
+                              FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODI(:) + 2.*(F_CV_NODJ(:)-F_CV_NODI(:))))
+                              FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, F_CV_NODJ(:) + 2.*(F_CV_NODI(:)-F_CV_NODJ(:))))
+                               ! FUPWIND_IN(:) = NRBC2*FUPWIND_IN(:) !!051119
+                               ! FUPWIND_OUT(:) = NRBC2*FUPWIND_OUT(:)
+                              FUPWIND_IN(:) = UBCZERO(:)*FUPWIND_IN(:) !!061119 this seems to work
+                              FUPWIND_OUT(:) =  UBCZERO(:)*FUPWIND_OUT(:)
+                            case (2)!! COMPRESSIVE - older version (october 2019)
+                              FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODJ(:)-F_CV_NODI(:))))
+                              FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, F_CV_NODI(:)-F_CV_NODJ(:))))
+                            case (3) !! more dispersive (october 2019)
+                              FUPWIND_IN(:)  = CAcoeff*FUPWIND_IN(:)  +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODI(:))))
+                              FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) +(1.0-CAcoeff)*MAX(0.0, MIN(1.0, sign(1.0, FEMFGI(:)-F_CV_NODJ(:))))
+                            case (4) !! also doesnt work
+                              FUPWIND_IN(:) = CAcoeff*FUPWIND_IN(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODI(:))))
+                              FUPWIND_OUT(:) = CAcoeff*FUPWIND_OUT(:) + (1.0-CAcoeff)*MAX(0.0, MIN(1.0, FEMFGI(:) + 3.*(FEMFGI(:)-F_CV_NODJ(:))))
+                            end select
+
+                      end if
 
                         CALL ONVDLIM_ANO_MANY( NFIELD, &
                             LIMF(:), FEMFGI(:), F_INCOME(:), &

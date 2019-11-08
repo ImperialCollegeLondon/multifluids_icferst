@@ -1857,6 +1857,8 @@ contains
                             absorption % val( idim, : )
                     end do
                 else
+                    FLAbort(" The velocity absorption field has to be on the same mesh as velocity")
+                    ! The code below doesn't interpolate from the absorption mesh to the velocity mesh 
                     do idim = 1, ndim
                         velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
                             absorption % val( idim, size(absorption % val,2) )

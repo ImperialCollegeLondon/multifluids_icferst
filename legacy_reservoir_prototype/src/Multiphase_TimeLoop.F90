@@ -190,8 +190,8 @@ contains
         integer :: i, k
         real :: auxR
         ! Andreas. Declare the parameters required for skipping pressure solve
-        Integer:: rcp           !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
-        Logical:: EnterSolve=.true., Enter_flag_for_adapt=.false.    !Flag to either enter or not the pressure solve
+        Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
+        Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -557,32 +557,10 @@ contains
                 !#=================================================================================================================
                 !# Andreas. Here we find if we have asked for a requested_cfl_pressure (rcp_)
                 !#          That meens that the code will skip the pressure solve for every rcp (eg rcp=3) time steps.
-                !#          We check the the input value has an approprate value and if not assigns the default
+                !#          We check the input value has an approprate value and if not assigns the default
                 !#=================================================================================================================
-
-                EnterSolve = .true.
-                if ( have_option( '/timestepping/adaptive_timestep/cfl_pressure' ) ) then
-                  call get_option( '/timestepping/adaptive_timestep/cfl_pressure', rcp )
-                  if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
-                      if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
-                        call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', adapt_time_steps, default=5 )
-                        if ( have_option( '/timestepping/adaptive_timestep/cfl_pressure/at_mesh_adapt' ) ) then
-                          if (its == 1) then !This was we keep the logical consant for the whole itime
-                            Enter_flag_for_adapt=after_adapt
-                          end if
-                          !rcp = adapt_time_steps ! For optimum performamce
-                       end if
-                      endif
-                  end if
-                  ! Enter Pressure always for the 1st time step and for every multiple of the requested_cfl_pressure
-                  if (itime ==1 .or. mod(itime,rcp)==0 ) then
-                    EnterSolve = .true.
-                  else
-                    EnterSolve = .false.
-                  end if
-                end if
-                ! Enter the Pressure solve when:
-                EnterSolve = EnterSolve .or. Enter_flag_for_adapt
+                if ( have_option( '/timestepping/adaptive_timestep/cfl_pressure' ) ) &
+                  call EnterForceBalanceEquation(EnterSolve, its, itime, acctim, t_adapt_threshold, after_adapt, after_adapt_itime, Courant_number(1))
 
                 !#=================================================================================================================
 
