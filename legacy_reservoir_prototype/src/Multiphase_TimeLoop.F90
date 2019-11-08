@@ -1291,12 +1291,19 @@ contains
                 end if
                 scvngi_theta = CV_GIdims%scvngi
                 ncv_faces = CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIdims)
-                allocate( sum_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    sum_one_m_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    sum_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    sum_one_m_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    theta_gdiff( Mdims%nphase, Mdims%cv_nonods ), &
-                    ScalarField_Source_Store( Mdims%nphase, Mdims%cv_nonods ) )
+                ! allocate( sum_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     sum_one_m_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     sum_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     sum_one_m_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     theta_gdiff( Mdims%nphase, Mdims%cv_nonods ), &
+                !     ScalarField_Source_Store( Mdims%nphase, Mdims%cv_nonods ) )
+                    allocate( sum_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        sum_one_m_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        sum_theta_flux_j( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        sum_one_m_theta_flux_j( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        theta_gdiff( Mdims%nphase, Mdims%cv_nonods ), &
+                        ScalarField_Source_Store( Mdims%nphase, Mdims%cv_nonods ) )
+                        
                 sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
                 sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
                 ScalarField_Source_Store=0.
