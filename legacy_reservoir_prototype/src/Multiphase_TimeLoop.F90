@@ -272,8 +272,8 @@ contains
         !!$
 
         !!$ Calculate diagnostic fields
-        call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!allocates the memory for a fixed mesh
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
+        call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!allocates the memory for a fixed mesh
         !!$
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
@@ -530,9 +530,6 @@ contains
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
-                !!$ Calculate diagnostic fields (Within the non-linear loop to ensure consistency)
-                call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
-                call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
                 if ( is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( Mdims%nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
@@ -739,6 +736,10 @@ contains
             end if
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
+
+            !!$ Calculate diagnostic fields
+            call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
+            call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
@@ -1291,12 +1292,19 @@ contains
                 end if
                 scvngi_theta = CV_GIdims%scvngi
                 ncv_faces = CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIdims)
-                allocate( sum_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    sum_one_m_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    sum_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    sum_one_m_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
-                    theta_gdiff( Mdims%nphase, Mdims%cv_nonods ), &
-                    ScalarField_Source_Store( Mdims%nphase, Mdims%cv_nonods ) )
+                ! allocate( sum_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     sum_one_m_theta_flux( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     sum_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     sum_one_m_theta_flux_j( Mdims%nphase, scvngi_theta*Mdims%cv_nloc*Mdims%totele * igot_theta_flux ), &
+                !     theta_gdiff( Mdims%nphase, Mdims%cv_nonods ), &
+                !     ScalarField_Source_Store( Mdims%nphase, Mdims%cv_nonods ) )
+                    allocate( sum_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        sum_one_m_theta_flux( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        sum_theta_flux_j( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        sum_one_m_theta_flux_j( Mdims%nphase, ncv_faces*igot_theta_flux ), &
+                        theta_gdiff( Mdims%nphase, Mdims%cv_nonods ), &
+                        ScalarField_Source_Store( Mdims%nphase, Mdims%cv_nonods ) )
+
                 sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
                 sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
                 ScalarField_Source_Store=0.
