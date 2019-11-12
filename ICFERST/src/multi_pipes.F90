@@ -25,7 +25,6 @@ module multi_pipes
     use Petsc_Tools
     use Sparse_tools
     use sparse_tools_petsc
-    use surface_integrals, only :integrate_over_surface_element
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use shape_functions_prototype

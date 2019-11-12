@@ -142,7 +142,7 @@ contains
 
         type( state_type ), dimension( : ), pointer :: sub_state => null()
         integer :: nonlinear_iterations_adapt
-        logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false.
+        logical :: do_reallocate_fields = .false.
         !!$ Working arrays:
         real, dimension(:), pointer :: mass_ele
         real, dimension( :, : ), pointer :: THETA_GDIFF
@@ -437,7 +437,6 @@ contains
                   call checkpoint_simulation(state,cp_no=checkpoint_number,&
                                                protect_simulation_name=.true.,file_type='.mpml')
              end if
-             !not_to_move_det_yet = .false. ;
 !-------------------------------------------------------------------------------
               call write_state(dump_no, state)
 
@@ -446,7 +445,7 @@ contains
         FPI_eq_taken = 0
         if(have_option("/io/stat/output_at_start")) then
             call write_diagnostics(state, current_time, dt,&
-                timestep, not_to_move_det_yet=.true., non_linear_iterations = FPI_eq_taken)
+                timestep, non_linear_iterations = FPI_eq_taken)
         end if
         ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
         ! If calculating boundary fluxes, allocate and initialise to zero outfluxes variables
@@ -848,7 +847,7 @@ contains
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
+            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime, non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
                 if (have_option('/io/Courant_number')) then!printout in the terminal
@@ -1202,8 +1201,7 @@ contains
                         checkpoint_number=checkpoint_number+1
                     end if
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    not_to_move_det_yet = .false. ;
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps, non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
@@ -1217,8 +1215,7 @@ contains
                             protect_simulation_name=.true.,file_type='.mpml')
                         checkpoint_number=checkpoint_number+1
                     end if
-                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
-                    not_to_move_det_yet = .false. ;
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps, non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     !Time to compute the self-potential if required
                     if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
@@ -1304,29 +1301,28 @@ contains
                             call qmesh( state, metric_tensor )
                         end if
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
-                            itime, not_to_move_det_yet = .true. , non_linear_iterations = FPI_eq_taken)
+                            itime, non_linear_iterations = FPI_eq_taken)
                         call run_diagnostics( state )
                         call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
                         if( have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
-                            itime, not_to_move_det_yet = .true. )
+                            itime)
                         call run_diagnostics( state )
                     end if Conditional_Adapt_by_TimeStep
                 elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then !!$ Conditional_Adaptivity:
                     Conditional_Adapt_by_Time: if( do_adapt_state_prescribed( current_time ) ) then
                         call pre_adapt_tasks( sub_state )
                         if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
-                            timestep, not_to_move_det_yet = .true. )
+                            timestep)
                         call run_diagnostics( state )
                         call adapt_state_prescribed( state, current_time )
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt)
                         if(have_option( '/io/stat/output_after_adapts' ) ) call write_diagnostics( state, current_time, dt, &
-                            timestep, not_to_move_det_yet = .true. )
+                            timestep)
                         call run_diagnostics( state )
                     end if Conditional_Adapt_by_Time
-                    not_to_move_det_yet = .false.
                 end if Conditional_Adaptivity
                 call deallocate(packed_state)
                 call deallocate(multiphase_state)

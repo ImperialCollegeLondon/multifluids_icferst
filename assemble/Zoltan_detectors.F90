@@ -23,16 +23,17 @@ module zoltan_detectors
 
   contains
 
-  subroutine prepare_detectors_for_packing(ndets_in_ele, to_pack_detector_lists, num_ids, global_ids)
+  subroutine prepare_detectors_for_packing(ndets_in_ele, to_pack_detector_lists, num_ids, global_ids, attributes_per_ele)
     ! Goes through all local detectors and moves the ones we want to send to the according
     ! to_pack_detector_list for the element we found the detector in
     integer, intent(out), dimension(:) :: ndets_in_ele
     type(detector_linked_list), dimension(:), intent(inout), target :: to_pack_detector_lists
     integer(zoltan_int), intent(in) :: num_ids 
     integer(zoltan_int), intent(in), dimension(*) :: global_ids
+    integer, intent(out), dimension(:) :: attributes_per_ele !Number of particle attributes per element
     
     integer :: i, j, det_list, new_ele_owner, total_det_to_pack, detector_uen
-    integer :: new_local_element_number
+    integer :: new_local_element_number, total_attributes
     
     type(detector_list_ptr), dimension(:), pointer :: detector_list_array => null()
     type(detector_type), pointer :: detector => null(), detector_to_move => null()
@@ -47,8 +48,14 @@ module zoltan_detectors
     call get_registered_detector_lists(detector_list_array)
     do det_list = 1, size(detector_list_array)
 
-       ! search through all the local detectors in this list
        detector => detector_list_array(det_list)%ptr%first
+
+       !Set up particle attribute parameters
+       total_attributes = 0
+       if (associated(detector)) then
+          total_attributes = size(detector%attributes) + size(detector%old_attributes) + size(detector%old_fields)
+       end if
+
        detector_loop: do while (associated(detector))
           ! store the list ID with the detector, so we can map the detector back when receiving it
           detector%list_id=det_list
@@ -84,6 +91,7 @@ module zoltan_detectors
                    ! If not, move detector to the pack_list for this element and
                    ! increment the number of detectors in that element
                    ndets_in_ele(j) = ndets_in_ele(j) + 1
+                   attributes_per_ele(j) = attributes_per_ele(j) + total_attributes
                 
                    detector_to_move => detector
                    detector => detector%next
