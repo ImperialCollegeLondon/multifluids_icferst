@@ -76,15 +76,15 @@ contains
      type( tensor_field ), pointer :: MFC_s
 
 
-     allocate( X(  Mdims%x_nonods ) ) ; X = 0.0
-     allocate( Y(  Mdims%x_nonods ) ) ; Y = 0.0
-     allocate( Z(  Mdims%x_nonods ) ) ; Z = 0.0
-
-
-     x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-     x = x_all % val( 1, : )
-     if (Mdims%ndim >=2 ) y = x_all % val( 2, : )
-     if (Mdims%ndim >=3 ) z = x_all % val( 3, : )
+     ! allocate( X(  Mdims%x_nonods ) ) ; X = 0.0
+     ! allocate( Y(  Mdims%x_nonods ) ) ; Y = 0.0
+     ! allocate( Z(  Mdims%x_nonods ) ) ; Z = 0.0
+     !
+     !
+     ! x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+     ! x = x_all % val( 1, : )
+     ! if (Mdims%ndim >=2 ) y = x_all % val( 2, : )
+     ! if (Mdims%ndim >=3 ) z = x_all % val( 3, : )
 
 
      ! Initialise...
