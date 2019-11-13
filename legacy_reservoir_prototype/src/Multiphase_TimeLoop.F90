@@ -575,7 +575,7 @@ contains
                 !#=================================================================================================================
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-
+                    !if (getprocno() == 1 .and. its==1) print*, itime
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
@@ -615,7 +615,7 @@ contains
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
                     ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                    !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                     tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
