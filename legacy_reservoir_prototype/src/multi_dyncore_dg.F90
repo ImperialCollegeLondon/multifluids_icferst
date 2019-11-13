@@ -247,7 +247,7 @@ contains
 
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
                 !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-                call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
+                call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer)
            end if
 
            ! get diffusivity for compositional
@@ -609,7 +609,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            TDIFFUSION=0.0
            CDISPERSION=0.0
            !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer, &
+           call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer, &
            calculate_solute_diffusivity = .true.)
 
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
