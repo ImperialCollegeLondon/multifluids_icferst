@@ -90,29 +90,6 @@
       <comment>It was 10. The blob will advect out of the domain by 9 seconds. Changed for the test harness.</comment>
     </finish_time>
   </timestepping>
-  <physical_parameters>
-    <gravity>
-      <magnitude>
-        <real_value rank="0">0.0</real_value>
-      </magnitude>
-      <vector_field name="GravityDirection" rank="1">
-        <prescribed>
-          <mesh name="CoordinateMesh"/>
-          <value name="WholeMesh">
-            <constant>
-              <real_value shape="2" dim1="dim" rank="1">1.0 0.0</real_value>
-            </constant>
-          </value>
-          <stat>
-            <include_in_stat/>
-          </stat>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-        </prescribed>
-      </vector_field>
-    </gravity>
-  </physical_parameters>
   <material_phase name="phase1">
     <phase_properties>
       <Density>
