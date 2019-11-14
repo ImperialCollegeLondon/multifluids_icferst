@@ -3240,6 +3240,7 @@ pres_its_taken = its_taken
             ALLOCATE( PLIKE_GRAD_SOU_COEF(Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ) ) ; PLIKE_GRAD_SOU_COEF=0.0
 
             IF ( IPLIKE_GRAD_SOU == 1 ) THEN
+
                 PLIKE_GRAD_SOU_GRAD_F => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionGrad" )
                 PLIKE_GRAD_SOU_COEF_F => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionCoef" )
                 PLIKE_GRAD_SOU_GRAD = PLIKE_GRAD_SOU_GRAD_F%val ; PLIKE_GRAD_SOU_COEF = PLIKE_GRAD_SOU_COEF_F%val
@@ -5546,6 +5547,11 @@ pres_its_taken = its_taken
         DEALLOCATE( CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED )
         DEALLOCATE( UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED )
         DEALLOCATE( SBCVFEN_REVERSED, SBUFEN_REVERSED )
+
+        DEALLOCATE( PLIKE_GRAD_SOU_GRAD) 
+        DEALLOCATE( PLIKE_GRAD_SOU_COEF)
+
+
         call deallocate(velocity_BCs)
         call deallocate(velocity_BCs_visc)
         call deallocate(velocity_BCs_adv)
