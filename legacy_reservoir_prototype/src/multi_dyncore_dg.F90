@@ -1659,7 +1659,9 @@ end if
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq)
+
         deallocate(UDIFFUSION_ALL)
+
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
@@ -5548,13 +5550,31 @@ pres_its_taken = its_taken
         DEALLOCATE( UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED )
         DEALLOCATE( SBCVFEN_REVERSED, SBUFEN_REVERSED )
 
+
+!! -ao these are also allocated here but not dealloacted
+        IF ( GOT_DIFFUS ) THEN
+          DEALLOCATE(UDIFFUSION_ALL)
+          DEALLOCATE(UDIFFUSION_VOL_ALL)
+          IF ( LES_DISOPT /= 0 ) THEN
+              DEALLOCATE(LES_UDIFFUSION)
+              DEALLOCATE(LES_UDIFFUSION_VOL)
+          end if
+        END IF
+!! -ao surface tension specific deallocations ( IPLIKE_GRAD_SOU >= 0)
+        DEALLOCATE(GRAD_SOU2_GI_NMX)
+        DEALLOCATE(LOC_U_RHS) !!????
+        DEALLOCATE(GRAD_SOU2_GI)
+
+        DEALLOCATE(LOC_U_SOURCE_CV)
+        DEALLOCATE(LOC_PLIKE_GRAD_SOU_COEF)
+        DEALLOCATE(LOC_PLIKE_GRAD_SOU_GRAD)
+
         IF ( IPLIKE_GRAD_SOU /= 0 ) THEN
+          DEALLOCATE( PLIKE_GRAD_SOU_GRAD)
+          DEALLOCATE( PLIKE_GRAD_SOU_COEF)
+        END IF
+!!-ao
 
-        DEALLOCATE( PLIKE_GRAD_SOU_GRAD)  !! 141119 - ao missing dealloation
-        DEALLOCATE( PLIKE_GRAD_SOU_COEF)  !! same
-
-      end if
-      
         call deallocate(velocity_BCs)
         call deallocate(velocity_BCs_visc)
         call deallocate(velocity_BCs_adv)
@@ -6399,6 +6419,9 @@ pres_its_taken = its_taken
              END DO
          END DO Between_Elements_And_Boundary20
      END DO Loop_Elements20
+
+     deallocate(LOC_DGM_PHA)
+
      RETURN
  END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST
 
