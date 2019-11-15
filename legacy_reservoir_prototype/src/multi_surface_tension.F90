@@ -76,15 +76,15 @@ contains
      type( tensor_field ), pointer :: MFC_s
 
 
-     allocate( X(  Mdims%x_nonods ) ) ; X = 0.0
-     allocate( Y(  Mdims%x_nonods ) ) ; Y = 0.0
-     allocate( Z(  Mdims%x_nonods ) ) ; Z = 0.0
-
-
-     x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-     x = x_all % val( 1, : )
-     if (Mdims%ndim >=2 ) y = x_all % val( 2, : )
-     if (Mdims%ndim >=3 ) z = x_all % val( 3, : )
+     ! allocate( X(  Mdims%x_nonods ) ) ; X = 0.0
+     ! allocate( Y(  Mdims%x_nonods ) ) ; Y = 0.0
+     ! allocate( Z(  Mdims%x_nonods ) ) ; Z = 0.0
+     !
+     !
+     ! x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+     ! x = x_all % val( 1, : )
+     ! if (Mdims%ndim >=2 ) y = x_all % val( 2, : )
+     ! if (Mdims%ndim >=3 ) z = x_all % val( 3, : )
 
 
      ! Initialise...
@@ -800,7 +800,7 @@ contains
 
       !END IF IF_USE_PRESSURE_FORCE
       DEALLOCATE( X, Y, Z )
-      DEALLOCATE( DGI_X, UD, PSISGI_X, NORMX, SNORMXN )
+      DEALLOCATE( DGI_X, UD, PSIGI_X, PSISGI_X, NORMX, SNORMXN )
       DEALLOCATE( CV_OTHER_LOC, CV_SLOC2LOC )
       DEALLOCATE( MASS_CV, FACE_ELE, MASS_ELE)
       DEALLOCATE( CURVATURE, CURV, INTERFACE_ELE, INTERFACE_ELE2, DISTANCE_FUN, DISTANCE_FUN_OLD, DISTANCE_FUN1 )

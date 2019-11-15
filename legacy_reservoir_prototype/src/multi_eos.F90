@@ -1399,15 +1399,16 @@ contains
 
     end subroutine calculate_u_source_cv
 
-    subroutine calculate_diffusivity(state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer, calculate_solute_diffusivity)
+    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer, calculate_solute_diffusivity)
       type(state_type), dimension(:), intent(in) :: state
+      type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
       logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
-      type(tensor_field), pointer :: diffusivity, tfield
+      type(tensor_field), pointer :: diffusivity, tfield, den
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
@@ -1455,20 +1456,22 @@ contains
           if (is_porous_media) then
             !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
             sfield=>extract_scalar_field(state(1),"Porosity")
+            den => extract_tensor_field( packed_state,"PackedDensity" )
             ScalarAdvectionField_Diffusion = 0.
 
             if (present_and_true(calculate_solute_diffusivity)) then
               do iphase = 1, Mdims%nphase
                 diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+
                 do ele = 1, Mdims%totele
                   ele_nod = min(size(sfield%val), ele)
                   do iloc = 1, Mdims%mat_nloc
                     mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                     cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                       do idim = 1, Mdims%ndim
-                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                        (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ))
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) =    &
+                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) +    &
+                        (sfield%val(ele_nod) *den%val(1, 1, cv_inod)* node_val( diffusivity, idim, idim, mat_inod ))
                       enddo
                   end do
                 end do
@@ -1609,8 +1612,9 @@ contains
       DispDiaComp = 0.
 
 
-      boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
+       boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
+                den => extract_tensor_field( packed_state,"PackedDensity" )
                 sfield=>extract_scalar_field(state(1),"Porosity")
                 ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
 
@@ -1626,7 +1630,7 @@ contains
                 do iphase = 1, Mdims%nphase
                     darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
                     diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
-                    den => extract_tensor_field( packed_state,"PackedDensity" )
+
                     do ele = 1, Mdims%totele
                         ele_nod = min(size(sfield%val), ele)
                          do u_iloc = 1, mdims%u_nloc
@@ -1858,7 +1862,7 @@ contains
                     end do
                 else
                     FLAbort(" The velocity absorption field has to be on the same mesh as velocity")
-                    ! The code below doesn't interpolate from the absorption mesh to the velocity mesh 
+                    ! The code below doesn't interpolate from the absorption mesh to the velocity mesh
                     do idim = 1, ndim
                         velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
                             absorption % val( idim, size(absorption % val,2) )

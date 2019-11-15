@@ -3523,7 +3523,7 @@ end subroutine get_DarcyVelocity
 
        ! Enter Pressure always for the 1st time step and until the cfl is smaller than the requested_cfl
        !       and for every multiple of the requested_cfl_pressure then after-----------
-       if (itime ==1 .or. mod(itime,rcp)==0 .or. PVF_cfl>=(rc+epsilon)) then
+       if (itime ==1 .or. mod(itime,rcp)==0 ) then !.or. PVF_cfl>=(rc+epsilon)
          EnterSolve = .true.
        else
          EnterSolve = .false.

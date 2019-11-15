@@ -172,42 +172,6 @@
         <consistent_interpolation/>
       </prognostic>
     </vector_field>
-    <scalar_field name="Density" rank="0">
-      <prognostic>
-        <mesh name="PressureMesh"/>
-        <initial_condition name="WholeMesh">
-          <constant>
-            <real_value rank="0">1.0</real_value>
-          </constant>
-        </initial_condition>
-        <boundary_conditions name="right">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">1.0</real_value>
-            </constant>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="top">
-          <surface_ids>
-            <integer_value shape="1" rank="1">9</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">1.0</real_value>
-            </constant>
-          </type>
-        </boundary_conditions>
-        <detectors>
-          <include_in_detectors/>
-        </detectors>
-        <consistent_interpolation/>
-      </prognostic>
-    </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
