@@ -5549,12 +5549,10 @@ pres_its_taken = its_taken
         DEALLOCATE( SBCVFEN_REVERSED, SBUFEN_REVERSED )
 
         IF ( IPLIKE_GRAD_SOU /= 0 ) THEN
+        DEALLOCATE( PLIKE_GRAD_SOU_GRAD)
+        DEALLOCATE( PLIKE_GRAD_SOU_COEF)
+        END IF
 
-        DEALLOCATE( PLIKE_GRAD_SOU_GRAD)  !! 141119 - ao missing dealloation
-        DEALLOCATE( PLIKE_GRAD_SOU_COEF)  !! same
-
-      end if
-      
         call deallocate(velocity_BCs)
         call deallocate(velocity_BCs_visc)
         call deallocate(velocity_BCs_adv)
