@@ -5564,7 +5564,7 @@ pres_its_taken = its_taken
         DEALLOCATE(GRAD_SOU2_GI_NMX)
         DEALLOCATE(LOC_U_RHS) !!????
         DEALLOCATE(GRAD_SOU2_GI)
-        
+
         DEALLOCATE(LOC_U_SOURCE_CV)
         DEALLOCATE(LOC_PLIKE_GRAD_SOU_COEF)
         DEALLOCATE(LOC_PLIKE_GRAD_SOU_GRAD)
@@ -6419,6 +6419,9 @@ pres_its_taken = its_taken
              END DO
          END DO Between_Elements_And_Boundary20
      END DO Loop_Elements20
+
+     deallocate(LOC_DGM_PHA)
+
      RETURN
  END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST
 
