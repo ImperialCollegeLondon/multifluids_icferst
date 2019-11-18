@@ -425,8 +425,7 @@ contains
           type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field !Arash
 
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
-          Real, dimension(Mdims%npres,Mdims%cv_nonods) :: MASS_CV_PLUS ! Define MASS_CV_PLUS for reservoir domain here,
-                                                                       ! this field is created so it can account for many pressures
+          Real, dimension(:), pointer :: MASS_CV
           !Permeability and immobile fractions
           type( tensor_field ), pointer :: perm
           real, dimension( : , : ), pointer ::Imble_frac
@@ -758,7 +757,7 @@ contains
           XC_CV_ALL=0.0
           !sprint_to_do!use the pointers instead! pointer?
           XC_CV_ALL(1:Mdims%ndim,:) = psi_ave(1)%ptr%val
-          MASS_CV_PLUS(1,:)         = psi_int(1)%ptr%val(1,:)
+          MASS_CV         => psi_int(1)%ptr%val(1,:)
           FEMT_ALL             = FEMPSI(1)%ptr%val(1,start_phase:final_phase,:)
           FEMTOLD_ALL          = FEMPSI(2)%ptr%val(1,start_phase:final_phase,:)
           FEM_IT                    = 3 !<-----------------WHY DO WE SET IT TO 3 ?
@@ -837,7 +836,7 @@ contains
                   ! FOR SUB SURRO_CV_MINMAX:
                   T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, final_phase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
                   Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
-                  MASS_CV_PLUS(1,:), &
+                  MASS_CV, &
                   ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
                   TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
                   TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
@@ -1317,7 +1316,7 @@ contains
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODI), &
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODJ), &
                                           upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODJ), &
-                                          NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false., anisotropic_and_frontier)
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
@@ -1327,7 +1326,7 @@ contains
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODI), &
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODJ), &
                                           upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODJ), &
-                                          NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .true., anisotropic_and_frontier)
                                   else
@@ -1349,7 +1348,7 @@ contains
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODI), &
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODJ), &
                                           upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODJ), &
-                                          NUOLDGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .false., anisotropic_and_frontier)!Sprint_to_do store for a time-level old values?? Would halve the cost of flux calculation...
                                       CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
@@ -1359,7 +1358,7 @@ contains
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODI), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODI), &
                                           upwnd%adv_coef(:,:,start_phase:final_phase, MAT_NODJ), upwnd%adv_coef_grad(:,:,start_phase:final_phase, MAT_NODJ), &
                                           upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODI), upwnd%inv_adv_coef(:,:,start_phase:final_phase,MAT_NODJ), &
-                                          NUGI_ALL, MASS_CV_PLUS(1,CV_NODI), MASS_CV_PLUS(1,CV_NODJ), &
+                                          NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                           TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
                                           .true., anisotropic_and_frontier)
                                   else
@@ -1772,7 +1771,7 @@ contains
           END DO Loop_Elements
           IF(GET_GTHETA) THEN
               DO CV_NODI = 1, Mdims%cv_nonods
-                  THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV_PLUS(1,CV_NODI)
+                  THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
               END DO
           ENDIF
           !Add compressibility to the transport equation
@@ -1788,16 +1787,16 @@ contains
 
 
                   LOC_CV_RHS_I=0.0
-                  R_PHASE = MEAN_PORE_CV( 1, CV_NODI ) * MASS_CV_PLUS( 1, CV_NODI ) / DT
+                  R_PHASE = MEAN_PORE_CV( 1, CV_NODI ) * Mass_CV( CV_NODI ) / DT
   !CJ215
                   IF ( THERMAL .and. Mdims%npres == 1) THEN
                       LOC_CV_RHS_I = LOC_CV_RHS_I &
-                          - CV_P( 1, 1, CV_NODI ) * ( MASS_CV_PLUS(1, CV_NODI ) / DT ) * ( LOC_T2_I - LOC_T2OLD_I)
+                          - CV_P( 1, 1, CV_NODI ) * ( Mass_CV( CV_NODI ) / DT ) * ( LOC_T2_I - LOC_T2OLD_I)
                   END IF
 
                   IF ( GOT_T2 ) THEN
                     DO IPHASE = start_phase,final_phase!to avoid slicing sourct_all
-                      LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  + MASS_CV_PLUS(1,CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
+                      LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                     end do
                       if (thermal .and. is_porous_media) then
                           !In this case for the time-integration term the effective rho Cp is a combination of the porous media
@@ -1837,7 +1836,7 @@ contains
                           * R_PHASE(iphase) )
 
                       LOC_CV_RHS_I(assembly_phase_counter)=LOC_CV_RHS_I(assembly_phase_counter)  &
-                          + MASS_CV_PLUS(1, CV_NODI ) * SOURCT_ALL( assembly_phase_counter, CV_NODI )&
+                          + Mass_CV( CV_NODI ) * SOURCT_ALL( assembly_phase_counter, CV_NODI )&
                           + ( CV_BETA * LOC_DENOLD_I(assembly_phase_counter) &
                           + (ONE_M_CV_BETA) * LOC_DEN_I(assembly_phase_counter) ) &
                           * R_PHASE(assembly_phase_counter) * LOC_TOLD_I(assembly_phase_counter)
@@ -1851,7 +1850,7 @@ contains
                         do iphase=start_phase, final_phase
                           assembly_phase_counter = (assembly_phase - 1) + iphase
                              call addto(Mmat%petsc_ACV,assembly_phase_counter,assembly_phase_counter_j, &
-                             cv_nodi, cv_nodi, MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                             cv_nodi, cv_nodi, Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
                       end do
                     end do
                   END IF Conditional_GETMAT2
@@ -1878,7 +1877,7 @@ contains
 
               ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
               IPRES=1
-              R_PRES(IPRES) = MASS_CV_PLUS( IPRES, CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
+              R_PRES(IPRES) = MASS_CV(CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
               ! Add constraint to force sum of volume fracts to be unity...
                  ! W_SUM_ONE==1 applies the constraint
                  ! W_SUM_ONE==0 does NOT apply the constraint
@@ -1899,11 +1898,11 @@ contains
                 DIAG_SCALE_PRES_phase( iphase ) = DIAG_SCALE_PRES_phase( iphase ) &
                     + MEAN_PORE_CV( 1, CV_NODI ) * LOC_T_I( iphase ) * DERIV( iphase, CV_NODI ) / ( DT * LOC_DEN_I(iphase) )
                 ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
-                    + MASS_CV_PLUS(1,CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / LOC_DEN_I(iphase)
+                    + Mass_CV(CV_NODI ) * SOURCT_ALL( iphase, CV_NODI ) / LOC_DEN_I(iphase)
                 IF ( HAVE_ABSORPTION ) THEN
                      DO JPHASE = start_phase, final_phase
                         ct_rhs_phase(iphase)=ct_rhs_phase(iphase)  &
-                           - MASS_CV_PLUS(1, CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * LOC_T_I( JPHASE ) / LOC_DEN_I(iphase)
+                           - Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, JPHASE, CV_NODI ) * LOC_T_I( JPHASE ) / LOC_DEN_I(iphase)
                    END DO
                 END IF
               end do
@@ -1918,10 +1917,11 @@ contains
              !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
           !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
           if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, &
-                                Mdims%nphase, Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, &
-                                WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, Mmat, Mspars, &
-                                upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, mean_pore_cv, &
-                                eles_with_pipe, thermal, CV_BETA, MASS_CV_PLUS, INV_B, MASS_ELE, porous_heat_coef )
+                                start_phase, final_phase, assembly_phase,&
+                                Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
+                                SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, &
+                                pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, eles_with_pipe, thermal,&
+                                CV_BETA, MASS_CV, INV_B, MASS_ELE, porous_heat_coef )
 
 
           ! Deallocating temporary working arrays
