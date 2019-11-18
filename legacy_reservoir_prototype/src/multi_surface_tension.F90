@@ -812,6 +812,21 @@ contains
       !! new deallocations CVshape function
       call deallocate_multi_shape_funs(CV_funs)
 
+      !! big memeory leak here
+      deallocate(ds)
+      deallocate(dx)
+      deallocate(dy)
+      deallocate(dz)
+      deallocate(dk)
+      deallocate(ck)
+      nullify(ds)
+      nullify(dx)
+      nullify(dy)
+      nullify(dz)
+      nullify(dk)
+      nullify(ck)
+      !!
+      
      ewrite(3,*) 'Leaving SURFACE_TENSION_WAPPER_NEW'
 contains
 
