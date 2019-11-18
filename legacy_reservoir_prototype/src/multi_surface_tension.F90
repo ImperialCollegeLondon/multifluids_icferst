@@ -294,13 +294,7 @@ contains
       ALLOCATE(MAT_LOC(Mdims%cv_nloc,Mdims%cv_nloc))
       ALLOCATE(RHS_CV_SHORT(Mdims%cv_nloc) )
       ALLOCATE(CV_SOL(Mdims%cv_nloc))
-! Allocate pointers size
-      ! ALLOCATE(ds%val( DG_NONODS))
-      ! ALLOCATE(dx%val( DG_NONODS))
-      ! ALLOCATE(dy%val( DG_NONODS))
-      ! ALLOCATE(dz%val( DG_NONODS))
-      ! ALLOCATE(dk%val( DG_NONODS))
-      ! ALLOCATE(ck%val( Mdims%cv_nonods))
+      
 ! Zero pointers
       call zero( ds)
       call zero( dx)
