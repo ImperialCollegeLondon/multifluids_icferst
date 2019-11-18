@@ -1023,7 +1023,7 @@ start =
             element Max_compositional_its {
                integer
             }?,
-           ## Decide to solve for nphases-1. This should be faster. Still in development.
+           ## Decide to solve for nphases-1. This should be faster. Still in DEVELOPMENT.
             element solve_nphases_minus_one {
                empty
             }?,

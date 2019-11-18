@@ -1283,7 +1283,7 @@ By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
           </optional>
           <optional>
             <element name="solve_nphases_minus_one">
-              <a:documentation>Decide to solve for nphases-1. This should be faster. Still in development.</a:documentation>
+              <a:documentation>Decide to solve for nphases-1. This should be faster. Still in DEVELOPMENT.</a:documentation>
               <empty/>
             </element>
           </optional>
