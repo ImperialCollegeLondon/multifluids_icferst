@@ -243,6 +243,8 @@ contains
       dk => extract_scalar_field( state(1), 'dk'  )
       ck => extract_scalar_field( state(1), 'ck'  )
 
+
+
       ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
       CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
@@ -292,13 +294,7 @@ contains
       ALLOCATE(MAT_LOC(Mdims%cv_nloc,Mdims%cv_nloc))
       ALLOCATE(RHS_CV_SHORT(Mdims%cv_nloc) )
       ALLOCATE(CV_SOL(Mdims%cv_nloc))
-! Allocate pointers size
-      ALLOCATE(ds%val( DG_NONODS))
-      ALLOCATE(dx%val( DG_NONODS))
-      ALLOCATE(dy%val( DG_NONODS))
-      ALLOCATE(dz%val( DG_NONODS))
-      ALLOCATE(dk%val( DG_NONODS))
-      ALLOCATE(ck%val( Mdims%cv_nonods))
+      
 ! Zero pointers
       call zero( ds)
       call zero( dx)
@@ -809,6 +805,18 @@ contains
       DEALLOCATE( S_INCOME, SDETWE, N_DOT_SQ, ST, NORMALIZATION, DIFF_COEF)
       DEALLOCATE( MAT_LOC, RHS_CV_SHORT, CV_SOL )
       call deallocate_multi_dev_shape_funs(Devfuns)
+      !! new deallocations CVshape function
+      call deallocate_multi_shape_funs(CV_funs)
+
+      !! these pointers now need to be nullified
+      nullify(ds)
+      nullify(dx)
+      nullify(dy)
+      nullify(dz)
+      nullify(dk)
+      nullify(ck)
+      !!
+
      ewrite(3,*) 'Leaving SURFACE_TENSION_WAPPER_NEW'
 contains
 
