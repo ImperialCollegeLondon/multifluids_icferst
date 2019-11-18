@@ -3163,8 +3163,8 @@ pres_its_taken = its_taken
         if (is_poroelasticity .or. is_magma) then
             GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
             GOT_UDEN = .false.!Disable inertia terms
+            PIVIT_ON_VISC = .false.
         end if
-
        IF( GOT_DIFFUS .or. get_gradU ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
                 DUX_ELE_ALL, DUOLDX_ELE_ALL, &

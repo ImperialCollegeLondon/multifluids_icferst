@@ -446,11 +446,12 @@ contains
         !HH Calculate the c coefficient seires
         c_phi_length=1e6
         allocate(c_phi_series(c_phi_length))
-        if ( is_magma )         call c_gen(c_phi_series,c_phi_length)
+        ! if ( is_magma )         call c_gen(state, c_phi_series,c_phi_length)
+        call C_generate (c_phi_series, c_phi_length, state)
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
-
+            print *, itime
             ! initialise the porous media model if needed. Simulation will stop once gravity capillary equilibration is reached
             !Prepapre the pipes
             if (Mdims%npres > 1) call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)!Re-read pipe properties such as gamma
@@ -525,6 +526,7 @@ contains
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
               !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
+                print *, '  NEW ITS', its
                 !if adapt_mesh_in_FPI, relax the convergence criteria, since we only want the approx position of the flow
                 if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, 1)
 
@@ -541,8 +543,8 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma )                call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln,c_phi_series)
-
+                ! if ( is_magma )                call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln,c_phi_series)
+                call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln,c_phi_series)
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
@@ -844,6 +846,7 @@ contains
                 ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
+                if (current_time>finish_time) exit Loop_Time
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if

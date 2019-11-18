@@ -2744,9 +2744,9 @@ contains
               mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
               cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
               DO IPHASE = 1, Mdims%nphase
-                magma_coupling = c_value(Satura(iphase, cv_inod))
+                magma_coupling = c_value(Satura(2, cv_inod))*1e-5
                 do jphase = 1, Mdims%nphase
-                  if (jphase == 1) then
+                  if (jphase == iphase) then
                     Magma_absorp%val(1, iphase, jphase, mat_nod ) = -magma_coupling
                   else
                     Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling

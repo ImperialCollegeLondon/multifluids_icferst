@@ -49,24 +49,30 @@ module multi_magma
     ! Ae - eutetic
     ! A1,B1,C1,A2,B2,C2 - phase behaviour parameters
     real, parameter :: A1= 50.,B1= -360,C1= 1433.15,A2= 0.,B2= 0.,C2 = 0., Ae = 1.0
+    public :: C_generate
 contains
-  subroutine c_gen(c_phi_series,N)
+  subroutine C_generate(series, N,   state)
   implicit none
+    type( state_type ), dimension(:), intent( inout ) :: state
   !Global variables
-  real, dimension(:):: c_phi_series
+  real, dimension(:) :: series
   integer :: N  !items in the series
   !Local variables
-  integer :: i
+  integer :: i, stat
   real,dimension(N) :: phi ! porosity series
   real :: d !grain size
   real :: mu !liquid viscosity needs to be build later
   real :: low,high !transition points
   real :: H,s !value of the smoothing function and the smoothing factor
+
+  type( tensor_field ), pointer :: t_field !liquid viscosity
   s= -2
 
   d=35e-6
-  mu=1e5
-
+  t_field => extract_tensor_field( state(2), 'Viscosity', stat )
+  mu=t_field%val( 1, 1, 1) !only consider constant
+  ! mu=1e2
+  print *, mu
   low=0.2
   high=0.6
 
@@ -76,16 +82,16 @@ contains
 
   do i=2, N
     if (phi(i)<=low) then
-      c_phi_series(i)= 58/d**2*mu*phi(i)**(-0.6)
+      series(i)= 58/d**2*mu*phi(i)**(-0.6)
     else if (phi(i)>=high) then
-      c_phi_series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))
+      series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))
     else
       H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
-      c_phi_series(i)=58/d**2*mu*phi(i)**(-0.6)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
+      series(i)=58/d**2*mu*phi(i)**(-0.6)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
     end if
   end do
-  c_phi_series(1)=2*c_phi_series(2)-c_phi_series(3)
-  end subroutine c_gen
+  series(1)=2*series(2)-series(3)
+end subroutine C_generate
   !   !========================================================
   !   !Subroutine to convert between Dimensional and Non-Dimensional fields (temperature or enthalpy)
   !   !========================================================
