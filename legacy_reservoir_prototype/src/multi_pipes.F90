@@ -1256,10 +1256,13 @@ contains
           END DO ! DO CV_NODI = 1, Mdims%cv_nonods
       endif ! if(GETCV_DISC) then
       IF ( GETCT ) THEN
-          !SPRINT_TO_DO IS INV_B USED, it is used to calculate the CMC matrix ...
+          ! INV_B = DT * PIPE_ABS!SPRINT_TO_DO IS INV_B USED, it is used to calculate the CMC matrix ...
             DO IPHASE = 1, nphase
                 INV_B( IPHASE, IPHASE, : ) = 1./DEN_ALL( IPHASE, : )
             END DO
+          ! DO CV_NODI = 1, Mdims%cv_nonods
+          !     CALL INVERT( INV_B( :, :, CV_NODI ) )
+          ! END DO
       !Introduce terms into the matrix and the RHS
       end if
       Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
@@ -1271,7 +1274,7 @@ contains
               LOC_CV_RHS_I=0.0
               IPRES = Mdims%npres
               R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV_PLUS( IPRES, CV_NODI ) / DT
-
+!CJ215
               IF ( THERMAL .and. Mdims%npres == 1) THEN
                 DO IPHASE = n_in_pres + 1, nphase
                   LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase) &
