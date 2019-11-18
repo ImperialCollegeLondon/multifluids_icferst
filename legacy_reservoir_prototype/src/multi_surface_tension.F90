@@ -809,6 +809,9 @@ contains
       DEALLOCATE( S_INCOME, SDETWE, N_DOT_SQ, ST, NORMALIZATION, DIFF_COEF)
       DEALLOCATE( MAT_LOC, RHS_CV_SHORT, CV_SOL )
       call deallocate_multi_dev_shape_funs(Devfuns)
+      !! new deallocations CVshape function
+      call deallocate_multi_shape_funs(CV_funs)
+
      ewrite(3,*) 'Leaving SURFACE_TENSION_WAPPER_NEW'
 contains
 

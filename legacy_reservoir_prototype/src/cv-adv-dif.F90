@@ -1981,6 +1981,7 @@ contains
           DEALLOCATE(T2UPWIND_MAT_ALL)
           DEALLOCATE(T2OLDUPWIND_MAT_ALL)
           call deallocate_multi_dev_shape_funs(SdevFuns)
+          call deallocate_multi_shape_funs(FE_funs) !!-ao this is also new
           call deallocate(tracer_BCs)
           call deallocate(tracer_BCs_robin2)
           call deallocate(density_BCs)
