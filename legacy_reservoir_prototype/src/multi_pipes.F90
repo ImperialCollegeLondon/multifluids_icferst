@@ -990,8 +990,7 @@ contains
                                     MEAN_PORE_CV_PHASE, ct_rhs_phase,r_pres
       real, dimension( final_phase * 2, final_phase * 2, Mdims%cv_nonods ) :: GAMMA_PRES_ABS2
       REAL , DIMENSION( final_phase * 2, Mdims%cv_nonods) :: opt_vel_upwind_coefs_new_cv
-      real, dimension(final_phase * 2):: SAT_FOR_PIPE, DEN_FOR_PIPE_PHASE, R_PHASE
-      real, dimension(final_phase * 2):: PRES_FOR_PIPE_PHASE, PRES_FOR_PIPE_PHASE_FULL
+      real, dimension(final_phase * 2):: R_PHASE, Loc_DEN_I, LOC_PRES_I, LOC_T_I
       REAL , DIMENSION( final_phase * 2, Mdims%cv_nonods ) :: SIGMA_INV_APPROX!WE NEED FOR THIS SUBROUTINE, I THINK, TO BE DEFINED FOR RESERVOIR AND WELLS DOMAINS...
       real, dimension( Mdims%cv_nonods ) :: MASS_PIPE_FOR_COUP
       real, dimension( final_phase * 2, final_phase * 2, Mdims%cv_nonods ) :: A_GAMMA_PRES_ABS, PIPE_ABS
@@ -1080,29 +1079,9 @@ contains
           h = (Mass_CV( cv_nodi )/h)**(1.0/(Mdims%ndim-1)) ! This is the lengthscale normal to the wells.
           rp = 0.14 * h
           Skin = 0.0
-          if (GOT_T2) then
-            do ipres = 1, Mdims%npres
-              DO IPHASE= start_phase, final_phase!SPRINT_TO_DO THIS MIN/MAX IS UNNECESSARY SINCE SATURATION SHOULD ALWAYS BE BETWEEN BOUNDS
-                                                !AGAIN, WHY COPIYING MEMORY WHEN WE COULD JUST POINT TO THE MEMORY WE WANT
-                SAT_FOR_PIPE(iphase + (ipres - 1)*total_phases) = MIN( MAX( 0.0, T2_ALL( iphase + (ipres - 1)*total_phases, CV_NODI ) ), 1.0 )
-              end do
-            end do
-          else
-            do ipres = start_phase, final_phase
-              DO IPHASE=1,total_phases
-                SAT_FOR_PIPE(iphase + (ipres - 1)*total_phases) = MIN( MAX( 0.0, T_ALL( iphase + (ipres - 1)*total_phases, CV_NODI ) ), 1.0 )
-              end do
-            end do
-          end if
-          do ipres = start_phase, final_phase
-            DO IPHASE=1,total_phases!SPRINT_TO_DO WHY, AGAIN, COPIYING MEMORY???
-                DEN_FOR_PIPE_PHASE(iphase + (ipres - 1)*total_phases) =  DEN_ALL( iphase + (ipres - 1)*total_phases, CV_NODI )
-            end do
-          end do
-          DO IPRES = start_phase, final_phase!SPRINT_TO_DO WHY, AGAIN, COPIYING MEMORY???
-             PRES_FOR_PIPE_PHASE(1+(ipres-1)*total_phases:ipres*total_phases) = FEM_P( 1, IPRES, CV_NODI )
-          END DO
-          PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
+
+          !Local memory to reduce slicing
+          call create_local_memory(LOC_T_I, Loc_DEN_I, LOC_PRES_I)
 
           DO IPHASE = start_phase, total_phases*2
               IPRES = 1 + INT( (IPHASE-1)/total_phases )
@@ -1112,13 +1091,13 @@ contains
                   ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                   IF ( IPRES /= JPRES ) THEN
                       !Peaceman correction
-                      IF ( PRES_FOR_PIPE_PHASE_FULL(IPHASE) > PRES_FOR_PIPE_PHASE_FULL(JPHASE) ) THEN
+                      IF ( LOC_PRES_I(IPHASE) > LOC_PRES_I(JPHASE) ) THEN
                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                              cc * SAT_FOR_PIPE(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                              cc * LOC_T_I(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                               / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                       ELSE
                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                              cc * SAT_FOR_PIPE(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                              cc * LOC_T_I(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                               / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                       END IF
                   END IF ! IF ( IPRES /= JPRES ) THEN
@@ -1153,24 +1132,8 @@ contains
               rp = 0.14 * h
               rp_NANO = 0.14 * h_NANO
               Skin = 0.0
-              do ipres = 1, Mdims%npres
-                DO IPHASE=start_phase, final_phase
-                  SAT_FOR_PIPE(iphase + (ipres - 1)*total_phases) = MIN( MAX( 0.0, T_ALL( iphase + (ipres - 1)*total_phases, CV_NODI ) ), 1.0 )
-                end do
-              end do
-              DO IPRES = 1, Mdims%npres
-                 PRES_FOR_PIPE_PHASE(1+(ipres-1)*total_phases:ipres*total_phases) = FEM_P( 1, IPRES, CV_NODI )
-                 !####For Chris: This option below changes the results, IF that is what we want we need to update the test case####
-      !                       PRES_FOR_PIPE_PHASE(1+(ipres-1)*total_phases:ipres*total_phases) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
-              END DO
-              PRES_FOR_PIPE_PHASE_FULL(:) = PRES_FOR_PIPE_PHASE(:)
-              do ipres = 1, Mdims%npres
-                DO IPHASE=start_phase, final_phase
-                  DEN_FOR_PIPE_PHASE(iphase + (ipres - 1)*total_phases) = DEN_ALL( iphase + (ipres - 1)*total_phases, CV_NODI )
-                end do
-              end do
-              !If got_t2 (mainly for thermal) the equations are also multiplied by the saturation. To keep the code "tidy" we do it here
-              if (GOT_T2)  DEN_FOR_PIPE_PHASE(:) = DEN_FOR_PIPE_PHASE(:) * T2_ALL(:, CV_NODI)
+              !Local memory to reduce slicing
+              call create_local_memory(LOC_T_I, Loc_DEN_I, LOC_PRES_I)
 
               if (.not. conservative_advection) then
                 !In the non-conservative method the concept is to only exchange the difference of the mass/Energy
@@ -1185,15 +1148,15 @@ contains
                             !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                             ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                             ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
-                            IF ( PRES_FOR_PIPE_PHASE_FULL(iphase_ipres) < PRES_FOR_PIPE_PHASE_FULL(jphase_jpres)  ) THEN
-                                DeltaP = PRES_FOR_PIPE_PHASE(iphase_ipres) - PRES_FOR_PIPE_PHASE(jphase_jpres)
+                            IF ( LOC_PRES_I(iphase_ipres) < LOC_PRES_I(jphase_jpres)  ) THEN
+                                DeltaP = LOC_PRES_I(iphase_ipres) - LOC_PRES_I(jphase_jpres)
                                 !Add coupling in a non_conservative manner (mass conservative anyway is just the formulation)
                                 PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) = PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) +&
-                                    DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * DEN_FOR_PIPE_PHASE( jphase_jpres ) * &
+                                    DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( jphase_jpres ) * &
                                     cc * 2.0 * SIGMA_INV_APPROX( jphase_jpres, CV_NODI ) &
                                     / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) = PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) - &!notice the negative sign
-                                   DeltaP * pipes_aux%GAMMA_PRES_ABS( jphase + (jpres - 1)*Mdims%n_in_pres, iphase + (ipres - 1)*Mdims%n_in_pres, CV_NODI ) * DEN_FOR_PIPE_PHASE( jphase_jpres ) * &
+                                   DeltaP * pipes_aux%GAMMA_PRES_ABS( jphase + (jpres - 1)*Mdims%n_in_pres, iphase + (ipres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( jphase_jpres ) * &
                                    cc * 2.0 * SIGMA_INV_APPROX( jphase_jpres, CV_NODI ) &
                                    / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                  END IF
@@ -1210,18 +1173,18 @@ contains
                           iphase_ipres = iphase + (ipres - 1)*total_phases
                           DO jphase=start_phase, final_phase
                               jphase_jpres = jphase + (jpres - 1)*total_phases
-                                DeltaP = PRES_FOR_PIPE_PHASE(iphase_ipres) - PRES_FOR_PIPE_PHASE(jphase + (jpres - 1)*total_phases)
+                                DeltaP = LOC_PRES_I(iphase_ipres) - LOC_PRES_I(jphase + (jpres - 1)*total_phases)
                                 !DeltaP = FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                                 ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                                 ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the pipes_aux%MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
-                                IF ( PRES_FOR_PIPE_PHASE_FULL(iphase_ipres) >= PRES_FOR_PIPE_PHASE_FULL(jphase_jpres) ) THEN
+                                IF ( LOC_PRES_I(iphase_ipres) >= LOC_PRES_I(jphase_jpres) ) THEN
                                     PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) = PIPE_ABS( iphase_ipres, iphase_ipres, CV_NODI ) + &
-                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * DEN_FOR_PIPE_PHASE( iphase_ipres ) * &
+                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( iphase_ipres ) * &
                                         cc * 2.0 * SIGMA_INV_APPROX( iphase_ipres, CV_NODI ) &
                                         / (log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin)
                                 ELSE
                                     PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) = PIPE_ABS( iphase_ipres, jphase_jpres, CV_NODI ) +&
-                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * DEN_FOR_PIPE_PHASE( jphase_jpres ) * &
+                                        DeltaP * pipes_aux%GAMMA_PRES_ABS( iphase + (ipres - 1)*Mdims%n_in_pres, jphase + (jpres - 1)*Mdims%n_in_pres, CV_NODI ) * Loc_DEN_I( jphase_jpres ) * &
                                         cc * 2.0 * SIGMA_INV_APPROX( jphase_jpres, CV_NODI ) &
                                         / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                                 END IF
@@ -1442,6 +1405,28 @@ contains
           END DO  ! endof DO CV_NODI = 1, Mdims%cv_nonods
       ENDIF ! ENDOF IF ( GETCT ) THEN
 
+    contains
+
+      subroutine create_local_memory(LOC_T_I, Loc_DEN_I, LOC_PRES_I)
+        !Create local memory to reduce slicing as much as possible
+        implicit none
+        real, dimension(:) :: LOC_T_I, Loc_DEN_I, LOC_PRES_I
+        if (GOT_T2) then
+          LOC_T_I = T2_ALL( :, CV_NODI )
+        else
+          LOC_T_I = T_ALL( :, CV_NODI )
+        end if
+        !Now local memory for density
+        Loc_DEN_I =  DEN_ALL( :, CV_NODI )
+        !If got_t2 (mainly for thermal) the equations are also multiplied by the saturation. To keep the code "tidy" we do it here
+        if (GOT_T2)  Loc_DEN_I = Loc_DEN_I * T2_ALL(:, CV_NODI)
+
+        !Unnecessary work by extending the pressure to phases...could be improved but the gain will be minimal
+        DO IPRES = 1, Mdims%n_in_pres
+           LOC_PRES_I(1+(ipres-1)*total_phases:ipres*total_phases) = FEM_P( 1, IPRES, CV_NODI )
+        END DO
+
+      end subroutine
 
   end subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY
 
