@@ -1211,7 +1211,7 @@ n_in_pres = final_phase*2/Mdims%npres
                           PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
                       end do
                       !Need to apply variation of heat from the other domain as well
-                      DO IPHASE = start_phase + physical_phases, final_phase + physical_phases
+                      DO IPHASE = assembly_phase, final_phase*2
                           jphase = iphase-physical_phases
                           PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + auxR
                           PIPE_ABS( iphase, jphase, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) - auxR
@@ -1234,25 +1234,24 @@ n_in_pres = final_phase*2/Mdims%npres
               if (PIPE_DIAMETER%val(cv_nodi) < 1e-8) cycle
 
               LOC_CV_RHS_I=0.0
-              IPRES = Mdims%npres
-              R_PHASE(1+(ipres-1)*physical_phases:ipres*physical_phases) = MEAN_PORE_CV( IPRES, CV_NODI ) * pipes_aux%MASS_PIPE( cv_nodi ) / DT
+              R_PHASE(assembly_phase:final_phase*2) = MEAN_PORE_CV( Mdims%npres, CV_NODI ) * pipes_aux%MASS_PIPE( cv_nodi ) / DT
 
               IF ( THERMAL .and. Mdims%npres == 1) THEN
-                DO IPHASE = start_phase + physical_phases, final_phase + physical_phases
+                DO IPHASE = assembly_phase, final_phase*2
                   LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase) &
                       - CV_P(1, Mdims%npres, cv_nodi) * ( Mass_CV( CV_NODI ) / DT ) * ( T2_ALL( iphase, CV_NODI ) - T2OLD_ALL( iphase, CV_NODI ) )
                 end do
               END IF
 
               IF ( GOT_T2 ) THEN
-                  DO IPHASE = start_phase + physical_phases, final_phase + physical_phases
+                  DO IPHASE = assembly_phase, final_phase*2
                     LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                         + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                   end do
                   if (thermal .and. is_porous_media) then
                       !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                       ! and the fluids. Here we add the porous media contribution
-                      DO IPHASE = start_phase + physical_phases, final_phase + physical_phases
+                      DO IPHASE = assembly_phase, final_phase*2
                           call addto(Mmat%petsc_ACV,iphase,iphase,&
                               cv_nodi, cv_nodi,&
                               + porous_heat_coef( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
@@ -1266,28 +1265,25 @@ n_in_pres = final_phase*2/Mdims%npres
                       END DO
                   end if
 
-                  ipres = Mdims%npres
                   DO IPHASE=start_phase , final_phase
-                    global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                    compact_phase = iphase + (ipres - 1)*physical_phases
+                    global_phase = iphase + Mdims%n_in_pres
+                    compact_phase = iphase + physical_phases
                     call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
                         cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) &
                         * R_PHASE(compact_phase)) !+ T2_ALL( IPHASE, CV_NODI )*alpha CV_NODI
                   END DO
-                 ipres = Mdims%npres
                  DO IPHASE = start_phase , final_phase
-                   global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                   compact_phase = iphase + (ipres - 1)*physical_phases
+                   global_phase = iphase + Mdims%n_in_pres
+                   compact_phase = iphase + physical_phases
                    LOC_CV_RHS_I(compact_phase)=LOC_CV_RHS_I(compact_phase)  &
                         + (CV_BETA * DENOLD_ALL( global_phase, CV_NODI ) * T2OLD_ALL( global_phase, CV_NODI ) &
                         + (ONE_M_CV_BETA) * DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) ) &
                         * R_PHASE(compact_phase) * TOLD_ALL( global_phase, CV_NODI )
                  end do
               ELSE
-                ipres = Mdims%npres
                 DO IPHASE=start_phase , final_phase
-                  global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                  compact_phase = iphase + (ipres - 1)*physical_phases
+                  global_phase = iphase + Mdims%n_in_pres
+                  compact_phase = iphase + physical_phases
                   call addto(Mmat%petsc_ACV,compact_phase,compact_phase,&
                       cv_nodi, cv_nodi, DEN_ALL( global_phase, CV_NODI )  &
                       * R_PHASE(compact_phase) )
@@ -1333,10 +1329,9 @@ n_in_pres = final_phase*2/Mdims%npres
               end do
 
               if ( have_absorption ) then
-                ipres = Mdims%npres
                 DO jphase=start_phase , final_phase
-                  compact_phase = jphase + (ipres - 1)*physical_phases
-                    do iphase=start_phase + physical_phases, physical_phases*2
+                  compact_phase = jphase + physical_phases
+                    do iphase=assembly_phase, final_phase*2
                          call addto(Mmat%petsc_ACV,iphase,jphase, cv_nodi, cv_nodi, &
                              Mass_CV( CV_NODI ) * ABSORBT_ALL( iphase, compact_phase, CV_NODI ))
                     end do
@@ -1409,16 +1404,22 @@ n_in_pres = final_phase*2/Mdims%npres
         !Create local memory to reduce slicing as much as possible
         implicit none
         real, dimension(:) :: LOC_T_I, Loc_DEN_I, LOC_PRES_I
-        if (GOT_T2) then
-          LOC_T_I = T2_ALL( :, CV_NODI )
-        else
-          LOC_T_I = T_ALL( :, CV_NODI )
-        end if
-        !Now local memory for density
-        Loc_DEN_I =  DEN_ALL( :, CV_NODI )
-        !If got_t2 (mainly for thermal) the equations are also multiplied by the saturation. To keep the code "tidy" we do it here
-        if (GOT_T2)  Loc_DEN_I = Loc_DEN_I * T2_ALL(:, CV_NODI)
 
+        do ipres = 1, Mdims%npres
+          DO iphase=1, physical_phases
+            global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+            compact_phase = iphase + (ipres - 1)*physical_phases
+            if (GOT_T2) then
+              LOC_T_I(compact_phase) = T2_ALL( global_phase, CV_NODI )
+            else
+              LOC_T_I(compact_phase) = T_ALL( global_phase, CV_NODI )
+            end if
+            !Now local memory for density
+            Loc_DEN_I(compact_phase) =  DEN_ALL( global_phase, CV_NODI )
+            !If got_t2 (mainly for thermal) the equations are also multiplied by the saturation. To keep the code "tidy" we do it here
+            if (GOT_T2)  Loc_DEN_I(compact_phase) = Loc_DEN_I(compact_phase) * T2_ALL(global_phase, CV_NODI)
+          end do
+        end do
         !Unnecessary work by extending the pressure to phases...could be improved but the gain will be minimal
         DO IPRES = 1, Mdims%n_in_pres
            LOC_PRES_I(1+(ipres-1)*physical_phases:ipres*physical_phases) = FEM_P( 1, IPRES, CV_NODI )
