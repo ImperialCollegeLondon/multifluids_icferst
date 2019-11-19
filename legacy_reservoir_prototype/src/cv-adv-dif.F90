@@ -309,7 +309,7 @@ contains
           logical :: conservative_advection
           ! GRAVTY is used in the free surface method only...
           !        ===> GENEREIC INTEGERS <===
-          INTEGER :: total_phases, COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
+          INTEGER :: physical_phases, COUNT, ICOUNT, JCOUNT, ELE, ELE2, GI, GCOUNT, SELE, V_SILOC, U_KLOC, CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
               CV_NODJ, ISWITCH, CV_NODI, U_NODK, TIMOPT, X_NODI,  X_NODJ, CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, CV_SILOC
           INTEGER :: I, IDIM, U_ILOC, ELE3, k, NFIELD, CV_KLOC, CV_NODK, IFI, COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC, iofluxes,&
               IPT_IN, IPT_OUT, U_KLOC2,U_NODK2,U_SKLOC, IPT,ILOOP,IMID,JMID,JDIM, IGETCT, global_face,J, FEM_IT, nb, i_use_volume_frac_t2,&
@@ -452,7 +452,7 @@ contains
           real, dimension(Mdims%ndim, Mdims%ndim, start_phase:final_phase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
           real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
 
-          total_phases = final_phase - start_phase + 1
+          physical_phases = final_phase - start_phase + 1
 
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
@@ -1139,17 +1139,17 @@ contains
                               ! Generate some local F variables ***************
 
                               IPT=1; F_CV_NODJ = 0.
-                              CALL PACK_LOC( F_CV_NODJ, LOC_T_J,    total_phases, IPT, IGOT_T_PACK(:,1) )
-                              CALL PACK_LOC( F_CV_NODJ, LOC_TOLD_J, total_phases, IPT, IGOT_T_PACK(:,2) )
-                              CALL PACK_LOC( F_CV_NODJ, LOC_DEN_J,  total_phases, IPT, IGOT_T_PACK(:,3) )
-                              CALL PACK_LOC( F_CV_NODJ,LOC_DENOLD_J,total_phases, IPT, IGOT_T_PACK(:,4) )
+                              CALL PACK_LOC( F_CV_NODJ, LOC_T_J,    physical_phases, IPT, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( F_CV_NODJ, LOC_TOLD_J, physical_phases, IPT, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( F_CV_NODJ, LOC_DEN_J,  physical_phases, IPT, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( F_CV_NODJ,LOC_DENOLD_J,physical_phases, IPT, IGOT_T_PACK(:,4) )
                               IF(use_volume_frac_T2) THEN
-                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2_J,    total_phases, IPT, IGOT_T_PACK(:,5) )
-                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2OLD_J, total_phases, IPT, IGOT_T_PACK(:,6) )
+                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2_J,    physical_phases, IPT, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( F_CV_NODJ, LOC_T2OLD_J, physical_phases, IPT, IGOT_T_PACK(:,6) )
                               ENDIF
                               !Compact alternative that for some reason is messing up the memory... (it is doing the same!!!)
                               ! call PACK_LOC_ALL( F_CV_NODJ, LOC_T_J, LOC_TOLD_J, LOC_DEN_J, LOC_DENOLD_J, &
-                              !   LOC_T2_J, LOC_T2OLD_J, IGOT_T_PACK, use_volume_frac_T2, total_phases )
+                              !   LOC_T2_J, LOC_T2OLD_J, IGOT_T_PACK, use_volume_frac_T2, physical_phases )
 
                               ! local surface information***********
                               IF( between_elements .or. on_domain_boundary ) THEN
@@ -1208,19 +1208,19 @@ contains
                               ! limiting VALUES*************:
                               IPT_IN =1
                               IPT_OUT=1
-                              CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    total_phases, IPT_IN, IGOT_T_PACK(:,1) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    total_phases, IPT_OUT, IGOT_T_PACK(:,1) )
-                              CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    total_phases, IPT_IN, IGOT_T_PACK(:,2) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    total_phases, IPT_OUT, IGOT_T_PACK(:,2) )
-                              CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    total_phases, IPT_IN, IGOT_T_PACK(:,3) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    total_phases, IPT_OUT, IGOT_T_PACK(:,3) )
-                              CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    total_phases, IPT_IN, IGOT_T_PACK(:,4) )
-                              CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    total_phases, IPT_OUT, IGOT_T_PACK(:,4) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    physical_phases, IPT_IN, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    physical_phases, IPT_OUT, IGOT_T_PACK(:,1) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    physical_phases, IPT_IN, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    physical_phases, IPT_OUT, IGOT_T_PACK(:,2) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    physical_phases, IPT_IN, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    physical_phases, IPT_OUT, IGOT_T_PACK(:,3) )
+                              CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    physical_phases, IPT_IN, IGOT_T_PACK(:,4) )
+                              CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    physical_phases, IPT_OUT, IGOT_T_PACK(:,4) )
                               IF(use_volume_frac_T2) THEN
-                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    total_phases, IPT_IN, IGOT_T_PACK(:,5) )
-                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    total_phases, IPT_OUT, IGOT_T_PACK(:,5) )
-                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    total_phases, IPT_IN, IGOT_T_PACK(:,6) )
-                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    total_phases, IPT_OUT, IGOT_T_PACK(:,6) )
+                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    physical_phases, IPT_IN, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    physical_phases, IPT_OUT, IGOT_T_PACK(:,5) )
+                                  CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    physical_phases, IPT_IN, IGOT_T_PACK(:,6) )
+                                  CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    physical_phases, IPT_OUT, IGOT_T_PACK(:,6) )
                               ENDIF
                               !Sprint_to_do This PACK_LOC_ALL should be working... but it affects the memory for some tests cases
                               ! call PACK_LOC_ALL( FUPWIND_IN, TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
@@ -1415,11 +1415,11 @@ contains
                               ! Pack ndotq information:
                               call PACK_LOC_ALL( F_INCOME, INCOME, &
                                   INCOMEOLD, INCOME, INCOMEOLD, & !Tracer, density and T2
-                                  INCOME, INCOMEOLD, IGOT_T_PACK, use_volume_frac_T2, total_phases )
+                                  INCOME, INCOMEOLD, IGOT_T_PACK, use_volume_frac_T2, physical_phases )
 
                               call PACK_LOC_ALL( F_NDOTQ, NDOTQ, &
                                   NDOTQOLD, NDOTQ, NDOTQOLD, & !Tracer, density and T2
-                                  NDOTQ, NDOTQOLD, IGOT_T_PACK, use_volume_frac_T2, total_phases )
+                                  NDOTQ, NDOTQOLD, IGOT_T_PACK, use_volume_frac_T2, physical_phases )
 
                                     !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
                                     ! Calculate T and DEN on the CV face at quadrature point GI.
@@ -1452,7 +1452,7 @@ contains
                               !FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
                               ! Generate some local F variables ***************
                               CALL UNPACK_LOC_ALL( LIMF, LIMT, LIMTOLD, LIMD, LIMDOLD, LIMT2, LIMT2OLD,&
-                                            IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, total_phases)
+                                            IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE, use_volume_frac_T2, physical_phases)
 
                               IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
                                   NDOTQ_HAT = 0.0
@@ -1917,7 +1917,7 @@ contains
              !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
           !Assemble the part of the wells matrix and create corresponding RHS, absoprtions, etc.
           if (Mdims%npres >1) call ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, &
-                                start_phase, final_phase, assembly_phase,&
+                                start_phase, final_phase, start_phase + physical_phases,&!start_phase, final_phase => reservoir domain; assembly_phase => wells domain
                                 Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
                                 SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, &
                                 pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, eles_with_pipe, thermal,&
