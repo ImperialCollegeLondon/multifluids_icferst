@@ -988,7 +988,7 @@ n_in_pres = final_phase*2/Mdims%npres
                                     MEAN_PORE_CV_PHASE, ct_rhs_phase,r_pres
       real, dimension( final_phase * 2, final_phase * 2, Mdims%cv_nonods ) :: GAMMA_PRES_ABS2
       REAL , DIMENSION( final_phase * 2, Mdims%cv_nonods) :: opt_vel_upwind_coefs_new_cv
-      real, dimension(final_phase * 2):: R_PHASE, Loc_DEN_I, LOC_PRES_I, LOC_T_I
+      real, dimension(final_phase * 2):: R_PHASE, Loc_DEN_I, LOC_PRES_I, LOC_SAT_I
       REAL , DIMENSION( final_phase * 2, Mdims%cv_nonods ) :: SIGMA_INV_APPROX!WE NEED FOR THIS SUBROUTINE, I THINK, TO BE DEFINED FOR RESERVOIR AND WELLS DOMAINS...
       real, dimension( Mdims%cv_nonods ) :: MASS_PIPE_FOR_COUP
       real, dimension( final_phase * 2, final_phase * 2, Mdims%cv_nonods ) :: A_GAMMA_PRES_ABS, PIPE_ABS
@@ -1079,7 +1079,7 @@ n_in_pres = final_phase*2/Mdims%npres
           Skin = 0.0
 
           !Local memory to reduce slicing
-          call create_local_memory(LOC_T_I, Loc_DEN_I, LOC_PRES_I)
+          call create_local_memory(LOC_SAT_I, Loc_DEN_I, LOC_PRES_I)
 
           DO IPHASE = start_phase, physical_phases*2
               IPRES = 1 + INT( (IPHASE-1)/physical_phases )
@@ -1091,11 +1091,11 @@ n_in_pres = final_phase*2/Mdims%npres
                       !Peaceman correction
                       IF ( LOC_PRES_I(IPHASE) > LOC_PRES_I(JPHASE) ) THEN
                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                              cc * LOC_T_I(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                              cc * LOC_SAT_I(IPHASE) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                               / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                       ELSE
                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = pipes_aux%GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                              cc * LOC_T_I(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                              cc * LOC_SAT_I(JPHASE) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                               / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                       END IF
                   END IF ! IF ( IPRES /= JPRES ) THEN
@@ -1131,7 +1131,7 @@ n_in_pres = final_phase*2/Mdims%npres
               rp_NANO = 0.14 * h_NANO
               Skin = 0.0
               !Local memory to reduce slicing
-              call create_local_memory(LOC_T_I, Loc_DEN_I, LOC_PRES_I)
+              call create_local_memory(LOC_SAT_I, Loc_DEN_I, LOC_PRES_I)
 
               if (.not. conservative_advection) then
                 !In the non-conservative method the concept is to only exchange the difference of the mass/Energy
@@ -1400,19 +1400,19 @@ n_in_pres = final_phase*2/Mdims%npres
 
     contains
 
-      subroutine create_local_memory(LOC_T_I, Loc_DEN_I, LOC_PRES_I)
+      subroutine create_local_memory(LOC_SAT_I, Loc_DEN_I, LOC_PRES_I)
         !Create local memory to reduce slicing as much as possible
         implicit none
-        real, dimension(:) :: LOC_T_I, Loc_DEN_I, LOC_PRES_I
+        real, dimension(:) :: LOC_SAT_I, Loc_DEN_I, LOC_PRES_I
 
         do ipres = 1, Mdims%npres
           DO iphase=1, physical_phases
             global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
             compact_phase = iphase + (ipres - 1)*physical_phases
             if (GOT_T2) then
-              LOC_T_I(compact_phase) = T2_ALL( global_phase, CV_NODI )
+              LOC_SAT_I(compact_phase) = T2_ALL( global_phase, CV_NODI )
             else
-              LOC_T_I(compact_phase) = T_ALL( global_phase, CV_NODI )
+              LOC_SAT_I(compact_phase) = T_ALL( global_phase, CV_NODI )
             end if
             !Now local memory for density
             Loc_DEN_I(compact_phase) =  DEN_ALL( global_phase, CV_NODI )
