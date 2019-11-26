@@ -1,0 +1,84 @@
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$                         CUBIT version 16.0.3 NX Nastran Translator
+$
+$            File: well02.bdf
+$      Time Stamp: 22-Jan-18 at 11:25:00
+$
+$
+$                        PLEASE CHECK YOUR MODEL FOR UNITS CONSISTENCY.
+$
+$       It should be noted that load ID's from CUBIT may NOT correspond to Nastran SID's
+$ The SID's for the load and restraint sets start at one and increment by one:i.e.,1,2,3,4...
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+
+$
+$
+$ -------------------------
+$ Executive Control Section
+$ -------------------------
+$
+SOL 101
+CEND
+
+$
+$ --------------------
+$ Case Control Section
+$ --------------------
+$
+ECHO = SORT
+$
+$
+$ Name: Initial
+$
+$
+$ Name: Default Set
+$
+SUBCASE = 1
+$
+LABEL = Default Set
+
+$
+$ -----------------
+$ Bulk Data Section
+$ -----------------
+$
+BEGIN BULK
+$
+$ Params
+$
+$
+$ Node cards
+$
+GRID    52      0       3250.   2250.   -49.    
+GRID    53      0       3250.   2250.   0.      
+GRID    64      0       3250.   2250.   -24.5   
+$
+$ Element cards
+$
+$
+CROD    160     102     53      64      
+CROD    161     102     64      52      
+$
+$ Property cards
+$
+$
+PROD    102     100     0       0       0       0       
+$
+$ Material cards
+$
+$
+$ Name: Default-Steel
+$
+MAT1*   100             206800          80155.039       0.29            
+*       7e-06           1.2e-05         
+$
+$ Restraint cards
+$
+$
+$ Load cards
+$
+$
+$
+ENDDATA
