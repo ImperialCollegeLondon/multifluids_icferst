@@ -326,7 +326,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               n_in_pres = 1
            end if
            !Allocate the RHS
-           call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+           call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
            call allocate(solution,nphase,tracer%mesh,"sol_tracer")!; call zero(solution)
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -403,13 +403,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            END DO Loop_NonLinearFlux
 
-
            if (assemble_collapsed_to_one_phase .and. Mdims%n_in_pres > 1) then
              !Now we populate back the other temperatures if we have solved for a collapsed system
              temperature => extract_tensor_field(packed_state, "PackedTemperature")
              do ipres =1, mdims%npres
-               do iphase = 2 , n_in_pres
-                temperature%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = temperature%val(1,1+(ipres-1)*n_in_pres,:)
+               do iphase = 2 , Mdims%n_in_pres
+                temperature%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = temperature%val(1,1+(ipres-1)*Mdims%n_in_pres,:)
               end do
              end do
            end if
