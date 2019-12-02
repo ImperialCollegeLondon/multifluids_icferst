@@ -1894,7 +1894,7 @@ contains
                                 Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
                                 SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, &
                                 pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, eles_with_pipe, thermal,&
-                                CV_BETA, MASS_CV, INV_B, MASS_ELE, porous_heat_coef )
+                                CV_BETA, MASS_CV, INV_B, MASS_ELE, porous_heat_coef, loc_assemble_collapsed_to_one_phase )
 
 
           ! Deallocating temporary working arrays
