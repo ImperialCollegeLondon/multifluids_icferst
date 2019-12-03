@@ -318,9 +318,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            nphase = Mdims%nphase
            n_in_pres = Mdims%n_in_pres
            if (assemble_collapsed_to_one_phase) then
-             !Rescale coefficient to ensure consistency when collapsing everything into phase1 for solving
-              TDIFFUSION = TDIFFUSION /dble(Mdims%n_in_pres)
-              porous_heat_coef = porous_heat_coef/ dble(mdims%n_in_pres)
+             !No need to re-scale porous diffusion or CP as they are adjusted by multipliying by the saturation
+             ! which sums to one and therefore is the same
               !If collapsed solver then change nphase and n_in_pres
               nphase = Mdims%npres!One temperature per region
               n_in_pres = 1

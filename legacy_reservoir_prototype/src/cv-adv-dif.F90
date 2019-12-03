@@ -1783,7 +1783,9 @@ contains
                     end do
                       if (thermal .and. is_porous_media) then
                           !In this case for the time-integration term the effective rho Cp is a combination of the porous media
-                          ! and the fluids. Here we add the porous media contribution
+                          ! and the fluids. Here we add the porous media contribution. Multiplied by the saturation so we use the same
+                          !paradigm that for the phases, but in the equations it isn't, but here because we iterate over phases and collapse
+                          !this is required
                           LOC_MAT_II = LOC_MAT_II + porous_heat_coef( CV_NODI ) * LOC_T2_I &
                                   * R_PHASE * (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
 
