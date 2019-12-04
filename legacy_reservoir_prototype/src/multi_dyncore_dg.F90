@@ -122,7 +122,7 @@ contains
            REAL, DIMENSION( : , : ), target, allocatable :: den_all
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
-           INTEGER :: IPHASE, its_taken
+           INTEGER :: IPHASE, its_taken, ipres
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
@@ -131,13 +131,13 @@ contains
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
-           integer :: ncomp_diff_coef, comp_diffusion_opt
+           integer :: ncomp_diff_coef, comp_diffusion_opt, nphase, n_in_pres
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
            type( tensor_field ), pointer :: perm, python_tfield
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
-           REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef
+           REAL, DIMENSION( : ), allocatable :: porous_heat_coef
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
@@ -149,8 +149,10 @@ contains
            real, dimension(Mdims%cv_nonods) :: OvRelax_param
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
+           type ( tensor_field ), pointer :: temperature
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
-           logical :: repeat_assemb_solve
+           logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
+           type(vector_field) :: solution
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -161,29 +163,33 @@ contains
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
 
-           call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
            IGOT_T2_loc = 0
 
+           assemble_collapsed_to_one_phase = .false.
             if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
 
                p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
                if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
                if (is_porous_media) then
-                    !Check that the extra parameters required for porous media thermal simulations are present
-                    if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
-                        .not.have_option('/porous_media/thermal_porous/scalar_field::porous_heat_capacity') .or. &
-                        .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
-                        FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
-                    end if
-                    !need to perform average of the effective heat capacity times density for the diffusion and time terms
-                    allocate(porous_heat_coef(Mdims%nphase,Mdims%cv_nonods))
-                    call effective_Cp_density(porous_heat_coef)
-                    !Start with the process to apply the min max principle
-                    call force_min_max_principle(1)
+                 !If it is thermal and porous media we need to consider thermal equilibirum between phases and porous medium
+                 !in this case we need to solve then only for one temperature per region(reservoir/wells)
+                 assemble_collapsed_to_one_phase = .true.
+                !Check that the extra parameters required for porous media thermal simulations are present
+                if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
+                    .not.have_option('/porous_media/thermal_porous/scalar_field::porous_heat_capacity') .or. &
+                    .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
+                    FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
+                end if
+                !need to perform average of the effective heat capacity times density for the diffusion and time terms
+                allocate(porous_heat_coef(Mdims%cv_nonods))
+                call effective_Cp_density(porous_heat_coef)
+                !Start with the process to apply the min max principle
+                call force_min_max_principle(1)
                 end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
@@ -308,7 +314,19 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 max_allowed_its, default = 500)
            end if
 
-
+           !By default use the given values
+           nphase = Mdims%nphase
+           n_in_pres = Mdims%n_in_pres
+           if (assemble_collapsed_to_one_phase) then
+             !No need to re-scale porous diffusion or CP as they are adjusted by multipliying by the saturation
+             ! which sums to one and therefore is the same
+              !If collapsed solver then change nphase and n_in_pres
+              nphase = Mdims%npres!One temperature per region
+              n_in_pres = 1
+           end if
+           !Allocate the RHS
+           call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
+           call allocate(solution,nphase,tracer%mesh,"sol_tracer")!; call zero(solution)
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                !Get information for capillary pressure to be use in CV_ASSEMB
@@ -317,18 +335,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
                    call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   if (assemble_collapsed_to_one_phase) OvRelax_param = OvRelax_param/ dble(mdims%n_in_pres)
                else
                 Phase_with_Ovrel = -1
                end if
 
                !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
+               call allocate(Mmat%petsc_ACV,sparsity,[nphase,nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
-
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   1, Mdims%n_in_pres, 1, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -347,11 +365,19 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
+                   assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
 
-               vtracer=as_vector(tracer,dim=2)
-               call zero(vtracer)
-               call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+               ! vtracer=as_vector(tracer,dim=2)
+               ! call zero(vtracer)
+               call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+
+               !Copy solution back to tracer(not ideal...)
+               do ipres =1, mdims%npres
+                 do iphase = 1 , n_in_pres
+                  tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
+                end do
+               end do
 
                 !Control how it is converging and decide
                if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
@@ -374,9 +400,17 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    exit!good to go!
                end if
 
-
-
            END DO Loop_NonLinearFlux
+
+           if (assemble_collapsed_to_one_phase .and. Mdims%n_in_pres > 1) then
+             !Now we populate back the other temperatures if we have solved for a collapsed system
+             temperature => extract_tensor_field(packed_state, "PackedTemperature")
+             do ipres =1, mdims%npres
+               do iphase = 2 , Mdims%n_in_pres
+                temperature%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = temperature%val(1,1+(ipres-1)*Mdims%n_in_pres,:)
+              end do
+             end do
+           end if
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
@@ -444,11 +478,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
         ! as it is stored cv-wise
           implicit none
-        REAL, DIMENSION( : , : ), intent(inout) :: porous_heat_coef
+        REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef
         !Local variables
         type( scalar_field ), pointer :: porosity, density_porous, Cp_porous
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
-        real, dimension(Mdims%nphase, Mdims%cv_nonods) :: cv_counter
+        real, dimension(Mdims%cv_nonods) :: cv_counter
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
@@ -461,11 +495,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             ele_nod = min(size(porosity%val), ele)
             do iloc = 1, Mdims%cv_nloc
                 cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                do iphase = 1, Mdims%nphase
-                    cv_counter( iphase,cv_inod ) = cv_counter( iphase,cv_inod ) + 1.0
-                    porous_heat_coef( iphase,cv_inod ) = porous_heat_coef( iphase,cv_inod ) + &
-                        density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
-                end do
+                cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
+                porous_heat_coef( cv_inod ) = porous_heat_coef( cv_inod ) + &
+                    density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
             end do
         end do
         !Since nodes are visited more than once, this performs a simple average
@@ -541,7 +573,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
-           REAL, DIMENSION(: , : ), allocatable :: porous_heat_coef
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
@@ -647,7 +678,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   1, Mdims%n_in_pres,  1, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -665,7 +696,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
+                   solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
                    vtracer=as_vector(tracer,dim=2)
 
@@ -696,7 +727,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-           if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
            ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
 
       contains
@@ -888,11 +918,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      solution%val(iphase+(ipres-1)*n_in_pres,:) = sat_field%val(1,iphase+(ipres-1)*n_in_pres,:)
                    end do
                  end do
-                
+
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
-                     1, n_in_pres, 1, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                     n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                      sat_field, velocity, density, multi_absorp, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                      DEN_ALL, DENOLD_ALL, &
@@ -2115,7 +2145,7 @@ pres_its_taken = its_taken
         density=>extract_tensor_field(packed_state,"PackedDensity")
 
         call CV_ASSEMB( state, packed_state, &
-            1, Mdims%n_in_pres, 1, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+            Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
             tracer, velocity, density, multi_absorp, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             DEN_OR_ONE, DENOLD_OR_ONE, &

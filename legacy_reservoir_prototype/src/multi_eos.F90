@@ -1408,7 +1408,7 @@ contains
       logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
-      type(tensor_field), pointer :: diffusivity, tfield, den
+      type(tensor_field), pointer :: diffusivity, tfield, den, saturation
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
@@ -1478,10 +1478,14 @@ contains
               end do
             else
               ! Calculation of the averaged thermal diffusivity as
-              ! lambda = porosity * lambda_f + (1-porosity) * lambda_p
+              ! lambda = (1-porosity) * lambda_p + SUM_of_phases Saturation * (porosity * lambda_f)
               ! Since lambda_p is defined element-wise and lambda_f CV-wise we perform an average
               ! as it is stored cv-wise
-              ! NOTE: that we are considering a unified lambda for all the phases
+              ! NOTE: for porous media we consider thermal equilibrium and therefore unifiying lambda is a must
+              ! Multiplied by the saturation so we use the same paradigm that for the phases,
+              !but in the equations it isn't, but here because we iterate over phases and collapse this is required
+              ! therefore: lambda = SUM_of_phases saturation * [(1-porosity) * lambda_p + porosity * lambda_f)]
+              saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
               do iphase = 1, Mdims%nphase
                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
                 tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
@@ -1493,7 +1497,7 @@ contains
                     cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                     do idim = 1, Mdims%ndim
                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+ saturation%val(1, iphase, cv_inod) * &
                       (sfield%val(ele_nod) * node_val( diffusivity, idim, idim, mat_inod ) &
                       +(1.0-sfield%val(ele_nod))* tfield%val(idim, idim, t_ele_nod))
                     enddo
