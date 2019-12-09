@@ -1962,11 +1962,14 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PC:: subpc
     MatNullSpace:: nullsp
     PCType:: pctype, hypretype
-    MatSolverPackage:: matsolverpackage
     PetscErrorCode:: ierr
     PCJacobiType:: pc_jacobi_type
     PetscBool :: abs
-
+#if PETSC_VERSION_MINOR >=9
+    MatSolverType:: matsolvertype
+#else
+    MatSolverPackage:: matsolverpackage
+#endif
 
 
     call get_option(trim(option_path)//'/name', pctype)
@@ -2096,8 +2099,13 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCSetType(pc, pctype, ierr)
 
        if (pctype==PCLU) then
-          call get_option(trim(option_path)//'/factorization_package/name', matsolverpackage)
-          call PCFactorSetMatSolverPackage(pc, matsolverpackage, ierr)
+#if PETSC_VERSION_MINOR >=9
+        call get_option(trim(option_path)//'/factorization_package/name', matsolvertype)
+        call PCFactorSetMatSolverType(pc, matsolvertype, ierr)
+#else
+        call get_option(trim(option_path)//'/factorization_package/name', matsolverpackage)
+        call PCFactorSetMatSolverPackage(pc, matsolverpackage, ierr)
+#endif
        end if
 
       if (pctype==PCGAMG) then
@@ -2105,7 +2113,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
         call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
-        
+
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
