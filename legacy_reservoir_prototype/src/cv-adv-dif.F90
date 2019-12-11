@@ -7026,7 +7026,7 @@ end if
       logical, intent(in) :: initialise_mass_conservation_check
       !Local variables
       real ::suf_area
-      logical :: skip, on_domain_boundary, integrat_at_gi
+      logical :: skip, on_domain_boundary, integrat_at_gi, can_skip_ele
       integer :: i, sele, ele, stat, cv_snodi, U_NODK, U_KLOC, CV_ILOC, cv_jloc, cv_nodi, cv_siloc, ele2, ele3, gcount, gi, iphase, k, mat_nodi, x_nodi, x_nodj
       real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) :: LOC_NU
       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
@@ -7144,17 +7144,24 @@ end if
                   if (skip) cycle
               end if
           end if
+          !It is very important to loop over all the WELL elements, even those not on the surface directly, since the CV might be
+          !and for pipes this is very important to get the fluxes correctly
+          can_skip_ele = .true.
+          if (Mdims%npres > 1) then
+            if (PIPE_DIAMETER%val(ele) > 1e-5) can_skip_ele = .false.
+          end if
+
           !Quick check for element in BC of domain or not using fluidity method, which I cannot use to substitute the rest...
           ele2 = 1
           do k = 1, Mdims%ndim+1!Number of sides is equal to dimensions + 1 for triangles and tetrahedra
             ele2 = min(ele_neigh(Saturation%mesh, ele, k), ele2)!if it has any side below zero, then it is in the boundary!
           end do
-          if (ele2 > 0) cycle !if it hasn't then it is in the interior of the domain and we can cycle!
+          if (ele2 > 0 .and. can_skip_ele) cycle !if it hasn't then it is in the interior of the domain and we can cycle!
 
           !Create local memory for velocity
           DO U_KLOC = 1, Mdims%u_nloc
               U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-              LOC_NU( :, :, U_KLOC)=Velocity%val( :, 1:Mdims%nphase, U_NODK)
+              LOC_NU( :, :, U_KLOC)=Velocity%val( :, :, U_NODK)
           end do
 
           DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
@@ -7197,106 +7204,104 @@ end if
                             ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
                     END IF
               else
-                cycle !Only interested in boundaries of the domain
+                if (can_skip_ele) cycle !Only interested in boundaries of the domain
               END IF
               on_domain_boundary = ( SELE /= 0 )
-              if (.not. on_domain_boundary) cycle !Such a waste... when we could be looping only by the surface elements...
+              if (.not. on_domain_boundary .and. can_skip_ele) cycle !Such a waste... when we could be looping only by the surface elements...
               X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
               cv_snodi = CV_SILOC + Mdims%cv_snloc*( SELE- 1)
               !Extract normal to compute the fluxes
               CALL SCVDETNX_new( Mdims, ndgln, cv_funs, CV_GIdims, X_ALL, ELE, GI, SdevFuns%DETWEI, &
               CVNORMX_ALL,barycenters%val( :, CV_NODI ), X_NODI, X_NODJ, on_domain_boundary, .false.)
+              !Calculate flux for that given GI point
+              ndotq = get_BC_flux()!need here CVNORMX_ALL
+              if (sum(abs(ndotq)) <= 1e-20) then
+                cycle!No need to do anything for closed BCs
+              end if
+              !Now select income
+              WHERE (NDOTQ < 0.0)
+                INCOME=1.0
+              ELSE WHERE
+                INCOME=0.0
+              END WHERE
 
-               !Calculate flux for that given GI point
-                ndotq = get_BC_flux()!need here CVNORMX_ALL
-                if (sum(abs(ndotq)) <= 1e-20) then
-                   cycle!No need to do anything for closed BCs
-                end if
-                !Now select income
-                WHERE (NDOTQ < 0.0)
-                    INCOME=1.0
-                ELSE WHERE
-                    INCOME=0.0
-                END WHERE
-
-                !Store total outflux, if flow coming in then use the Boundary condition
-                do iphase = 1, Mdims%n_in_pres
-                  bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + ndotq(iphase) * SdevFuns%DETWEI(gi) * &
-                  (income(iphase) * density%val(1, iphase, cv_nodi) * saturation_BCs%val( 1, iphase, cv_snodi ) + &!sprint_to_do this should use: density_BCs%val(1, :, cv_snodi) but currently this is zero
-                  (1.-income(iphase)) * density%val(1, iphase, cv_nodi) * saturation%val(1, iphase, cv_nodi))!For the mass conservation check we need to consider mass!
-                end do
-                if (outfluxes%calculate_flux)  then
-                    do k = 1, size(outfluxes%outlet_id)!Output volume, not mass
-                        if (integrate_over_surface_element(pressure, sele, (/outfluxes%outlet_id(k)/))) then
-                            do iphase = 1, Mdims%n_in_pres
-                              bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) + ndotq(iphase) * SdevFuns%DETWEI(gi) * &
-                              (income(iphase) * saturation_BCs%val( 1, iphase, cv_snodi ) + &
-                              (1.-income(iphase)) * saturation%val(1, iphase, cv_nodi))
-                            end do
-                            if (has_temperature) then!Instead of max temp, maybe energy produced...
-                                do iphase = 1, Mdims%n_in_pres
-                                    outfluxes%totout(2, iphase, k) =  max(  income(iphase) * temperature_BCs%val(1,iphase,cv_snodi), &
-                                    (1.-income(iphase)) *temperature%val(1,iphase,cv_nodi),&
-                                    outfluxes%totout(2, iphase, k)   )
-                                end do
-                            end if
-                            !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
-                            if (has_salt) then
-                                do iphase = 1, Mdims%n_in_pres
-                                    outfluxes%totout(3, iphase, k) =  max(  income(iphase) * Solute_BCs%val(1,iphase,cv_snodi), &
-                                    (1.-income(iphase)) *SoluteMassFraction%val(1,iphase,cv_nodi),&
-                                    outfluxes%totout(3, iphase, k)   )
-                                end do
-                            end if
-                        end if
+              !Store total outflux, if flow coming in then use the Boundary condition
+              do iphase = 1, Mdims%n_in_pres
+                bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + ndotq(iphase) * SdevFuns%DETWEI(gi) * &
+                (income(iphase) * density%val(1, iphase, cv_nodi) * saturation_BCs%val( 1, iphase, cv_snodi ) + &!sprint_to_do this should use: density_BCs%val(1, :, cv_snodi) but currently this is zero
+                (1.-income(iphase)) * density%val(1, iphase, cv_nodi) * saturation%val(1, iphase, cv_nodi))!For the mass conservation check we need to consider mass!
+              end do
+              if (outfluxes%calculate_flux)  then
+                do k = 1, size(outfluxes%outlet_id)!Output volume, not mass
+                  if (integrate_over_surface_element(pressure, sele, (/outfluxes%outlet_id(k)/))) then
+                    do iphase = 1, Mdims%n_in_pres
+                      bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) + ndotq(iphase) * SdevFuns%DETWEI(gi) * &
+                      (income(iphase) * saturation_BCs%val( 1, iphase, cv_snodi ) + &
+                      (1.-income(iphase)) * saturation%val(1, iphase, cv_nodi))
                     end do
-                end if
-
-                !If we have wells, of course more complexity!! Fantastic isn't it?
-                if (mdims%npres > 1) then
-                  if (PIPE_diameter%val(CV_NODI) > 1e-5) then
-                    !Count repeated nodes
-                    repeated_nodes(cv_nodi) = repeated_nodes(cv_nodi) + 1
-                    !Generate area of the well
-                    suf_area =  pi * 0.25 * PIPE_diameter%val(CV_NODI)**2
-
-                    !Store total outflux for mass conservation check
-                    do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                      bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
-                      NDOTQ(iphase) * suf_area * (income(iphase) * density%val(1, iphase, cv_nodi) * saturation_BCs%val( 1, iphase, cv_snodi ) + &!sprint_to_do this should use: density_BCs%val(1, :, cv_snodi) but currently this is zero
-                      (1.-income(iphase)) * density%val(1, iphase, cv_nodi) * saturation%val(1, iphase, cv_nodi))
-                    end do
-                    if (outfluxes%calculate_flux)  then
-                      do k = 1, size(outfluxes%outlet_id)!Output volume, not mass
-                        if (integrate_over_surface_element(pressure, sele, (/outfluxes%outlet_id(k)/))) then
-                          do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                              bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) +&
-                              NDOTQ(iphase) * suf_area * (income(iphase) * saturation_BCs%val( 1, iphase, cv_snodi ) + &
-                              (1.-income(iphase)) * saturation%val(1, iphase, cv_nodi))
-                            end do
-                            if (has_temperature) then!Instead of max temp, maybe energy produced...
-                                do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                                    outfluxes%totout(2, iphase, k) =  max(  income(iphase) * temperature_BCs%val(1,iphase,cv_snodi), &
-                                    (1.-income(iphase)) *temperature%val(1,iphase,cv_nodi),&
-                                    outfluxes%totout(2, iphase, k)   )
-                                end do
-                            end if
-                            !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
-                            if (has_salt) then
-                                do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                                    outfluxes%totout(3, iphase, k) =  max(  income(iphase) * Solute_BCs%val(1,iphase,cv_snodi), &
-                                    (1.-income(iphase)) *SoluteMassFraction%val(1,iphase,cv_nodi),&
-                                    outfluxes%totout(3, iphase, k)   )
-                                end do
-                            end if
-                        end if
+                    if (has_temperature) then!Instead of max temp, maybe energy produced...
+                      do iphase = 1, Mdims%n_in_pres
+                        outfluxes%totout(2, iphase, k) =  max(  income(iphase) * temperature_BCs%val(1,iphase,cv_snodi), &
+                        (1.-income(iphase)) *temperature%val(1,iphase,cv_nodi),&
+                        outfluxes%totout(2, iphase, k)   )
+                      end do
+                    end if
+                    !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                    if (has_salt) then
+                      do iphase = 1, Mdims%n_in_pres
+                        outfluxes%totout(3, iphase, k) =  max(  income(iphase) * Solute_BCs%val(1,iphase,cv_snodi), &
+                        (1.-income(iphase)) *SoluteMassFraction%val(1,iphase,cv_nodi),&
+                        outfluxes%totout(3, iphase, k)   )
                       end do
                     end if
                   end if
-                end if
+                end do
+              end if
 
-              end do
+              !If we have wells, of course more complexity!! Fantastic isn't it?
+              if (mdims%npres > 1) then
+                if (PIPE_diameter%val(CV_NODI) > 1e-5) then
+                  !Count repeated nodes
+                  repeated_nodes(cv_nodi) = repeated_nodes(cv_nodi) + 1
+                  !Generate area of the well
+                  suf_area =  pi * 0.25 * PIPE_diameter%val(CV_NODI)**2
+
+                  !Store total outflux for mass conservation check
+                  do iphase = Mdims%n_in_pres+1, Mdims%nphase
+                    bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
+                    NDOTQ(iphase) * suf_area * (income(iphase) * density%val(1, iphase, cv_nodi) * saturation_BCs%val( 1, iphase, cv_snodi ) + &!sprint_to_do this should use: density_BCs%val(1, :, cv_snodi) but currently this is zero
+                    (1.-income(iphase)) * density%val(1, iphase, cv_nodi) * saturation%val(1, iphase, cv_nodi))
+                  end do
+                  if (outfluxes%calculate_flux)  then
+                    do k = 1, size(outfluxes%outlet_id)!Output volume, not mass
+                      if (integrate_over_surface_element(pressure, sele, (/outfluxes%outlet_id(k)/))) then
+                        do iphase = Mdims%n_in_pres+1, Mdims%nphase
+                          bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) +&
+                          NDOTQ(iphase) * suf_area * (income(iphase) * saturation_BCs%val( 1, iphase, cv_snodi ) + &
+                          (1.-income(iphase)) * saturation%val(1, iphase, cv_nodi))
+                        end do
+                        if (has_temperature) then!Instead of max temp, maybe energy produced...
+                          do iphase = Mdims%n_in_pres+1, Mdims%nphase
+                            outfluxes%totout(2, iphase, k) =  max(  income(iphase) * temperature_BCs%val(1,iphase,cv_snodi), &
+                            (1.-income(iphase)) *temperature%val(1,iphase,cv_nodi),&
+                            outfluxes%totout(2, iphase, k)   )
+                          end do
+                        end if
+                        !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                        if (has_salt) then
+                          do iphase = Mdims%n_in_pres+1, Mdims%nphase
+                            outfluxes%totout(3, iphase, k) =  max(  income(iphase) * Solute_BCs%val(1,iphase,cv_snodi), &
+                            (1.-income(iphase)) *SoluteMassFraction%val(1,iphase,cv_nodi),&
+                            outfluxes%totout(3, iphase, k)   )
+                          end do
+                        end if
+                      end if
+                    end do
+                  end if
+                end if
+              end if
             end do
+          end do
         end do
 
         if (mdims%npres > 1) then
@@ -7334,18 +7339,11 @@ end if
       !Initialize variables
       UDGI_ALL = 0.
       DO iphase = 1,Mdims%n_in_pres
-          IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
-              !(vel * shape_functions)/sigma
-              UDGI_ALL(:, iphase) = matmul(upwnd%inv_adv_coef(:,:,iphase, mat_nodi),&
-                  matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI )))
-              i = cv_snodi + ( iphase - 1 ) * Mdims%stotel*Mdims%cv_snloc
-              UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) * SUF_SIG_DIAGTEN_BC( i, : )
-          ELSE ! Specified vel bc.
-              UDGI_ALL(:, iphase) = 0.0
-              DO i = 1, Mdims%u_snloc
-                  UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) + CV_funs%sufen( i, GI )*velocity_BCs%val(:, iphase, Mdims%u_snloc* (SELE-1) + i)
-              END DO
-          END IF
+        !(vel * shape_functions)/sigma
+        UDGI_ALL(:, iphase) = matmul(upwnd%inv_adv_coef(:,:,iphase, mat_nodi),&
+            matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI )))
+        i = cv_snodi + ( iphase - 1 ) * Mdims%stotel*Mdims%cv_snloc
+        UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) * SUF_SIG_DIAGTEN_BC( i, : )
       END DO ! PHASE LOOP
 
 
@@ -7353,15 +7351,7 @@ end if
         if (PIPE_diameter%val(CV_NODI) > 1e-5) then
           !Now the wells!
           DO iphase=Mdims%n_in_pres + 1,Mdims%nphase
-            if (WIC_P_BC_ALL( 1, Mdims%npres, SELE) == WIC_P_BC_DIRICHLET ) then
-                UDGI_ALL(:, iphase) = matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI ))
-            else
-              UDGI_ALL(:, iphase) = 0.0
-              DO i = 1, Mdims%u_snloc
-                UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) + CV_funs%sufen( i, GI )*velocity_BCs%val(:, iphase, Mdims%u_snloc* (SELE-1) + i )
-              end do
-              UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase)/real(Mdims%u_snloc)
-            end if
+            UDGI_ALL(:, iphase) = matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI ))
           END DO
         end if
       end if

@@ -12,8 +12,8 @@ gravity_options =
       element magnitude {
          real
       },
-      ## Solve the gravity component indendently from the pressure general solver
-      ## this is very RECOMMENDED when running with gravity.
+      ## Solve the gravity component indendently from the pressure general solver.
+      ## Not implemented for wells yet. Therefore NOT recommended for wells.
       ##
       ## Internally it creates a field named HydrostaticPressure and a mesh with the same name.
       ##

@@ -882,28 +882,6 @@ contains
     END SUBROUTINE ONVDLIM_ANO_MANY
 
 
-  real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
-      !Obtain sele from a cv_nod that is on the boundary
-      !if not found then returns -1
-      implicit none
-      integer, intent(in) ::cv_jnod
-      type(multi_ndgln), intent(in) :: ndgln
-      type(multi_dimensions), intent(in) :: Mdims
-      !Local variables
-      integer :: sele, cv_siloc
-
-      sele_from_cv_nod = -1
-      do sele = 1, Mdims%stotel
-          do cv_siloc = 1, Mdims%cv_snloc
-              if (ndgln%suf_cv((sele-1)*Mdims%cv_snloc + cv_siloc) == cv_jnod) then
-                  sele_from_cv_nod = sele
-                  return
-              end if
-          end do
-      end do
-
-  end function sele_from_cv_nod
-
   END SUBROUTINE MOD_1D_CT_AND_ADV
 
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
