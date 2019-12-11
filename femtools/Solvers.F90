@@ -2085,6 +2085,9 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
           abs=PETSC_FALSE
         end if
         call PCJacobiSetUseAbs(pc,abs, ierr)
+        ! set pctype again to enforce options
+        call PCSetType(pc, pctype, ierr)
+
     else
 
        ! this doesn't work for hypre
@@ -2105,7 +2108,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
         call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
-        
+
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
