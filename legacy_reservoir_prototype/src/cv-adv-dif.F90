@@ -7162,7 +7162,6 @@ end if
           end do
           if (ele2 > 0 .and. can_skip_ele) cycle !if it hasn't then it is in the interior of the domain and we can cycle!
                                                 !for wells is more complex and a CV might be at the boundary despite not the element
-
           !Create local memory for velocity
           DO U_KLOC = 1, Mdims%u_nloc
               U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
