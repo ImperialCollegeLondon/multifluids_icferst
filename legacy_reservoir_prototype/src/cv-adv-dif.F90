@@ -7035,7 +7035,7 @@ end if
       real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
       real, dimension( : , : ), pointer ::Imble_frac
       real, dimension(Mdims%nphase) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
-      type(scalar_field), pointer :: PIPE_DIAMETER
+      type(scalar_field), pointer :: PIPE_DIAMETER, well_domains
       type (vector_field ), pointer :: barycenters
       type( tensor_field ), pointer :: saturation, temperature, SoluteMassFraction, Pressure, Velocity, density
       LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
@@ -7071,7 +7071,10 @@ end if
       !Retrieve barycenters
       barycenters => extract_vector_field(packed_state,"CVBarycentre")
       !retrieve pipe diameter if necessary
-      if (Mdims%npres > 1) PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe" )
+      if (Mdims%npres > 1) then
+        PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe" )
+        well_domains =>  extract_scalar_field( state(1), "Well_domains" )
+      end if
       !Allocate derivatives of the shape functions
       call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
       saturation => extract_tensor_field(packed_state, "PackedPhaseVolumeFraction")
@@ -7148,7 +7151,8 @@ end if
           !and for pipes this is very important to get the fluxes correctly
           can_skip_ele = .true.
           if (Mdims%npres > 1) then
-            if (PIPE_DIAMETER%val(ele) > 1e-5) can_skip_ele = .false.
+            !Only elements within the well regions, the rest is set to 0
+            if (well_domains%val(ele) <= 1e-8) can_skip_ele = .false.!THIS FIXES ONE PROBLEM BUT INTRODUCES OTHERS!!!
           end if
 
           !Quick check for element in BC of domain or not using fluidity method, which I cannot use to substitute the rest...
@@ -7157,6 +7161,7 @@ end if
             ele2 = min(ele_neigh(Saturation%mesh, ele, k), ele2)!if it has any side below zero, then it is in the boundary!
           end do
           if (ele2 > 0 .and. can_skip_ele) cycle !if it hasn't then it is in the interior of the domain and we can cycle!
+                                                !for wells is more complex and a CV might be at the boundary despite not the element
 
           !Create local memory for velocity
           DO U_KLOC = 1, Mdims%u_nloc
@@ -7204,10 +7209,10 @@ end if
                             ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
                     END IF
               else
-                if (can_skip_ele) cycle !Only interested in boundaries of the domain
+                cycle !Only interested in boundaries of the domain
               END IF
               on_domain_boundary = ( SELE /= 0 )
-              if (.not. on_domain_boundary .and. can_skip_ele) cycle !Such a waste... when we could be looping only by the surface elements...
+              if (.not. on_domain_boundary) cycle !Such a waste... when we could be looping only by the surface elements...
               X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
               cv_snodi = CV_SILOC + Mdims%cv_snloc*( SELE- 1)
               !Extract normal to compute the fluxes
@@ -7215,8 +7220,8 @@ end if
               CVNORMX_ALL,barycenters%val( :, CV_NODI ), X_NODI, X_NODJ, on_domain_boundary, .false.)
               !Calculate flux for that given GI point
               ndotq = get_BC_flux()!need here CVNORMX_ALL
-              if (sum(abs(ndotq)) <= 1e-20) then
-                cycle!No need to do anything for closed BCs
+              if (sum(abs(ndotq)) <= 1e-20) then!Better not to, because for closed BCs with temperature it is comfusing for the users
+                cycle!No need to do anything for closed BCs. Also it affects the repeated CVs counter of later on for the wells. This needs to be here!
               end if
               !Now select income
               WHERE (NDOTQ < 0.0)
@@ -7340,10 +7345,18 @@ end if
       UDGI_ALL = 0.
       DO iphase = 1,Mdims%n_in_pres
         !(vel * shape_functions)/sigma
-        UDGI_ALL(:, iphase) = matmul(upwnd%inv_adv_coef(:,:,iphase, mat_nodi),&
-            matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI )))
-        i = cv_snodi + ( iphase - 1 ) * Mdims%stotel*Mdims%cv_snloc
-        UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) * SUF_SIG_DIAGTEN_BC( i, : )
+          IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
+              !(vel * shape_functions)/sigma
+              UDGI_ALL(:, iphase) = matmul(upwnd%inv_adv_coef(:,:,iphase, mat_nodi),&
+                  matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI )))
+              i = cv_snodi + ( iphase - 1 ) * Mdims%stotel*Mdims%cv_snloc
+              UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) * SUF_SIG_DIAGTEN_BC( i, : )
+          ELSE ! Specified vel bc.
+              UDGI_ALL(:, iphase) = 0.0
+              DO i = 1, Mdims%u_snloc
+                  UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) + CV_funs%sufen( i, GI )*velocity_BCs%val(:, iphase, Mdims%u_snloc* (SELE-1) + i)
+              END DO
+          END IF
       END DO ! PHASE LOOP
 
 
@@ -7351,7 +7364,15 @@ end if
         if (PIPE_diameter%val(CV_NODI) > 1e-5) then
           !Now the wells!
           DO iphase=Mdims%n_in_pres + 1,Mdims%nphase
-            UDGI_ALL(:, iphase) = matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI ))
+            if (WIC_P_BC_ALL( 1, Mdims%npres, SELE) == WIC_P_BC_DIRICHLET ) then
+                UDGI_ALL(:, iphase) = matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI ))
+            else
+              UDGI_ALL(:, iphase) = 0.0
+              DO i = 1, Mdims%u_snloc
+                UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) + CV_funs%sufen( i, GI )*velocity_BCs%val(:, iphase, Mdims%u_snloc* (SELE-1) + i )
+              end do
+              UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase)/real(Mdims%u_snloc)
+            end if
           END DO
         end if
       end if
