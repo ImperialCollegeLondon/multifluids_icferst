@@ -108,8 +108,8 @@ contains
           MASS_ELE_TRANSP, &
           TDIFFUSION, &
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
-          Permeability_tensor_field, eles_with_pipe, pipes_aux, &
-          porous_heat_coef, solving_compositional, nonlinear_iteration,&
+          Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
+          porous_heat_coef, outfluxes, solving_compositional, nonlinear_iteration,&
           assemble_collapsed_to_one_phase)
           !  =====================================================================
           !     In this subroutine the advection terms in the advection-diffusion
@@ -279,10 +279,13 @@ contains
           real, optional, dimension(:), intent(inout) :: Courant_number
           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
           ! Calculate_mass variable
+          real, dimension(:,:), optional :: calculate_mass_delta
           type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
           type (multi_pipe_package), intent(in) :: pipes_aux
           REAL, DIMENSION( : ), optional, intent(in) :: porous_heat_coef
           logical, optional, intent(in) :: solving_compositional, assemble_collapsed_to_one_phase
+          ! Variable to store outfluxes
+          type (multi_outfluxes), optional, intent(inout) :: outfluxes
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
           ! ###################Local variables############################
@@ -452,6 +455,10 @@ contains
           INTEGER :: iv_u_kloc, iv_u_skloc, iv_cv_kloc, iv_idim, iv_CV_SKLOC, iv_CV_SNODK, iv_CV_SNODK_IPHA, iv_IPHASE, iv_u_kloc2
           real, dimension(Mdims%ndim, Mdims%ndim, final_phase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
           real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
+          ! ####Variables for outfluxes#####
+          real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
+          real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
+          real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
 
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
@@ -529,6 +536,27 @@ contains
                   call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
               ENDIF
           ENDIF
+          if (present(outfluxes)) then
+              ! Initialise the calculate_mass variables
+              !Allocate array to pass to store mass going through the boundaries
+              if (allocated( outfluxes%outlet_id )) then
+                  allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+              else
+                  allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
+              end if
+
+              allocate ( calculate_mass_internal(final_phase));calculate_mass_internal(:) = 0.0  ! calculate_internal_mass subroutine
+              !Extract temperature for outfluxes if required
+              if (has_temperature) then
+                  temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+                  if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
+              end if
+              !Arash
+              if (has_salt) then
+                  salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+                  if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
+              end if
+          end if
           !! Get boundary conditions from field
           call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
           call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
@@ -909,6 +937,12 @@ contains
           END IF
           GLOBAL_FACE = 0
 
+          if ( is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT) then
+              !Initialise mass conservation check; calculation of porevolume
+              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 1)
+          endif
+
+
           !Allocate derivatives of the shape functions
           call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
 
@@ -1114,8 +1148,7 @@ contains
                               GLOBAL_FACE = GLOBAL_FACE + 1
                               JMID = Mspars%small_acv%mid(CV_NODJ)
                               ! Calculate the control volume normals at the Gauss pts.
-                              CALL SCVDETNX_new( Mdims, ndgln, cv_funs, CV_GIdims, X_ALL, ELE, GI, SdevFuns%DETWEI, &
-                                CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ, on_domain_boundary, between_elements)
+                              CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
                               !Obtain the list of neighbouring nodes
                               IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
                                                               C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
@@ -1586,6 +1619,48 @@ contains
 
                               ENDIF Conditional_GETCT2
 
+                              if (present(outfluxes) .and. GETCT) then!Better to do it GETCV_DISC of each corresponding field...
+                                  !Store fluxes across all the boundaries either for mass conservation check or mass outflux
+                                  !velocity * area * density * saturation
+                                  if (on_domain_boundary ) then
+                                      if (surface_element_owned(old_tracer, sele)) then
+                                          !Store total outflux
+                                          do iphase = 1, final_phase
+                                            bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
+                                            ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)!For the mass conservation check we need to consider mass!
+                                          end do
+                                          if (outfluxes%calculate_flux)  then
+                                              do k = 1, size(outfluxes%outlet_id)!here below we just need a saturation
+                                                  if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
+                                                      do iphase = 1, final_phase
+                                                        bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) + &
+                                                        ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMT(iphase)
+                                                      end do
+                                                      if (has_temperature) then!Instead of max tem, maybe energy produced...
+                                                        ! do iphase = 1, nphase
+                                                        !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
+                                                        !     (ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres) &
+                                                        !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
+                                                        ! end do
+                                                          do iphase = 1, final_phase
+                                                              outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                                                              outfluxes%totout(2, iphase, k)   )
+                                                          end do
+                                                      end if
+                                                      !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                                                      if (has_salt) then
+                                                          do iphase = 1, final_phase
+                                                              outfluxes%totout(3, iphase, k) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                                                              outfluxes%totout(3, iphase, k)   )
+                                                          end do
+                                                      end if
+                                                  end if
+                                              end do
+                                          end if
+                                      end if
+                                  end if
+                              end if
+
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                   ! Obtain the CV discretised advection/diffusion equations
                                   ROBIN1=0.0; ROBIN2=0.0
@@ -1896,7 +1971,8 @@ contains
                                 Mdims, ndgln, DERIV, CV_P, SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, &
                                 SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, &
                                 pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES,mean_pore_cv, eles_with_pipe, thermal,&
-                                CV_BETA, MASS_CV, INV_B, MASS_ELE, porous_heat_coef, loc_assemble_collapsed_to_one_phase )
+                                CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes,&
+                                porous_heat_coef, loc_assemble_collapsed_to_one_phase )
 
 
           ! Deallocating temporary working arrays
@@ -1933,6 +2009,7 @@ contains
          end if
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
+          if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
 
           RETURN
       contains
@@ -3209,6 +3286,158 @@ end if
 
         END FUNCTION FACE_THETA_MANY
 
+        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
+           !     ---------------------------------------------------------------
+           !
+           !     - this subroutine calculates the control volume (CV)
+           !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
+           !     - integration points GI. NODI = the current global
+           !     - node number for the co-ordinates.
+           !     - (XC,YC,ZC) is the centre of CV NODI
+           !
+           !     ---------------------------------------------------------------
+           !     - date last modified : 18/10/2018
+           !     ---------------------------------------------------------------
+           IMPLICIT NONE
+           INTEGER, intent( in ) :: ELE, GI, X_NOD, X_NODJ
+           REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
+           REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
+           REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
+           !     - Local variables
+           INTEGER :: NODJ,  JLOC
+           REAL :: A, B, C
+           REAL :: DETJ
+           REAL :: DXDLX, DXDLY, DYDLX
+           REAL :: DYDLY, DZDLX, DZDLY
+           REAL :: TWOPI
+           REAL, PARAMETER :: PI = 3.14159265
+           REAL :: RGI, RDUM
+           real, dimension(3) :: POSVGI, BAK
+           !ewrite(3,*)' In SCVDETNX'
+           POSVGI = 0.0
+           Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
+
+               DXDLX = 0.0;DXDLY = 0.0
+               DYDLX = 0.0;DYDLY = 0.0
+               DZDLX = 0.0;DZDLY = 0.0
+               do  JLOC = 1, Mdims%x_nloc
+
+                   NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                   DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+                   DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(1,NODJ)
+                   DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+                   DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(2,NODJ)
+                   DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
+                   DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
+
+                   POSVGI = POSVGI + CV_funs%scvfen(JLOC,GI)*X_ALL(:,NODJ)
+               end do
+
+               !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
+               !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
+               !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
+               IF ( on_domain_boundary .or. between_elements) then!sprint_to_do between elements use both barycentres?
+                 POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
+               else !Use centres of the continuous control volumes, i.e. corners of the elements
+                 POSVGI = X_ALL(1:Mdims%ndim, X_NODJ) - X_ALL(1:Mdims%ndim, X_NOD)
+               end if
+               ! POSVGI = POSVGI - (0.898*X_ALL(1:Mdims%ndim, X_NOD) + 0.102*XC_ALL(1:Mdims%ndim))!Magic weights...
+
+               CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
+                   DXDLX,       DYDLX,       DZDLX, &
+                   DXDLY,       DYDLY,       DZDLY,&
+                   POSVGI(1),     POSVGI(2),     POSVGI(3) )
+
+               A = DYDLX*DZDLY - DYDLY*DZDLX
+               B = DXDLX*DZDLY - DXDLY*DZDLX
+               C = DXDLX*DYDLY - DXDLY*DYDLX
+               !
+               !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+               !
+               DETJ = SQRT( A**2 + B**2 + C**2 )
+               !
+               !     - Calculate the determinant times the surface weight at Gauss pnt GI.
+               !
+               SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
+               !
+               !     - Calculate the normal at the Gauss pts
+               !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+               !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+               !     - Perform cross-product. N = T1 x T2
+               !
+
+
+
+           ELSE IF(Mdims%ndim == 2) THEN
+
+               TWOPI = 1.0
+
+               RGI   = 0.0
+               DXDLX = 0.0;DXDLY = 0.0
+               DYDLX = 0.0;DYDLY = 0.0
+               DZDLX = 0.0
+               !
+               !     - Note that we set the derivative wrt to y of coordinate z to 1.0
+               !
+               DZDLY = 1.0
+
+               do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+                   NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                   DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+                   DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+
+                   POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) + CV_funs%scvfen(JLOC,GI)*X_ALL(1:Mdims%ndim,NODJ)
+
+                   RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+
+               end do ! Was loop 300
+               !To calculate the sign of the normal an average between the center of the COntinuous CV and the center of mass is used
+               POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
+
+               RGI = 1.0
+
+               DETJ = SQRT( DXDLX**2 + DYDLX**2 )
+               SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
+               !
+               !     - Calculate the normal at the Gauss pts
+               !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+               !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+               !     - Perform cross-product. N = T1 x T2
+               !
+               CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
+                   DXDLX,       DYDLX,       DZDLX, &
+                   DXDLY,       DYDLY,       DZDLY,&
+                   POSVGI(1),     POSVGI(2),     POSVGI(3) )
+
+           ELSE
+               ! For 1D...
+               do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+                   NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                   POSVGI(1) = POSVGI(1) + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+
+               end do ! Was loop 300
+               !
+               !     - Note that POSVGIX and POSVGIY can be considered as the components
+               !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
+               !     - current control volume NODI.
+               !
+               POSVGI(1) = POSVGI(1) - XC_ALL(1)
+               ! SIGN(A,B) sign of B times A.
+               CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGI(1) )
+
+               DETJ = 1.0
+               SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
+
+
+           ENDIF Conditional_Dimension
+
+       END SUBROUTINE SCVDETNX_new
+
         subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
                                         C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
         implicit none
@@ -3313,6 +3542,118 @@ end if
                 END IF ! endof IF ( between_elements ) THEN
             ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
         end subroutine get_neigbouring_lists
+
+
+        subroutine mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, flag)
+            ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids given that the massflux has been already stored elsewhere
+            !also used to calculate mass conservation
+
+            !The check is done as follows:
+            !First the mass at the beginning of the time-level is calculated in the reservoir
+            !Second the input and output throughtout all the boundaries is calculated
+            !Third the mass at the current saturation fixed point iteration is calculated within the domain
+            !Finally, due to mass conservation and given a constant total volume of the domain the mass check is done as follows:
+            ! Mass_error = abs (Mass_present_resv - Mass_initial_resv + Difference_Mass_io )/Maximum_flux
+            ! in this way the mass error is normalise based on the mass flux.
+            implicit none
+            integer, intent(in) :: flag
+            type (multi_outfluxes), intent(inout) :: outfluxes
+            real, dimension(:,:), intent(inout) :: calculate_mass_delta
+            !Local variables
+            integer :: iphase, k
+            real :: tmp1, tmp2, tmp3, maxflux
+            type(vector_field), pointer :: Por
+            ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
+            ! Difference in Total mass
+
+            select case (flag)
+                case (1)
+                    !Initialise values
+                    if (first_nonlinear_time_step ) then
+                        calculate_mass_delta(:,1) = 0.0 ! reinitialise
+                        call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
+                            calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv)
+                        !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
+                       ! if (Mdims%npres >1)then!consider as well the pipes
+                       !     call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
+                       !         calculate_mass_delta(:,1) , ndgln%cv, eles_with_pipe)
+                       ! end if
+                    endif
+                    if (outfluxes%calculate_flux) then
+                        ! Extract the Porosity
+                        Por => extract_vector_field( packed_state, "Porosity" )
+
+                        ! Calculate Pore volume
+                        outfluxes%porevolume = 0.0
+                        DO ELE = 1, Mdims%totele
+                            if (element_owned(tracer, ele)) then
+                                outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por%val(1,ELE)
+                            end if
+                        END DO
+
+                        call allsum(outfluxes%porevolume) ! Now sum the value over all processors
+
+                    end if
+                case default!Now calculate mass conservation
+                    !Calculate internal volumes of each phase
+                    calculate_mass_internal = 0.
+                    call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
+                        calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv)
+                    !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
+                   ! if (Mdims%npres >1) then!consider as well the pipes
+                   !     call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
+                   !         calculate_mass_internal(:) , ndgln%cv, eles_with_pipe)
+                   ! end if
+
+                    !Loop over nphases - 1
+                    calculate_mass_delta(1,2) = 0.
+
+                    tmp1 = sum(calculate_mass_internal)!<=mass inside the domain
+                    tmp2 = sum(calculate_mass_delta(:,1))!<= mass inside the domain at the beginning of the time-level
+                    tmp3 = sum(bcs_outfluxes(:, :, 0))*dt!<= mass phase i across all the boundaries
+                    if (isparallel()) then
+                        call allsum(tmp1)
+                        call allsum(tmp2)
+                        call allsum(tmp3)
+                    end if
+                    !Obtain the maximum flux and use this to normalise
+                    maxflux = 0.
+                    do iphase = 1, Mdims%nphase
+                        maxflux= max(maxflux, abs(sum(bcs_outfluxes(iphase, :, 0)))*dt)
+                    end do
+
+                    !Calculate possible mass creation inside the code
+                    if (tmp2 > 1d-8) then
+                        calculate_mass_delta(1,2) = abs( tmp1 - tmp2 + tmp3 ) / tmp2 !We normise by the maximum flux
+                    else
+                        calculate_mass_delta(1,2) = 0.
+                    end if
+
+                    !If calculate outfluxes then do it now
+                    if (outfluxes%calculate_flux) then
+                        !Retrieve only the values of bcs_outfluxes we are interested in
+                        do k = 1, size(outfluxes%outlet_id)
+                            do iphase = 1, Mdims%nphase
+                                outfluxes%totout(1, iphase, k) = sum(bcs_outfluxes( iphase, :, k))
+                            end do
+                        end do
+                        ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
+                        if (isParallel()) then
+                            do k = 1,size(outfluxes%outlet_id)
+                                ! Ensure all processors have the correct value of totout for parallel runs
+                                do iphase = 1, Mdims%nphase
+                                    call allsum(outfluxes%totout(1, iphase, k))
+                                    if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
+                                    !Arash
+                                    if (has_salt) call allsum(outfluxes%totout(3, iphase, k))
+                                end do
+                            end do
+                        end if
+                    end if
+            end select
+
+
+        end subroutine mass_conservation_check_and_outfluxes
 
     END SUBROUTINE CV_ASSEMB
 
@@ -6844,648 +7185,5 @@ end if
         shock_front_in_ele = minival < tol .and. (maxival-minival) > tol
 
     end function shock_front_in_ele
-
-
-    SUBROUTINE SCVDETNX_new( Mdims, ndgln, cv_funs, CV_GIdims, X_ALL, ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ, on_domain_boundary, between_elements)
-       !     ---------------------------------------------------------------
-       !
-       !     - this subroutine calculates the control volume (CV)
-       !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
-       !     - integration points GI. NODI = the current global
-       !     - node number for the co-ordinates.
-       !     - (XC,YC,ZC) is the centre of CV NODI
-       !
-       !     ---------------------------------------------------------------
-       !     - date last modified : 18/10/2018
-       !     ---------------------------------------------------------------
-       IMPLICIT NONE
-       logical, intent(in) :: on_domain_boundary, between_elements
-       type(multi_dimensions), intent(in) :: Mdims
-       type(multi_shape_funs), intent(inout) :: CV_funs
-       type(multi_ndgln), intent(in) :: ndgln
-       type(multi_GI_dimensions), intent(in) :: CV_GIdims
-       real, dimension(:,:) :: X_ALL
-       INTEGER, intent( in ) :: ELE, GI, X_NOD, X_NODJ
-       REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
-       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
-       REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-       !     - Local variables
-       INTEGER :: NODJ,  JLOC
-       REAL :: A, B, C
-       REAL :: DETJ
-       REAL :: DXDLX, DXDLY, DYDLX
-       REAL :: DYDLY, DZDLX, DZDLY
-       REAL :: TWOPI
-       REAL, PARAMETER :: PI = 3.14159265
-       REAL :: RGI, RDUM
-       real, dimension(3) :: POSVGI, BAK
-       !ewrite(3,*)' In SCVDETNX'
-       POSVGI = 0.0
-       Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
-
-           DXDLX = 0.0;DXDLY = 0.0
-           DYDLX = 0.0;DYDLY = 0.0
-           DZDLX = 0.0;DZDLY = 0.0
-           do  JLOC = 1, Mdims%x_nloc
-
-               NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-               DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
-               DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(1,NODJ)
-               DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
-               DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(2,NODJ)
-               DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
-               DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
-
-               POSVGI = POSVGI + CV_funs%scvfen(JLOC,GI)*X_ALL(:,NODJ)
-           end do
-
-           !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
-           !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
-           !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
-           IF ( on_domain_boundary .or. between_elements) then!sprint_to_do between elements use both barycentres?
-             POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
-           else !Use centres of the continuous control volumes, i.e. corners of the elements
-             POSVGI = X_ALL(1:Mdims%ndim, X_NODJ) - X_ALL(1:Mdims%ndim, X_NOD)
-           end if
-           ! POSVGI = POSVGI - (0.898*X_ALL(1:Mdims%ndim, X_NOD) + 0.102*XC_ALL(1:Mdims%ndim))!Magic weights...
-
-           CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
-               DXDLX,       DYDLX,       DZDLX, &
-               DXDLY,       DYDLY,       DZDLY,&
-               POSVGI(1),     POSVGI(2),     POSVGI(3) )
-
-           A = DYDLX*DZDLY - DYDLY*DZDLX
-           B = DXDLX*DZDLY - DXDLY*DZDLX
-           C = DXDLX*DYDLY - DXDLY*DYDLX
-           !
-           !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
-           !
-           DETJ = SQRT( A**2 + B**2 + C**2 )
-           !
-           !     - Calculate the determinant times the surface weight at Gauss pnt GI.
-           !
-           SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
-           !
-           !     - Calculate the normal at the Gauss pts
-           !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-           !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-           !     - Perform cross-product. N = T1 x T2
-           !
-
-
-
-       ELSE IF(Mdims%ndim == 2) THEN
-
-           TWOPI = 1.0
-
-           RGI   = 0.0
-           DXDLX = 0.0;DXDLY = 0.0
-           DYDLX = 0.0;DYDLY = 0.0
-           DZDLX = 0.0
-           !
-           !     - Note that we set the derivative wrt to y of coordinate z to 1.0
-           !
-           DZDLY = 1.0
-
-           do  JLOC = 1, Mdims%x_nloc! Was loop 300
-
-               NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-               DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
-               DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
-
-               POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) + CV_funs%scvfen(JLOC,GI)*X_ALL(1:Mdims%ndim,NODJ)
-
-               RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
-
-           end do ! Was loop 300
-           !To calculate the sign of the normal an average between the center of the COntinuous CV and the center of mass is used
-           POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
-
-           RGI = 1.0
-
-           DETJ = SQRT( DXDLX**2 + DYDLX**2 )
-           SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
-           !
-           !     - Calculate the normal at the Gauss pts
-           !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-           !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-           !     - Perform cross-product. N = T1 x T2
-           !
-           CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
-               DXDLX,       DYDLX,       DZDLX, &
-               DXDLY,       DYDLY,       DZDLY,&
-               POSVGI(1),     POSVGI(2),     POSVGI(3) )
-
-       ELSE
-           ! For 1D...
-           do  JLOC = 1, Mdims%x_nloc! Was loop 300
-
-               NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-               POSVGI(1) = POSVGI(1) + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
-
-           end do ! Was loop 300
-           !
-           !     - Note that POSVGIX and POSVGIY can be considered as the components
-           !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-           !     - current control volume NODI.
-           !
-           POSVGI(1) = POSVGI(1) - XC_ALL(1)
-           ! SIGN(A,B) sign of B times A.
-           CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGI(1) )
-
-           DETJ = 1.0
-           SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
-
-
-       ENDIF Conditional_Dimension
-
-   END SUBROUTINE SCVDETNX_new
-
-
-
-  subroutine get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, upwnd, SUF_SIG_DIAGTEN_BC, outfluxes, calculate_mass_delta, initialise_mass_conservation_check)
-      !In this subroutine the fluxes accross the boundaries are computed with two aims:
-      ! 1. To output it in the .csv file outfluxes for examination by the user
-      ! 2. To compute the total mass conservation occuring in the domain to check if the non-linear solver is performin well
-      !NO ROBIN BCS FOR THE TIME BEING!
-      implicit none
-      type( state_type ), dimension( : ), intent( in ) :: state
-      type(multi_GI_dimensions), intent(in) :: CV_GIdims
-      type(multi_dimensions), intent(in) :: Mdims
-      type(multi_shape_funs), intent(inout) :: CV_funs
-      type(multi_ndgln), intent(in) :: ndgln
-      type(multi_sparsities), intent(in) :: Mspars
-      type (porous_adv_coefs), intent(inout) :: upwnd
-      REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-      type( state_type ), intent( inout ) :: packed_state
-      type (multi_outfluxes), intent(inout) :: outfluxes
-      real, dimension(:,:), intent(inout) :: calculate_mass_delta
-      logical, intent(in) :: initialise_mass_conservation_check
-      !Local variables
-      real ::suf_area
-      logical :: skip, on_domain_boundary, integrat_at_gi, can_skip_ele
-      integer :: i, sele, ele, stat, cv_snodi, U_NODK, U_KLOC, CV_ILOC, cv_jloc, cv_nodi, cv_siloc, ele2, ele3, gcount, gi, iphase, k, mat_nodi, x_nodi, x_nodj
-      real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) :: LOC_NU
-      REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
-      real, dimension (Mdims%totele) :: MASS_ELE
-      real, dimension(:,:), pointer :: X_ALL
-      real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
-      real, dimension( : , : ), pointer ::Imble_frac
-      real, dimension(Mdims%nphase) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
-      type(scalar_field), pointer :: PIPE_DIAMETER, well_domains
-      type (vector_field ), pointer :: barycenters
-      type( tensor_field ), pointer :: saturation, temperature, SoluteMassFraction, Pressure, Velocity, density
-      LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
-      integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC
-      integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
-      integer, dimension (Mdims%u_nloc) ::U_OTHER_LOC
-      integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
-      integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
-      INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
-      type (multi_dev_shape_funs) :: DevFuns
-      real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
-      !! boundary_condition fields
-      type(tensor_field) :: velocity_BCs,temperature_BCs, Solute_BCs, saturation_BCs, density_BCs
-      type(tensor_field) :: pressure_BCs
-      type(tensor_field) :: temperature_BCs_robin2, saturation_BCs_robin2
-      INTEGER, DIMENSION ( :,:,: ), allocatable :: WIC_U_BC_ALL, WIC_P_BC_ALL, WIC_SAT_BC_ALL, WIC_TEMP_BC_ALL, WIC_SOLUTE_BC_ALL, WIC_D_BC_ALL
-      integer, dimension(Mdims%cv_nonods) :: repeated_nodes
-      integer :: nb
-      integer, dimension(:), pointer :: neighbours
-      real, dimension(Mdims%nphase) :: ndotq, income
-      type (multi_dev_shape_funs) :: SdevFuns
-
-
-
-      !Allocate array to pass to store mass going through the boundaries
-      if (allocated( outfluxes%outlet_id )) then
-        allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:size(outfluxes%outlet_id))); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
-      else
-        allocate(bcs_outfluxes(Mdims%nphase, Mdims%cv_nonods, 0:1)); bcs_outfluxes= 0.!position zero is to store outfluxes over all bcs
-      end if
-
-      call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL)
-      !Retrieve barycenters
-      barycenters => extract_vector_field(packed_state,"CVBarycentre")
-      !retrieve pipe diameter if necessary
-      if (Mdims%npres > 1) then
-        PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe" )
-        well_domains =>  extract_scalar_field( state(1), "Well_domains" )
-      end if
-      !Allocate derivatives of the shape functions
-      call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
-      saturation => extract_tensor_field(packed_state, "PackedPhaseVolumeFraction")
-      !! Extract fields and boundary conditions
-      allocate (WIC_SAT_BC_ALL (1,Mdims%nphase,surface_element_count(saturation)))
-      call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_SAT_BC_ALL)
-
-      density => extract_tensor_field(packed_state, "PackedDensity")
-      allocate (WIC_D_BC_ALL (1,Mdims%nphase,surface_element_count(saturation)))
-      call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
-
-      pressure => extract_tensor_field(packed_state, "PackedFEPressure")
-      allocate (WIC_P_BC_ALL (1,Mdims%npres,surface_element_count(saturation)))
-      call get_entire_boundary_condition(pressure,['weakdirichlet','freesurface  '],pressure_BCs,WIC_P_BC_ALL)
-
-      Velocity => extract_tensor_field(packed_state, "PackedVelocity")
-      allocate(WIC_U_BC_ALL(Mdims%ndim , Mdims%nphase , surface_element_count(saturation)))
-      call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
-
-      ! Initialise the calculate_mass variables
-      calculate_mass_internal = 0.0  ! calculate_internal_mass subroutine
-      !Extract temperature for outfluxes if required
-      if (has_temperature) then
-          temperature => extract_tensor_field( packed_state, "PackedTemperature" )
-          allocate (WIC_TEMP_BC_ALL (1,Mdims%nphase,surface_element_count(saturation)))
-          call get_entire_boundary_condition(temperature,['weakdirichlet','robin        '],temperature_BCs,WIC_TEMP_BC_ALL)
-          if (outfluxes%calculate_flux) outfluxes%totout(2, :,:) = -273.15
-      end if
-      !Extract soluteMass fraction if required
-      if (has_salt) then
-          SoluteMassFraction => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
-          allocate (WIC_SOLUTE_BC_ALL (1,Mdims%nphase,surface_element_count(saturation)))
-          call get_entire_boundary_condition(SoluteMassFraction,['weakdirichlet','robin        '],Solute_BCs,WIC_SOLUTE_BC_ALL)
-          if (outfluxes%calculate_flux) outfluxes%totout(3, :,:) = 0
-      end if
-      !For the mass in the reservoir use call calculate_internal_volume, pretty much copy/pase mass_conservation_check_and_outfluxes
-
-     !We need to volume of all the elements
-     call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
-      DO ELE = 1, Mdims%totele
-        call DETNLXR(ele, X_ALL, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
-        mass_ele(ele) = DevFuns%volume
-      end do
-      if (initialise_mass_conservation_check) then
-        !Initialise mass conservation check; calculation of porevolume
-        call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 1)
-      else
-        !Initialise the field, only really required for wells to account for the repetition of CVs
-        repeated_nodes = 0
-
-        FACE_ELE = 0
-        CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
-            CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
-
-
-        DO ELE = 1, Mdims%totele
-          !Sprint_to_do maybe we can identify earilier if the element is not on the boundary?
-          if (IsParallel()) then
-              if (.not. assemble_ele(saturation,ele)) then
-                  skip=.true.
-                  neighbours=>ele_neigh(saturation,ele)
-                  do nb=1,size(neighbours)
-                      if (neighbours(nb)<=0) cycle
-                      if (assemble_ele(saturation,neighbours(nb))) then
-                          skip=.false.
-                          exit
-                      end if
-                  end do
-                  if (skip) cycle
-              end if
-          end if
-          !It is very important to loop over all the WELL elements, even those not on the surface directly, since the CV might be
-          !and for pipes this is very important to get the fluxes correctly
-          can_skip_ele = .true.
-          if (Mdims%npres > 1) then
-            !Only elements within the well regions, the rest is set to 0
-            if (well_domains%val(ele) <= 1e-8) can_skip_ele = .false.!THIS FIXES ONE PROBLEM BUT INTRODUCES OTHERS!!!
-          end if
-
-          !Quick check for element in BC of domain or not using fluidity method, which I cannot use to substitute the rest...
-          ele2 = 1
-          do k = 1, Mdims%ndim+1!Number of sides is equal to dimensions + 1 for triangles and tetrahedra
-            ele2 = min(ele_neigh(Saturation%mesh, ele, k), ele2)!if it has any side below zero, then it is in the boundary!
-          end do
-          if (ele2 > 0 .and. can_skip_ele) cycle !if it hasn't then it is in the interior of the domain and we can cycle!
-                                                !for wells is more complex and a CV might be at the boundary despite not the element
-          !Create local memory for velocity
-          DO U_KLOC = 1, Mdims%u_nloc
-              U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-              LOC_NU( :, :, U_KLOC)=Velocity%val( :, :, U_NODK)
-          end do
-
-          DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
-
-            ! Global node number of the local node
-            CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
-            MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-
-            ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
-            DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
-              ! CV_funs%colgpts stores the local Gauss-point number in the ELE
-              GI = CV_funs%colgpts( GCOUNT )
-              ! Get the neighbouring node for node ILOC and Gauss point GI
-              CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
-              IF ( CV_JLOC == -1 ) THEN
-                ELE2 = 0
-                SELE = 0
-                CV_SILOC=0
-                U_OTHER_LOC=0
-                CV_OTHER_LOC=0
-
-                ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
-                ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
-                ! Look for these nodes on the other elements.
-                CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
-                    MAT_OTHER_LOC, INTEGRAT_AT_GI, &
-                    Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
-                    Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
-                    Mspars%ELE%fin, Mspars%ELE%col, .false. )
-
-                    CV_JLOC = CV_OTHER_LOC( CV_ILOC )
-                    SELE = 0
-                    ELE3=0
-                    IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
-                        CV_JLOC = CV_ILOC
-                        ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
-                        CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                            FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
-                            ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
-                    END IF
-              else
-                cycle !Only interested in boundaries of the domain
-              END IF
-              on_domain_boundary = ( SELE /= 0 )
-              if (.not. on_domain_boundary) cycle !Such a waste... when we could be looping only by the surface elements...
-              X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-              cv_snodi = CV_SILOC + Mdims%cv_snloc*( SELE- 1)
-              !Extract normal to compute the fluxes
-              CALL SCVDETNX_new( Mdims, ndgln, cv_funs, CV_GIdims, X_ALL, ELE, GI, SdevFuns%DETWEI, &
-              CVNORMX_ALL,barycenters%val( :, CV_NODI ), X_NODI, X_NODJ, on_domain_boundary, .false.)
-              !Calculate flux for that given GI point
-              ndotq = get_BC_flux()!need here CVNORMX_ALL
-              if (sum(abs(ndotq)) <= 1e-20) then!Better not to, because for closed BCs with temperature it is comfusing for the users
-                cycle!No need to do anything for closed BCs. Also it affects the repeated CVs counter of later on for the wells. This needs to be here!
-              end if
-              !Now select income
-              WHERE (NDOTQ < 0.0)
-                INCOME=1.0
-              ELSE WHERE
-                INCOME=0.0
-              END WHERE
-
-              !Store total outflux, if flow coming in then use the Boundary condition
-              do iphase = 1, Mdims%n_in_pres
-                bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + ndotq(iphase) * SdevFuns%DETWEI(gi) * &
-                (income(iphase) * density%val(1, iphase, cv_nodi) * saturation_BCs%val( 1, iphase, cv_snodi ) + &!sprint_to_do this should use: density_BCs%val(1, :, cv_snodi) but currently this is zero
-                (1.-income(iphase)) * density%val(1, iphase, cv_nodi) * saturation%val(1, iphase, cv_nodi))!For the mass conservation check we need to consider mass!
-              end do
-              if (outfluxes%calculate_flux)  then
-                do k = 1, size(outfluxes%outlet_id)!Output volume, not mass
-                  if (integrate_over_surface_element(pressure, sele, (/outfluxes%outlet_id(k)/))) then
-                    do iphase = 1, Mdims%n_in_pres
-                      bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) + ndotq(iphase) * SdevFuns%DETWEI(gi) * &
-                      (income(iphase) * saturation_BCs%val( 1, iphase, cv_snodi ) + &
-                      (1.-income(iphase)) * saturation%val(1, iphase, cv_nodi))
-                    end do
-                    if (has_temperature) then!Instead of max temp, maybe energy produced...
-                      do iphase = 1, Mdims%n_in_pres
-                        outfluxes%totout(2, iphase, k) =  max(  income(iphase) * temperature_BCs%val(1,iphase,cv_snodi), &
-                        (1.-income(iphase)) *temperature%val(1,iphase,cv_nodi),&
-                        outfluxes%totout(2, iphase, k)   )
-                      end do
-                    end if
-                    !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
-                    if (has_salt) then
-                      do iphase = 1, Mdims%n_in_pres
-                        outfluxes%totout(3, iphase, k) =  max(  income(iphase) * Solute_BCs%val(1,iphase,cv_snodi), &
-                        (1.-income(iphase)) *SoluteMassFraction%val(1,iphase,cv_nodi),&
-                        outfluxes%totout(3, iphase, k)   )
-                      end do
-                    end if
-                  end if
-                end do
-              end if
-
-              !If we have wells, of course more complexity!! Fantastic isn't it?
-              if (mdims%npres > 1) then
-                if (PIPE_diameter%val(CV_NODI) > 1e-5) then
-                  !Count repeated nodes
-                  repeated_nodes(cv_nodi) = repeated_nodes(cv_nodi) + 1
-                  !Generate area of the well
-                  suf_area =  pi * 0.25 * PIPE_diameter%val(CV_NODI)**2
-
-                  !Store total outflux for mass conservation check
-                  do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                    bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
-                    NDOTQ(iphase) * suf_area * (income(iphase) * density%val(1, iphase, cv_nodi) * saturation_BCs%val( 1, iphase, cv_snodi ) + &!sprint_to_do this should use: density_BCs%val(1, :, cv_snodi) but currently this is zero
-                    (1.-income(iphase)) * density%val(1, iphase, cv_nodi) * saturation%val(1, iphase, cv_nodi))
-                  end do
-                  if (outfluxes%calculate_flux)  then
-                    do k = 1, size(outfluxes%outlet_id)!Output volume, not mass
-                      if (integrate_over_surface_element(pressure, sele, (/outfluxes%outlet_id(k)/))) then
-                        do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                          bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) +&
-                          NDOTQ(iphase) * suf_area * (income(iphase) * saturation_BCs%val( 1, iphase, cv_snodi ) + &
-                          (1.-income(iphase)) * saturation%val(1, iphase, cv_nodi))
-                        end do
-                        if (has_temperature) then!Instead of max temp, maybe energy produced...
-                          do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                            outfluxes%totout(2, iphase, k) =  max(  income(iphase) * temperature_BCs%val(1,iphase,cv_snodi), &
-                            (1.-income(iphase)) *temperature%val(1,iphase,cv_nodi),&
-                            outfluxes%totout(2, iphase, k)   )
-                          end do
-                        end if
-                        !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
-                        if (has_salt) then
-                          do iphase = Mdims%n_in_pres+1, Mdims%nphase
-                            outfluxes%totout(3, iphase, k) =  max(  income(iphase) * Solute_BCs%val(1,iphase,cv_snodi), &
-                            (1.-income(iphase)) *SoluteMassFraction%val(1,iphase,cv_nodi),&
-                            outfluxes%totout(3, iphase, k)   )
-                          end do
-                        end if
-                      end if
-                    end do
-                  end if
-                end if
-              end if
-            end do
-          end do
-        end do
-
-        if (mdims%npres > 1) then
-          !Adjust wells productions by the times the CVs have been repeated, only necessary for wells because the surface of the well
-          !cannot be easily split between the different sub-CVs that form a CV
-          i = 0
-          if (outfluxes%calculate_flux) i = size(outfluxes%outlet_id)
-          do k = 0, i!Output volume, not mass
-            do cv_nodi = 1, Mdims%cv_nonods
-              if (PIPE_diameter%val(CV_NODI) < 1e-5) cycle
-              do iphase = Mdims%n_in_pres+1, Mdims%nphase                                 !We need this max because we may have skipped CVs with no flow
-                bcs_outfluxes(iphase, cv_nodi,k) = bcs_outfluxes(iphase, cv_nodi,k) / real(max(repeated_nodes(cv_nodi), 1))
-              end do
-            end do
-          end do
-        end if
-        !Calculate final outfluxes and mass balance in the domain
-        call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
-      end if
-
-      ! deallocation
-      call deallocate_multi_dev_shape_funs(DevFuns)
-      deallocate(WIC_U_BC_ALL, WIC_P_BC_ALL, WIC_SAT_BC_ALL, WIC_D_BC_ALL)
-      if (has_temperature) deallocate(WIC_TEMP_BC_ALL)
-      if (has_salt) deallocate(WIC_SOLUTE_BC_ALL)
-  contains
-
-    function get_BC_flux()
-      !Compute flux for a certain GI point
-      !Local variables
-      integer :: iphase, i
-      real, dimension(Mdims%ndim,Mdims%nphase) :: UDGI_ALL
-      real, dimension(Mdims%nphase) :: get_BC_flux
-
-      !Initialize variables
-      UDGI_ALL = 0.
-      DO iphase = 1,Mdims%n_in_pres
-        !(vel * shape_functions)/sigma
-          IF( WIC_P_BC_ALL( 1, 1, SELE) == WIC_P_BC_DIRICHLET ) THEN ! Pressure boundary condition
-              !(vel * shape_functions)/sigma
-              UDGI_ALL(:, iphase) = matmul(upwnd%inv_adv_coef(:,:,iphase, mat_nodi),&
-                  matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI )))
-              i = cv_snodi + ( iphase - 1 ) * Mdims%stotel*Mdims%cv_snloc
-              UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) * SUF_SIG_DIAGTEN_BC( i, : )
-          ELSE ! Specified vel bc.
-              UDGI_ALL(:, iphase) = 0.0
-              DO i = 1, Mdims%u_snloc
-                  UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) + CV_funs%sufen( i, GI )*velocity_BCs%val(:, iphase, Mdims%u_snloc* (SELE-1) + i)
-              END DO
-          END IF
-      END DO ! PHASE LOOP
-
-
-      if (mdims%npres > 1) then
-        if (PIPE_diameter%val(CV_NODI) > 1e-5) then
-          !Now the wells!
-          DO iphase=Mdims%n_in_pres + 1,Mdims%nphase
-            if (WIC_P_BC_ALL( 1, Mdims%npres, SELE) == WIC_P_BC_DIRICHLET ) then
-                UDGI_ALL(:, iphase) = matmul(LOC_NU( :, iphase, : ), CV_funs%sufen( :, GI ))
-            else
-              UDGI_ALL(:, iphase) = 0.0
-              DO i = 1, Mdims%u_snloc
-                UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase) + CV_funs%sufen( i, GI )*velocity_BCs%val(:, iphase, Mdims%u_snloc* (SELE-1) + i )
-              end do
-              UDGI_ALL(:, iphase) = UDGI_ALL(:, iphase)/real(Mdims%u_snloc)
-            end if
-          END DO
-        end if
-      end if
-
-      get_BC_flux =  MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )!This normal should work for pipes as wel...
-
-    end function get_BC_flux
-
-    subroutine mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, flag)
-        ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids given that the massflux has been already stored elsewhere
-        !also used to calculate mass conservation
-
-        !The check is done as follows:
-        !First the mass at the beginning of the time-level is calculated in the reservoir
-        !Second the input and output throughtout all the boundaries is calculated
-        !Third the mass at the current saturation fixed point iteration is calculated within the domain
-        !Finally, due to mass conservation and given a constant total volume of the domain the mass check is done as follows:
-        ! Mass_error = abs (Mass_present_resv - Mass_initial_resv + Difference_Mass_io )/Maximum_flux
-        ! in this way the mass error is normalise based on the mass flux.
-        implicit none
-        integer, intent(in) :: flag
-        type (multi_outfluxes), intent(inout) :: outfluxes
-        real, dimension(:,:), intent(inout) :: calculate_mass_delta
-        !Local variables
-        integer :: iphase, k
-        real :: tmp1, tmp2, tmp3
-        type(vector_field), pointer :: Por
-        ! After looping over all elements, calculate the mass change inside the domain normalised to the mass inside the domain at t=t-1
-        ! Difference in Total mass
-
-        select case (flag)
-            case (1)
-                !Initialise values
-                if (first_nonlinear_time_step ) then
-                    calculate_mass_delta(:,1) = 0.0 ! reinitialise
-                    call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
-                        calculate_mass_delta(1:Mdims%n_in_pres,1) , ndgln%cv)
-                    !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
-                   ! if (Mdims%npres >1)then!consider as well the pipes
-                   !     call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
-                   !         calculate_mass_delta(:,1) , ndgln%cv, eles_with_pipe)
-                   ! end if
-                endif
-                if (outfluxes%calculate_flux) then
-                    ! Extract the Porosity
-                    Por => extract_vector_field( packed_state, "Porosity" )
-
-                    ! Calculate Pore volume
-                    outfluxes%porevolume = 0.0
-                    DO ELE = 1, Mdims%totele
-                        if (element_owned(saturation, ele)) then
-                            outfluxes%porevolume = outfluxes%porevolume + MASS_ELE(ELE) * Por%val(1,ELE)
-                        end if
-                    END DO
-
-                    call allsum(outfluxes%porevolume) ! Now sum the value over all processors
-
-                end if
-            case default!Now calculate mass conservation
-                !Calculate internal volumes of each phase
-                calculate_mass_internal = 0.
-                call calculate_internal_volume( packed_state, Mdims, Mass_ELE, &
-                    calculate_mass_internal(1:Mdims%n_in_pres) , ndgln%cv)
-                !DISABLED AS IT DOES NOT WORK WELL AND IT DOES ACCOUNT FOR A VERY TINY FRACTION OF THE OVERALL MASS
-               ! if (Mdims%npres >1) then!consider as well the pipes
-               !     call calculate_internal_volume( packed_state, Mdims, pipes_aux%MASS_PIPE, &
-               !         calculate_mass_internal(:) , ndgln%cv, eles_with_pipe)
-               ! end if
-
-                !Loop over nphases - 1
-                calculate_mass_delta(1,2) = 0.
-
-                tmp1 = sum(calculate_mass_internal)!<=mass inside the domain
-                tmp2 = sum(calculate_mass_delta(:,1))!<= mass inside the domain at the beginning of the time-level
-                tmp3 = sum(bcs_outfluxes(:, :, 0))*dt!<= mass phase i across all the boundaries
-                if (isparallel()) then
-                    call allsum(tmp1)
-                    call allsum(tmp2)
-                    call allsum(tmp3)
-                end if
-                !Calculate possible mass creation inside the code
-                if (tmp2 > 1d-8) then
-                    calculate_mass_delta(1,2) = abs( tmp1 - tmp2 + tmp3 ) / tmp2 !Normalise by mass at the beginning
-                else
-                    calculate_mass_delta(1,2) = 0.
-                end if
-
-                !If calculate outfluxes then do it now
-                if (outfluxes%calculate_flux) then
-                    !Retrieve only the values of bcs_outfluxes we are interested in
-                    do k = 1, size(outfluxes%outlet_id)
-                        do iphase = 1, Mdims%nphase
-                            outfluxes%totout(1, iphase, k) = sum(bcs_outfluxes( iphase, :, k))
-                        end do
-                    end do
-                    ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-                    if (isParallel()) then
-                        do k = 1,size(outfluxes%outlet_id)
-                            ! Ensure all processors have the correct value of totout for parallel runs
-                            do iphase = 1, Mdims%nphase
-                                call allsum(outfluxes%totout(1, iphase, k))
-                                if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
-                                !Arash
-                                if (has_salt) call allsum(outfluxes%totout(3, iphase, k))
-                            end do
-                        end do
-                    end if
-                end if
-        end select
-
-
-    end subroutine mass_conservation_check_and_outfluxes
-
-
-  end subroutine get_outfluxes_and_mass_check
 
 end module cv_advection
