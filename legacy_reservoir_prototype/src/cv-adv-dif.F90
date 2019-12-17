@@ -456,6 +456,7 @@ contains
           real, dimension(Mdims%ndim, Mdims%ndim, final_phase) :: iv_aux_tensor, iv_sigma_aver, iv_aux_tensor2
           real, dimension(Mdims%ndim, Mdims%ndim) :: iv_ones
           ! ####Variables for outfluxes#####
+          logical :: compute_outfluxes
           real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
           real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
@@ -536,7 +537,8 @@ contains
                   call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
               ENDIF
           ENDIF
-          if (present(outfluxes)) then
+          compute_outfluxes = is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT
+          if (compute_outfluxes) then
               ! Initialise the calculate_mass variables
               !Allocate array to pass to store mass going through the boundaries
               if (allocated( outfluxes%outlet_id )) then
@@ -937,7 +939,7 @@ contains
           END IF
           GLOBAL_FACE = 0
 
-          if ( is_porous_media .and. present(calculate_mass_delta) .and. present(outfluxes) .and. GETCT) then
+          if ( compute_outfluxes) then
               !Initialise mass conservation check; calculation of porevolume
               call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 1)
           endif
@@ -1619,46 +1621,9 @@ contains
 
                               ENDIF Conditional_GETCT2
 
-                              if (present(outfluxes) .and. GETCT) then!Better to do it GETCV_DISC of each corresponding field...
+                              if (compute_outfluxes) then
                                   !Store fluxes across all the boundaries either for mass conservation check or mass outflux
-                                  !velocity * area * density * saturation
-                                  if (on_domain_boundary ) then
-                                      if (surface_element_owned(old_tracer, sele)) then
-                                          !Store total outflux
-                                          do iphase = 1, final_phase
-                                            bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
-                                            ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)!For the mass conservation check we need to consider mass!
-                                          end do
-                                          if (outfluxes%calculate_flux)  then
-                                              do k = 1, size(outfluxes%outlet_id)!here below we just need a saturation
-                                                  if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
-                                                      do iphase = 1, final_phase
-                                                        bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) + &
-                                                        ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMT(iphase)
-                                                      end do
-                                                      if (has_temperature) then!Instead of max tem, maybe energy produced...
-                                                        ! do iphase = 1, nphase
-                                                        !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
-                                                        !     (ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres) &
-                                                        !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
-                                                        ! end do
-                                                          do iphase = 1, final_phase
-                                                              outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
-                                                              outfluxes%totout(2, iphase, k)   )
-                                                          end do
-                                                      end if
-                                                      !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
-                                                      if (has_salt) then
-                                                          do iphase = 1, final_phase
-                                                              outfluxes%totout(3, iphase, k) =  max(  salt_field%val(1,iphase,CV_NODI),&
-                                                              outfluxes%totout(3, iphase, k)   )
-                                                          end do
-                                                      end if
-                                                  end if
-                                              end do
-                                          end if
-                                      end if
-                                  end if
+                                  call update_outfluxes_values()
                               end if
 
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -1974,7 +1939,10 @@ contains
                                 CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes,&
                                 porous_heat_coef, loc_assemble_collapsed_to_one_phase )
 
-
+          if ( compute_outfluxes) then
+              !Calculate final outfluxes and mass balance in the domain
+              call mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, 2)
+          endif
           ! Deallocating temporary working arrays
           IF(GETCT) THEN
               DEALLOCATE( JCOUNT_KLOC )
@@ -3542,6 +3510,54 @@ end if
                 END IF ! endof IF ( between_elements ) THEN
             ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
         end subroutine get_neigbouring_lists
+
+        subroutine update_outfluxes_values()
+          !Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields
+          implicit none
+          !local variables
+          integer :: iphase, k
+
+
+          if (on_domain_boundary ) then
+              if (surface_element_owned(old_tracer, sele)) then
+                  !Store total outflux; !velocity * area * density * saturation
+                  do iphase = 1, final_phase
+                    bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
+                    ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)!For the mass conservation check we need to consider mass!
+                  end do
+                  if (outfluxes%calculate_flux)  then
+                      do k = 1, size(outfluxes%outlet_id)!here below we just need a saturation
+                          if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
+                              do iphase = 1, final_phase
+                                bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) + &
+                                ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMT(iphase)
+                              end do
+                              if (has_temperature) then!Instead of max tem, maybe energy produced...
+                                ! do iphase = 1, nphase
+                                !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
+                                !     (ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres) &
+                                !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
+                                ! end do
+                                  do iphase = 1, final_phase
+                                      outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                                      outfluxes%totout(2, iphase, k)   )
+                                  end do
+                              end if
+                              !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                              if (has_salt) then
+                                  do iphase = 1, final_phase
+                                      outfluxes%totout(3, iphase, k) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                                      outfluxes%totout(3, iphase, k)   )
+                                  end do
+                              end if
+                          end if
+                      end do
+                  end if
+              end if
+          end if
+
+
+        end subroutine
 
 
         subroutine mass_conservation_check_and_outfluxes(calculate_mass_delta, outfluxes, flag)
