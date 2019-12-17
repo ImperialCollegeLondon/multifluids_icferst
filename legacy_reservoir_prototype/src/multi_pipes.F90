@@ -152,8 +152,31 @@ contains
       logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
+      !Variables extra for outfluxes
+      type(tensor_field), pointer ::temp_field, salt_field
+      logical :: compute_outfluxes
+
 
       conservative_advection = abs(cv_beta) > 0.99
+
+
+      !If we are going to calculate the outfluxes (this is done when GETCT=.true.)
+      compute_outfluxes = GETCT
+      IF ( compute_outfluxes ) THEN
+        !We may need to retrieve some extra fields
+        if (has_temperature) then
+            temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+            if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
+        end if
+        !Arash
+        if (has_salt) then
+            salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+            if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
+        end if
+
+
+      end if
+
 
       CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
       NCORNER = Mdims%ndim + 1
@@ -787,27 +810,6 @@ contains
                           sum( LOC_CT_RHS_U_ILOC( 1+(Mdims%npres-1)*final_phase : Mdims%npres*final_phase ) ) )
                   END IF ! IF ( GETCT ) THEN
 
-                  !Calculate fluxes to check mass conservation and outflux
-                  IF ( GETCT ) THEN
-                      if (element_owned(T_ALL, ele)) then
-                          !Store total outflux for mass conservation check
-                          DO IPHASE = wells_first_phase, final_phase*2
-                            bcs_outfluxes(IPHASE, JCV_NOD, 0) =  bcs_outfluxes(IPHASE, JCV_NOD,0) + &
-                            NDOTQ(IPHASE) * suf_area * LIMDT(IPHASE)
-                            if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
-                                !If we want to output the outfluxes of the pipes we fill the array here with the information
-                                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
-                                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
-                                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
-                                        bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) =  &
-                                        bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) + &
-                                        NDOTQ(IPHASE) * suf_area * LIMT(IPHASE)
-                                    end if
-                                end do
-                            end if
-                         end do
-                      end if
-                  end if
                   IF ( GETCV_DISC ) THEN ! this is on the boundary...
                       ! Put results into the RHS vector
                       LOC_CV_RHS_I = 0.0
@@ -833,6 +835,10 @@ contains
                       end do
                       call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                   ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
+
+                  !Store fluxes across all the boundaries either for mass conservation check or mass outflux
+                  IF ( compute_outfluxes ) call update_outfluxes_values()
+
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
       END DO ! DO ELE = 1, Mdims%totele
@@ -926,6 +932,52 @@ contains
         end do
 
     end function sele_from_cv_nod
+
+
+    subroutine update_outfluxes_values()
+      implicit none
+
+      !local variables
+      integer :: iphase, iofluxes
+
+        if (element_owned(T_ALL, ele)) then
+            !Store total outflux for mass conservation check
+            DO IPHASE = wells_first_phase, final_phase*2
+              bcs_outfluxes(IPHASE, JCV_NOD, 0) =  bcs_outfluxes(IPHASE, JCV_NOD,0) + &
+              NDOTQ(IPHASE) * suf_area * LIMDT(IPHASE)
+            end do
+            if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
+                !If we want to output the outfluxes of the pipes we fill the array here with the information
+                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
+                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
+                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
+                        DO IPHASE = wells_first_phase, final_phase*2
+                          bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) =  bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) + &
+                          NDOTQ(IPHASE) * suf_area * LIMT(IPHASE)
+                        end do
+                    end if
+                    if (has_temperature) then!Instead of max tem, maybe energy produced...
+                      ! do iphase = 1, nphase
+                      !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
+                      !     (ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres) &
+                      !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
+                      ! end do
+                        do iphase = wells_first_phase, final_phase*2
+                            outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                            outfluxes%totout(2, iphase, iofluxes)   )
+                        end do
+                    end if
+                    !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                    if (has_salt) then
+                        do iphase = wells_first_phase, final_phase*2
+                            outfluxes%totout(3, iphase, iofluxes) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                            outfluxes%totout(3, iphase, iofluxes)   )
+                        end do
+                    end if
+                end do
+            end if
+        end if
+      end subroutine update_outfluxes_values
 
   END SUBROUTINE MOD_1D_CT_AND_ADV
 

@@ -1621,11 +1621,6 @@ contains
 
                               ENDIF Conditional_GETCT2
 
-                              if (compute_outfluxes) then
-                                  !Store fluxes across all the boundaries either for mass conservation check or mass outflux
-                                  call update_outfluxes_values()
-                              end if
-
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                   ! Obtain the CV discretised advection/diffusion equations
                                   ROBIN1=0.0; ROBIN2=0.0
@@ -1788,6 +1783,10 @@ contains
                                       call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
                                   end do
                               ENDIF Conditional_GETCV_DISC
+
+                            !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
+                            if (compute_outfluxes) call update_outfluxes_values()
+
                           endif ! if(CV_NODJ.ge.CV_NODI) then
                       END IF Conditional_integration
                   END DO Loop_GCOUNT
@@ -3515,7 +3514,7 @@ end if
           !Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields
           implicit none
           !local variables
-          integer :: iphase, k
+          integer :: iphase, iofluxes
 
 
           if (on_domain_boundary ) then
@@ -3526,10 +3525,10 @@ end if
                     ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)!For the mass conservation check we need to consider mass!
                   end do
                   if (outfluxes%calculate_flux)  then
-                      do k = 1, size(outfluxes%outlet_id)!here below we just need a saturation
-                          if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(k)/))) then
+                      do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
+                          if (integrate_over_surface_element(old_tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then
                               do iphase = 1, final_phase
-                                bcs_outfluxes(iphase, CV_NODI, k) =  bcs_outfluxes(iphase, CV_NODI, k) + &
+                                bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
                                 ndotqnew(iphase) * SdevFuns%DETWEI(gi) * LIMT(iphase)
                               end do
                               if (has_temperature) then!Instead of max tem, maybe energy produced...
@@ -3539,15 +3538,15 @@ end if
                                 !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
                                 ! end do
                                   do iphase = 1, final_phase
-                                      outfluxes%totout(2, iphase, k) =  max(  temp_field%val(1,iphase,CV_NODI),&
-                                      outfluxes%totout(2, iphase, k)   )
+                                      outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                                      outfluxes%totout(2, iphase, iofluxes)   )
                                   end do
                               end if
                               !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
                               if (has_salt) then
                                   do iphase = 1, final_phase
-                                      outfluxes%totout(3, iphase, k) =  max(  salt_field%val(1,iphase,CV_NODI),&
-                                      outfluxes%totout(3, iphase, k)   )
+                                      outfluxes%totout(3, iphase, iofluxes) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                                      outfluxes%totout(3, iphase, iofluxes)   )
                                   end do
                               end if
                           end if
