@@ -513,10 +513,6 @@ contains
             !however, they have to be the most updated at this point
             if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
 
-            !Initialise mass conservation check for this time-level
-            if (is_porous_media) call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
-              CV_funs, Mspars, ndgln, upwnd, SUF_SIG_DIAGTEN_BC, outfluxes, calculate_mass_delta, .true.)
-
             !Initialise to zero the SFPI counter
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
@@ -581,7 +577,7 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        pres_its_taken)
+                        calculate_mass_delta, outfluxes, pres_its_taken)
 
                 end if Conditional_ForceBalanceEquation
 
@@ -683,9 +679,6 @@ contains
                     exit Loop_NonLinearIteration
                 end if
 
-                !Just before the check of the non-linear solver, compute mass and fluxes
-                if (is_porous_media) call get_outfluxes_and_mass_check(state, packed_state, Mdims, CV_GIdims, &
-                  CV_funs, Mspars, ndgln, upwnd, SUF_SIG_DIAGTEN_BC, outfluxes, calculate_mass_delta, .false.)
                 !Finally calculate if the time needs to be adapted or not
                 call Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, 3, calculate_mass_delta, &

@@ -22,8 +22,8 @@
       </element>
       <optional>
         <element name="hydrostatic_pressure_solver">
-          <a:documentation>Solve the gravity component indendently from the pressure general solver
-this is very RECOMMENDED when running with gravity.
+          <a:documentation>Solve the gravity component indendently from the pressure general solver.
+Not implemented for wells yet. Therefore NOT recommended for wells.
 
 Internally it creates a field named HydrostaticPressure and a mesh with the same name.
 

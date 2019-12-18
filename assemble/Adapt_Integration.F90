@@ -533,12 +533,12 @@ contains
     			mshopt(1) = .false.! <= Leave only r-adaptivity
           nsweep = 500!Increase even more the number of sweeps, should be cheaper every sweep since everything is disabled
     			!Relax convergence
-    			dotop = dotop * 1.2; !MINCHG = MINCHG / 1.5
+    			dotop = dotop * 1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect
   		  end if
         !Set this to true just in case we have to repeat one second time
         second_try = .true.
         !Relax convergence
-        dotop = dotop *1.2; MINCHG = MINCHG / 1.5
+        dotop = dotop *1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect
     else
         !Re-set second-try to false the first time we enter in this subroutine
         second_try = .false.

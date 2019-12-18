@@ -77,7 +77,7 @@ contains
 
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                  INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, assemble_collapsed_to_one_phase)
+                  INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
       ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
@@ -96,6 +96,9 @@ contains
       !Variables that are used to define the pipe pos.
       type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
       integer, intent(in) :: final_phase, wells_first_phase
+      ! Local variables
+      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+      type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
       INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase, assembly_phase
       INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
@@ -149,8 +152,31 @@ contains
       logical, parameter :: LUMP_COUPLING_RES_PIPES = .true. ! Lump the coupling term which couples the pressure between the pipe and reservior.
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
+      !Variables extra for outfluxes
+      type(tensor_field), pointer ::temp_field, salt_field
+      logical :: compute_outfluxes
+
 
       conservative_advection = abs(cv_beta) > 0.99
+
+
+      !If we are going to calculate the outfluxes (this is done when GETCT=.true.)
+      compute_outfluxes = GETCT
+      IF ( compute_outfluxes ) THEN
+        !We may need to retrieve some extra fields
+        if (has_temperature) then
+            temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+            if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
+        end if
+        !Arash
+        if (has_salt) then
+            salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+            if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
+        end if
+
+
+      end if
+
 
       CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
       NCORNER = Mdims%ndim + 1
@@ -809,6 +835,10 @@ contains
                       end do
                       call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                   ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
+
+                  !Store fluxes across all the boundaries either for mass conservation check or mass outflux
+                  IF ( compute_outfluxes ) call update_outfluxes_values()
+
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
       END DO ! DO ELE = 1, Mdims%totele
@@ -881,35 +911,80 @@ contains
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
 
+    real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
+        !Obtain sele from a cv_nod that is on the boundary
+        !if not found then returns -1
+        implicit none
+        integer, intent(in) ::cv_jnod
+        type(multi_ndgln), intent(in) :: ndgln
+        type(multi_dimensions), intent(in) :: Mdims
+        !Local variables
+        integer :: sele, cv_siloc
 
-  real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
-      !Obtain sele from a cv_nod that is on the boundary
-      !if not found then returns -1
+        sele_from_cv_nod = -1
+        do sele = 1, Mdims%stotel
+            do cv_siloc = 1, Mdims%cv_snloc
+                if (ndgln%suf_cv((sele-1)*Mdims%cv_snloc + cv_siloc) == cv_jnod) then
+                    sele_from_cv_nod = sele
+                    return
+                end if
+            end do
+        end do
+
+    end function sele_from_cv_nod
+
+
+    subroutine update_outfluxes_values()
       implicit none
-      integer, intent(in) ::cv_jnod
-      type(multi_ndgln), intent(in) :: ndgln
-      type(multi_dimensions), intent(in) :: Mdims
-      !Local variables
-      integer :: sele, cv_siloc
 
-      sele_from_cv_nod = -1
-      do sele = 1, Mdims%stotel
-          do cv_siloc = 1, Mdims%cv_snloc
-              if (ndgln%suf_cv((sele-1)*Mdims%cv_snloc + cv_siloc) == cv_jnod) then
-                  sele_from_cv_nod = sele
-                  return
-              end if
-          end do
-      end do
+      !local variables
+      integer :: iphase, iofluxes
 
-  end function sele_from_cv_nod
+        if (element_owned(T_ALL, ele)) then
+            !Store total outflux for mass conservation check
+            DO IPHASE = wells_first_phase, final_phase*2
+              bcs_outfluxes(IPHASE, JCV_NOD, 0) =  bcs_outfluxes(IPHASE, JCV_NOD,0) + &
+              NDOTQ(IPHASE) * suf_area * LIMDT(IPHASE)
+            end do
+            if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
+                !If we want to output the outfluxes of the pipes we fill the array here with the information
+                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
+                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
+                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
+                        DO IPHASE = wells_first_phase, final_phase*2
+                          bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) =  bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) + &
+                          NDOTQ(IPHASE) * suf_area * LIMT(IPHASE)
+                        end do
+                    end if
+                    if (has_temperature) then!Instead of max tem, maybe energy produced...
+                      ! do iphase = 1, nphase
+                      !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
+                      !     (ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres) &
+                      !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
+                      ! end do
+                        do iphase = wells_first_phase, final_phase*2
+                            outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                            outfluxes%totout(2, iphase, iofluxes)   )
+                        end do
+                    end if
+                    !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
+                    if (has_salt) then
+                        do iphase = wells_first_phase, final_phase*2
+                            outfluxes%totout(3, iphase, iofluxes) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                            outfluxes%totout(3, iphase, iofluxes)   )
+                        end do
+                    end if
+                end do
+            end if
+        end if
+      end subroutine update_outfluxes_values
 
   END SUBROUTINE MOD_1D_CT_AND_ADV
 
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
-                  mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, porous_heat_coef, assemble_collapsed_to_one_phase )
+                  mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
       ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
       !NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4.
       !We define wells_first_phase as the first phase of the well domain
@@ -937,7 +1012,9 @@ contains
       !Variables that are used to define the pipe pos.
       type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
       REAL, DIMENSION( : ), optional, intent(in) :: porous_heat_coef
-      ! Local variables
+      !variables to store the pipe outfluxes if asked by the user
+      real, dimension(:,:, :), allocatable, intent(inout):: bcs_outfluxes!<= if allocated then calculate outfluxes
+      type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
       real :: auxR, cc, deltaP, rp, rp_nano, skin, h, h_nano, INV_SIGMA_ND, INV_SIGMA_NANO_N, w_sum_one1, w_sum_one2, one_m_cv_beta
       INTEGER :: u_lnloc, ele, i, jpres, u_iloc, x_iloc, idim, cv_lkloc, u_knod, u_lngi, &
@@ -1045,7 +1122,7 @@ contains
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
           getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-          SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, assemble_collapsed_to_one_phase)
+          SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
 
       GAMMA_PRES_ABS2 = 0.0
       A_GAMMA_PRES_ABS = 0.0
