@@ -72,7 +72,7 @@ module Copy_Outof_State
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
-        EnterForceBalanceEquation
+        EnterForceBalanceEquation, update_outfluxes
 
 
     interface Get_SNdgln
@@ -3492,6 +3492,61 @@ end subroutine get_DarcyVelocity
         write(89,*), trim(whole_line)
         close (89)
     end subroutine dump_outflux
+
+
+    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, Vol_flux, Mass_flux, tracer, temp_field, salt_field, start_phase, end_phase )
+      !Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element
+      !This subroutine should only be called if SELE is on the BOUNDARY
+      !Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
+      !Example of Vol_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
+      implicit none
+      integer, intent(in) :: sele, cv_nodi, start_phase, end_phase
+      type (multi_outfluxes), intent(inout) :: outfluxes
+      real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
+      type (tensor_field), pointer, intent(in) :: tracer, temp_field, salt_field
+      real, dimension(:), intent(in) :: Vol_flux, Mass_flux
+      !local variables
+      integer :: iphase, iofluxes
+
+      if (surface_element_owned(tracer, sele)) then
+        !Store total outflux; !velocity * area * density * saturation
+        do iphase = start_phase, end_phase
+          bcs_outfluxes(iphase, CV_NODI, 0) =  bcs_outfluxes(iphase, CV_NODI,0) + &
+          Mass_flux(iphase)!For the mass conservation check we need to consider mass!
+        end do
+        if (outfluxes%calculate_flux)  then
+          do iofluxes = 1, size(outfluxes%outlet_id)!here below we just need a saturation
+            if (integrate_over_surface_element(tracer, sele, (/outfluxes%outlet_id(iofluxes)/))) then
+              do iphase = start_phase, end_phase
+                bcs_outfluxes(iphase, CV_NODI, iofluxes) =  bcs_outfluxes(iphase, CV_NODI, iofluxes) + &
+                Vol_flux(iphase)
+              end do
+              if (has_temperature) then!Instead of max tem, maybe energy produced... Mass_FLUX*Cp*Temp
+                ! do iphase = 1, nphase
+                !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
+                !     Mass_flux(iphase) * Cp(iphase) * temp_field%val(1,iphase,CV_NODI))
+                ! end do
+                do iphase = start_phase, end_phase
+                  outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
+                  outfluxes%totout(2, iphase, iofluxes)   )
+                end do
+              end if
+              !Maybe rather than max_sat would be better Mass of C? Mass_flux*Concentration
+              if (has_salt) then
+                do iphase = start_phase, end_phase
+                  outfluxes%totout(3, iphase, iofluxes) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                  outfluxes%totout(3, iphase, iofluxes)   )
+                end do
+              end if
+            end if
+          end do
+        end if
+      end if
+
+    end subroutine update_outfluxes
+
+
+
 
     !==Andreas============================================================================================
     !--A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not                 =
