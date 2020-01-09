@@ -4033,6 +4033,9 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
           <empty/>
         </element>
       </optional>
+      <zeroOrMore>
+        <ref name="scalar_boundary_conditions"/>
+      </zeroOrMore>
     </element>
   </define>
   <define name="phase_properties_options">

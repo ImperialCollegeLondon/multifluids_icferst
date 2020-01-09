@@ -166,7 +166,7 @@ contains
         !We may need to retrieve some extra fields
         if (has_temperature) then
             temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
-            if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = -273.15
+            if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0
         end if
         !Arash
         if (has_salt) then
@@ -836,8 +836,13 @@ contains
                       call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                   ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
 
-                  !Store fluxes across all the boundaries either for mass conservation check or mass outflux
-                  IF ( compute_outfluxes ) call update_outfluxes_values()
+                  !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
+                  if (compute_outfluxes) then
+                    sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)!We need SELE for this, not ideal but this operation is not done much overall
+                    call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD,  &
+                        NDOTQ * suf_area * LIMT, NDOTQ * suf_area * LIMDT, &!Vol_flux and Mass_flux
+                        T_ALL, temp_field, salt_field, wells_first_phase, final_phase*2 )
+                  end if
 
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
@@ -932,52 +937,6 @@ contains
         end do
 
     end function sele_from_cv_nod
-
-
-    subroutine update_outfluxes_values()
-      implicit none
-
-      !local variables
-      integer :: iphase, iofluxes
-
-        if (element_owned(T_ALL, ele)) then
-            !Store total outflux for mass conservation check
-            DO IPHASE = wells_first_phase, final_phase*2
-              bcs_outfluxes(IPHASE, JCV_NOD, 0) =  bcs_outfluxes(IPHASE, JCV_NOD,0) + &
-              NDOTQ(IPHASE) * suf_area * LIMDT(IPHASE)
-            end do
-            if (outfluxes%calculate_flux) then!Here for the outfluxes file, we are interested in the volume only
-                !If we want to output the outfluxes of the pipes we fill the array here with the information
-                sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)
-                do iofluxes = 1, size(outfluxes%outlet_id)!loop over outfluxes ids
-                    if (integrate_over_surface_element(T_ALL, sele, (/outfluxes%outlet_id(iofluxes)/))) then
-                        DO IPHASE = wells_first_phase, final_phase*2
-                          bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) =  bcs_outfluxes(IPHASE, JCV_NOD, iofluxes) + &
-                          NDOTQ(IPHASE) * suf_area * LIMT(IPHASE)
-                        end do
-                    end if
-                    if (has_temperature) then!Instead of max tem, maybe energy produced...
-                      ! do iphase = 1, nphase
-                      !   outfluxes%totout(2, iphase, k) =  outfluxes%totout(2, iphase, k) + &
-                      !     (ndotqnew(1:n_in_pres) * SdevFuns%DETWEI(gi) * LIMDT(1:n_in_pres) &
-                      !     * temp_field%val(1,iphase,CV_NODI))!If we do this when solving for temp, that's it
-                      ! end do
-                        do iphase = wells_first_phase, final_phase*2
-                            outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
-                            outfluxes%totout(2, iphase, iofluxes)   )
-                        end do
-                    end if
-                    !Arash, REMIND TO DO, TO CALCULATE PROPERLY FLUX ACROSS BOUNDARIES
-                    if (has_salt) then
-                        do iphase = wells_first_phase, final_phase*2
-                            outfluxes%totout(3, iphase, iofluxes) =  max(  salt_field%val(1,iphase,CV_NODI),&
-                            outfluxes%totout(3, iphase, iofluxes)   )
-                        end do
-                    end if
-                end do
-            end if
-        end if
-      end subroutine update_outfluxes_values
 
   END SUBROUTINE MOD_1D_CT_AND_ADV
 
@@ -1522,7 +1481,7 @@ contains
 
         !Local variables
         LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, U_P0DG
-        LOGICAL :: CALC_SIGMA_PIPE, SWITCH_PIPES_ON_AND_OFF
+        LOGICAL :: CALC_SIGMA_PIPE
         INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
             &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE
@@ -1560,7 +1519,6 @@ contains
         CALC_SIGMA_PIPE = have_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe")
         call get_option("/porous_media/wells_and_pipes/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
         ! Add the sigma associated with the switch to switch the pipe flow on and off...
-        SWITCH_PIPES_ON_AND_OFF= have_option("/porous_media/wells_and_pipes/well_options/switch_wells_on_and_off")
         if ( CALC_SIGMA_PIPE ) then
             allocate( well_density(Mdims%nphase), well_viscosity(Mdims%nphase) )
             do iphase = Mdims%n_in_pres+1, Mdims%nphase
@@ -1569,14 +1527,6 @@ contains
                 well_density( iphase ) = wd%val(1)
                 well_viscosity( iphase ) = wm%val(1,1,1)
             end do
-        end if
-        if ( SWITCH_PIPES_ON_AND_OFF ) then
-            ! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-            call get_option( "/porous_media/wells_and_pipes/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
-            phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
-            phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
-            sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
-            cv_vol_frac => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         end if
         ! Set rhs of the force balce equation to zero just for the pipes...
         Mmat%U_RHS( :, Mdims%n_in_pres+1:Mdims%nphase, : ) = 0.0
@@ -1758,16 +1708,6 @@ contains
                         END DO
                     END DO
                 END IF
-                ! Add the sigma associated with the switch to switch the pipe flow on and off...
-                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
-                    IWATER = PHASE_EXCLUDE
-                    S_WATER = MINVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
-                    S_WATER_MIN = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) ) )
-                    S_WATER_MAX = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) ) )
-                    SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
-                    PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
-                    SIGMA_ON_OFF_GI( Mdims%n_in_pres+1:Mdims%nphase, : ) = PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
-                END IF
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
                 DETWEI = SCVFEWEIGH * 0.5* DX * PI * ( (0.5*PIPE_DIAM_GI)**2 ) * ELE_ANGLE / ( 2.0 * PI )
@@ -1826,19 +1766,6 @@ contains
                                     END DO
                                 END DO
                             END DO
-                            IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
-                                DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                                    NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_ON_OFF_GI(IPHASE,:) )
-                                    JPHASE = IPHASE
-                                    DO IDIM = 1, Mdims%ndim
-                                        DO JDIM = 1, Mdims%ndim
-                                            i_indx = IDIM + (IPHASE-1)*Mdims%ndim + (U_ILOC-1)*Mdims%ndim*Mdims%nphase
-                                            j_indx = JDIM + (JPHASE-1)*Mdims%ndim + (U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                            Mmat%PIVIT_MAT( i_indx, j_indx, ele ) = Mmat%PIVIT_MAT( i_indx, j_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
-                                        END DO
-                                    END DO
-                                END DO
-                            END IF ! SWITCH_PIPES_ON_AND_OFF
                         END IF ! GET_PIVIT_MAT
                         if ( u_source%have_field .and. .false.) then!DISABLED SOURCES
                             NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )

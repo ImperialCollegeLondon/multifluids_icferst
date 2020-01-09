@@ -498,7 +498,7 @@ contains
              end if
         end if
 !print all the options in the diamond file and added here to the terminal
-        !call print_options()
+        ! call print_options()
         !Call fluidity to populate state
         call populate_state(state)
 
@@ -656,9 +656,9 @@ contains
         implicit none
         integer, intent(in) :: nphase, npres, ncomp
         !Local variables
-        integer :: stat, i, k, simulation_quality = 10, scalarComponents
+        integer :: stat, i, k, l, simulation_quality = 10, scalarComponents
         real :: aux
-        character( len = option_path_len ) :: option_path, quality_option
+        character( len = option_path_len ) :: option_path, quality_option, option_name
 
         ! GEOMETRY OPTIONS
         !Add quadrature option (always equals to 5 I think we need this for legacy reasons)
@@ -879,6 +879,14 @@ contains
                 call add_option(trim(option_path)//"/stat",  stat=stat)
                 call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
 
+                !If we have specified BCs then copy them here as well
+                l = option_count("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions")
+                do k =1, l !Copy all the BCs to the new location
+                  !Retrieve name of the BC to keep consistency
+                  call get_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions["// int2str( k - 1 )//"]/name", option_name)
+                  call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions["// int2str( k - 1 )//"]",&
+                  trim(option_path)//"/boundary_conditions::"// trim(option_name))
+                end do
                 call add_option(trim(option_path)//"/detectors",  stat=stat)
                 call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                 call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
@@ -1043,7 +1051,7 @@ contains
         integer :: Vdegree, Pdegree
         !By default it is inertia dominated
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
-        is_magma = have_option('/magma_simulator') 
+        is_magma = have_option('/magma_simulator')
         is_poroelasticity = have_option('/poroelasticity')
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/femdem_fracture' )
