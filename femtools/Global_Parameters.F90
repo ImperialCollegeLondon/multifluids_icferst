@@ -183,6 +183,8 @@ module global_parameters
   logical :: is_fracturing = .false.
   !! Multiphase prototype, models temperature
   logical :: has_temperature = .false.
+  !! Mutliphase prototype, solve Stokes equations for momentum
+  logical :: solve_stokes
   !! Arash
   !! Multiphase prototype, models salt concentration
   logical :: has_salt = .false.

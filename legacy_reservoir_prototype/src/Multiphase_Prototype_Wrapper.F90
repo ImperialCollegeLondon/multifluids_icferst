@@ -1053,6 +1053,8 @@ contains
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
         is_magma = have_option('/magma_simulator')
         is_poroelasticity = have_option('/poroelasticity')
+        !Decide to solve Stokes equations instead of navier-Stokes
+        solve_stokes = is_magma !For the time being only if magma is activated 
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/femdem_fracture' )
         !Flag to set up blasting

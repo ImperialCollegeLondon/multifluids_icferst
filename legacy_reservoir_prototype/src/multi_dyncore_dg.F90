@@ -62,7 +62,7 @@ module multiphase_1D_engine
     use parallel_tools, only : allmax, allmin, isparallel
     implicit none
 
-    private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_porous_Mass_matrix
+    private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
     public  :: INTENERGE_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
     FORCE_BAL_CTY_ASSEM_SOLVE
@@ -2268,7 +2268,7 @@ pres_its_taken = its_taken
                     if (.not.Mmat%Stored) then
                       if (.not. Bubble_element_active) then
                         !Use the method based on diagonal scaling for lagrangian elements
-                        call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
+                        call get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
                       else !Use the row-sum method for P1DGBLP1DG(CV)
                         call get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
                       end if
@@ -2375,7 +2375,7 @@ pres_its_taken = its_taken
         subroutine get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
               !This subroutine creates a mass matrix using various approaches
               !Here no homogenisation can be performed.
-              !FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE, AND GET_POROUS_MASS_MATRIX IS KEPT FOR THE DIAGONAL SCALING METHOD
+              !FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE, AND get_diagonal_mass_matrix IS KEPT FOR THE DIAGONAL SCALING METHOD
               implicit none
               integer, intent(in) :: ELE
               type(multi_dimensions), intent(in) :: Mdims
@@ -2666,7 +2666,7 @@ pres_its_taken = its_taken
         INTEGER :: P_INOD, IDIM_VEL
         logical :: mom_conserv, lump_mass, lump_mass2, lump_absorption, BETWEEN_ELE_STAB, LUMP_DIAG_MOM
         real :: beta
-        INTEGER :: FILT_DEN, J2, JU2_NOD_DIM_PHA
+        INTEGER :: J2, JU2_NOD_DIM_PHA
         LOGICAL :: SIMPLE_DIFF_CALC
         REAL :: DIFF_MIN_FRAC, DIFF_MAX_FRAC
         REAL :: AVE_SNORMXN_ALL(Mdims%ndim)
@@ -3199,7 +3199,7 @@ pres_its_taken = its_taken
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
         !Simplify the Navier-Stokes equations to Stokes
-        if (is_poroelasticity .or. is_magma) then
+        if (is_poroelasticity .or. is_magma .or. solve_stokes) then
             GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
             GOT_UDEN = .false.!Disable inertia terms
         end if
@@ -3249,26 +3249,9 @@ pres_its_taken = its_taken
             sf=> extract_scalar_field( packed_state, "SolidConcentration" )
             delta_u_all => extract_vector_field( packed_state, "delta_U" ) ! this is delta_u
             us_all => extract_vector_field( packed_state, "solid_U" )
-            if ( .false. ) then ! Do not switch this to false.
-                DO ELE = 1, Mdims%totele
-                    DO CV_ILOC = 1, Mdims%cv_nloc
-                        MAT_NOD = ndgln%mat( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
-                        CV_NOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
-                        DO IPHASE = 1, Mdims%nphase
-                            UDIFFUSION_ALL( :, :, IPHASE, MAT_NOD ) = UDIFFUSION_ALL( :, :, IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
-                            UDIFFUSION_VOL_ALL( IPHASE, MAT_NOD ) = UDIFFUSION_VOL_ALL( IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
-                        END DO
-                    END DO
-                END DO
-            end if
             allocate( vol_s_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
-
-
-
-
-
 
         ! surface tension-like terms
         IF ( IPLIKE_GRAD_SOU /= 0 ) THEN
@@ -3315,7 +3298,7 @@ pres_its_taken = its_taken
             end if
             !Default mass matrix for porous media
             if (use_simple_lumped_homogenenous_mass_matrix) then
-                call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
+                call get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
             end if
 
             ! *********subroutine Determine local vectors...
@@ -3482,61 +3465,17 @@ pres_its_taken = its_taken
                     END IF
                 END DO
             END DO
-            ! Start filtering density
-            !FILT_DEN = 1
-            !FILT_DEN = 2 ! best option to use
-            !Don't remove the code comment below!!!
-            FILT_DEN = 0
-!            IF ( FILT_DEN /= 0 ) THEN ! Filter the density...
-!                DENGI = 0.0 ; DENGIOLD = 0.0
-!                MASS_U = 0.0 ; MASS_U_CV = 0.0
-!                DO U_ILOC = 1, Mdims%u_nloc
-!                    DO U_JLOC = 1, Mdims%u_nloc
-!                        NN = SUM( FE_funs%ufen( U_ILOC, : ) * FE_funs%ufen( U_JLOC, : ) * DevFuns%DETWEI(:) )
-!                        IF ( FILT_DEN==2 ) THEN ! Lump the mass matrix for the filter - positive density...
-!                            MASS_U( U_ILOC, U_ILOC ) = MASS_U( U_ILOC, U_ILOC ) + NN
-!                        ELSE
-!                            MASS_U( U_ILOC, U_JLOC ) = MASS_U( U_ILOC, U_JLOC ) + NN
-!                        END IF
-!                    END DO
-!                END DO
-!                DO U_ILOC = 1, Mdims%u_nloc
-!                    DO CV_JLOC = 1, Mdims%cv_nloc
-!                        NCVM = SUM( FE_funs%ufen( U_ILOC, : ) * CVN_SHORT( CV_JLOC, : ) * DevFuns%DETWEI(:) )
-!                        MASS_U_CV( U_ILOC, CV_JLOC ) = MASS_U_CV( U_ILOC, CV_JLOC ) + NCVM
-!                    END DO
-!                END DO
-!
-!                STORE_MASS_U=MASS_U
-!                ! Store the LU decomposition...
-!                GOTDEC = .FALSE.
-!
-!                RHS_U_CV = 0.0 ; RHS_U_CV_OLD = 0.0
-!                DO CV_JLOC = 1, Mdims%cv_nloc
-!                    DO U_ILOC = 1, Mdims%u_nloc
-!                        RHS_U_CV( :, U_ILOC ) = RHS_U_CV( :, U_ILOC ) + MASS_U_CV( U_ILOC, CV_JLOC ) * LOC_UDEN( :, CV_JLOC )
-!                        RHS_U_CV_OLD( :, U_ILOC ) = RHS_U_CV_OLD( :, U_ILOC ) + MASS_U_CV( U_ILOC, CV_JLOC ) * LOC_UDENOLD( :, CV_JLOC )
-!                    END DO
-!                END DO
-!
-!                DO IPHASE = 1, Mdims%nphase
-!                    CALL SMLINNGOT( STORE_MASS_U, UDEN_VFILT( IPHASE, : ), RHS_U_CV( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
-!                    GOTDEC = .TRUE.
-!                    CALL SMLINNGOT( STORE_MASS_U, UDENOLD_VFILT( IPHASE, : ), RHS_U_CV_OLD( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
-!                END DO
-!
-!                DO U_ILOC = 1, Mdims%u_nloc
-!                    DO GI = 1, CV_NGI
-!                        DENGI( :, GI ) = DENGI( :, GI ) + FE_funs%ufen( U_ILOC, GI ) * UDEN_VFILT( :, U_ILOC )
-!                        DENGIOLD( :, GI ) = DENGIOLD( :, GI ) + FE_funs%ufen( U_ILOC, GI ) * UDENOLD_VFILT( :, U_ILOC )
-!                    END DO
-!                END DO
-!            END IF
 ! not good to have -ve density at quadature pt...
-            DENGI = MAX( 0.0, DENGI )
-            DENGIOLD = MAX( 0.0, DENGIOLD )
             SIGMAGI = 0.0 ; SIGMAGI_STAB = 0.0
             TEN_XX  = 0.0 ; TEN_VOL  = 0.0
+            if (solve_stokes) then
+              !In this way we disable the term deriv rho u / dt
+              DENGI = 0.; DENGIOLD = 0.
+            else !Otherwise make sure terms are positive
+              DENGI = MAX( 0.0, DENGI )
+              DENGIOLD = MAX( 0.0, DENGIOLD )
+            end if
+
             if (is_porous_media) then
                 DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
                     SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
@@ -3684,6 +3623,30 @@ pres_its_taken = its_taken
                         END DO
                     END DO
                 END IF
+                !To solve for the stokes equation using the projection method we must add in the Mass matrix
+                !a term u/dt and in the A matrix (i.e. DIAG_BIGM_CON) -u/dt. In this way the method is still valid
+                !while the results do not change (when converged both terms will cancel out)
+                !This idea is taken from: arXiv:1712.02030v2
+                if (solve_stokes) then !In the diagonal only
+                  DO U_JLOC = 1, Mdims%u_nloc
+                    DO U_ILOC = 1, Mdims%u_nloc
+                      DO GI = 1, FE_GIdims%cv_ngi
+                        RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI )
+                        DO JPHASE = 1, Mdims%nphase
+                          DO JDIM = 1, Mdims%ndim
+                            J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                            !Add in M the term
+                            Mmat%PIVIT_MAT( J, J, ELE ) =  Mmat%PIVIT_MAT( J, J, ELE ) + RNN/DT
+                            !Add the same term negative in the A matrix
+                            DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
+                            DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  - RNN/DT
+                          end do
+                        end do
+                      end do
+                    end do
+                  end do
+                end if
+
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO JPHASE = 1, Mdims%nphase
@@ -3707,7 +3670,7 @@ pres_its_taken = its_taken
                                                     lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
                                             end if
                                         ELSE
-                                            Mmat%PIVIT_MAT( I, J, ELE ) =  &
+                                            Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
                                                 NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
@@ -3757,7 +3720,6 @@ pres_its_taken = its_taken
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc
                     ! put CV source in...
                     IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
-                        IF(Mdims%u_nloc.GE.Mdims%cv_nloc) STOP 28211 ! Code not ready yet for this.
                         Loop_CVNods21: DO U_JLOC = 1, Mdims%u_nloc
                             CV_JLOC = ELEMENT_CORNERS( U_JLOC )
                             ! Miss out the mid side nodes...
@@ -3766,11 +3728,7 @@ pres_its_taken = its_taken
                         END DO LOOP_CVNODS21
                     ELSE ! ENDOF IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
                         Loop_CVNods2: DO CV_JLOC = 1, Mdims%cv_nloc
-                            IF ( RETRIEVE_SOLID_CTY .OR. FEM_BUOYANCY ) THEN
-                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
-                            ELSE
-                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
-                            END IF
+                            NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
                             IF ( LUMP_MASS ) THEN
                                 CV_ILOC = U_ILOC
                                 LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_ILOC )
@@ -5499,9 +5457,9 @@ pres_its_taken = its_taken
         ! into the matrix DGM_PHA.
         IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
           IF(LUMP_DIAG_MOM)THEN
-          CALL COMB_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
-              Mmat%DGM_petsc, &
-              Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
+            CALL COMB_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
+                Mmat%DGM_petsc, &
+                Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
           ELSE
             CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
                 Mmat%DGM_petsc, &
@@ -7912,7 +7870,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
     END SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
-    subroutine get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
+    subroutine get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
       !A diagonal mass matrix is obtained using the direct lump process
         implicit none
         integer, intent(in) :: ELE
@@ -7977,7 +7935,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 END DO
         end select
 
-
         !If pressure boundary element, then we homogenize the velocity in the element
         if (lump_vol_factor<-1d24) then
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )
@@ -8010,7 +7967,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             end do
         end do
 
-    end subroutine get_porous_Mass_matrix
+    end subroutine get_diagonal_mass_matrix
 
 
 
