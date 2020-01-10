@@ -1565,6 +1565,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
+           if (solve_stokes) then
+             !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
+             !By making uden =0. these terms will be effectively zeroed.
+              UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
+           end if
+
         end if
 
         if ( have_option( '/blasting' ) ) then
@@ -3202,6 +3208,7 @@ pres_its_taken = its_taken
         if (is_poroelasticity .or. is_magma .or. solve_stokes) then
             GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
             GOT_UDEN = .false.!Disable inertia terms
+            PIVIT_ON_VISC= .false.
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -3468,13 +3475,10 @@ pres_its_taken = its_taken
 ! not good to have -ve density at quadature pt...
             SIGMAGI = 0.0 ; SIGMAGI_STAB = 0.0
             TEN_XX  = 0.0 ; TEN_VOL  = 0.0
-            if (solve_stokes) then
-              !In this way we disable the term deriv rho u / dt
-              DENGI = 0.; DENGIOLD = 0.
-            else !Otherwise make sure terms are positive
+            !Otherwise make sure terms are positive
               DENGI = MAX( 0.0, DENGI )
               DENGIOLD = MAX( 0.0, DENGIOLD )
-            end if
+
 
             if (is_porous_media) then
                 DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
@@ -3638,8 +3642,8 @@ pres_its_taken = its_taken
                             !Add in M the term
                             Mmat%PIVIT_MAT( J, J, ELE ) =  Mmat%PIVIT_MAT( J, J, ELE ) + RNN/DT
                             !Add the same term negative in the A matrix
-                            DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
-                            DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  - RNN/DT
+                            ! DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
+                            ! DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  - RNN/DT
                           end do
                         end do
                       end do

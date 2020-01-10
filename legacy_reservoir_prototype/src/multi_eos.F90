@@ -2750,7 +2750,7 @@ contains
               mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
               cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
               DO IPHASE = 1, Mdims%nphase
-                magma_coupling = Satura(iphase, cv_inod) * 0.!Haiyang to include his C here
+                magma_coupling = Satura(iphase, cv_inod)*0!Haiyang to include his C here
                 do jphase = 1, Mdims%nphase
                   if (jphase == 1) then
                     Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
