@@ -997,7 +997,7 @@ contains
       type (multi_sparsities), intent(in) :: Mspars
       type (porous_adv_coefs), intent(inout) :: upwnd
       type (multi_pipe_package), intent(in) :: pipes_aux
-      REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
+      REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL§
       REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (nphase,Mdims%cv_nonods)
       REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
       REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
@@ -1321,7 +1321,7 @@ contains
               LOC_CV_RHS_I=0.0; LOC_MAT_II = 0.
               R_PHASE(wells_first_phase:final_phase*2) = MEAN_PORE_CV( Mdims%npres, CV_NODI ) * pipes_aux%MASS_PIPE( cv_nodi ) / DT
 
-              IF ( THERMAL .and. Mdims%npres == 1) THEN
+              IF ( THERMAL .and. Mdims%npres == 1) THEN !gr never enters this if statement
                 DO IPHASE = wells_first_phase, final_phase*2
                   LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase) &
                       - CV_P(1, Mdims%npres, cv_nodi) * ( Mass_CV( CV_NODI ) / DT ) * ( T2_ALL( iphase, CV_NODI ) - T2OLD_ALL( iphase, CV_NODI ) )
@@ -1333,7 +1333,7 @@ contains
                     LOC_CV_RHS_I(iphase)=LOC_CV_RHS_I(iphase)  &
                         + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                   end do
-                  if (thermal .and. is_porous_media) then
+                  if (thermal .and. is_porous_media) then !gr  first term goes to 0?
                       !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                       ! and the fluids. Here we add the porous media contribution
                       DO IPHASE = wells_first_phase, final_phase*2
@@ -1348,7 +1348,7 @@ contains
                       END DO
                   end if
 
-                  DO IPHASE=1 , final_phase
+                  DO IPHASE=1 , final_phase !gr time derivative
                     global_phase = iphase + Mdims%n_in_pres
                     compact_phase = iphase + final_phase
                     LOC_MAT_II(compact_phase) = LOC_MAT_II(compact_phase) + DEN_ALL( global_phase, CV_NODI ) * T2_ALL( global_phase, CV_NODI ) &
