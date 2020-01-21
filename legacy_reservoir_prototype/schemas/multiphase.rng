@@ -39,6 +39,10 @@ characters in the simulation name should be avoided.</a:documentation>
           <a:documentation>Magma flow simulator</a:documentation>
           <ref name="comment"/>
         </element>
+        <element name="stokes_simulator">
+          <a:documentation>Stokes flow simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
         <element name="poroelasticity">
           <a:documentation>Poro-elasticity simulator:
 This requires to define through diamond the tensor field in phase 1 UAbsorB

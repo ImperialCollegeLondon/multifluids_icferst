@@ -3646,7 +3646,6 @@ pres_its_taken = its_taken
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi
                             RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI )
-! if (solve_stokes) RNN = 0.
                             if ( lump_absorption ) then
                                 NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) = &
                                     NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) + RNN * LOC_U_ABSORB( :, :, U_ILOC)
@@ -3656,7 +3655,6 @@ pres_its_taken = its_taken
                             end if
                             NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) = &
                                 NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
-
                             ! Chris change ordering of NN_SIGMAGI_STAB_SOLID_RHS_ELE
                             IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) =&
                                 NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) + RNN * SIGMAGI_STAB_SOLID_RHS( :, :, GI )
@@ -3723,24 +3721,28 @@ pres_its_taken = its_taken
                                         IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                         !Assemble
-                                        IF ( LUMP_MASS ) THEN
-                                            Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
-                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
-                                            if (homogenize_mass_matrix) then
-                                                Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
-                                                    lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
-                                                Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) - &
-                                                    lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
-                                            end if
-                                        ELSE
-                                            Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
-                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
-                                        END IF
-
+                                        if (.not. solve_stokes) then
+                                          IF ( LUMP_MASS ) THEN
+                                              Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
+                                                  NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                  + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                  + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
+                                              if (homogenize_mass_matrix) then
+                                                  Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
+                                                      lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                                  Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) - &
+                                                      lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                              end if
+                                          ELSE
+                                              Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
+                                                  NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                  + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                  + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
+                                          END IF
+                                        else !For Stokes Mmat%PIVIT_MAT must contain only the mass of the elements
+                                          !Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
+                                          Mmat%PIVIT_MAT( I, I, ELE ) = DevFuns%VOLUME/dble(Mdims%u_nloc)
+                                        end if
 
                                         IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
                                           IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
@@ -3775,10 +3777,6 @@ pres_its_taken = its_taken
                                             END IF
                                           END IF
                                         END IF
-if (solve_stokes) then!SPRINT_TO_DO THIS CAN BE IMPROVED!
-!Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
-  Mmat%PIVIT_MAT( I, I, ELE ) = DevFuns%VOLUME/dble(Mdims%u_nloc)
-end if
                                     END DO
                                 END DO
                             END DO
