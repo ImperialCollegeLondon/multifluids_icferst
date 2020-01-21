@@ -226,9 +226,6 @@ contains
 
         !!$ Compute primary scalars used in most of the code
         call Get_Primary_Scalars_new( state, Mdims )
-        IF(Mdims%u_nloc > Mdims%cv_nloc) then
-          FLAbort("This sort of element pair does not fulfill the LBB stability condition. Use a different type of element pair")
-        end if
         !Check if the user wants to store the outfluxes
         call initialize_multi_outfluxes(outfluxes)
         if(use_sub_state()) then

@@ -3789,6 +3789,7 @@ pres_its_taken = its_taken
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc
                     ! put CV source in...
                     IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
+                        IF(Mdims%u_nloc.GE.Mdims%cv_nloc) STOP 28211 ! Code not ready yet for this.
                         Loop_CVNods21: DO U_JLOC = 1, Mdims%u_nloc
                             CV_JLOC = ELEMENT_CORNERS( U_JLOC )
                             ! Miss out the mid side nodes...
