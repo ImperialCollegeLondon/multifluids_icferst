@@ -1475,7 +1475,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
         !solve_stokes
+        real, dimension(:,:,:), allocatable :: velocity_visc
         type( vector_field ), pointer ::  CV_volumes
+
+
+
         !Retrieve solver setting configurations
         solver_option_pressure = "/solver_options/Linear_solver"
         solver_option_velocity = "/solver_options/Linear_solver"
@@ -1795,7 +1799,7 @@ end if
         ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
         !Perform Div * U for the RHS of the pressure equation
-        call compute_DIV_U(Mdims, Mmat, Mspars, U_ALL2, INV_B, rhs_p)
+        call compute_DIV_U(Mdims, Mmat, Mspars, U_ALL2%val, INV_B, rhs_p)
 
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
 
@@ -1843,7 +1847,6 @@ end if
         ewrite(3,*)'about to solve for pressure'
         !########Solve the system#############
         !Re-scale of the matrix to allow working with small values of sigma
-        !this is a hack to deal with bad preconditioners and divide by zero errors.
         if (is_porous_media) then
             !Since we save the parameter rescaleVal, we only do this one time
             if (rescaleVal < 0.) then
@@ -1857,8 +1860,9 @@ end if
             !End of re-scaling
         end if
         call zero(deltaP)!;call zero_non_owned(rhs_p)
-        !Solve the system to obtain dP (difference of pressure)
+        !Solve the system to obtain dP (difference of pressure)!For solve_stokes this is a CORRECTION parameter NOT pressure
         call petsc_solve(deltap,cmc_petsc,rhs_p,option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+        call deallocate(cmc_petsc)
 pres_its_taken = its_taken
         if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
         ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
@@ -1866,11 +1870,16 @@ pres_its_taken = its_taken
         if (solve_stokes) then
         !"######################## CORRECTION PRESSURE STEP####################################"
           CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
+          !Re-create the velocity field so we can multiply it by the viscosity !Not efficient but clean to code
+          allocate(velocity_visc(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
+          call compute_velocity_times_viscosity(state, Mdims, ndgln, U_ALL2%val, velocity_visc)
           !Update pressure based on the correction to get the velocity to be divergent free.
           !The corrections needs to be divided by the volume of the CVs
-
-          !I THINK HERE IT IS MISSING AS WELL MULTIPLYING BY THE VISCOSITY
-          P_all % val(1,:,:) = P_all % val(1,:,:) + rhs_p%val/CV_volumes%val
+          rhs_p%val = 0.
+          call compute_DIV_U(Mdims, Mmat, Mspars, velocity_visc, INV_B, rhs_p)
+                                                          !NOT SURE IF Mmat%CT_RHS NEEDS TO BE DIVIDED BY CV_volumes%val
+          P_all % val(1,:,:) = P_all % val(1,:,:) + 1./CV_volumes%val * (Mmat%CT_RHS%val - rhs_p%val)
+          deallocate(velocity_visc)
           !rhs_p CANNOT BE USED AFTER THIS!
         else
           P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
@@ -1879,7 +1888,7 @@ pres_its_taken = its_taken
         if (isParallel()) call halo_update(P_all)
 
         call deallocate(rhs_p)
-        call deallocate(cmc_petsc)
+
         ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
         ! Use a projection method
         ! CDP = Mmat%C * DP
@@ -1936,13 +1945,12 @@ pres_its_taken = its_taken
     contains
 
 
-      subroutine compute_DIV_U(Mdims, Mmat, Mspars, U_ALL2, INV_B, rhs_p)
+      subroutine compute_DIV_U(Mdims, Mmat, Mspars, velocity, INV_B, rhs_p)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_sparsities), intent(in) :: Mspars
         type (multi_matrices), intent(in) :: Mmat
-        type( tensor_field ), pointer, intent(in) :: U_ALL2
-        REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
+        REAL, DIMENSION( :, :, : ), intent(in) :: INV_B, velocity
         type( vector_field ), intent(inout) :: rhs_p
         !Local variables
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2
@@ -1952,12 +1960,12 @@ pres_its_taken = its_taken
               if ( .not.FEM_continuity_equation ) then ! original
                   ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
                   DO IPHASE = 1, Mdims%nphase
-                      CALL CT_MULT2( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                      CALL CT_MULT2( rhs_p2(IPHASE,:), velocity( :, IPHASE : IPHASE, : ), &
                           Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%CT( :, IPHASE : IPHASE, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                   END DO
               else
                   DO IPHASE = 1, Mdims%nphase
-                      CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                      CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), velocity( :, IPHASE : IPHASE, : ), &
                           Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                   END DO
               end if
@@ -1973,13 +1981,13 @@ pres_its_taken = its_taken
           ELSE
               if ( .not.FEM_continuity_equation ) then ! original
                   DO IPRES = 1, Mdims%npres
-                      CALL CT_MULT2( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
+                      CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
                           Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
                           Mmat%CT( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                   END DO
               else
                   DO IPRES = 1, Mdims%npres
-                      CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
+                      CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
                           Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                   END DO
               end if
@@ -1987,86 +1995,118 @@ pres_its_taken = its_taken
 
       end subroutine compute_DIV_U
 
+      subroutine compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
+        implicit none
+        type( state_type ), dimension( : ), intent( in ) :: state
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
+        REAL, DIMENSION( :, :, : ), intent(in) :: velocity
+        REAL, DIMENSION( :, :, : ), intent(inout) ::velocity_visc
+        !local variables
+        integer :: ele, iphase, u_iloc, u_inod, cv_iloc, cv_nod, idim, multiplier
+        type( tensor_field ), pointer :: visc_field
 
+        velocity_visc = 0.
+        !We need to multiply the velocity by the viscosity to perform the pressure update
+        do iphase = 1, Mdims%nphase
+          visc_field => extract_tensor_field( state( iphase ), 'Viscosity' )
+          !Multiplier to control the index for the viscosity when the viscosity is constant
+          multiplier = 1
+          if (size(visc_field%val,3) == 1)  multiplier = 0
+          do ele = 1, Mdims%totele
+            do u_iloc = 1, Mdims%u_nloc
+              U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+              do cv_iloc = 1, Mdims%cv_nloc
+                CV_NOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + cv_iloc ) * multiplier + (1 - multiplier)
+                do idim = 1, Mdims%ndim!CONSIDER ONLY ISOTROPIC VISCOSITY (BECAUSE WE USE THE STRESS FORM MAINLY)
+                  velocity_visc(idim, iphase, U_INOD) = velocity_visc(idim, iphase, U_INOD) &
+                              + velocity(idim, iphase, U_INOD) * visc_field%val(idim, idim, CV_NOD )/dble(Mdims%cv_nloc)
+                end do
+              end do
+            end do
+          end do
+        end do
+      end subroutine
 
-        subroutine calc_CVPres_from_FEPres()
-            !This is for FE pressure
-            implicit none
-            integer stat_cvp
+      subroutine calc_CVPres_from_FEPres()
+        !This is for FE pressure
+        implicit none
+        integer stat_cvp
 
-            if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV...
-                CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
-                !...inside the wells it is still FE pressure
-                IF(Mdims%npres>1.AND.PIPES_1D) THEN
-                    IPRES = Mdims%npres
-                    CVP_ALL%VAL(1,ipres,:) = 0.
-                    DO CV_NOD = 1, Mdims%cv_nonods
-                        if (node_owned(CVP_all,CV_NOD)) then
-                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
-                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
-                            END DO
-                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
-                        else
-                            Mass_CV(CV_NOD)=1.0
-                        end if
-                    END DO
-                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-                end if
-            else
-                CVP_ALL%VAL = 0.0
-                IF(Mdims%npres>1.AND.PIPES_1D) THEN
-                    MASS_CV = 0.0
-                    IPRES = 1
-                    DO CV_NOD = 1, Mdims%cv_nonods
-                        if (node_owned(CVP_all,CV_NOD)) then
-                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
-                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
-                            END DO
-                        else
-                            Mass_CV(CV_NOD)=1.0
-                        end if
-                    END DO
-                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-                    MASS_CV = 0.0
-                    IPRES = Mdims%npres
-                    DO CV_NOD = 1, Mdims%cv_nonods
-                        if (node_owned(CVP_all,CV_NOD)) then
-                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                                CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
-                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
-                            END DO
-                            MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
-                        else
-                            Mass_CV(CV_NOD)=1.0
-                        end if
-                    END DO
-                    CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-                ELSE
-                    MASS_CV = 0.0
-                    DO CV_NOD = 1, Mdims%cv_nonods
-                        if (node_owned(CVP_all,CV_NOD)) then
-                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                                CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, Mspars%CMC%col( COUNT ) )
-                                MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
-                            END DO
-                        else
-                            Mass_CV(CV_NOD)=1.0
-                        end if
-                    END DO
-                    DO IPRES = 1, Mdims%npres
-                        CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-                    END DO
-                ENDIF
-            end if
-            !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
-             ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
+        if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV...
+          CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
+          !...inside the wells it is still FE pressure
+          IF(Mdims%npres>1.AND.PIPES_1D) THEN
+            IPRES = Mdims%npres
+            CVP_ALL%VAL(1,ipres,:) = 0.
+            DO CV_NOD = 1, Mdims%cv_nonods
+              if (node_owned(CVP_all,CV_NOD)) then
+                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                  CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                  MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
+                END DO
+                MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+              else
+                Mass_CV(CV_NOD)=1.0
+              end if
+            END DO
+            CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+          end if
+        else
+          CVP_ALL%VAL = 0.0
+          IF(Mdims%npres>1.AND.PIPES_1D) THEN
+            MASS_CV = 0.0
+            IPRES = 1
+            DO CV_NOD = 1, Mdims%cv_nonods
+              if (node_owned(CVP_all,CV_NOD)) then
+                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                  CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                  MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                END DO
+              else
+                Mass_CV(CV_NOD)=1.0
+              end if
+            END DO
+            CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+            MASS_CV = 0.0
+            IPRES = Mdims%npres
+            DO CV_NOD = 1, Mdims%cv_nonods
+              if (node_owned(CVP_all,CV_NOD)) then
+                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                  CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, Mspars%CMC%col( COUNT ) )
+                  MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT )
+                END DO
+                MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
+              else
+                Mass_CV(CV_NOD)=1.0
+              end if
+            END DO
+            CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+          ELSE
+            MASS_CV = 0.0
+            DO CV_NOD = 1, Mdims%cv_nonods
+              if (node_owned(CVP_all,CV_NOD)) then
+                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                  CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, Mspars%CMC%col( COUNT ) )
+                  MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                END DO
+              else
+                Mass_CV(CV_NOD)=1.0
+              end if
+            END DO
+            DO IPRES = 1, Mdims%npres
+              CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+            END DO
+          ENDIF
+        end if
+        !(Pablo)Commented out the 17/10/2018, if parallel fails in inertia, put it back
+        ! call halo_update(CVP_all)!<= pressure has been already communicated, so this seems unnecessary
 
-            cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
-            if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
+        cvp=>extract_scalar_field( state(1), "CV_Pressure", stat_cvp )
+        if (stat_cvp==0) CVP%val = CVP_all%val(1,1,:)
 
-        end subroutine calc_CVPres_from_FEPres
+      end subroutine calc_CVPres_from_FEPres
+
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
