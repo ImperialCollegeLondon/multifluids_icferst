@@ -1448,7 +1448,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL
-        REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
+        REAL, DIMENSION( :, : ), allocatable :: sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3!, test12
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, python_tfield
@@ -1474,7 +1474,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Variables to control de performance of the solvers
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
-
+        !solve_stokes
+        type( vector_field ), pointer ::  CV_volumes
         !Retrieve solver setting configurations
         solver_option_pressure = "/solver_options/Linear_solver"
         solver_option_velocity = "/solver_options/Linear_solver"
@@ -1700,6 +1701,9 @@ end if
             RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
         deallocate(UDIFFUSION_ALL)
 
+
+
+
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
@@ -1746,7 +1750,7 @@ end if
 
         ! solve using a projection method
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
-        ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
+        ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
         DO IPRES = 1, Mdims%npres
             CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), P_ALL%val( 1, IPRES, : ), &
                 Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
@@ -1760,11 +1764,13 @@ end if
                 deallocate(U_ABSORBIN)
             end if
         end if
+        !"########################UPDATE VELOCITY STEP####################################"
         IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
-            !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
+            !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed (Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
+            !MAYBE ONLY AFTER ADAPT/START OF TIME?
             CALL PHA_BLOCK_MAT_VEC_old( U_ALL2 % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
-        ELSE
+        else
             ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
             !SPRINT_TO_DO: THIS BUSSINES OF RESHAPING IS AWFUL...
             call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
@@ -1788,42 +1794,11 @@ end if
         END IF
         ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
-        IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-            if ( .not.FEM_continuity_equation ) then ! original
-                ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
-                DO IPHASE = 1, Mdims%nphase
-                    CALL CT_MULT2( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
-                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%CT( :, IPHASE : IPHASE, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-                END DO
-            else
-                DO IPHASE = 1, Mdims%nphase
-                    CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
-                        Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-                END DO
-            end if
-            DO CV_NOD = 1, Mdims%cv_nonods
-                rhs_p2(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), rhs_p2(:,CV_NOD) )
-            END DO
-            DO CV_NOD = 1, Mdims%cv_nonods
-                DO IPRES = 1, Mdims%npres
-                    rhs_p%val(IPRES,CV_NOD)= SUM( rhs_p2(1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres,CV_NOD) )
-                END DO
-            END DO
-        ELSE
-            if ( .not.FEM_continuity_equation ) then ! original
-                DO IPRES = 1, Mdims%npres
-                    CALL CT_MULT2( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
-                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                        Mmat%CT( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-                END DO
-            else
-                DO IPRES = 1, Mdims%npres
-                    CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
-                        Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-                END DO
-            end if
-        END IF
+        !Perform Div * U for the RHS of the pressure equation
+        call compute_DIV_U(Mdims, Mmat, Mspars, U_ALL2, INV_B, rhs_p)
+
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
+
         if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
         ! Matrix vector involving the mass diagonal term
         DO CV_NOD = 1, Mdims%cv_nonods
@@ -1885,11 +1860,21 @@ end if
         !Solve the system to obtain dP (difference of pressure)
         call petsc_solve(deltap,cmc_petsc,rhs_p,option_path = trim(solver_option_pressure), iterations_taken = its_taken)
 pres_its_taken = its_taken
-
         if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
         ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
 
-        P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
+        if (solve_stokes) then
+        !"######################## CORRECTION PRESSURE STEP####################################"
+          CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
+          !Update pressure based on the correction to get the velocity to be divergent free.
+          !The corrections needs to be divided by the volume of the CVs
+
+          !I THINK HERE IT IS MISSING AS WELL MULTIPLYING BY THE VISCOSITY
+          P_all % val(1,:,:) = P_all % val(1,:,:) + rhs_p%val/CV_volumes%val
+          !rhs_p CANNOT BE USED AFTER THIS!
+        else
+          P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
+        end if
 
         if (isParallel()) call halo_update(P_all)
 
@@ -1900,20 +1885,24 @@ pres_its_taken = its_taken
         ! CDP = Mmat%C * DP
         !CALL C_MULT2( CDP_tensor%val, deltap%val, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         DO IPRES = 1, Mdims%npres
-            CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap%val( IPRES, : ), &
-                Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+          CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap%val( IPRES, : ), &
+          Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
         END DO
+
         call deallocate(deltaP)
+        !######################## CORRECTION VELOCITY STEP####################################
         ! if (isParallel()) call zero_non_owned(cdp_tensor)
         ! Correct velocity...
         ! DU = BLOCK_MAT * CDP
         ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
         CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
-            Mdims%totele, Mdims%u_nloc, ndgln%u )
+        Mdims%totele, Mdims%u_nloc, ndgln%u )
         U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
+        DEALLOCATE( DU_VEL )
+
+
         if (isParallel()) call halo_update(U_ALL2)
 
-        DEALLOCATE( DU_VEL )
         if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
         call DEALLOCATE( CDP_tensor )
         ! Calculate control volume averaged pressure CV_P from fem pressure P
@@ -1945,6 +1934,60 @@ pres_its_taken = its_taken
         return
 
     contains
+
+
+      subroutine compute_DIV_U(Mdims, Mmat, Mspars, U_ALL2, INV_B, rhs_p)
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_sparsities), intent(in) :: Mspars
+        type (multi_matrices), intent(in) :: Mmat
+        type( tensor_field ), pointer, intent(in) :: U_ALL2
+        REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
+        type( vector_field ), intent(inout) :: rhs_p
+        !Local variables
+        REAL, DIMENSION( :, : ), allocatable :: rhs_p2
+        integer :: iphase, CV_NOD, ipres
+
+          IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
+              if ( .not.FEM_continuity_equation ) then ! original
+                  ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
+                  DO IPHASE = 1, Mdims%nphase
+                      CALL CT_MULT2( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                          Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%CT( :, IPHASE : IPHASE, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                  END DO
+              else
+                  DO IPHASE = 1, Mdims%nphase
+                      CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                          Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                  END DO
+              end if
+              DO CV_NOD = 1, Mdims%cv_nonods
+                  rhs_p2(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), rhs_p2(:,CV_NOD) )
+              END DO
+              DO CV_NOD = 1, Mdims%cv_nonods
+                  DO IPRES = 1, Mdims%npres
+                      rhs_p%val(IPRES,CV_NOD)= SUM( rhs_p2(1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres,CV_NOD) )
+                  END DO
+              END DO
+              deallocate(rhs_p2)
+          ELSE
+              if ( .not.FEM_continuity_equation ) then ! original
+                  DO IPRES = 1, Mdims%npres
+                      CALL CT_MULT2( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
+                          Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
+                          Mmat%CT( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                  END DO
+              else
+                  DO IPRES = 1, Mdims%npres
+                      CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
+                          Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                  END DO
+              end if
+          END IF
+
+      end subroutine compute_DIV_U
+
+
 
         subroutine calc_CVPres_from_FEPres()
             !This is for FE pressure
@@ -2025,9 +2068,6 @@ pres_its_taken = its_taken
 
         end subroutine calc_CVPres_from_FEPres
 
-
-
-
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 
@@ -2042,7 +2082,7 @@ pres_its_taken = its_taken
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
         JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, &
         IGOT_THETA_FLUX, &
@@ -2509,7 +2549,8 @@ pres_its_taken = its_taken
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
-        LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE., STAB_VISC_WITH_ABS=.FALSE.
+        LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE.
+        logical :: STAB_VISC_WITH_ABS=.FALSE.
         LOGICAL :: STRESS_FORM, STRESS_FORM_STAB, THERMAL_STAB_VISC, THERMAL_LES_VISC, THERMAL_FLUID_VISC, Q_SCHEME
         ! if STAB_VISC_WITH_ABS then stabilize (in the projection mehtod) the viscosity using absorption.
         REAL, PARAMETER :: WITH_NONLIN = 1.0, TOLER = 1.E-10
@@ -3208,7 +3249,9 @@ pres_its_taken = its_taken
         if (is_poroelasticity .or. is_magma .or. solve_stokes) then
             GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
             GOT_UDEN = .false.!Disable inertia terms
-            PIVIT_ON_VISC= .false.
+            PIVIT_ON_VISC= .false.!This is to add viscosity terms into the Mu matrix
+            STAB_VISC_WITH_ABS = .false.!Adds diffusion terms into Mu also in the RHS
+            zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -3492,7 +3535,7 @@ pres_its_taken = its_taken
                                 SIGMAGI( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI( IPHA_IDIM, JPHA_JDIM, GI ) &
                                     + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABSORB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                                 SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) &
-                                    + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
+                                + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                             END DO
                         END DO
                         TEN_XX( :, :, :, GI ) = TEN_XX( :, :, :, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( :, :, :, MAT_ILOC )
@@ -3563,6 +3606,7 @@ pres_its_taken = its_taken
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi
                             RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI )
+! if (solve_stokes) RNN = 0.
                             if ( lump_absorption ) then
                                 NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) = &
                                     NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) + RNN * LOC_U_ABSORB( :, :, U_ILOC)
@@ -3627,29 +3671,6 @@ pres_its_taken = its_taken
                         END DO
                     END DO
                 END IF
-                !To solve for the stokes equation using the projection method we must add in the Mass matrix
-                !a term u/dt and in the A matrix (i.e. DIAG_BIGM_CON) -u/dt. In this way the method is still valid
-                !while the results do not change (when converged both terms will cancel out)
-                !This idea is taken from: arXiv:1712.02030v2
-                if (solve_stokes) then !In the diagonal only
-                  DO U_JLOC = 1, Mdims%u_nloc
-                    DO U_ILOC = 1, Mdims%u_nloc
-                      DO GI = 1, FE_GIdims%cv_ngi
-                        RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI )
-                        DO JPHASE = 1, Mdims%nphase
-                          DO JDIM = 1, Mdims%ndim
-                            J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                            !Add in M the term
-                            Mmat%PIVIT_MAT( J, J, ELE ) =  Mmat%PIVIT_MAT( J, J, ELE ) + RNN/DT
-                            !Add the same term negative in the A matrix
-                            ! DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
-                            ! DIAG_BIGM_CON( JDIM, JDIM, JPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  - RNN/DT
-                          end do
-                        end do
-                      end do
-                    end do
-                  end do
-                end if
 
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
@@ -3679,6 +3700,8 @@ pres_its_taken = its_taken
                                                 + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
                                         END IF
+
+
                                         IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
                                           IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
                                             IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
@@ -3712,6 +3735,10 @@ pres_its_taken = its_taken
                                             END IF
                                           END IF
                                         END IF
+if (solve_stokes) then!SPRINT_TO_DO THIS CAN BE IMPROVED!
+!Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
+  Mmat%PIVIT_MAT( I, I, ELE ) = DevFuns%VOLUME/dble(Mdims%u_nloc)
+end if
                                     END DO
                                 END DO
                             END DO
@@ -3741,6 +3768,7 @@ pres_its_taken = its_taken
                             END IF
                         END DO LOOP_CVNODS2
                     END IF ! ENDOF IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
+
                     Loop_DGNods2: DO U_JLOC = 1, Mdims%u_nloc
                         VLN = 0.0
                         VLN_OLD = 0.0
@@ -3788,6 +3816,7 @@ pres_its_taken = its_taken
                         END DO Loop_Gauss2
                         NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                         LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
+
                         DO JPHASE = 1, Mdims%nphase
                             DO JDIM = 1, Mdims%ndim
                                 JPHA_JDIM = (JPHASE-1)*Mdims%ndim + JDIM
@@ -5019,7 +5048,7 @@ pres_its_taken = its_taken
                             END DO
                         END DO
                     END DO
-                    IF(GOT_DIFFUS .AND. LINEAR_HIGHORDER_DIFFUSION) THEN
+                    IF(GOT_DIFFUS .AND. LINEAR_HIGHORDER_DIFFUSION .and. .not. Mmat%NO_MATRIX_STORE) THEN
                         IF(ELE2.GT.0) THEN ! Internal to domain
                             DO U_JLOC=1,Mdims%u_nloc
                                 U_JLOC2 = U_JLOC
