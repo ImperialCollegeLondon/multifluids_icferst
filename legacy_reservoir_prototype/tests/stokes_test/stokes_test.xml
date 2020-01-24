@@ -11,7 +11,6 @@
 max_sat1 = stat("stokes_test.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
     <variable name="max_P" language="python">from fluidity_tools import stat_parser as stat
 max_P = stat("stokes_test.stat")["phase1"]["Pressure"]["max"][-1]</variable>
-  </variables>
      <variable name="max_vel" language="python">from fluidity_tools import stat_parser as stat
 max_vel = stat("stokes_test.stat")["phase1"]["Velocity%magnitude"]["max"][-1]</variable>
   </variables> 
