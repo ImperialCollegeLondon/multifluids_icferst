@@ -1450,11 +1450,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL
         REAL, DIMENSION( :, : ), allocatable :: sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3!, test12
+        type( tensor_field ), pointer :: OLDvelocity, den_all2, denold_all2, tfield, den_all3!, u_all2
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, python_tfield
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
-        type( vector_field ) :: packed_vel, rhs
+        type( vector_field ) :: packed_vel, rhs, packed_vel2
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
@@ -1525,8 +1525,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ALLOCATE( MASS_MN_PRES( Mspars%CMC%ncol )) ; MASS_MN_PRES=0.
         ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
 
-        U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
-        UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
+        ! U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
+        OLDvelocity => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         !For porous media we do not need PackedCVPressure
@@ -1694,7 +1694,7 @@ end if
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
              velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux,&
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
-            U_ALL2%VAL, UOLD_ALL2%VAL, &
+            velocity%VAL, OLDvelocity%VAL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
             DT, MASS_MN_PRES, & ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
@@ -1723,7 +1723,7 @@ end if
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
                 associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA,&
-                U_ALL2%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
+                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -1772,7 +1772,7 @@ end if
         IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
             !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed (Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
             !MAYBE ONLY AFTER ADAPT/START OF TIME?
-            CALL PHA_BLOCK_MAT_VEC_old( U_ALL2 % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+            CALL PHA_BLOCK_MAT_VEC_old( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
         else
             ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
@@ -1780,26 +1780,29 @@ end if
             call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
             rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
             ! call zero_non_owned(rhs)
-            if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                call zero(velocity)
+            if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
+
+
+!To add Gauss-Seidel Relaxation
+! if (solve_stokes) then
+! packed_vel2 = as_packed_vector(velocity)
+! packed_vel%val = reshape(velocity%val,[size(velocity%val,1)*size(velocity%val,2),size(velocity%val,3)])
+! call mult (packed_vel2,Mmat%DGM_PETSC, packed_vel)
+! RHS%val = RHS%val - packed_vel2%val
+! end if
+
                 packed_vel=as_packed_vector(velocity)
                 call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
                 if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
-#ifndef USING_GFORTRAN
-                velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
-#endif
-                U_ALL2 % VAL=velocity%val
+                velocity%val = reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
             end if
-            UP_VEL=[velocity%val]
             call deallocate(Mmat%DGM_PETSC)
             call deallocate(rhs)
-            U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             deallocate( UP_VEL )
         END IF
-        ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
 
         !Perform Div * U for the RHS of the pressure equation
-        call compute_DIV_U(Mdims, Mmat, Mspars, U_ALL2%val, INV_B, rhs_p)
+        call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
 
         rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
 
@@ -1862,17 +1865,16 @@ end if
         call zero(deltaP)!;call zero_non_owned(rhs_p)
         !Solve the system to obtain dP (difference of pressure)!For solve_stokes this is a CORRECTION parameter NOT pressure
         call petsc_solve(deltap,cmc_petsc,rhs_p,option_path = trim(solver_option_pressure), iterations_taken = its_taken)
-        call deallocate(cmc_petsc)
 pres_its_taken = its_taken
+
         if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-        ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
 
         if (solve_stokes) then
         !"######################## CORRECTION PRESSURE STEP####################################"
           CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
           !Re-create the velocity field so we can multiply it by the viscosity !Not efficient but clean to code
           allocate(velocity_visc(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
-          call compute_velocity_times_viscosity(state, Mdims, ndgln, U_ALL2%val, velocity_visc)
+          call compute_velocity_times_viscosity(state, Mdims, ndgln, velocity%val, velocity_visc)
           !Update pressure based on the correction to get the velocity to be divergent free.
           !The corrections needs to be divided by the volume of the CVs
           rhs_p%val = 0.
@@ -1885,9 +1887,11 @@ pres_its_taken = its_taken
           P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
         end if
 
+        call deallocate(cmc_petsc); call deallocate(rhs_p)
+
         if (isParallel()) call halo_update(P_all)
 
-        call deallocate(rhs_p)
+
 
         ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
         ! Use a projection method
@@ -1906,13 +1910,13 @@ pres_its_taken = its_taken
         ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
         CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
         Mdims%totele, Mdims%u_nloc, ndgln%u )
-        U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
+        velocity % VAL = velocity % VAL + DU_VEL
         DEALLOCATE( DU_VEL )
+!if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
 
+        if (isParallel()) call halo_update(velocity)
 
-        if (isParallel()) call halo_update(U_ALL2)
-
-        if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
+        if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
         call DEALLOCATE( CDP_tensor )
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
@@ -1930,14 +1934,14 @@ pres_its_taken = its_taken
 
         ! Copy back memory; sprint_to_do remove this...
         !(Pablo)WHAT IS THIS?? SEEMS RUBBISH TO ME...
-        do iphase=1,Mdims%nphase
-           U=>extract_vector_field(state(iphase),"U",stat)
-           if(stat==0)then
-              do idim=1,Mdims%ndim
-                 U%val(idim,:)=U_ALL2%val(idim,iphase,:)
-              end do
-           end if
-        end do
+        ! do iphase=1,Mdims%nphase
+        !    U=>extract_vector_field(state(iphase),"U",stat)
+        !    if(stat==0)then
+        !       do idim=1,Mdims%ndim
+        !          U%val(idim,:)=velocity%val(idim,iphase,:)
+        !       end do
+        !    end if
+        ! end do
 
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
