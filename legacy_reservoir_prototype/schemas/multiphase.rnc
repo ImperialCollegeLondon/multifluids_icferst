@@ -3372,7 +3372,10 @@ element Density{(
                      }
                     ),
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
-                    element linearise_density {empty}?}
+                    element linearise_density {empty}?,
+                    scalar_boundary_conditions*
+                    }
+                    
 
                   )
                )

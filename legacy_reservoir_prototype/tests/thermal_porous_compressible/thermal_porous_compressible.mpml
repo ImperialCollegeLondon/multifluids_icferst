@@ -87,6 +87,17 @@
             </coefficient_E>
           </Temperature_Pressure_correlation>
         </compressible>
+        <boundary_conditions name="all">
+          <surface_ids>
+            <integer_value shape="3" rank="1">1 2 3</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">1000</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
       </Density>
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
