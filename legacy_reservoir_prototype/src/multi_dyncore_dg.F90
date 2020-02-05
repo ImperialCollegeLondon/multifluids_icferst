@@ -8013,5 +8013,469 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine get_porous_Mass_matrix
 
 
+    subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, for_transport)
+        ! ...
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_ndgln), intent(in) :: ndgln
+        type( state_type ), intent(inout) :: packed_state
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        real, dimension(:), intent(inout) :: courant_number_in
+        logical, optional, intent(in) :: for_transport
+        !Local variables
+        real, save :: backup_shockfront_Courant = 0.
+        logical, save :: readed_options = .false.
+        logical, save :: readed_perm = .false.
+        !logical, save :: readed_por = .false.
+        logical, save :: readed_sizes = .false.
+        real, dimension(:,:), pointer :: X_ALL, saturation, Imble_frac, cap_entry_pres, end_point_relperm
+        type(tensor_field), pointer :: permeability, viscosity, density, velocity
+        type(vector_field), pointer :: porosity, gravity_direction 
+        type (vector_field_pointer), dimension(Mdims%nphase) :: Darcy_velocity
+        real, dimension(Mdims%cv_nonods) :: total_mobility, counter_subcv, nDarcy_velocity_cvwise
+        real, dimension(Mdims%ndim, Mdims%cv_nonods) :: Darcy_velocity_cvwise
+        real, dimension(Mdims%n_in_pres, Mdims%cv_nonods) :: relperm
+        real, dimension(:), allocatable :: longitudinal_capilary, transverse_capilary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, overrelaxation, Peclet
+        logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
+        real, save :: n_phases, n_components, courant_number, shockfront_courant_number, aspect_ratio
+        real, save :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
+        real, save :: average_longitudinal_capilary, average_transverse_capilary, max_longitudinal_capilary, max_transverse_capilary, min_longitudinal_capilary, min_transverse_capilary
+        real, save :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
+        real, save :: average_overrelaxation, max_overrelaxation, min_overrelaxation
+        real, save :: average_Peclet, max_Peclet, min_Peclet
+        real ::  average_perm_length, average_perm_thickness, average_por, l1_max, l1_min, l2_max, l2_min, h_max, h_min, aux_shockfront_mobratio, domain_length, domain_thickness, delta_density, diffusivity, gravity_magnitude, sin_alpha
+        integer :: iphase, cv_nodi, cv_iloc, ele, total_ele, u_iloc, u_inod, total_cv, counter, Phase_with_Pc
+        
+        !*************************************!
+        !!! ***Getting support variables*** !!!
+        !*************************************!
+
+        !Permeability averages 
+        if (.not.readed_perm) then 
+            !Retrieve permeability field - element wise
+            permeability => extract_tensor_field(packed_state,"Permeability")  
+            !Average permeability along Mdims%ndim-1 first dimensions
+            average_perm_length = 0.
+            if (Mdims%ndim < 3) then
+                do ele = 1, Mdims%totele
+                    average_perm_length = average_perm_length + permeability%val(1,1,ele) 
+                end do 
+                total_ele = Mdims%totele
+                if (IsParallel()) then
+                    call allsum(average_perm_length)
+                    call allsum(total_ele)
+                end if
+                average_perm_length = average_perm_length/total_ele 
+            else 
+                do ele = 1, Mdims%totele
+                    average_perm_length = average_perm_length + permeability%val(1,1,ele)  + permeability%val(2,2,ele) 
+                end do 
+                total_ele = Mdims%totele
+                if (IsParallel()) then
+                    call allsum(average_perm_length)
+                    call allsum(total_ele)
+                end if
+                average_perm_length = average_perm_length/(total_ele*2) 
+            end if  
+            !Average permeability along the last dimensions
+            average_perm_thickness = 0.
+            do ele = 1, Mdims%totele
+                average_perm_thickness = average_perm_thickness + permeability%val(Mdims%ndim,Mdims%ndim,ele) 
+            end do 
+            total_ele = Mdims%totele
+            if (IsParallel()) then
+                call allsum(average_perm_thickness)
+                call allsum(total_ele)
+            end if
+            average_perm_thickness = average_perm_thickness/total_ele     
+            readed_perm = .true.
+        end if    
+
+        !Porosity average - not using
+        !if (.not.readed_por) then 
+        !    !Retrieve porosity field
+        !    porosity => extract_vector_field(packed_state,"Porosity")
+        !    average_por = 0
+        !    do ele = 1, Mdims%totele    
+        !        average_por = average_por + porosity%val(1, ele) 
+        !        total_ele = Mdims%totele
+        !    if (IsParallel()) then
+        !       call allsum(average_por)
+        !       call allsum(total_ele)
+        !    average_por = average_por/real(total_ele)    
+        !    readed_por = .true.    
+        !end if
+            
+        !Domain lemgth, domain thickness 
+        if (.not.readed_sizes) then
+            !Extract variables from packed_state, X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+            call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)    
+            !Domain length as the maximum distance in the (Mdims%ndim-1) dimensions, we only calculate it once
+            if (Mdims%ndim < 3) then 
+                l1_max = maxval(X_ALL(1,:)) 
+                l1_min = minval(X_ALL(1,:))   
+                if (IsParallel()) then
+                    call allmax(l1_max)
+                    call allmin(l1_min)
+                end if
+                domain_length = abs(l1_max-l1_min)
+            else 
+                l1_max = maxval(X_ALL(1,:)) 
+                l1_min = minval(X_ALL(1,:))
+                l2_max = maxval(X_ALL(2,:)) 
+                l2_min = minval(X_ALL(2,:))
+                if (IsParallel()) then
+                    call allmax(l1_max)
+                    call allmin(l1_min)
+                    call allmax(l2_max)
+                    call allmin(l2_min)
+                end if
+                domain_length = max(l1_max-l1_min, l2_max-l2_min)
+            end if
+            !Domain thickness as the maximum distance in the last dimension
+            h_max = maxval(X_ALL(Mdims%ndim,:)) 
+            h_min = minval(X_ALL(Mdims%ndim,:))
+            if (IsParallel()) then
+                call allmax(h_max)
+                call allmin(h_min)
+            end if
+            domain_thickness = abs(h_max-h_min)  
+            readed_sizes = .true.    
+        end if
+
+        !Retrieve relative permeabilty field - control-volume wise
+        relperm = 1.0
+        !Retrieve viscosity field - control-volume wise
+        viscosity => extract_tensor_field( packed_state, "Viscosity")
+        !Retrieve phase density - control-volume wise
+        density  => extract_tensor_field( packed_state, "PackedDensity" )
+        !Retrieve velocity - control-volume wise
+        velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+        !Retrieve Immobile fraction - element wise 
+        call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
+        !Retrive saturation - control-volume wise
+        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = saturation) 
+        !Retrive Capillary entry pressure - control-volume wise
+        call get_var_from_packed_state(packed_state, Cap_entry_pressure = cap_entry_pres) 
+        !Retrive end-point relative permeability- control-volume wise
+        call get_var_from_packed_state(packed_state, EndPointRelperm = end_point_relperm) 
+        !Calculate the total number of control volumes  
+        total_cv = Mdims%cv_nonods 
+        if (IsParallel()) then
+            call allsum(total_cv)                
+        end if
+
+        !Total mobility - control-volume wise
+        do cv_nodi = 1, Mdims%cv_nonods
+            total_mobility(cv_nodi) = sum( relperm(:, cv_nodi) / viscosity%val( 1, :, cv_nodi) )
+        end do
+
+        !P0 Darcy velocity - control-volume wise
+        do iphase = 1, Mdims%n_in_pres
+            Darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
+        end do    
+        Darcy_velocity_cvwise = 0.
+        counter_subcv = 0
+        do ele = 1, Mdims%totele
+            do u_iloc = 1, Mdims%u_nloc
+                u_inod = ndgln%u(( ele - 1 ) * Mdims%u_nloc + u_iloc)
+                do cv_iloc = 1, Mdims%cv_nloc
+                    cv_nodi = ndgln%cv(( ele - 1) * Mdims%cv_nloc + cv_iloc )
+                    do iphase = 1, Mdims%n_in_pres
+                        Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi) + Darcy_velocity(iphase)%ptr%val(:,u_inod)
+                    end do
+                    counter_subcv(cv_nodi) = counter_subcv(cv_nodi) + 1
+                end do
+            end do
+        end do
+        do cv_nodi = 1, Mdims%cv_nonods
+            Darcy_velocity_cvwise(:,cv_nodi) = Darcy_velocity_cvwise(:,cv_nodi)/counter_subcv(cv_nodi)
+            nDarcy_velocity_cvwise(cv_nodi) = norm2(Darcy_velocity_cvwise(:,cv_nodi))
+        end do 
+
+        !**************************************!
+        !!! ***Calculating all parameters*** !!!
+        !**************************************!
+
+        if (.not.readed_options) then
+            !We read the options just once
+            !!! Number of phases !!!
+            n_phases = Mdims%n_in_pres 
+            !!! have wells !!! 
+            wells = (Mdims%npres > 1)
+            !!! Number of components !!!
+            n_components = Mdims%ncomp        
+            !!! gravity !!!
+            gravity = have_option("/physical_parameters/gravity")        
+            !!! Capillary pressure !!!
+            cap_pressure = have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)
+            !!! Single-phase flow !!!
+            one_phase = (Mdims%n_in_pres == 1) 
+            !!! Black Oil
+            black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
+            !!! Over relaxation !!!
+            ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')  
+            readed_options = .true.
+        end if
+
+        !!! Courant number and Shockfront courant number !!!
+        !Sometimes the shock-front courant number is not well calculated, then use previous value
+        if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
+        !Courant number
+        courant_number = courant_number_in(1) 
+        !shockfront courant number
+        shockfront_courant_number = courant_number_in(2)
+        backup_shockfront_Courant = shockfront_courant_number
+
+        !!! Effective aspect ratio !!!
+        aspect_ratio = domain_length*SQRT(average_perm_thickness/average_perm_length)/domain_thickness 
+        
+        !!! shockfront mobility ratio !!! 
+        min_shockfront_mobratio = 999.
+        max_shockfront_mobratio = 0.
+        average_shockfront_mobratio = 0.
+        counter = 0
+        if (Mdims%n_in_pres > 1) then
+            do ele = 1, Mdims%totele
+                if (shock_front_in_ele(ele, Mdims, saturation, ndgln, Imble_frac)) then 
+                    aux_shockfront_mobratio = shock_front_mobility_ratio(ele, Mdims, saturation, ndgln, Imble_frac, total_mobility)
+                    min_shockfront_mobratio = min(min_shockfront_mobratio, aux_shockfront_mobratio)
+                    max_shockfront_mobratio = max(max_shockfront_mobratio, aux_shockfront_mobratio)
+                    average_shockfront_mobratio = average_shockfront_mobratio + aux_shockfront_mobratio
+                    counter = counter + 1
+                end if
+            end do  
+            if (IsParallel()) then
+                call allmax(max_shockfront_mobratio)
+                call allmin(min_shockfront_mobratio)
+                call allsum(average_shockfront_mobratio)
+                call allsum(counter)                
+            end if
+            average_shockfront_mobratio = average_shockfront_mobratio/counter
+        else 
+            min_shockfront_mobratio = 1.
+            max_shockfront_mobratio = 1.
+            average_shockfront_mobratio = 1.      
+        end if    
+        
+        !!! Capilary numbers !!!
+        if (cap_pressure) then
+            allocate( longitudinal_capilary(Mdims%cv_nonods) )
+            allocate( transverse_capilary(Mdims%cv_nonods) )
+            do cv_nodi = 1, Mdims%cv_nonods
+                longitudinal_capilary(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi)) / &
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity%val( 1, Mdims%n_in_pres, cv_nodi)*domain_length) 
+                transverse_capilary(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi))*domain_length / &
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity%val( 1, Mdims%n_in_pres, cv_nodi)*domain_thickness**2)               
+            end do 
+            ! calculate average, max and min values
+            average_longitudinal_capilary = sum(longitudinal_capilary)
+            average_transverse_capilary = sum(transverse_capilary)
+            max_longitudinal_capilary = maxval(longitudinal_capilary)
+            max_transverse_capilary = maxval(transverse_capilary)
+            min_longitudinal_capilary = minval(longitudinal_capilary)
+            min_transverse_capilary = minval(transverse_capilary)
+            if (IsParallel()) then
+                call allsum(average_longitudinal_capilary)
+                call allsum(average_transverse_capilary)
+                call allmax(max_longitudinal_capilary)
+                call allmax(max_transverse_capilary)  
+                call allmin(min_longitudinal_capilary)
+                call allmin(min_transverse_capilary)               
+            end if
+            average_longitudinal_capilary = average_longitudinal_capilary/total_cv
+            average_transverse_capilary = average_transverse_capilary/total_cv 
+            deallocate(longitudinal_capilary)
+            deallocate(transverse_capilary)
+        else 
+            average_longitudinal_capilary = 0.
+            average_transverse_capilary = 0.
+            max_longitudinal_capilary = 0.
+            max_transverse_capilary = 0.
+            min_longitudinal_capilary = 0.
+            min_transverse_capilary = 0.
+        end if
+
+        !!! gravity numbers !!!
+        if (gravity) then
+            allocate( buoyancy_number(Mdims%cv_nonods) )
+            allocate( transverse_buoyancy(Mdims%cv_nonods) )
+            call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude)
+            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )            
+            do cv_nodi = 1, Mdims%cv_nonods
+                delta_density = (maxval(density%val(1,:,cv_nodi)) - minval(density%val(1,:,cv_nodi)))
+                sin_alpha =  dot_product(Darcy_velocity_cvwise(:,cv_nodi), gravity_direction % val( :, 1))/(norm2(Darcy_velocity_cvwise(:,cv_nodi))*norm2(gravity_direction % val( :, 1)))  
+                buoyancy_number(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_thickness / &
+                                            & (nDarcy_velocity_cvwise(cv_nodi)*viscosity%val( 1, Mdims%n_in_pres, cv_nodi)*domain_length) 
+                longitudinal_buoyancy(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sin_alpha / &
+                                               & (nDarcy_velocity_cvwise(cv_nodi)*viscosity%val( 1, Mdims%n_in_pres, cv_nodi)) 
+                transverse_buoyancy(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_length / &
+                                                & (nDarcy_velocity_cvwise(cv_nodi)*viscosity%val( 1, Mdims%n_in_pres, cv_nodi)*domain_thickness)               
+            end do 
+            ! calculate average, max and min values
+            average_buoyancy_number = sum(buoyancy_number)
+            average_longitudinal_buoyancy = sum(transverse_buoyancy)
+            average_transverse_buoyancy = sum(transverse_buoyancy)
+            max_buoyancy_number = maxval(buoyancy_number)
+            max_longitudinal_buoyancy = maxval(transverse_buoyancy)
+            max_transverse_buoyancy = maxval(transverse_buoyancy)
+            min_buoyancy_number = minval(buoyancy_number)
+            min_longitudinal_buoyancy = minval(transverse_buoyancy)
+            min_transverse_buoyancy = minval(transverse_buoyancy)
+            if (IsParallel()) then
+                call allsum(average_buoyancy_number)
+                call allsum(average_longitudinal_buoyancy)
+                call allsum(average_transverse_buoyancy)
+                call allmax(max_buoyancy_number)
+                call allmax(max_longitudinal_buoyancy)  
+                call allmax(max_transverse_buoyancy) 
+                call allmin(min_buoyancy_number)
+                call allmin(min_longitudinal_buoyancy)  
+                call allmin(min_transverse_buoyancy)               
+            end if
+            average_buoyancy_number = average_buoyancy_number/total_cv
+            average_longitudinal_buoyancy = average_longitudinal_buoyancy/total_cv 
+            average_transverse_buoyancy = average_transverse_buoyancy/total_cv 
+            deallocate(buoyancy_number)
+            deallocate(longitudinal_buoyancy)
+            deallocate(transverse_buoyancy)
+        else 
+            average_buoyancy_number = 0.
+            average_longitudinal_buoyancy = 0.
+            average_transverse_buoyancy = 0.
+            max_buoyancy_number = 0.
+            max_longitudinal_buoyancy = 0.
+            max_transverse_buoyancy = 0.
+            min_buoyancy_number = 0.
+            min_longitudinal_buoyancy = 0.
+            min_transverse_buoyancy = 0.
+        end if
+
+        !!! overrelaxation parameter !!!
+        if (ov_relaxation) then
+            allocate( overrelaxation(Mdims%cv_nonods) ) 
+            call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, overrelaxation, Phase_with_Pc) 
+            max_overrelaxation = maxval(overrelaxation)
+            min_overrelaxation = minval(overrelaxation)
+            average_overrelaxation = sum(overrelaxation)
+            if (IsParallel()) then
+                call allmax(max_overrelaxation)
+                call allmin(min_overrelaxation)
+                call allsum(average_overrelaxation)              
+            end if
+            average_overrelaxation = average_overrelaxation/total_cv
+            deallocate(overrelaxation)
+        else 
+            max_overrelaxation = 0.
+            min_overrelaxation = 0.
+            average_overrelaxation = 0.
+        end if
+
+        !!! Peclet number !!!
+        !Peclet = V * L / Diffusivity;
+        if (ov_relaxation) then 
+            allocate( Peclet(Mdims%cv_nonods) )
+            if (present_and_true(for_transport)) then
+                call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', diffusivity)
+            else
+                call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', diffusivity)
+            end if
+            diffusivity = abs(diffusivity)
+            Peclet = 0.
+            do cv_nodi = 1, Mdims%cv_nonods
+                Peclet(cv_nodi) = nDarcy_velocity_cvwise(cv_nodi)*domain_length/diffusivity
+            end do
+            max_Peclet = maxval(Peclet)
+            min_Peclet = minval(Peclet)
+            average_Peclet = sum(Peclet)
+            if (IsParallel()) then
+                call allmax(max_Peclet)
+                call allmin(min_Peclet)
+                call allsum(average_Peclet)
+            end if
+            average_Peclet = average_Peclet/total_cv
+            deallocate(Peclet)
+        else
+            max_Peclet = 0.    ! ****************** the default value is 0 or inf (if inf I may use 1_over_Peclet = 1/Peclet)
+            min_Peclet = 0.
+            average_Peclet = 0.
+        end if
+
+        !*****************************!
+        !!! ***Support functions*** !!!
+        !*****************************!
+
+        contains 
+
+            real function shock_front_mobility_ratio(ele, Mdims, sat, ndgln, Imble_frac, total_mobility)
+                !Detects whether the element has a shockfront or not and calculates the shockfront mobility ratio
+                !if there is not a shock front within the lement the fuction returns -1
+                implicit none
+                integer, intent(in) :: ele 
+                type(multi_dimensions), intent(in) :: Mdims
+                real, dimension(:,:), intent(in) :: sat 
+                type(multi_ndgln), intent(in) :: ndgln
+                real, dimension(:,:), intent(in) :: Imble_frac  
+                real, dimension(:), intent(in) :: total_mobility           
+                !Local variables
+                integer :: iphase, cv_iloc, cv_nodi
+                real :: minival, maxival, aux_sat, tmob_aheadfront, tmob_atfront
+                real, parameter :: tol = 0.05 !Shock fronts smaller than this are unlikely to require extra handling
+                
+                !Starts the value                
+                shock_front_mobility_ratio = -1.0
+
+                minival = 999.; maxival = 0.
+                do iphase = 1, mdims%n_in_pres - 1 
+                    do cv_iloc = 1, Mdims%cv_nloc
+                        cv_nodi = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+                        aux_sat = sat(iphase, cv_nodi) - Imble_frac(iphase, ele)    
+                        if (aux_sat < minival) then 
+                            minival = aux_sat
+                            tmob_aheadfront = total_mobility(cv_nodi)    
+                        end if
+                        if (aux_sat > maxival) then 
+                            maxival = aux_sat
+                            tmob_atfront = total_mobility(cv_nodi)    
+                        end if
+                    end do
+                    if  (minival < tol .and. (maxival-minival) > tol) then
+                        shock_front_mobility_ratio = tmob_atfront/tmob_aheadfront
+                        exit
+                    end if
+                end do
+            end function shock_front_mobility_ratio
+
+            logical function shock_front_in_ele(ele, Mdims, sat, ndgln, Imble_frac)
+                !Detects whether the element has a shockfront or not
+                implicit none
+                integer, intent(in) :: ele !***
+                type(multi_dimensions), intent(in) :: Mdims
+                real, dimension(:,:), intent(in) :: sat 
+                type(multi_ndgln), intent(in) :: ndgln
+                real, dimension(:,:), intent(in) :: Imble_frac             
+                !Local variables
+                integer :: iphase, cv_iloc
+                real :: minival, maxival, aux
+                real, parameter :: tol = 0.05 !Shock fronts smaller than this are unlikely to require extra handling
+
+                !Starts the value   
+                shock_front_in_ele = .false.
+
+                minival = 999.; maxival = 0.
+                do iphase = 1, mdims%n_in_pres - 1 ! ***** Changed from nphase to n_in_pres / Why n_in_pres -1 ???? Only injected fluid, the displaced is the last one? 
+                    do cv_iloc = 1, Mdims%cv_nloc
+                        aux = sat(iphase, ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase,ele) !***
+                        minival = min(aux, minival)
+                        maxival = max(aux, maxival)
+                    end do
+                    if  (minival < tol .and. (maxival-minival) > tol) then
+                        shock_front_in_ele = .true.
+                        exit
+                    end if
+                end do
+            end function shock_front_in_ele
+
+    end subroutine AI_backtracking_parameters
 
  end module multiphase_1D_engine
