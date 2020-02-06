@@ -55,7 +55,6 @@ module solvers_module
     use shape_functions_Linear_Quadratic
     use shape_functions_prototype
     use multi_data_types
-
     implicit none
 
 #include "petsc_legacy.h"

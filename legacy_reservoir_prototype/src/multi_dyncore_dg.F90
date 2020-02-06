@@ -1417,7 +1417,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
 
-        LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER :: IGOT_CMC_PRECON
 ! Gidaspow model B - can use conservative from of
@@ -1451,7 +1450,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         REAL, DIMENSION( :, : ), allocatable :: sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: OLDvelocity, den_all2, denold_all2, tfield, den_all3!, u_all2
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, python_tfield
+        type( tensor_field ), pointer :: p_all, cvp_all, deriv, python_tfield
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs, packed_vel2
@@ -1461,7 +1460,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type(halo_type), pointer :: halo
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
-        REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
@@ -1474,11 +1472,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Variables to control de performance of the solvers
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
-        !solve_stokes
-        real, dimension(:,:,:), allocatable :: velocity_visc
-        type( vector_field ), pointer ::  CV_volumes
 
-
+        if (is_porous_media) then !Find parameter to re-scale the pressure matrix
+          !Since we save the parameter rescaleVal, we only do this one time
+          if (rescaleVal < 0.) then
+            tfield => extract_tensor_field(packed_state,"Permeability")
+            rescaleVal = minval(tfield%val, MASK = tfield%val > 1d-30)
+            !If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) call allmin(rescaleVal)
+          end if
+        end if
 
         !Retrieve solver setting configurations
         solver_option_pressure = "/solver_options/Linear_solver"
@@ -1578,7 +1581,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         end if
 
-        if ( have_option( '/blasting' ) ) then
+        if ( have_option( '/blasting' ) ) then!SPRINT_TO_DO DO WE STILL HAVE BLASTING????
             RETRIEVE_SOLID_CTY = .true.
             call get_option( '/blasting/Gidaspow_model', opt )
             if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
@@ -1706,23 +1709,19 @@ end if
         deallocate(UDIFFUSION_ALL)
 
 
-
-
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
            ALLOCATE( SIGMA( Mdims%nphase, Mdims%mat_nonods ) )
-           DO IPHASE = 1, Mdims%nphase
+           DO IPHASE = 1, Mdims%nphase !sprint_to_do this thing below is unnecessary, we are just copying sigma to the extra phases...
               SIGMA( IPHASE, : ) = velocity_absorption( (IPHASE-1)*Mdims%ndim+1, (IPHASE-1)*Mdims%ndim+1, : )
            END DO
 
-           call get_entire_boundary_condition( pressure,&
-                ['weakdirichlet','freesurface  '],&
+           call get_entire_boundary_condition( pressure, ['weakdirichlet','freesurface  '],&
                 pressure_BCs, WIC_P_BC_ALL )
-           SUF_P_BC_ALL => pressure_BCs%val
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
-                associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA,&
+                associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, pressure_BCs%val, SIGMA,&
                 velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
@@ -1731,7 +1730,7 @@ end if
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
-            CALL PHA_BLOCK_INV(Mmat%PIVIT_MAT, Mdims )
+            CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
         sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
     !sprint_to_do #####TO OPTIMISE THE PIPES EITHER A LOCALLY BLOCK CMC_PETSC MATRIX (i don't think this is possible) IS REQUIRED OR A NEW SPARSITY######
@@ -1743,7 +1742,7 @@ end if
            nullify(halo)
         end if
 
-        !Form pressure matrix
+        !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
         CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
@@ -1755,10 +1754,8 @@ end if
         ! solve using a projection method
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
-        DO IPRES = 1, Mdims%npres
-            CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), P_ALL%val( 1, IPRES, : ), &
-                Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-        END DO
+        call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+
         if ( high_order_Ph ) then
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                 allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
@@ -1768,156 +1765,58 @@ end if
                 deallocate(U_ABSORBIN)
             end if
         end if
+
+
         !"########################UPDATE VELOCITY STEP####################################"
+        !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
+        !MAYBE ONLY AFTER ADAPT/START OF TIME?
         IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
-            !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed (Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
-            !MAYBE ONLY AFTER ADAPT/START OF TIME?
-            CALL PHA_BLOCK_MAT_VEC_old( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+            !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
+            CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
         else
-            ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
-            !SPRINT_TO_DO: THIS BUSSINES OF RESHAPING IS AWFUL...
-            call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
-            rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
-            ! call zero_non_owned(rhs)
             if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
-
-
-!To add Gauss-Seidel Relaxation
-! if (solve_stokes) then
-! packed_vel2 = as_packed_vector(velocity)
-! packed_vel%val = reshape(velocity%val,[size(velocity%val,1)*size(velocity%val,2),size(velocity%val,3)])
-! call mult (packed_vel2,Mmat%DGM_PETSC, packed_vel)
-! RHS%val = RHS%val - packed_vel2%val
-! end if
-
-                packed_vel=as_packed_vector(velocity)
-                call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
-                if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
-                velocity%val = reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
+              call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS)
             end if
             call deallocate(Mmat%DGM_PETSC)
-            call deallocate(rhs)
-            deallocate( UP_VEL )
         END IF
+        !"########################UPDATE VELOCITY STEP####################################"
 
-        !Perform Div * U for the RHS of the pressure equation
-        call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-
-        rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
-
-        if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
-        ! Matrix vector involving the mass diagonal term
-        DO CV_NOD = 1, Mdims%cv_nonods
-            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                CV_JNOD = Mspars%CMC%col( COUNT )
-                DO IPRES = 1, Mdims%npres
-                    IF (( Mdims%npres > 1 ).AND.PIPES_1D) THEN
-                        IF(IPRES==1) THEN
-                            rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
-                        ELSE
-                            rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                -DIAG_SCALE_PRES( IPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
-                        ENDIF
-                    ELSE
-                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                            -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
-                    ENDIF
-                    if ( got_free_surf ) then
-                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                            -MASS_SUF( COUNT ) * ( P_ALL%VAL( 1, IPRES, CV_JNOD ) - POLD_ALL%VAL( 1, IPRES, CV_JNOD ) )
-                    end if
-                    IF ( Mdims%npres > 1 ) THEN
-                        DO JPRES = 1, Mdims%npres
-                            IF(PIPES_1D) THEN
-                                rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                    -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
-                            ELSE
-                                rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                    -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
-                            ENDIF
-                        END DO
-                    END IF
-                END DO
-            END DO
-        END DO
-
-        call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
-            'prognostic/reference_node', ndpset, default = 0 )
+        !"########################UPDATE PRESSURE STEP####################################"
+        !======================================================================================
+        !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
+        !This is deprecated as the remove_null space method works much better (provided by PETSc)
+        call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
         if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
+        !======================================================================================
         ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
         ewrite(3,*)'about to solve for pressure'
-        !########Solve the system#############
-        !Re-scale of the matrix to allow working with small values of sigma
+        !Perform Div * U for the RHS of the pressure equation
+        rhs_p%val = 0.
+        call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
+        rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
+        call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+        !Re-scale system so we can deal with SI units of permeability
         if (is_porous_media) then
-            !Since we save the parameter rescaleVal, we only do this one time
-            if (rescaleVal < 0.) then
-                tfield => extract_tensor_field(packed_state,"Permeability")
-                rescaleVal = minval(tfield%val, MASK = tfield%val > 1d-30)
-                !If it is parallel then we want to be consistent between cpus
-                if (IsParallel()) call allmin(rescaleVal)
-            end if
-            call scale(cmc_petsc, 1.0/rescaleVal)
-            rhs_p%val = rhs_p%val / rescaleVal
-            !End of re-scaling
-        end if
-        call zero(deltaP)!;call zero_non_owned(rhs_p)
-        !Solve the system to obtain dP (difference of pressure)!For solve_stokes this is a CORRECTION parameter NOT pressure
-        call petsc_solve(deltap,cmc_petsc,rhs_p,option_path = trim(solver_option_pressure), iterations_taken = its_taken)
-pres_its_taken = its_taken
-
-        if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-
-        if (solve_stokes) then
-        !"######################## CORRECTION PRESSURE STEP####################################"
-          CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
-          !Re-create the velocity field so we can multiply it by the viscosity !Not efficient but clean to code
-          allocate(velocity_visc(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
-          call compute_velocity_times_viscosity(state, Mdims, ndgln, velocity%val, velocity_visc)
-          !Update pressure based on the correction to get the velocity to be divergent free.
-          !The corrections needs to be divided by the volume of the CVs
-          rhs_p%val = 0.
-          call compute_DIV_U(Mdims, Mmat, Mspars, velocity_visc, INV_B, rhs_p)
-                                                          !NOT SURE IF Mmat%CT_RHS NEEDS TO BE DIVIDED BY CV_volumes%val
-          P_all % val(1,:,:) = P_all % val(1,:,:) + 1./CV_volumes%val * (Mmat%CT_RHS%val - rhs_p%val)
-          deallocate(velocity_visc)
-          !rhs_p CANNOT BE USED AFTER THIS!
-        else
-          P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
+          call scale(cmc_petsc, 1.0/rescaleVal)
+          rhs_p%val = rhs_p%val / rescaleVal
         end if
 
+        call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc)
         call deallocate(cmc_petsc); call deallocate(rhs_p)
-
         if (isParallel()) call halo_update(P_all)
+        !"########################UPDATE PRESSURE STEP####################################"
 
-
-
-        ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
-        ! Use a projection method
-        ! CDP = Mmat%C * DP
-        !CALL C_MULT2( CDP_tensor%val, deltap%val, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-        DO IPRES = 1, Mdims%npres
-          CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap%val( IPRES, : ), &
-          Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-        END DO
-
-        call deallocate(deltaP)
         !######################## CORRECTION VELOCITY STEP####################################
-        ! if (isParallel()) call zero_non_owned(cdp_tensor)
-        ! Correct velocity...
-        ! DU = BLOCK_MAT * CDP
-        ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
-        CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
-        Mdims%totele, Mdims%u_nloc, ndgln%u )
-        velocity % VAL = velocity % VAL + DU_VEL
-        DEALLOCATE( DU_VEL )
-!if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
-
+        ewrite(3,*) 'projecting velocity using DP:', minval(deltap%val), maxval(deltap%val)
+        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
 
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
         call DEALLOCATE( CDP_tensor )
+        !######################## CORRECTION VELOCITY STEP####################################
+
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
         if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
@@ -1932,21 +1831,192 @@ pres_its_taken = its_taken
             nullify(Mmat%PIVIT_MAT)
         end if
 
-        ! Copy back memory; sprint_to_do remove this...
-        !(Pablo)WHAT IS THIS?? SEEMS RUBBISH TO ME...
-        ! do iphase=1,Mdims%nphase
-        !    U=>extract_vector_field(state(iphase),"U",stat)
-        !    if(stat==0)then
-        !       do idim=1,Mdims%ndim
-        !          U%val(idim,:)=velocity%val(idim,iphase,:)
-        !       end do
-        !    end if
-        ! end do
-
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
 
-    contains
+      contains
+
+  !       subroutine Stokes_Anderson_acceleration(Mdims, Mmat, packed_state, max_its)
+  !         !Generic subroutine that perform the Anderson acceleration solver.
+  !         !This is storing a set of results for a system that converges based on a FPI
+  !         !and finding an optimal combination of all of these results that minimise the residual
+  !
+  ! !THIS APPROACH IS SIMILAR TO THE GMRES ONE, MAYBE IT IS WORTH IT COMPARING WITH THAT ONE AS WELL???
+  !
+  !         Implicit none
+  !         !Global variables
+  !         type( multi_dimensions ), intent( in ) :: Mdims
+  !         type (multi_matrices), intent(inout) :: Mmat
+  !         type( state_type ), intent(inout) :: packed_state
+  !         integer, intent(in) :: max_its
+  !         !Local variables
+  !         integer :: i, m, k, aa
+  !         real, dimension(max_its) :: AA_alphas, residuals
+  !         real, dimension(:), allocatable :: proposed_pres
+  !         real, dimension(:,:,:), allocatable :: proposed_vel
+  !         real, dimension(:,:), allocatable :: stored_pressures
+  !         real, dimension(:,:,:,:), allocatable :: stored_velocities
+  !
+  !         i = 1
+  !         call solve_and_update_velocity(Mmat, stored_velocities(i), RHS)
+  !         call update_pressure(stored_pressures(i))
+  !         do k = 1, max_its*100
+  !           i = i + 1
+  !           if (mod(k,max_its-1) == 0 )  i = 1
+  !
+  !           !Compute pseudo-residual as the L2 norm difference between two updates
+  !           residuals(i) = sum((stored_velocities(:,:,:,i) - stored_velocities(:,:,:,i-1))**2.)/ dble(Mdims%u_nonods*Mdims%nphase*Mdims%ndim)**2. + &
+  !                          sum((stored_pressures(:,i) - stored_pressures(:,i-1))**2.) dble(Mdims%cv_nonods)**2.
+  !
+  !           !Find the optimal combination of velocities and pressure that minimise the residual
+  !           call get_Anderson_acceleration_coefficients(AA_alphas(1:i), residuals(1:i))
+  !
+  !           !Obtain new velocity and pressure
+  !           do aa = 1, min(max_its, k)
+  !             proposed_vel = stored_velocities(aa) * AA_alphas(aa)
+  !             proposed_pres = stored_pressures(aa) * AA_alphas(aa)
+  !           end do
+  !
+  !           call solve_and_update_velocity(proposed_pres, stored_velocities(i+1))
+  !           call update_pressure(proposed_pres, proposed_vel, stored_pressures(i+1))
+  !
+  !         end do
+  !       end subroutine Stokes_Anderson_acceleration
+
+        subroutine solve_and_update_velocity(Mmat,Velocity, CDP_tensor, U_RHS)
+          !Update velocity by solving the momentum equation for a given pressure
+          implicit none
+          type (multi_matrices), intent(inout) :: Mmat
+          real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(inout) :: U_RHS!Conversion to two entries
+          type(tensor_field), intent(inout) :: Velocity, CDP_tensor
+          !Local variables
+          type( vector_field ) :: packed_vel, rhs
+
+          !Pointers to convert from tensor data to vector data
+          packed_vel = as_packed_vector(Velocity)
+          rhs = as_packed_vector(CDP_tensor)
+
+          !Compute - u_new = A^-1( - Gradient * P + RHS)
+          packed_vel%val = 0.
+          rhs%val = rhs%val + U_RHS
+          call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
+          if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
+
+#ifdef USING_GFORTRAN
+      !Nothing to do since we have pointers
+#else
+    !For intel compilers we perform a direct reshaping of memory
+    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods)
+    call deallocate(packed_vel); call deallocate(rhs)
+#endif
+
+
+        end subroutine solve_and_update_velocity
+
+        subroutine solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc)
+          !Compute deltaP by solving the pressure equation using the CMC matrix
+          implicit none
+          type( state_type ), intent( inout ) :: packed_state
+          type(multi_dimensions), intent(in) :: Mdims
+          type (multi_sparsities), intent(in) :: Mspars
+          type (multi_matrices), intent(in) :: Mmat
+          type(multi_ndgln), intent(in) :: ndgln
+          REAL, DIMENSION( :, :, : ), intent(in) :: INV_B, velocity
+          type( vector_field ), intent(inout) :: rhs_p
+          type( vector_field ), intent(inout) :: deltap
+          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
+          type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
+          !Local variables
+          integer :: its_taken
+          !solve_stokes
+          real, dimension(:,:,:), allocatable :: velocity_visc
+          type( vector_field ), pointer ::  CV_volumes
+
+
+          call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+          pres_its_taken = its_taken
+          if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+
+          if (solve_stokes) then
+          !"######################## CORRECTION PRESSURE STEP####################################"
+            CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
+            !Re-create the velocity field so we can multiply it by the viscosity !Not efficient but clean to code
+            allocate(velocity_visc(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
+            call compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
+            !Update pressure based on the correction to get the velocity to be divergent free.
+            !The corrections needs to be divided by the volume of the CVs
+            rhs_p%val = 0.
+            call compute_DIV_U(Mdims, Mmat, Mspars, velocity_visc, INV_B, rhs_p)
+                                                            !NOT SURE IF Mmat%CT_RHS NEEDS TO BE DIVIDED BY CV_volumes%val
+            P_all  = P_all + 1./CV_volumes%val * (Mmat%CT_RHS%val - rhs_p%val)
+            deallocate(velocity_visc)
+            !rhs_p CANNOT BE USED AFTER THIS!
+          else
+            P_all = P_all + deltap%val
+          end if
+
+
+        end subroutine solve_and_update_pressure
+
+        subroutine project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+          !Project back the velocity from a non divergent-free space to a divergent free space
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          type (multi_sparsities), intent(in) :: Mspars
+          type (multi_matrices), intent(in) :: Mmat
+          type(multi_ndgln), intent(in) :: ndgln
+          type(tensor_field), intent(inout) :: velocity
+          type( vector_field ), intent(inout) :: deltap
+          type(tensor_field), intent(inout) :: cdp_tensor!To reuse memory
+          !Local variables
+          REAL, DIMENSION( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods ) :: DU_VEL
+
+          !Perform C * DP
+          call zero(cdp_tensor)
+          call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)
+
+          ! DU = BLOCK_MAT * CDP: Project back the velocity from a non divergent-free space to a divergent free space
+          DU_VEL = 0.
+          CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+          Mdims%totele, Mdims%u_nloc, ndgln%u )
+
+          velocity%val = velocity%val + DU_VEL
+
+          !if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
+
+        end subroutine project_velocity_to_affine_space
+
+
+        subroutine get_Anderson_acceleration_coefficients(AA_alphas, residuals)
+          !In this subroutine the Anderson acceleration system ||alpha_i F_i|| subject to sum(alpha_i) = 1 is solved
+          !using lagrangian multipliers to impose the constrain.
+          !In this way we solve a system with an extra constrain
+          implicit none
+          real, dimension(:), intent(out) :: AA_alphas
+          real, dimension(:), intent(out) :: residuals
+          !Local variables
+          real, dimension(size(AA_alphas) + 1) :: X, b
+          real, dimension(size(AA_alphas) + 1, size(AA_alphas) + 1) :: A
+          integer :: i, j
+          !Fill A, the diagonal contains 2 times the residual (Derivatives of (alpha_i * f_i)^2 )
+          A = 0.
+          do i = 1, size(A,1) - 1
+            A(i,i) = 2. * residuals(i)
+          end do
+          !Final row and column is full of 1s but the last diagonal
+          A(size(A,1),:) = 1.; A(:,size(A,1)) = 1.
+          A(size(A,1), size(A,1)) = 0.
+
+          !Only the last term of b has a value, which is 1. (the constrain of summing up to 1)
+          b = 0.
+          b(size(A,1)) = 1.
+
+          !Solve the system
+          X = matmul(inverse(A),b)
+          !The last parameter is the lambda, so we are not interested
+          AA_alphas = X(1:size(AA_alphas))
+
+        end subroutine get_Anderson_acceleration_coefficients
 
 
       subroutine compute_DIV_U(Mdims, Mmat, Mspars, velocity, INV_B, rhs_p)
@@ -1999,6 +2069,58 @@ pres_its_taken = its_taken
 
       end subroutine compute_DIV_U
 
+
+      subroutine include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+        !Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term
+        !as implicitly as possible
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type( vector_field ), intent(inout) :: rhs_p
+        REAL, DIMENSION( : ), intent(in) :: MASS_MN_PRES, MASS_SUF
+        REAL, DIMENSION( :, : ), intent(in) :: DIAG_SCALE_PRES
+        REAL, DIMENSION( :, :, : ), intent(in) :: DIAG_SCALE_PRES_COUP
+        type (multi_pipe_package), intent(in) :: pipes_aux
+        !Local variables
+        type( tensor_field ), pointer :: pold_all
+        integer :: CV_NOD, COUNT, CV_JNOD, IPRES, JPRES
+
+        if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
+        ! Matrix vector involving the mass diagonal term
+        DO CV_NOD = 1, Mdims%cv_nonods
+            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                CV_JNOD = Mspars%CMC%col( COUNT )
+                DO IPRES = 1, Mdims%npres
+                    IF (( Mdims%npres > 1 )) THEN
+                        IF(IPRES==1) THEN
+                            rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                                -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                        ELSE
+                            rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                                -DIAG_SCALE_PRES( IPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                        ENDIF
+                    ELSE
+                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                            -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                    ENDIF
+                    if ( got_free_surf ) then
+                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                            -MASS_SUF( COUNT ) * ( P_ALL%VAL( 1, IPRES, CV_JNOD ) - POLD_ALL%VAL( 1, IPRES, CV_JNOD ) )
+                    end if
+                    IF ( Mdims%npres > 1 ) THEN
+                        DO JPRES = 1, Mdims%npres
+                          rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                            -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
+                        END DO
+                    END IF
+                END DO
+            END DO
+        END DO
+
+
+      end subroutine
+
+
+
       subroutine compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
@@ -2040,7 +2162,7 @@ pres_its_taken = its_taken
         if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV...
           CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
           !...inside the wells it is still FE pressure
-          IF(Mdims%npres>1.AND.PIPES_1D) THEN
+          IF(Mdims%npres>1) THEN
             IPRES = Mdims%npres
             CVP_ALL%VAL(1,ipres,:) = 0.
             DO CV_NOD = 1, Mdims%cv_nonods
@@ -2058,7 +2180,7 @@ pres_its_taken = its_taken
           end if
         else
           CVP_ALL%VAL = 0.0
-          IF(Mdims%npres>1.AND.PIPES_1D) THEN
+          IF(Mdims%npres>1) THEN
             MASS_CV = 0.0
             IPRES = 1
             DO CV_NOD = 1, Mdims%cv_nonods
