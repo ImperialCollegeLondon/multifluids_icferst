@@ -68,7 +68,10 @@ module multiphase_1D_engine
     FORCE_BAL_CTY_ASSEM_SOLVE
 
 contains
-
+  !---------------------------------------------------------------------------
+  !> @author Chris Pain, Pablo Salinas
+  !> @brief Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components
+  !---------------------------------------------------------------------------
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -507,7 +510,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
-  !! Arash
+  !---------------------------------------------------------------------------
+  !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
+  !> @brief Calls to generate and solve the transport equation for the concentration field.
+  !---------------------------------------------------------------------------
   SUBROUTINE SOLUTE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -748,6 +754,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   END SUBROUTINE SOLUTE_ASSEM_SOLVE
 
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method is uncluded
+    !---------------------------------------------------------------------------
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
@@ -1379,7 +1389,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
     end subroutine Compositional_Assemble_Solve
 
-
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas, Asiri Obeysekara
+    !> @brief Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix
+    !> Once these matrices (and corresponding RHSs) are generated the system of equations is solved.
+    !---------------------------------------------------------------------------
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
@@ -1457,7 +1471,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
-        type(halo_type), pointer :: halo
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
@@ -1472,6 +1485,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Variables to control de performance of the solvers
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
+        !Stokes variables
+        integer, parameter :: max_its = 20 !> Maximum number of iterations allowed to the AA stokes solver
 
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
@@ -1732,22 +1747,6 @@ end if
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
             CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
-        sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
-    !sprint_to_do #####TO OPTIMISE THE PIPES EITHER A LOCALLY BLOCK CMC_PETSC MATRIX (i don't think this is possible) IS REQUIRED OR A NEW SPARSITY######
-        diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
-        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
-        if (associated(pressure%mesh%halos)) then
-           halo => pressure%mesh%halos(2)
-        else
-           nullify(halo)
-        end if
-
-        !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
-        CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-        pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
-! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
 
@@ -1778,12 +1777,21 @@ end if
             if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS)
             end if
-            call deallocate(Mmat%DGM_PETSC)
+            if ( .not. solve_stokes)  call deallocate(Mmat%DGM_PETSC)
         END IF
         !"########################UPDATE VELOCITY STEP####################################"
 
         !"########################UPDATE PRESSURE STEP####################################"
-        !======================================================================================
+        !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
+        sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
+        diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
+        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
+        CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
+        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+        pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
+! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+
         !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
         !This is deprecated as the remove_null space method works much better (provided by PETSc)
         call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
@@ -1803,13 +1811,21 @@ end if
         end if
 
         call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc)
-        call deallocate(cmc_petsc); call deallocate(rhs_p)
+        if ( .not. solve_stokes) call deallocate(cmc_petsc)
+        if ( .not. solve_stokes) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
         !"########################UPDATE PRESSURE STEP####################################"
 
         !######################## CORRECTION VELOCITY STEP####################################
         ewrite(3,*) 'projecting velocity using DP:', minval(deltap%val), maxval(deltap%val)
+        !Ensure that the velocity fulfils the continuity equation
         call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+
+        !We may apply the Anderson acceleration method
+        if (solve_stokes) then
+          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
+          call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
+        end if
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
 
@@ -1835,56 +1851,109 @@ end if
         return
 
       contains
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Generic subroutine that perform the Anderson acceleration solver.
+        !> This is storing a set of results for a system that converges based on a FPI
+        !> and finding an optimal combination of all of these results that minimise the residual
+        !---------------------------------------------------------------------------
+        subroutine Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
+          implicit none
+          integer, intent(in) :: max_its
+          type( state_type ), intent( inout ) :: packed_state
+          type(multi_dimensions), intent(in) :: Mdims
+          type (multi_sparsities), intent(in) :: Mspars
+          type (multi_matrices), intent(inout) :: Mmat
+          type(multi_ndgln), intent(in) :: ndgln
+          REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
+          type( vector_field ), intent(inout) :: rhs_p
+          type( vector_field ), intent(inout) :: deltap
+          type(tensor_field), intent(inout) :: P_all, velocity
+          type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
+  !THIS APPROACH IS SIMILAR TO THE GMRES ONE, MAYBE IT IS WORTH IT COMPARING WITH THAT ONE AS WELL???
+          !Local variables
+          integer :: i, m, k, aa, st
+          real, dimension(max_its) :: AA_alphas, residuals
+          real, dimension(Mdims%npres, Mdims%cv_nonods, max_its) :: stored_pressures
+          ! real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nonods, max_its) :: stored_velocities
 
-  !       subroutine Stokes_Anderson_acceleration(Mdims, Mmat, packed_state, max_its)
-  !         !Generic subroutine that perform the Anderson acceleration solver.
-  !         !This is storing a set of results for a system that converges based on a FPI
-  !         !and finding an optimal combination of all of these results that minimise the residual
-  !
-  ! !THIS APPROACH IS SIMILAR TO THE GMRES ONE, MAYBE IT IS WORTH IT COMPARING WITH THAT ONE AS WELL???
-  !
-  !         Implicit none
-  !         !Global variables
-  !         type( multi_dimensions ), intent( in ) :: Mdims
-  !         type (multi_matrices), intent(inout) :: Mmat
-  !         type( state_type ), intent(inout) :: packed_state
-  !         integer, intent(in) :: max_its
-  !         !Local variables
-  !         integer :: i, m, k, aa
-  !         real, dimension(max_its) :: AA_alphas, residuals
-  !         real, dimension(:), allocatable :: proposed_pres
-  !         real, dimension(:,:,:), allocatable :: proposed_vel
-  !         real, dimension(:,:), allocatable :: stored_pressures
-  !         real, dimension(:,:,:,:), allocatable :: stored_velocities
-  !
-  !         i = 1
-  !         call solve_and_update_velocity(Mmat, stored_velocities(i), RHS)
-  !         call update_pressure(stored_pressures(i))
-  !         do k = 1, max_its*100
-  !           i = i + 1
-  !           if (mod(k,max_its-1) == 0 )  i = 1
-  !
-  !           !Compute pseudo-residual as the L2 norm difference between two updates
-  !           residuals(i) = sum((stored_velocities(:,:,:,i) - stored_velocities(:,:,:,i-1))**2.)/ dble(Mdims%u_nonods*Mdims%nphase*Mdims%ndim)**2. + &
-  !                          sum((stored_pressures(:,i) - stored_pressures(:,i-1))**2.) dble(Mdims%cv_nonods)**2.
-  !
-  !           !Find the optimal combination of velocities and pressure that minimise the residual
-  !           call get_Anderson_acceleration_coefficients(AA_alphas(1:i), residuals(1:i))
-  !
-  !           !Obtain new velocity and pressure
-  !           do aa = 1, min(max_its, k)
-  !             proposed_vel = stored_velocities(aa) * AA_alphas(aa)
-  !             proposed_pres = stored_pressures(aa) * AA_alphas(aa)
-  !           end do
-  !
-  !           call solve_and_update_velocity(proposed_pres, stored_velocities(i+1))
-  !           call update_pressure(proposed_pres, proposed_vel, stored_pressures(i+1))
-  !
-  !         end do
-  !       end subroutine Stokes_Anderson_acceleration
+          i = 1
+          !Update stored values
+          stored_pressures(:,:,i) = P_all%val(1,:,:)
+          ! stored_velocities(:,:,:,i) = velocity%val
+          do k = 1, max_its*5
 
+            if (K > 1) then
+              m = i - 1
+              if (m == 0) m = max_its
+              !Compute pseudo-residual as the L2 norm difference between two updates
+                                    !For velocity need to make each dimension idependently!
+              ! residuals(i) = (sum((stored_velocities(:,:,:,i) - stored_velocities(:,:,:,m))**2.)/ dble(Mdims%u_nonods*Mdims%nphase*Mdims%ndim)**2. + &
+              !                sum((stored_pressures(:,:,i) - stored_pressures(:,:,m))**2.)/ dble(Mdims%cv_nonods)**2.)/2.
+              residuals(m) = sum((stored_pressures(:,:,i) - stored_pressures(:,:,m))**2.)/ dble(Mdims%cv_nonods)**2.
+!Still not sure about this way to calculate residuals
+!TODO NEED TO ADD THE DIAGONAL OF A INSTEAD OF THE IDENTITY FOR M AS IT IS NOW
+!TODO ALSO NEED TO IDENTIFY IF ONLY THE PRESSURE IS REALLY REQUIRED... AT LEAST THE VELOCITY SHOULD BE CONSIDERED
+!FOR THE COMPUTATION OF THE RESIDUAL
+!TODO ENSURE THAT THE CONTINUITY EQUATION IS FINALLY IMPOSED INTO THE VELOCITY
+!TODO THE CONVERGENCE METHOD NOT WORKING PROPERLY AS IT IS NOW
+!TODO DOUBLE CHECK THE RESIDUAL CALCULATION AND THE LANGRANGIAN MULTIPLIER METHOD, SO BOTH ARE CONSISTENT
+!TODO NEED TO ADD A CHECK TO ENSURE THAT IF THERE IS NO NEED TO USE AA, NOT EVEN 1 ITERATION IS PERFORMED (MAYBE COMPARE WITH P_OLD?)
+if (residuals(m) < 1e-16) then
+print *, "Iterations taken in the AA method for Stokes "
+   return
+
+
+end if
+              if (K > 2) then
+                m = min(k-1,max_its)
+                !Find the optimal combination of pressure that minimise the residual
+                call get_Anderson_acceleration_coefficients(AA_alphas(1:m), residuals(1:m))
+                ! Obtain new pressure, effectively only the pressure matters as the velocity is obtained from it (for Stokes only!)
+                P_all%val = 0.; velocity%val = 0.
+                do aa = 1, m
+                  ! proposed_vel%val = proposed_vel%val + stored_velocities(aa) * AA_alphas(aa)
+                  P_all%val(1,:,:) = P_all%val(1,:,:) + stored_pressures(:,:,aa) * AA_alphas(aa)
+                  ! velocity%val = velocity%val + stored_velocities(:,:,:,aa) * AA_alphas(aa)
+                end do
+              end if
+            end if
+            !##########################Now solve the equations##########################
+            ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
+            call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS)
+            !Perform Div * U for the RHS of the pressure equation
+            rhs_p%val = 0.
+            call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
+            rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
+            call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+            call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc)
+            if (isParallel()) call halo_update(P_all)
+            !Now ensure that the velocity fulfils the continuity equation
+            call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+
+            ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
+            ! call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            ! call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS)
+
+            if (isParallel()) call halo_update(velocity)
+            !##########################Now solve the equations##########################
+
+            !Update stored values
+            st = i + 1
+            if (st > max_its) st = 1
+            stored_pressures(:,:,st) = P_all%val(1,:,:)
+            ! stored_velocities(:,:,:,st) = velocity%val
+            i = i + 1
+            if (i == max_its + 1 )  i = 1
+          end do
+        end subroutine Stokes_Anderson_acceleration
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Update velocity by solving the momentum equation for a given pressure
+        !---------------------------------------------------------------------------
         subroutine solve_and_update_velocity(Mmat,Velocity, CDP_tensor, U_RHS)
-          !Update velocity by solving the momentum equation for a given pressure
+
           implicit none
           type (multi_matrices), intent(inout) :: Mmat
           real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(inout) :: U_RHS!Conversion to two entries
@@ -1912,9 +1981,12 @@ end if
 
 
         end subroutine solve_and_update_velocity
-
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Compute deltaP by solving the pressure equation using the CMC matrix
+        !---------------------------------------------------------------------------
         subroutine solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc)
-          !Compute deltaP by solving the pressure equation using the CMC matrix
+
           implicit none
           type( state_type ), intent( inout ) :: packed_state
           type(multi_dimensions), intent(in) :: Mdims
@@ -1937,27 +2009,31 @@ end if
           pres_its_taken = its_taken
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
 
-          if (solve_stokes) then
-          !"######################## CORRECTION PRESSURE STEP####################################"
-            CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
-            !Re-create the velocity field so we can multiply it by the viscosity !Not efficient but clean to code
-            allocate(velocity_visc(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
-            call compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
-            !Update pressure based on the correction to get the velocity to be divergent free.
-            !The corrections needs to be divided by the volume of the CVs
-            rhs_p%val = 0.
-            call compute_DIV_U(Mdims, Mmat, Mspars, velocity_visc, INV_B, rhs_p)
-                                                            !NOT SURE IF Mmat%CT_RHS NEEDS TO BE DIVIDED BY CV_volumes%val
-            P_all  = P_all + 1./CV_volumes%val * (Mmat%CT_RHS%val - rhs_p%val)
-            deallocate(velocity_visc)
-            !rhs_p CANNOT BE USED AFTER THIS!
-          else
+          ! if (solve_stokes) then !THIS IS ONLY FOR UZAWA/PROJECTION METHOD
+          ! !"######################## CORRECTION PRESSURE STEP####################################"
+          !   CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
+          !   !Re-create the velocity field so we can multiply it by the viscosity !Not efficient but clean to code
+          !   allocate(velocity_visc(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
+          !   call compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
+          !   !Update pressure based on the correction to get the velocity to be divergent free.
+          !   !The corrections needs to be divided by the volume of the CVs
+          !   rhs_p%val = 0.
+          !   call compute_DIV_U(Mdims, Mmat, Mspars, velocity_visc, INV_B, rhs_p)
+          !                                                   !NOT SURE IF Mmat%CT_RHS NEEDS TO BE DIVIDED BY CV_volumes%val
+          !   P_all  = P_all + 1./CV_volumes%val * (Mmat%CT_RHS%val - rhs_p%val)
+          !   deallocate(velocity_visc)
+          !   !rhs_p CANNOT BE USED AFTER THIS!
+          ! else
             P_all = P_all + deltap%val
-          end if
+          ! end if
 
 
         end subroutine solve_and_update_pressure
 
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Project back the velocity from a non divergent-free space to a divergent free space
+        !---------------------------------------------------------------------------
         subroutine project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
           !Project back the velocity from a non divergent-free space to a divergent free space
           implicit none
@@ -1986,14 +2062,17 @@ end if
 
         end subroutine project_velocity_to_affine_space
 
-
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief In this subroutine the Anderson acceleration system ||alpha_i F_i|| subject to sum(alpha_i) = 1 is solved
+        !> using lagrangian multipliers to impose the constrain.
+        !> In this way we solve a system with an extra constrain
+        !---------------------------------------------------------------------------
         subroutine get_Anderson_acceleration_coefficients(AA_alphas, residuals)
-          !In this subroutine the Anderson acceleration system ||alpha_i F_i|| subject to sum(alpha_i) = 1 is solved
-          !using lagrangian multipliers to impose the constrain.
-          !In this way we solve a system with an extra constrain
+
           implicit none
-          real, dimension(:), intent(out) :: AA_alphas
-          real, dimension(:), intent(out) :: residuals
+          real, dimension(:), intent(out) :: AA_alphas !< multipliers that will minimise the residual
+          real, dimension(:), intent(out) :: residuals !< residuals
           !Local variables
           real, dimension(size(AA_alphas) + 1) :: X, b
           real, dimension(size(AA_alphas) + 1, size(AA_alphas) + 1) :: A
@@ -2010,7 +2089,6 @@ end if
           !Only the last term of b has a value, which is 1. (the constrain of summing up to 1)
           b = 0.
           b(size(A,1)) = 1.
-
           !Solve the system
           X = matmul(inverse(A),b)
           !The last parameter is the lambda, so we are not interested
@@ -2018,7 +2096,10 @@ end if
 
         end subroutine get_Anderson_acceleration_coefficients
 
-
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Calculates the divergence of the velocity by multipliying it by the Ct matrix
+        !---------------------------------------------------------------------------
       subroutine compute_DIV_U(Mdims, Mmat, Mspars, velocity, INV_B, rhs_p)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
@@ -2069,10 +2150,13 @@ end if
 
       end subroutine compute_DIV_U
 
-
+      !---------------------------------------------------------------------------
+      !> @author Chris Pain, Pablo Salinas
+      !> @brief Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term
+      !> as implicitly as possible
+      !---------------------------------------------------------------------------
       subroutine include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-        !Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term
-        !as implicitly as possible
+
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type( vector_field ), intent(inout) :: rhs_p
@@ -2120,7 +2204,10 @@ end if
       end subroutine
 
 
-
+      !---------------------------------------------------------------------------
+      !> @author Pablo Salinas
+      !> @brief Include into the velocity the viscosity term. Important for the Uzawa method
+      !---------------------------------------------------------------------------
       subroutine compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
@@ -2154,6 +2241,11 @@ end if
         end do
       end subroutine
 
+
+      !---------------------------------------------------------------------------
+      !> @author Chris Pain, Pablo Salinas
+      !> @brief Generates a CV version of the pressure field given a FE field
+      !---------------------------------------------------------------------------
       subroutine calc_CVPres_from_FEPres()
         !This is for FE pressure
         implicit none

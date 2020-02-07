@@ -90,6 +90,10 @@ module cv_advection
 
 contains
 
+  !---------------------------------------------------------------------------
+  !> @author Chris Pain, Pablo Salinas
+  !> @brief Generates the transport equation on the CV mesh. Can be also used to generate the gradient matrix for CV Pressure formulations
+  !---------------------------------------------------------------------------
     SUBROUTINE CV_ASSEMB( state, packed_state, &
           final_phase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
           tracer, velocity, density, multi_absorp, &
@@ -2461,6 +2465,10 @@ end if
             its=its+1
         end subroutine dump_multiphase
 
+        !---------------------------------------------------------------------------
+        !> @author Chris Pain, Pablo Salinas
+        !> @brief Computes the flux between CVs
+        !---------------------------------------------------------------------------
         SUBROUTINE GET_INT_T_DEN_new( LIMF )
             !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
             IMPLICIT NONE
@@ -2713,6 +2721,12 @@ end if
             END SELECT
             RETURN
         END SUBROUTINE GET_INT_T_DEN_NEW
+
+
+        !---------------------------------------------------------------------------
+        !> @author Chris Pain, Pablo Salinas, Lluis Via-Estrem, Asiri Obeysekara
+        !> @brief Computes the flux between CVs
+        !---------------------------------------------------------------------------
         SUBROUTINE GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J, &
             LOC_NU, LOC2_NU, NUGI_ALL, &
@@ -2836,7 +2850,10 @@ end if
             end if
             RETURN
         END SUBROUTINE GET_INT_VEL_ORIG_NEW
-
+        !---------------------------------------------------------------------------
+        !> @author Chris Pain, Pablo Salinas
+        !> @brief Computes the flux between CVs
+        !---------------------------------------------------------------------------
         SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, LOC_FEMT, &
             LOC_NU, LOC2_NU, SLOC_NU, &
@@ -4055,19 +4072,21 @@ end if
 
     END SUBROUTINE FIND_OTHER_SIDE
 
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method is uncluded
+    !> Subroutine description:
+    !> (1) determine FEMT (finite element wise) etc
+    !>     from T (control volume wise)
+    !> (2) (optional) calculate psi_int (area) and
+    !>     psi_ave (barycentre) over each CV
+    !---------------------------------------------------------------------------
     SUBROUTINE PROJ_CV_TO_FEM(packed_state, &
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
         igetct, X, mass_ele, mass_mn_pres, &
         tracer, psi_ave, psi_int)
 
-        !------------------------------------------------
-        ! Subroutine description:
-        ! (1) determine FEMT (finite element wise) etc
-        !     from T (control volume wise)
-        ! (2) (optional) calculate psi_int (area) and
-        !     psi_ave (barycentre) over each CV
-        !------------------------------------------------
 
         implicit none
 
