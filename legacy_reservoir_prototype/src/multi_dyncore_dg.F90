@@ -1902,8 +1902,6 @@ end if
 if (residuals(m) < 1e-16) then
 print *, "Iterations taken in the AA method for Stokes "
    return
-
-
 end if
               if (K > 2) then
                 m = min(k-1,max_its)
