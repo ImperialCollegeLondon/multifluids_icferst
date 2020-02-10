@@ -8065,8 +8065,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !!! ***Getting support variables*** !!!
         !*************************************!
 
-        WRITE(*,*) "Begging of the subroutine!"
-
         !Permeability averages 
         if (.not.readed_perm) then 
             !Retrieve permeability field - element wise
@@ -8328,12 +8326,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         ! N_bv,T = (permz*k^e_rd*delta_rho*g*cos(alpha)*L)/(u*mu_d*H)
         if (gravity) then
             allocate( buoyancy_number(Mdims%cv_nonods) )
+            allocate( longitudinal_buoyancy(Mdims%cv_nonods) )
             allocate( transverse_buoyancy(Mdims%cv_nonods) )
             call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude)
-            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )            
+            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )          
             do cv_nodi = 1, Mdims%cv_nonods
                 delta_density = (maxval(density%val(1,:,cv_nodi)) - minval(density%val(1,:,cv_nodi)))
-                sin_alpha =  dot_product(Darcy_velocity_cvwise(:,cv_nodi), gravity_direction % val( :, 1))/(norm2(Darcy_velocity_cvwise(:,cv_nodi))*norm2(gravity_direction % val( :, 1)))  
+                sin_alpha =  dot_product(Darcy_velocity_cvwise(:,cv_nodi), gravity_direction%val(:,1))/(norm2(Darcy_velocity_cvwise(:,cv_nodi))*norm2(gravity_direction%val(:,1)))  
                 buoyancy_number(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sqrt(1-sin_alpha**2)*domain_thickness / &
                                             & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length) 
                 longitudinal_buoyancy(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*delta_density*gravity_magnitude*sin_alpha / &
@@ -8360,7 +8359,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 call allmax(max_transverse_buoyancy) 
                 call allmin(min_buoyancy_number)
                 call allmin(min_longitudinal_buoyancy)  
-                call allmin(min_transverse_buoyancy)               
+                call allmin(min_transverse_buoyancy)  
             end if
             average_buoyancy_number = average_buoyancy_number/total_cv
             average_longitudinal_buoyancy = average_longitudinal_buoyancy/total_cv 
