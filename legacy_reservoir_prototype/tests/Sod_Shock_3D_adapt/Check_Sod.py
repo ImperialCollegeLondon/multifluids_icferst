@@ -64,8 +64,8 @@ print 'Now running the numerical model'
 
 #Get path
 path = os.getcwd()
-#binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
-binpath = 'multiphase.sh'
+binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
+
 
 os.system('make clean')
 os.system('make')
@@ -75,8 +75,8 @@ os.system(binpath + ' ' + path + '/sod_3da.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.03
-Tolerance_L2_NORM = 0.002
+Tolerance_L1_NORM = 0.05
+Tolerance_L2_NORM = 0.005
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
@@ -91,7 +91,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = False
+showPlot = True
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name_rho = 'Density'
