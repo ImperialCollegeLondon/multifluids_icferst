@@ -8,7 +8,7 @@
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="3D_SSDCVlump" language="python">3D_SS = False
+    <test name="3D_SSadapt" language="python">3D_SS = False
 with open("log", "rb") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
