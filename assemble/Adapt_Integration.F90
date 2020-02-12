@@ -522,29 +522,28 @@ contains
 
     !If this is the second try because there was an error, try with different parameters
     if (present_and_true(adapt_error) .and. use_conservative_settings) then
-        !edge_split can't be disabled, which is the one that tends to fail,
-        !therefore we increase the number of sweeps and relax the tolerance
-        nsweep = 200!Increase drastically the number of sweeps
+      !edge_split can't be disabled, which is the one that tends to fail,
+      !therefore we increase the number of sweeps and relax the tolerance
+      nsweep = 200!Increase drastically the number of sweeps
 
-        !Relax convergence
-        if(.not. second_try) dotop = dotop *1.2 !; MINCHG = MINCHG / 1.5
+      !Relax convergence
+      if(.not. second_try) dotop = dotop *1.2 !; MINCHG = MINCHG / 1.5
 
+      !Disable all techniques but the very basics
+      ! mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+      if (second_try) then
         !Disable all techniques but the very basics
-        ! mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
-        if (second_try) then
-          !Disable all techniques but the very basics
-          mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
-    			mshopt(1) = .false.! <= Leave only r-adaptivity
-    			!Relax convergence
-          nsweep=500
-    			dotop = dotop * 1.2
-  		  end if
-        !Set this to true just in case we have to repeat one second time
-        second_try = .true.
-
+        mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+        mshopt(1) = .false.! <= Leave only r-adaptivity
+        !Relax convergence
+        nsweep=500
+        dotop = dotop * 1.2
+      end if
+      !Set this to true just in case we have to repeat one second time
+      second_try = .true.
     else
-        !Re-set second-try to false the first time we enter in this subroutine
-        second_try = .false.
+      !Re-set second-try to false the first time we enter in this subroutine
+      second_try = .false.
     end if
     !disable conservative settings flag, this has to be just above call adptvy
     use_conservative_settings = .false.

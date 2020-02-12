@@ -1998,12 +1998,28 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
     else if (pctype=='hypre') then
 #ifdef HAVE_HYPRE
-      call PCSetType(pc, pctype, ierr)
-      call get_option(trim(option_path)//'/hypre_type[0]/name', &
-        hypretype)
-      call PCHYPRESetType(pc, hypretype, ierr)
+
+    call get_option(trim(option_path)//'/hypre_type[0]/name', &
+      hypretype)
+
       if (have_option(trim(option_path)//'/shift_positive_definite')) then
-        call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !!> shift the mat to positive definite - ao 12-02-20
+        if (hypretype=='boomeramg') then
+          ! call PCHYPRESetType(pc,"-pc_hypre_boomeramg_relax_type_all", ierr)
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,'-pc_hypre_boomeramg_relax_type_all',PETSC_NULL_CHARACTER, ierr)
+        else
+          call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !!> shift the mat to positive definite - ao 12-02-20
+        end if
+
+        call PCSetType(pc, pctype, ierr)
+        call PCHYPRESetType(pc, hypretype, ierr)
+
+      else !!! not forcing positive defnite
+
+        call PCSetType(pc, pctype, ierr)
+        call get_option(trim(option_path)//'/hypre_type[0]/name', &
+          hypretype)
+        call PCHYPRESetType(pc, hypretype, ierr)
+
       end if
 #else
       ewrite(0,*) 'In solver option:', option_path
