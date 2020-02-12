@@ -75,8 +75,8 @@ os.system(binpath + ' ' + path + '/sod_3da.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.089
-Tolerance_L2_NORM = 0.0089
+Tolerance_L1_NORM = 0.1
+Tolerance_L2_NORM = 0.01
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
