@@ -75,8 +75,8 @@ os.system(binpath + ' ' + path + '/sod_3da.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.05
-Tolerance_L2_NORM = 0.005
+Tolerance_L1_NORM = 0.089
+Tolerance_L2_NORM = 0.0089
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
 AutoNumber = 0
@@ -246,7 +246,8 @@ L1_norm= L1_sum / len(Experimental_X)
 L2_norm = L2_sum**0.5 / len(Experimental_X)
 
 Passed = True
-
+print(L1_norm)
+print(L2_norm)
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 #Check the experiment has finished
