@@ -2002,6 +2002,9 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       call get_option(trim(option_path)//'/hypre_type[0]/name', &
         hypretype)
       call PCHYPRESetType(pc, hypretype, ierr)
+      if (have_option(trim(option_path)//'/shift_positive_definite')) then
+        call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !!> shift the mat to positive definite - ao 12-02-20
+      end if
 #else
       ewrite(0,*) 'In solver option:', option_path
       FLExit("The fluidity binary is built without hypre support!")
@@ -2105,10 +2108,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
       if (pctype==PCGAMG) then
         ! call PetscOptionsInsertString("-pc_gamg_sym_graph true", ierr)
-
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
         call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
-
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
@@ -2126,6 +2127,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         call PCGAMGSetCoarseEqLim(pc, 800, ierr)
         ! PC setup seems to be required so that the Coarse Eq Lim option is used.
         call PCSetup(pc,ierr)
+        call PCSetType(pc, pctype, ierr)
 
         call MatGetNullSpace(pmat, nullsp, ierr)
         if (ierr==0 .and. .not. IsNullMatNullSpace(nullsp)) then
@@ -2141,7 +2143,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
           call KSPSetTolerances(subksp, 1e-50, 1e-50, 1e50, 10, ierr)
         end if
       end if
-
     end if
 
     ewrite(2, *) 'pc_type: ', trim(pctype)
