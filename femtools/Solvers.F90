@@ -1345,7 +1345,7 @@ logical, optional, intent(in):: nomatrixdump
   call KSPGetConvergedReason(ksp, reason, ierr)
   call KSPGetIterationNumber(ksp, iterations, ierr)
 
-  if (have_option(trim(solver_option_path)//'/iterative_method[0]/cg')) then
+  if (have_option(trim(solver_option_path)//'/iterative_method::cg')) then
         if (reason==KSP_DIVERGED_INDEFINITE_PC) then !> checking to see if we need to apply a shift ao 13/02/20
           !>need to shift the matrix to force it to be positive definite, or change the solver to GMRES
           STOP 2022
@@ -1739,7 +1739,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     if(trim(ksptype) == 'cg') then
         if (have_option(trim(solver_option_path)//'/preconditioner::hypre/shift_positive_definite')) then
          call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !> shift the mat to positive definite - ao 12-02-20
-         print *, "MAT shifting to positive definite"
+         !print *, "MAT shifting to positive definite"
          ewrite(2, *) 'forcing the MAT to shift to a positive definite for CG and HYPRE combo'
         end if
     end if
@@ -2020,12 +2020,16 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       call get_option(trim(option_path)//'/hypre_type[0]/name', &
       hypretype)
       !>try to force the matrix to be positive definite -ao 13/02/20
-      if (have_option(trim(option_path)//'/shift_positive_definite')) then
-        if (hypretype=='boomeramg') then
-          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
-          print *, "BoomerAMG relaxation"
+      if (hypretype=='boomeramg') then
+        if (have_option(trim(option_path)//'/boomeramg_relaxation')) then
+          ! call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","backward-SOR/Jacobi", ierr)
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_smooth_type","Weighted-Jacobi", ierr)
+
+          ! print *, "BoomerAMG relaxation"
         end if
       end if
+
       !> set up HYPRE preconditioner
       call PCSetType(pc, pctype, ierr)
       call get_option(trim(option_path)//'/hypre_type[0]/name', &
