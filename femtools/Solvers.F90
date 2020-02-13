@@ -1345,6 +1345,15 @@ logical, optional, intent(in):: nomatrixdump
   call KSPGetConvergedReason(ksp, reason, ierr)
   call KSPGetIterationNumber(ksp, iterations, ierr)
 
+  if (have_option(trim(solver_option_path)//'/iterative_method[0]/cg')) then
+        if (reason==KSP_DIVERGED_INDEFINITE_PC) then !> checking to see if we need to apply a shift ao 13/02/20
+          !>need to shift the matrix to force it to be positive definite, or change the solver to GMRES
+          STOP 2022
+        end if
+  end if
+
+
+
   ewrite(1, *) 'Out of solver.'
 
   if (timing) then
@@ -1697,7 +1706,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PetscInt max_its, lrestart
     PetscErrorCode ierr
     PetscObject vf
-
+    KSPConvergedReason reason
     logical startfromzero, remove_null_space
 
     ewrite(1,*) "Inside setup_ksp_from_options"
@@ -1725,6 +1734,16 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     ! set ksptype again to force the flml choice
     call KSPSetType(ksp, ksptype, ierr)
     ewrite(2, *) 'ksp_type:', trim(ksptype)
+
+
+    if(trim(ksptype) == 'cg') then
+        if (have_option(trim(solver_option_path)//'/preconditioner::hypre/shift_positive_definite')) then
+         call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !> shift the mat to positive definite - ao 12-02-20
+         print *, "MAT shifting to positive definite"
+         ewrite(2, *) 'forcing the MAT to shift to a positive definite for CG and HYPRE combo'
+        end if
+    end if
+
 
     if(trim(ksptype) == 'gmres') then
        call get_option(trim(solver_option_path)//&
@@ -1968,7 +1987,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PetscBool :: abs
 
 
-
     call get_option(trim(option_path)//'/name', pctype)
 
     if (pctype==PCMG) then
@@ -1997,30 +2015,22 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       call PCSetFromOptions(pc, ierr)
 
     else if (pctype=='hypre') then
+
 #ifdef HAVE_HYPRE
-
-    call get_option(trim(option_path)//'/hypre_type[0]/name', &
+      call get_option(trim(option_path)//'/hypre_type[0]/name', &
       hypretype)
-
+      !>try to force the matrix to be positive definite -ao 13/02/20
       if (have_option(trim(option_path)//'/shift_positive_definite')) then
         if (hypretype=='boomeramg') then
-          ! call PCHYPRESetType(pc,"-pc_hypre_boomeramg_relax_type_all", ierr)
-          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,'-pc_hypre_boomeramg_relax_type_all',PETSC_NULL_CHARACTER, ierr)
-        else
-          call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !!> shift the mat to positive definite - ao 12-02-20
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
+          print *, "BoomerAMG relaxation"
         end if
-
-        call PCSetType(pc, pctype, ierr)
-        call PCHYPRESetType(pc, hypretype, ierr)
-
-      else !!! not forcing positive defnite
-
-        call PCSetType(pc, pctype, ierr)
-        call get_option(trim(option_path)//'/hypre_type[0]/name', &
-          hypretype)
-        call PCHYPRESetType(pc, hypretype, ierr)
-
       end if
+      !> set up HYPRE preconditioner
+      call PCSetType(pc, pctype, ierr)
+      call get_option(trim(option_path)//'/hypre_type[0]/name', &
+      hypretype)
+      call PCHYPRESetType(pc, hypretype, ierr)
 #else
       ewrite(0,*) 'In solver option:', option_path
       FLExit("The fluidity binary is built without hypre support!")
