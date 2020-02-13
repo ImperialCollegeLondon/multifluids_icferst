@@ -300,15 +300,22 @@ and the advection-diffusion solve of prognostic scalar fields.</a:documentation>
           </attribute>
         </element>
       </choice>
-      <optional>
-        <element name="shift_positive_definite">
-          <a:documentation>adds a particular type of quantity to
+      <group>
+        <optional>
+          <element name="shift_positive_definite">
+            <a:documentation>adds a particular type of quantity to
 the diagonal of the matrix during
 numerical factorization - shifts to
 a positive definite</a:documentation>
-          <empty/>
-        </element>
-      </optional>
+            <empty/>
+          </element>
+        </optional>
+        <optional>
+          <element name="boomeramg_relaxation">
+            <empty/>
+          </element>
+        </optional>
+      </group>
     </element>
   </define>
   <define name="pcjacobi_options">

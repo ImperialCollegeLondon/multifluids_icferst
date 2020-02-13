@@ -288,6 +288,9 @@ pchypre_options =
          ## a positive definite
          element shift_positive_definite {
             empty
+         }?,
+         element boomeramg_relaxation {
+            empty
          }?
          )
       }
