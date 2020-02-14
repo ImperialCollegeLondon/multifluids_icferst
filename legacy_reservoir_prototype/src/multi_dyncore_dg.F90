@@ -1070,13 +1070,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !#=================================================================================================================
              !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
              if (.not. written_file) then
-                 open(74, file="Inner_non_linear_iterations.csv", status="unknown", position="append")
+                 open(74, file="non_linear_iterations.csv", status="unknown", position="append")
                  write(74, '(3(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
                  close(74)
                  written_file = .true.
              end if
              ! Write values
-             open(74, file="Inner_non_linear_iterations.csv", status="unknown", position="append")
+             open(74, file="non_linear_iterations.csv", status="unknown", position="append")
              write(74, '(3(I3,",",X))') time_step, nonlinear_iteration, its 
              close(74)
              !#=================================================================================================================
@@ -8048,7 +8048,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
 
     subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, for_transport)
-        ! ...
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
@@ -8073,11 +8072,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real, dimension(Mdims%ndim, Mdims%cv_nonods) :: Darcy_velocity_cvwise
         real, dimension(Mdims%n_in_pres, Mdims%cv_nonods) :: relperm, viscosity
 
-        real, dimension(:), allocatable :: longitudinal_capilary, transverse_capilary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
+        real, dimension(:), allocatable :: longitudinal_capillary, transverse_capillary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
         logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
         real, save :: n_phases, n_components, courant_number, shockfront_courant_number, aspect_ratio
         real, save :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
-        real, save :: average_longitudinal_capilary, average_transverse_capilary, max_longitudinal_capilary, max_transverse_capilary, min_longitudinal_capilary, min_transverse_capilary
+        real, save :: average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
         real, save :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
         real, save :: average_overrelaxation, max_overrelaxation, min_overrelaxation
         real, save :: average_invPeclet, max_invPeclet, min_invPeclet
@@ -8307,44 +8306,44 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             average_shockfront_mobratio = 1.      
         end if    
         
-        !!! Capilary numbers !!!
+        !!! Capillary numbers !!!
         ! N_cv,L = (permx*k^e_rd*P^e_c)/(u*mu_d*L)
         ! N_cv,T = (permz*k^e_rd*P^e_c*L)/(u*mu_d*H**2)
         if (cap_pressure) then
-            allocate( longitudinal_capilary(Mdims%cv_nonods) )
-            allocate( transverse_capilary(Mdims%cv_nonods) )
+            allocate( longitudinal_capillary(Mdims%cv_nonods) )
+            allocate( transverse_capillary(Mdims%cv_nonods) )
             do cv_nodi = 1, Mdims%cv_nonods
-                longitudinal_capilary(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi)) / &
+                longitudinal_capillary(cv_nodi) = average_perm_length*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi)) / &
                                                 & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_length) 
-                transverse_capilary(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi))*domain_length / &
+                transverse_capillary(cv_nodi) = average_perm_thickness*end_point_relperm(Mdims%n_in_pres,cv_nodi)*sum(cap_entry_pres(:,cv_nodi))*domain_length / &
                                                 & (nDarcy_velocity_cvwise(cv_nodi)*viscosity( Mdims%n_in_pres, cv_nodi)*domain_thickness**2)               
             end do 
             ! calculate average, max and min values
-            average_longitudinal_capilary = sum(longitudinal_capilary)
-            average_transverse_capilary = sum(transverse_capilary)
-            max_longitudinal_capilary = maxval(longitudinal_capilary)
-            max_transverse_capilary = maxval(transverse_capilary)
-            min_longitudinal_capilary = minval(longitudinal_capilary)
-            min_transverse_capilary = minval(transverse_capilary)
+            average_longitudinal_capillary = sum(longitudinal_capillary)
+            average_transverse_capillary = sum(transverse_capillary)
+            max_longitudinal_capillary = maxval(longitudinal_capillary)
+            max_transverse_capillary = maxval(transverse_capillary)
+            min_longitudinal_capillary = minval(longitudinal_capillary)
+            min_transverse_capillary = minval(transverse_capillary)
             if (IsParallel()) then
-                call allsum(average_longitudinal_capilary)
-                call allsum(average_transverse_capilary)
-                call allmax(max_longitudinal_capilary)
-                call allmax(max_transverse_capilary)  
-                call allmin(min_longitudinal_capilary)
-                call allmin(min_transverse_capilary)               
+                call allsum(average_longitudinal_capillary)
+                call allsum(average_transverse_capillary)
+                call allmax(max_longitudinal_capillary)
+                call allmax(max_transverse_capillary)  
+                call allmin(min_longitudinal_capillary)
+                call allmin(min_transverse_capillary)               
             end if
-            average_longitudinal_capilary = average_longitudinal_capilary/total_cv
-            average_transverse_capilary = average_transverse_capilary/total_cv 
-            deallocate(longitudinal_capilary)
-            deallocate(transverse_capilary)
+            average_longitudinal_capillary = average_longitudinal_capillary/total_cv
+            average_transverse_capillary = average_transverse_capillary/total_cv 
+            deallocate(longitudinal_capillary)
+            deallocate(transverse_capillary)
         else 
-            average_longitudinal_capilary = 0.
-            average_transverse_capilary = 0.
-            max_longitudinal_capilary = 0.
-            max_transverse_capilary = 0.
-            min_longitudinal_capilary = 0.
-            min_transverse_capilary = 0.
+            average_longitudinal_capillary = 0.
+            average_transverse_capillary = 0.
+            max_longitudinal_capillary = 0.
+            max_transverse_capillary = 0.
+            min_longitudinal_capillary = 0.
+            min_transverse_capillary = 0.
         end if
 
         !!! gravity numbers !!!
@@ -8369,13 +8368,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             end do 
             ! calculate average, max and min values
             average_buoyancy_number = sum(buoyancy_number)
-            average_longitudinal_buoyancy = sum(transverse_buoyancy)
+            average_longitudinal_buoyancy = sum(longitudinal_buoyancy)
             average_transverse_buoyancy = sum(transverse_buoyancy)
             max_buoyancy_number = maxval(buoyancy_number)
-            max_longitudinal_buoyancy = maxval(transverse_buoyancy)
+            max_longitudinal_buoyancy = maxval(longitudinal_buoyancy)
             max_transverse_buoyancy = maxval(transverse_buoyancy)
             min_buoyancy_number = minval(buoyancy_number)
-            min_longitudinal_buoyancy = minval(transverse_buoyancy)
+            min_longitudinal_buoyancy = minval(longitudinal_buoyancy)
             min_transverse_buoyancy = minval(transverse_buoyancy)
             if (IsParallel()) then
                 call allsum(average_buoyancy_number)
@@ -8439,7 +8438,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             diffusivity = abs(diffusivity)
             invPeclet = 0.
             do cv_nodi = 1, Mdims%cv_nonods
-                invPeclet(cv_nodi) = diffusivity/nDarcy_velocity_cvwise(cv_nodi)*domain_length
+                invPeclet(cv_nodi) = diffusivity/(nDarcy_velocity_cvwise(cv_nodi)*domain_length)
             end do
             max_invPeclet = maxval(invPeclet)
             min_invPeclet = minval(invPeclet)
@@ -8470,7 +8469,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
             write(73, '(5(A,",",X))', advance="NO") "n_phases", "n_components", "courant_number", "shockfront_courant_number", "aspect_ratio"
             write(73, '(3(A,",",X))', advance="NO") "min_shockfront_mobratio", "max_shockfront_mobratio", "average_shockfront_mobratio"
-            write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capilary", "average_transverse_capilary", "max_longitudinal_capilary", "max_transverse_capilary", "min_longitudinal_capilary", "min_transverse_capilary"
+            write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capillary", "average_transverse_capillary", "max_longitudinal_capillary", "max_transverse_capillary", "min_longitudinal_capillary", "min_transverse_capillary"
             write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
             write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
             write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
@@ -8484,7 +8483,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         write(73, '(6(L,",",X))', advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
         write(73, '(5(E15.8,",",X))', advance="NO") n_phases, n_components, courant_number, shockfront_courant_number, aspect_ratio
         write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
-        write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capilary, average_transverse_capilary, max_longitudinal_capilary, max_transverse_capilary, min_longitudinal_capilary, min_transverse_capilary
+        write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
         write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
         write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
         write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
