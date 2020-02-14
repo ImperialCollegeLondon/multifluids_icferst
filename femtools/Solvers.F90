@@ -1348,7 +1348,7 @@ logical, optional, intent(in):: nomatrixdump
   if (have_option(trim(solver_option_path)//'/iterative_method::cg')) then
         if (reason==KSP_DIVERGED_INDEFINITE_PC) then !> checking to see if we need to apply a shift ao 13/02/20
           !>need to shift the matrix to force it to be positive definite, or change the solver to GMRES
-          STOP 2022
+          ! STOP 2022
         end if
   end if
 
@@ -1985,7 +1985,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PetscErrorCode:: ierr
     PCJacobiType:: pc_jacobi_type
     PetscBool :: abs
-
+    PetscReal :: def
 
     call get_option(trim(option_path)//'/name', pctype)
 
@@ -2022,18 +2022,17 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       !>try to force the matrix to be positive definite -ao 13/02/20
       if (hypretype=='boomeramg') then
         if (have_option(trim(option_path)//'/boomeramg_relaxation')) then
-          ! call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
-          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","backward-SOR/Jacobi", ierr)
-          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_smooth_type","Weighted-Jacobi", ierr)
-
-          ! print *, "BoomerAMG relaxation"
+          !call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !> shift the mat to positive definite - ao 12-02-20
+          !def=PETSC_DECIDE
+          !call PCFactorSetShiftAmount(pc, def, ierr);
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_coarsen_type","Falgout", ierr)
+           !print *, "BoomerAMG relaxation"
         end if
       end if
 
       !> set up HYPRE preconditioner
       call PCSetType(pc, pctype, ierr)
-      call get_option(trim(option_path)//'/hypre_type[0]/name', &
-      hypretype)
       call PCHYPRESetType(pc, hypretype, ierr)
 #else
       ewrite(0,*) 'In solver option:', option_path
@@ -2140,6 +2139,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         ! call PetscOptionsInsertString("-pc_gamg_sym_graph true", ierr)
         !We always get issues with unsymmetric graphs, forcing symmetry seems not to be that expensive and should help with this
         call PCGAMGSetSymGraph(pc, PETSC_TRUE, ierr)
+        !call PCGAMGFilterGraph(pmat, (/ 0.01/), PETSC_TRUE, ierr) !> ao this needs PETSC 3.12
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
 #if PETSC_VERSION_MINOR<8
@@ -2153,6 +2153,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         call PCGAMGSetThresholdScale(pc, 1.0, ierr)
         call PCGAMGSetThreshold(pc, (/ 0.01/), 1, ierr)
 #endif
+
         ! this was the old default:
         call PCGAMGSetCoarseEqLim(pc, 800, ierr)
         ! PC setup seems to be required so that the Coarse Eq Lim option is used.
