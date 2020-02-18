@@ -823,6 +823,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              integer, save :: max_allowed_its = -1
              integer :: its_taken
              logical, save :: written_file = .false.
+             real, save :: first_res_outer, first_resold_outer
              !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
@@ -956,23 +957,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
-                         if ((Auto_max_backtrack) .and. (its == 1)) then!The maximum backtracking factor depends on the shock-front Courant number
-                             call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
-
-                             !#=================================================================================================================
-                             !# Vinicius-Begin: I have added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                             !#=================================================================================================================
-                             ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
-                             if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
-                             ! Generate all the dimensionless numbers 
-                             call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param)
-                             !Max_sat_its, backtrack_par_factor
-                             !#=================================================================================================================
-                             !# Vinicius-End: I have added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                             !#=================================================================================================================
-
-                         end if                        
-
+                
                          !Calculate the actual residual using a previous backtrack_par
                          ! vtracer=as_vector(sat_field,dim=2)
                          call mult(residual, Mmat%petsc_ACV, solution)
@@ -990,6 +975,22 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          !We use the highest residual across the domain
                          if (IsParallel()) call allmax(res)
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
+                         
+                         if ((Auto_max_backtrack) .and. (its == 1)) then!The maximum backtracking factor depends on the shock-front Courant number
+                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                            !#=================================================================================================================
+                            !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                            !#=================================================================================================================
+                            ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
+                            if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
+                            ! Generate all the dimensionless numbers 
+                            call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold)
+                            !Max_sat_its, backtrack_par_factor
+                            !#=================================================================================================================
+                            !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
+                            !#=================================================================================================================
+                        end if        
+
                      end if
                  end if
 
@@ -1066,11 +1067,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              END DO Loop_NonLinearFlux
 
              !#=================================================================================================================
-             !# Vinicius-Begin: Write the number of inner non-linear iterations into file
+             !# Vinicius: Write the number of non-linear iterations into file
              !#=================================================================================================================
              !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
              if (.not. written_file) then
-                 open(74, file="non_linear_iterations.csv", status="unknown", position="append")
+                 open(74, file="non_linear_iterations.csv", status="replace")
                  write(74, '(3(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
                  close(74)
                  written_file = .true.
@@ -1080,7 +1081,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              write(74, '(3(I3,",",X))') time_step, nonlinear_iteration, its 
              close(74)
              !#=================================================================================================================
-             !# Vinicius-End: Write the number of inner non-linear iterations into file
+             !# Vinicius-End: Write the number of non-linear iterations into file
              !#=================================================================================================================
 
              !Store the number of Saturation Fixed_Point iterations
@@ -8046,8 +8047,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
     end subroutine get_porous_Mass_matrix
 
-
-    subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, for_transport)
+    !----------------------------------------------------------------------------------------
+    !> @author Vinicius L S Silva
+    !> @brief Subroutine that calculates the backtrack_par_factor based on Machine Learning. 
+    !> The inputs of the Machine learning model are dimensionless numbers and configurations  
+    !> of the system. This subroutine also generates several dimensionless numbers cv-wise.  
+    !----------------------------------------------------------------------------------------
+    subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, &
+                                         & res, resold, for_transport)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
@@ -8056,7 +8063,10 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real, dimension(:), intent(inout) :: courant_number_in
         real, intent(in) :: backtrack_par_factor
         real, dimension(:), intent(in) :: overrelaxation
+        real, intent(in) :: res
+        real, intent(in) :: resold   
         logical, optional, intent(in) :: for_transport
+        
         !Local variables
         real, save :: backup_shockfront_Courant = 0.
         logical, save :: readed_options = .false.
@@ -8064,28 +8074,31 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !logical, save :: readed_por = .false.
         logical, save :: readed_sizes = .false.
         logical, save  :: written_file = .false. 
-        real, dimension(:,:), pointer :: X_ALL, saturation, Imble_frac, cap_entry_pres, end_point_relperm
+        real, dimension(:,:), pointer :: X_ALL, saturation, Imble_frac, cap_entry_pres, end_point_relperm, exponent_relperm
         type(tensor_field), pointer :: permeability, state_viscosity, density, velocity
         type(vector_field), pointer :: porosity, gravity_direction 
         type (vector_field_pointer), dimension(Mdims%nphase) :: Darcy_velocity
         real, dimension(Mdims%cv_nonods) :: total_mobility, counter_subcv, nDarcy_velocity_cvwise
         real, dimension(Mdims%ndim, Mdims%cv_nonods) :: Darcy_velocity_cvwise
         real, dimension(Mdims%n_in_pres, Mdims%cv_nonods) :: relperm, viscosity
-
-        real, dimension(:), allocatable :: longitudinal_capillary, transverse_capillary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
-        logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
-        real, save :: n_phases, n_components, courant_number, shockfront_courant_number, aspect_ratio
-        real, save :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
-        real, save :: average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
-        real, save :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
-        real, save :: average_overrelaxation, max_overrelaxation, min_overrelaxation
-        real, save :: average_invPeclet, max_invPeclet, min_invPeclet
-        
         real, save :: average_perm_length, average_perm_thickness, average_por, domain_length, domain_thickness 
         real :: l1_max, l1_min, l2_max, l2_min, h_max, h_min, aux_shockfront_mobratio, delta_density, diffusivity, gravity_magnitude, sin_alpha
-        integer :: iphase, cv_nodi, cv_iloc, ele, total_ele, u_iloc, u_inod, total_cv, counter, Phase_with_Pc
+        integer :: iphase, cv_nodi, cv_iloc, ele, total_ele, u_iloc, u_inod, total_cv, Phase_with_Pc
         !integer, dimension(8) :: date_values
-        !logical :: file_exist 
+        !logical :: file_exist         
+
+        !Parameters 
+        real, dimension(:), allocatable :: longitudinal_capillary, transverse_capillary, buoyancy_number, longitudinal_buoyancy, transverse_buoyancy, invPeclet
+        logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
+        real, save :: n_phases, n_components, aspect_ratio
+        real :: courant_number, shockfront_courant_number
+        real :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
+        real :: average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
+        real :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
+        real :: average_overrelaxation, max_overrelaxation, min_overrelaxation
+        real :: average_invPeclet, max_invPeclet, min_invPeclet
+        integer :: shockfront_counter
+        
 
         !*************************************!
         !!! ***Getting support variables*** !!!
@@ -8184,8 +8197,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             readed_sizes = .true.    
         end if
 
-        !Retrieve relative permeabilty field - control-volume wise
-        relperm = 1.0
         !Retrieve viscosity field - control-volume wise
         do iphase = 1,  Mdims%n_in_pres
           state_viscosity => extract_tensor_field( state( iphase ), 'Viscosity' )
@@ -8202,8 +8213,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = saturation) 
         !Retrive Capillary entry pressure - control-volume wise
         call get_var_from_packed_state(packed_state, Cap_entry_pressure = cap_entry_pres) 
-        !Retrive end-point relative permeability- control-volume wise
+        !Retrive relative permeability end points- control-volume wise
         call get_var_from_packed_state(packed_state, EndPointRelperm = end_point_relperm) 
+        !Retrive relative permeability exponents - control-volume wise
+        call get_var_from_packed_state(packed_state, RelpermExponent = exponent_relperm) 
+        !Retrieve relative permeabilty field - control-volume wise 
+        call get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm) 
         !Calculate the total number of control volumes  
         total_cv = Mdims%cv_nonods 
         if (IsParallel()) then
@@ -8244,6 +8259,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         if (.not.readed_options) then
             !We read the options just once
+            
             !!! Number of phases !!!
             n_phases = Mdims%n_in_pres 
             !!! have wells !!! 
@@ -8259,7 +8275,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             !!! Black Oil
             black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
             !!! Over relaxation !!!
-            ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')  
+            ov_relaxation = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation')
+            
+            !!! Aspect ratio !!!
+            ! R_L = sqrt(permz/permx)*L/H 
+            aspect_ratio = domain_length*SQRT(average_perm_thickness/average_perm_length)/domain_thickness   
+            
             readed_options = .true.
         end if
 
@@ -8272,17 +8293,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !shockfront courant number
         shockfront_courant_number = courant_number_in(2)
         backup_shockfront_Courant = shockfront_courant_number
-
-        !!! Aspect ratio !!!
-        ! R_L = sqrt(permz/permx)*L/H 
-        aspect_ratio = domain_length*SQRT(average_perm_thickness/average_perm_length)/domain_thickness 
         
         !!! shockfront mobility ratio !!! 
         ! M_f = lambda_T(at the front)/lambda_T(ahead of the front)
         min_shockfront_mobratio = 999.
         max_shockfront_mobratio = 0.
         average_shockfront_mobratio = 0.
-        counter = 0
+        shockfront_counter = 0
         if (Mdims%n_in_pres > 1) then
             do ele = 1, Mdims%totele
                 if (shock_front_in_ele(ele, Mdims, saturation, ndgln, Imble_frac)) then 
@@ -8290,17 +8307,19 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                     min_shockfront_mobratio = min(min_shockfront_mobratio, aux_shockfront_mobratio)
                     max_shockfront_mobratio = max(max_shockfront_mobratio, aux_shockfront_mobratio)
                     average_shockfront_mobratio = average_shockfront_mobratio + aux_shockfront_mobratio
-                    counter = counter + 1
+                    shockfront_counter = shockfront_counter + 1
                 end if
             end do  
             if (IsParallel()) then
                 call allmax(max_shockfront_mobratio)
                 call allmin(min_shockfront_mobratio)
                 call allsum(average_shockfront_mobratio)
-                call allsum(counter)                
+                call allsum(shockfront_counter)                
             end if
-            average_shockfront_mobratio = average_shockfront_mobratio/counter
-        else 
+            average_shockfront_mobratio = average_shockfront_mobratio/shockfront_counter
+        end if
+        !Verify whether there is a shockfront or not 
+        if (shockfront_counter == 0) then 
             min_shockfront_mobratio = 1.
             max_shockfront_mobratio = 1.
             average_shockfront_mobratio = 1.      
@@ -8462,32 +8481,34 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
         if (.not. written_file) then
-            open(73, file="AI_backtracking_parameters.csv", status="unknown", position="append")
+            open(73, file="AI_backtracking_parameters.csv", status="replace")
             !call date_and_time(VALUES=date_values)          
             !write(73,'(8i5)') date_values
             ! Write column names
             write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
-            write(73, '(5(A,",",X))', advance="NO") "n_phases", "n_components", "courant_number", "shockfront_courant_number", "aspect_ratio"
+            write(73, '(6(A,",",X))', advance="NO") "n_phases", "n_components", "courant_number", "shockfront_courant_number", "aspect_ratio"
+            write(73, '(1(A,",",X))', advance="NO") "shockfront_counter"
             write(73, '(3(A,",",X))', advance="NO") "min_shockfront_mobratio", "max_shockfront_mobratio", "average_shockfront_mobratio"
             write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capillary", "average_transverse_capillary", "max_longitudinal_capillary", "max_transverse_capillary", "min_longitudinal_capillary", "min_transverse_capillary"
             write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
             write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
             write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
-            write(73, '(1(A,",",X))') "backtrack_par_factor"
+            write(73, '(5(A,",",X))') "residual", "residual_old", "backtrack_par_factor"
             close(73)
             written_file = .true.
         end if
 
         ! Write values
         open(73, file="AI_backtracking_parameters.csv", status="unknown", position="append")
-        write(73, '(6(L,",",X))', advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
-        write(73, '(5(E15.8,",",X))', advance="NO") n_phases, n_components, courant_number, shockfront_courant_number, aspect_ratio
+        write(73, '(6(L,",",X))',     advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
+        write(73, '(6(E15.8,",",X))', advance="NO") n_phases, n_components, courant_number, shockfront_courant_number, aspect_ratio 
+        write(73, '(1(I8,",",X))',    advance="NO") shockfront_counter
         write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
         write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
         write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
         write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
         write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
-        write(73, '(1(E15.8,",",X))') backtrack_par_factor
+        write(73, '(5(E15.8,",",X))') res, resold, backtrack_par_factor
         close(73)
 
         !*****************************!
@@ -8495,6 +8516,25 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !*****************************!
 
         contains 
+
+            subroutine get_relative_permeability(Mdims, saturation, Imble_frac, end_point_relperm, exponent_relperm, relperm) 
+                !Calculate the relative permeabilities based on Corey correlation
+                implicit none
+                type(multi_dimensions), intent(in) :: Mdims
+                real, dimension(:,:), intent(in) :: saturation
+                real, dimension(:,:), intent(in) :: Imble_frac
+                real, dimension(:,:), intent(in) :: end_point_relperm
+                real, dimension(:,:), intent(in) :: exponent_relperm
+                real, dimension(:,:), intent(OUT) :: relperm
+                integer :: cv_nodi, iphase
+
+                do cv_nodi = 1, Mdims%cv_nonods
+                    do iphase = 1, Mdims%n_in_pres
+                        relperm(iphase,cv_nodi) = end_point_relperm(iphase,cv_nodi)*((saturation(iphase,cv_nodi) - Imble_frac(iphase,cv_nodi))/ &
+                                                & (1-sum(Imble_frac(:Mdims%n_in_pres,cv_nodi))))**exponent_relperm(iphase,cv_nodi)   
+                    end do     
+                end do            
+            end subroutine 
 
             real function shock_front_mobility_ratio(ele, Mdims, sat, ndgln, Imble_frac, total_mobility)
                 !Detects whether the element has a shockfront or not and calculates the shockfront mobility ratio
@@ -8552,9 +8592,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 shock_front_in_ele = .false.
 
                 minival = 999.; maxival = 0.
-                do iphase = 1, mdims%n_in_pres - 1 ! ***** Changed from nphase to n_in_pres / Why n_in_pres -1 ???? Only injected fluid, the displaced is the last one? 
+                do iphase = 1, mdims%n_in_pres - 1  
                     do cv_iloc = 1, Mdims%cv_nloc
-                        aux = sat(iphase, ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase,ele) !***
+                        aux = sat(iphase, ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase,ele)
                         minival = min(aux, minival)
                         maxival = max(aux, maxival)
                     end do
