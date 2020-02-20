@@ -280,8 +280,9 @@ contains
     ! deallocate(faces)
     ! deallocate(elements)
 
-    call deallocateElementList( elements ) !!-ao add this
-    call deallocateElementList(faces) !! -ao added this
+    !> asiri: this should fix a memory leak found by valgrind. 
+    call deallocateElementList( elements )
+    call deallocateElementList(faces)
 
     return
 
