@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -133,13 +133,13 @@ contains
 
     ! NOTE:  similar function 'boundaries' variable in Read_Triangle.F90
     ! ie. flag for boundaries and internal boundaries (period mesh bounds)
-    
+
     if (numFaces>0) then
       ! do we have physical surface ids?
       haveBounds= faces(1)%numTags>0
       ! do we have element owners of faces?
       haveElementOwners = faces(1)%numTags==4
-      
+
       ! if any (the first face) has them, then all should have them
       do f=2, numFaces
          if(faces(f)%numTags/=faces(1)%numTags) then
@@ -148,16 +148,16 @@ contains
            FLExit("Inconsistent number of face tags")
          end if
       end do
-        
+
     else
-    
+
       haveBounds=.false.
       haveElementOwners=.false.
-      
+
     end if
-    
+
     if (numElements>0) then
-      
+
       haveRegionIDs = elements(1)%numTags>0
       ! if any (the first face) has them, then all should have them
       do e=2, numElements
@@ -167,13 +167,13 @@ contains
            FLExit("Inconsistent number of element tags")
          end if
       end do
-      
+
     else
-    
+
       haveRegionIDs = .false.
-    
+
     end if
-    
+
     if (present(mdim)) then
        coordinate_dim = mdim
     else if(have_option("/geometry/spherical_earth") ) then
@@ -274,11 +274,14 @@ contains
     ! Deallocate arrays
     deallocate(sndglno)
     if (haveBounds) deallocate(boundaryIDs)
-    if (haveElementOwners) deallocate(faceOwner)    
+    if (haveElementOwners) deallocate(faceOwner)
 
     deallocate(nodes)
-    deallocate(faces)
-    deallocate(elements)
+    ! deallocate(faces)
+    ! deallocate(elements)
+
+    call deallocateElementList( elements ) !!-ao add this
+    call deallocateElementList(faces) !! -ao added this
 
     return
 
@@ -585,7 +588,7 @@ contains
                   allElements(i)%nodeIDs
           end do
 
-          e = e+groupElems        
+          e = e+groupElems
        end do
 
     end select
@@ -703,7 +706,6 @@ contains
     call deallocateElementList( allElements )
 
 
-
   end subroutine read_faces_and_elements
 
 
@@ -757,6 +759,7 @@ contains
 
           eIndex = eIndex+1
        end if
+
     end do
 
   end subroutine copy_to_faces_and_elements
