@@ -282,7 +282,8 @@ contains
           real, dimension(:,:), optional :: calculate_mass_delta
           type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
           type (multi_pipe_package), intent(in) :: pipes_aux
-          REAL, DIMENSION( : ), optional, intent(in) :: porous_heat_coef
+          REAL, DIMENSION( :), optional, intent(in) :: porous_heat_coef
+          !Real, dimension(:), optional, intent(inout):: porous_heat_coef_old
           logical, optional, intent(in) :: solving_compositional, assemble_collapsed_to_one_phase
           ! Variable to store outfluxes
           type (multi_outfluxes), optional, intent(inout) :: outfluxes
@@ -1825,6 +1826,7 @@ contains
                       LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                     end do
                       if (thermal .and. is_porous_media) then
+
                           !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                           ! and the fluids. Here we add the porous media contribution. Multiplied by the saturation so we use the same
                           !paradigm that for the phases, but in the equations it isn't, but here because we iterate over phases and collapse
@@ -1838,6 +1840,7 @@ contains
                           + (CV_BETA * porous_heat_coef( CV_NODI ) * LOC_T2OLD_I &
                           + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * LOC_T2_I ) &
                           * R_PHASE * LOC_TOLD_I* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+
                       end if
 
                       LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * LOC_T2_I * R_PHASE
@@ -1856,6 +1859,7 @@ contains
                           * R_PHASE(IPHASE) * LOC_TOLD_I(IPHASE)
                    END DO
                   END IF
+
 
                   Conditional_GETMAT2: IF ( GETMAT .and. have_absorption) THEN
 
@@ -1880,7 +1884,6 @@ contains
           END IF Conditional_GETCV_DISC2
 
           IF ( GETCT ) THEN
-
             W_SUM_ONE1 = 0.0 !If == 1.0 applies constraint to T
             if (Solve_all_phases) W_SUM_ONE1 = 1.0
             W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD !sprint_to_do Unnecessary, should be removed

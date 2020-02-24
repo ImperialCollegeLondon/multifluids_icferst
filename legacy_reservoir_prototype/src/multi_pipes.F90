@@ -956,7 +956,7 @@ contains
       type (multi_sparsities), intent(in) :: Mspars
       type (porous_adv_coefs), intent(inout) :: upwnd
       type (multi_pipe_package), intent(in) :: pipes_aux
-      REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL§
+      REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
       REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (nphase,Mdims%cv_nonods)
       REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
       REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)

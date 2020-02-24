@@ -95,7 +95,6 @@ contains
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
 
-
         PackedDRhoDPressure => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
         PackedDRhoDPressure%val = 0.
 
@@ -139,7 +138,6 @@ contains
 
               sp = ( iphase - 1 ) * cv_nonods + 1
               ep = iphase * cv_nonods
-
 
               Rho=0. ; dRhodP=0.
               call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &

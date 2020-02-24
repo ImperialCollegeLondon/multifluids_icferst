@@ -60,6 +60,7 @@ module multiphase_1D_engine
     use multi_surface_tension
     use multi_tools, only: CALC_FACE_ELE
     use parallel_tools, only : allmax, allmin, isparallel
+    use ieee_arithmetic
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_porous_Mass_matrix
@@ -78,7 +79,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number)
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -153,6 +154,7 @@ contains
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
+          !Real, dimension(Mdims%cv_nonods), intent(inout)::porous_heat_coef_old
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -186,6 +188,7 @@ contains
                     FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                 end if
                 !need to perform average of the effective heat capacity times density for the diffusion and time terms
+
                 allocate(porous_heat_coef(Mdims%cv_nonods))
                 call effective_Cp_density(porous_heat_coef)
                 !Start with the process to apply the min max principle
@@ -344,6 +347,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call allocate(Mmat%petsc_ACV,sparsity,[nphase,nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
+               !if (ieee_is_nan(porous_heat_coef_old(1))) then
+              !   porous_heat_coef_old = porous_heat_coef
+              !   print *, "heyy"
+              ! end if
+              ! print *, maxval(porous_heat_coef_old)
+              ! print *, maxval(porous_heat_coef)
+
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -364,10 +374,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
+                   porous_heat_coef = porous_heat_coef,solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
-
+              !  porous_heat_coef_old = porous_heat_coef
                ! vtracer=as_vector(tracer,dim=2)
                ! call zero(vtracer)
                call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
@@ -1684,7 +1694,7 @@ end if
              velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux,&
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
-            P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
+            P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:),&
             DT, MASS_MN_PRES, & ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
@@ -2121,7 +2131,7 @@ pres_its_taken = its_taken
                 X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
                 U_ALL, UOLD_ALL, &
                 U_ALL, UOLD_ALL, &    ! This is nu...
-                UDEN_ALL, UDENOLD_ALL, DERIV, &
+                UDEN_ALL, UDENOLD_ALL, DERIV,&
                 DT, &
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
@@ -2154,7 +2164,7 @@ pres_its_taken = its_taken
             DEN_OR_ONE, DENOLD_OR_ONE, &
             Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
             SUF_SIG_DIAGTEN_BC, &
-            DERIV, CV_P, &
+            DERIV,CV_P, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &
             GETCV_DISC, GETCT, &
             IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, Mdisopt%volfra_use_theta_flux, &

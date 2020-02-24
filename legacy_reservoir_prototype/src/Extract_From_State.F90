@@ -946,7 +946,6 @@ contains
            call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
         end do
 
-
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
