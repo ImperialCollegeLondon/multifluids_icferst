@@ -951,6 +951,23 @@ ONLY specify for the wetting phase</a:documentation>
                   <ref name="prescribed_tensor_field"/>
                 </element>
               </element>
+              <element name="scalar_field">
+                <a:documentation>Specify scalar field compressibility of the porous media
+( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
+with P_surf = 10^5 Pa )</a:documentation>
+                <attribute name="name">
+                  <value>porous_compressibility</value>
+                </attribute>
+                <choice>
+                  <element name="prescribed">
+                    <ref name="material_mesh_choice"/>
+                    <ref name="prescribed_scalar_field"/>
+                  </element>
+                  <element name="aliased">
+                    <ref name="generic_aliased_field"/>
+                  </element>
+                </choice>
+              </element>
             </element>
           </optional>
           <optional>
@@ -1276,7 +1293,7 @@ By default this number is 9. Recommended range: 3 to 9.</a:documentation>
           </optional>
           <optional>
             <element name="Max_compositional_its">
-              <a:documentation>Impose a maximum number of iterations for the compositional loop 
+              <a:documentation>Impose a maximum number of iterations for the compositional loop
 By default this number is 1. STILL TESTING THIS PARAMETER</a:documentation>
               <ref name="integer"/>
             </element>
@@ -1595,7 +1612,7 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
                     <element name="Vanishing_for_transport">
                       <a:documentation>This method can also be applied for a transport equation.
 
-Recommended value for Temperature =&gt; -1e0</a:documentation>
+Recommended value for Temperature =&gt; -1e2</a:documentation>
                       <ref name="real"/>
                     </element>
                   </optional>
@@ -2844,12 +2861,12 @@ mass fraction with a particular phase</a:documentation>
         - - Second is a list of fields that are primarily prescribed,
            but can be aliased. An example is wind velocity.
         - - The list is in order of most frequently used.
-        
+
                 ## Prescribed scalar fields below this
                 element ___Prescribed_fields_below___ {
                    empty
                 }|
-        
+
         Insert new prescribed scalar fields here using the template:
                element scalar_field {
                    attribute rank { "0" },
@@ -2864,11 +2881,11 @@ mass fraction with a particular phase</a:documentation>
                       }
                    )
                }
-        
+
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased. An example is Tidal Range.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic scalar fields below this</a:documentation>
@@ -3084,11 +3101,11 @@ Adapting to this field is not recommended</a:documentation>
         </choice>
       </element>
       <!--
-        
+
         - - List of fields that are primarily prognostic,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
                 ## Prescribed vector fields below this
                 element ___Prognostic_fields_below___ {
                    empty
@@ -3098,14 +3115,14 @@ Adapting to this field is not recommended</a:documentation>
         - - List of fields that are primarily prescribed,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
                 ## Prescribed vector fields below this
                 element ___Prescribed_fields_below___ {
                    empty
                 }|
       -->
       <!--
-        
+
         Insert new prescribed vector fields here using the template:
                element vector_field {
                    attribute rank { "1" },
@@ -3120,11 +3137,11 @@ Adapting to this field is not recommended</a:documentation>
                       }
                    )
                }
-        
+
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased. An example is Tidal Range.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic vector fields below this</a:documentation>
@@ -3316,18 +3333,18 @@ to impose an absorption term for the momentum equation using a diagnostic tensor
         </choice>
       </element>
       <!--
-        
+
         - - Second is a list of tensor fields that are primarily prescribed,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Prescribed_fields_below___">
         <a:documentation>Prescribed scalar fields below this</a:documentation>
         <empty/>
       </element>
       <!--
-        
+
         Insert new prescribed tensor fields here using the template:
                element tensor_field {
                    attribute rank { "2" },
@@ -3342,11 +3359,11 @@ to impose an absorption term for the momentum equation using a diagnostic tensor
                       }
                    )
                }|
-        
+
         - - Last is a list of fields that are primarily diagnostic,
            but can be aliased.
         - - The list is in order of most frequently used.
-        
+
       -->
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic tensor fields below this</a:documentation>
