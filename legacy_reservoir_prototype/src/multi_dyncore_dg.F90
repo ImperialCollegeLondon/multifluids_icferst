@@ -1467,7 +1467,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( tensor_field ), pointer :: p_all, cvp_all, deriv, python_tfield
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
-        type( vector_field ) :: packed_vel, rhs, packed_vel2
+        type( vector_field ) :: packed_vel, rhs, diagonal_A
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
@@ -1487,6 +1487,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
         !Stokes variables
         integer, parameter :: max_its = 20 !> Maximum number of iterations allowed to the AA stokes solver
+        real, dimension(Mdims%totele) :: MASS_ELE
+        integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
+
 
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
@@ -1713,8 +1716,8 @@ end if
              velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux,&
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             velocity%VAL, OLDvelocity%VAL, &
-            P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
-            DT, MASS_MN_PRES, & ! pressure matrix for projection method
+            CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
+            DT, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -1722,7 +1725,6 @@ end if
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
         deallocate(UDIFFUSION_ALL)
-
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
@@ -1745,7 +1747,38 @@ end if
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
-            CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+
+          if (solve_stokes) then !Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
+            Mmat%PIVIT_MAT = 0.
+
+            call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
+            call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
+            !Introduce the diagonal of A into the Mass matrix (not ideal...)
+            do ele = 1, Mdims%totele
+              DO U_JLOC = 1, Mdims%u_nloc
+                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
+                DO JPHASE = 1, Mdims%nphase
+                  DO JDIM = 1, Mdims%ndim
+                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                    Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
+                  end do
+                end do
+              end do
+            end do
+          end if
+
+          do idx1 = 1, size(Mmat%PIVIT_MAT,3)
+            do idx2 = 1, size(Mmat%PIVIT_MAT,1)
+              !Combine diagonal of A with the mass matrix (not appropiate for the stokes projection method since we need the Laplacian)
+              Mmat%PIVIT_MAT(idx2, idx2, idx1) =   Mmat%PIVIT_MAT(idx2, idx2, idx1) * MASS_ELE(idx1)/dble(Mdims%u_nloc)
+              !Just the mass matrix
+              ! Mmat%PIVIT_MAT(idx2, idx2, idx1) = MASS_ELE(idx1)/dble(Mdims%u_nloc)!
+            end do
+          end do
+
+          CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
+
         end if
 
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
@@ -1823,7 +1856,7 @@ end if
 
         !We may apply the Anderson acceleration method
         if (solve_stokes) then
-          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
+        !   call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
         call deallocate(deltaP)
@@ -1870,50 +1903,52 @@ end if
           type( vector_field ), intent(inout) :: deltap
           type(tensor_field), intent(inout) :: P_all, velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
-  !THIS APPROACH IS SIMILAR TO THE GMRES ONE, MAYBE IT IS WORTH IT COMPARING WITH THAT ONE AS WELL???
           !Local variables
-          integer :: i, m, k, aa, st
-          real, dimension(max_its) :: AA_alphas, residuals
+          integer :: i, m, k, aa, cv_nodi
+          real, dimension(max_its) :: AA_alphas
+          real, dimension(Mdims%cv_nonods, max_its) :: Stored_X
           real, dimension(Mdims%npres, Mdims%cv_nonods, max_its) :: stored_pressures
+          real, dimension(Mdims%cv_nonods, max_its) :: residuals !Only one pressure
+          real, dimension(Mdims%npres, Mdims%cv_nonods) :: residual !> obtained from the continuity equation
+          type( vector_field ) :: diagonal_A
           ! real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nonods, max_its) :: stored_velocities
-
+          AA_alphas = 1.0
           i = 1
           !Update stored values
           stored_pressures(:,:,i) = P_all%val(1,:,:)
+          Stored_X(:,i) = P_all%val(1,1,:)
           ! stored_velocities(:,:,:,i) = velocity%val
-          do k = 1, max_its*5
 
+          do k = 1, max_its*5
             if (K > 1) then
               m = i - 1
               if (m == 0) m = max_its
-              !Compute pseudo-residual as the L2 norm difference between two updates
-                                    !For velocity need to make each dimension idependently!
-              ! residuals(i) = (sum((stored_velocities(:,:,:,i) - stored_velocities(:,:,:,m))**2.)/ dble(Mdims%u_nonods*Mdims%nphase*Mdims%ndim)**2. + &
-              !                sum((stored_pressures(:,:,i) - stored_pressures(:,:,m))**2.)/ dble(Mdims%cv_nonods)**2.)/2.
-              residuals(m) = sum((stored_pressures(:,:,i) - stored_pressures(:,:,m))**2.)/ dble(Mdims%cv_nonods)**2.
-!Still not sure about this way to calculate residuals
-!TODO NEED TO ADD THE DIAGONAL OF A INSTEAD OF THE IDENTITY FOR M AS IT IS NOW
-!TODO ALSO NEED TO IDENTIFY IF ONLY THE PRESSURE IS REALLY REQUIRED... AT LEAST THE VELOCITY SHOULD BE CONSIDERED
-!FOR THE COMPUTATION OF THE RESIDUAL
-!TODO ENSURE THAT THE CONTINUITY EQUATION IS FINALLY IMPOSED INTO THE VELOCITY
-!TODO THE CONVERGENCE METHOD NOT WORKING PROPERLY AS IT IS NOW
-!TODO DOUBLE CHECK THE RESIDUAL CALCULATION AND THE LANGRANGIAN MULTIPLIER METHOD, SO BOTH ARE CONSISTENT
+
+              ! do cv_nodi = 1, Mdims%cv_nonods
+              !
+                !Residual as the GMRES residual, it is not the residual! it would be this times CMC^-1 - Pk
+                ! residuals(cv_nodi,m) = (rhs_p%val(1,cv_nodi)  - Mmat%CT_RHS%val(1,cv_nodi))**2.
+                !Residual as G(Xi)-Xi
+                ! residuals(cv_nodi,m) = (stored_pressures(1,cv_nodi,m) - stored_X(cv_nodi,m))
+              ! end do
+
+
 !TODO NEED TO ADD A CHECK TO ENSURE THAT IF THERE IS NO NEED TO USE AA, NOT EVEN 1 ITERATION IS PERFORMED (MAYBE COMPARE WITH P_OLD?)
-if (residuals(m) < 1e-16) then
-print *, "Iterations taken in the AA method for Stokes "
-   return
-end if
+
+              m = min(k-1,max_its)
               if (K > 2) then
-                m = min(k-1,max_its)
+
                 !Find the optimal combination of pressure that minimise the residual
-                call get_Anderson_acceleration_coefficients(AA_alphas(1:m), residuals(1:m))
+                call get_Anderson_acceleration_coefficients(AA_alphas(1:m), residuals(:, 1:m))
                 ! Obtain new pressure, effectively only the pressure matters as the velocity is obtained from it (for Stokes only!)
-                P_all%val = 0.; velocity%val = 0.
+                stored_X(:,i) = 0.
                 do aa = 1, m
-                  ! proposed_vel%val = proposed_vel%val + stored_velocities(aa) * AA_alphas(aa)
-                  P_all%val(1,:,:) = P_all%val(1,:,:) + stored_pressures(:,:,aa) * AA_alphas(aa)
-                  ! velocity%val = velocity%val + stored_velocities(:,:,:,aa) * AA_alphas(aa)
+                  stored_X(:,i) = stored_X(:,i) + stored_pressures(1,:,aa) * AA_alphas(aa)
                 end do
+                P_all%val(1,1,:) =  stored_X(:,i)
+
+              else
+                stored_X(:,i) = stored_pressures(1,:,m)
               end if
             end if
             !##########################Now solve the equations##########################
@@ -1921,30 +1956,25 @@ end if
             call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
             call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS)
             !Perform Div * U for the RHS of the pressure equation
+            !If we end up using the residual, this call just below is unnecessary
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
-            rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
-            call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc)
+            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            ! call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+            call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc, residuals(:,i))
             if (isParallel()) call halo_update(P_all)
-            !Now ensure that the velocity fulfils the continuity equation
-            call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
 
-            ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
-            ! call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
-            ! call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS)
 
-            if (isParallel()) call halo_update(velocity)
             !##########################Now solve the equations##########################
-
             !Update stored values
-            st = i + 1
-            if (st > max_its) st = 1
-            stored_pressures(:,:,st) = P_all%val(1,:,:)
-            ! stored_velocities(:,:,:,st) = velocity%val
+            stored_pressures(:,:,i) = P_all%val(1,:,:)
+
             i = i + 1
             if (i == max_its + 1 )  i = 1
           end do
+          ! !Now ensure that the velocity fulfils the continuity equation
+          call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+          if (isParallel()) call halo_update(velocity)
         end subroutine Stokes_Anderson_acceleration
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
@@ -1983,7 +2013,7 @@ end if
         !> @author Pablo Salinas
         !> @brief Compute deltaP by solving the pressure equation using the CMC matrix
         !---------------------------------------------------------------------------
-        subroutine solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc)
+        subroutine solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, delta_p_out)
 
           implicit none
           type( state_type ), intent( inout ) :: packed_state
@@ -1996,6 +2026,7 @@ end if
           type( vector_field ), intent(inout) :: deltap
           real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
+          real, dimension(:), intent(inout), optional :: delta_p_out
           !Local variables
           integer :: its_taken
           !solve_stokes
@@ -2020,11 +2051,12 @@ end if
           !                                                   !NOT SURE IF Mmat%CT_RHS NEEDS TO BE DIVIDED BY CV_volumes%val
           !   P_all  = P_all + 1./CV_volumes%val * (Mmat%CT_RHS%val - rhs_p%val)
           !   deallocate(velocity_visc)
-          !   !rhs_p CANNOT BE USED AFTER THIS!
+            !rhs_p CANNOT BE USED AFTER THIS!
           ! else
             P_all = P_all + deltap%val
           ! end if
 
+          if (present(delta_p_out)) delta_p_out = deltap%val(1,:)
 
         end subroutine solve_and_update_pressure
 
@@ -2062,36 +2094,60 @@ end if
 
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
-        !> @brief In this subroutine the Anderson acceleration system ||alpha_i F_i|| subject to sum(alpha_i) = 1 is solved
-        !> using lagrangian multipliers to impose the constrain.
-        !> In this way we solve a system with an extra constrain
+        !> @brief In this subroutine the Least square problem ||alpha_i F_i|| is solved
+        !> to obtain the alpha coeficients that provide an update for the variables
         !---------------------------------------------------------------------------
         subroutine get_Anderson_acceleration_coefficients(AA_alphas, residuals)
 
           implicit none
           real, dimension(:), intent(out) :: AA_alphas !< multipliers that will minimise the residual
-          real, dimension(:), intent(out) :: residuals !< residuals
+          real, dimension(:, :), intent(out) :: residuals !< residuals
           !Local variables
-          real, dimension(size(AA_alphas) + 1) :: X, b
-          real, dimension(size(AA_alphas) + 1, size(AA_alphas) + 1) :: A
-          integer :: i, j
-          !Fill A, the diagonal contains 2 times the residual (Derivatives of (alpha_i * f_i)^2 )
+          real, dimension(:), allocatable :: X, F
+          real, dimension(:,:), allocatable :: A, b
+          integer :: i, j, m, n, rank
+          real :: auxR
+          real, parameter :: min_importance = 0.1 !> Minimum importance for the last alpha
+          !Currently only considering pressure
+          m = size(AA_alphas)-1; n = size(residuals,2)
+
+          !Need at least m to be 2
+          if (m<=1) then
+            AA_alphas = 0
+            AA_alphas(size(AA_alphas)) = 1.0
+            return
+          end if
+
+          allocate(X(0)); allocate(b(n,1))
+          allocate(A(n,m))
+          !Construct matrix
           A = 0.
-          do i = 1, size(A,1) - 1
-            A(i,i) = 2. * residuals(i)
+          do j = 1, n!this can be optimised by adding the new rows process only to the previous matrix
+            do i = 1, m
+              !TO solve b - F gamma I think I need to swap signs
+                A(j,i) = A(j,i) - (residuals(j, i+1) - residuals(j, i))
+            end do
+            b(j,1) = - residuals(j,m) !Last observation
           end do
-          !Final row and column is full of 1s but the last diagonal
-          A(size(A,1),:) = 1.; A(:,size(A,1)) = 1.
-          A(size(A,1), size(A,1)) = 0.
+          !need to swap signs of A b
+          !TODO WE WANT TO FIND THE NEGATIVE OF THE USUAL LEAST SQUARES SYSTEM
+          ! CHANGE QR_DECOMPOSITION FOR SOLVE_LEAST_SQUARES
+          !TODO WHAT ABOUT PARALLEL? PROBABLY ALRIGHT TO HAVE DIFFERENT ALPHAS FOR DIFFERENT SECTIONS OF THE DOMAIN
+          !TODO NORMALLY THE RANK IS RUBISH, NEED TO CLEAN UP, EXAMPLE INSTEAD OF 20 (FULL RANK) THE MAXIMUM WE GET IS 6
+          !NEED TO ENSURE THAT THOSE VECTORS ARE REMOVED
+          call Least_squares_solver(A,b, rank)
 
-          !Only the last term of b has a value, which is 1. (the constrain of summing up to 1)
-          b = 0.
-          b(size(A,1)) = 1.
-          !Solve the system
-          X = matmul(inverse(A),b)
-          !The last parameter is the lambda, so we are not interested
-          AA_alphas = X(1:size(AA_alphas))
+          !Here we calculate Gammas instead of alphas (size n-1 instead of n)
+          ! AA_alphas(1:m) = matmul(matmul(A_inv, transpose(A)), b)
+          !Now we proceed to convert to alphas (later on this is easier to understand)
 
+          AA_alphas(size(AA_alphas)) = 1 - b(n,1)
+          do i = n, 2, -1 !The last one is different, the first one is the same
+            AA_alphas(i) = b(i,1) - b(i-1,1)
+          end do
+          !!alpha(1) = b(1)
+          AA_alphas(1) = b(1,1)
+          deallocate(b,A)
         end subroutine get_Anderson_acceleration_coefficients
 
         !---------------------------------------------------------------------------
@@ -2332,9 +2388,9 @@ end if
         velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux, &
         X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
-        P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
+        CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
         DT, &
-        MASS_MN_PRES,&
+        MASS_MN_PRES, MASS_ELE,&
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
@@ -2371,7 +2427,7 @@ end if
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL
-        REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P, P
+        REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL, DENOLD_ALL
         REAL, DIMENSION(  : , :  ), intent( in ) :: DERIV
         REAL, DIMENSION(  : ,  :   ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -2379,7 +2435,7 @@ end if
         REAL, DIMENSION(  : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
+        REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES, MASS_ELE
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
@@ -2428,7 +2484,7 @@ end if
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
                 IPLIKE_GRAD_SOU, &
-                P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, FEM_continuity_equation=FEM_continuity_equation)
+                got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
         end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
@@ -2772,8 +2828,7 @@ end if
         DT, JUST_BL_DIAG_MAT,  &
         UDIFFUSION, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        P,&
-        got_free_surf, mass_suf, FEM_continuity_equation )
+        got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2799,10 +2854,10 @@ end if
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
-        REAL, DIMENSION( :, :, : ), intent( in ) :: P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, FEM_continuity_equation
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
+        real, dimension(:), intent(inout) :: MASS_ELE
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
         LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE.
@@ -2826,8 +2881,7 @@ end if
         INTEGER, DIMENSION( : ), allocatable :: CV_SLOC2LOC, U_SLOC2LOC, &
         U_ILOC_OTHER_SIDE, U_OTHER_LOC, MAT_OTHER_LOC
         REAL, DIMENSION( : ),    ALLOCATABLE ::  &
-        SDETWE, VLN,VLN_OLD, &
-        MASS_ELE
+        SDETWE, VLN,VLN_OLD
         REAL, DIMENSION( :, : ),    ALLOCATABLE :: XL_ALL, XL2_ALL, XSL_ALL, SNORMXN_ALL
         REAL, DIMENSION ( : , :,  : ), allocatable :: GRAD_SOU_GI_NMX, GRAD_SOU_GI, GRAD_SOU2_GI_NMX, GRAD_SOU2_GI
         REAL, DIMENSION ( : , :,  : ), allocatable :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
@@ -2881,8 +2935,7 @@ end if
             LOGICAL :: GOT_VIRTUAL_MASS = .false.
 ! If FEM_DEN then use an FEM representation of density - only used within an element (default is FEM for between elements and on boundary).
             LOGICAL, PARAMETER :: FEM_DEN = .false.
-            real :: w
-            real, parameter :: wv=1.0, ws=1.0 ! DevFuns%VOLUME off-diagonal and surface weights, respectively
+            real :: w = 1.0, ws = 1.0 !> Weights for pivit_on_viscosity
 ! LINEAR_HIGHORDER_DIFFUSION is the switch for the high-order linear scheme...
 !            LOGICAL, PARAMETER ::  LINEAR_HIGHORDER_DIFFUSION = .TRUE.
             LOGICAL ::  LINEAR_HIGHORDER_DIFFUSION
@@ -3295,7 +3348,7 @@ end if
         ALLOCATE( GRAD_SOU_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
         ALLOCATE( GRAD_SOU2_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
         GRAD_SOU_GI_NMX=0.0 ; GRAD_SOU2_GI_NMX=0.0
-        ALLOCATE( MASS_ELE( Mdims%totele )) ; MASS_ELE=0.0
+        ! ALLOCATE( MASS_ELE( Mdims%totele )) ; MASS_ELE=0.0
         ! Allocating for non-linear Petrov-Galerkin diffusion stabilization...
         ALLOCATE( LOC_MASS_INV(Mdims%u_nloc, Mdims%u_nloc) )
         ALLOCATE( LOC_MASS(Mdims%u_nloc, Mdims%u_nloc) )
@@ -3656,7 +3709,7 @@ end if
             END DO
             DO P_ILOC = 1, Mdims%p_nloc
                 P_INOD = ndgln%p( ( ELE - 1 ) * Mdims%p_nloc + P_ILOC )
-                LOC_P( P_ILOC ) = P( 1,1,P_INOD )
+                LOC_P( P_ILOC ) = pressure%val( 1,1,P_INOD )
             END DO
             LOC_U_ABSORB = 0.0
             IF(RETRIEVE_SOLID_CTY) LOC_U_ABS_STAB_SOLID_RHS=0.0
@@ -3857,6 +3910,8 @@ end if
             END IF
 
             if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
+              ! if (solve_stokes) exit !The pivit matrix is create elsewhere (this do not work see below )
+
 !            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
@@ -3927,6 +3982,9 @@ end if
                 END IF
 
                 DO U_JLOC = 1, Mdims%u_nloc
+
+if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of this section is required, but the only way I found to not break up everything is this (nonsensical...)
+
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO JPHASE = 1, Mdims%nphase
                             DO JDIM = 1, Mdims%ndim
@@ -3937,28 +3995,23 @@ end if
                                         IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                         !Assemble
-                                        if (.not. solve_stokes) then
-                                          IF ( LUMP_MASS ) THEN
-                                              Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
-                                                  NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                  + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                  + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
-                                              if (homogenize_mass_matrix) then
-                                                  Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
-                                                      lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
-                                                  Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) - &
-                                                      lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
-                                              end if
-                                          ELSE
-                                              Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
-                                                  NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                  + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                                  + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
-                                          END IF
-                                        else !For Stokes Mmat%PIVIT_MAT must contain only the mass of the elements
-                                          !Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
-                                          Mmat%PIVIT_MAT( I, I, ELE ) = DevFuns%VOLUME/dble(Mdims%u_nloc)
-                                        end if
+                                        IF ( LUMP_MASS ) THEN
+                                            Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
+                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
+                                            if (homogenize_mass_matrix) then
+                                                Mmat%PIVIT_MAT( I, I, ELE ) =  Mmat%PIVIT_MAT( I, I, ELE ) + &
+                                                    lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                                Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) - &
+                                                    lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                            end if
+                                        ELSE
+                                            Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
+                                                NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
+                                        END IF
 
                                         IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
                                           IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
@@ -4136,8 +4189,6 @@ end if
                                             IF(PIVIT_ON_VISC) THEN
                                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                                w=1.0
-                                                !                                                if (i/=j) w = wv
                                                 Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     = Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
@@ -4199,8 +4250,6 @@ end if
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                            w=1.0
-                                            !                                            if (i/=j) w = wv
                                             Mmat%PIVIT_MAT( I,J, ELE ) &
                                                 = Mmat%PIVIT_MAT( I,J, ELE ) + w * VLK_ELE( IPHASE, U_ILOC, U_JLOC )
                                         END IF
@@ -4460,10 +4509,6 @@ end if
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                            !                                        w=1.0
-                                            !                                        if (i/=j) w = wv
-                                            !                                        Mmat%PIVIT_MAT( I,J, ELE )  &
-                                            !                                        = Mmat%PIVIT_MAT( I,J, ELE ) + w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
                                             Mmat%PIVIT_MAT( I,J, ELE )  &
                                                 = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
                                         ENDIF
@@ -5807,7 +5852,7 @@ end if
         DEALLOCATE( SNDOTQOLD_IN )
         DEALLOCATE( SNDOTQOLD_OUT )
         DEALLOCATE( GRAD_SOU_GI_NMX )
-        DEALLOCATE( MASS_ELE )
+        ! DEALLOCATE( MASS_ELE )
         DEALLOCATE( FACE_ELE )
         ! Deallocating for non-linear Petrov-Galerkin diffusion stabilization...
         DEALLOCATE( LOC_MASS_INV )

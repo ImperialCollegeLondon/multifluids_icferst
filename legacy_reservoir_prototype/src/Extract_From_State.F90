@@ -2394,7 +2394,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
-
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             !Automatic non-linear iteration checking

@@ -553,7 +553,7 @@ contains
                 if (backtrack_pars(3) < 0 .or..true.) then!SIMPLE METHOD
                     if (Convergences(1)-Convergences(2) < 0) then!Converging
                         get_optimal_backtrack_par = backtrack_pars(1) * 1.1
-                    else!Diverging, the reduce with a minimum value that will mean performing all the non-linear iterations
+                    else !Diverging, the reduce with a minimum value that will mean performing all the non-linear iterations
                         get_optimal_backtrack_par = backtrack_pars(1) / 2.0!1.5
                     end if
                 else
@@ -567,18 +567,18 @@ contains
 
                                 get_optimal_backtrack_par = backtrack_pars(1) * max(1.2, 2.0 * X(1))
 
-                            else!Old slope was steeper => Optimal value in between the previous backtrack_par parameters
+                            else !Old slope was steeper => Optimal value in between the previous backtrack_par parameters
                                 get_optimal_backtrack_par = min(backtrack_pars(1) / 2, 0.5 * (backtrack_pars(2) + backtrack_pars(3)))
 
                             end if
-                        else!It started to converge now, so we encourage to get away from the bad convergence value
+                        else !It started to converge now, so we encourage to get away from the bad convergence value
                             get_optimal_backtrack_par = backtrack_pars(1) * max(1.2, 2.0 * X(1))
                         end if
-                    else!It is NOT converging now
+                    else !It is NOT converging now
                         if (Y2(2)/Y2(1) < 0) then!It was converging before
                             !                            get_optimal_backtrack_par = 0.5 * (backtrack_pars(2) + backtrack_pars(3))!So we use previous convergence factors
                             get_optimal_backtrack_par = min(backtrack_pars(1) / 2, 0.5 * (backtrack_pars(2) + backtrack_pars(3)))
-                        else!It was diverging as well before
+                        else !It was diverging as well before
                             get_optimal_backtrack_par = backtrack_pars(1) * 0.5!We halve the backtrack_par parameter to return to convergence fast
                         end if
                     end if
@@ -632,7 +632,7 @@ contains
                 !Solve system
                 call invert(A)!tested, coefficients are correct
                 Coefficients = matmul(A, Convergences(1:m))
-            else!Calculate curve fitting
+            else !Calculate curve fitting
                 !coefficients = (A^t*A)^-1 * A^t * Convergences
                 A_inv(1:m, 1:m) = matmul(transpose(A(1:n, 1:m)),A(1:n,1:m))!(M*n)*(n*m) => (m*m)
 
