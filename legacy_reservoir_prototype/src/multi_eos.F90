@@ -50,6 +50,7 @@ module multiphase_EOS
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
 
+
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5
@@ -64,11 +65,11 @@ contains
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
-
+        type(multi_ndgln) :: ndgln
         integer, dimension( : ), pointer :: cv_ndgln
         integer :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
-        real, dimension( : ), allocatable :: Rho, dRhodP, Density_Bulk, DensityCp_Bulk, &
-             Density_Component, Cp, Component_l, c_cv_nod
+        real, dimension( : ), allocatable :: Rho, dRhodP, rho_porous, drhodp_porous, &
+          Density_Bulk, DensityCp_Bulk, Density_Component, Cp, Component_l, c_cv_nod
         character( len = option_path_len ), dimension( : ), allocatable :: eos_option_path
         type( tensor_field ), pointer :: PackedDRhoDPressure ! (nphase, cv_nonods)
         type( tensor_field ), pointer :: field1, field2, field3, field4
@@ -93,6 +94,7 @@ contains
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+
 
         PackedDRhoDPressure => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
         PackedDRhoDPressure%val = 0.
@@ -128,6 +130,7 @@ contains
         allocate( Density_Bulk( nphase * cv_nonods ) ); Density_Bulk = 0.0
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
+        call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
 
         do icomp = 1, ncomp
            do iphase = 1, nphase
@@ -137,10 +140,10 @@ contains
               sp = ( iphase - 1 ) * cv_nonods + 1
               ep = iphase * cv_nonods
 
+
               Rho=0. ; dRhodP=0.
               call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
                    nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP )
-
               if ( ncomp > 1 ) then
                  field4 => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                  Component_l = field4 % val ( icomp, iphase, :)
@@ -178,7 +181,7 @@ contains
 
                     ! rho = rho +  a_i * rho_i
                     Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho +drhodp_porous
 
                     Density_Component( sc : ec ) = Rho
 
@@ -190,9 +193,8 @@ contains
                     end if
 
                  else
-
                     Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous
 
                     Density_Component( sc : ec ) = Rho
 
@@ -211,9 +213,8 @@ contains
                  end if
 
               else
-
                  Density_Bulk( sp : ep ) = Rho
-                 PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP
+                 PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP + drhodp_porous
 
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
                  !Cp_s => extract_scalar_field( state( iphase ), 'SoluteMassFractionHeatCapacity', stat )
@@ -258,6 +259,7 @@ contains
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         !if ( boussinesq ) field2 % val = 1.0
         deallocate( Rho, dRhodP, Component_l)
+        deallocate( drhodp_porous)
         deallocate( Density_Component, Density_Bulk )
         deallocate( eos_option_path )
         if (compute_rhoCP) deallocate(Cp, DensityCp_Bulk)
@@ -571,17 +573,19 @@ contains
             end if
             !!$ den = den0/(1+Beta(T1-T0))
             !We use RHo as auxiliar variable here as the we do not perturbate the temperature
-
             Rho = eos_coefs(1)/(1 + eos_coefs(4)*(temperature_local-eos_coefs(2) )  )
-
+            !if (maxval(Rho) > 5000.) then
+          !    Rho = 1000.
+          !  end if
             perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
             !we add the pressure part =>1-(P1-P0)/E
-            RhoPlus = Rho /(1-((perturbation_pressure-eos_coefs(3))/eos_coefs(5)))
-            RhoMinus = Rho /(1-((perturbation_pressure-eos_coefs(3))/eos_coefs(5)))
-
+            RhoPlus = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5)+perturbation_pressure -eos_coefs(3))/eos_coefs(5)) )
+            RhoMinus = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5)-perturbation_pressure-eos_coefs(3))/eos_coefs(5)) )
             dRhodP =  0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-            !we add the pressure part =>1-(P1-P0)/E
             Rho = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5) -eos_coefs(3))/eos_coefs(5)) ) !to avoid possible oscillations the pressure is imposed to be between the range of applicability of the formula.
+
+            !we add the pressure part =>1-(P1-P0)/E
+            !print *, "drhodp", maxval(drhodp)
             deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
@@ -687,6 +691,80 @@ contains
         !input fields have to be updated already
         ! if (IsParallel()) call halo_update(density)
     end subroutine Calculate_Rho_dRhodP
+
+
+    subroutine Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous )
+
+        implicit none
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        type( state_type ), intent( inout ) :: packed_state
+        type(multi_dimensions), intent(in) :: Mdims
+        real, dimension( : ), allocatable :: rho_porous, drhodp_porous
+        integer, dimension( : ), pointer :: cv_ndgln
+        type( tensor_field ), pointer :: pressure
+        type( scalar_field ), pointer :: density_porous, density_porous_initial
+        real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
+        real, dimension(cv_nonods) :: cv_counter
+        integer :: stat
+
+        integer :: ele, cv_inod, iloc,p_den, cv_nloc, totele, cv_nonods
+
+        !!$ Den = Den_surface*exp(C0 * ( P_res-P_surf) )
+        pressure => extract_tensor_field( packed_state, 'PackedCVPressure', stat )
+        if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+        density_porous => extract_scalar_field( state(1), "porous_density" )
+        density_porous_initial  => extract_scalar_field( state(1), "porous_density_initial" )
+        allocate( perturbation_pressure( cv_nonods ) ) ; perturbation_pressure = 0.
+        allocate( RhoPlus( cv_nonods ) ) ; RhoPlus = 0.
+        allocate( RhoMinus( cv_nonods ) ) ; RhoMinus = 0.
+        allocate( rho_porous( totele ) )
+        allocate( drhodp_porous( cv_nonods ) )
+        allocate( eos_coefs( 1 ) ) ; eos_coefs = 0.
+        call get_option( "/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant", eos_coefs(1) )
+        rho_porous=0. ; drhodp_porous=0.
+        perturbation_pressure = 1.
+        cv_counter = 0
+        do ele = 1, totele
+            p_den = min(size(density_porous%val), ele)
+            do iloc = 1,cv_nloc
+                cv_inod = cv_ndgln((ele-1)*cv_nloc+iloc)
+                cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
+                rho_porous(ele) = rho_porous(ele)+ density_porous_initial%val(p_den )&
+                  *exp(eos_coefs( 1 ) * (pressure % val(1,1,cv_inod) -10**5))
+                RhoPlus(cv_inod) = RhoPlus(cv_inod)+ density_porous_initial%val(p_den )&
+                  *exp(eos_coefs( 1 ) * (pressure % val(1,1,cv_inod) + perturbation_pressure(cv_inod) - 10**5))
+                RhoMinus(cv_inod) = RhoMinus(cv_inod)+density_porous_initial%val(p_den )&
+                  *exp(eos_coefs( 1 ) * (pressure % val(1,1,cv_inod) - perturbation_pressure(cv_inod) - 10**5))
+                drhodp_porous(cv_inod) = drhodp_porous(cv_inod) + 0.5 * ( RhoPlus(cv_inod) - RhoMinus(cv_inod))  / perturbation_pressure(cv_inod)
+
+            end do
+            !if (rho_porous(ele)>5000.) then
+          !    rho_porous(ele) = density_porous_init%val(p_den )*cv_nloc
+            !end if
+
+        end do
+
+        if (maxval(rho_porous)>15000.0) then
+          rho_porous = density_porous_initial%val*cv_nloc
+        end if
+
+        if (maxval(drhodp_porous)>100.0) then
+          drhodp_porous = 1.e-5
+        end if
+        !make average
+        rho_porous = rho_porous/cv_nloc
+        drhodp_porous = drhodp_porous/cv_counter
+        density_porous%val = rho_porous
+
+        !print *, "Density porous:", maxval(density_porous%val)
+        !print *, "Density porous initial:", maxval(density_porous_init%val)
+        !print *, "Pressure:", maxval(pressure % val(1,1,:))
+        deallocate( eos_coefs )
+        deallocate( perturbation_pressure, RhoPlus, RhoMinus, rho_porous )
+
+
+
+    end subroutine Calculate_porous_Rho_dRhoP
 
 
     subroutine Density_Polynomial( eos_coefs, pressure, temperature, &
