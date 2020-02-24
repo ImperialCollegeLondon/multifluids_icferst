@@ -1536,7 +1536,6 @@ contains
             call allocate(mfield,lmesh,"Packed"//name,dim=[ncomp,nphase]) !!-ao leak level 2
             call zero(mfield)
             call insert(mstate,mfield,"Packed"//name)
-            if (associated(mfield%bc))deallocate(mfield%bc)
             call deallocate(mfield)
 
             call allocate(mfield,lmesh,"PackedOld"//name,dim=[ncomp,nphase])
@@ -1608,7 +1607,6 @@ contains
                 call zero(mfield)
             end if
             call insert(mstate,mfield,"Packed"//name)
-            if (associated(mfield%bc))deallocate(mfield%bc)
             call deallocate(mfield)
 
 
