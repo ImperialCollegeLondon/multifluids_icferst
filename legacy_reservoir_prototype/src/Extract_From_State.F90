@@ -742,7 +742,7 @@ contains
         type(scalar_field), pointer :: pressure, sfield, ldfield, tdfield
         type(vector_field), pointer :: velocity, position, vfield, ldvfield, tdvfield
         type(tensor_field), pointer :: tfield, p2, d2, drhodp
-        type(vector_field) :: porosity, vec_field, porous_density, porous_heat_capacity, &
+        type(vector_field) :: porosity, vec_field, porous_density, porous_density_initial, porous_heat_capacity, &
              Longitudinal_Dispersivity, Transverse_Dispersivity
         type(vector_field) :: p_position, u_position, m_position
         type(tensor_field) :: permeability, ten_field, porous_thermal_conductivity
@@ -945,6 +945,7 @@ contains
         do icomp = 1, ncomp
            call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
         end do
+
 
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
