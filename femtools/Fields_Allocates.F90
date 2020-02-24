@@ -353,6 +353,7 @@ contains
     case(FIELD_TYPE_NORMAL)
       n_count = node_count(mesh)
       allocate(field%val(dim,n_count))
+
 #ifdef HAVE_MEMORY_STATS
       call register_allocation("vector_field", "real", n_count*dim, &
         name=name)
@@ -375,7 +376,6 @@ contains
     allocate(field%picker)
 
     call addref(field)
-
     call zero(field)
 
   end subroutine allocate_vector_field
@@ -386,7 +386,7 @@ contains
     character(len=*), intent(in), optional :: name
     integer, intent(in), optional :: field_type
     integer, intent(in), dimension(2), optional :: dim
-    integer :: lfield_type
+    integer :: lfield_type, ncount
 
     if (present(field_type)) then
       lfield_type = field_type
@@ -413,15 +413,15 @@ contains
     field%field_type = lfield_type
     select case(lfield_type)
     case(FIELD_TYPE_NORMAL)
-      allocate(field%val(field%dim(1), field%dim(2), node_count(mesh)))
+      ncount = node_count(mesh)
+      allocate(field%val(field%dim(1), field%dim(2), ncount))
 
 #ifdef HAVE_MEMORY_STATS
       call register_allocation("tensor_field", "real", &
-           node_count(mesh)*field%dim(1)*field%dim(2), name=name)
+           ncount*field%dim(1)*field%dim(2), name=name)
 #endif
     case(FIELD_TYPE_CONSTANT)
       allocate(field%val(field%dim(1), field%dim(2), 1))
-
 #ifdef HAVE_MEMORY_STATS
       call register_allocation("tensor_field", "real", &
            field%dim(1)*field%dim(2), name=name)
@@ -430,15 +430,15 @@ contains
       allocate(field%val(0, 0, 0))
     end select
 
-    field%wrapped=.false.
-    field%aliased=.false.
-    nullify(field%refcount) ! Hack for gfortran component initialisation
-    !                         bug.
+    field%wrapped= .false.
+    field%aliased= .false.
     allocate(field%bc)
     nullify(field%bc%boundary_condition)
 
-    call addref(field)
+    nullify(field%refcount) ! Hack for gfortran component initialisation
+    !                         bug.
 
+    call addref(field)
     call zero(field)
 
   end subroutine allocate_tensor_field
@@ -633,7 +633,7 @@ contains
         do i=1, size(field%bc%boundary_condition)
            call deallocate(field%bc%boundary_condition(i))
         end do
-        if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) &
+      if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) &
        deallocate(field%bc%boundary_condition)
      end if
 
@@ -709,13 +709,12 @@ contains
     if (.not.field%wrapped) then
       select case(field%field_type)
       case(FIELD_TYPE_NORMAL,FIELD_TYPE_CONSTANT)
+#ifdef DDEBUG
+         field%val = ieee_value(0.0, ieee_quiet_nan)
+#endif
 #ifdef HAVE_MEMORY_STATS
          call register_deallocation("tensor_field", "real", &
               size(field%val), field%name)
-#endif
-
-#ifdef DDEBUG
-         field%val = ieee_value(0.0, ieee_quiet_nan)
 #endif
          deallocate(field%val)
       case(FIELD_TYPE_DEFERRED)
@@ -723,18 +722,21 @@ contains
       end select
     end if
 
-    call remove_boundary_conditions(field)
+
+    if (associated(field%bc)) call remove_boundary_conditions(field)
     if (associated(field%bc)) deallocate(field%bc)
 
     call deallocate(field%mesh)
+
+    !call deallocate(field%mesh)
     !deallocate pointers related with fields storage
     if (associated(field%updated)) field%updated => null()
     if (associated(field%dependant_scalar_field)) field%dependant_scalar_field=> null()
     if (associated(field%dependant_vector_field)) field%dependant_vector_field=> null()
     if (associated(field%dependant_tensor_field)) field%dependant_tensor_field=> null()
-
-
     if (associated(field%updated)) deallocate(field%updated)
+
+
 
   end subroutine deallocate_tensor_field
 
@@ -744,14 +746,15 @@ contains
 
      integer:: i
 
-     if (associated(field%bc)) then
+     ! if (associated(field%bc)) then
         if (associated(field%bc%boundary_condition)) then
            do i=1, size(field%bc%boundary_condition)
               call deallocate(field%bc%boundary_condition(i))
            end do
-           deallocate(field%bc%boundary_condition)
+          if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) &
+            deallocate(field%bc%boundary_condition)
         end if
-     end if
+     ! end if
 
   end subroutine remove_boundary_conditions_tensor
 
@@ -846,7 +849,7 @@ contains
 
   subroutine allocate_tensor_boundary_condition(bc, mesh, surface_element_list, &
     applies, name, type, dims)
-    !!< Allocate a vector boundary condition
+    !!< Allocate a tensor boundary condition
     type(tensor_boundary_condition), intent(out):: bc
     type(mesh_type), intent(in):: mesh
     !! surface elements of this mesh to which this b.c. applies (is copied in):
@@ -867,12 +870,9 @@ contains
     call create_surface_mesh(bc%surface_mesh, bc%surface_node_list, &
       mesh, bc%surface_element_list, name=trim(name)//'Mesh')
 
-
     allocate(bc%applies(dims(1),dims(2)))
     if (present(applies)) then
-
       assert (all(shape(applies)==shape(bc%applies)))
-
       bc%applies=applies
     else
       ! default .true. for all components
@@ -892,7 +892,7 @@ contains
         call deallocate(bc%surface_fields(i))
       end do
       if (.not. has_references(bc%surface_fields(1))) then
-      deallocate(bc%surface_fields)
+          deallocate(bc%surface_fields)
          nullify(bc%surface_fields)
       end if
     end if

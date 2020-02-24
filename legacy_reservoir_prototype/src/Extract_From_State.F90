@@ -1454,10 +1454,11 @@ contains
                    ! do nothing...
                 else if(tfield%name(:6)=="Packed")then
                     do iphase=1,nphase
-                        call allocate(mp_tfield,tfield%mesh,tfield%name(7:),field_type=FiELD_TYPE_DEFERRED,dim=[tfield%dim(1),1])
+                        call allocate(mp_tfield,tfield%mesh,tfield%name(7:),field_type=FIELD_TYPE_DEFERRED,dim=[tfield%dim(1),1]) !!-ao leak lvl 2 - 430
                         mp_tfield%val=>tfield%val(:,iphase:iphase,:)
                         mp_tfield%updated=>tfield%updated
                         mp_tfield%wrapped=.true.
+                        mp_tfield%field_type=FIELD_TYPE_NORMAL !-ao added this
                         call insert(mpstate(iphase),mp_tfield,mp_tfield%name)
                         call deallocate(mp_tfield)
                     end do
@@ -1532,14 +1533,17 @@ contains
                 lmesh=>nfield%mesh
             end if
 
-            call allocate(mfield,lmesh,"Packed"//name,dim=[ncomp,nphase])
+            call allocate(mfield,lmesh,"Packed"//name,dim=[ncomp,nphase]) !!-ao leak level 2
             call zero(mfield)
             call insert(mstate,mfield,"Packed"//name)
+            if (associated(mfield%bc))deallocate(mfield%bc)
             call deallocate(mfield)
+
             call allocate(mfield,lmesh,"PackedOld"//name,dim=[ncomp,nphase])
             call zero(mfield)
             call insert(mstate,mfield,"PackedOld"//name)
             call deallocate(mfield)
+
             call allocate(mfield,lmesh,"PackedIterated"//name,dim=[ncomp,nphase])
             call zero(mfield)
             call insert(mstate,mfield,"PackedIterated"//name)
@@ -1603,9 +1607,10 @@ contains
             if (lzero) then
                 call zero(mfield)
             end if
-
             call insert(mstate,mfield,"Packed"//name)
             call deallocate(mfield)
+
+
             call allocate(mfield,lmesh,"PackedOld"//name,dim=[ndim,nphase])
             if (lzero) then
                 call zero(mfield)
