@@ -192,6 +192,8 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
+        type(vector_field), pointer :: XOLD_ALL,X_ALL, vfield, vfield2, X_coord
+        Logical:: solid_implicit, diffusion_solid_implicit
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -398,7 +400,27 @@ contains
             !Ensure that the initial condition for the saturation sum to 1.
             call Ensure_Saturation_sums_one(Mdims, ndgln, packed_state, find_scapegoat_phase = .true.)
         end if
+!JXiang 8/11/2019 change coordinates of mesh       
+        solid_implicit= have_option( '/solid_implicit')
+        diffusion_solid_implicit= have_option( '/diffusion_solid_implicit')
 
+!        if(solid_implicit) then
+        !Check that all the elements have implicity solid defined
+        
+!        vfield => extract_vector_field( packed_state, "PressureCoordinate" )
+!        vfield2 => extract_vector_field( packed_state,"SolidOldCoordinate" )
+!        vfield2%val = vfield%val
+                   
+!        end if
+
+          if(solid_implicit) then
+            X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+            XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
+            x_coord=> extract_vector_field( state, "Coordinate" )
+            XOLD_ALL%val=X_ALL%val
+           end if
+
+        
         !!$ Starting Time Loop
         itime = 0
         ! if this is not a zero timestep simulation (otherwise, there would
@@ -580,7 +602,15 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken)
 
                 end if Conditional_ForceBalanceEquation
-
+               if(solid_implicit) then
+               !call one single diffusion equation here
+               X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+               XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
+               if(its==1) XOLD_ALL%val=X_ALL%val
+  !             ewrite(3,*)"before all_diffusion",its,XOLD_ALL%val
+ !              ewrite(3,*)"X_ALL",its,X_ALL%val
+               call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+               END If
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
@@ -743,8 +773,14 @@ contains
                     ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
                 end if
             end if
-
-
+            
+            if(solid_implicit) then
+            X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+            XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
+            x_coord=> extract_vector_field( state, "Coordinate" )
+            XOLD_ALL%val=X_ALL%val
+            x_coord%val=X_ALL%val
+           end if
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
 
