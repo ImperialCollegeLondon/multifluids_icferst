@@ -1457,8 +1457,8 @@ contains
                         call allocate(mp_tfield,tfield%mesh,tfield%name(7:),field_type=FIELD_TYPE_DEFERRED,dim=[tfield%dim(1),1]) !!-ao leak lvl 2 - 430
                         mp_tfield%val=>tfield%val(:,iphase:iphase,:)
                         mp_tfield%updated=>tfield%updated
-                        mp_tfield%wrapped=.true.
-                        mp_tfield%field_type=FIELD_TYPE_NORMAL !-ao added this
+                        mp_tfield%wrapped= .true.
+                      !  mp_tfield%field_type=FIELD_TYPE_NORMAL !-ao added this
                         call insert(mpstate(iphase),mp_tfield,mp_tfield%name)
                         call deallocate(mp_tfield)
                     end do
@@ -1608,6 +1608,7 @@ contains
                 call zero(mfield)
             end if
             call insert(mstate,mfield,"Packed"//name)
+            if (associated(mfield%bc))deallocate(mfield%bc)
             call deallocate(mfield)
 
 

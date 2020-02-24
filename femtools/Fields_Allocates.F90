@@ -432,7 +432,7 @@ contains
 
     field%wrapped= .false.
     field%aliased= .false.
-    allocate(field%bc)
+    allocate(field%bc) 
     nullify(field%bc%boundary_condition)
 
     nullify(field%refcount) ! Hack for gfortran component initialisation
