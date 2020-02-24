@@ -794,8 +794,9 @@ END subroutine RotationMatrix
       !Parameters for dgegp3 to compute the QR decomposition
       integer :: info!>If info = -i, the i-th parameter had an illegal value
       real, dimension(size(A,2)) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-      real, dimension(3*size(A,2)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-      integer, dimension(size(A,2)) :: jpvt
+      real, dimension(3*size(A,1)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      integer, dimension(size(A,1)) :: jpvt
+      real, parameter :: tolerance_rank = 1d-4
 
       interface
         !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
@@ -813,7 +814,7 @@ END subroutine RotationMatrix
       end interface
 
       interface
-        !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED obviously!)
+        !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
           subroutine dgeqp3(m, n, MAT, lda, jpvt, tau, work, lwork, info)
             implicit none
             integer :: m!>Rows of MAT
@@ -889,7 +890,7 @@ END subroutine RotationMatrix
 
       rank = n
       do k = 1, n
-        if (abs(A(k,k)) <= 1d-4 * abs(A(1,1))) rank = rank - 1
+        if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) rank = rank - 1
       end do
 
       !Perform Q * b

@@ -1856,7 +1856,7 @@ end if
 
         !We may apply the Anderson acceleration method
         if (solve_stokes) then
-        !   call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
+          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
         call deallocate(deltaP)
@@ -1904,7 +1904,7 @@ end if
           type(tensor_field), intent(inout) :: P_all, velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           !Local variables
-          integer :: i, m, k, aa, cv_nodi
+          integer :: i, m, k, aa, cv_nodi, rank
           real, dimension(max_its) :: AA_alphas
           real, dimension(Mdims%cv_nonods, max_its) :: Stored_X
           real, dimension(Mdims%npres, Mdims%cv_nonods, max_its) :: stored_pressures
@@ -1919,32 +1919,38 @@ end if
           Stored_X(:,i) = P_all%val(1,1,:)
           ! stored_velocities(:,:,:,i) = velocity%val
 
+          !TODO THERE IS STILL SOMETHING THAT WE ARE NOT UPDATING HERE PROPERLY SINCE IT NEEDS TO PERFORM
+          !A FULL NON-LINEAR ITERATION TO PROPERLY REDUCE THE RESIDUAL
+
           do k = 1, max_its*5
             if (K > 1) then
-              m = i - 1
-              if (m == 0) m = max_its
+              m = i - 1; if (m == 0) m = max_its
 
               ! do cv_nodi = 1, Mdims%cv_nonods
-              !
                 !Residual as the GMRES residual, it is not the residual! it would be this times CMC^-1 - Pk
                 ! residuals(cv_nodi,m) = (rhs_p%val(1,cv_nodi)  - Mmat%CT_RHS%val(1,cv_nodi))**2.
                 !Residual as G(Xi)-Xi
                 ! residuals(cv_nodi,m) = (stored_pressures(1,cv_nodi,m) - stored_X(cv_nodi,m))
               ! end do
 
-
-!TODO NEED TO ADD A CHECK TO ENSURE THAT IF THERE IS NO NEED TO USE AA, NOT EVEN 1 ITERATION IS PERFORMED (MAYBE COMPARE WITH P_OLD?)
-
-              m = min(k-1,max_its)
               if (K > 2) then
-
                 !Find the optimal combination of pressure that minimise the residual
-                call get_Anderson_acceleration_coefficients(AA_alphas(1:m), residuals(:, 1:m))
-                ! Obtain new pressure, effectively only the pressure matters as the velocity is obtained from it (for Stokes only!)
+                call get_Anderson_acceleration_coefficients(AA_alphas(1:m), residuals(:, 1:m), rank)
                 stored_X(:,i) = 0.
-                do aa = 1, m
-                  stored_X(:,i) = stored_X(:,i) + stored_pressures(1,:,aa) * AA_alphas(aa)
-                end do
+                if (rank + 1 < m) then!+1 because we consider internally a system of m-1
+                  ewrite(0,*)'WARNING: This part of the Anderson Acceleration has not been tested properly use this test case to debug this'
+                  !If the least squares matrix is not full rank, then perform normal Uzawa to explore more spaces
+                  !and remove the last solution
+                  !Remove last information of pressure/residuals by overwritting it
+                  i = i - 1; if (i == 0 ) i = max_its
+                  stored_X(:,i) = stored_pressures(1,:,m)
+                  residuals(:,i) = 0.
+                else
+                  ! Obtain new pressure, effectively only the pressure matters as the velocity is obtained from it (for Stokes only!)
+                  do aa = 1, m
+                    stored_X(:,i) = stored_X(:,i) + stored_pressures(1,:,aa) * AA_alphas(aa)
+                  end do
+                end if
                 P_all%val(1,1,:) =  stored_X(:,i)
 
               else
@@ -1964,13 +1970,11 @@ end if
             call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc, residuals(:,i))
             if (isParallel()) call halo_update(P_all)
 
-
             !##########################Now solve the equations##########################
             !Update stored values
             stored_pressures(:,:,i) = P_all%val(1,:,:)
 
-            i = i + 1
-            if (i == max_its + 1 )  i = 1
+            i = i + 1; if (i == max_its + 1 )  i = 1
           end do
           ! !Now ensure that the velocity fulfils the continuity equation
           call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
@@ -2097,19 +2101,21 @@ end if
         !> @brief In this subroutine the Least square problem ||alpha_i F_i|| is solved
         !> to obtain the alpha coeficients that provide an update for the variables
         !---------------------------------------------------------------------------
-        subroutine get_Anderson_acceleration_coefficients(AA_alphas, residuals)
+        subroutine get_Anderson_acceleration_coefficients(AA_alphas, residuals, Q_rank)
 
           implicit none
           real, dimension(:), intent(out) :: AA_alphas !< multipliers that will minimise the residual
           real, dimension(:, :), intent(out) :: residuals !< residuals
+          integer, intent(inout) :: Q_rank
           !Local variables
           real, dimension(:), allocatable :: X, F
           real, dimension(:,:), allocatable :: A, b
-          integer :: i, j, m, n, rank
+          integer :: i, j, m, n
           real :: auxR
           real, parameter :: min_importance = 0.1 !> Minimum importance for the last alpha
           !Currently only considering pressure
-          m = size(AA_alphas)-1; n = size(residuals,2)
+          m = size(AA_alphas)-1; n = size(residuals,1)
+          Q_rank = m!By default we return full rank
 
           !Need at least m to be 2
           if (m<=1) then
@@ -2124,28 +2130,18 @@ end if
           A = 0.
           do j = 1, n!this can be optimised by adding the new rows process only to the previous matrix
             do i = 1, m
-              !TO solve b - F gamma I think I need to swap signs
-                A(j,i) = A(j,i) - (residuals(j, i+1) - residuals(j, i))
+                A(j,i) = A(j,i) + (residuals(j, i+1) - residuals(j, i))
             end do
-            b(j,1) = - residuals(j,m) !Last observation
+            b(j,1) =  residuals(j,m) !Last observation
           end do
-          !need to swap signs of A b
-          !TODO WE WANT TO FIND THE NEGATIVE OF THE USUAL LEAST SQUARES SYSTEM
-          ! CHANGE QR_DECOMPOSITION FOR SOLVE_LEAST_SQUARES
-          !TODO WHAT ABOUT PARALLEL? PROBABLY ALRIGHT TO HAVE DIFFERENT ALPHAS FOR DIFFERENT SECTIONS OF THE DOMAIN
-          !TODO NORMALLY THE RANK IS RUBISH, NEED TO CLEAN UP, EXAMPLE INSTEAD OF 20 (FULL RANK) THE MAXIMUM WE GET IS 6
-          !NEED TO ENSURE THAT THOSE VECTORS ARE REMOVED
-          call Least_squares_solver(A,b, rank)
-
+          call Least_squares_solver(A,b, Q_rank)
           !Here we calculate Gammas instead of alphas (size n-1 instead of n)
           ! AA_alphas(1:m) = matmul(matmul(A_inv, transpose(A)), b)
           !Now we proceed to convert to alphas (later on this is easier to understand)
-
-          AA_alphas(size(AA_alphas)) = 1 - b(n,1)
-          do i = n, 2, -1 !The last one is different, the first one is the same
+          AA_alphas(size(AA_alphas)) = 1 - b(m,1)
+          do i = m, 2, -1 !The last one is different, the first one is the same
             AA_alphas(i) = b(i,1) - b(i-1,1)
           end do
-          !!alpha(1) = b(1)
           AA_alphas(1) = b(1,1)
           deallocate(b,A)
         end subroutine get_Anderson_acceleration_coefficients
