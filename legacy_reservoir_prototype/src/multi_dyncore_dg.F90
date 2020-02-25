@@ -1889,6 +1889,7 @@ end if
         !> @brief Generic subroutine that perform the Anderson acceleration solver.
         !> This is storing a set of results for a system that converges based on a FPI
         !> and finding an optimal combination of all of these results that minimise the residual
+        !> Method explained in DOI.10.1137/10078356X
         !---------------------------------------------------------------------------
         subroutine Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
           implicit none
@@ -1904,59 +1905,33 @@ end if
           type(tensor_field), intent(inout) :: P_all, velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           !Local variables
-          integer :: i, m, k, aa, cv_nodi, rank
-          real, dimension(max_its) :: AA_alphas
-          real, dimension(Mdims%cv_nonods, max_its) :: Stored_X
-          real, dimension(Mdims%npres, Mdims%cv_nonods, max_its) :: stored_pressures
-          real, dimension(Mdims%cv_nonods, max_its) :: residuals !Only one pressure
-          real, dimension(Mdims%npres, Mdims%cv_nonods) :: residual !> obtained from the continuity equation
-          type( vector_field ) :: diagonal_A
-          ! real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nonods, max_its) :: stored_velocities
-          AA_alphas = 1.0
+          integer :: i, k, cv_nodi, M
+          real, dimension(Mdims%npres, Mdims%cv_nonods, max_its) :: stored_pressures, stored_residuals
+          real,save :: solver_tolerance = -1
           i = 1
           !Update stored values
           stored_pressures(:,:,i) = P_all%val(1,:,:)
-          Stored_X(:,i) = P_all%val(1,1,:)
-          ! stored_velocities(:,:,:,i) = velocity%val
 
-          !TODO THERE IS STILL SOMETHING THAT WE ARE NOT UPDATING HERE PROPERLY SINCE IT NEEDS TO PERFORM
-          !A FULL NON-LINEAR ITERATION TO PROPERLY REDUCE THE RESIDUAL
+          !TODO IF WE PASS THE MAXIMUM NUMBER_OF_RESTART ITERATIONS IT IS NOT WORKING BETTER, IN FACT IT STAGNATES, SOMETHING IS NOT RIGHT!
+
+          if (solver_tolerance<0) then
+            !read the tolerance of the non_linear solver
+            !for the time being hard-coded
+            solver_tolerance = 1d-4
+          end if
+
+
 
           do k = 1, max_its*5
-            if (K > 1) then
-              m = i - 1; if (m == 0) m = max_its
 
-              ! do cv_nodi = 1, Mdims%cv_nonods
-                !Residual as the GMRES residual, it is not the residual! it would be this times CMC^-1 - Pk
-                ! residuals(cv_nodi,m) = (rhs_p%val(1,cv_nodi)  - Mmat%CT_RHS%val(1,cv_nodi))**2.
-                !Residual as G(Xi)-Xi
-                ! residuals(cv_nodi,m) = (stored_pressures(1,cv_nodi,m) - stored_X(cv_nodi,m))
-              ! end do
-
-              if (K > 2) then
-                !Find the optimal combination of pressure that minimise the residual
-                call get_Anderson_acceleration_coefficients(AA_alphas(1:m), residuals(:, 1:m), rank)
-                stored_X(:,i) = 0.
-                if (rank + 1 < m) then!+1 because we consider internally a system of m-1
-                  ewrite(0,*)'WARNING: This part of the Anderson Acceleration has not been tested properly use this test case to debug this'
-                  !If the least squares matrix is not full rank, then perform normal Uzawa to explore more spaces
-                  !and remove the last solution
-                  !Remove last information of pressure/residuals by overwritting it
-                  i = i - 1; if (i == 0 ) i = max_its
-                  stored_X(:,i) = stored_pressures(1,:,m)
-                  residuals(:,i) = 0.
-                else
-                  ! Obtain new pressure, effectively only the pressure matters as the velocity is obtained from it (for Stokes only!)
-                  do aa = 1, m
-                    stored_X(:,i) = stored_X(:,i) + stored_pressures(1,:,aa) * AA_alphas(aa)
-                  end do
-                end if
-                P_all%val(1,1,:) =  stored_X(:,i)
-
-              else
-                stored_X(:,i) = stored_pressures(1,:,m)
-              end if
+            if (K>max_its .or. sqrt(sum(deltap%val)**2.) < 1d-4 ) then
+                ! print *, k-1, "Iterations taken in the AA method for Stokes "
+               return
             end if
+
+            M = i - 2; if (M <= 0) M = max_its + M
+              !Find the optimal combination of pressure fields that minimise the residual
+            if (K > 2) call get_Anderson_acceleration_new_guess(Mdims%cv_nonods*Mdims%npres, M, P_ALL%val, stored_pressures, stored_residuals, i)
             !##########################Now solve the equations##########################
             ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
             call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
@@ -1967,14 +1942,15 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             ! call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc, residuals(:,i))
+            call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc)
             if (isParallel()) call halo_update(P_all)
-
+            !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
+            stored_residuals(:,:,i) = deltap%val
             !##########################Now solve the equations##########################
+            i = i + 1; if (i == max_its + 1 )  i = 1
             !Update stored values
             stored_pressures(:,:,i) = P_all%val(1,:,:)
 
-            i = i + 1; if (i == max_its + 1 )  i = 1
           end do
           ! !Now ensure that the velocity fulfils the continuity equation
           call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
@@ -2017,7 +1993,7 @@ end if
         !> @author Pablo Salinas
         !> @brief Compute deltaP by solving the pressure equation using the CMC matrix
         !---------------------------------------------------------------------------
-        subroutine solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, delta_p_out)
+        subroutine solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc)
 
           implicit none
           type( state_type ), intent( inout ) :: packed_state
@@ -2030,7 +2006,6 @@ end if
           type( vector_field ), intent(inout) :: deltap
           real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
-          real, dimension(:), intent(inout), optional :: delta_p_out
           !Local variables
           integer :: its_taken
           !solve_stokes
@@ -2041,26 +2016,8 @@ end if
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
           pres_its_taken = its_taken
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-
-          ! if (solve_stokes) then !THIS IS ONLY FOR UZAWA/PROJECTION METHOD
-          ! !"######################## CORRECTION PRESSURE STEP####################################"
-          !   CV_volumes=>extract_vector_field(packed_state,"CVIntegral")
-          !   !Re-create the velocity field so we can multiply it by the viscosity !Not efficient but clean to code
-          !   allocate(velocity_visc(Mdims%ndim, Mdims%nphase, Mdims%u_nonods))
-          !   call compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
-          !   !Update pressure based on the correction to get the velocity to be divergent free.
-          !   !The corrections needs to be divided by the volume of the CVs
-          !   rhs_p%val = 0.
-          !   call compute_DIV_U(Mdims, Mmat, Mspars, velocity_visc, INV_B, rhs_p)
-          !                                                   !NOT SURE IF Mmat%CT_RHS NEEDS TO BE DIVIDED BY CV_volumes%val
-          !   P_all  = P_all + 1./CV_volumes%val * (Mmat%CT_RHS%val - rhs_p%val)
-          !   deallocate(velocity_visc)
-            !rhs_p CANNOT BE USED AFTER THIS!
-          ! else
-            P_all = P_all + deltap%val
-          ! end if
-
-          if (present(delta_p_out)) delta_p_out = deltap%val(1,:)
+          !Now update the pressure
+          P_all = P_all + deltap%val
 
         end subroutine solve_and_update_pressure
 
@@ -2099,52 +2056,70 @@ end if
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
         !> @brief In this subroutine the Least square problem ||alpha_i F_i|| is solved
-        !> to obtain the alpha coeficients that provide an update for the variables
+        !> to obtain the alpha coeficients that provide an update for the variables,
+        !> next the new guess is computed and returned
         !---------------------------------------------------------------------------
-        subroutine get_Anderson_acceleration_coefficients(AA_alphas, residuals, Q_rank)
-
+        subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration)
+!TODO ENSURE THAT Q IS UPDATED AND NOT RECALCULATED ALWAYS
+!TODO Least_squares_solver TO BE PARALLEL ALSO
           implicit none
-          real, dimension(:), intent(out) :: AA_alphas !< multipliers that will minimise the residual
-          real, dimension(:, :), intent(out) :: residuals !< residuals
-          integer, intent(inout) :: Q_rank
+          integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
+          integer, intent(in) :: M !> Size of the field of iterations available - 2
+          real, dimension(N), intent(out) :: NewField !> New guess obtained by the Anderson Acceleration method
+          real, dimension(N, M+2), intent(inout) :: History_field !> Past results obtained by the outer solver
+          real, dimension(N, M+1), intent(inout) :: stored_residuals !> Past residuals obtained as the (- guessed value + G(guess value) )
+          integer, intent(inout) :: AA_iteration !> This is the iterator, only passed down to reduce it if the matrix is not full rank
           !Local variables
-          real, dimension(:), allocatable :: X, F
-          real, dimension(:,:), allocatable :: A, b
-          integer :: i, j, m, n
-          real :: auxR
-          real, parameter :: min_importance = 0.1 !> Minimum importance for the last alpha
-          !Currently only considering pressure
-          m = size(AA_alphas)-1; n = size(residuals,1)
-          Q_rank = m!By default we return full rank
+          real, dimension(N,M) :: Mat !> Matrix containing the residuals
+          real, dimension(N,1) :: b !RHS containing the last residual
+          real, dimension(m+1) :: AA_alphas
+          integer :: i, j, Q_rank
 
-          !Need at least m to be 2
-          if (m<=1) then
-            AA_alphas = 0
-            AA_alphas(size(AA_alphas)) = 1.0
+          !Need at least m to be 1
+          if (m <= 0) then
+            !Return the last field to proceed as a normal iteration
+            NewField = History_field(:,m+2)
             return
           end if
 
-          allocate(X(0)); allocate(b(n,1))
-          allocate(A(n,m))
           !Construct matrix
-          A = 0.
+          Mat = 0.
           do j = 1, n!this can be optimised by adding the new rows process only to the previous matrix
-            do i = 1, m
-                A(j,i) = A(j,i) + (residuals(j, i+1) - residuals(j, i))
+            do i = 1, m !Here we form the matrix by making the difference of deltaF which is define as the variation of the field between updates
+                !The equation is some sort of central differences
+                Mat(j,i) = Mat(j,i) + (stored_residuals(j, i+1) - stored_residuals(j, i))
             end do
-            b(j,1) =  residuals(j,m) !Last observation
+            b(j,1) =  stored_residuals(j,m+1)  !Last observation residual
           end do
-          call Least_squares_solver(A,b, Q_rank)
-          !Here we calculate Gammas instead of alphas (size n-1 instead of n)
-          ! AA_alphas(1:m) = matmul(matmul(A_inv, transpose(A)), b)
-          !Now we proceed to convert to alphas (later on this is easier to understand)
-          AA_alphas(size(AA_alphas)) = 1 - b(m,1)
-          do i = m, 2, -1 !The last one is different, the first one is the same
-            AA_alphas(i) = b(i,1) - b(i-1,1)
+
+          Q_rank = m
+          !Now solve the least squares optimisation problem
+          if (M > 1) call Least_squares_solver(Mat,b, Q_rank)
+          if (Q_rank < m) then
+            !If the least squares matrix is not full rank, then perform normal Uzawa to explore more spaces
+            !and remove the last solution
+            !Remove last information of pressure/residuals by overwritting it
+            AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
+            AA_iteration = AA_iteration - 1; if (AA_iteration == 0 ) AA_iteration = max_its
+          else if (M == 1) then
+            AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
+          else
+            !Now we proceed to convert to alphas so we can compute the new guess
+            !Here we calculate Gammas instead of alphas (size n-1 instead of n)
+            AA_alphas(size(AA_alphas)) = 1 - b(m,1)
+            do i = m, 2, -1 !The last one is different, the first one is the same
+              AA_alphas(i) = b(i,1) - b(i-1,1)
+            end do
+            AA_alphas(1) = b(1,1)
+          end if
+
+            !Multiply previous fields by the alphas to obtain the new guess
+          NewField = 0.
+          do i = 1, size(AA_alphas)
+            NewField = NewField + History_field(:,i+1) * AA_alphas(i)
           end do
-          AA_alphas(1) = b(1,1)
-          deallocate(b,A)
-        end subroutine get_Anderson_acceleration_coefficients
+
+        end subroutine get_Anderson_acceleration_new_guess
 
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
