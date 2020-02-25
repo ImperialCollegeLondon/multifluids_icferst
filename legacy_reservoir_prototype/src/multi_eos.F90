@@ -690,6 +690,13 @@ contains
         ! if (IsParallel()) call halo_update(density)
     end subroutine Calculate_Rho_dRhodP
 
+    !--------------------------------------------
+    !> @author Geraldine Regnier
+    !> @brief In this subroutine we calculate and update the density of the
+    !> porous media based on the compressibility given in Diamond (ele-wise). We also
+    !> calculate the drho/dp term for the porous media which then goes into
+    !> the DERIV term in the continuity equation (cv-wise).
+    !---------------------------------------------
 
     subroutine Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous )
 
@@ -697,10 +704,10 @@ contains
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
-        real, dimension( : ), allocatable :: rho_porous, drhodp_porous
+        real, dimension( : ), allocatable :: rho_porous, drhodp_porous, rho_porous_old
         integer, dimension( : ), pointer :: cv_ndgln
         type( tensor_field ), pointer :: pressure
-        type( scalar_field ), pointer :: density_porous, density_porous_initial
+        type( scalar_field ), pointer :: density_porous, density_porous_initial, density_porous_old
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
         real, dimension(cv_nonods) :: cv_counter
         integer :: stat
@@ -712,18 +719,23 @@ contains
         if (stat/=0) pressure => extract_tensor_field( packed_state, "PackedFEPressure", stat )
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_initial  => extract_scalar_field( state(1), "porous_density_initial" )
+        density_porous_old => extract_scalar_field(state(1), "porous_density_old")
         allocate( perturbation_pressure( cv_nonods ) ) ; perturbation_pressure = 0.
         allocate( RhoPlus( cv_nonods ) ) ; RhoPlus = 0.
         allocate( RhoMinus( cv_nonods ) ) ; RhoMinus = 0.
         allocate( rho_porous( totele ) )
+        allocate( rho_porous_old( totele ) )
         allocate( drhodp_porous( cv_nonods ) )
         allocate( eos_coefs( 1 ) ) ; eos_coefs = 0.
         call get_option( "/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant", eos_coefs(1) )
         rho_porous=0. ; drhodp_porous=0.
         perturbation_pressure = 1.
         cv_counter = 0
+        !print *, "Density old:", density_porous_old%val(1)
+        !print *,"Density new:", density_porous%val(1)
         do ele = 1, totele
             p_den = min(size(density_porous%val), ele)
+            rho_porous_old(ele) = density_porous%val(ele)
             do iloc = 1,cv_nloc
                 cv_inod = cv_ndgln((ele-1)*cv_nloc+iloc)
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
@@ -736,10 +748,6 @@ contains
                 drhodp_porous(cv_inod) = drhodp_porous(cv_inod) + 0.5 * ( RhoPlus(cv_inod) - RhoMinus(cv_inod))  / perturbation_pressure(cv_inod)
 
             end do
-            !if (rho_porous(ele)>5000.) then
-          !    rho_porous(ele) = density_porous_init%val(p_den )*cv_nloc
-            !end if
-
         end do
 
         if (maxval(rho_porous)>15000.0) then
@@ -753,12 +761,9 @@ contains
         rho_porous = rho_porous/cv_nloc
         drhodp_porous = drhodp_porous/cv_counter
         density_porous%val = rho_porous
-
-        !print *, "Density porous:", maxval(density_porous%val)
-        !print *, "Density porous initial:", maxval(density_porous_init%val)
-        !print *, "Pressure:", maxval(pressure % val(1,1,:))
+        density_porous_old%val = rho_porous_old
         deallocate( eos_coefs )
-        deallocate( perturbation_pressure, RhoPlus, RhoMinus, rho_porous )
+        deallocate( perturbation_pressure, RhoPlus, RhoMinus, rho_porous, rho_porous_old )
 
 
 

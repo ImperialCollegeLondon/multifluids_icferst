@@ -109,7 +109,7 @@ contains
           TDIFFUSION, &
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-          porous_heat_coef, outfluxes, solving_compositional, nonlinear_iteration,&
+          porous_heat_coef,porous_heat_coef_old, outfluxes, solving_compositional, nonlinear_iteration,&
           assemble_collapsed_to_one_phase)
           !  =====================================================================
           !     In this subroutine the advection terms in the advection-diffusion
@@ -282,8 +282,7 @@ contains
           real, dimension(:,:), optional :: calculate_mass_delta
           type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
           type (multi_pipe_package), intent(in) :: pipes_aux
-          REAL, DIMENSION( :), optional, intent(in) :: porous_heat_coef
-          !Real, dimension(:), optional, intent(inout):: porous_heat_coef_old
+          REAL, DIMENSION( :), optional, intent(in) :: porous_heat_coef, porous_heat_coef_old
           logical, optional, intent(in) :: solving_compositional, assemble_collapsed_to_one_phase
           ! Variable to store outfluxes
           type (multi_outfluxes), optional, intent(inout) :: outfluxes
@@ -1826,7 +1825,6 @@ contains
                       LOC_CV_RHS_I(iphase) = LOC_CV_RHS_I(iphase)  + Mass_CV(CV_NODI) * SOURCT_ALL( iphase, CV_NODI )
                     end do
                       if (thermal .and. is_porous_media) then
-
                           !In this case for the time-integration term the effective rho Cp is a combination of the porous media
                           ! and the fluids. Here we add the porous media contribution. Multiplied by the saturation so we use the same
                           !paradigm that for the phases, but in the equations it isn't, but here because we iterate over phases and collapse
@@ -1837,7 +1835,7 @@ contains
                           !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                               !we divide to remove that term and multiply by the correct term (1-porosity)
                           LOC_CV_RHS_I=LOC_CV_RHS_I  &
-                          + (CV_BETA * porous_heat_coef( CV_NODI ) * LOC_T2OLD_I &
+                          + (CV_BETA * porous_heat_coef_old( CV_NODI ) * LOC_T2OLD_I &
                           + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * LOC_T2_I ) &
                           * R_PHASE * LOC_TOLD_I* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
 

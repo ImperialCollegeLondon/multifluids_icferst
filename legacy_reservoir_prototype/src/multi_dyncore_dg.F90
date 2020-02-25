@@ -138,7 +138,7 @@ contains
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
-           REAL, DIMENSION( : ), allocatable :: porous_heat_coef
+           REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
@@ -154,7 +154,6 @@ contains
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
-          !Real, dimension(Mdims%cv_nonods), intent(inout)::porous_heat_coef_old
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -190,7 +189,8 @@ contains
                 !need to perform average of the effective heat capacity times density for the diffusion and time terms
 
                 allocate(porous_heat_coef(Mdims%cv_nonods))
-                call effective_Cp_density(porous_heat_coef)
+                allocate(porous_heat_coef_old(Mdims%cv_nonods))
+                call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
                 !Start with the process to apply the min max principle
                 call force_min_max_principle(1)
                 end if
@@ -347,12 +347,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call allocate(Mmat%petsc_ACV,sparsity,[nphase,nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
-               !if (ieee_is_nan(porous_heat_coef_old(1))) then
-              !   porous_heat_coef_old = porous_heat_coef
-              !   print *, "heyy"
-              ! end if
-              ! print *, maxval(porous_heat_coef_old)
-              ! print *, maxval(porous_heat_coef)
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
@@ -374,10 +368,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef,solving_compositional = lcomp > 0, &
+                   porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
-              !  porous_heat_coef_old = porous_heat_coef
                ! vtracer=as_vector(tracer,dim=2)
                ! call zero(vtracer)
                call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
@@ -424,6 +417,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
+           if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
@@ -482,22 +476,24 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       end subroutine
 
-      subroutine effective_Cp_density(porous_heat_coef)
+      subroutine effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
         ! Calculation of the averaged heat capacity and density
         ! average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
         ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
         ! as it is stored cv-wise
           implicit none
-        REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef
+        REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef, porous_heat_coef_old
         !Local variables
-        type( scalar_field ), pointer :: porosity, density_porous, Cp_porous
+        type( scalar_field ), pointer :: porosity, density_porous, Cp_porous, density_porous_old
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
         real, dimension(Mdims%cv_nonods) :: cv_counter
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
+        density_porous_old => extract_scalar_field( state(1), "porous_density_old" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
         porosity=>extract_scalar_field(state(1),"Porosity")
         porous_heat_coef = 0.
+        porous_heat_coef_old = 0.
         cv_counter = 0
         do ele = 1, Mdims%totele
             p_den = min(size(density_porous%val), ele)
@@ -508,11 +504,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
                 porous_heat_coef( cv_inod ) = porous_heat_coef( cv_inod ) + &
                     density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
+                porous_heat_coef_old( cv_inod ) = porous_heat_coef_old( cv_inod ) + &
+                    density_porous_old%val(p_den ) * Cp_porous%val( h_cap )
             end do
         end do
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
         porous_heat_coef = porous_heat_coef/cv_counter!<= includes an average of porous and fluid properties
+        porous_heat_coef_old = porous_heat_coef_old/cv_counter!<= includes an average of porous and fluid properties5
       end subroutine effective_Cp_density
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
