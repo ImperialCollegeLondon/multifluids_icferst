@@ -951,6 +951,7 @@ ONLY specify for the wetting phase</a:documentation>
                   <ref name="prescribed_tensor_field"/>
                 </element>
               </element>
+              <optional>
               <element name="scalar_field">
                 <a:documentation>Specify scalar field compressibility of the porous media
 ( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
@@ -968,6 +969,7 @@ with P_surf = 10^5 Pa )</a:documentation>
                   </element>
                 </choice>
               </element>
+            </optional>
             </element>
           </optional>
           <optional>

@@ -129,8 +129,11 @@ contains
         allocate( Density_Bulk( nphase * cv_nonods ) ); Density_Bulk = 0.0
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
-        call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
-
+        allocate( drhodp_porous( cv_nonods ) )
+        drhodp_porous = 0.
+        if (have_option('/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant')) then
+          call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
+        end if
         do icomp = 1, ncomp
            do iphase = 1, nphase
               sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
@@ -257,7 +260,7 @@ contains
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         !if ( boussinesq ) field2 % val = 1.0
         deallocate( Rho, dRhodP, Component_l)
-        deallocate( drhodp_porous)
+        if (allocated(drhodp_porous)) deallocate(drhodp_porous)
         deallocate( Density_Component, Density_Bulk )
         deallocate( eos_option_path )
         if (compute_rhoCP) deallocate(Cp, DensityCp_Bulk)
@@ -723,23 +726,22 @@ contains
         allocate( perturbation_pressure( cv_nonods ) ) ; perturbation_pressure = 0.
         allocate( RhoPlus( cv_nonods ) ) ; RhoPlus = 0.
         allocate( RhoMinus( cv_nonods ) ) ; RhoMinus = 0.
-        allocate( rho_porous( totele ) )
-        allocate( rho_porous_old( totele ) )
-        allocate( drhodp_porous( cv_nonods ) )
+        allocate( rho_porous( size(density_porous%val) ) )
+        allocate( rho_porous_old(size(density_porous%val)  ) )
         allocate( eos_coefs( 1 ) ) ; eos_coefs = 0.
         call get_option( "/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant", eos_coefs(1) )
-        rho_porous=0. ; drhodp_porous=0.
+        rho_porous=0.
         perturbation_pressure = 1.
         cv_counter = 0
         !print *, "Density old:", density_porous_old%val(1)
         !print *,"Density new:", density_porous%val(1)
+        rho_porous_old = density_porous%val
         do ele = 1, totele
             p_den = min(size(density_porous%val), ele)
-            rho_porous_old(ele) = density_porous%val(ele)
             do iloc = 1,cv_nloc
                 cv_inod = cv_ndgln((ele-1)*cv_nloc+iloc)
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
-                rho_porous(ele) = rho_porous(ele)+ density_porous_initial%val(p_den )&
+                rho_porous(p_den) = rho_porous(p_den)+ density_porous_initial%val(p_den )&
                   *exp(eos_coefs( 1 ) * (pressure % val(1,1,cv_inod) -10**5))
                 RhoPlus(cv_inod) = RhoPlus(cv_inod)+ density_porous_initial%val(p_den )&
                   *exp(eos_coefs( 1 ) * (pressure % val(1,1,cv_inod) + perturbation_pressure(cv_inod) - 10**5))

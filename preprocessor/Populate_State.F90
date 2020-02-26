@@ -1348,12 +1348,12 @@ contains
        !Insert if required thermal porous media fields
         if (have_option('/porous_media/thermal_porous/')) then
           call allocate_and_insert_scalar_field('/porous_media/thermal_porous/scalar_field::porous_density', &
-          states(1), field_name='porous_density_initial')  !only for 1 phase because porous medium (this is to calculate porous density)
+           states(1), field_name='porous_density_initial')  !only for 1 phase because porous medium (this is to calculate porous density)
           call allocate_and_insert_scalar_field('/porous_media/thermal_porous/scalar_field::porous_density', &
-          states(1), field_name='porous_density_old')  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
+           states(1), field_name='porous_density_old')  !only for 1 phase because porous medium (to calculate porous_heat_coef_old)
            do i=1, nstates
-              call allocate_and_insert_scalar_field('/porous_media/thermal_porous/scalar_field::porous_density', &
-                 states(i), field_name='porous_density')
+             call allocate_and_insert_scalar_field('/porous_media/thermal_porous/scalar_field::porous_density', &
+                states(i), field_name='porous_density')
               call allocate_and_insert_scalar_field('/porous_media/thermal_porous/scalar_field::porous_heat_capacity', &
                  states(i), field_name='porous_heat_capacity')
               if (have_option("/porous_media/thermal_porous/scalar_field::porous_compressibility")) then
