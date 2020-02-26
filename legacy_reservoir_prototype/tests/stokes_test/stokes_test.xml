@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>stokes_test</name>
+  <owner userid="pablo.salinas"/>
+  <tags>stokes mpml</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst stokes_test.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_P" language="python">from fluidity_tools import stat_parser as stat
+max_P = stat("stokes_test.stat")["phase1"]["Pressure"]["max"][-1]</variable>
+     <variable name="max_vel" language="python">from fluidity_tools import stat_parser as stat
+max_vel = stat("stokes_test.stat")["phase1"]["Velocity%magnitude"]["max"][-1]</variable>
+  </variables> 
+  
+  <pass_tests>
+    <test name="Assert final max pressure" language="python">assert(abs(max_P - 1.0) &lt; 0.05)</test>
+    <test name="Assert final max velocity" language="python">assert(abs(max_vel - 8.5e-3)/8.5e-3 &lt; 0.05)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
