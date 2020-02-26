@@ -1766,16 +1766,15 @@ end if
                 end do
               end do
             end do
-          end if
-
-          do idx1 = 1, size(Mmat%PIVIT_MAT,3)
-            do idx2 = 1, size(Mmat%PIVIT_MAT,1)
-              !Combine diagonal of A with the mass matrix (not appropiate for the stokes projection method since we need the Laplacian)
-              Mmat%PIVIT_MAT(idx2, idx2, idx1) =   Mmat%PIVIT_MAT(idx2, idx2, idx1) * MASS_ELE(idx1)/dble(Mdims%u_nloc)
-              !Just the mass matrix
-              ! Mmat%PIVIT_MAT(idx2, idx2, idx1) = MASS_ELE(idx1)/dble(Mdims%u_nloc)!
+            do idx1 = 1, size(Mmat%PIVIT_MAT,3)
+              do idx2 = 1, size(Mmat%PIVIT_MAT,1)
+                !Combine diagonal of A with the mass matrix (not appropiate for the stokes projection method since we need the Laplacian)
+                Mmat%PIVIT_MAT(idx2, idx2, idx1) =   Mmat%PIVIT_MAT(idx2, idx2, idx1) * MASS_ELE(idx1)/dble(Mdims%u_nloc)
+                !Just the mass matrix
+                ! Mmat%PIVIT_MAT(idx2, idx2, idx1) = MASS_ELE(idx1)/dble(Mdims%u_nloc)!
+              end do
             end do
-          end do
+          end if
 
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
 
@@ -1920,10 +1919,8 @@ end if
             solver_tolerance = 1d-4
           end if
 
-
-
           do k = 1, max_its*5
-
+            !We use deltaP as residual check for convergence
             if (K>max_its .or. sqrt(sum(deltap%val)**2.) < 1d-4 ) then
                 ! print *, k-1, "Iterations taken in the AA method for Stokes "
                return
