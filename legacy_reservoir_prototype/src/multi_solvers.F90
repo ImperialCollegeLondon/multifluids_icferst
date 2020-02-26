@@ -835,7 +835,7 @@ contains
         logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
 
         !Sometimes the shock-front courant number is not well calculated, then use previous value
-        if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
+        !if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
         !Combination of the overall and the shock-front Courant number
         courant_number = 0.4 * courant_number_in(1) + 0.6 * courant_number_in(2)
         backup_shockfront_Courant = courant_number_in(2)

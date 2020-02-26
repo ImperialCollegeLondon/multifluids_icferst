@@ -823,7 +823,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              integer, save :: max_allowed_its = -1
              integer :: its_taken
              logical, save :: written_file = .false.
-             real, save :: previous_res_resold = -1
              !We check this with the global number of phases per domain
              if ( Mdims%n_in_pres == 1) return!<== No need to solve the transport of phases if there is only one phase!
 
@@ -913,14 +912,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
             END IF
 
-            !#=================================================================================================================
-            !# Vinicius: Set maximum number of inner non-linear iterations 
-            !#=================================================================================================================
-            Max_sat_its = 100
-            !#=================================================================================================================
-            !# Vinicius-End: Set maximum number of inner non-linear iterations 
-            !#=================================================================================================================
-
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
 
                 !Update solution field to calculate the residual
@@ -984,22 +975,21 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                          if (IsParallel()) call allmax(res)
                          if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                          
-                         if ((Auto_max_backtrack) .and. (its == 1)) then!The maximum backtracking factor depends on the shock-front Courant number
-                            call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                         if (its == 1) then 
+                            if (Auto_max_backtrack) then!The maximum backtracking factor depends on the shock-front Courant number
+                                call auto_backtracking(Mdims, backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+                            end if   
                             !#=================================================================================================================
                             !# Vinicius: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                             !#=================================================================================================================
                             ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
                             if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
                             ! Generate all the dimensionless numbers 
-                            call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, previous_res_resold)
-                            previous_res_resold = res/resold
-                            !Max_sat_its, backtrack_par_factor
+                            call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold)
                             !#=================================================================================================================
                             !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
-                            !#=================================================================================================================
-                        end if        
-
+                            !#=================================================================================================================       
+                        end if
                      end if
                  end if
 
@@ -8063,7 +8053,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> of the system. This subroutine also generates several dimensionless numbers cv-wise.  
     !----------------------------------------------------------------------------------------
     subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, &
-                                         & res, resold, previous_res_resold, for_transport)
+                                         & res, resold, for_transport)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
@@ -8074,7 +8064,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real, dimension(:), intent(in) :: overrelaxation
         real, intent(in) :: res
         real, intent(in) :: resold   
-        real, intent(in) :: previous_res_resold
         logical, optional, intent(in) :: for_transport
         
         !Local variables
@@ -8102,6 +8091,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         logical, save :: gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
         real, save :: n_phases, n_components, aspect_ratio
         real :: courant_number, shockfront_courant_number
+        real :: min_total_mobility, max_total_mobility, average_total_mobility
+        real :: min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
         real :: min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
         real :: average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
         real :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
@@ -8297,13 +8288,38 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !!! Courant number and Shockfront courant number !!!
         ! CFL = u*delta_t/delta_x
         !Sometimes the shock-front courant number is not well calculated, then use previous value
-        if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
+        !if (abs(courant_number_in(2)) < 1d-8 ) courant_number_in(2) = backup_shockfront_Courant
         !Courant number
         courant_number = courant_number_in(1) 
         !shockfront courant number
         shockfront_courant_number = courant_number_in(2)
         backup_shockfront_Courant = shockfront_courant_number
         
+        !!! Total mobility  !!!
+        ! calculate average, max and min values
+        average_total_mobility = sum(total_mobility)
+        max_total_mobility = maxval(total_mobility)
+        min_total_mobility = minval(total_mobility)
+        if (IsParallel()) then
+            call allsum(average_total_mobility)
+            call allmax(max_total_mobility)  
+            call allmin(min_total_mobility)               
+        end if
+        average_total_mobility = average_total_mobility/total_cv 
+        
+        !!! Darcy velocity !!!
+        ! calculate average, max and min values
+        average_Darcy_velocity = sum(nDarcy_velocity_cvwise)
+        max_Darcy_velocity = maxval(nDarcy_velocity_cvwise)
+        min_Darcy_velocity = minval(nDarcy_velocity_cvwise)
+        if (IsParallel()) then
+            call allsum(average_Darcy_velocity)
+            call allmax(max_Darcy_velocity)  
+            call allmin(min_Darcy_velocity)               
+        end if
+        average_Darcy_velocity = average_Darcy_velocity/total_cv 
+
+
         !!! shockfront mobility ratio !!! 
         ! M_f = lambda_T(at the front)/lambda_T(ahead of the front)
         min_shockfront_mobratio = 999.
@@ -8492,7 +8508,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         !***************************!
         !!! ***Write into file*** !!!
         !***************************!
-
+    
         !inquire(file="AI_backtracking_parameters.csv", exist=file_exist) 
         if (.not. written_file) then
             open(73, file="AI_backtracking_parameters.csv", status="replace")
@@ -8502,12 +8518,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             write(73, '(6(A,",",X))', advance="NO") "gravity", "cap_pressure", "black_oil", "ov_relaxation", "one_phase", "wells"
             write(73, '(5(A,",",X))', advance="NO") "n_phases", "n_components", "aspect_ratio", "courant_number", "shockfront_courant_number"
             write(73, '(1(A,",",X))', advance="NO") "shockfront_number_ratio"
+            write(73, '(3(A,",",X))', advance="NO") "min_total_mobility", "max_total_mobility", "average_total_mobility"
+            write(73, '(3(A,",",X))', advance="NO") "min_Darcy_velocity", "max_Darcy_velocity", "average_Darcy_velocity"
             write(73, '(3(A,",",X))', advance="NO") "min_shockfront_mobratio", "max_shockfront_mobratio", "average_shockfront_mobratio"
             write(73, '(6(A,",",X))', advance="NO") "average_longitudinal_capillary", "average_transverse_capillary", "max_longitudinal_capillary", "max_transverse_capillary", "min_longitudinal_capillary", "min_transverse_capillary"
             write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
             write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
             write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
-            write(73, '(6(A,",",X))') "res", "resold", "res_resold", "previous_res_resold", "rate_res_resold", "backtrack_par_factor"
+            write(73, '(4(A,",",X))') "res", "resold", "res_resold", "backtrack_par_factor"
             close(73)
             written_file = .true.
         end if
@@ -8517,12 +8535,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         write(73, '(6(L,",",X))',     advance="NO") gravity, cap_pressure, black_oil, ov_relaxation, one_phase, wells
         write(73, '(5(E15.8,",",X))', advance="NO") n_phases, n_components, aspect_ratio, courant_number, shockfront_courant_number
         write(73, '(1(E15.8,",",X))', advance="NO") shockfront_number_ratio
+        write(73, '(3(E15.8,",",X))', advance="NO") min_total_mobility, max_total_mobility, average_total_mobility
+        write(73, '(3(E15.8,",",X))', advance="NO") min_Darcy_velocity, max_Darcy_velocity, average_Darcy_velocity
         write(73, '(3(E15.8,",",X))', advance="NO") min_shockfront_mobratio, max_shockfront_mobratio, average_shockfront_mobratio
         write(73, '(6(E15.8,",",X))', advance="NO") average_longitudinal_capillary, average_transverse_capillary, max_longitudinal_capillary, max_transverse_capillary, min_longitudinal_capillary, min_transverse_capillary
         write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
         write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
         write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
-        write(73, '(6(E15.8,",",X))') res, resold, res/resold, previous_res_resold, (res/resold)/previous_res_resold, backtrack_par_factor
+        write(73, '(4(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor
         close(73)
 
         !*****************************!
