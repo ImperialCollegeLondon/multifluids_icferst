@@ -432,7 +432,9 @@ contains
 
     field%wrapped= .false.
     field%aliased= .false.
-    allocate(field%bc) 
+
+    allocate(field%bc)
+    ! nullify(field%bc)
     nullify(field%bc%boundary_condition)
 
     nullify(field%refcount) ! Hack for gfortran component initialisation
@@ -682,8 +684,8 @@ contains
   subroutine remove_boundary_conditions_vector(field)
      !!< Removes and deallocates all boundary conditions from a field
      type(vector_field), intent(inout):: field
-
      integer:: i
+
 
      if (associated(field%bc%boundary_condition)) then
         do i=1, size(field%bc%boundary_condition)
@@ -699,6 +701,7 @@ contains
     !!< is called on the mesh which will delete one reference to it and
     !!< deallocate it if the count drops to zero.
     type(tensor_field), intent(inout) :: field
+    integer:: i
 
     call decref(field)
     if (has_references(field)) then
@@ -722,11 +725,13 @@ contains
       end select
     end if
 
-
-    if (associated(field%bc)) call remove_boundary_conditions(field)
-    if (associated(field%bc)) deallocate(field%bc)
-
     call deallocate(field%mesh)
+
+    !if (associated(field%bc)) call remove_boundary_conditions(field)
+    if (associated(field%bc)) then
+      call remove_boundary_conditions(field)
+      deallocate(field%bc)
+    end if
 
     !call deallocate(field%mesh)
     !deallocate pointers related with fields storage
@@ -737,24 +742,23 @@ contains
     if (associated(field%updated)) deallocate(field%updated)
 
 
-
   end subroutine deallocate_tensor_field
 
   subroutine remove_boundary_conditions_tensor(field)
      !!< Removes and deallocates all boundary conditions from a field
      type(tensor_field), intent(inout):: field
-
      integer:: i
 
-     ! if (associated(field%bc)) then
+      !if (associated(field%bc)) then
         if (associated(field%bc%boundary_condition)) then
            do i=1, size(field%bc%boundary_condition)
               call deallocate(field%bc%boundary_condition(i))
            end do
-          if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) &
+           if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) then
             deallocate(field%bc%boundary_condition)
+          end if
         end if
-     ! end if
+     !end if
 
   end subroutine remove_boundary_conditions_tensor
 
@@ -872,7 +876,7 @@ contains
 
     allocate(bc%applies(dims(1),dims(2)))
     if (present(applies)) then
-      assert (all(shape(applies)==shape(bc%applies)))
+      assert(all(shape(applies)==shape(bc%applies)))
       bc%applies=applies
     else
       ! default .true. for all components
@@ -941,7 +945,7 @@ contains
   end subroutine deallocate_vector_boundary_condition
 
  subroutine deallocate_tensor_boundary_condition(bc)
-  !! deallocate a vector boundary condition
+  !! deallocate a tensor boundary condition
   type(tensor_boundary_condition), intent(inout):: bc
 
     integer i
@@ -950,27 +954,32 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
-      if (.not. has_references(bc%surface_fields(1)))&
+      if (.not. has_references(bc%surface_fields(1))) then
            deallocate(bc%surface_fields)
-    end if
-
-    if (associated(bc%vector_surface_fields)) then
-       do i=1, size(bc%vector_surface_fields)
-          call deallocate(bc%vector_surface_fields(i))
-       end do
-       if (.not. has_references(bc%vector_surface_fields(1)))&
-            deallocate(bc%vector_surface_fields)
+      end if
     end if
 
     if (associated(bc%scalar_surface_fields)) then
       do i=1, size(bc%scalar_surface_fields)
         call deallocate(bc%scalar_surface_fields(i))
       end do
-      if (.not. has_references(bc%scalar_surface_fields(1)))&
+      if (.not. has_references(bc%scalar_surface_fields(1))) then
            deallocate(bc%scalar_surface_fields)
+      end if
     end if
 
+    if (associated(bc%vector_surface_fields)) then
+       do i=1, size(bc%vector_surface_fields)
+          call deallocate(bc%vector_surface_fields(i))
+       end do
+       if (.not. has_references(bc%vector_surface_fields(1))) then
+            deallocate(bc%vector_surface_fields)
+        end if
+    end if
+
+
     call deallocate(bc%surface_mesh)
+
     if (.not. has_references(bc%surface_mesh)) then
        deallocate(bc%surface_mesh)
        deallocate(bc%surface_element_list, bc%surface_node_list)
