@@ -280,6 +280,18 @@ pchypre_options =
             element hypre_type {
                attribute name { string }
             }
+         ),
+         (
+         ## adds a particular type of quantity to
+         ## the diagonal of the matrix during
+         ## numerical factorization - shifts to
+         ## a positive definite
+         element shift_positive_definite {
+            empty
+         }?,
+         element boomeramg_relaxation {
+            empty
+         }?
          )
       }
    )
