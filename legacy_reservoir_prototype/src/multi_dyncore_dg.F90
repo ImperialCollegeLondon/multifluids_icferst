@@ -141,7 +141,7 @@ contains
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
-           REAL, DIMENSION( : ), allocatable :: porous_heat_coef
+           REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
@@ -190,8 +190,10 @@ contains
                     FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                 end if
                 !need to perform average of the effective heat capacity times density for the diffusion and time terms
+                !need to perform average of the effective heat capacity times density for the diffusion and time terms
                 allocate(porous_heat_coef(Mdims%cv_nonods))
-                call effective_Cp_density(porous_heat_coef)
+                allocate(porous_heat_coef_old(Mdims%cv_nonods))
+                call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
                 !Start with the process to apply the min max principle
                 call force_min_max_principle(1)
                 end if
@@ -368,7 +370,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
+                   porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
 
@@ -418,6 +420,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
+           if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
