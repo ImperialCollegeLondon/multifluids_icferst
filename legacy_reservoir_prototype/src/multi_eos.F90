@@ -575,9 +575,6 @@ contains
             !!$ den = den0/(1+Beta(T1-T0))
             !We use RHo as auxiliar variable here as the we do not perturbate the temperature
             Rho = eos_coefs(1)/(1 + eos_coefs(4)*(temperature_local-eos_coefs(2) )  )
-            !if (maxval(Rho) > 5000.) then
-          !    Rho = 1000.
-          !  end if
             perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
             !we add the pressure part =>1-(P1-P0)/E
             RhoPlus = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5)+perturbation_pressure -eos_coefs(3))/eos_coefs(5)) )
@@ -586,7 +583,7 @@ contains
             Rho = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5) -eos_coefs(3))/eos_coefs(5)) ) !to avoid possible oscillations the pressure is imposed to be between the range of applicability of the formula.
 
             !we add the pressure part =>1-(P1-P0)/E
-            !print *, "drhodp", maxval(drhodp)
+
             deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
@@ -733,8 +730,6 @@ contains
         rho_porous=0.
         perturbation_pressure = 1.
         cv_counter = 0
-        !print *, "Density old:", density_porous_old%val(1)
-        !print *,"Density new:", density_porous%val(1)
         rho_porous_old = density_porous%val
         do ele = 1, totele
             p_den = min(size(density_porous%val), ele)
