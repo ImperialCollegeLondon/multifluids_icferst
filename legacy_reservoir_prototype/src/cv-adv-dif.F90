@@ -113,7 +113,7 @@ contains
           TDIFFUSION, &
           saturation, VAD_parameter, Phase_with_Pc, Courant_number,&
           Permeability_tensor_field, calculate_mass_delta, eles_with_pipe, pipes_aux, &
-          porous_heat_coef, outfluxes, solving_compositional, nonlinear_iteration,&
+          porous_heat_coef,porous_heat_coef_old, outfluxes, solving_compositional, nonlinear_iteration,&
           assemble_collapsed_to_one_phase)
           !  =====================================================================
           !     In this subroutine the advection terms in the advection-diffusion
@@ -286,7 +286,7 @@ contains
           real, dimension(:,:), optional :: calculate_mass_delta
           type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
           type (multi_pipe_package), intent(in) :: pipes_aux
-          REAL, DIMENSION( : ), optional, intent(in) :: porous_heat_coef
+          REAL, DIMENSION( :), optional, intent(in) :: porous_heat_coef, porous_heat_coef_old
           logical, optional, intent(in) :: solving_compositional, assemble_collapsed_to_one_phase
           ! Variable to store outfluxes
           type (multi_outfluxes), optional, intent(inout) :: outfluxes
@@ -1839,9 +1839,10 @@ contains
                           !R_PHASE includes the porosity. Since in this case we are interested in what is NOT porous
                               !we divide to remove that term and multiply by the correct term (1-porosity)
                           LOC_CV_RHS_I=LOC_CV_RHS_I  &
-                          + (CV_BETA * porous_heat_coef( CV_NODI ) * LOC_T2OLD_I &
+                          + (CV_BETA * porous_heat_coef_old( CV_NODI ) * LOC_T2OLD_I &
                           + (ONE_M_CV_BETA) * porous_heat_coef( CV_NODI ) * LOC_T2_I ) &
                           * R_PHASE * LOC_TOLD_I* (1-MEAN_PORE_CV( 1, CV_NODI ))/MEAN_PORE_CV( 1, CV_NODI )
+
                       end if
 
                       LOC_MAT_II = LOC_MAT_II + LOC_DEN_I * LOC_T2_I * R_PHASE
@@ -1860,6 +1861,7 @@ contains
                           * R_PHASE(IPHASE) * LOC_TOLD_I(IPHASE)
                    END DO
                   END IF
+
 
                   Conditional_GETMAT2: IF ( GETMAT .and. have_absorption) THEN
 
@@ -1884,7 +1886,6 @@ contains
           END IF Conditional_GETCV_DISC2
 
           IF ( GETCT ) THEN
-
             W_SUM_ONE1 = 0.0 !If == 1.0 applies constraint to T
             if (Solve_all_phases) W_SUM_ONE1 = 1.0
             W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD !sprint_to_do Unnecessary, should be removed
