@@ -742,8 +742,8 @@ contains
         type(scalar_field), pointer :: pressure, sfield, ldfield, tdfield
         type(vector_field), pointer :: velocity, position, vfield, ldvfield, tdvfield
         type(tensor_field), pointer :: tfield, p2, d2, drhodp
-        type(vector_field) :: porosity, vec_field, porous_density, porous_heat_capacity, &
-             Longitudinal_Dispersivity, Transverse_Dispersivity
+        type(vector_field) :: porosity, vec_field, porous_density, porous_density_initial, porous_heat_capacity, &
+             Longitudinal_Dispersivity, Transverse_Dispersivity, porous_density_old
         type(vector_field) :: p_position, u_position, m_position
         type(tensor_field) :: permeability, ten_field, porous_thermal_conductivity
         type(mesh_type), pointer :: ovmesh, element_mesh

@@ -763,6 +763,9 @@ start =
                       }
                    )
                 },
+
+
+
                 ## Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin => W/(m·K) )
                element tensor_field {
                   attribute name { "porous_thermal_conductivity" },
@@ -770,8 +773,26 @@ start =
                      material_mesh_choice,
                      prescribed_tensor_field
                   }
-               }
+               },
+
+               ## Specify scalar field compressibility of the porous media
+               ## ( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
+               ## with P_surf = 10^5 Pa )
+               element scalar_field {
+                  attribute name { "porous_compressibility" },
+                  (
+                     element prescribed {
+                        material_mesh_choice,
+                        prescribed_scalar_field
+                     }|
+                     element aliased {
+                        generic_aliased_field
+                     }
+                  )
+               }?
+
              }?,
+
 
              ## Options to specify the wells/pipes
              element wells_and_pipes {
@@ -1018,7 +1039,7 @@ start =
             element max_sat_its {
                integer
             }?,
-           ## Impose a maximum number of iterations for the compositional loop 
+           ## Impose a maximum number of iterations for the compositional loop
            ## By default this number is 1. STILL TESTING THIS PARAMETER
             element Max_compositional_its {
                integer
@@ -3375,7 +3396,7 @@ element Density{(
                     element linearise_density {empty}?,
                     scalar_boundary_conditions*
                     }
-                    
+
 
                   )
                )

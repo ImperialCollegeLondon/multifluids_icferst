@@ -60,6 +60,7 @@ module multiphase_1D_engine
     use multi_surface_tension
     use multi_tools, only: CALC_FACE_ELE
     use parallel_tools, only : allmax, allmin, isparallel
+    use ieee_arithmetic
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_porous_Mass_matrix
@@ -78,7 +79,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number)
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -137,7 +138,7 @@ contains
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
-           REAL, DIMENSION( : ), allocatable :: porous_heat_coef
+           REAL, DIMENSION( : ), allocatable :: porous_heat_coef, porous_heat_coef_old
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
@@ -186,8 +187,10 @@ contains
                     FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                 end if
                 !need to perform average of the effective heat capacity times density for the diffusion and time terms
+
                 allocate(porous_heat_coef(Mdims%cv_nonods))
-                call effective_Cp_density(porous_heat_coef)
+                allocate(porous_heat_coef_old(Mdims%cv_nonods))
+                call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
                 !Start with the process to apply the min max principle
                 call force_min_max_principle(1)
                 end if
@@ -344,6 +347,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call allocate(Mmat%petsc_ACV,sparsity,[nphase,nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
+
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
@@ -364,10 +368,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
+                   porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
-
                ! vtracer=as_vector(tracer,dim=2)
                ! call zero(vtracer)
                call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
@@ -414,6 +417,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
+           if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
@@ -472,22 +476,24 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       end subroutine
 
-      subroutine effective_Cp_density(porous_heat_coef)
+      subroutine effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
         ! Calculation of the averaged heat capacity and density
         ! average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
         ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
         ! as it is stored cv-wise
           implicit none
-        REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef
+        REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef, porous_heat_coef_old
         !Local variables
-        type( scalar_field ), pointer :: porosity, density_porous, Cp_porous
+        type( scalar_field ), pointer :: porosity, density_porous, Cp_porous, density_porous_old
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
         real, dimension(Mdims%cv_nonods) :: cv_counter
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
+        density_porous_old => extract_scalar_field( state(1), "porous_density_old" )
         Cp_porous => extract_scalar_field( state(1), "porous_heat_capacity" )
         porosity=>extract_scalar_field(state(1),"Porosity")
         porous_heat_coef = 0.
+        porous_heat_coef_old = 0.
         cv_counter = 0
         do ele = 1, Mdims%totele
             p_den = min(size(density_porous%val), ele)
@@ -498,11 +504,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
                 porous_heat_coef( cv_inod ) = porous_heat_coef( cv_inod ) + &
                     density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
+                porous_heat_coef_old( cv_inod ) = porous_heat_coef_old( cv_inod ) + &
+                    density_porous_old%val(p_den ) * Cp_porous%val( h_cap )
             end do
         end do
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
         porous_heat_coef = porous_heat_coef/cv_counter!<= includes an average of porous and fluid properties
+        porous_heat_coef_old = porous_heat_coef_old/cv_counter!<= includes an average of porous and fluid properties5
       end subroutine effective_Cp_density
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
@@ -1684,7 +1693,7 @@ end if
              velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux,&
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
-            P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
+            P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:),&
             DT, MASS_MN_PRES, & ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
@@ -2121,7 +2130,7 @@ pres_its_taken = its_taken
                 X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
                 U_ALL, UOLD_ALL, &
                 U_ALL, UOLD_ALL, &    ! This is nu...
-                UDEN_ALL, UDENOLD_ALL, DERIV, &
+                UDEN_ALL, UDENOLD_ALL, DERIV,&
                 DT, &
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
@@ -2154,7 +2163,7 @@ pres_its_taken = its_taken
             DEN_OR_ONE, DENOLD_OR_ONE, &
             Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
             SUF_SIG_DIAGTEN_BC, &
-            DERIV, CV_P, &
+            DERIV,CV_P, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &
             GETCV_DISC, GETCT, &
             IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, Mdisopt%volfra_use_theta_flux, &
