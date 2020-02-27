@@ -1888,7 +1888,7 @@ end if
         !> @brief Generic subroutine that perform the Anderson acceleration solver.
         !> This is storing a set of results for a system that converges based on a FPI
         !> and finding an optimal combination of all of these results that minimise the residual
-        !> Method explained in DOI.10.1137/10078356X
+        !> Method explained in DOI.10.1137/16M1076770
         !---------------------------------------------------------------------------
         subroutine Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
           implicit none
@@ -2055,10 +2055,12 @@ end if
         !> @brief In this subroutine the Least square problem ||alpha_i F_i|| is solved
         !> to obtain the alpha coeficients that provide an update for the variables,
         !> next the new guess is computed and returned
+        !> Method explained in DOI.10.1137/10078356X
         !---------------------------------------------------------------------------
         subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration)
 !TODO ENSURE THAT Q IS UPDATED AND NOT RECALCULATED ALWAYS
-!TODO Least_squares_solver TO BE PARALLEL ALSO
+!TODO Least_squares_solver TO BE PARALLEL ALSO (IT SEEMS PETSC CAN DO THIS!! MORE SPECIFICALLY SLEPc AND THE KSP IS KSPLSQR)
+!example of how to do this using PETSc in https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex27.c.html
           implicit none
           integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
           integer, intent(in) :: M !> Size of the field of iterations available - 2
