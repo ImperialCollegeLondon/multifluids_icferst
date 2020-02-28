@@ -62,7 +62,7 @@ module solvers_module
     private
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
-         Ensure_Saturation_sums_one, auto_backtracking
+         Ensure_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess
 
 
 contains
@@ -897,5 +897,89 @@ contains
         if (IsParallel()) call allmin(backtrack_par_factor)!Should not be necessary as the Courant numbers are already parallel safe
 
     end subroutine auto_backtracking
+
+
+
+
+    !---------------------------------------------------------------------------
+    !> @author Pablo Salinas
+    !> @brief In this subroutine the Least square problem ||alpha_i F_i|| is solved
+    !> to obtain the alpha coeficients that provide an update for the variables,
+    !> next the new guess is computed and returned
+    !> Method explained in DOI.10.1137/10078356X
+    !---------------------------------------------------------------------------
+    subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration, max_its)
+!TODO ENSURE THAT Q IS UPDATED AND NOT RECALCULATED ALWAYS
+      implicit none
+      integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
+      integer, intent(in) :: M !> Size of the field of iterations available - 2
+      real, dimension(N), intent(out) :: NewField !> New guess obtained by the Anderson Acceleration method
+      real, dimension(N, M+2), intent(inout) :: History_field !> Past results obtained by the outer solver
+      real, dimension(N, M+1), intent(inout) :: stored_residuals !> Past residuals obtained as the (- guessed value + G(guess value) )
+      integer, intent(inout) :: AA_iteration !> This is the iterator, only passed down to reduce it if the matrix is not full rank
+      integer, optional :: max_its
+      !Local variables
+      real, dimension(N,M) :: Matrix !> Matrix containing the residuals
+      real, dimension(M,N) :: Tmatrix !> Transpose of the Matrix containing the residuals
+      real, dimension(M,1) :: Small_b !>RHS containing A' * The last residual
+      real, dimension(M) :: auxV !>Temporary array to perform in parallel A'*A
+      real, dimension(M,M) :: Small_matrix !>The resulting from A'*A
+      real, dimension(m+1) :: AA_alphas
+      integer :: i, j, Q_rank, ierr, max_its2
+      real :: auxR
+
+      max_its2 = 20
+      if (present(max_its)) max_its2 = max_its
+
+      !Need at least m to be 1
+      if (m <= 0) then
+        !Return the last field to proceed as a normal iteration
+        NewField = History_field(:,m+2)
+        return
+      end if
+
+      !Construct matrix
+      do i = 1, m !Here we form the matrix by making the difference of deltaF which is define as the variation of the field between updates
+          Matrix(:,i) = (stored_residuals(:, i+1) - stored_residuals(:, i))
+      end do
+
+      !For parallel it is easier to solve the system A'*A = A'*b because the system is tiny so each processor can solve it separately
+      Tmatrix = transpose(Matrix)
+      Small_b(:,1) = matmul(Tmatrix, stored_residuals(:,m+1))!Last observation residual
+      call allsum(Small_b(:,1))
+      do i = 1, M
+        Small_matrix(:,i) = matmul(Tmatrix, Matrix(:,i))
+        call allsum(Small_matrix(:,i))
+      end do
+
+      !Now solve the least squares optimisation problem
+      Q_rank = m
+      if (M > 1) call Least_squares_solver(Small_matrix,Small_b, Q_rank)
+      if (Q_rank < m) then
+        !If the least squares matrix is not full rank, then perform normal Uzawa to explore more spaces
+        !and remove the last solution
+        !Remove last information of pressure/residuals by overwritting it
+        AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
+        AA_iteration = AA_iteration - 1; if (AA_iteration == 0 ) AA_iteration = max_its2
+      else if (M == 1) then
+        AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
+      else
+        !Now we proceed to convert to alphas so we can compute the new guess
+        !Here we calculate Gammas instead of alphas (size m-1 instead of m)
+        AA_alphas(size(AA_alphas)) = 1 - Small_b(m,1)
+        do i = m, 2, -1 !The last one is different, the first one is the same
+          AA_alphas(i) = Small_b(i,1) - Small_b(i-1,1)
+        end do
+        AA_alphas(1) = Small_b(1,1)
+      end if
+
+        !Multiply previous fields by the alphas to obtain the new guess
+      NewField = 0.
+      do i = 1, size(AA_alphas)
+        NewField = NewField + History_field(:,i+1) * AA_alphas(i)
+      end do
+
+    end subroutine get_Anderson_acceleration_new_guess
+
 
 end module solvers_module

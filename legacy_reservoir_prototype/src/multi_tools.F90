@@ -783,6 +783,8 @@ END subroutine RotationMatrix
     !> @author Pablo Salinas
     !> @brief Subroutine that solves the least squares problem |Ax-b|2 using LAPACK and blas
     !> Subroutine tested and compared with Matlab (not recommended changing it since it is a pain!)
+    !> Only for serial: The best option is to solve in each processor the optimisation system by performing
+    !> A' * A = A' *b; so the system becomes very small as COLUMS <<< ROWS
     !---------------------------------------------------------------------------
     subroutine Least_squares_solver(A, b, rank)
       implicit none

@@ -61,6 +61,7 @@ module multiphase_1D_engine
     use multi_tools, only: CALC_FACE_ELE
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
+
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
@@ -189,7 +190,6 @@ contains
                     .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
                     FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                 end if
-                !need to perform average of the effective heat capacity times density for the diffusion and time terms
                 !need to perform average of the effective heat capacity times density for the diffusion and time terms
                 allocate(porous_heat_coef(Mdims%cv_nonods))
                 allocate(porous_heat_coef_old(Mdims%cv_nonods))
@@ -2058,76 +2058,6 @@ end if
           !if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
 
         end subroutine project_velocity_to_affine_space
-
-        !---------------------------------------------------------------------------
-        !> @author Pablo Salinas
-        !> @brief In this subroutine the Least square problem ||alpha_i F_i|| is solved
-        !> to obtain the alpha coeficients that provide an update for the variables,
-        !> next the new guess is computed and returned
-        !> Method explained in DOI.10.1137/10078356X
-        !---------------------------------------------------------------------------
-        subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration)
-!TODO ENSURE THAT Q IS UPDATED AND NOT RECALCULATED ALWAYS
-!TODO Least_squares_solver TO BE PARALLEL ALSO (IT SEEMS PETSC CAN DO THIS!! MORE SPECIFICALLY SLEPc AND THE KSP IS KSPLSQR)
-!example of how to do this using PETSc in https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex27.c.html
-          implicit none
-          integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
-          integer, intent(in) :: M !> Size of the field of iterations available - 2
-          real, dimension(N), intent(out) :: NewField !> New guess obtained by the Anderson Acceleration method
-          real, dimension(N, M+2), intent(inout) :: History_field !> Past results obtained by the outer solver
-          real, dimension(N, M+1), intent(inout) :: stored_residuals !> Past residuals obtained as the (- guessed value + G(guess value) )
-          integer, intent(inout) :: AA_iteration !> This is the iterator, only passed down to reduce it if the matrix is not full rank
-          !Local variables
-          real, dimension(N,M) :: Mat !> Matrix containing the residuals
-          real, dimension(N,1) :: b !RHS containing the last residual
-          real, dimension(m+1) :: AA_alphas
-          integer :: i, j, Q_rank
-
-          !Need at least m to be 1
-          if (m <= 0) then
-            !Return the last field to proceed as a normal iteration
-            NewField = History_field(:,m+2)
-            return
-            end if
-        ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
-          !Construct matrix
-          Mat = 0.
-          do j = 1, n!this can be optimised by adding the new rows process only to the previous matrix
-            do i = 1, m !Here we form the matrix by making the difference of deltaF which is define as the variation of the field between updates
-                !The equation is some sort of central differences
-                Mat(j,i) = Mat(j,i) + (stored_residuals(j, i+1) - stored_residuals(j, i))
-            end do
-            b(j,1) =  stored_residuals(j,m+1)  !Last observation residual
-          end do
-
-          Q_rank = m
-          !Now solve the least squares optimisation problem
-          if (M > 1) call Least_squares_solver(Mat,b, Q_rank)
-          if (Q_rank < m) then
-            !If the least squares matrix is not full rank, then perform normal Uzawa to explore more spaces
-            !and remove the last solution
-            !Remove last information of pressure/residuals by overwritting it
-            AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
-            AA_iteration = AA_iteration - 1; if (AA_iteration == 0 ) AA_iteration = max_its
-          else if (M == 1) then
-            AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
-          else
-            !Now we proceed to convert to alphas so we can compute the new guess
-            !Here we calculate Gammas instead of alphas (size n-1 instead of n)
-            AA_alphas(size(AA_alphas)) = 1 - b(m,1)
-            do i = m, 2, -1 !The last one is different, the first one is the same
-              AA_alphas(i) = b(i,1) - b(i-1,1)
-            end do
-            AA_alphas(1) = b(1,1)
-          end if
-
-            !Multiply previous fields by the alphas to obtain the new guess
-          NewField = 0.
-          do i = 1, size(AA_alphas)
-            NewField = NewField + History_field(:,i+1) * AA_alphas(i)
-          end do
-
-        end subroutine get_Anderson_acceleration_new_guess
 
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
