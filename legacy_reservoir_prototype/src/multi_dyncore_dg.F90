@@ -1495,7 +1495,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
         !Stokes variables
-        integer, parameter :: max_its = 20 !> Maximum number of iterations allowed to the AA stokes solver
+        integer, parameter :: stokes_max_its = 15 !> Maximum number of iterations allowed to the AA stokes solver
         real, dimension(Mdims%totele) :: MASS_ELE
         integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
 
@@ -1759,7 +1759,6 @@ end if
     !sprint_to_do #####TO OPTIMISE THE PIPES EITHER A LOCALLY BLOCK CMC_PETSC MATRIX (i don't think this is possible) IS REQUIRED OR A NEW SPARSITY######
           if (solve_stokes) then !Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
             Mmat%PIVIT_MAT = 0.
-
             call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
@@ -1864,7 +1863,7 @@ end if
 
         !We may apply the Anderson acceleration method
         if (solve_stokes) then
-          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
+          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
         call deallocate(deltaP)
@@ -1899,9 +1898,9 @@ end if
         !> and finding an optimal combination of all of these results that minimise the residual
         !> Method explained in DOI.10.1137/16M1076770
         !---------------------------------------------------------------------------
-        subroutine Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, max_its)
+        subroutine Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           implicit none
-          integer, intent(in) :: max_its
+          integer, intent(in) :: stokes_max_its
           type( state_type ), intent( inout ) :: packed_state
           type(multi_dimensions), intent(in) :: Mdims
           type (multi_sparsities), intent(in) :: Mspars
@@ -1914,30 +1913,43 @@ end if
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           !Local variables
           integer :: i, k, cv_nodi, M
-          real, dimension(Mdims%npres, Mdims%cv_nonods, max_its) :: stored_pressures, stored_residuals
+          real, dimension(Mdims%npres, Mdims%cv_nonods, stokes_max_its) :: stored_pressures, stored_residuals
           real,save :: solver_tolerance = -1
+          real, dimension(:,:), allocatable :: BAK_matrix
+          real :: conv_test, total_max, total_min
           i = 1
           !Update stored values
           stored_pressures(:,:,i) = P_all%val(1,:,:)
 
-          !TODO IF WE PASS THE MAXIMUM NUMBER_OF_RESTART ITERATIONS IT IS NOT WORKING BETTER, IN FACT IT STAGNATES, SOMETHING IS NOT RIGHT!
-
+          !TODO USE MORE OF A, MAYBE THE BLOCK DIAGONAL, NOT THE DIAGONAL
+          !TODO HIGH VISCOSITY SYSTEMS D^-0.5 * A * D^-0.5 = D^-0.5 * b OR SOMETHING LIKE THIS
           if (solver_tolerance<0) then
             !read the tolerance of the non_linear solver
             !for the time being hard-coded
             solver_tolerance = 1d-4
           end if
 
-          do k = 1, max_its*5
-            !We use deltaP as residual check for convergence
-            if (K>max_its .or. sqrt(sum(deltap%val)**2.) < 1d-4 ) then
-                ! print *, k-1, "Iterations taken in the AA method for Stokes "
-               return
+          do k = 1, stokes_max_its*5
+
+            !Proceed to restart the AA method, by throwing away everything!
+            if (i>stokes_max_its) then
+              deallocate(BAK_matrix)
+              i = 1; stored_pressures(:,:,i) = P_all%val(1,:,:)
             end if
 
-            M = i - 2; if (M <= 0) M = max_its + M
+            total_max = maxval(abs(P_all%val)); call allmax(total_max)
+            total_min = minval(abs(P_all%val)); call allmin(total_min)
+            conv_test = maxval(abs(deltap%val))/max((total_max-total_min), 1e-5); call allmax(conv_test)
+            !We use deltaP as residual check for convergence
+            if ( conv_test < solver_tolerance ) then!K>stokes_max_its .or.
+              ewrite(0,*)"Iterations taken in the AA method for Stokes: ", k-1
+              return
+            end if
+
+            M = i - 2; if (M <= 0) M = stokes_max_its + M
               !Find the optimal combination of pressure fields that minimise the residual
-            if (K > 2) call get_Anderson_acceleration_new_guess(Mdims%cv_nonods*Mdims%npres, M, P_ALL%val, stored_pressures, stored_residuals, i)
+            if (i > 2) call get_Anderson_acceleration_new_guess(Mdims%cv_nonods*Mdims%npres, M, P_ALL%val, &
+                                                        stored_pressures, stored_residuals, i, stokes_max_its, BAK_matrix)
             !##########################Now solve the equations##########################
             ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
             call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
@@ -1947,13 +1959,13 @@ end if
             rhs_p%val = 0.
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
-            ! call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+            call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             call solve_and_update_pressure(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity%val, P_all%val, deltap, cmc_petsc)
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
             stored_residuals(:,:,i) = deltap%val
             !##########################Now solve the equations##########################
-            i = i + 1; if (i == max_its + 1 )  i = 1
+            i = i + 1; if (i == stokes_max_its + 1 )  i = 1
             !Update stored values
             stored_pressures(:,:,i) = P_all%val(1,:,:)
 

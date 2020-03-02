@@ -903,13 +903,12 @@ contains
 
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
-    !> @brief In this subroutine the Least square problem ||alpha_i F_i|| is solved
-    !> to obtain the alpha coeficients that provide an update for the variables,
-    !> next the new guess is computed and returned
+    !> @brief This subroutine provides a new guess based on previous updates and residuals.
+    !> Use this subroutine to speed up any system being solved by looping.
+    !> A new guess is computed and returned
     !> Method explained in DOI.10.1137/10078356X
     !---------------------------------------------------------------------------
-    subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration, max_its)
-!TODO ENSURE THAT Q IS UPDATED AND NOT RECALCULATED ALWAYS
+    subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration, max_its, prev_small_matrix)
       implicit none
       integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
       integer, intent(in) :: M !> Size of the field of iterations available - 2
@@ -918,15 +917,26 @@ contains
       real, dimension(N, M+1), intent(inout) :: stored_residuals !> Past residuals obtained as the (- guessed value + G(guess value) )
       integer, intent(inout) :: AA_iteration !> This is the iterator, only passed down to reduce it if the matrix is not full rank
       integer, optional :: max_its
+      real, dimension(:,:), allocatable, optional, intent(inout) :: prev_small_matrix!> Contains the previous A'*A, speeds up the method. On exit is updated (M,M)
+                                                                        !> Prepared to be passed unallocated from M = 1 and allocated internally
       !Local variables
       real, dimension(N,M) :: Matrix !> Matrix containing the residuals
-      real, dimension(M,N) :: Tmatrix !> Transpose of the Matrix containing the residuals
       real, dimension(M,1) :: Small_b !>RHS containing A' * The last residual
       real, dimension(M) :: auxV !>Temporary array to perform in parallel A'*A
       real, dimension(M,M) :: Small_matrix !>The resulting from A'*A
       real, dimension(m+1) :: AA_alphas
-      integer :: i, j, Q_rank, ierr, max_its2
+      integer :: i, j, Q_rank, ierr, max_its2, start
       real :: auxR
+      logical :: present_and_useful_bak_mat
+
+      !Not only being present prev_small_matrix we can just use it, needs to be allocated and have some information!
+      present_and_useful_bak_mat = .false.
+      if (present(prev_small_matrix)) then
+        if (allocated(prev_small_matrix)) then
+          present_and_useful_bak_mat =  size(prev_small_matrix,1)>1
+        end if
+      end if
+
 
       max_its2 = 20
       if (present(max_its)) max_its2 = max_its
@@ -940,25 +950,47 @@ contains
 
       !Construct matrix
       do i = 1, m !Here we form the matrix by making the difference of deltaF which is define as the variation of the field between updates
-          Matrix(:,i) = (stored_residuals(:, i+1) - stored_residuals(:, i))
+        do j = 1, n
+          Matrix(j,i) = (stored_residuals(j, i+1) - stored_residuals(j, i))
+        end do
       end do
 
       !For parallel it is easier to solve the system A'*A = A'*b because the system is tiny so each processor can solve it separately
-      Tmatrix = transpose(Matrix)
-      Small_b(:,1) = matmul(Tmatrix, stored_residuals(:,m+1))!Last observation residual
-      call allsum(Small_b(:,1))
+      start = 1
+      !If stored matrix, we re-use that matrix
+      if (present_and_useful_bak_mat) then
+        Small_matrix(1:M-1, 1:M-1) = prev_small_matrix
+        start = 1!M
+      end if
+      !Perform now A'*A
       do i = 1, M
-        Small_matrix(:,i) = matmul(Tmatrix, Matrix(:,i))
+        do j = max(i,start), M!Only the upper part, we will copy this in serial to minimise parallel communications
+          Small_matrix(j,i) = dot_product(Matrix(:,j), Matrix(:,i))
+        end do
+        !Now add up all the column between processors
         call allsum(Small_matrix(:,i))
       end do
+      !Copy now the symmetric part
+      do i = 1, M
+        do j = i+1, M!Not the diagonal
+          Small_matrix(i,j) = Small_matrix(j,i)
+        end do
+      end do
+      !Now the RHS
+      do i = 1, M
+        Small_b(i,1) = dot_product(Matrix(:,i), stored_residuals(:,m+1))
+      end do
+      call allsum(Small_b(:,1))
 
+! call printmatrix(Small_matrix)
       !Now solve the least squares optimisation problem
       Q_rank = m
       if (M > 1) call Least_squares_solver(Small_matrix,Small_b, Q_rank)
+
       if (Q_rank < m) then
-        !If the least squares matrix is not full rank, then perform normal Uzawa to explore more spaces
+        !If the least squares matrix is not full rank, then perform normal update
         !and remove the last solution
-        !Remove last information of pressure/residuals by overwritting it
+        !Remove last information by overwritting it
         AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
         AA_iteration = AA_iteration - 1; if (AA_iteration == 0 ) AA_iteration = max_its2
       else if (M == 1) then
@@ -978,6 +1010,14 @@ contains
       do i = 1, size(AA_alphas)
         NewField = NewField + History_field(:,i+1) * AA_alphas(i)
       end do
+
+      if (present(prev_small_matrix)) then
+        !Time to update prev_small_matrix!
+        if (allocated(prev_small_matrix))deallocate(prev_small_matrix)
+        allocate(prev_small_matrix(M,M))
+        !Backup
+        prev_small_matrix = Small_matrix
+      end if
 
     end subroutine get_Anderson_acceleration_new_guess
 
