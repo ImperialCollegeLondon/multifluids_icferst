@@ -1697,7 +1697,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PetscInt max_its, lrestart
     PetscErrorCode ierr
     PetscObject vf
-
+    KSPConvergedReason reason
     logical startfromzero, remove_null_space
 
     ewrite(1,*) "Inside setup_ksp_from_options"
@@ -1725,6 +1725,16 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     ! set ksptype again to force the flml choice
     call KSPSetType(ksp, ksptype, ierr)
     ewrite(2, *) 'ksp_type:', trim(ksptype)
+
+
+    if(trim(ksptype) == 'cg') then
+        if (have_option(trim(solver_option_path)//'/preconditioner::hypre/shift_positive_definite')) then
+         call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !> shift the mat to positive definite - ao 12-02-20
+         !print *, "MAT shifting to positive definite"
+         ewrite(2, *) 'forcing the MAT to shift to a positive definite for CG and HYPRE combo'
+        end if
+    end if
+
 
     if(trim(ksptype) == 'gmres') then
        call get_option(trim(solver_option_path)//&
@@ -1965,6 +1975,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PetscErrorCode:: ierr
     PCJacobiType:: pc_jacobi_type
     PetscBool :: abs
+    PetscReal :: def
 #if PETSC_VERSION_MINOR >=9
     MatSolverType:: matsolvertype
 #else
@@ -2001,9 +2012,24 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
     else if (pctype=='hypre') then
 #ifdef HAVE_HYPRE
-      call PCSetType(pc, pctype, ierr)
+
       call get_option(trim(option_path)//'/hypre_type[0]/name', &
-        hypretype)
+      hypretype)
+
+      !>try to force the matrix to be positive definite -ao 13/02/20
+      if (hypretype=='boomeramg') then
+        if (have_option(trim(option_path)//'/boomeramg_relaxation')) then
+          !call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !> shift the mat to positive definite - ao 12-02-20
+          !def=PETSC_DECIDE
+          !call PCFactorSetShiftAmount(pc, def, ierr);
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
+          call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_coarsen_type","Falgout", ierr)
+           !print *, "BoomerAMG relaxation"
+        end if
+      end if
+
+      !> set up HYPRE preconditioner
+      call PCSetType(pc, pctype, ierr)
       call PCHYPRESetType(pc, hypretype, ierr)
 #else
       ewrite(0,*) 'In solver option:', option_path
@@ -2088,6 +2114,9 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
           abs=PETSC_FALSE
         end if
         call PCJacobiSetUseAbs(pc,abs, ierr)
+        ! set pctype again to enforce options
+        call PCSetType(pc, pctype, ierr)
+
     else
 
        ! this doesn't work for hypre
