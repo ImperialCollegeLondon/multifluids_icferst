@@ -752,7 +752,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, VOLFRA_PORE, igot_theta_flux, mass_ele_transp,&
-         nonlinear_iteration, time_step, SFPI_taken, Courant_number,&
+         nonlinear_iteration, time_step, SFPI_taken, SFPI_its, Courant_number,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
@@ -778,6 +778,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              integer, intent(in) :: nonlinear_iteration
              integer, intent(in) :: time_step
              integer, intent(inout) :: SFPI_taken
+             integer, intent(inout) :: SFPI_its
              real, dimension(:), intent(inout) :: Courant_number
              REAL, DIMENSION( :, :), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
 
@@ -1071,14 +1072,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !inquire(file="Inner_non_linear_iterations.csv", exist=file_exist) 
              if (.not. written_file) then
                  open(74, file="non_linear_iterations.csv", status="replace")
-                 write(74, '(3(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
+                 write(74, '(8(A,",",X))') "time_step", "outer_nonlinear_iteration", "Inner_non_linear_iterations"
                  close(74)
                  written_file = .true.
              end if
              ! Write values
              open(74, file="non_linear_iterations.csv", status="unknown", position="append")
-             write(74, '(3(I3,",",X))') time_step, nonlinear_iteration, its 
+             write(74, '(8(I8,",",X))') time_step, nonlinear_iteration, its 
              close(74)
+             SFPI_its = its
              !#=================================================================================================================
              !# Vinicius-End: Write the number of non-linear iterations into file
              !#=================================================================================================================
