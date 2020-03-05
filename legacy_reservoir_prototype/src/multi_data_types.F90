@@ -1,4 +1,4 @@
-     
+
 !    Copyright (C) 2006 Imperial College London and others.
 !
 !    Please see the AUTHORS file in the main source directory for a full list
@@ -183,17 +183,17 @@ module multi_data_types
     end type multi_ndgln
 
     type multi_matrices
-        real, dimension( :, :, : ), pointer :: C => null()!>Pressure matrix using a FE discretization (storable)
-        real, dimension( :, :, : ), pointer :: C_CV => null()!>Pressure matrix using a CV discretization (storable)
+        real, dimension( :, :, : ), pointer :: C => null()!>Gradient matrix using a FE discretization (storable)
+        real, dimension( :, :, : ), pointer :: C_CV => null()!>Gradient matrix using a CV discretization (storable)
         REAL, DIMENSION( :, :, : ), pointer :: U_RHS => null()!>Rigth hand side of the momentum equation
-        real, dimension( :, :, : ), pointer :: CT => null()!>Continuity equation matrix
+        real, dimension( :, :, : ), pointer :: CT => null()!>Divergence matrix
         type(vector_field) :: CT_RHS!>Rigth hand side of the continuity equation
-        type(petsc_csr_matrix) :: petsc_ACV!>Matrix of the saturation equation
+        type(petsc_csr_matrix) :: petsc_ACV!>Matrix containing the terms of transport equations
         type(vector_field) :: CV_RHS!>Rigth hand side of the saturation equation
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!>Mass matrix (matrix form by the sigmas) (storable)
         integer, dimension(:), pointer :: ICOLOR => null()!>Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
         integer :: NCOLOR !>Number of colors in ICOLOR
-        type(petsc_csr_matrix):: DGM_PETSC!>Big matrix to solve the pressure in inertia flows (don't know much more)
+        type(petsc_csr_matrix):: DGM_PETSC!>Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation
         logical :: NO_MATRIX_STORE !>Flag to whether calculate and use DGM_PETSC or C
         logical :: CV_pressure     !>Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
         logical :: stored = .false.!>Flag to be true when the storable matrices have been stored

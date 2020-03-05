@@ -524,7 +524,7 @@ contains
     if (present_and_true(adapt_error) .and. use_conservative_settings) then
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
-        nsweep = 200!Increase drastically the number of sweeps
+        nsweep = 500!Increase drastically the number of sweeps, makes things slower but adaptivity seems to always work with this
         !Disable all techniques but the very basics
         ! mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
         if (second_try) then
