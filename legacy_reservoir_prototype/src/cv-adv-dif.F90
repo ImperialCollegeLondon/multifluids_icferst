@@ -6073,10 +6073,10 @@ end if
                                             (top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
                                             CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
                                     else
-                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.e1!max possible for comvergence
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                             - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                            * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
+                                            * Bound_ele_correct( :, IPHASE, U_ILOC )* SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
                                     endif
 
                                 else
