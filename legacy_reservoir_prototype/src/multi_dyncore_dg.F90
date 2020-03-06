@@ -1606,9 +1606,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
              !By making uden =0. these terms will be effectively zeroed.
               UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
-
-!For testing purposes for the time being, we would need another trigger
-rescale_mom_matrices = .false.
            end if
         end if
 
@@ -7033,7 +7030,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      !Local variables
      real, save :: domain_length = -1
      integer, save :: Cap_pressure_relevant = -1
-     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
+     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim
      real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe
@@ -7118,13 +7115,16 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) then
-                     parl_max = maxval(X_ALL)
-                     parl_min = minval(X_ALL)
+                   do idim = 1, Mdims%ndim
+                    !Apples with apples! Check each dimension individually
+                     parl_max = maxval(X_ALL(idim,:))
+                     parl_min = minval(X_ALL(idim,:))
                      if (IsParallel()) then
                          call allmax(parl_max)
                          call allmin(parl_min)
                      end if
-                     domain_length = abs(parl_max-parl_min)
+                     domain_length = max(domain_length, abs(parl_max-parl_min))
+                   end do
                  end if
                  Pe_aux = abs(Pe_aux)
                   !Obtain an approximation of the capillary number to obtain an entry pressure

@@ -5928,8 +5928,6 @@ end if
                         Mass_corrector = (MASS_ELE( ELE2 ) + auxR * MASS_ELE( ELE ))/( (1.+auxR) *(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
                         !Mass_corrector = MASS_ELE( ELE2 )/(MASS_ELE( ELE2 ) + MASS_ELE( ELE ) )!<=this seems to work
 
-
-
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
