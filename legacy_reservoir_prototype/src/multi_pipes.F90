@@ -1084,6 +1084,7 @@ contains
           SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
 
       GAMMA_PRES_ABS2 = 0.0
+      !A_GAMMA_PRES_ABS only for compressible flow? sprint_to_do DO WE NEED TO DO THIS FOR Incompressible FLOW??
       A_GAMMA_PRES_ABS = 0.0
       DO CV_NODI = 1, Mdims%cv_nonods
 

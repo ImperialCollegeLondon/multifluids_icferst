@@ -2296,6 +2296,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
         case default!Check how is the process going on and decide
 
+
           !We decide a priory if we use days or seconds to show dt to the user
           call get_option( '/timestepping/timestep', dt )
           conversor = 1.0; output_units =' seconds <dimensionless>'
@@ -2384,9 +2385,9 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
             !If single phase then no point in checking the saturation or mass conservation!
             !Specially now that we are not solving the saturation equation unless it is multiphase!
-           if ((Mdims%n_in_pres == 1 .and. Mdims%ncomp.le.1) .and. (.not. have_option('/inertia_dominated_simulator'))) THEN
-               inf_norm_val = 0.0; max_calculate_mass_delta= 0.
-           end if
+           ! if ((Mdims%n_in_pres == 1 .and. Mdims%ncomp.le.1) .and. (.not. have_option('/inertia_dominated_simulator'))) THEN
+           !     inf_norm_val = 0.0; max_calculate_mass_delta= 0.
+           ! end if
 
             !Store output messages
             if (is_porous_media .and. variable_selection == 3) then
@@ -2398,7 +2399,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
-
             !TEMPORARY, re-use of global variable backtrack_or_convergence to send
             !information about convergence to the trust_region_method
             !Automatic non-linear iteration checking

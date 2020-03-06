@@ -57,6 +57,7 @@ module matrix_operations
     use multi_data_types
     use multi_tools
     implicit none
+
 #include "petsc_legacy.h"
 contains
 
@@ -788,7 +789,7 @@ contains
 
 
 
-    SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, Mdims )
+    SUBROUTINE Mass_matrix_inversion( PIVIT_MAT, Mdims )
         implicit none
         REAL, DIMENSION( : , : , : ), intent( inout ), CONTIGUOUS :: PIVIT_MAT
         type(multi_dimensions), intent(in) :: Mdims
@@ -835,12 +836,12 @@ contains
           deallocate(MAT)
         end if
 
-    END SUBROUTINE PHA_BLOCK_INV
+    END SUBROUTINE Mass_matrix_inversion
 
-    SUBROUTINE PHA_BLOCK_MAT_VEC_old( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
+    SUBROUTINE Mass_matrix_MATVEC( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
-        ! U = BLOCK_MAT * CDP
+        ! U = Mass_matrix * Vector (tipically vector is Grad * P + RHS and this is used to obtain the velocity)
         INTEGER, intent( in )  :: NDIM, NPHASE, TOTELE, U_NLOC
         INTEGER, DIMENSION( : ), intent( in ), target ::  U_NDGLN
         REAL, DIMENSION( ndim * nphase * U_NLOC * TOTELE ), intent( inout ) :: U!Reshape done implicitly
@@ -891,7 +892,7 @@ contains
         RETURN
 
 
-    END SUBROUTINE PHA_BLOCK_MAT_VEC_old
+    END SUBROUTINE Mass_matrix_MATVEC
 
 
     SUBROUTINE PHA_BLOCK_MAT_VEC( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, &
@@ -1328,6 +1329,26 @@ contains
 
     END SUBROUTINE C_MULT2
 
+
+    subroutine C_MULT2_MULTI_PRES( Mdims, Mspars, Mmat, deltap, CDP_tensor )
+      !Performs the multiplication CDP_tensor = Mmat%C * deltap
+      implicit none
+      type(multi_dimensions), intent(in) :: Mdims
+      type (multi_sparsities), intent(in) :: Mspars
+      type (multi_matrices), intent(in) :: Mmat
+      real, dimension(Mdims%npres,Mdims%cv_nonods), intent(in) :: deltap
+      type(tensor_field), intent(inout) :: cdp_tensor
+      !Local variables
+      integer :: ipres
+
+      DO IPRES = 1, Mdims%npres
+        CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap( IPRES, : ), &
+        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+      END DO
+
+      end subroutine C_MULT2_MULTI_PRES
+
+
     SUBROUTINE CT_MULT_WITH_C( DP, U_LONG, U_NONODS, NDIM, NPHASE, &
         C, NCOLC, FINDC, COLC )
         implicit none
@@ -1611,5 +1632,6 @@ contains
         matrix%ksp = PETSC_NULL_KSP
 
     end function allocate_momentum_matrix
+
 
 end module matrix_operations

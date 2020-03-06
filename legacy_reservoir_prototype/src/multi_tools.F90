@@ -778,4 +778,134 @@ END subroutine RotationMatrix
         end subroutine get_nodes_edges
     end subroutine read_nastran_file
 
+
+    !---------------------------------------------------------------------------
+    !> @author Pablo Salinas
+    !> @brief Subroutine that solves the least squares problem |Ax-b|2 using LAPACK and blas
+    !> Subroutine tested and compared with Matlab (not recommended changing it since it is a pain!)
+    !> Only for serial: The best option is to solve in each processor the optimisation system by performing
+    !> A' * A = A' *b; so the system becomes very small as COLUMS <<< ROWS
+    !---------------------------------------------------------------------------
+    subroutine Least_squares_solver(A, b, rank)
+      implicit none
+      real, dimension(:,:), intent(inout) :: A !> Input matrix to decompose, returns the Q and R combined
+      real, dimension(:,:), intent(inout) :: b !> Input RHS term, returns the X that minimise the system
+      integer, intent(inout) :: rank
+      !Local variables
+      integer :: i, j, k, theta, m, n, nrhs, lda, ldb
+      !Parameters for dgegp3 to compute the QR decomposition
+      integer :: info!>If info = -i, the i-th parameter had an illegal value
+      real, dimension(size(A,2)) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+      real, dimension(3*size(A,1)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      integer, dimension(size(A,1)) :: jpvt
+      real, parameter :: tolerance_rank = 1d-9
+
+      interface
+        !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
+          subroutine dgeqrf(m, n, MAT, lda, tau, work, lwork, info)
+            implicit none
+            integer :: m!>Rows of MAT
+            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
+            integer :: lda !>The first dimension of MAT
+            integer :: lwork!> The size of the work array; 0 == best performance
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(lda,n) :: MAT!>input/output matrix
+            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+          end subroutine dgeqrf
+      end interface
+
+      interface
+        !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
+          subroutine dgeqp3(m, n, MAT, lda, jpvt, tau, work, lwork, info)
+            implicit none
+            integer :: m!>Rows of MAT
+            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
+            integer :: lda !>The first dimension of MAT
+            integer :: lwork!> The size of the work array; 0 == best performance
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(lda,n) :: MAT!>input/output matrix
+            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+            integer, dimension(n) :: jpvt!>Specifies columns that are not free to move, I guess useful if updating the QR decomposition
+          end subroutine dgeqp3
+      end interface
+
+      interface
+          !> @brief Interface to Lapack to show a Q matrix computed using dgeqp3
+          subroutine dorgqr(m, n, k, mat, lda, tau, work, lwork, info)
+            implicit none
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: lwork!> The size of the work array; 0 == best performance
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+          end subroutine dorgqr
+      end interface
+
+      interface
+          !> @brief LAPACK subroutine to perform Q times C, Q obtained using dgeqp3
+          subroutine DORMQR(side, trans, m, n, k, MAT, lda, tau, c, ldc, work, lwork, info)
+            implicit none
+            character(len=1) :: side, trans !> Either L or R (Left right); N or T (T == Transpose)
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+            integer :: ldc !>The leading dimension of c. Constraint: ldc≥ max(1, m)
+            integer :: lwork!> The size of the work array;For better performance, try using lwork = n*blocksize (if side = 'L') or lwork = m*blocksize (if side = 'R') where blocksize is a machine-dependent value (typically, 16 to 64) required for optimum performance of the blocked algorithm.
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(ldc,m) :: C !>Overwritten by the product Q*C, QT*C, C*Q, or C*QT (as specified by side and trans).
+            real, dimension(N) :: tau !>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+          end subroutine DORMQR
+      end interface
+
+      interface
+          !> @brief BLAS subroutine to solve the system RX = C
+          subroutine dtrsm(side, uplo, transa, diag, m, n, alpha, mat, lda, b, ldb)
+            implicit none
+            character(len=1) :: side, uplo, transa, diag !> Either L or R (Left right); N or T (T == Transpose)
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real :: alpha !> alpha is zero, then a is not referenced and b need not be set before entry.
+            integer :: ldb !>The first dimension of b
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(m,n) :: B!>input/output matrix
+          end subroutine dtrsm
+      end interface
+
+      !Specify dimensions
+      m = size(A,1); n = size(A,2); lda = max(1,m)
+      !Compute QR decomposition
+      jpvt = 0; !Could be an input
+      ldb = size(b,1); nrhs = size(b,2); tau =0.
+      !Obtain QR decomposition of A using pivoting
+      call dgeqp3(m, n, A, lda, jpvt, tau, work, 3* n + 1, info)
+      ! call dgeqrf(m, n, A, lda, tau, work, 3* n + 1, info)
+      !dorgqr is to obtain Q only
+      ! call dorgqr(m, n, min(n,m), A, lda, tau, work, 3* n + 1, info)
+
+      rank = n
+      do k = 1, n
+        if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) rank = rank - 1
+      end do
+
+      !Perform Q * b
+      CALL DORMQR('L','T',m, nrhs, n, A, lda, tau, B, ldb, work, 3* n + 1, info)
+      !Now obtain X by solving the system RX = C
+      CALL DTRSM('L','U','N','N',min(n,m), nrhs,1., A,lda,B, ldb)
+      !Now permute back the results so everything is consistent
+      DO J = 1, NRHS
+        DO I = 1, N!ldb??
+          WORK(JPVT(I)) = B(I,J)
+        end do
+          B(:,J) = WORK(1:ldb)
+      end do
+    end subroutine Least_squares_solver
+
 end module multi_tools
