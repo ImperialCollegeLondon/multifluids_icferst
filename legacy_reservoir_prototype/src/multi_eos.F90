@@ -1093,7 +1093,7 @@ contains
                                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
                                            do idim = 1, Mdims%ndim
                                                do jdim = 1, Mdims%ndim
-                                                   call get_relperm(Mdims%n_in_pres, iphase, sigma_out( idim, jdim ),&
+                                                   call get_material_absorption(Mdims%n_in_pres, iphase, sigma_out( idim, jdim ),&
                                                        ! this is the boundary condition
                                                        volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node), inv_perm( idim, jdim, ele ),&
                                                        Immobile_fraction, Corey_exponent, Endpoint_relperm)
@@ -1202,11 +1202,11 @@ contains
                         DO JDIM = 1, Mdims%ndim
                             JPHA_JDIM = ( IPHASE - 1 ) * Mdims%ndim + JDIM
                             if (present(inv_mat_absorp)) then
-                                call get_relperm(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
+                                call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
                                     SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
                                     Immobile_fraction, Corey_exponent, Endpoint_relperm, perm( IDIM, JDIM, ELE), inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ))
                             else
-                                call get_relperm(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
+                                call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
                                     SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
                                     Immobile_fraction, Corey_exponent, Endpoint_relperm)
                             end if
@@ -1221,7 +1221,7 @@ contains
     END SUBROUTINE calculate_absorption2
 
 
-    subroutine get_relperm(nphase, iphase, material_absorption, sat, visc, INV_PERM, Immobile_fraction, &
+    subroutine get_material_absorption(nphase, iphase, material_absorption, sat, visc, INV_PERM, Immobile_fraction, &
             Corey_exponent, Endpoint_relperm, PERM, inv_mat_absorp )
         !Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
         implicit none
@@ -1231,82 +1231,86 @@ contains
         integer, intent(in) :: iphase, nphase
         real, optional, intent(inout) :: inv_mat_absorp
         real, optional, intent(in) :: PERM
-        !Local variables
-        real, parameter :: epsilon = 1d-8!This value should in theory never be used, the real lower limit
+        !local variables
+        real :: Kr
+        !Local parameters
         real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
+
+        call get_relperm(nphase, iphase, sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr )
+
+        material_absorption = INV_PERM * (visc(iphase) * max(eps, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+
+        if (present(inv_mat_absorp).and.present(PERM)) &!This part is to ensure that the flow is stopped
+        inv_mat_absorp = (perm * max(0.0,Kr))/(VISC(iphase) * max(eps,sat(iphase)))
+        !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
+      end subroutine get_material_absorption
+
+    subroutine get_relperm(nphase, iphase, sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr)
+        !Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
+        implicit none
+        real, INTENT(INOUT) :: Kr
+        real, dimension(:), intent(in) :: sat, Immobile_fraction, Corey_exponent, Endpoint_relperm
+        integer, intent(in) :: iphase, nphase
+        !Local parameters
+        real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
+        real, parameter :: epsilon = 1d-8!This value should in theory never be used, the real lower limit
 
         select case (nphase)
             case (1)
-                material_absorption = INV_PERM* visc(iphase) * min(1.0,max(eps,sat(iphase)))
-                if (present(inv_mat_absorp).and.present(PERM)) &
-                        inv_mat_absorp = PERM /(visc(iphase) * min(1.0,max(eps,sat(iphase))))
+                Kr = 1.0
             case (3)
-                call relperm_stone(material_absorption)
+                call relperm_stone(Kr)
             case default
-                call relperm_corey_epsilon(material_absorption)
+                call relperm_corey_epsilon(Kr)
         end select
 
-        contains
-            SUBROUTINE relperm_corey_epsilon( material_absorption )
-                  !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
-                  !when dividing it to obtain the sigma.
-                IMPLICIT NONE
-                REAL, intent( inout ) :: material_absorption
-                ! Local variables...
-                REAL :: KR, aux
-                !Kr_max should only multiply the wetting phase,
-                !however as we do not know if it is phase 1 or 2, we let the decision to the user
-                !and we multiply both phases by kr_max. By default kr_max= 1
+      contains
+        SUBROUTINE relperm_corey_epsilon( Kr )
+          !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
+          !when dividing it to obtain the sigma.
+          IMPLICIT NONE
+          REAL, intent( inout ) :: Kr
+          ! Local variables...
+          REAL :: aux
+          aux = 1.0 - sum(Immobile_fraction)
+          KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
+          !Make sure that the relperm is between bounds
+          KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+        END SUBROUTINE relperm_corey_epsilon
 
-                aux = 1.0 - sum(Immobile_fraction)
-                if (present(inv_mat_absorp).and.present(PERM)) then
-                    KR = Endpoint_relperm(iphase)*((sat(iphase) - Immobile_fraction(iphase)) / aux ) ** Corey_exponent(iphase)
-                    inv_mat_absorp = (perm * max(0.0, KR))/(visc(iphase) * max(eps, sat(iphase)))
-                end if
-                KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
-                !Make sure that the relperm is between bounds
-                KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-                material_absorption = INV_PERM * (visc(iphase) * max(eps, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
-                  !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
-            END SUBROUTINE relperm_corey_epsilon
+        subroutine relperm_stone(Kr)
+          !This subroutine calculates the relative permeability for three phases
+          !First phase has to be water, second oil and the third gas
+          !We use Stone's model II adapted, and for the two phases we use the Corey model
+          !Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
+          implicit none
+          real, intent(inout) :: Kr
+          !Local variables
+          real, dimension(3) :: Norm_sat, relperm
+          real :: Krow, Krog
 
-            subroutine relperm_stone(material_absorption)
-                !This subroutine calculates the relative permeability for three phases
-                !First phase has to be water, second oil and the third gas
-                !We use Stone's model II adapted, and for the two phases we use the Corey model
-                !Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
-                implicit none
-                real, intent(inout) :: material_absorption
-                !Local variables
-                real, dimension(3) :: Norm_sat, relperm, KR
-                real :: Krow, Krog
-
-                !Prepare data
-                !We consider two models for two phase flow, water-oil and oil-gas
-                if (iphase /= 3) then
-                    Norm_sat(1) = ( sat(1) - Immobile_fraction(1)) /( 1. - Immobile_fraction(1) - Immobile_fraction(2))!Water
-                    relperm(1) = Endpoint_relperm(1)* Norm_sat(1) ** Corey_exponent(1)!Water, Krw
-                end if
-                if (iphase /= 1) then
-                    Norm_sat(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
-                    !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
-                    relperm(3) = Endpoint_relperm(3)* Norm_sat(3) ** Corey_exponent(3)!Gas, Krg
-                end if
-                !Oil relperm is obtained as a combination
-                if (iphase == 2 ) then
-                    Krow = Endpoint_relperm(2)* (1.0 - Norm_sat(1)) ** Corey_exponent(2)!Oil, Krow
-                    Krog = Endpoint_relperm(2)* (1.0 - Norm_sat(3)) ** Corey_exponent(2)!Oil, Krog
-                    !For the second phase, oil, we need to recalculate the real value(Stone model 2)
-                    relperm(2) = Endpoint_relperm(2)*( (Krow/Endpoint_relperm(2) + relperm(1))*&
-                        (Krog/Endpoint_relperm(2) + relperm(3)) - (relperm(1) + relperm(3)) )
-                end if
-                !Make sure that the relperm is between bounds
-                KR(iphase) = min(max(epsilon, relperm(iphase)),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-                material_absorption = INV_PERM * (VISC(iphase) * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
-                !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
-                if (present(inv_mat_absorp).and.present(PERM)) &!This part is to ensure that the flow is stopped
-                            inv_mat_absorp = (perm * max(0.0,relperm(iphase)))/(VISC(iphase) * max(eps,sat(iphase)))
-            end subroutine relperm_stone
+          !Prepare data
+          !We consider two models for two phase flow, water-oil and oil-gas
+          if (iphase /= 3) then
+            Norm_sat(1) = ( sat(1) - Immobile_fraction(1)) /( 1. - Immobile_fraction(1) - Immobile_fraction(2))!Water
+            relperm(1) = Endpoint_relperm(1)* Norm_sat(1) ** Corey_exponent(1)!Water, Krw
+          end if
+          if (iphase /= 1) then
+            Norm_sat(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
+            !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
+            relperm(3) = Endpoint_relperm(3)* Norm_sat(3) ** Corey_exponent(3)!Gas, Krg
+          end if
+          !Oil relperm is obtained as a combination
+          if (iphase == 2 ) then
+            Krow = Endpoint_relperm(2)* (1.0 - Norm_sat(1)) ** Corey_exponent(2)!Oil, Krow
+            Krog = Endpoint_relperm(2)* (1.0 - Norm_sat(3)) ** Corey_exponent(2)!Oil, Krog
+            !For the second phase, oil, we need to recalculate the real value(Stone model 2)
+            relperm(2) = Endpoint_relperm(2)*( (Krow/Endpoint_relperm(2) + relperm(1))*&
+            (Krog/Endpoint_relperm(2) + relperm(3)) - (relperm(1) + relperm(3)) )
+          end if
+          !Make sure that the relperm is between bounds
+          Kr = min(max(epsilon, relperm(iphase)),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+        end subroutine relperm_stone
 
     end subroutine get_relperm
 
