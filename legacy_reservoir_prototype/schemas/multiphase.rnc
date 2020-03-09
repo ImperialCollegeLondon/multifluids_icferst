@@ -1012,11 +1012,6 @@ start =
             element use_reflect_method {
                empty
             }?,
-            ## Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
-            ## Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.
-            element local_upwinding {
-               empty
-            }?,
             ## Use the row-sum method to create a lumped mass matrix.
             ## For porous media this will not have an effect.
             ## Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix

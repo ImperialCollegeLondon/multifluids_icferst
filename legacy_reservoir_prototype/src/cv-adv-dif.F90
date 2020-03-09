@@ -446,8 +446,8 @@ contains
           !Variables for assemble_collapsed_to_one_phase; Note that diffusion parameters etc need
           logical :: loc_assemble_collapsed_to_one_phase !to be then scaled before getting into this subroutine
           integer :: assembly_phase
-          !Variable to decide, for porous media, whether to consider, locally, using high order methods or not
-          logical :: use_porous_limiter = .true., local_upwinding = .false.
+          !Variable to decide, for porous media, whether to use high order methods or not
+          logical :: use_porous_limiter = .true.
           !Variables to calculate flux across boundaries
           logical :: calculate_flux
           integer :: U_JLOC
@@ -472,8 +472,6 @@ contains
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
-          !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction, not for the continuity equation
-          local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional) .and. .not. getct
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
@@ -1114,18 +1112,6 @@ contains
                           LOC_DEN_J =DEN_ALL(1:final_phase, cv_nodj); LOC_DENOLD_J = DENOLD_ALL(1:final_phase, cv_nodj)
                           if (use_volume_frac_T2) then
                             LOC_T2_J = T2_ALL(1:final_phase, cv_nodj); LOC_T2OLD_J = T2OLD_ALL(1:final_phase, cv_nodj)
-                          end if
-
-                          !Decide whether to use high order advection or not, locally.
-                          !If the saturation is equal to the minimum, then no need to high order
-                          if (is_porous_media .and. local_upwinding) then
-                              use_porous_limiter = .true.
-                              do iphase = 1, final_phase - 1
-                                    use_porous_limiter = use_porous_limiter &
-                                        .and. (abs(T_ALL(iphase, cv_nodi) - Imble_frac(iphase, ELE)) > 1e-8 .or. &
-                                        abs(T_ALL(iphase, CV_NODJ) - Imble_frac(iphase, ELE2)) > 1e-8)!neighbouring CV
-                                end do
-                              use_porous_limiter = use_porous_limiter .or. on_domain_boundary
                           end if
 
                           if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
