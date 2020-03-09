@@ -1502,6 +1502,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         logical :: rescale_mom_matrices = .false.
         real, dimension(:), allocatable :: diag_CMC_mat, diag_DGM_mat
 
+        !For the time being, let the user decide whether to rescale the mom matrices
+        rescale_mom_matrices = have_option("/numerical_methods/rescale_mom_matrices")
+
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
           if (rescaleVal < 0.) then
@@ -1815,7 +1818,7 @@ end if
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
         else
             if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
-              if (rescale_mom_matrices) then
+              if (rescale_mom_matrices .and. .false.) then
                 !Retrieve diagonal
                 call scale_PETSc_system(Mmat%DGM_PETSC, Mmat%U_RHS, Mdims%ndim * Mdims%nphase * Mdims%u_nonods, 3, diag_DGM_mat)
                 !and Re-scale matrix, RHS is re-scaled internally as it is internally formed
@@ -1853,11 +1856,13 @@ end if
           call scale(cmc_petsc, 1.0/rescaleVal)
           rhs_p%val = rhs_p%val / rescaleVal
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc)
         if (rescale_mom_matrices) then
           !Retrieve diagonal and re-scale matrix and RHS
-          call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 4, diag_CMC_mat)
+          call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 3, diag_CMC_mat)
+          call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 2, diag_CMC_mat)
         end if
+        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diag_CMC_mat)
+
         if ( .not. solve_stokes) call deallocate(cmc_petsc)
         if ( .not. solve_stokes) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -1967,8 +1972,8 @@ end if
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             !Rescale RHS (it is given that the matrix has been already re-scaled)
-  if (rescale_mom_matrices) call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 1, diag_CMC_mat)
-            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc)
+            ! if (rescale_mom_matrices) call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 1, diag_CMC_mat)
+            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diag_CMC_mat)
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
             stored_residuals(:,:,i) = deltap%val
@@ -1993,7 +1998,7 @@ end if
           type(tensor_field), intent(inout) :: Velocity, CDP_tensor
           !Local variables
           type( vector_field ) :: packed_vel, rhs
-          real, dimension(:), allocatable, intent(in) :: diag_DGM_mat
+          real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(in) :: diag_DGM_mat
           !Pointers to convert from tensor data to vector data
           packed_vel = as_packed_vector(Velocity)
           rhs = as_packed_vector(CDP_tensor)
@@ -2001,9 +2006,11 @@ end if
           !Compute - u_new = A^-1( - Gradient * P + RHS)
           packed_vel%val = 0.
           rhs%val = rhs%val + U_RHS
-!Rescale RHS (it is given that the matrix has been already re-scaled)
-if (rescale_mom_matrices) call scale_PETSc_system(Mmat%DGM_PETSC, rhs%val, Mdims%ndim * Mdims%nphase * Mdims%u_nonods, 1, diag_DGM_mat)
+          !Rescale RHS (it is given that the matrix has been already re-scaled)
+          if (rescale_mom_matrices .and. .false.) rhs%val = rhs%val * diag_DGM_mat
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
+          !If the system is re-scaled then now it is time to recover the correct solution
+          if (rescale_mom_matrices .and. .false.) packed_vel%val = packed_vel%val * diag_DGM_mat
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
 
 #ifdef USING_GFORTRAN
@@ -2020,7 +2027,7 @@ if (rescale_mom_matrices) call scale_PETSc_system(Mmat%DGM_PETSC, rhs%val, Mdims
         !> @author Pablo Salinas
         !> @brief Compute deltaP by solving the pressure equation using the CMC matrix
         !---------------------------------------------------------------------------
-        subroutine solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc)
+        subroutine solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diag_CMC_mat)
 
           implicit none
           type(multi_dimensions), intent(in) :: Mdims
@@ -2028,15 +2035,21 @@ if (rescale_mom_matrices) call scale_PETSc_system(Mmat%DGM_PETSC, rhs%val, Mdims
           type( vector_field ), intent(inout) :: deltap
           real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
+          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: diag_CMC_mat
           !Local variables
           integer :: its_taken
           !solve_stokes
           real, dimension(:,:,:), allocatable :: velocity_visc
           type( vector_field ), pointer ::  CV_volumes
 
+          !Rescale RHS (it is given that the matrix has been already re-scaled)
+          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val * diag_CMC_mat
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
           pres_its_taken = its_taken
+
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+          !If the system is re-scaled then now it is time to recover the correct solution
+          if (rescale_mom_matrices ) deltap%val = deltap%val * diag_CMC_mat
           !Now update the pressure
           P_all = P_all + deltap%val
 

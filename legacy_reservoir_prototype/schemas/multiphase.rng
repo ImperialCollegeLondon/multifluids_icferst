@@ -1240,6 +1240,13 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
+            <element name="rescale_mom_matrices">
+              <a:documentation>Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
+D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
             <element name="use_ENO_scheme">
               <a:documentation>Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods</a:documentation>
               <empty/>

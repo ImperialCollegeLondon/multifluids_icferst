@@ -1004,6 +1004,11 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
+            ## D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+            element rescale_mom_matrices {
+               empty
+            }?,
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
                empty

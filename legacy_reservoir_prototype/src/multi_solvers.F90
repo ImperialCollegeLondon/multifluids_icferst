@@ -1025,10 +1025,13 @@ contains
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
     !> @brief In this subroutine the matrix and RHS are re-scaled based on the formula
-    !> D^-0.5 * A * D^-0.5 =  D^-1 b; This should allow to deal with high ranges of viscosity ratio for example
+    !> D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+    !> IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere using given_diag
+    !> This should allow to deal with high ranges of viscosity ratio for example
     !> A and b are re-written
     !> Usage: if the system is going to be repeatedly solved, first call with flag [3] and the flags [1] and [2] as necessary
     !> If only one off, then call with flag [0]; If solve system and in the future need to re-scale RHS then use flag == 4
+    !> NOTE: If only the RHS is re-scaled it is suggested to use given_diag outside of this subroutine
     !---------------------------------------------------------------------------
     subroutine scale_PETSc_system(Mat_petsc, b, size_B, scale_flag, given_diag)
       implicit none
@@ -1065,7 +1068,7 @@ contains
       !Rescale the RHS by doing D^-1*b
       if (scale_flag <= 1 .or. scale_flag == 4 ) then
         call VecGetArrayReadF90(scale_diag,vec_reader,ierr)
-        b = b * vec_reader*vec_reader!Two times because vec_reader is the square root of the inverse of the diagonal
+        b = b * vec_reader
         call VecRestoreArrayReadF90(scale_diag,vec_reader,ierr)
       end if
       !Now perform (D^-1)^0.5 to obtain D^-0.5
