@@ -1498,13 +1498,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         integer, parameter :: stokes_max_its = 15 !> Maximum number of iterations allowed to the AA stokes solver
         real, dimension(Mdims%totele) :: MASS_ELE
         integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
+        logical :: solve_mom_iteratively = .false.
         !Variables to re-scale PETSc matrices
         logical :: rescale_mom_matrices = .false.
         real, dimension(:), allocatable :: diag_CMC_mat, diag_DGM_mat
 
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/numerical_methods/rescale_mom_matrices")
-
+        !The stokes solver method can be activated from diamond also
+        solve_mom_iteratively = have_option("/numerical_methods/solve_mom_iteratively")
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
           if (rescaleVal < 0.) then
@@ -1761,7 +1763,7 @@ end if
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
     !sprint_to_do #####TO OPTIMISE THE PIPES EITHER A LOCALLY BLOCK CMC_PETSC MATRIX (i don't think this is possible) IS REQUIRED OR A NEW SPARSITY######
-          if (solve_stokes) then !Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
+          if (solve_stokes .or. solve_mom_iteratively) then !Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
             Mmat%PIVIT_MAT = 0.
             call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
@@ -1826,7 +1828,7 @@ end if
               end if
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diag_DGM_mat)
             end if
-            if ( .not. solve_stokes)  call deallocate(Mmat%DGM_PETSC)
+            if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
         END IF
         !"########################UPDATE PRESSURE STEP####################################"
         !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
@@ -1863,12 +1865,12 @@ end if
         end if
         call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diag_CMC_mat)
 
-        if ( .not. solve_stokes) call deallocate(cmc_petsc)
-        if ( .not. solve_stokes) call deallocate(rhs_p)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
-        if (solve_stokes) then
+        if (solve_stokes .or. solve_mom_iteratively ) then
           call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
@@ -2038,9 +2040,6 @@ end if
           real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: diag_CMC_mat
           !Local variables
           integer :: its_taken
-          !solve_stokes
-          real, dimension(:,:,:), allocatable :: velocity_visc
-          type( vector_field ), pointer ::  CV_volumes
 
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices ) rhs_p%val = rhs_p%val * diag_CMC_mat

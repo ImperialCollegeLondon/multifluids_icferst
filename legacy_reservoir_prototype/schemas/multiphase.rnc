@@ -1009,6 +1009,10 @@ start =
             element rescale_mom_matrices {
                empty
             }?,
+            ## Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.
+            element solve_mom_iteratively {
+               empty
+            }?,           
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
                empty
