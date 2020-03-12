@@ -1039,7 +1039,7 @@ contains
       type(petsc_csr_matrix), intent(inout)::  Mat_petsc !>  System matrix in PETSc format
       real, dimension(size_B), intent(inout) :: b !> RHS of the system as a real vector
       integer, intent(in) :: scale_flag !> 0 = A and b; 1 = only b; 2 = only A; 3 = return the diagonal of A only; 4  == does all
-      real, dimension(:), allocatable, optional :: given_diag !> We store here D^-0.5; Allocated internalle, deallocated outside
+      real, dimension(:), allocatable, optional :: given_diag !> We store here D^-0.5; Allocated internally, deallocated outside
       !Local variables
       integer :: ierr
       Vec, target :: scale_diag
@@ -1061,8 +1061,9 @@ contains
       else
         call MatGetDiagonal(Mat_petsc%M, scale_diag, ierr)
         !Compute sqrt (we do this first to reduce the span induced by high viscosity ratios)
-        call VecSqrtAbs(scale_diag, ierr)
-        !Calculate D^-0.5
+        call VecSqrtAbs(scale_diag, ierr)!TODO MIGHT IT BE THAT THE SYSTEM IS CHANGED AS WE GET PETSC ZEROES??? this might be
+        !Calculate D^-0.5                  !useful MatSeqAIJGetArrayF90 can try to do the scaling in fortran? should be simple as it is diagonal times matrix
+                                            !TODO MAYBE SCALE THE WHOLE SYSTEM UP OR DOWN?
         call VecReciprocal(scale_diag, ierr)
       end if
       !Rescale the RHS by doing D^-1*b
@@ -1071,13 +1072,13 @@ contains
         b = b * vec_reader
         call VecRestoreArrayReadF90(scale_diag,vec_reader,ierr)
       end if
-      !Now perform (D^-1)^0.5 to obtain D^-0.5
       if (scale_flag == 0 .or. scale_flag == 2 .or. scale_flag == 4) then
         !Proceed to re-scale the matrix by doing D^-0.5 * Mat_petsc * D^-0.5
         call MatDiagonalScale(Mat_petsc%M, scale_diag, scale_diag, ierr)
       end if
 
       if (present(given_diag) .and. scale_flag >= 3) then
+
         allocate(given_diag(size_B))
         call VecGetArrayReadF90(scale_diag,vec_reader,ierr)
         given_diag =  vec_reader

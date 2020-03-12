@@ -1820,12 +1820,12 @@ end if
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
         else
             if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
-              if (rescale_mom_matrices .and. .false.) then
-                !Retrieve diagonal
+              if (rescale_mom_matrices) then
+                !Retrieve diagonal and re-scale matrix
                 call scale_PETSc_system(Mmat%DGM_PETSC, Mmat%U_RHS, Mdims%ndim * Mdims%nphase * Mdims%u_nonods, 3, diag_DGM_mat)
-                !and Re-scale matrix, RHS is re-scaled internally as it is internally formed
                 call scale_PETSc_system(Mmat%DGM_PETSC, Mmat%U_RHS, Mdims%ndim * Mdims%nphase * Mdims%u_nonods, 2, diag_DGM_mat)
               end if
+
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diag_DGM_mat)
             end if
             if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
@@ -1859,7 +1859,7 @@ end if
           rhs_p%val = rhs_p%val / rescaleVal
         end if
         if (rescale_mom_matrices) then
-          !Retrieve diagonal and re-scale matrix and RHS
+          !Retrieve diagonal and re-scale matrix
           call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 3, diag_CMC_mat)
           call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 2, diag_CMC_mat)
         end if
@@ -1973,8 +1973,6 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            !Rescale RHS (it is given that the matrix has been already re-scaled)
-            ! if (rescale_mom_matrices) call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 1, diag_CMC_mat)
             call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diag_CMC_mat)
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
@@ -1996,7 +1994,7 @@ end if
 
           implicit none
           type (multi_matrices), intent(inout) :: Mmat
-          real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(inout) :: U_RHS!Conversion to two entries
+          real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
           type(tensor_field), intent(inout) :: Velocity, CDP_tensor
           !Local variables
           type( vector_field ) :: packed_vel, rhs
@@ -2009,12 +2007,11 @@ end if
           packed_vel%val = 0.
           rhs%val = rhs%val + U_RHS
           !Rescale RHS (it is given that the matrix has been already re-scaled)
-          if (rescale_mom_matrices .and. .false.) rhs%val = rhs%val * diag_DGM_mat
+          if (rescale_mom_matrices) rhs%val = rhs%val * diag_DGM_mat
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           !If the system is re-scaled then now it is time to recover the correct solution
-          if (rescale_mom_matrices .and. .false.) packed_vel%val = packed_vel%val * diag_DGM_mat
+          if (rescale_mom_matrices) packed_vel%val = packed_vel%val * diag_DGM_mat
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
-
 #ifdef USING_GFORTRAN
       !Nothing to do since we have pointers
 #else
@@ -5933,7 +5930,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         !          INTEGER :: ELE2_LOC_GL_NODS(U_NLOC)
         INTEGER IDIM, U_SILOC, U_ILOC, U_SJLOC, U_JLOC, U_ILOC2, U_JLOC2, I
         !
-        !            print *,'just inside DG_VISC_LIN ON_BOUNDARY:',ON_BOUNDARY
 
 
         NNX_MAT12  = 0.0
