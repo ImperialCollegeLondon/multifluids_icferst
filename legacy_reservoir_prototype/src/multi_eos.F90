@@ -1802,13 +1802,14 @@ contains
       !Local variables
       type( tensor_field ), pointer :: t_field, tp_field, tc_field
       integer :: iphase, icomp, stat, mat_nod, cv_nod, ele
-      type( scalar_field ), pointer :: component
-      logical :: linearise_viscosity
+      type( scalar_field ), pointer :: component, saturation
+      logical :: linearise_viscosity, cg_mesh
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc, ndim1, ndim2, idim, jdim
       integer :: multiplier
-
+      !Magma variables
+      real :: exp_zeta_function = 0.
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
@@ -1864,6 +1865,8 @@ contains
                   end do
                end do
             else
+               if (is_magma) saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") !HH melt is the 2nd phase
+               cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
                do iphase = 1, Mdims%nphase
                   tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
                   do ele = 1, ele_count( tp_field )
@@ -1882,16 +1885,20 @@ contains
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        if(have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')) then
+                        !Currently only magma uses momentum_diffusion2
+                        if (iphase==1 .and. is_magma) then !only the solid phase has bulk viscosity
+                          momentum_diffusion2%val(iphase, 1, 1, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                        end if
+                        if(cg_mesh) then
                           mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
                         else
                           mat_nod = mat_nod * multiplier + (1 - multiplier)! this is for DG
                         end if
-                        if ( have_option( '/blasting' ) ) then
-                           t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
-                        else
-                           t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
-                        end if
+                        ! if ( have_option( '/blasting' ) ) then
+                        !    t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
+                        ! else
+                        !    t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+                        ! end if
 
                      end do
                   end do
@@ -1908,6 +1915,21 @@ contains
 
 
       return
+    Contains
+      !---------------------------------------------------------------------------
+      !> @author Haiyang Hu
+      !> @brief TO BE FILLED BY THE AUTHOR
+      !---------------------------------------------------------------------------
+      real function zeta(a,n,phi)
+        implicit none
+        ! bulk viscosity zeta=a*phi^-n
+        real :: a!> TO BE FILLED
+        real :: n!> TO BE FILLED
+        real :: phi!> TO BE FILLED
+        zeta=a*phi**(-n)
+        return
+      end function zeta
+
     end subroutine calculate_viscosity
 
 

@@ -50,6 +50,56 @@ module multi_magma
     ! A1,B1,C1,A2,B2,C2 - phase behaviour parameters
     real, parameter :: A1= 50.,B1= -360,C1= 1433.15,A2= 0.,B2= 0.,C2 = 0., Ae = 1.0
 contains
+
+
+  subroutine C_generate(series, N,   state)
+    implicit none
+    type( state_type ), dimension(:), intent( inout ) :: state
+    !Global variables
+    real, dimension(:) :: series
+    integer :: N  !items in the series
+    !Local variables
+    integer :: i, stat
+    real,dimension(N) :: phi ! porosity series
+    real :: d !grain size
+    real :: mu !liquid viscosity needs to be build later
+    real :: low,high !transition points
+    real :: H,s !value of the smoothing function and the smoothing factor
+    logical :: Test=.true. ! set to true to have uniform Darcy-like c coefficient
+    type( tensor_field ), pointer :: t_field !liquid viscosity
+    s= -2
+
+    ! d=35e-6
+    d=35e-2
+    t_field => extract_tensor_field( state(2), 'Viscosity', stat )
+    mu=t_field%val( 1, 1, 1) !only consider a constant mu for now
+    ! mu=1e2
+    low=0.2
+    high=0.6
+
+    do i=1, N
+      phi(i) = real(i - 1) / (N - 1)
+    end do
+
+    if (Test) then
+      do i=2, N
+        series(i)= 58/d**2*mu*phi(i)**(-0.6)
+      end do
+    else
+      do i=2, N
+        if (phi(i)<=low) then
+          series(i)= 58/d**2*mu*phi(i)**(-0.6)
+        else if (phi(i)>=high) then
+          series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))
+        else
+          H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
+          series(i)=58/d**2*mu*phi(i)**(-0.6)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
+        end if
+      end do
+    end if
+    series(1)=2*series(2)-series(3)
+  end subroutine C_generate
+
     !========================================================
     !Subroutine to convert between Dimensional and Non-Dimensional fields (temperature or enthalpy)
     !========================================================
