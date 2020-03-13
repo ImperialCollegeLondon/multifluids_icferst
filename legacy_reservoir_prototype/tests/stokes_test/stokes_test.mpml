@@ -236,4 +236,9 @@
       </prognostic>
     </scalar_field>
   </material_phase>
+  <magma_parameters>
+    <example_for_Haiyang2_mandatory>
+      <real_value rank="0"/>
+    </example_for_Haiyang2_mandatory>
+  </magma_parameters>
 </icferst_options>

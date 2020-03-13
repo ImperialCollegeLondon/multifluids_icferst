@@ -977,6 +977,22 @@ start =
 		        }?
          }?,
 
+        ## Magma options
+         element magma_parameters {
+         (
+           ## Here you put comments that are shown for the user
+           ## many lines
+            element example_for_Haiyang {
+               real
+            }?,
+           ## Here you put comments that are shown for the user
+           ## many lines
+            element example_for_Haiyang2_mandatory {
+               real
+            }
+            )
+         }?,
+
         ## Fracking options
          element femdem_fracture {
          (

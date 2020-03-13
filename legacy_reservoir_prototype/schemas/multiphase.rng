@@ -1198,6 +1198,23 @@ The following must be specified:
         </element>
       </optional>
       <optional>
+        <element name="magma_parameters">
+          <a:documentation>Magma options</a:documentation>
+          <optional>
+            <element name="example_for_Haiyang">
+              <a:documentation>Here you put comments that are shown for the user
+many lines</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+          <element name="example_for_Haiyang2_mandatory">
+            <a:documentation>Here you put comments that are shown for the user
+many lines</a:documentation>
+            <ref name="real"/>
+          </element>
+        </element>
+      </optional>
+      <optional>
         <element name="femdem_fracture">
           <a:documentation>Fracking options</a:documentation>
           <optional>

@@ -49,6 +49,20 @@ module multi_magma
     ! Ae - eutetic
     ! A1,B1,C1,A2,B2,C2 - phase behaviour parameters
     real, parameter :: A1= 50.,B1= -360,C1= 1433.15,A2= 0.,B2= 0.,C2 = 0., Ae = 1.0
+
+    type magma_phase_diagram
+      real :: A1!> Phase behaviour parameters
+      real :: B1!> Phase behaviour parameters
+      real :: C1!> Phase behaviour parameters
+      real :: A2!> Phase behaviour parameters
+      real :: B2!> Phase behaviour parameters
+      real :: C2!> Phase behaviour parameters
+      real :: Ae!> Eutectic point
+    end type
+
+
+
+
 contains
 
 
