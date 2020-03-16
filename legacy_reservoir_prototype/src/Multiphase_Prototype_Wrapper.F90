@@ -848,6 +848,54 @@ contains
         option_path = "/io/output_mesh[0]/name"
         call add_option(trim(option_path), stat=stat)
         call set_option(trim(option_path),"PressureMesh")
+          !JXiang  7/11/2019  
+            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOriginalCoordinate/prognostic"
+            if (.not.have_option(option_path)) then
+                call add_option(trim(option_path),  stat=stat)
+!                option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOriginalCoordinate"
+                call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                call add_option(trim(option_path)//"/output",  stat=stat)
+                call add_option(trim(option_path)//"/stat",  stat=stat)
+                call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
+
+                call add_option(trim(option_path)//"/detectors",  stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+            end if
+
+            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOldCoordinate/prognostic"
+            if (.not.have_option(option_path)) then
+                call add_option(trim(option_path),  stat=stat)
+ !               option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOldCoordinate/prognostic"
+                call add_option(trim(option_path)//"/mesh::PressureMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                call add_option(trim(option_path)//"/output",  stat=stat)
+                call add_option(trim(option_path)//"/stat",  stat=stat)
+                call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
+
+                call add_option(trim(option_path)//"/detectors",  stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+            end if            
+            option_path = "/material_phase["// int2str( 0 )//"]/vector_field::GridSolidVelocity/prognostic"
+            if (.not.have_option(option_path)) then
+                call add_option(trim(option_path),  stat=stat)
+                call add_option(trim(option_path)//"/mesh::VelocityMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh",  stat=stat)
+                call add_option(trim(option_path)//"/value::WholeMesh/no_initial_condition",  stat=stat)
+                call add_option(trim(option_path)//"/output",  stat=stat)
+                call add_option(trim(option_path)//"/stat",  stat=stat)
+                call add_option(trim(option_path)//"/stat/include_in_stat",  stat=stat)
+
+                call add_option(trim(option_path)//"/detectors",  stat=stat)
+                call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
+                call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
+            end if 
+
+            ! JXiang 7/11/2019
 
         do i = 1, nphase*npres + ncomp*nphase
 
