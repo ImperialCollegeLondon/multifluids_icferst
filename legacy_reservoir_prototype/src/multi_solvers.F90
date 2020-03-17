@@ -68,20 +68,20 @@ module solvers_module
 contains
 
 
+  !!>@brief: This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
+  !> The sparcity of the local CV connectivity is in: small_findrm, small_colm.
+  !> ngl_its=max no of global iterations e.g. 100.
+  !> error_tol = tolerance on the iterations.
+  !>
+  !> nloc_its: This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
+  !> nloc_its2: This iteration is very good at avoiding stagnating but does spread the modifcations far.
+  !> us a single iteration because of this as default...
+  !> nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
+  !> however it can stagnate.
     subroutine BoundedSolutionCorrections( state, packed_state, &
         Mdims, CV_funs, small_findrm, small_colm, Field_name, &
         for_sat, min_max_limits)
         implicit none
-        ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
-        ! The sparcity of the local CV connectivity is in: small_findrm, small_colm.
-        ! ngl_its=max no of global iterations e.g. 100.
-        ! error_tol = tolerance on the iterations.
-        !
-        ! nloc_its: This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
-        ! nloc_its2: This iteration is very good at avoiding stagnating but does spread the modifcations far.
-        ! us a single iteration because of this as default...
-        ! nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
-        ! however it can stagnate.
         integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 500
         real, parameter :: w_relax = 0.5, error_tol = 1.0e-5
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -310,12 +310,12 @@ contains
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
+    !!>@brief:In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
+    !>this idea is based on the paper SPE-173267-MS.
+    !>The method ensures convergence "independent" of the time step.
     subroutine FPI_backtracking(nphase, Mdims, ndgln, state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
         Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res)
-        !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
-        !this idea is based on the paper SPE-173267-MS.
-        !The method ensures convergence "independent" of the time step.
         implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -471,7 +471,7 @@ contains
         new_backtrack_par = backtrack_pars(1)
 
     contains
-
+        !!>@brief: Based on a history of convergence and backtracking factors an optimal bracktrack factor is computed
         real function get_optimal_backtrack_par(backtrack_pars, Convergences, Coefficients)
             implicit none
             real, dimension(:), intent(in) ::backtrack_pars, Convergences
@@ -595,6 +595,7 @@ contains
         !            if (abs(backtrack_pars(1)-get_optimal_backtrack_par) < 1d-3 ) get_optimal_backtrack_par = min(get_optimal_backtrack_par*1.01,1.0)
         end function
 
+        !!>@brief: Fitting of two or three points, it solves an easy least squares system
         subroutine Cubic_fitting(backtrack_pars, Convergences, Coefficients)
             implicit none
             real, dimension(:), intent(in) ::backtrack_pars, Convergences
@@ -644,9 +645,9 @@ contains
 
     end subroutine FPI_backtracking
 
+    !!>@brief:This subroutines eliminates the oscillations in the saturation that are bigger than a
+    !>certain tolerance and also sets the saturation to be between bounds
     subroutine Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos)
-        !This subroutines eliminates the oscillations in the saturation that are bigger than a
-        !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -750,6 +751,8 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
+    !!>@brief:Ensure that the saturations at the beginning sum to one, if they do not
+    !> all the error is compensated in the scapegoat_phase. Normally the last
     subroutine Ensure_Saturation_sums_one(mdims, ndgln, packed_state, find_scapegoat_phase)
         Implicit none
         !Global variables
@@ -818,8 +821,8 @@ contains
     end subroutine Ensure_Saturation_sums_one
 
 
+    !!>@brief: The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
     subroutine auto_backtracking(Mdims, backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration, I_am_temperature)
-        !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         real, intent(inout) :: backtrack_par_factor

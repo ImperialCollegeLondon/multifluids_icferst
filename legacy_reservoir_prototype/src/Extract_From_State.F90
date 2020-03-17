@@ -75,15 +75,16 @@ module Copy_Outof_State
         EnterForceBalanceEquation, update_outfluxes
 
 
+    !>@brief: Obtain the surface global to local conversor
     interface Get_SNdgln
        module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
     end interface Get_SNdgln
 
 contains
 
+  !> @brief This subroutine extracts all primary variables associated with the mesh from state,
+  !> and associated them with the variables used in the MultiFluids model.
    subroutine Get_Primary_Scalars_new( state, Mdims )
-        !!$ This subroutine extracts all primary variables associated with the mesh from state,
-        !!$ and associated them with the variables used in the MultiFluids model.
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         type (multi_dimensions) :: Mdims
@@ -181,8 +182,8 @@ contains
         return
     end subroutine Get_Primary_Scalars_new
 
+    !> @brief This subroutine calculates the global node numbers requested to operates in the MP-space.
     subroutine Compute_Node_Global_Numbers( state, ndgln)
-        !!$ This subroutine calculates the global node numbers requested to operates in the MP-space.
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         type(multi_ndgln), intent(inout) :: ndgln
@@ -209,17 +210,17 @@ contains
         return
     end subroutine Compute_Node_Global_Numbers
 
+    !> @brief: Obtain the type of element
+    !> u_ele_type = cv_ele_type = p_ele_type will flag the dimension and
+    !> type of element:
+    !> = 1 or 2: 1D (linear and quadratic, respectively) -NOT SUPPORTED-
+    !> = 3 or 4: triangle (linear or quadratic, respectively)
+    !> = 5 or 6: quadrilateral (bi-linear or tri-linear, respectively)-NOT SUPPORTED-
+    !> = 7 or 8: tetrahedron (linear or quadratic, respectively)
+    !> = 9 or 10: hexahedron (bi-linear or tri-linear, respectively) -NOT SUPPORTED-
+    !-
     subroutine Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
         mat_ele_type, u_sele_type, cv_sele_type )
-        !-
-        !- u_ele_type = cv_ele_type = p_ele_type will flag the dimension and
-        !- type of element:
-        !- = 1 or 2: 1D (linear and quadratic, respectively)
-        !- = 3 or 4: triangle (linear or quadratic, respectively)
-        !- = 5 or 6: quadrilateral (bi-linear or tri-linear, respectively)
-        !- = 7 or 8: tetrahedron (linear or quadratic, respectively)
-        !- = 9 or 10: hexahedron (bi-linear or tri-linear, respectively)
-        !-
         implicit none
 
         integer, intent(in) :: x_nloc
@@ -361,16 +362,16 @@ contains
         return
     end subroutine Get_Ele_Type
 
+    !> @brief: Obtains the element type
+    !> Mdisopt%u_ele_type = Mdisopt%cv_ele_type = Mdisopt%p_ele_type will flag the dimension and
+    !> type of element:
+    !> = 1 or 2: 1D (linear and quadratic, respectively) -NOT SUPPORTED-
+    !> = 3 or 4: triangle (linear or quadratic, respectively)
+    !> = 5 or 6: quadrilateral (bi-linear or tri-linear, respectively) -NOT SUPPORTED-
+    !> = 7 or 8: tetrahedron (linear or quadratic, respectively)
+    !> = 9 or 10: hexahedron (bi-linear or tri-linear, respectively) -NOT SUPPORTED-
+    !-
     subroutine Get_Ele_Type_new( Mdims, Mdisopt )
-        !-
-        !- Mdisopt%u_ele_type = Mdisopt%cv_ele_type = Mdisopt%p_ele_type will flag the dimension and
-        !- type of element:
-        !- = 1 or 2: 1D (linear and quadratic, respectively)
-        !- = 3 or 4: triangle (linear or quadratic, respectively)
-        !- = 5 or 6: quadrilateral (bi-linear or tri-linear, respectively)
-        !- = 7 or 8: tetrahedron (linear or quadratic, respectively)
-        !- = 9 or 10: hexahedron (bi-linear or tri-linear, respectively)
-        !-
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_discretization_opts) :: Mdisopt
@@ -456,8 +457,20 @@ contains
         return
     end subroutine Get_Ele_Type_new
 
+    !> @brief: This subroutine extract all discretisation options from the schema
+    !> DISOPT Options:
+    !> =0      1st order in space          Theta=specified    UNIVERSAL
+    !> =1      1st order in space          Theta=non-linear   UNIVERSAL
+    !> =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
+    !> =2      if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
+    !> =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
+    !> =4      Finite elements in space    Theta=specified    UNIVERSAL
+    !> =5      Finite elements in space    Theta=non-linear   UNIVERSAL
+    !> =6      Finite elements in space    Theta=specified    NONE
+    !> =7      Finite elements in space    Theta=non-linear   NONE
+    !> =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
+    !> =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
     subroutine Get_Discretisation_Options( state, Mdims, Mdisopt )
-        !!$ This subroutine extract all discretisation options from the schema
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         type(multi_dimensions), intent(in) :: Mdims
@@ -467,18 +480,6 @@ contains
         character( len = option_path_len ) :: option_path, option_path2
         integer :: default_flux_scheme
         real :: default_theta, default_consv_vel
-        !!$ DISOPT Options:
-        !!$ =0      1st order in space          Theta=specified    UNIVERSAL
-        !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
-        !!$ =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
-        !!$ =2      if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
-        !!$ =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
-        !!$ =4      Finite elements in space    Theta=specified    UNIVERSAL
-        !!$ =5      Finite elements in space    Theta=non-linear   UNIVERSAL
-        !!$ =6      Finite elements in space    Theta=specified    NONE
-        !!$ =7      Finite elements in space    Theta=non-linear   NONE
-        !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
-        !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
         !Check quality option to decide mesh type, theta and advection schemes
         option_path = "/geometry/simulation_quality"
         call get_option(trim(option_path), option_path2, stat=i)
@@ -589,7 +590,8 @@ contains
     end subroutine Get_Discretisation_Options
 
 
-
+    !> @brief: Sets the boundary condition, if the time has advance and the BCs changed,
+    !> here they are set to the new time-level
     subroutine update_boundary_conditions( state, stotel, cv_snloc, nphase, &
         &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer )
         implicit none
@@ -727,10 +729,10 @@ contains
         end do
     end subroutine update_boundary_conditions
 
+    !>@brief: This subroutine creates packed_state from state(:) and links the appropiate memory
+    !> so it is acessible from both states. This subroutine also introduces fields not used by fludity but required by IC-FERST
     subroutine pack_multistate(npres, state, packed_state, &
         multiphase_state, multicomponent_state, pmulti_state)
-        !This subroutine creates packed_state from state(:) and links the appropiate memory
-        !so it is acessible from both states
         integer, intent(in) :: npres
         type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(inout) :: packed_state
@@ -1641,8 +1643,8 @@ contains
             end if
         end subroutine insert_vfield
 
+        !>@brief: Deallocates the memory from state and points it to packed_state
         subroutine unpack_sfield(nstate,mstate,name,icomp, iphase,free)
-          !Deallocates the memory from state and points it to packed_state
             type(state_type), intent(inout) :: nstate, mstate
             character(len=*) :: name
             integer :: icomp,iphase, stat
@@ -1700,7 +1702,7 @@ contains
             end if
 
           end subroutine unpack_sfield
-
+        !>@brief: Deallocates the memory from state and points it to packed_state
         subroutine unpack_vfield(nstate,mstate,name,iphase,free)
             type(state_type), intent(inout) :: nstate, mstate
             character(len=*) :: name
@@ -1740,6 +1742,7 @@ contains
 
         end subroutine unpack_vfield
 
+        !>@brief: Deallocates the memory from state and points it to packed_state
         subroutine unpack_component_sfield(st,mst,name,ic,prefix)
             type(state_type) :: st, mst
             character (len=*) :: name
@@ -1970,6 +1973,7 @@ contains
 
     end subroutine pack_multistate
 
+    !>@brief: Prepares the memory to compute absorption fields
     subroutine prepare_absorptions(state, Mdims, multi_absorp)
         implicit none
         type(state_type), dimension(:), intent(inout) :: state
@@ -2017,6 +2021,8 @@ contains
 !
 !    end function wrap_as_tensor
 
+!> @brief: This function points a tensor field as a vector field type
+!> This is necessary when solving for tensor fields that are actually multiphase vector fields.
 function as_vector(tfield,dim,slice) result(vfield)
 
     type(tensor_field), intent(inout) :: tfield
@@ -2046,6 +2052,8 @@ function as_vector(tfield,dim,slice) result(vfield)
 
 end function as_vector
 
+!> @brief: This function points a tensor field as a vector field type
+!> This is necessary when solving for tensor fields that are actually multiphase vector fields.
 function as_packed_vector(tfield) result(vfield)
 
     type(tensor_field), intent(inout) :: tfield
@@ -2069,6 +2077,7 @@ function as_packed_vector(tfield) result(vfield)
 
 end function as_packed_vector
 
+!> @brief: Destrys packed_state and the passed down states
 subroutine finalise_multistate(packed_state,multiphase_state,&
     multicomponent_state)
 
@@ -2086,34 +2095,33 @@ end subroutine finalise_multistate
 
 
 
-
+!>@author: Pablo Salinas
+!> @brief: This subroutine either store variables before the nonlinear timeloop starts, or checks
+!> how the nonlinear iterations are going and depending on that increase the timestep
+!> or decreases the timestep and repeats that timestep
 subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs, old_acctim, order, calculate_mass_delta, &
     adapt_mesh_in_FPI, Accum_Courant, Courant_tol, Current_Courant, first_time_step)
-    !This subroutine either store variables before the nonlinear timeloop starts, or checks
-    !how the nonlinear iterations are going and depending on that increase the timestep
-    !or decreases the timestep and repeats that timestep
     Implicit none
     type(multi_dimensions), intent(in) :: Mdims
     type(state_type), intent(inout) :: packed_state
-    real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
-    real, intent(in) :: old_acctim
+    real, dimension(:,:,:), allocatable, intent(inout) :: reference_field!> Field stored at the beginning of the non-linear loop to check convergence
+    real, intent(in) :: old_acctim!> Previous actual time
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
-    integer, intent(inout) :: its!not to be modified unless VERY sure
-    logical, intent(in) :: nonLinearAdaptTs
-    integer, intent(in) :: order
+    integer, intent(inout) :: its!> Non-linear time iteration WARNING: not to be modified unless VERY sure
+    logical, intent(in) :: nonLinearAdaptTs !> Flag controlling if we have adaptive time-step or not
+    integer, intent(in) :: order !> Flag controlling what are we doing. 1)Store or get from backup; 2)Calculate and store reference_field;
     logical, optional, intent(in) :: adapt_mesh_in_FPI, first_time_step
     real, optional, intent(in) :: Accum_Courant, Courant_tol, Current_Courant
-    !! 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
-    real, dimension(:,:), optional :: calculate_mass_delta
+    real, dimension(:,:), optional :: calculate_mass_delta!> 1st item holds the mass at previous Linear time step, 2nd item is the delta between mass at the current FPI and 1st item
     !Local variables
-    logical :: adapting_within_happening_now
-    integer, save :: nonlinear_its=0!Needed for adapt_within_fpi to consider all the non-linear iterations together
-    real, save :: stored_dt = -1
-    logical, save :: adjusted_ts_to_dump = .false.
+    logical :: adapting_within_happening_now !> Do not show convergence if we are adapting the mesh within the FPI and this is the first guess
+    integer, save :: nonlinear_its=0!> Needed for adapt_within_fpi to consider all the non-linear iterations together
+    real, save :: stored_dt = -1 !> Backup of the time-step size
+    logical, save :: adjusted_ts_to_dump = .false.!> Flag to see if we need to modify dt to ensure we match a certain time level
     real :: dt, auxR, dump_period
     integer :: Aim_num_FPI, auxI, incr_threshold
-    integer, save :: show_FPI_conv
+    integer, save :: show_FPI_conv!> Whether printing out to the user convergence or not
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
@@ -2124,16 +2132,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
         Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres
-    !! local variable, holds the maximum mass error
-    real :: max_calculate_mass_delta
+    real :: max_calculate_mass_delta !> local variable, holds the maximum mass error
     real, dimension(2) :: totally_min_max
-    !Variables for PID time-step size controller
-    logical :: PID_controller
+    logical :: PID_controller !> Are we using a Proportional integration derivator controller of the time-step size?
     !Variables for adaptive time stepping based on non-linear iterations
     real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val, finish_time
     integer :: variable_selection, NonLinearIteration
     !Variables to convert output time into days if it is very big
-    real, save :: conversor = 1.0
+    real, save :: conversor = 1.0 !> Variables to convert output time into days if it is very big
     character (len = OPTION_PATH_LEN), save :: output_units =' '
 
     !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
@@ -2579,22 +2585,25 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
 contains
 
+    !>@brief: This functions calculates the multiplier to get a new time-step size based on a
+    !> Proportional-Integral-Derivative (PID) concept. See: SPE-182601-MS
     real function PID_time_controller(reset)
-        !This functions calculates the multiplier to get a new time-step size based on a
-        !Proportional-Integral-Derivative (PID) concept. See: SPE-182601-MS
         implicit none
         logical, optional, intent(in) :: reset
         !Local variables
-        real, parameter:: Ki = 1.34, Kd = 0.01, Kp = 0.001 !Fixed values from the paper, this can be improved, see SPE-182601-MS
+        !Fixed values from the paper, this can be improved, see SPE-182601-MS
+        real, parameter:: Ki = 1.34 !> Exponent associated with the Integrator controller
+        real, parameter:: Kd = 0.01!> Exponent associated with the derivator controller
+        real, parameter:: Kp = 0.001 !> Exponent associated with the proportional controller
         real, save :: Cn1 = -1, Cn2 = -1
         real, dimension(3) :: Cn
         real :: aux
         ! 2.0 => too strongly enforce the number of iterations, ignores other criteria
         ! 1.0 => Forces the number of iterations, almost ignore other criteria
         ! 0.6 => soft constrain, it will try but not very much, considers other criteria
-        real, parameter :: impose_FPI_num = 2.0
+        real, parameter :: impose_FPI_num = 2.0 !>Whether to strongly enforce the number of iterations and ignores other criteria, now on.
         real, parameter :: tol = 1e-8
-        logical, parameter :: max_criteria = .false.!If false, use an average with different weights
+        logical, parameter :: max_criteria = .false.!>If false, use an average with different weights
 
 
         if (present_and_true(reset))then
@@ -2654,8 +2663,8 @@ contains
 
 end subroutine Adaptive_NonLinear
 
+!> Calculate the inf norm of the normalised field, so the field goes from 0 to 1
 real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, totally_min_max)
-    !Calculate the inf norm of the normalised field, so the field goes from 0 to 1
     implicit none
     real, dimension(:,:), intent(in) :: tracer, reference_tracer
     real, intent(in) :: dumping
@@ -2671,13 +2680,13 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
 
 end function
 
+!> @brief: We create a potential to optimize F = sum (f**2), so the solution is when this potential
+!>reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
+!>f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
+!>
+!>The convergence is independent of the dumping parameter
+!>and measures how the previous iteration (i.e. using the previous dumping parameter) performed
 real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
-    !We create a potential to optimize F = sum (f**2), so the solution is when this potential
-    !reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
-    !f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
-    !
-    !The convergence is independent of the dumping parameter
-    !and measures how the previous iteration (i.e. using the previous dumping parameter) performed
     implicit none
     real, dimension(:,:), intent(in) :: phasevolumefraction, reference_sat
     real, intent(in) :: dumping
@@ -2751,9 +2760,9 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
 
 end function get_Convergence_Functional
 
+!> @brief: Values from packed_state are stored in iterated unless viceversa is true, in that case
+!> the iterated values are moved to the new values
 subroutine copy_packed_new_to_iterated(packed_state, viceversa)
-    !Values from packed_state are stored in iterated unless viceversa is true, in that case
-    !the iterated values are moved to the new values
     type(state_type), intent(inout) :: packed_state
     logical, intent(in) :: viceversa
 
@@ -2804,7 +2813,7 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
 
 end subroutine copy_packed_new_to_iterated
 
-!deprecated, do not use. Use pointers instead
+!>@DEPRECATED: Gets memory from packed state
 subroutine get_var_from_packed_state(packed_state,FEDensity,&
     OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
     OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
@@ -3094,10 +3103,10 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
 end subroutine get_var_from_packed_state
 
 
-!Subroutine to print CSR matrix by (row, column)
-!Dimensions and phases are printed in different rows
-!So for example Matrix(2,2,10) with two rows would be presented as
-!a matrix ( 8 x 10)
+!> @brief: Subroutine to print CSR matrix by (row, column)
+!>Dimensions and phases are printed in different rows
+!> So for example Matrix(2,2,10) with two rows would be presented as
+!> a matrix ( 8 x 10)
 subroutine printCSRMatrix(Matrix, find, col, dim_same_row)
     implicit none
     integer, intent(in), dimension(:) :: find, col
@@ -3168,6 +3177,7 @@ subroutine printCSRMatrix(Matrix, find, col, dim_same_row)
     end if
 end subroutine printCSRMatrix
 
+!>@brief: Checks whether a field is constant or not
 logical function is_constant(tfield)
     type(tensor_field), intent(in) :: tfield
 
@@ -3198,6 +3208,7 @@ logical function is_constant(tfield)
     end if
 end function is_constant
 
+!>@brief: For a given field, retrieve the associated old field name
 function GetOldName(tfield) result(old_name)
 
     type(tensor_field), intent(in) :: tfield
@@ -3210,7 +3221,7 @@ function GetOldName(tfield) result(old_name)
     end if
 
 end function GetOldName
-
+!>@brief: For a given field, retrieve the associated finite element field name
 function GetFEMName(tfield) result(fem_name)
 
     type(tensor_field), intent(in) :: tfield
@@ -3224,20 +3235,20 @@ function GetFEMName(tfield) result(fem_name)
 
 end function GetFEMName
 
+!>@brief: Subroutine to calculate the integrated mass inside the domain
 subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_mass, &
     cv_ndgln, eles_with_pipe)
 
     implicit none
 
-    ! Subroutine to calculate the integrated mass inside the domain
 
     ! Input/output variables
     type(state_type), intent(inout) :: packed_state
     type(multi_dimensions), intent(in) :: Mdims
-    real, dimension( : ), intent(in) :: mass_ele ! volume of the element, split into cv_nloc equally sized pieces (barycenter)
-    real, dimension(:), intent(inout) :: calculate_mass
+    real, dimension( : ), intent(in) :: mass_ele !> volume of the element, split into cv_nloc equally sized pieces (barycenter)
+    real, dimension(:), intent(inout) :: calculate_mass!> Output field containing all the mass within the domain
     integer, dimension(:), intent( in ) ::  cv_ndgln
-    type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
+    type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe!> Elements with pipes
     ! Local variables
     type (tensor_field), pointer :: saturation, density
     type (vector_field), pointer :: porosity
@@ -3290,9 +3301,9 @@ subroutine calculate_internal_volume(packed_state, Mdims, mass_ele, calculate_ma
 
 end subroutine calculate_internal_volume
 
-
+!>@brief: Subroutine to check whether an option is true for any phase in diamond, if any is true it returns true.
+!>The path must be the part of the path inside the phase, i.e. /multiphase_properties/capillary_pressure
 logical function have_option_for_any_phase(path, nphase)
-    !The path must be the part of the path inside the phase, i.e. /multiphase_properties/capillary_pressure
     implicit none
     character (len=*), intent(in) :: path
     integer, intent(in) :: nphase
@@ -3309,7 +3320,7 @@ logical function have_option_for_any_phase(path, nphase)
 end function have_option_for_any_phase
 
 
-!!$ This subroutine calculates the actual Darcy velocity, but with P0DG precision
+!>@brief: This subroutine calculates the actual Darcy velocity, but with P0DG precision
 subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
 
     implicit none
@@ -3356,6 +3367,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     !     call halo_update(darcy_velocity(iphase)%ptr)
     ! end do
 end subroutine get_DarcyVelocity
+    !>@brief: Obtain the surface global to local conversor for a scalar field
 
     subroutine Get_Scalar_SNdgln( sndgln, field  )
       implicit none
@@ -3378,6 +3390,7 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Scalar_SNdgln
 
+    !>@brief: Obtain the surface global to local conversor for a vector field
     subroutine Get_Vector_SNdgln( sndgln, field  )
       implicit none
       type( vector_field ), intent( in ) :: field
@@ -3399,12 +3412,12 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Vector_SNdgln
 
+    !>@brief: Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file  called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux
+    !> up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
+    !> (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
+    !> wish to integrate over).
     subroutine dump_outflux(current_time, itime, outfluxes)
 
-        ! Subroutine that dumps the total flux at a given timestep across all specified boundaries to a file  called 'simulation_name_outfluxes.csv'. In addition, the time integrated flux
-        ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
-        ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
-        !wish to integrate over).
         real,intent(in) :: current_time
         integer, intent(in) :: itime
         type (multi_outfluxes), intent(inout) :: outfluxes
@@ -3498,12 +3511,11 @@ end subroutine get_DarcyVelocity
         close (89)
     end subroutine dump_outflux
 
-
+    !>@brief: Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element
+    !>This subroutine should only be called if SELE is on the BOUNDARY
+    !>Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
+    !>Example of Vol_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
     subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, Vol_flux, Mass_flux, tracer, temp_field, salt_field, start_phase, end_phase )
-      !Updates the outfluxes information based on NDOTQNEW, shape functions and transported fields for a given GI point in a certain element
-      !This subroutine should only be called if SELE is on the BOUNDARY
-      !Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
-      !Example of Vol_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
       implicit none
       integer, intent(in) :: sele, cv_nodi, start_phase, end_phase
       type (multi_outfluxes), intent(inout) :: outfluxes
@@ -3554,10 +3566,10 @@ end subroutine get_DarcyVelocity
 
 
     !==Andreas============================================================================================
-    !--A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not                 =
-    !- given a requested_cfl_pressure it will skip the ForceBalanceEquation that many times              =
-    !- while if I have adaptive mesh it will solve the ForceBalanceEquation after each adapt_time_steps  =
-    !- The Subroutive also account for delaying adaptivity and swich between cfl_pressure and after_adapt=
+    !>@brief:--A Subroutine that returns a Logical, either to Enter the Force Balance Eqs or Not         =
+    !> given a requested_cfl_pressure it will skip the ForceBalanceEquation that many times              =
+    !> while if I have adaptive mesh it will solve the ForceBalanceEquation after each adapt_time_steps  =
+    !> The Subroutive also account for delaying adaptivity and swich between cfl_pressure and after_adapt=
     !=====================================================================================================
     subroutine EnterForceBalanceEquation(EnterSolve, its, itime, acctim, &
                                          t_adapt_threshold, after_adapt, after_adapt_itime, PVF_cfl)

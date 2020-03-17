@@ -73,7 +73,6 @@ contains
   !---------------------------------------------------------------------------
   !> @author Chris Pain, Pablo Salinas
   !> @brief Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components
-
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -425,6 +424,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       contains
 
+      !>@brief: Checks convergence on the temperature field, it checks the infinite norm
       real function convergence_check(temperature, reference_temp)
           implicit none
           real, dimension(:,:,:) :: temperature, reference_temp
@@ -441,7 +441,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
       end function convergence_check
 
 
-
+      !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
+      !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
       subroutine force_min_max_principle(entrance)
         integer, intent(in) :: entrance
         !Local variables
@@ -479,11 +480,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       end subroutine
 
+      !>@brief: Checks convergence on the temperature field Calculation of the averaged heat capacity and density
+      !> average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
+      !> Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
+      !> as it is stored cv-wise
       subroutine effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
-        ! Calculation of the averaged heat capacity and density
-        ! average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
-        ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
-        ! as it is stored cv-wise
           implicit none
         REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef, porous_heat_coef_old
         !Local variables
@@ -745,7 +746,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
 
       contains
-
+        !>@brief: Checks convergence on the concentration field, it checks the infinite norm
       real function convergence_check(temperature, reference_temp)
           implicit none
           real, dimension(:,:,:) :: temperature, reference_temp
@@ -766,7 +767,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     !---------------------------------------------------------------------------
     !> @author Chris Pain, Pablo Salinas
     !> @brief Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method is uncluded
-
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
@@ -1104,9 +1104,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
          contains
 
+       !!>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a
+       !> certain tolerance and also sets the saturation to be between bounds
         subroutine non_porous_ensure_sum_to_one(packed_state)
-            !This subroutines eliminates the oscillations in the saturation that are bigger than a
-            !certain tolerance and also sets the saturation to be between bounds
             Implicit none
             !Global variables
             type( state_type ), intent(inout) :: packed_state
@@ -1142,8 +1142,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         end subroutine non_porous_ensure_sum_to_one
 
 
+        !!!>@brief: This internal subroutine deals with the components within the Saturation Fixed Point Iteration
+        !> WARNING: Still work in progress
         subroutine update_components()
-          !This internal subroutine deals with the components within the Saturation Fixed Point Iteration
           implicit none
           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
 
@@ -1173,6 +1174,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
 
 
+    !>@brief:In this subroutine the components are solved for all the phases.
+    !>Systems for each component are assembled and solved by calling INTENERGE_ASSEM_SOLVE
     subroutine Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
          multi_absorp, DT, &
@@ -1180,8 +1183,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          GET_THETA_FLUX, USE_THETA_FLUX,  &
          THETA_GDIFF, eles_with_pipe, pipes_aux, mass_ele, &
          sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-         !In this subroutine the components are solved for all the phases.
-         !Systems for each component are assembled and solved by calling INTENERGE_ASSEM_SOLVE
          implicit none
          type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
          type( state_type ), intent( inout ) :: packed_state
@@ -1357,10 +1358,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       contains
 
+        !!>@brief: This subroutines eliminates the oscillations in the component that are bigger than a
+        !certain tolerance and also sets the component to be between bounds
+        !> WARNING: It is currently not working well...better to use Chris' method which uses a RHS
         subroutine ensure_components_sum_to_one(packed_state)
-            !This subroutines eliminates the oscillations in the component that are bigger than a
-            !certain tolerance and also sets the component to be between bounds
-            !It is currently not working well...better to use Chris' method which uses a RHS
             Implicit none
             !Global variables
             type( state_type ), intent(inout) :: packed_state
@@ -2229,11 +2230,7 @@ end if
         end do
       end subroutine
 
-
-        ! Use a projection method
-        ! CDP = Mmat%C * DP
-        !CALL C_MULT2( CDP_tensor%val, deltap%val, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-
+        !!>@brief: Compute a CV pressure from a FE representation
         subroutine calc_CVPres_from_FEPres()
             !This is for FE pressure
             implicit none
@@ -2317,6 +2314,7 @@ end if
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 
+    !>@brief: Form the global CTY and momentum eqns and combine to form one large matrix eqn.
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux, &
@@ -2337,7 +2335,6 @@ end if
         IPLIKE_GRAD_SOU, &
         FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
         implicit none
-        ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
@@ -2466,7 +2463,8 @@ end if
 
       contains
 
-
+        !!>@brief: If using the CV formulation and porous media, the momemtum equation and the mass matrix are much simpler
+        !> and faster to compute than for Navier-Stokes. Therefore, here the RHS and the Mass matrix are computed for this case
         SUBROUTINE porous_assemb_force_cty( packed_state, pressure,&
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
             implicit none
@@ -2664,10 +2662,10 @@ end if
             call deallocate_multi_dev_shape_funs(Devfuns)
         END SUBROUTINE porous_assemb_force_cty
 
+        !!>@brief:This subroutine creates a mass matrix using various approaches
+        !>Here no homogenisation can be performed.
+        !> NOTE: FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE, AND GET_POROUS_MASS_MATRIX IS KEPT FOR THE DIAGONAL SCALING METHOD
         subroutine get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
-              !This subroutine creates a mass matrix using various approaches
-              !Here no homogenisation can be performed.
-              !FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE, AND GET_POROUS_MASS_MATRIX IS KEPT FOR THE DIAGONAL SCALING METHOD
               implicit none
               integer, intent(in) :: ELE
               type(multi_dimensions), intent(in) :: Mdims
@@ -2751,7 +2749,8 @@ end if
 
 
 
-
+    !>@brief: Forms the gradient matrix (FE) and the momemtum matrix for intertia. This includes up to all the terms
+    !> required by the navier-stokes equation
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
@@ -5846,9 +5845,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         RETURN
     contains
 
+      !!>@brief:This subroutine introduces in the pivit matrix the temporal terms
+      !> WARNING****this is under testing****
     subroutine get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_PIVIT_ON_ALL)
-        !This subroutine introduces in the pivit matrix the temporal terms
-        !****this is under testing****
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_matrices), intent(inout) :: Mmat
@@ -5898,15 +5897,15 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
     END SUBROUTINE ASSEMB_FORCE_CTY
 
 
+    !>@brief: This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the
+    !> inter element coupling for the viscocity discretization.
+    !> NNX_MAT, NNX_MAT2 contain matricies of first derivative times basis function for current element and neightbouring element.
+    !> Similarly NN_MAT, NN_MAT2, contain the element-wise mass matrices.
+    !> Only call this sub if element not next to the boundary...
     SUBROUTINE DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT, NNX_MAT2, NN_MAT, NN_MAT2,  &
         U_SNLOC, U_NLOC, SBUFEN_REVERSED, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
         U_SLOC2LOC, U_OTHER_LOC, U_NLOC_EXT, ON_BOUNDARY )
 
-        ! This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the
-        ! inter element coupling for the viscocity discretization.
-        ! NNX_MAT, NNX_MAT2 contain matricies of first derivative times basis function for current element and neightbouring element.
-        ! Similarly NN_MAT, NN_MAT2, contain the element-wise mass matrices.
-        ! Only call this sub if element not next to the boundary...
 
         INTEGER, intent( in ) :: U_SNLOC, U_NLOC, SBCVNGI, NDIM, U_NLOC_EXT
         LOGICAL, intent( in ) :: ON_BOUNDARY
@@ -6025,11 +6024,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
+    !>@brief: This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_UDIFFUSION_VOL
     SUBROUTINE VISCOCITY_TENSOR_LES_CALC(LES_UDIFFUSION, LES_UDIFFUSION_VOL, DUX_ELE_ALL, &
         NDIM,NPHASE, U_NLOC,X_NLOC,TOTELE, X_NONODS, &
         X_ALL, X_NDGLN,  MAT_NONODS, MAT_NLOC, MAT_NDGLN, LES_DISOPT, LES_CS, UDEN, CV_NONODS, CV_NDGLN, &
         U_NDGLN, U_NONODS, U_ALL, DERIV )
-        ! This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_UDIFFUSION_VOL
         IMPLICIT NONE
         REAL, intent( in ) :: LES_CS
         INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, TOTELE, X_NONODS, MAT_NONODS, CV_NONODS, MAT_NLOC, LES_DISOPT, U_NONODS
@@ -6168,10 +6167,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
         contains
 
+          !!>@brief: This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_U_UDIFFUSION_VOL
             SUBROUTINE VISCOCITY_TENSOR_LES_CALC_U( LES_U_UDIFFUSION, LES_U_UDIFFUSION_VOL, Q_SCHEME_ABS_CONT_VOL, &
                 DUX_ELE_ALL, NDIM,NPHASE, U_NLOC,X_NLOC,TOTELE, X_NONODS, &
                 X_ALL, X_NDGLN, LES_DISOPT, CS,  U_NDGLN, U_NONODS, U_ALL)
-                ! This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_U_UDIFFUSION_VOL
                 IMPLICIT NONE
                 INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, TOTELE, X_NONODS, LES_DISOPT, U_NONODS
                 REAL, intent( in ) :: CS
@@ -6287,10 +6286,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             END SUBROUTINE VISCOCITY_TENSOR_LES_CALC_U
 
 
+            !!>@brief:    This sub calculates the ELEMENT-WISE TENSOR TENS
+            !>     REPRESENTS THE SIZE AND SHAPE OF THE SURROUNDING ELEMENTS.
+            !>     LES_DISOPT=LES option.
             SUBROUTINE ONEELETENS_ALL( LOC_X_ALL, LES_DISOPT, ONE_OVER_H2, TENSXX_ALL, X_NLOC, NDIM, MEAN_UDER_U, NPHASE )
-                !     This sub calculates the ELEMENT-WISE TENSOR TENS
-                !     REPRESENTS THE SIZE AND SHAPE OF THE SURROUNDING ELEMENTS.
-                !     LES_DISOPT=LES option.
                 IMPLICIT NONE
                 INTEGER, intent( in ) ::  X_NLOC, NDIM, NPHASE
                 LOGICAL, intent( in ) ::  ONE_OVER_H2
@@ -6439,14 +6438,14 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             END SUBROUTINE ONEELETENS_ALL
 
             !
+            !!>@brief:This sub performs Jacobi rotations of a symmetric matrix in order to
+            !> find the eigen-vectors V and the eigen values A so
+            !> that AA=V^T D V & D is diagonal.
+            !> It uses the algorithm of Matrix Computations 2nd edition, p196.
             !!sprint_to_do!!!!MOVE TO FORTRAN 90
             SUBROUTINE JACDIA(AA,V,D,N, &
                 ! Working arrays...
                 A)
-                ! This sub performs Jacobi rotations of a symmetric matrix in order to
-                ! find the eigen-vectors V and the eigen values A so
-                ! that AA=V^T D V & D is diagonal.
-                ! It uses the algorithm of Matrix Computations 2nd edition, p196.
                 IMPLICIT NONE
                 REAL TOLER,CONVEG
                 PARAMETER(TOLER=1.E-14,CONVEG=1.E-7)
@@ -6550,10 +6549,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         !
         !
         !!sprint_to_do!!!OPTIMIZE, VECTORIZE
+        !!>@brief: This sub performs matrix-matrix multiplication A=R*A.
+        !> PRE-MULTIPLY matrix A by transpose of Rotation matrix
+        !> is realised by passing -SINALF down into SINALF.
         SUBROUTINE JACPRE(SINALF,COSALF,P,Q,A,N)
-            ! This sub performs matrix-matrix multiplication A=R*A.
-            ! PRE-MULTIPLY matrix A by transpose of Rotation matrix
-            ! is realised by passing -SINALF down into SINALF.
             IMPLICIT NONE
             INTEGER N
             REAL SINALF,COSALF,A(N,N)
@@ -6604,11 +6603,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
+    !>@brief: This subroutine combines the distributed and block diagonal for an element
+    !> into the matrix DGM_PHA.
  SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
      FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
-     ! This subroutine combines the distributed and block diagonal for an element
-     ! into the matrix DGM_PHA.
      IMPLICIT NONE
      INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
      !
@@ -6684,11 +6683,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      RETURN
  END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST
 
+ !>@brief: This subroutine combines the distributed and block diagonal for an element
+ !> into the matrix DGM_PHA.
  SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
      FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
-     ! This subroutine combines the distributed and block diagonal for an element
-     ! into the matrix DGM_PHA.
      IMPLICIT NONE
      INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
      !
@@ -6827,6 +6826,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
+ !>@brief: This sub will linearise a p2 field
  subroutine linearise_field( field_in, field_out )
      implicit none
      type( tensor_field ), intent( in ) :: field_in
@@ -6836,7 +6836,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      integer :: n, totele, cv_nloc, ncomp, nphase, cv_nonods, ele, cv_iloc, cv_nod
      real, dimension( :, :, : ), allocatable :: field_tmp, field_cv_nod
 
-     ! This sub will linearise a p2 field
 
      field_out = 0.0
 
@@ -6889,10 +6888,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  end subroutine linearise_field
 
 
+ !>@brief: This subroutine introduces the capillary pressure term in the RHS
+ !> This works for a system considering one single pressure
+ !> Therefore, the capillary pressure is a term introduced as a RHS which affects the ffective velocity
  subroutine Introduce_Cap_press_term(packed_state, Mdims, Mmat, FE_funs, Devfuns, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
-     !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
      type( state_type ), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
@@ -7024,10 +7025,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 
 
+ !!>@brief: This subroutine calculates the overrelaxation parameter (Vanishing relaxation) we introduce in the saturation equation
+ !> Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
+ !> For more information read: doi.org/10.1016/j.cma.2019.07.004
  subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, for_transport)
-     !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
-     !It is the derivative of the capillary pressure for each node.
-     !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
      implicit none
      type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent(inout) :: packed_state
@@ -7217,6 +7218,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
  end subroutine getOverrelaxation_parameter
 
+!>@brief: Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created and solved
+!> that accounts for the gravity effect in the system. Next, this is introduced as a RHS in the momemtum equation
+!> This allows for higher precision for the gravity effect.
 subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state, nphase, u_absorbin )
 
       implicit none
@@ -7649,11 +7653,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine high_order_pressure_solve
 
 
+    !>@brief: Determine if we have an oscillation in the normal direction...
+    !> dg_oscilat_detect=1.0- CENTRAL SCHEME.
+    !> dg_oscilat_detect=0.0- UPWIND SCHEME.
     REAL FUNCTION dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
     N_DOT_DU, N_DOT_DU2, SINCOME, MASS_ELE, MASS_ELE2 )
-        ! Determine if we have an oscillation in the normal direction...
-        ! dg_oscilat_detect=1.0- CENTRAL SCHEME.
-        ! dg_oscilat_detect=0.0- UPWIND SCHEME.
         real SNDOTQ_KEEP, SNDOTQ2_KEEP, N_DOT_DU, N_DOT_DU2, SINCOME
         REAL MASS_ELE, MASS_ELE2
         ! If cons_oscillation then apply upwinding as often as possible...
@@ -7710,6 +7714,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         return
     end function dg_oscilat_detect
 
+    !>@brief: This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
+    !> based on a non-linear method and a non-oscillating scheme.
+    !> This implements the stress and tensor form of diffusion and calculates a jump conidition.
+    !> which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+    !> The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+    !> look at the manual DG treatment of viscocity.
     SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( Mdims, DIFF_COEF_DIVDX, &
         DIFF_COEFOLD_DIVDX, STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
         SBUFEN_REVERSED,SBCVFEN_REVERSED,SBCVNGI, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
@@ -7719,12 +7729,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         ELE, ELE2, SNORMXN_ALL, &
         SLOC_DUX_ELE_ALL, SLOC2_DUX_ELE_ALL,   SLOC_DUOLDX_ELE_ALL, SLOC2_DUOLDX_ELE_ALL,  &
         SELE, WIC_U_BC, WIC_U_BC_DIRICHLET, SIMPLE_DIFF_CALC, DIFF_MIN_FRAC, DIFF_MAX_FRAC  )
-        ! This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
-        ! based on a non-linear method and a non-oscillating scheme.
-        ! This implements the stress and tensor form of diffusion and calculates a jump conidition.
-        ! which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-        ! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
-        ! look at the manual DG treatment of viscocity.
         IMPLICIT NONE
         type(multi_dimensions), intent(in) :: Mdims
         LOGICAL, intent( in ) :: STRESS_FORM, STRESS_FORM_STAB, SIMPLE_DIFF_CALC
@@ -7935,16 +7939,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         contains
 
+          !!>@brief: Calculate DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD
+          !> This implements the stress and tensor form of diffusion and calculates a jump conidition.
+          !> DIFF_STAND_DIVDX_U is the minimal amount of diffusion.
+          ! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+          ! look at the manual DG treatment of viscocity.
             SUBROUTINE FOR_TENS_DERIVS_NDOTS( DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD,  &
                 DIFF_GI_ADDED, SLOC_DUX_ELE_ALL, SLOC_DUOLDX_ELE_ALL, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, &
                 NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN_REVERSED, SBCVFEN_REVERSED, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
                 STRESS_FORM, STRESS_FORM_STAB )
 
-                ! Calculate DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD
-                ! This implements the stress and tensor form of diffusion and calculates a jump conidition.
-                ! DIFF_STAND_DIVDX_U is the minimal amount of diffusion.
-                ! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
-                ! look at the manual DG treatment of viscocity.
                 IMPLICIT NONE
                 INTEGER, intent( in )  :: NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI
                 REAL, intent( in )  :: HDC, ZERO_OR_TWO_THIRDS
@@ -8139,8 +8143,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
     END SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
+    !>@brief:A diagonal mass matrix is obtained using the direct lump process
     subroutine get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
-      !A diagonal mass matrix is obtained using the direct lump process
         implicit none
         integer, intent(in) :: ELE
         type(multi_dimensions), intent(in) :: Mdims
