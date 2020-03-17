@@ -1767,6 +1767,7 @@ end if
             Mmat%PIVIT_MAT = 0.
             call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
+
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
             do ele = 1, Mdims%totele
               DO U_JLOC = 1, Mdims%u_nloc
@@ -3950,8 +3951,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                           IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
                                             IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
                                               IF ( LUMP_MASS ) THEN
-                                                DIAG_BIGM_CON( 1 , JDIM, 1, JPHASE, 1, U_ILOC, ELE ) =  &
-                                                DIAG_BIGM_CON(1, JDIM,1, JPHASE, 1, U_ILOC, ELE )  &
+                                                DIAG_BIGM_CON( 1 , JDIM, 1, JPHASE, 1, U_JLOC, ELE ) =  &
+                                                DIAG_BIGM_CON(1, JDIM,1, JPHASE, 1, U_JLOC, ELE )  &
                                                 + NN_SIGMAGI_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT
@@ -5291,12 +5292,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         JPHASE = IPHASE
                                         IF(LUMP_DIAG_MOM) THEN
                                           DO IDIM=1,Mdims%ndim
-                                          DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
-                                              =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )
+                                            DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
+                                                =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )
                                           END DO
                                         ELSE
-                                        DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                            =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
+                                          DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
+                                              =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             DO IDIM=1,Mdims%ndim
@@ -5311,8 +5312,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         ! Contributions from the other element...
                                         IF(LUMP_DIAG_MOM) THEN
                                           DO IDIM=1,Mdims%ndim
-                                            BIGM_CON( 1,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
-                                            =BIGM_CON( 1,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
+                                            BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)  &
+                                            =BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
                                           END DO
                                         ELSE
                                           BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
@@ -6728,12 +6729,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
          Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
              JCOLELE=COLELE(COUNT_ELE)
 
-            IF(JCOLELE==ELE) THEN
-                 ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
-                 LOC_DGM_PHA(:,:,:, :,:,:) = DIAG_BIGM_CON(:,:,:, :,:,:, ELE) + BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
-             ELSE
-                 LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
-             ENDIF
+            ! IF(JCOLELE==ELE) THEN
+            !      ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+            !      LOC_DGM_PHA(1,:,1, :,1,:) = DIAG_BIGM_CON(1,:,1, :,1,:, ELE) + BIGM_CON(1,:,1, :,1,:, COUNT_ELE)
+            !  ELSE
+            !      LOC_DGM_PHA(1,:,1, :,1,:) = BIGM_CON(1,:,1, :,1,:, COUNT_ELE)
+            !  ENDIF
 
             DO U_JLOC=1,U_NLOC
               DO JPHASE=1,NPHASE
@@ -6742,13 +6743,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                   J=JDIM + (JPHASE-1)*NDIM_VEL
                   GLOBI=(ELE-1)*U_NLOC + U_JLOC
                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                  ! IF(JCOLELE==ELE) THEN
-                  !   ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
-                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, ELE) &
-                  !   + BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
-                  ! ELSE
-                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
-                  ! ENDIF
+                  IF(JCOLELE==ELE) THEN
+                    ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+                    LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, ELE) &
+                    + BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
+                  ELSE
+                    LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
+                  ENDIF
                   if (.not. node_owned(velocity,globi)) cycle
                   call addto(dgm_petsc, J , J , globi , globj , &
                   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC))
