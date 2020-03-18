@@ -853,4 +853,8 @@
       </tensor_field>
     </hr_adaptivity>
   </mesh_adaptivity>
+  <numerical_methods>
+    <lump_mass_matrix/>
+    <lump_momentum_inertia/>
+  </numerical_methods>
 </icferst_options>
