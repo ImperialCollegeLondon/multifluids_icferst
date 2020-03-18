@@ -131,6 +131,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -224,6 +225,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -238,6 +240,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -853,8 +856,4 @@
       </tensor_field>
     </hr_adaptivity>
   </mesh_adaptivity>
-  <numerical_methods>
-    <lump_mass_matrix/>
-    <lump_momentum_inertia/>
-  </numerical_methods>
 </icferst_options>
