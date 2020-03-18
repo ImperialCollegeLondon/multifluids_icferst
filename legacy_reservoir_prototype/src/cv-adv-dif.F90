@@ -234,8 +234,8 @@ contains
           !***********************************************************************
           ! Inputs/Outputs
           IMPLICIT NONE
-          type( state_type ), dimension( : ), intent( inout ) :: state
-          type( state_type ), intent( inout ) :: packed_state
+          type( state_type ), dimension( : ), intent( inout ) :: state !> Linked list containing all the fields defined in diamond and considered by Fluidity
+          type( state_type ), intent( inout ) :: packed_state!> Linked list containing all the fields used by IC-FERST, memory partially shared with state
           integer, intent(in) ::  final_phase
           type(multi_dimensions), intent(in) :: Mdims
           type(multi_GI_dimensions), intent(in) :: CV_GIdims
@@ -247,49 +247,48 @@ contains
           type (multi_discretization_opts) :: Mdisopt
           type (multi_matrices), intent(inout) :: Mmat
           type (porous_adv_coefs), intent(inout) :: upwnd
-          type(tensor_field), intent(inout), target :: tracer
-          type(tensor_field), intent(in), target :: density
-          type(tensor_field), intent(in) :: velocity
-          type(multi_absorption), intent(inout) :: multi_absorp
+          type(tensor_field), intent(inout), target :: tracer!> Tracer considered for the transport equation
+          type(tensor_field), intent(in), target :: density!> Density of the field
+          type(tensor_field), intent(in) :: velocity!> Velocity of the field
+          type(multi_absorption), intent(inout) :: multi_absorp!> Absoprtion of associated with the transport field
           INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
               IGOT_T2, IGOT_THETA_FLUX
-          ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
-          REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (Mdims%npres, Mdims%npres, Mdims%cv_nonods)
-          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B ! (nphase, nphase, Mdims%cv_nonods)
+          REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES!>Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
+          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP !>Diagonal scaling of (distributed) pressure matrix (for wells)
+          REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: INV_B !> Coupling term of the wells
           REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
           REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
-          REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL
-          REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL
+          REAL, DIMENSION( :, : ), target, intent( inout ) :: DEN_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
+          REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
           REAL, intent( in ) :: DT, CV_THETA, CV_BETA
           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-          REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (nphase,Mdims%cv_nonods)
+          REAL, DIMENSION( :, : ), intent( in ) :: DERIV !> Derivative of the density against the pressure (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
-          REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL
+          REAL, DIMENSION( :, : ), intent( in) :: SOURCT_ALL!> Source term of the tracer equation
           REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
-          REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE ! (Mdims%npres,Mdims%totele)
+          REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE !> Porosity field (Mdims%npres,Mdims%totele)
           LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
           ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-          REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
+          REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV !> Porosity defined control volume wise
           REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
           type(tensor_field), intent(in), optional, target :: saturation
-          REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION
+          REAL, DIMENSION( :, :, :, : ), intent( in ), optional :: TDIFFUSION!> Diffusion associated with the tracer field
           !Variables for Vanishing artificial diffusion
-          integer, optional, intent(in) :: Phase_with_Pc
-          real, optional, dimension(:), intent(in) :: VAD_parameter
+          integer, optional, intent(in) :: Phase_with_Pc !> Field that defines the capillary pressure, i.e. non-wetting phase
+          real, optional, dimension(:), intent(in) :: VAD_parameter!> Vanishing artificial diffusion parameter
           !Variables to cache get_int_vel OLD
-          real, optional, dimension(:), intent(inout) :: Courant_number
+          real, optional, dimension(:), intent(inout) :: Courant_number!> Obvious ins't it?
           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
           ! Calculate_mass variable
-          real, dimension(:,:), optional :: calculate_mass_delta
-          type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe
-          type (multi_pipe_package), intent(in) :: pipes_aux
+          real, dimension(:,:), optional :: calculate_mass_delta!> Variable used to control the mass conservation of the system
+          type(pipe_coords), dimension(:), optional, intent(in):: eles_with_pipe!> Elements that have a pipe
+          type (multi_pipe_package), intent(in) :: pipes_aux!> Information required to define wells
           REAL, DIMENSION( :), optional, intent(in) :: porous_heat_coef, porous_heat_coef_old
           logical, optional, intent(in) :: solving_compositional, assemble_collapsed_to_one_phase
           ! Variable to store outfluxes
-          type (multi_outfluxes), optional, intent(inout) :: outfluxes
+          type (multi_outfluxes), optional, intent(inout) :: outfluxes!> Variable associated with
           !Non-linear iteration count
           integer, optional, intent(in) :: nonlinear_iteration
           ! ###################Local variables############################
@@ -446,8 +445,8 @@ contains
           !Variables for assemble_collapsed_to_one_phase; Note that diffusion parameters etc need
           logical :: loc_assemble_collapsed_to_one_phase !to be then scaled before getting into this subroutine
           integer :: assembly_phase
-          !Variable to decide, for porous media, whether to consider, locally, using high order methods or not
-          logical :: use_porous_limiter = .true., local_upwinding = .false.
+          !Variable to decide, for porous media, whether to use high order methods or not
+          logical :: use_porous_limiter = .true.
           !Variables to calculate flux across boundaries
           logical :: calculate_flux
           integer :: U_JLOC
@@ -472,8 +471,6 @@ contains
           if (present(VAD_parameter) .and. present(Phase_with_Pc)) then
               VAD_activated = Phase_with_Pc >0
           end if
-          !If on, then upwinding is used for the parts of the domain where there is no shock-front nor rarefaction, not for the continuity equation
-          local_upwinding = have_option('/numerical_methods/local_upwinding') .and. .not. present(solving_compositional) .and. .not. getct
           !this is true if the user is asking for high order advection scheme
           use_porous_limiter = (Mdisopt%in_ele_upwind /= 0)
           !When using VAD, we want to use initially upwinding to ensure monotonocity, as high-order methods may not do it that well
@@ -1114,18 +1111,6 @@ contains
                           LOC_DEN_J =DEN_ALL(1:final_phase, cv_nodj); LOC_DENOLD_J = DENOLD_ALL(1:final_phase, cv_nodj)
                           if (use_volume_frac_T2) then
                             LOC_T2_J = T2_ALL(1:final_phase, cv_nodj); LOC_T2OLD_J = T2OLD_ALL(1:final_phase, cv_nodj)
-                          end if
-
-                          !Decide whether to use high order advection or not, locally.
-                          !If the saturation is equal to the minimum, then no need to high order
-                          if (is_porous_media .and. local_upwinding) then
-                              use_porous_limiter = .true.
-                              do iphase = 1, final_phase - 1
-                                    use_porous_limiter = use_porous_limiter &
-                                        .and. (abs(T_ALL(iphase, cv_nodi) - Imble_frac(iphase, ELE)) > 1e-8 .or. &
-                                        abs(T_ALL(iphase, CV_NODJ) - Imble_frac(iphase, ELE2)) > 1e-8)!neighbouring CV
-                                end do
-                              use_porous_limiter = use_porous_limiter .or. on_domain_boundary
                           end if
 
                           if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
@@ -2853,7 +2838,7 @@ end if
         END SUBROUTINE GET_INT_VEL_ORIG_NEW
         !---------------------------------------------------------------------------
         !> @author Chris Pain, Pablo Salinas
-        !> @brief Computes the flux between CVs
+        !> @brief Computes the flux between CVs for porous media. NDOTQNEW contains the fluxes for a given gauss integration point
         !---------------------------------------------------------------------------
         SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, LOC_FEMT, &
@@ -3675,7 +3660,7 @@ end if
 
 
 
-
+    !> @brief Copies memory into the same large array to then perform a projection from CV to FE
     SUBROUTINE PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
         ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
@@ -5927,8 +5912,6 @@ end if
                         auxR = 0.25!<= original!0.5 seems similar, should try up to 2
                         Mass_corrector = (MASS_ELE( ELE2 ) + auxR * MASS_ELE( ELE ))/( (1.+auxR) *(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
                         !Mass_corrector = MASS_ELE( ELE2 )/(MASS_ELE( ELE2 ) + MASS_ELE( ELE ) )!<=this seems to work
-
-
 
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &

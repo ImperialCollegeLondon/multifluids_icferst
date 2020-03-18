@@ -1004,17 +1004,21 @@ start =
             element do_not_bound_after_adapt {
                empty
             }?,
+            ## Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
+            ## D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+            element rescale_mom_matrices {
+               empty
+            }?,
+            ## Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.
+            element solve_mom_iteratively {
+               empty
+            }?,           
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
                empty
             }?,
             ## Use a method to avoid distortion due to boundaries
             element use_reflect_method {
-               empty
-            }?,
-            ## Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
-            ## Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.
-            element local_upwinding {
                empty
             }?,
             ## Use the row-sum method to create a lumped mass matrix.
