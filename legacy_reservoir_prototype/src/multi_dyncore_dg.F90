@@ -3114,7 +3114,7 @@ end if
 
         !Decide whether to use the simple mass matrix (Volume/U_NLOC) or the one using shape functions
         use_simple_lumped_homogenenous_mass_matrix = (Porous_media_PIVIT_not_stored_yet .and.is_porous_media&
-                 .and. (Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')))
+                 .and. (Mmat%CV_pressure .or. have_option('/numerical_methods/lump_mass_matrix')))
 
         !If we do not have an index where we have stored Mmat%C, then we need to calculate it
         got_c_matrix  = Mmat%stored .or. Mmat%CV_pressure
