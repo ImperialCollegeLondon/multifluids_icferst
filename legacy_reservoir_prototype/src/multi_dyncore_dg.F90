@@ -1766,15 +1766,14 @@ end if
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
 
         !##################allocate DGM petsc just before the momentum solve####
-        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
-        ! new location for dmg_petsc - ao **************************************
+        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
         end IF
         ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
         lump_diag_mom=.false.
-        lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices diag_bigm_con and bigm_con !!if(lump_diag_mom) then
+        lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media))
         if(.not.mmat%no_matrix_store) then
           if(lump_diag_mom)then
             call comb_vel_matrix_diag_dist_lump(diag_bigm_con, bigm_con, &
@@ -2404,8 +2403,6 @@ end if
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
-        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: DIAG_BIGM_CON
-        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: BIGM_CON
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
         REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
 
@@ -2821,8 +2818,6 @@ end if
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
-        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: DIAG_BIGM_CON
-        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: BIGM_CON
         REAL, DIMENSION ( :, :, :,   :, :, :, :), allocatable :: DIAG_BIGM_CON
          REAL, DIMENSION ( :, :, :,   :, :, :,   : ), allocatable ::BIGM_CON
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, FEM_continuity_equation
