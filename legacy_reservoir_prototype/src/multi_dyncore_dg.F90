@@ -1764,6 +1764,32 @@ end if
         end if
         deallocate(velocity_absorption, U_SOURCE_CV_ALL)
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
+
+        !##################allocate DGM petsc just before the momentum solve####
+        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
+        ! new location for dmg_petsc - ao **************************************
+        IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
+           sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
+           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
+        end IF
+        ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
+        lump_diag_mom=.false.
+        lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices diag_bigm_con and bigm_con !!if(lump_diag_mom) then
+        if(.not.mmat%no_matrix_store) then
+          if(lump_diag_mom)then
+            call comb_vel_matrix_diag_dist_lump(diag_bigm_con, bigm_con, &
+            mmat%dgm_petsc, &
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
+          else
+            call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
+            mmat%dgm_petsc, &
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
+          end if
+          deallocate( diag_bigm_con )
+          deallocate( bigm_con)
+        end if
+
+
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
     !sprint_to_do #####TO OPTIMISE THE PIPES EITHER A LOCALLY BLOCK CMC_PETSC MATRIX (i don't think this is possible) IS REQUIRED OR A NEW SPARSITY######
@@ -1798,7 +1824,6 @@ end if
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
 
-        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
 
         ! solve using a projection method
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
@@ -1817,29 +1842,6 @@ end if
 
 
         !"########################UPDATE VELOCITY STEP####################################"
-        ! new location for dmg_petsc - ao **************************************
-        IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
-           sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
-           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
-        end IF
-
-        ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
-        lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices diag_bigm_con and bigm_con !!if(lump_diag_mom) then
-        if(.not.mmat%no_matrix_store) then
-          if(lump_diag_mom)then
-            call comb_vel_matrix_diag_dist_lump(diag_bigm_con, bigm_con, &
-            mmat%dgm_petsc, &
-            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
-          else
-            call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
-            mmat%dgm_petsc, &
-            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
-          end if
-          deallocate( diag_bigm_con )
-          deallocate( bigm_con)
-        end if
-
-
         !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
         !MAYBE ONLY AFTER ADAPT/START OF TIME?
         IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
