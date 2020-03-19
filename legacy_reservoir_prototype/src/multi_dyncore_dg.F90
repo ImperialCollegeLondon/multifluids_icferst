@@ -1504,6 +1504,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         logical :: rescale_mom_matrices = .false.
         real, dimension(:), allocatable :: diag_CMC_mat, diag_DGM_mat
 
+        REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
+        REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
+
+        logical :: LUMP_DIAG_MOM, lump_mass
+
+
+
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/numerical_methods/rescale_mom_matrices")
         !The stokes solver method can be activated from diamond also
@@ -1585,10 +1592,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         call allocate(rhs_p,Mdims%npres,pressure%mesh,"PressureCorrectionRHS")
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         JUST_BL_DIAG_MAT = .false.
-        IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
-           sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
-           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
-        end IF
 
         !Calculate gravity source terms
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
@@ -1739,7 +1742,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
         deallocate(UDIFFUSION_ALL)
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -1814,6 +1817,29 @@ end if
 
 
         !"########################UPDATE VELOCITY STEP####################################"
+        ! new location for dmg_petsc - ao **************************************
+        IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
+           sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
+           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
+        end IF
+
+        ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
+        lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices diag_bigm_con and bigm_con !!if(lump_diag_mom) then
+        if(.not.mmat%no_matrix_store) then
+          if(lump_diag_mom)then
+            call comb_vel_matrix_diag_dist_lump(diag_bigm_con, bigm_con, &
+            mmat%dgm_petsc, &
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
+          else
+            call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
+            mmat%dgm_petsc, &
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
+          end if
+          deallocate( diag_bigm_con )
+          deallocate( bigm_con)
+        end if
+
+
         !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
         !MAYBE ONLY AFTER ADAPT/START OF TIME?
         IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
@@ -2333,7 +2359,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
+        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2376,6 +2402,11 @@ end if
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
+        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: DIAG_BIGM_CON
+        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: BIGM_CON
+        REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
+        REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
+
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -2414,7 +2445,7 @@ end if
                 DT, &
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
-                IPLIKE_GRAD_SOU, &
+                IPLIKE_GRAD_SOU,DIAG_BIGM_CON, BIGM_CON, &
                 got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
         end if
 
@@ -2760,7 +2791,7 @@ end if
         UDEN, UDENOLD, DERIV, &
         DT, JUST_BL_DIAG_MAT,  &
         UDIFFUSION, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &
-        IPLIKE_GRAD_SOU, &
+        IPLIKE_GRAD_SOU,  DIAG_BIGM_CON, BIGM_CON,&
         got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -2788,6 +2819,10 @@ end if
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
+        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: DIAG_BIGM_CON
+        ! REAL, DIMENSION( :,:,:,:,:,:,: ), intent( inout ) :: BIGM_CON
+        REAL, DIMENSION ( :, :, :,   :, :, :, :), allocatable :: DIAG_BIGM_CON
+         REAL, DIMENSION ( :, :, :,   :, :, :,   : ), allocatable ::BIGM_CON
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, FEM_continuity_equation
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         real, dimension(:), intent(inout) :: MASS_ELE
@@ -2911,7 +2946,6 @@ end if
         REAL, DIMENSION ( : ), allocatable :: LOC_P
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_PLIKE_GRAD_SOU_COEF, LOC_PLIKE_GRAD_SOU_GRAD
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_SOURCE, LOC_U_SOURCE_CV
-        REAL, DIMENSION ( :, :, :,   :, :, :,   : ), allocatable :: DIAG_BIGM_CON, BIGM_CON
         ! memory for fast retreval of surface info...
         INTEGER, DIMENSION ( :, :, : ), allocatable :: STORED_U_ILOC_OTHER_SIDE, STORED_U_OTHER_LOC, STORED_MAT_OTHER_LOC
         INTEGER, DIMENSION ( :, :, : ), allocatable :: POSINMAT_C_STORE
@@ -3126,7 +3160,7 @@ end if
 
         !For P1DGP1 the DCVFEM method does not work and requires P0DGP1. This is done through homogenisation
         !For historic reasons we always lump with the DCVFEM
-        if (Mmat%CV_pressure.and. is_porous_media) then
+        if (Mmat%CV_pressure .and. is_porous_media) then
             lump_mass = .true.
             call get_option( &
             '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
@@ -3421,22 +3455,10 @@ end if
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
         ENDIF
-        IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
+        ! IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
         if (.not.got_c_matrix) Mmat%C = 0.0
         Mmat%U_RHS = 0.0
 
-        LUMP_DIAG_MOM=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices DIAG_BIGM_CON and BIGM_CON !!IF(LUMP_DIAG_MOM) THEN
-        IF (.NOT.Mmat%NO_MATRIX_STORE ) THEN!Only for inertia flow !matrix being allocated
-          IF(LUMP_DIAG_MOM) THEN
-            ALLOCATE( DIAG_BIGM_CON( 1, Mdims%ndim, 1, Mdims%nphase, 1,Mdims%u_nloc,Mdims%totele ) ) !-ao making diagonals of the mom matrix (1)
-            ALLOCATE( BIGM_CON(1, Mdims%ndim, 1, Mdims%nphase,1, Mdims%u_nloc, Mspars%ELE%ncol ) ) !-ao making diagonals of the mom matrix (2)
-          ELSE
-            ALLOCATE( DIAG_BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mdims%totele ) )
-            ALLOCATE( BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mspars%ELE%ncol ) )
-          END IF
-            DIAG_BIGM_CON = 0.0
-            BIGM_CON = 0.0
-        END IF
         if ( got_free_surf ) then
             if ( FEM_continuity_equation ) then
                 MASS_SUF=0.0
@@ -3544,6 +3566,23 @@ end if
             allocate( vol_s_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
+
+
+        LUMP_DIAG_MOM=.false.
+        LUMP_DIAG_MOM=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices DIAG_BIGM_CON and BIGM_CON !!IF(LUMP_DIAG_MOM) THEN
+        IF (.NOT.Mmat%NO_MATRIX_STORE ) THEN!Only for inertia flow !matrix being allocated
+          IF(LUMP_DIAG_MOM) THEN
+            ALLOCATE( DIAG_BIGM_CON( 1, Mdims%ndim, 1, Mdims%nphase, 1,Mdims%u_nloc,Mdims%totele ))  !-ao making diagonals of the mom matrix (1)
+            ALLOCATE( BIGM_CON(1, Mdims%ndim, 1, Mdims%nphase,1, Mdims%u_nloc, Mspars%ELE%ncol ))  !-ao making diagonals of the mom matrix (2)
+          ELSE
+            ALLOCATE( DIAG_BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mdims%totele ) )
+            ALLOCATE( BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mspars%ELE%ncol ) )
+          END IF
+            DIAG_BIGM_CON = 0.0
+            BIGM_CON = 0.0
+        END IF
+
+
 
         ! surface tension-like terms
         IF ( IPLIKE_GRAD_SOU /= 0 ) THEN
@@ -5721,23 +5760,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         END DO Loop_Elements2
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
-        IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
-          IF(LUMP_DIAG_MOM)THEN
-          CALL COMB_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
-              Mmat%DGM_petsc, &
-              Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
-          ELSE
-            CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
-                Mmat%DGM_petsc, &
-                Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
-          END IF
-
-                IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
-                    call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS) !This subroutine introduces in the pivit matrix the temporal terms
-            DEALLOCATE( DIAG_BIGM_CON )
-            DEALLOCATE( BIGM_CON)
-
+         IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
+               IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
+                 call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS, LUMP_DIAG_MOM) !This subroutine introduces in the pivit matrix the temporal terms
         ENDIF
+
         DEALLOCATE( UD, UD_ND )
         DEALLOCATE( UDOLD, UDOLD_ND )
         DEALLOCATE( DENGI )
@@ -5847,12 +5874,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
       !!>@brief:This subroutine introduces in the pivit matrix the temporal terms
       !> WARNING****this is under testing****
-    subroutine get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_PIVIT_ON_ALL)
+    subroutine get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_PIVIT_ON_ALL, LUMP_DIAG_MOM)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION ( :, :, :,   :, :, :,   : ), intent(in) :: DIAG_BIGM_CON
-        logical, intent(in) :: LUMP_PIVIT_ON_ALL
+        logical, intent(in) :: LUMP_PIVIT_ON_ALL, LUMP_DIAG_MOM
         !Local variables
         integer :: ele, u_jloc, u_iloc, iphase, jphase, idim, jdim, i, j
 
