@@ -1200,17 +1200,73 @@ The following must be specified:
       <optional>
         <element name="magma_parameters">
           <a:documentation>Magma options</a:documentation>
-          <optional>
-            <element name="example_for_Haiyang">
-              <a:documentation>Here you put comments that are shown for the user
-many lines</a:documentation>
+          <element name="Phase_diagram_coefficients">
+            <a:documentation>Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.</a:documentation>
+            <element name="A1">
+              <a:documentation>A1</a:documentation>
               <ref name="real"/>
             </element>
-          </optional>
-          <element name="example_for_Haiyang2_mandatory">
-            <a:documentation>Here you put comments that are shown for the user
-many lines</a:documentation>
+            <element name="B1">
+              <a:documentation>B1</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="C1">
+              <a:documentation>C1</a:documentation>
+              <ref name="real"/>
+            </element>
+            <optional>
+              <element name="A2">
+                <a:documentation>A2</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="B2">
+                <a:documentation>B2</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <optional>
+              <element name="C2">
+                <a:documentation>C2</a:documentation>
+                <ref name="real"/>
+              </element>
+            </optional>
+            <element name="ae">
+              <a:documentation>Eutectic point	</a:documentation>
+              <ref name="real"/>
+            </element>
+          </element>
+          <element name="latent_heat">
+            <a:documentation>Latent heat</a:documentation>
             <ref name="real"/>
+          </element>
+          <element name="bulk_viscosity_exponential_coefficient">
+            <a:documentation>bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.</a:documentation>
+            <ref name="real"/>
+          </element>
+          <element name="coupling_term_coefficients">
+            <a:documentation>The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b) for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.</a:documentation>
+            <element name="coupling_power_coefficent_a">
+              <a:documentation>Power law coefficient a</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="coupling_power_coefficent_b">
+              <a:documentation>Power law coefficient b</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="grain_size">
+              <a:documentation>Grain size</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="cut_a">
+              <a:documentation>the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="cut_b">
+              <a:documentation>the range above which the coupling terms follow the Hindered settling </a:documentation>
+              <ref name="real"/>
+            </element>
           </element>
         </element>
       </optional>

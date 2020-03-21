@@ -50,7 +50,8 @@ module multiphase_EOS
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
 
-
+    !HH loading the bulk viscosity for Magma
+    use multi_magma, only:
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5
@@ -1809,7 +1810,7 @@ contains
       integer :: iloc, ndim1, ndim2, idim, jdim
       integer :: multiplier
       !Magma variables
-      real :: exp_zeta_function = 0.
+      real :: exp_zeta_function
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
@@ -1865,7 +1866,10 @@ contains
                   end do
                end do
             else
-               if (is_magma) saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") !HH melt is the 2nd phase
+               if (is_magma)  then
+                 saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") !HH melt is the 2nd phase
+                 call get_option('/magma_parameters/bulk_viscosity_exponential_coefficient' , exp_zeta_function)
+               end if
                cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
                do iphase = 1, Mdims%nphase
                   tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
@@ -1887,7 +1891,7 @@ contains
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                         !Currently only magma uses momentum_diffusion2
                         if (iphase==1 .and. is_magma) then !only the solid phase has bulk viscosity
-                          momentum_diffusion2%val(iphase, 1, 1, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                          momentum_diffusion2%val(iphase, 1, 1, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))*0 !now turned off
                         end if
                         if(cg_mesh) then
                           mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
@@ -2831,7 +2835,7 @@ contains
     end subroutine initialise_porous_media
 
 
-    subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln)
+    subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln,c_phi_series)
       !This subroutine calculates the coupling term for the magma modelling
       !and adds it to the absorptiont term to impose the coupling between phase
       !It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
@@ -2844,28 +2848,45 @@ contains
       !Local variables
       integer :: mat_nod, ele, CV_ILOC, cv_inod, magma_coupling, iphase, jphase
       real, dimension(:,:), pointer :: Satura
-
+      real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
+      integer:: c_phi_size ! length of c_phi_series
+      real, dimension(4):: test
       !Get from packed_state
       call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
 
+      c_phi_size=size(c_phi_series)
       !Give for granted we are in memory type = 3 for magma
       DO ELE = 1, Mdims%totele
           DO CV_ILOC = 1, Mdims%cv_nloc
               mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
               cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
               DO IPHASE = 1, Mdims%nphase
-                magma_coupling = Satura(iphase, cv_inod)*0!Haiyang to include his C here
+                magma_coupling = c_value(Satura(2, cv_inod))*0   ! now turned off
                 do jphase = 1, Mdims%nphase
-                  if (jphase == 1) then
-                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
+                  if (jphase == iphase) then
+                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = -magma_coupling
                   else
-                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = - magma_coupling
+                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
                   end if
                 end do
               end do
           END DO
       END DO
+    contains
+      real function c_value(phi)
+          real, intent(in) :: phi
+          integer :: pos
+          real:: portion
 
+          pos= int(phi*(c_phi_size-1))+1
+          if (pos==c_phi_size) then
+            c_value=c_phi_series(c_phi_size)
+          else
+            ! portion=(phi-c_phi_series(pos))*c_phi_size
+            ! c_value=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
+            c_value=c_phi_series(pos)
+          end if
+        end function c_value
     end subroutine calculate_Magma_absorption
 
 

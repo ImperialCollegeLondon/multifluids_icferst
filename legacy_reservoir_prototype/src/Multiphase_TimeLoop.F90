@@ -192,6 +192,12 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
+        !HH coefficients C for the coupling term in magma dynamics and phase diagram
+        real,allocatable, dimension(:) :: c_phi_series
+        integer :: c_phi_length
+        type(coupling_term_coef) :: coupling
+        type(magma_phase_diagram) :: phase_coef
+        real :: bulk_power, latent_heat
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -439,6 +445,14 @@ contains
            ! call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
+        !HH Initialize all the magma simulation related coefficients
+        if (is_magma) then
+          c_phi_length=1e7  !> the number of items of the coupling term coefficients stored in the system
+          allocate(c_phi_series(c_phi_length))
+          ! if ( is_magma )         call c_gen(state, c_phi_series,c_phi_length)
+          call initialize_magma_parameters(phase_coef, latent_heat, coupling)
+          call C_generate (c_phi_series, c_phi_length, state, coupling)
+        end if
 
         !!$ Time loop
         Loop_Time: do
@@ -532,7 +546,7 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln)
+                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln, c_phi_series)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then

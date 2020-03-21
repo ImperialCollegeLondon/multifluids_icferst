@@ -980,15 +980,71 @@ start =
         ## Magma options
          element magma_parameters {
          (
-           ## Here you put comments that are shown for the user
-           ## many lines
-            element example_for_Haiyang {
+           ## Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.
+            element Phase_diagram_coefficients {		
+		(
+		## A1
+            	element A1 {
                real
-            }?,
-           ## Here you put comments that are shown for the user
-           ## many lines
-            element example_for_Haiyang2_mandatory {
+            	},
+		## B1
+            	element B1 {
                real
+            	},
+		## C1
+            	element C1 {
+               real
+            	},
+		## A2
+            	element A2 {
+               real
+            	}?,
+		## B2
+            	element B2 {
+               real
+            	}?,
+		## C2
+            	element C2 {
+               real
+            	}?,
+	       ## Eutectic point	
+	       element ae {
+               real
+            	}
+               )
+            },
+           ## Latent heat
+            element latent_heat {
+               real
+            },
+           ## bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.
+            element bulk_viscosity_exponential_coefficient{
+               real
+            },
+            ## The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b) for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.
+            element coupling_term_coefficients{
+		(
+		## Power law coefficient a
+            	element coupling_power_coefficent_a {
+               real
+            	},
+		## Power law coefficient b
+            	element coupling_power_coefficent_b {
+               real
+            	},
+		## Grain size
+            	element grain_size {
+               real
+            	},     
+		## the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
+            	element cut_a {
+               real
+            	},  
+		## the range above which the coupling terms follow the Hindered settling 
+            	element cut_b {
+               real
+            	}              
+	    )
             }
             )
          }?,
