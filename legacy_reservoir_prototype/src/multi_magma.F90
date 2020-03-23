@@ -58,20 +58,52 @@ module multi_magma
       real :: B2!> Phase behaviour parameters
       real :: C2!> Phase behaviour parameters
       real :: Ae!> Eutectic point
-    end type
-
-
-
+    end type magma_phase_diagram
+    !------------------------------------------------------------------------------
+    !>  The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b)
+    !>  for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi).
+    !>  Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.
+    !-----------------------------------------------------------------------------
+    type coupling_term_coef
+      real :: a
+      real :: b
+      real :: grain_size
+      real :: cut_low   !>  the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
+      real :: cut_high !>   the range above which the coupling terms follow the Hindered settling
+    end type coupling_term_coef
 
 contains
+  subroutine initialize_magma_parameters(phase_coef,latent_heat, coupling)
+    implicit none
+    type(magma_phase_diagram) :: phase_coef
+    real :: latent_heat
+    type(coupling_term_coef) :: coupling
+
+    call get_option('/magma_parameters/Phase_diagram_coefficients/A1' , phase_coef%A1 )
+    call get_option('/magma_parameters/Phase_diagram_coefficients/B1' , phase_coef%B1 )
+    call get_option('/magma_parameters/Phase_diagram_coefficients/C1' , phase_coef%C1 )
+    call get_option('/magma_parameters/Phase_diagram_coefficients/ae' , phase_coef%Ae )
+
+    call get_option('/magma_parameters/latent_heat' , latent_heat)
+
+    call get_option('/magma_parameters/coupling_term_coefficients/coupling_power_coefficent_a' , coupling%a)
+    call get_option('/magma_parameters/coupling_term_coefficients/coupling_power_coefficent_b' , coupling%b)
+    call get_option('/magma_parameters/coupling_term_coefficients/grain_size' , coupling%grain_size)
+    call get_option('/magma_parameters/coupling_term_coefficients/cut_a' , coupling%cut_low)
+    call get_option('/magma_parameters/coupling_term_coefficients/cut_b' , coupling%cut_high)
+
+    coupling%cut_high=max(coupling%cut_low,coupling%cut_high)
 
 
-  subroutine C_generate(series, N,   state)
+  end subroutine initialize_magma_parameters
+
+
+  subroutine C_generate(series, N,   state, coupling)
     implicit none
     type( state_type ), dimension(:), intent( inout ) :: state
     !Global variables
     real, dimension(:) :: series
-    integer :: N  !items in the series
+    integer :: N  !number of items in the series
     !Local variables
     integer :: i, stat
     real,dimension(N) :: phi ! porosity series
@@ -81,15 +113,16 @@ contains
     real :: H,s !value of the smoothing function and the smoothing factor
     logical :: Test=.true. ! set to true to have uniform Darcy-like c coefficient
     type( tensor_field ), pointer :: t_field !liquid viscosity
-    s= -2
+    type(coupling_term_coef), intent(in) :: coupling
 
+    s= -2 !> transition coefficient of the linking function
     ! d=35e-6
-    d=35e-2
+    d=coupling%grain_size
     t_field => extract_tensor_field( state(2), 'Viscosity', stat )
     mu=t_field%val( 1, 1, 1) !only consider a constant mu for now
     ! mu=1e2
-    low=0.2
-    high=0.6
+    low=coupling%cut_low
+    high=coupling%cut_high
 
     do i=1, N
       phi(i) = real(i - 1) / (N - 1)
@@ -97,17 +130,17 @@ contains
 
     if (Test) then
       do i=2, N
-        series(i)= 58/d**2*mu*phi(i)**(-0.6)
+        series(i)= 1/coupling%a/d**2*mu*phi(i)**(2-coupling%b)
       end do
     else
       do i=2, N
         if (phi(i)<=low) then
-          series(i)= 58/d**2*mu*phi(i)**(-0.6)
+          series(i)= 1/coupling%a/d**2*mu*phi(i)**(2-coupling%b)
         else if (phi(i)>=high) then
           series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))
         else
           H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
-          series(i)=58/d**2*mu*phi(i)**(-0.6)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
+          series(i)=1/coupling%a/d**2*mu*phi(i)**(2-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
         end if
       end do
     end if
