@@ -2740,7 +2740,7 @@ contains
     !!> This subroutine is called after each timestep and saturations overidden
     !!> below FWL with the heavier phase
     subroutine initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
-        
+
         implicit none
         type(multi_dimensions), optional        :: Mdims
         type(multi_ndgln), optional             :: ndgln
@@ -2847,17 +2847,17 @@ contains
     !>@brief:This subroutine calculates the coupling term for the magma modelling
     !>and adds it to the absorptiont term to impose the coupling between phase
     !>NOTE: It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
-    subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln)
+    subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln, c_phi_series)
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
       type (multi_field) :: Magma_absorp
       type( multi_dimensions ), intent( in ) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
+      real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
       !Local variables
       integer :: mat_nod, ele, CV_ILOC, cv_inod, magma_coupling, iphase, jphase
       real, dimension(:,:), pointer :: Satura
-      real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
       integer:: c_phi_size ! length of c_phi_series
       real, dimension(4):: test
       !Get from packed_state
