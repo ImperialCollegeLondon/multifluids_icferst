@@ -649,10 +649,10 @@ contains
         end if
     end subroutine read_fluid_and_rock_properties_from_csv
 
+    !>@brief: In this subroutine. We populate the input file elements that are not user-selected in IC_FERST.rnc. (i.e. we set all the things that the user doesn't need to worry about).
+    !>@WARNING:IT IS VERY IMPORTANT NOT TO CHANGE THE ORDERING IN THIS SUBROUTINE!!!
     subroutine autocomplete_input_file(nphase, npres, ncomp)
                 ! ################################
-        ! In this subroutine. We populate the input file elements that are not user-selected in IC_FERST.rnc. (i.e. we set all the things that the user doesn't need to worry about).
-        !IT IS VERY IMPORTANT NOT TO CHANGE THE ORDERING IN THIS SUBROUTINE!!!
         implicit none
         integer, intent(in) :: nphase, npres, ncomp
         !Local variables
@@ -1005,7 +1005,7 @@ contains
     end subroutine autocomplete_input_file
 
 
-
+    !>@brief: Obvious insn't it?
     subroutine set_up_generic_warning_message()
         implicit none
 
@@ -1023,7 +1023,7 @@ contains
         multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"May a bug be found, please file it in the corresponding repository following the standard procedure"
 
     end subroutine set_up_generic_warning_message
-
+    !>@brief: We can use fluidity to read an ASCII mesh and generate a binary mesh with ICFERST
     subroutine create_bin_msh_file(state)
         implicit none
         type(state_type), dimension(:), pointer, intent(inout) :: state
@@ -1044,9 +1044,9 @@ contains
 
     end subroutine create_bin_msh_file
 
+    !>@brief:This subroutine selects the type of simulator to perform
+    !>and activates the flags from global_parameters accordingly
     subroutine get_simulation_type()
-        !This subroutine selects the type of simulator to perform
-        !and activates the flags from global_parameters accordingly
         implicit none
         integer :: Vdegree, Pdegree
         !By default it is inertia dominated

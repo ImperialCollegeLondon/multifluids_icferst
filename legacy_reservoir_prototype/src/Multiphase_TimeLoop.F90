@@ -88,6 +88,9 @@ module multiphase_time_loop
 
 
 contains
+    !> @brief This is the main subroutine. It performs the time-loop and
+    !> therefore calls all the necessary blocks to solve for the system of equations,
+    !> adapt the mesh etc.
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
         implicit none
@@ -880,9 +883,9 @@ contains
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
         return
     contains
-
+        !> routine puts various CSR sparsities into packed_state
         subroutine put_CSR_spars_into_packed_state()
-            !!! routine puts various CSR sparsities into packed_state
+
             use sparse_tools
             type(csr_sparsity), pointer :: sparsity
             type(tensor_field), pointer :: tfield
@@ -1056,6 +1059,7 @@ contains
             end do
         end subroutine linearise_components
 
+        !> @brief In this internal subrotuine the generation of output vts and checkpoint are performed
         subroutine create_dump_vtu_and_checkpoints()
 
             ! sprint to do: check this routine - why are we swapping pressure fields??
@@ -1090,7 +1094,7 @@ contains
             end if
         end subroutine create_dump_vtu_and_checkpoints
 
-        !This subroutine performs all the necessary steps to adapt the mesh and create new memory
+        !>This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
             !local variables
             type( scalar_field ), pointer :: s_field, s_field2, s_field3
@@ -1328,7 +1332,7 @@ contains
         end subroutine adapt_mesh_mp
 
 
-
+    !>@brief Update the memory when moving to a new time-level by copying the fields into the OLD fields
     subroutine copy_packed_new_to_old(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(scalar_field), pointer :: sfield, nsfield
@@ -1368,6 +1372,7 @@ contains
         end if
     end subroutine copy_packed_new_to_old
 
+    !>@brief Copies the linear velocity U into the non-linear velocity field NU
     subroutine set_nu_to_u(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(tensor_field), pointer :: u, uold, nu, nuold
@@ -1379,11 +1384,16 @@ contains
         nuold % val = uold % val
     end subroutine set_nu_to_u
 
+    !>@author : Pablo Salinas
+    !>@brief In this subroutine we control all the necessary steps to adapt the mesh within the non-linear loop.
+    !> This is useful to ensure that the mesh is always well placed.
+    !> There are two steps, relaxation of the tolerance in the first loop of the non-linear solver to get a good guess but cheaply,
+    !> and secondly adaptation of the mesh based on the new and old field. For more information see: doi.org/10.1007/s10596-018-9759-z
     subroutine adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, flag)
         implicit none
         logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
-        integer, intent(inout) :: its
-        integer, intent(in)    :: flag
+        integer, intent(inout) :: its !> Non-linear iteration
+        integer, intent(in)    :: flag!> Controls the steps, either 1 or 2.
         ! Local variables
         type(scalar_field), pointer :: sat1, sat2
         type(vector_field), pointer :: vfield1, vfield2

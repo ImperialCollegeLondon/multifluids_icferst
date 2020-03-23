@@ -58,6 +58,7 @@ module multiphase_EOS
 
 contains
 
+    !>@brief: Computes the density for the phases and the derivatives of the density
     subroutine Calculate_All_Rhos( state, packed_state, Mdims )
 
         implicit none
@@ -272,7 +273,7 @@ contains
 
     end subroutine Calculate_All_Rhos
 
-
+    !>@brief: Computes the bulk density for components and the derivatives of the density
     subroutine Cap_Bulk_Rho( state, ncomp, nphase, &
         cv_nonods, Density_Component, Density, Density_Cp , compute_rhoCP)
 
@@ -335,7 +336,8 @@ contains
 
     end subroutine Cap_Bulk_Rho
 
-
+    !>@brief: Computes the density for the components and the derivatives of the density
+    !> This is were the action is actually done, the other calculate rhos are wrappers
     subroutine Calculate_Component_Rho( state, packed_state, Mdims )
 
       implicit none
@@ -373,7 +375,7 @@ contains
 
     end subroutine Calculate_Component_Rho
 
-
+    !>@brief: Computes the density and the derivative of the density
     subroutine Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
         nphase, ncomp, eos_option_path, rho, drhodp )
 
@@ -697,7 +699,6 @@ contains
     !> calculate the drho/dp term for the porous media which then goes into
     !> the DERIV term in the continuity equation (cv-wise).
     !---------------------------------------------
-
     subroutine Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous )
 
         implicit none
@@ -766,7 +767,7 @@ contains
 
     end subroutine Calculate_porous_Rho_dRhoP
 
-
+    !>@brief: Define de density as a polynomial
     subroutine Density_Polynomial( eos_coefs, pressure, temperature, &
         Density_Field )
         implicit none
@@ -782,6 +783,7 @@ contains
         return
     end subroutine Density_Polynomial
 
+    !>@brief: Read from diamond and decide which sort of density representation do we have
     subroutine Assign_Equation_of_State( eos_option_path_out )
         implicit none
         character( len = option_path_len ), intent( inout ) :: eos_option_path_out
@@ -827,6 +829,8 @@ contains
         return
     end subroutine Assign_Equation_of_State
 
+    !>@brief: Here we compute the absorption for porous media
+    !> This is the sigma term defined in the papers and contains The permeability, the relative permeability, the viscosity and the saturation
     subroutine Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, PorousMedia_absorp, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                       upwnd, suf_sig_diagten_bc )
        implicit none
@@ -903,7 +907,7 @@ contains
 
        deallocate(viscosities)
        contains
-
+          !>@brief: Computes the absorption and its derivatives against the saturation
            subroutine Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
                upwnd, inv_perm, viscosities )
 
@@ -1012,7 +1016,7 @@ contains
 
            end subroutine Calculate_PorousMedia_adv_terms
 
-
+           !>@brief: Computes the absorption and its derivatives against the saturation on the boundary
            subroutine calculate_SUF_SIG_DIAGTEN_BC( nphase, packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
                Mspars, ndgln, PorousMedia_absorp, state, inv_perm, viscosities)
                implicit none
@@ -1116,7 +1120,7 @@ contains
                return
            end subroutine calculate_SUF_SIG_DIAGTEN_BC
 
-
+        !>@brief: For porous media, just sets the viscosity as a scalar
         subroutine set_viscosity(nphase, Mdims, state, visc_phases)
             implicit none
             integer, intent(in) :: nphase
@@ -1146,7 +1150,7 @@ contains
 
 
 
-
+    !>@brief: Subroutine where the absorption for the porous media is actually computed
     SUBROUTINE calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
         PERM, viscosities, inv_mat_absorp, inv_perm1)
         ! Calculate absorption for momentum eqns
@@ -1221,9 +1225,9 @@ contains
     END SUBROUTINE calculate_absorption2
 
 
+    !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
     subroutine get_material_absorption(nphase, iphase, material_absorption, sat, visc, INV_PERM, Immobile_fraction, &
             Corey_exponent, Endpoint_relperm, PERM, inv_mat_absorp )
-        !Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
         implicit none
         real, intent(inout) :: material_absorption
         real, intent(in) :: INV_PERM
@@ -1245,8 +1249,8 @@ contains
         !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
       end subroutine get_material_absorption
 
+    !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
     subroutine get_relperm(nphase, iphase, sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr)
-        !Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
         implicit none
         real, INTENT(INOUT) :: Kr
         real, dimension(:), intent(in) :: sat, Immobile_fraction, Corey_exponent, Endpoint_relperm
@@ -1265,9 +1269,10 @@ contains
         end select
 
       contains
+        !>@brief: Brooks corey model of relperm.
+        !>This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
+        !>when dividing it to obtain the sigma.
         SUBROUTINE relperm_corey_epsilon( Kr )
-          !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
-          !when dividing it to obtain the sigma.
           IMPLICIT NONE
           REAL, intent( inout ) :: Kr
           ! Local variables...
@@ -1278,11 +1283,11 @@ contains
           KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
         END SUBROUTINE relperm_corey_epsilon
 
+        !>@brief:This subroutine calculates the relative permeability for three phases
+        !>First phase has to be water, second oil and the third gas
+        !>We use Stone's model II adapted, and for the two phases we use the Corey model
+        !>Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
         subroutine relperm_stone(Kr)
-          !This subroutine calculates the relative permeability for three phases
-          !First phase has to be water, second oil and the third gas
-          !We use Stone's model II adapted, and for the two phases we use the Corey model
-          !Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
           implicit none
           real, intent(inout) :: Kr
           !Local variables
@@ -1314,7 +1319,7 @@ contains
 
     end subroutine get_relperm
 
-
+    !>@brief: In this subroutine the capilalry pressure is computed based on the saturation and the formula used
     SUBROUTINE calculate_capillary_pressure( packed_state, &
         NDGLN, totele, cv_nloc, CV_funs)
 
@@ -1389,9 +1394,8 @@ contains
 
         deallocate(Cont_correction)
         contains
+          !>@brief:This functions returns the capillary pressure for a certain input saturation
             pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, Imbibition_term, iphase)
-                !This functions returns the capillary pressure for a certain input saturation
-                !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
                 Implicit none
                 real, intent(in) :: sat, Pe, a, Imbibition_term
                 real, dimension(:), intent(in) :: Immobile_fraction
@@ -1412,8 +1416,8 @@ contains
             end function Get_capPressure
     END SUBROUTINE calculate_capillary_pressure
 
+    !>@brief:This functions returns the derivative of the capillary pressure with respect to the saturation
     real function Get_DevCapPressure(sat, Pe, a, immobile_fraction, iphase, nphase)
-        !This functions returns the derivative of the capillary pressure with respect to the saturation
         Implicit none
         integer, intent(in) :: iphase, nphase
         real, intent(in) :: sat, Pe, a
@@ -1443,6 +1447,7 @@ contains
 
     end function Get_DevCapPressure
 
+    !>@brief: This subroutine computed the gravity effect, i.e. rho * g
     subroutine calculate_u_source_cv(Mdims, state, den, u_source_cv)
         type(state_type), dimension(:), intent(in) :: state
         type(multi_dimensions), intent(in) :: Mdims
@@ -1481,6 +1486,7 @@ contains
 
     end subroutine calculate_u_source_cv
 
+    !>@brief: Here we compute component/solute/thermal diffusion coefficient
     subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer, calculate_solute_diffusivity)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
@@ -1672,7 +1678,7 @@ contains
     end subroutine calculate_diffusivity
 
     !! Arash
-    !! Dispersion for isotropic porous media
+    !>@brief: Dispersion for isotropic porous media
     subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion, tracer)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
@@ -1698,99 +1704,100 @@ contains
       DispDiaComp = 0.
 
 
-       boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
+      boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
-                den => extract_tensor_field( packed_state,"PackedDensity" )
-                sfield=>extract_scalar_field(state(1),"Porosity")
-                ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
+      den => extract_tensor_field( packed_state,"PackedDensity" )
+      sfield=>extract_scalar_field(state(1),"Porosity")
+      ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
 
-                if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
-                    tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
-                    tdisp => tdfield%val
-                else
-                    allocate(tdisp(size(ldfield%val)))
-                    tdisp = ldfield%val / 10.
-                end if
+      if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+        tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
+        tdisp => tdfield%val
+      else
+        allocate(tdisp(size(ldfield%val)))
+        tdisp = ldfield%val / 10.
+      end if
 
 
-                do iphase = 1, Mdims%nphase
-                    darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
-                    diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+      do iphase = 1, Mdims%nphase
+        darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
+        diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
-                    do ele = 1, Mdims%totele
-                        ele_nod = min(size(sfield%val), ele)
-                         do u_iloc = 1, mdims%u_nloc
-                            u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
-                            do cv_iloc = 1, Mdims%cv_nloc
-                                mat_inod = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                                cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                            vel_av = 0
+        do ele = 1, Mdims%totele
+          ele_nod = min(size(sfield%val), ele)
+          do u_iloc = 1, mdims%u_nloc
+            u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
+            do cv_iloc = 1, Mdims%cv_nloc
+              mat_inod = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+              cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+              vel_av = 0
 
-                            do idim1 = 1, Mdims%ndim
-                                vel_comp2(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
-                                (sfield%val(ele_nod)))**2
+              do idim1 = 1, Mdims%ndim
+                vel_comp2(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
+                (sfield%val(ele_nod)))**2
 
-                                vel_comp(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
-                                (sfield%val(ele_nod)))
+                vel_comp(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
+                (sfield%val(ele_nod)))
 
-                                if (Mdims%ndim == 2) then
-                                    vel_comp2(3) = 0
-                                    vel_comp(3) = 0
-                                endif
+                if (Mdims%ndim == 2) then
+                  vel_comp2(3) = 0
+                  vel_comp(3) = 0
+                endif
 
-                                vel_av = vel_av + vel_comp2(idim1)
-                            end do
+                vel_av = vel_av + vel_comp2(idim1)
+              end do
 
-                            vel_av = SQRT(vel_av)
+              vel_av = SQRT(vel_av)
 
-                            do idim1 = 1, Mdims%ndim
-                                do idim2 = 1, Mdims%ndim
-                                    if (idim1 == idim2) then
-                                        DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod)
-                                    else
-                                        DispCoeffMat(idim1, idim2) = vel_av * tdisp(ele_nod)
-                                    endif
-                                end do
-                            end do
-
-                            !! Diagonal components of the dispersion tensor
-                            DispDiaComp = (1.0/(vel_av**2))*matmul(DispCoeffMat, vel_comp2)
-
-                            !! Off-diaginal components of the dispersion tensor
-                            do idim1 = 1, Mdims%ndim
-                                do idim2 = 1, Mdims%ndim
-                                    if (idim1 .NE. idim2) then
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
-                                        ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdisp(ele_nod))) *&
-                                        (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
-                                    else
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        sfield%val(ele_nod)*DispDiaComp(idim1)
-                                    endif
-
-                                    if (boussinesq) then
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase )
-                                    else
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
-                                        den%val(1, 1, cv_loc)
-                                    endif
-
-                                end do
-                            end do
-                        end do
-                        end do
-                    end do
+              do idim1 = 1, Mdims%ndim
+                do idim2 = 1, Mdims%ndim
+                  if (idim1 == idim2) then
+                    DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod)
+                  else
+                    DispCoeffMat(idim1, idim2) = vel_av * tdisp(ele_nod)
+                  endif
                 end do
-                if (.not.have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
-                    deallocate(tdisp)
-                end if
+              end do
+
+              !! Diagonal components of the dispersion tensor
+              DispDiaComp = (1.0/(vel_av**2))*matmul(DispCoeffMat, vel_comp2)
+
+              !! Off-diaginal components of the dispersion tensor
+              do idim1 = 1, Mdims%ndim
+                do idim2 = 1, Mdims%ndim
+                  if (idim1 .NE. idim2) then
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
+                    ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdisp(ele_nod))) *&
+                    (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
+                  else
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    sfield%val(ele_nod)*DispDiaComp(idim1)
+                  endif
+
+                  if (boussinesq) then
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase )
+                  else
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
+                    den%val(1, 1, cv_loc)
+                  endif
+
+                end do
+              end do
+            end do
+          end do
+        end do
+      end do
+      if (.not.have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+        deallocate(tdisp)
+      end if
 
       return
-  end subroutine calculate_solute_dispersity
+    end subroutine calculate_solute_dispersity
 
+    !>@brief: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media
     subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
       implicit none
       type( multi_dimensions ), intent( in ) :: Mdims
@@ -1935,6 +1942,7 @@ contains
 
 
     !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
+    !>@brief:Computes velocity absorption from diamond information
     subroutine update_velocity_absorption( states, ndim, nphase, velocity_absorption )
 
         implicit none
@@ -1987,6 +1995,7 @@ contains
     end subroutine update_velocity_absorption
 
     !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
+    !>@brief:Computes velocity absorption from diamond information
     subroutine update_velocity_absorption_coriolis( states, ndim, nphase, velocity_absorption )
 
       implicit none
@@ -2011,7 +2020,7 @@ contains
     end subroutine update_velocity_absorption_coriolis
 
 
-
+    !>@brief:Computes velocity source from diamond information
     subroutine update_velocity_source( states, Mdims, u_source )
 
         implicit none
@@ -2055,7 +2064,7 @@ contains
 
 
 
-
+    !>@brief: ????
     real function saturation_temperature( pressure )
         implicit none
         real :: pressure
@@ -2070,11 +2079,11 @@ contains
         return
     end function saturation_temperature
 
+    !>@brief:Gets the relperm max, the relperm exponent and the immobile fractions and stores
+    !>them into packed state
+    !>By index this is: 1) immobile fraction, 2) relperm max, 3)relperm exponent
+    !> 4)Capillary entry pressure 5) Capillary exponent 6) Capillary imbition term
     subroutine get_RockFluidProp(state, packed_state)
-        !Gets the relperm max, the relperm exponent and the immobile fractions and stores
-        !them into packed state
-        !The first index is the immobile fraction, the second is the relperm max
-        ! and the third is the relperm exponent
         implicit none
         type(state_type), dimension(:), intent(inout) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2274,19 +2283,21 @@ contains
 
 
     !###############################################################################################
-    !This subroutine currently works in the oil industry standard units. However, the rest of the code works in SI units
-    !Appropriate conversions are performed internally to make everything consistent.
-    !The reason for not using the SI is because all the PVT tables are formulas are not in SI.
+    !>@WARNING: This subroutine currently works in the oil industry standard units. However, the rest of the code works in SI units
+    !>>Appropriate conversions are performed internally to make everything consistent.
+    !>The reason for not using the SI is because all the PVT tables are formulas are not in SI.
+    !>
+    !>@brief:In this subroutine, phase change, density and viscosity are calculated based on PVT tables and locally per cell.
+    !>This method is called extended Black-Oil. Three phases are considered. Phase 1 is aqua and is inert
+    !>The other two phases are liquid and vapour. Two pseudo components associated with each of this two phases are considered
+    !>This approach, calculates the gas equilibrium per CV and then a normal three phase simulation is run. Hence, the
+    !>saturation update has to occur before the call to the non-linear solver to allow the phases to reach equilibrium again.
+    !>According to the sources, this requires an extra Newton iteration, in our case the extra cost is also very low, around 2 more.
+    !>This method not only allows for black-oil but also for Low-volatile and condensates
+    !>Sources: SPE15156, petrowiki.org/Oil_fluid_characteristics, and DOI: 10.2516/ogst/2012001
+    !>DEPRECATED
     !###############################################################################################
     subroutine extended_Black_Oil(state, packed_state, Mdims, flash_flag, viscosities, Kcomp, icomp)
-        !In this subroutine, phase change, density and viscosity are calculated based on PVT tables and locally per cell.
-        !This method is called extended Black-Oil. Three phases are considered. Phase 1 is aqua and is inert
-        !The other two phases are liquid and vapour. Two pseudo components associated with each of this two phases are considered
-        !This approach, calculates the gas equilibrium per CV and then a normal three phase simulation is run. Hence, the
-        !saturation update has to occur before the call to the non-linear solver to allow the phases to reach equilibrium again.
-        !According to the sources, this requires an extra Newton iteration, in our case the extra cost is also very low, around 2 more.
-        !This method not only allows for black-oil but also for Low-volatile and condensates
-        !Sources: SPE15156, petrowiki.org/Oil_fluid_characteristics, and DOI: 10.2516/ogst/2012001
         implicit none
         type( state_type ), dimension(:), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2502,7 +2513,7 @@ contains
         deallocate(PVT_table)
 
     contains
-
+        !>@DEPRECATED
         real function gas_mass_fraction_from_gas_saturation(Sg, Kg, Ko, rho_ratio)
             !this is ignoring the
             implicit none
@@ -2513,7 +2524,7 @@ contains
             gas_mass_fraction_from_gas_saturation = ((Sg*rho_ratio*aux*aux2)/(1-Sg + Sg*rho_ratio) - aux2)/(aux-aux2)
 
         end function gas_mass_fraction_from_gas_saturation
-
+!>@DEPRECATED
         subroutine calculate_K_comp(ko,kg, xg,xo,yg,yo, Pres)
             !Calculates the K between the pseudo components
             !Requires rho_stc_ratio to have been defined before
@@ -2532,7 +2543,7 @@ contains
             Ko = Yo/max(Xo, 1e-10)
 
         end subroutine calculate_K_comp
-
+!>@DEPRECATED
         real function get_density(pressure, PVT_table, density_reference, phase)
             !density_formation = (density_phase + density_other_phase * disolved_of_other_phase)*phase_volumetric_factor
             implicit none
@@ -2552,7 +2563,7 @@ contains
             end select
 
         end function get_density
-
+!>@DEPRECATED
         real function eval_table(input_pressure, PVT_table, prop)
             implicit none
             integer, intent(in) :: prop!Which property are you interested in
@@ -2608,7 +2619,7 @@ contains
             end if
 
         end function eval_table
-
+!>@DEPRECATED
         subroutine populate_with_Black_Oil(PVT_table, density_reference)
             implicit none!Nothing in SI but the pressure
             real, dimension(:,:), allocatable, intent(inout) :: PVT_table
@@ -2662,7 +2673,7 @@ contains
 
 
 
-
+!>@DEPRECATED
         subroutine populate_with_Texas_Black_Oil(PVT_table, density_reference)
             implicit none!Everything in the S.I. but the Rs amd Rv, for the time being
             real, dimension(:,:), allocatable, intent(inout) :: PVT_table
@@ -2721,12 +2732,12 @@ contains
 
     end subroutine extended_Black_Oil
 
+    !>@brief: Initialising porous media models
+    !!> Given a free water level (FWL) we simulate capillary gravity equilibration,
+    !!> control volumes below FWL is kept at residual lighter phase saturation
+    !!> This subroutine is called after each timestep and saturations overidden
+    !!> below FWL with the heavier phase
     subroutine initialise_porous_media(Mdims, ndgln, packed_state, state, exit_initialise_porous_media)
-        !! Initialising porous media models
-        !! Given a free water level (FWL) we simulate capillary gravity equilibration,
-        !! control volumes below FWL is kept at residual lighter phase saturation
-        !! This subroutine is called after each timestep and saturations overidden
-        !! below FWL with the heavier phase
 
         implicit none
         type(multi_dimensions), optional        :: Mdims
@@ -2831,10 +2842,10 @@ contains
     end subroutine initialise_porous_media
 
 
+    !>@brief:This subroutine calculates the coupling term for the magma modelling
+    !>and adds it to the absorptiont term to impose the coupling between phase
+    !>NOTE: It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
     subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln)
-      !This subroutine calculates the coupling term for the magma modelling
-      !and adds it to the absorptiont term to impose the coupling between phase
-      !It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
