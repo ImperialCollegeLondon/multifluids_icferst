@@ -1477,7 +1477,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( tensor_field ), pointer :: p_all, cvp_all, deriv, python_tfield
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
-        type( vector_field ) :: packed_vel, rhs, diagonal_A
+        type( vector_field ) :: packed_vel, rhs
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
@@ -1791,41 +1791,14 @@ end if
 
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
-    !sprint_to_do #####TO OPTIMISE THE PIPES EITHER A LOCALLY BLOCK CMC_PETSC MATRIX (i don't think this is possible) IS REQUIRED OR A NEW SPARSITY######
-          if (solve_stokes .or. solve_mom_iteratively) then !Just create a Mass diagonal matrix that mixes FE space with CV space, to be able to obtain the laplacian operator
-            Mmat%PIVIT_MAT = 0.
-            call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
-            call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
-
-            !Introduce the diagonal of A into the Mass matrix (not ideal...)
-            do ele = 1, Mdims%totele
-              DO U_JLOC = 1, Mdims%u_nloc
-                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                DO JPHASE = 1, Mdims%nphase
-                  DO JDIM = 1, Mdims%ndim
-                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                    Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
-                  end do
-                end do
-              end do
-            end do
-            do idx1 = 1, size(Mmat%PIVIT_MAT,3)
-              do idx2 = 1, size(Mmat%PIVIT_MAT,1)
-                !Combine diagonal of A with the mass matrix (not appropiate for the stokes projection method since we need the Laplacian)
-                Mmat%PIVIT_MAT(idx2, idx2, idx1) =   Mmat%PIVIT_MAT(idx2, idx2, idx1) * MASS_ELE(idx1)/dble(Mdims%u_nloc)
-                !Just the mass matrix
-                ! Mmat%PIVIT_MAT(idx2, idx2, idx1) = MASS_ELE(idx1)/dble(Mdims%u_nloc)!
-              end do
-            end do
-          end if
+          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE)
           !Now invert the Mass matrix
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
 
 
         ! solve using a projection method
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
+        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
         call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
 
@@ -2014,6 +1987,53 @@ end if
           end do
 
         end subroutine Stokes_Anderson_acceleration
+
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not
+        !---------------------------------------------------------------------------
+        subroutine generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE)
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          type (multi_matrices), intent(inout) :: Mmat
+          real, dimension(:), intent(in) :: MASS_ELE
+          !Local variables
+          integer :: i, j, ele, U_JLOC,u_jnod, JPHASE, JDIM, JPHA_JDIM
+          type( vector_field ) :: diagonal_A
+
+          !Initialise to zero
+          ! Mmat%PIVIT_MAT = 0.
+          if (have_option("/numerical_methods/solve_mom_iteratively/Simple_preconditioner")) then
+            !Just the mass matrix
+            do i = 1, size(Mmat%PIVIT_MAT,3)
+              do j = 1, size(Mmat%PIVIT_MAT,1)
+                Mmat%PIVIT_MAT(j, j, i) = MASS_ELE(i)/dble(Mdims%u_nloc)!
+              end do
+            end do
+          else
+            call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
+            call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
+            !Introduce the diagonal of A into the Mass matrix (not ideal...)
+            do ele = 1, Mdims%totele
+              DO U_JLOC = 1, Mdims%u_nloc
+                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
+                DO JPHASE = 1, Mdims%nphase
+                  DO JDIM = 1, Mdims%ndim
+                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                    Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
+                  end do
+                end do
+              end do
+            end do
+            !Combine diagonal of A with the mass matrix (not appropiate for the stokes projection method since we need the Laplacian)
+            do i = 1, size(Mmat%PIVIT_MAT,3)
+              do j = 1, size(Mmat%PIVIT_MAT,1)
+                Mmat%PIVIT_MAT(j, j, i) =   Mmat%PIVIT_MAT(j, j, i) * MASS_ELE(i)/dble(Mdims%u_nloc)
+              end do
+            end do
+          end if
+        end subroutine
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
         !> @brief Update velocity by solving the momentum equation for a given pressure, the RHS is formed here

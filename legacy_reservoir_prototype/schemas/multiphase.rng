@@ -1291,7 +1291,12 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';</a:documentation>
           <optional>
             <element name="solve_mom_iteratively">
               <a:documentation>Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.</a:documentation>
-              <empty/>
+              <optional>
+                <element name="Simple_preconditioner">
+                  <a:documentation>Instead of using the diagonal of the Momemtum matrix, only the mass matrix is used as preconditioner.</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
