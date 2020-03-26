@@ -881,6 +881,18 @@ contains
 
                 !If we have specified BCs then copy them here as well
                 l = option_count("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions")
+
+                if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/compressible")) then
+                  if (l < 1) then
+                    if (GetProcNo() == 1) then
+                      ewrite(0, *) "################################################################################"
+                      ewrite(0, *) "#WARNING: Compressible flow REQUIRES boundary conditions, run at your own risk.#"
+                      ewrite(0, *) "################################################################################"
+                    end if
+                  end if
+                end if
+
+
                 do k =1, l !Copy all the BCs to the new location
                   !Retrieve name of the BC to keep consistency
                   call get_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions["// int2str( k - 1 )//"]/name", option_name)

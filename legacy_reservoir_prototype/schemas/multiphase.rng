@@ -583,11 +583,13 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
                   <!-- mesh choice with PressureMesh as first option -->
                   <ref name="pressure_mesh_choice"/>
                   <ref name="prognostic_pressure_field"/>
+                  <ref name="output_options"/>
                 </element>
                 <element name="prescribed">
                   <!-- mesh choice with PressureMesh as first option -->
                   <ref name="pressure_mesh_choice"/>
                   <ref name="prescribed_scalar_field"/>
+                  <ref name="output_options"/>
                 </element>
                 <element name="diagnostic">
                   <a:documentation>Compute pressure from Density and InternalEnergy
@@ -621,15 +623,18 @@ via a compressible equation of state.</a:documentation>
               <element name="prognostic">
                 <ref name="velocity_mesh_choice"/>
                 <ref name="prognostic_velocity_field"/>
+                <ref name="output_options"/>
               </element>
               <element name="prescribed">
                 <ref name="velocity_mesh_choice"/>
                 <ref name="prescribed_vector_field"/>
+                <ref name="output_options"/>
               </element>
               <element name="diagnostic">
                 <ref name="velocity_mesh_choice"/>
                 <ref name="vector_python_diagnostic_algorithm"/>
                 <ref name="diagnostic_vector_field"/>
+                <ref name="output_options"/>
               </element>
               <element name="aliased">
                 <attribute name="material_phase_name">
@@ -820,9 +825,11 @@ ONLY specify for the wetting phase</a:documentation>
               <element name="prescribed">
                 <ref name="material_mesh_choice"/>
                 <ref name="prescribed_scalar_field"/>
+                <ref name="output_options"/>
               </element>
               <element name="aliased">
                 <ref name="generic_aliased_field"/>
+                <ref name="output_options"/>
               </element>
             </choice>
           </element>
@@ -836,11 +843,13 @@ ONLY specify for the wetting phase</a:documentation>
                 <element name="prescribed">
                   <ref name="material_mesh_choice"/>
                   <ref name="prescribed_scalar_field"/>
+                  <ref name="output_options"/>
                 </element>
                 <element name="diagnostic">
                   <ref name="material_mesh_choice"/>
                   <ref name="scalar_python_diagnostic_algorithm"/>
                   <ref name="diagnostic_scalar_field"/>
+                  <ref name="output_options"/>
                 </element>
               </choice>
             </element>
@@ -852,11 +861,13 @@ ONLY specify for the wetting phase</a:documentation>
                 <element name="prescribed">
                   <ref name="material_mesh_choice"/>
                   <ref name="prescribed_vector_field"/>
+                  <ref name="output_options"/>
                 </element>
                 <element name="diagnostic">
                   <ref name="material_mesh_choice"/>
                   <ref name="vector_python_diagnostic_algorithm"/>
                   <ref name="diagnostic_vector_field"/>
+                  <ref name="output_options"/>
                 </element>
               </choice>
             </element>
@@ -868,11 +879,13 @@ ONLY specify for the wetting phase</a:documentation>
                 <element name="prescribed">
                   <ref name="material_mesh_choice"/>
                   <ref name="prescribed_tensor_field"/>
+                  <ref name="output_options"/>
                 </element>
                 <element name="diagnostic">
                   <ref name="material_mesh_choice"/>
                   <ref name="tensor_python_diagnostic_algorithm"/>
                   <ref name="diagnostic_tensor_field"/>
+                  <ref name="output_options"/>
                 </element>
               </choice>
             </element>
@@ -888,9 +901,11 @@ ONLY specify for the wetting phase</a:documentation>
                   <element name="prescribed">
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
                   </element>
                 </choice>
               </element>
@@ -903,9 +918,11 @@ ONLY specify for the wetting phase</a:documentation>
                     <element name="prescribed">
                       <ref name="material_mesh_choice"/>
                       <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
                     </element>
                     <element name="aliased">
                       <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
                     </element>
                   </choice>
                 </element>
@@ -924,9 +941,11 @@ ONLY specify for the wetting phase</a:documentation>
                   <element name="prescribed">
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
                   </element>
                 </choice>
               </element>
@@ -939,9 +958,11 @@ ONLY specify for the wetting phase</a:documentation>
                   <element name="prescribed">
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
                   </element>
                 </choice>
               </element>
@@ -953,6 +974,7 @@ ONLY specify for the wetting phase</a:documentation>
                 <element name="prescribed">
                   <ref name="material_mesh_choice"/>
                   <ref name="prescribed_tensor_field"/>
+                  <ref name="output_options"/>
                 </element>
               </element>
               <optional>
@@ -967,9 +989,11 @@ with P_surf = 10^5 Pa )</a:documentation>
                     <element name="prescribed">
                       <ref name="material_mesh_choice"/>
                       <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
                     </element>
                     <element name="aliased">
                       <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
                     </element>
                   </choice>
                 </element>
@@ -989,13 +1013,16 @@ if in doubt set it to 1.</a:documentation>
                   <element name="prescribed">
                     <ref name="material_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
                     <ref name="vector_python_diagnostic_algorithm"/>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
                   </element>
                 </choice>
               </element>
@@ -1009,13 +1036,16 @@ It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
                   <element name="prescribed">
                     <ref name="pressure_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
                     <ref name="vector_python_diagnostic_algorithm"/>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
                   </element>
                 </choice>
               </element>
@@ -1032,13 +1062,16 @@ Recommended. set to 1 and/or use the internal method based on the Moody diagram 
                   <element name="prescribed">
                     <ref name="subcv_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
                     <ref name="vector_python_diagnostic_algorithm"/>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
                   </element>
                 </choice>
               </element>
@@ -1053,13 +1086,16 @@ If the diameter is &lt;=0 no pipe, else there is pipe.</a:documentation>
                   <element name="prescribed">
                     <ref name="pressure_mesh_choice"/>
                     <ref name="prescribed_scalar_field"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
                     <ref name="vector_python_diagnostic_algorithm"/>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="aliased">
                     <ref name="generic_aliased_field"/>
+                    <ref name="output_options"/>
                   </element>
                 </choice>
               </element>
@@ -1078,13 +1114,16 @@ This is only required for heat transport</a:documentation>
                       <element name="prescribed">
                         <ref name="pressure_mesh_choice"/>
                         <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
                       </element>
                       <element name="diagnostic">
                         <ref name="vector_python_diagnostic_algorithm"/>
                         <ref name="diagnostic_scalar_field_no_adapt"/>
+                        <ref name="output_options"/>
                       </element>
                       <element name="aliased">
                         <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
                       </element>
                     </choice>
                   </element>
@@ -1100,13 +1139,16 @@ This is only required for heat transport</a:documentation>
                       <element name="prescribed">
                         <ref name="pressure_mesh_choice"/>
                         <ref name="prescribed_scalar_field"/>
+                        <ref name="output_options"/>
                       </element>
                       <element name="diagnostic">
                         <ref name="vector_python_diagnostic_algorithm"/>
                         <ref name="diagnostic_scalar_field_no_adapt"/>
+                        <ref name="output_options"/>
                       </element>
                       <element name="aliased">
                         <ref name="generic_aliased_field"/>
+                        <ref name="output_options"/>
                       </element>
                     </choice>
                   </element>
@@ -1322,7 +1364,12 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';</a:documentation>
           <optional>
             <element name="solve_mom_iteratively">
               <a:documentation>Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.</a:documentation>
-              <empty/>
+              <optional>
+                <element name="Simple_preconditioner">
+                  <a:documentation>Instead of using the diagonal of the Momemtum matrix, only the mass matrix is used as preconditioner.</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>
@@ -2356,6 +2403,55 @@ iteration in the .stat file.</a:documentation>
       <ref name="mixing_stats"/>
     </zeroOrMore>
   </define>
+  <!-- Output options for prognostic fields -->
+  <define name="prognostic_scalar_output_options">
+    <element name="output">
+      <a:documentation>Specify what is written to vtu dump files.</a:documentation>
+      <optional>
+        <element name="exclude_from_vtu">
+          <a:documentation>Exclude this field from dump files.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name="include_previous_time_step">
+          <a:documentation>Select this option to also write the values of this field
+on the previous timestep.
+(included under the name: Old&lt;field_name&gt; )</a:documentation>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name="include_nonlinear_field">
+          <a:documentation>Select this option to also write the values of this field
+used in the nonlinear iteration.
+(included under the name: Nonlinear&lt;field_name&gt; )</a:documentation>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name="convergence_file">
+          <a:documentation>Output a file details the convergence (or otherwise) of
+this field with every advective nonlinear
+iteration.
+ONLY WORKS FOR PURE CONTROL VOLUME DISCRETISATIONS.</a:documentation>
+          <ref name="comment"/>
+        </element>
+      </optional>
+    </element>
+  </define>
+  <!-- Output options for fields -->
+  <define name="output_options">
+    <element name="output">
+      <a:documentation>Specify what is written to dump files.</a:documentation>
+      <optional>
+        <element name="exclude_from_vtu">
+          <a:documentation>Exclude this field from dump files.</a:documentation>
+          <empty/>
+        </element>
+      </optional>
+    </element>
+  </define>
   <!-- Diagnostic statistics options for vector fields, with enabled by default -->
   <define name="vector_field_stat_options_enabled_default">
     <ref name="include_stat"/>
@@ -2664,15 +2760,18 @@ i.e. excluding the components</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="prescribed">
             <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="diagnostic">
             <ref name="scalar_diagnostic_algorithms"/>
             <ref name="pressure_mesh_choice"/>
             <ref name="diagnostic_scalar_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
@@ -3174,14 +3273,17 @@ Adapting to this field is not recommended</a:documentation>
           <element name="prescribed">
             <ref name="mesh_choice"/>
             <ref name="prescribed_vector_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="diagnostic">
             <ref name="vector_diagnostic_algorithms"/>
             <ref name="velocity_mesh_choice"/>
             <ref name="diagnostic_vector_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>
@@ -3406,14 +3508,17 @@ to impose an absorption term for the momentum equation using a diagnostic tensor
           <element name="prescribed">
             <ref name="mesh_choice"/>
             <ref name="prescribed_tensor_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
+            <ref name="output_options"/>
           </element>
           <element name="diagnostic">
             <ref name="tensor_diagnostic_algorithms"/>
             <ref name="velocity_mesh_choice"/>
             <ref name="diagnostic_tensor_field"/>
+            <ref name="output_options"/>
           </element>
         </choice>
       </element>

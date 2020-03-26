@@ -472,12 +472,14 @@ start =
                   element prognostic {
                      # mesh choice with PressureMesh as first option
                      pressure_mesh_choice,
-                     prognostic_pressure_field
+                     prognostic_pressure_field,
+                     output_options
                   }|
                   element prescribed {
                      # mesh choice with PressureMesh as first option
                      pressure_mesh_choice,
-                     prescribed_scalar_field
+                     prescribed_scalar_field,
+                     output_options
                   }|
                   ## Compute pressure from Density and InternalEnergy
                   ## via a compressible equation of state.
@@ -501,16 +503,19 @@ start =
                (
                   element prognostic {
                      velocity_mesh_choice,
-                     prognostic_velocity_field
+                     prognostic_velocity_field,
+                     output_options
                   }|
                   element prescribed {
                      velocity_mesh_choice,
-                     prescribed_vector_field
+                     prescribed_vector_field,
+                     output_options
                   }|
                   element diagnostic {
                      velocity_mesh_choice,
                      vector_python_diagnostic_algorithm,
-                     diagnostic_vector_field
+                     diagnostic_vector_field,
+                     output_options
                   }|
                   element aliased {
                      attribute material_phase_name { xsd:string },
@@ -658,10 +663,12 @@ start =
                (
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_scalar_field
+                     prescribed_scalar_field,
+                     output_options
                   }|
                   element aliased {
-                     generic_aliased_field
+                     generic_aliased_field,
+                     output_options
                   }
                )
             },
@@ -672,12 +679,14 @@ start =
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                     element diagnostic {
                     material_mesh_choice,
                     scalar_python_diagnostic_algorithm,
-                    diagnostic_scalar_field
+                    diagnostic_scalar_field,
+                     output_options
                   }
                   )
                }|
@@ -686,12 +695,14 @@ start =
                   (
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_vector_field
+                     prescribed_vector_field,
+                     output_options
                   }|
                     element diagnostic {
                     material_mesh_choice,
                     vector_python_diagnostic_algorithm,
-                    diagnostic_vector_field
+                    diagnostic_vector_field,
+                     output_options
                   }
                   )
                }|
@@ -700,12 +711,14 @@ start =
                   (
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_tensor_field
+                     prescribed_tensor_field,
+                     output_options
                   }|
                     element diagnostic {
                     material_mesh_choice,
                     tensor_python_diagnostic_algorithm,
-                    diagnostic_tensor_field
+                    diagnostic_tensor_field,
+                     output_options
                   }
                   )
                }
@@ -717,10 +730,12 @@ start =
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                      element aliased {
-                        generic_aliased_field
+                        generic_aliased_field,
+                     output_options
                      }
                   )
                },
@@ -729,10 +744,12 @@ start =
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                      element aliased {
-                        generic_aliased_field
+                        generic_aliased_field,
+                     output_options
                      }
                   )
                }?
@@ -745,10 +762,12 @@ start =
                    (
                       element prescribed {
                          material_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                         output_options
                       }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                         output_options
                       }
                    )
                 },
@@ -758,10 +777,12 @@ start =
                    (
                       element prescribed {
                          material_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                        output_options
                       }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                        output_options
                       }
                    )
                 },
@@ -773,7 +794,8 @@ start =
                   attribute name { "porous_thermal_conductivity" },
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_tensor_field
+                     prescribed_tensor_field,
+                     output_options
                   }
                },
 
@@ -785,10 +807,12 @@ start =
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                      element aliased {
-                        generic_aliased_field
+                        generic_aliased_field,
+                     output_options
                      }
                   )
                }?
@@ -805,14 +829,17 @@ start =
                    (
                       element prescribed {
                          material_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
@@ -823,14 +850,17 @@ start =
                    (
                       element prescribed {
                          pressure_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
@@ -845,14 +875,17 @@ start =
                    (
                       element prescribed {
                          subcv_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
@@ -864,14 +897,17 @@ start =
                    (
                       element prescribed {
                          pressure_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
@@ -886,14 +922,17 @@ start =
                        (
                           element prescribed {
                              pressure_mesh_choice,
-                             prescribed_scalar_field
+                             prescribed_scalar_field,
+                            output_options
                           }|
                         element diagnostic {
                           vector_python_diagnostic_algorithm,
-                          diagnostic_scalar_field_no_adapt
+                          diagnostic_scalar_field_no_adapt,
+                             output_options
                         }|
                           element aliased {
-                             generic_aliased_field
+                             generic_aliased_field,
+                            output_options
                           }
                        )
                     },
@@ -906,14 +945,17 @@ start =
                        (
                           element prescribed {
                              pressure_mesh_choice,
-                             prescribed_scalar_field
+                             prescribed_scalar_field,
+                            output_options
                           }|
                         element diagnostic {
                           vector_python_diagnostic_algorithm,
-                          diagnostic_scalar_field_no_adapt
+                          diagnostic_scalar_field_no_adapt,
+                            output_options
                         }|
                           element aliased {
-                             generic_aliased_field
+                             generic_aliased_field,
+                            output_options
                           }
                        )
                     }
@@ -1083,7 +1125,9 @@ start =
             }?,
             ## Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.
             element solve_mom_iteratively {
-               empty
+               ## Instead of using the diagonal of the Momemtum matrix, only the mass matrix is used as preconditioner.
+                element Simple_preconditioner {
+               empty}?
             }?,           
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
@@ -1947,6 +1991,55 @@ prognostic_scalar_stat_no_old_or_nonlinear_options.stat =
       mixing_stats*
    )
 
+
+
+# Output options for prognostic fields
+prognostic_scalar_output_options =
+   (
+      ## Specify what is written to vtu dump files.
+      element output {
+         ## Exclude this field from dump files.
+         element exclude_from_vtu {
+            empty
+         }?,
+         ## Select this option to also write the values of this field
+         ## on the previous timestep.
+         ## (included under the name: Old<field_name> )
+         element include_previous_time_step {
+            empty
+         }?,
+         ## Select this option to also write the values of this field
+         ## used in the nonlinear iteration.
+         ## (included under the name: Nonlinear<field_name> )
+         element include_nonlinear_field {
+            empty
+         }?,
+         ## Output a file details the convergence (or otherwise) of
+         ## this field with every advective nonlinear
+         ## iteration.
+         ## ONLY WORKS FOR PURE CONTROL VOLUME DISCRETISATIONS.
+         element convergence_file {
+            comment
+         }?
+      }
+   )
+
+
+
+# Output options for fields
+output_options =
+   (
+      ## Specify what is written to dump files.
+      element output {
+         ## Exclude this field from dump files.
+         element exclude_from_vtu {
+            empty
+         }?
+      }
+   )
+
+
+
 # Diagnostic statistics options for vector fields, with enabled by default
 vector_field_stat_options_enabled_default = include_stat
 vector_field_stat_options_enabled_default |= exclude_components_from_stat
@@ -2225,16 +2318,19 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                  prognostic_scalar_field
+                  prognostic_scalar_field,
+                     output_options
                }|
                element prescribed {
                   pressure_mesh_choice,
-                  prescribed_scalar_field
+                  prescribed_scalar_field,
+                     output_options
                }|
                element diagnostic {
                   scalar_diagnostic_algorithms,
                   pressure_mesh_choice,
-                  diagnostic_scalar_field
+                  diagnostic_scalar_field,
+                     output_options
                }|
                element aliased {
                   generic_aliased_field
@@ -2647,15 +2743,18 @@ vector_field_choice =
             (
                element prescribed {
                   mesh_choice,
-                  prescribed_vector_field
+                  prescribed_vector_field,
+                     output_options
                }|
                element aliased {
-                  generic_aliased_field
+                  generic_aliased_field,
+                     output_options
                }|
                element diagnostic {
                   vector_diagnostic_algorithms,
                   velocity_mesh_choice,
-                  diagnostic_vector_field
+                  diagnostic_vector_field,
+                     output_options
                }
             )
          }|
@@ -2835,15 +2934,18 @@ tensor_field_choice =
             (
                element prescribed {
                   mesh_choice,
-                  prescribed_tensor_field
+                  prescribed_tensor_field,
+                     output_options
                }|
                element aliased {
-                  generic_aliased_field
+                  generic_aliased_field,
+                     output_options
                }|
                element diagnostic {
                   tensor_diagnostic_algorithms,
                   velocity_mesh_choice,
-                  diagnostic_tensor_field
+                  diagnostic_tensor_field,
+                     output_options
                }
             )
          }|
