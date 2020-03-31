@@ -1784,7 +1784,7 @@ end if
           else
             call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
             mmat%dgm_petsc, &
-            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure, Mmat)  ! element connectivity.
           end if
           deallocate( diag_bigm_con )
           deallocate( bigm_con)
@@ -2003,11 +2003,9 @@ end if
           type (multi_matrices), intent(inout) :: Mmat
           real, dimension(:), intent(in) :: MASS_ELE
           !Local variables
-          integer :: i, j, ele, U_JLOC,u_jnod, JPHASE, JDIM, JPHA_JDIM
-          type( vector_field ) :: diagonal_A
+          integer :: i, j
 
           !Initialise to zero
-          ! Mmat%PIVIT_MAT = 0.
           if (have_option("/numerical_methods/solve_mom_iteratively/Simple_preconditioner")) then
             !Just the mass matrix
             do i = 1, size(Mmat%PIVIT_MAT,3)
@@ -2016,21 +2014,6 @@ end if
               end do
             end do
           else
-            call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
-            call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
-            !Introduce the diagonal of A into the Mass matrix (not ideal...)
-            do ele = 1, Mdims%totele
-              DO U_JLOC = 1, Mdims%u_nloc
-                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                DO JPHASE = 1, Mdims%nphase
-                  DO JDIM = 1, Mdims%ndim
-                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
-                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                    Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
-                  end do
-                end do
-              end do
-            end do
             !Combine diagonal of A with the mass matrix (not appropiate for the stokes projection method since we need the Laplacian)
             do i = 1, size(Mmat%PIVIT_MAT,3)
               do j = 1, size(Mmat%PIVIT_MAT,1)
@@ -6654,27 +6637,34 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
     !>@brief: This subroutine combines the distributed and block diagonal for an element
     !> into the matrix DGM_PHA.
+    !> For stokes also the diagonal of the matrix is introduced in the mass matrix
  SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
-     FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
+     FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat)  ! Element connectivity.
      IMPLICIT NONE
-     INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
+     INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
      !
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
      type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
      INTEGER, DIMENSION(: ), intent( in ) :: FINELE
      INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+     type(multi_matrices), intent(inout) :: Mmat
      type( tensor_field ) :: velocity
      type( tensor_field ) :: pressure
+     !Local variables
      INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
      INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
-     INTEGER :: COUNT_ELE,JCOLELE
+     INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
      real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
      integer, dimension(:), pointer :: neighbours
      integer :: nb
-     logical :: skip
-     ALLOCATE(LOC_DGM_PHA(NDIM_VEL,NDIM_VEL,NPHASE,NPHASE,U_NLOC,U_NLOC))
+     logical :: skip, stokes_simple_precond
+
+     stokes_simple_precond = have_option("/numerical_methods/solve_mom_iteratively/Simple_preconditioner")
+
+
+     ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
      Loop_Elements20: DO ELE = 1, TOTELE
          if (IsParallel()) then
              if (.not. assemble_ele(pressure,ele)) then
@@ -6708,11 +6698,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                  DO U_ILOC=1,U_NLOC
                      DO JPHASE=1,NPHASE
                          DO IPHASE=1,NPHASE
-                             DO JDIM=1,NDIM_VEL
-                                 DO IDIM=1,NDIM_VEL
+                             DO JDIM=1,NDIM
+                                 DO IDIM=1,NDIM
                                      ! New for rapid code ordering of variables...
-                                     I=IDIM + (IPHASE-1)*NDIM_VEL
-                                     J=JDIM + (JPHASE-1)*NDIM_VEL
+                                     I=IDIM + (IPHASE-1)*NDIM
+                                     J=JDIM + (JPHASE-1)*NDIM
                                      GLOBI=(ELE-1)*U_NLOC + U_ILOC
                                      GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
                                      if (.not. node_owned(velocity,globi)) cycle
@@ -6724,6 +6714,27 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                      END DO
                  END DO
              END DO
+
+             if (solve_stokes .and. JCOLELE==ELE .and. .not. stokes_simple_precond) then
+               DO U_JLOC=1,U_NLOC
+                 DO U_ILOC=1,U_NLOC
+                   DO JPHASE=1,NPHASE
+                     DO IPHASE=1,NPHASE
+                       DO JDIM=1,NDIM
+                         DO IDIM=1,NDIM
+                           IMAT = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
+                           !Lumped version
+                           Mmat%PIVIT_MAT(IMAT, IMAT, ELE)  = Mmat%PIVIT_MAT(IMAT, IMAT, ELE) + LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                           !Non-lumped version -below-, not working well. I presume it is because of how to mixed it with the mass matrix
+                           ! JMAT = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
+                           ! Mmat%PIVIT_MAT(IMAT, JMAT, ELE)  = Mmat%PIVIT_MAT(IMAT, JMAT, ELE) + LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                         END DO
+                       END DO
+                     END DO
+                   END DO
+                 END DO
+               END DO
+             end if
          END DO Between_Elements_And_Boundary20
      END DO Loop_Elements20
 
@@ -6736,9 +6747,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  !> into the matrix DGM_PHA.
  SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
-     FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
+     FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
      IMPLICIT NONE
-     INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
+     INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
      !
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
@@ -6754,7 +6765,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      integer, dimension(:), pointer :: neighbours
      integer :: nb
      logical :: skip
-     ALLOCATE(LOC_DGM_PHA(NDIM_VEL,NDIM_VEL,NPHASE,NPHASE,U_NLOC,U_NLOC))
+     ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
      Loop_Elements20: DO ELE = 1, TOTELE
          if (IsParallel()) then
              if (.not. assemble_ele(pressure,ele)) then
@@ -6786,9 +6797,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
             DO U_JLOC=1,U_NLOC
               DO JPHASE=1,NPHASE
-                DO JDIM=1,NDIM_VEL
+                DO JDIM=1,NDIM
                   ! New for rapid code ordering of variables...
-                  J=JDIM + (JPHASE-1)*NDIM_VEL
+                  J=JDIM + (JPHASE-1)*NDIM
                   GLOBI=(ELE-1)*U_NLOC + U_JLOC
                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
                   IF(JCOLELE==ELE) THEN

@@ -129,6 +129,7 @@
             <solver/>
           </continuous>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -204,6 +205,7 @@
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -236,9 +238,9 @@
       </prognostic>
     </scalar_field>
   </material_phase>
-  <magma_parameters>
-    <example_for_Haiyang2_mandatory>
-      <real_value rank="0"/>
-    </example_for_Haiyang2_mandatory>
-  </magma_parameters>
+  <numerical_methods>
+    <solve_mom_iteratively>
+      <Simple_preconditioner/>
+    </solve_mom_iteratively>
+  </numerical_methods>
 </icferst_options>
