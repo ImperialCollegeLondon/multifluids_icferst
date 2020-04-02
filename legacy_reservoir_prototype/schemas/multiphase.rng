@@ -930,8 +930,9 @@ ONLY specify for the wetting phase</a:documentation>
             </element>
           </optional>
           <optional>
-            <element name="thermal_porous">
-              <a:documentation>Parameters for thermal porous media simulations</a:documentation>
+            <element name="porous_properties">
+              <a:documentation>Rock properties
+For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
               <element name="scalar_field">
                 <a:documentation>Specify scalar field density of the porous media</a:documentation>
                 <attribute name="name">
@@ -949,34 +950,38 @@ ONLY specify for the wetting phase</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="scalar_field">
-                <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
-                <attribute name="name">
-                  <value>porous_heat_capacity</value>
-                </attribute>
-                <choice>
+              <optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_heat_capacity</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
+              <optional>
+                <element name="tensor_field">
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_thermal_conductivity</value>
+                  </attribute>
                   <element name="prescribed">
                     <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
+                    <ref name="prescribed_tensor_field"/>
                     <ref name="output_options"/>
                   </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="tensor_field">
-                <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
-                <attribute name="name">
-                  <value>porous_thermal_conductivity</value>
-                </attribute>
-                <element name="prescribed">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="prescribed_tensor_field"/>
-                  <ref name="output_options"/>
                 </element>
-              </element>
+              </optional>
               <optional>
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field compressibility of the porous media
@@ -1207,7 +1212,7 @@ that the well trajectories are preserved.
               <zeroOrMore>
                 <element name="well_from_file">
                   <a:documentation>Introduce here the relative path to the file defining a 1D well
-Note that the only accepted file format is NASTRAN, i.e. .bdf.
+Note: &lt;b&gt;the only accepted file format is NASTRAN, i.e. .bdf.&lt;/b&gt;
 Each file has to describe a continuous well touching an external boundary.
 
 ***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
@@ -1510,7 +1515,7 @@ Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
           <zeroOrMore>
             <element name="Conservative_formulation_settings">
               <a:documentation>Conservative discretisation options
-Note that non-conservative does NOT mean that we do not conserve mass
+&lt;b&gt;Note that non-conservative does NOT mean that we do not conserve mass&lt;/b&gt;
 For transport equations this is recommended to be zero.
 For PhaseVolumeFraction the recommendation is one.
 
@@ -1604,7 +1609,7 @@ non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then 
           <ref name="integer"/>
           <optional>
             <element name="Fixed_Point_Iteration">
-              <a:documentation>NOTE: For multiphase porous media only. Otherwise this value is ignored.
+              <a:documentation>&lt;b&gt;NOTE: For multiphase porous media only. Otherwise this value is ignored.&lt;/b&gt;
 
 This is the convergence criterion for the Fixed Point Iteration solver.
 The functional to compare is:
@@ -1615,7 +1620,7 @@ S* is the latest saturation; So is the saturation at the previous FPI
 S1 is the saturation after the first FPI. Hence, the reduction of the difference
 of saturation is tested
 
-Recommended value: 5e-2</a:documentation>
+&lt;b&gt;Recommended value: 5e-2&lt;/b&gt;</a:documentation>
               <ref name="real"/>
               <optional>
                 <element name="Infinite_norm_tol">
@@ -1642,8 +1647,8 @@ The field selected in "adaptive_timestep_nonlinear" has preference over this</a:
               <optional>
                 <element name="Backtracking_factor">
                   <a:documentation>
-Recommended settings: Non-linear iterations ~ 20
-Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+&lt;b&gt;Recommended settings: Non-linear iterations ~ 20&lt;/b&gt;
+&lt;b&gt;Backtracking_parameter = -10&lt;/b&gt; automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
 
 The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
 
@@ -1663,7 +1668,7 @@ If positive, the input value is the entry pressure.
 
 If negative, the input value is Peclet number desired.
 
-Recommended value for Saturation =&gt; -3e2
+&lt;b&gt;Recommended value for Saturation =&gt; -3e2&lt;/b&gt;
 
 Tip: If running with temperature and single phase disable this setting it to 0.</a:documentation>
                   <ref name="real"/>
@@ -1671,7 +1676,7 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
                     <element name="Vanishing_for_transport">
                       <a:documentation>This method can also be applied for a transport equation.
 
-Recommended value for Temperature =&gt; -1e0</a:documentation>
+&lt;b&gt;Recommended value for Temperature =&gt; -1e2&lt;/b&gt;</a:documentation>
                       <ref name="real"/>
                     </element>
                   </optional>

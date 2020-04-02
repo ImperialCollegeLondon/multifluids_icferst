@@ -330,7 +330,7 @@
         <output/>
       </prescribed>
     </tensor_field>
-    <thermal_porous>
+    <porous_properties>
       <scalar_field name="porous_density">
         <prescribed>
           <mesh name="P0DG"/>
@@ -374,6 +374,6 @@
           <output/>
         </prescribed>
       </tensor_field>
-    </thermal_porous>
+    </porous_properties>
   </porous_media>
 </icferst_options>

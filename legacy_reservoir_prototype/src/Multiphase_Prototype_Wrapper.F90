@@ -541,8 +541,8 @@ contains
                     property = property(1:bar_pos-1)//'/'//property(bar_pos+1:len_trim(property))
                     bar_pos = index(property,'-')
                 end if
-                !Thermal_porous data is also an special case
-                if (index(property,'thermal_porous') > 0 )then
+                !porous_properties data is also an special case
+                if (index(property,'porous_properties') > 0 )then
                     !Unify the first two entries
                     property = property(1:bar_pos-1)//'/'//property(bar_pos+1:len_trim(property))
                     bar_pos = index(property,'-')

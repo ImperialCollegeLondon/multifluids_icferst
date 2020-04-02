@@ -754,8 +754,9 @@ start =
                   )
                }?
             }?,
-            ## Parameters for thermal porous media simulations
-            element thermal_porous{
+            ## Rock properties
+            ## For <b>GEOTHERMAL</b> simulations, density, heat capacity and conductivity are <b>MANDATORY</b>
+            element porous_properties{
                 ## Specify scalar field density of the porous media
                 element scalar_field {
                    attribute name { "porous_density" },
@@ -785,7 +786,7 @@ start =
                         output_options
                       }
                    )
-                },
+                }?,
 
 
 
@@ -797,7 +798,7 @@ start =
                      prescribed_tensor_field,
                      output_options
                   }
-               },
+               }?,
 
                ## Specify scalar field compressibility of the porous media
                ## ( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
@@ -994,7 +995,7 @@ start =
                       )
                  }?,
                  ## Introduce here the relative path to the file defining a 1D well
-                 ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
+                 ## Note: <b>the only accepted file format is NASTRAN, i.e. .bdf.</b>
                  ## Each file has to describe a continuous well touching an external boundary.
                  ##
                  ## ***Well_volume_ids option is MANDATORY when using this method to define wells.***
@@ -1202,7 +1203,7 @@ geometry =
              }*,
 
              ## Conservative discretisation options
-             ## Note that non-conservative does NOT mean that we do not conserve mass
+             ## <b>Note that non-conservative does NOT mean that we do not conserve mass</b>
              ## For transport equations this is recommended to be zero.
              ## For PhaseVolumeFraction the recommendation is one.
              ##
@@ -1285,7 +1286,7 @@ solver_options =
         ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
 		element Non_Linear_Solver {
            integer,
-           ##NOTE: For multiphase porous media only. Otherwise this value is ignored.
+           ##<b>NOTE: For multiphase porous media only. Otherwise this value is ignored.</b>
            ##
            ## This is the convergence criterion for the Fixed Point Iteration solver.
            ## The functional to compare is:
@@ -1296,7 +1297,7 @@ solver_options =
            ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
            ## of saturation is tested
            ##
-           ## Recommended value: 5e-2
+           ## <b>Recommended value: 5e-2</b>
            element Fixed_Point_Iteration{
               real,
               (
@@ -1323,8 +1324,8 @@ solver_options =
               ),
               (
                 ##
-                ## Recommended settings: Non-linear iterations ~ 20
-                ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+                ## <b>Recommended settings: Non-linear iterations ~ 20</b>
+                ## <b>Backtracking_parameter = -10</b> automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
                 ##
                 ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
                 ##
@@ -1343,7 +1344,7 @@ solver_options =
                 ##
                 ## If negative, the input value is Peclet number desired.
                 ##
-                ## Recommended value for Saturation => -3e2
+                ## <b>Recommended value for Saturation => -3e2</b>
                 ##
                 ## Tip: If running with temperature and single phase disable this setting it to 0.
                 element Vanishing_relaxation{
@@ -1351,7 +1352,7 @@ solver_options =
                   (
                     ## This method can also be applied for a transport equation.
                     ##
-                    ## Recommended value for Temperature => -1e0
+                    ## <b>Recommended value for Temperature => -1e2</b>
                     element Vanishing_for_transport{
                     real
                     }?

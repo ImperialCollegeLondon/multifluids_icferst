@@ -184,9 +184,9 @@ contains
                  !in this case we need to solve then only for one temperature per region(reservoir/wells)
                  assemble_collapsed_to_one_phase = .true.
                 !Check that the extra parameters required for porous media thermal simulations are present
-                if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
-                    .not.have_option('/porous_media/thermal_porous/scalar_field::porous_heat_capacity') .or. &
-                    .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
+                if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
+                    .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
+                    .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
                     FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                 end if
                 !need to perform average of the effective heat capacity times density for the diffusion and time terms

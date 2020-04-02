@@ -132,7 +132,7 @@ contains
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
         allocate( drhodp_porous( cv_nonods ) )
         drhodp_porous = 0.
-        if (have_option('/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant')) then
+        if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant')) then
           call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
         end if
         do icomp = 1, ncomp
@@ -727,7 +727,7 @@ contains
         allocate( rho_porous( size(density_porous%val) ) )
         allocate( rho_porous_old(size(density_porous%val)  ) )
         allocate( eos_coefs( 1 ) ) ; eos_coefs = 0.
-        call get_option( "/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant", eos_coefs(1) )
+        call get_option( "/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant", eos_coefs(1) )
         rho_porous=0.
         perturbation_pressure = 1.
         cv_counter = 0

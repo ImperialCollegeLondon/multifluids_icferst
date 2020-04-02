@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <icferst_options>
   <simulation_name>
-    <string_value lines="1">thermal_porous</string_value>
+    <string_value lines="1">porous_properties</string_value>
   </simulation_name>
   <porous_media_simulator/>
   <geometry>
@@ -422,7 +422,7 @@
         </detectors>
       </prescribed>
     </scalar_field>
-    <thermal_porous>
+    <porous_properties>
       <scalar_field name="porous_density">
         <prescribed>
           <mesh name="P0DG"/>
@@ -463,7 +463,7 @@
           </value>
         </prescribed>
       </tensor_field>
-    </thermal_porous>
+    </porous_properties>
     <wells_and_pipes>
       <scalar_field name="Pipe">
         <prescribed>
