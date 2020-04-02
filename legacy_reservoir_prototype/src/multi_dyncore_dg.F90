@@ -1508,8 +1508,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         logical :: LUMP_DIAG_MOM, lump_mass
         !Variables for Global solve, i.e. solving prssure and velocity simultaneously
-        logical :: global_solve
-
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
+        logical :: global_solve = .false.
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
 
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/numerical_methods/rescale_mom_matrices")
@@ -1769,8 +1770,8 @@ end if
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
 
 
-        !############TESTING PURPOSES FOR THE TIME BEING############
-        IF ( GLOBAL_SOLVE ) THEN
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
+        ! IF ( GLOBAL_SOLVE ) THEN
                       ! Global solve
             ! IF ( JUST_BL_DIAG_MAT ) THEN
             !     EWRITE(-1,*) 'OPTION NOT READY YET WITH A GLOBAL SOLVE'
@@ -1783,8 +1784,8 @@ end if
             ! U_ALL2 % val = reshape( UP( 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase ), (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             ! P_ALL % val( 1, 1, : ) = UP( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods )
             ! DEALLOCATE( MCY_RHS ); DEALLOCATE( MCY ); DEALLOCATE( UP )
-        end if
-        !############TESTING PURPOSES FOR THE TIME BEING############
+        ! end if
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
 
         !##################allocate DGM petsc just before the momentum solve####
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
@@ -2477,27 +2478,28 @@ end if
                 got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
         end if
 
-        IF ( GLOBAL_SOLVE ) THEN
-            ! put momentum and Mmat%C matrices into global matrix MCY...
-            Mmat%MCY_RHS = 0.0!INSTEA OF THIS MAYBE i COULD PASS DOWN THE MEMORY OF MCY_RHS? OR POINT STUFF AROUND?
-            DO ELE = 1, Mdims%totele
-                DO U_ILOC = 1, Mdims%u_nloc
-                    U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                    DO IPHASE = 1, Mdims%nphase
-                        DO IDIM = 1, Mdims%ndim
-                            I = U_INOD + (IDIM-1)*Mdims%u_nonods + (IPHASE-1)*Mdims%ndim*Mdims%u_nonods
-                            Mmat%MCY_RHS( I ) = Mmat%U_RHS( IDIM, IPHASE, U_INOD )
-                        END DO
-                    END DO
-                END DO
-            END DO
-FLAbort('Global solve for pressure-mommentum is broken until nested matrices get impliented.')
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
+!         IF ( GLOBAL_SOLVE ) THEN
+!             ! put momentum and Mmat%C matrices into global matrix MCY...
+!             Mmat%MCY_RHS = 0.0!INSTEA OF THIS MAYBE i COULD PASS DOWN THE MEMORY OF MCY_RHS? OR POINT STUFF AROUND?
+!             DO ELE = 1, Mdims%totele
+!                 DO U_ILOC = 1, Mdims%u_nloc
+!                     U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+!                     DO IPHASE = 1, Mdims%nphase
+!                         DO IDIM = 1, Mdims%ndim
+!                             I = U_INOD + (IDIM-1)*Mdims%u_nonods + (IPHASE-1)*Mdims%ndim*Mdims%u_nonods
+!                             Mmat%MCY_RHS( I ) = Mmat%U_RHS( IDIM, IPHASE, U_INOD )
+!                         END DO
+!                     END DO
+!                 END DO
+!             END DO
+! FLAbort('Global solve for pressure-mommentum is broken until nested matrices get impliented.')
 !            CALL PUT_MOM_C_IN_GLOB_MAT( Mdims%nphase,Mdims%ndim, &
 !            Mspars%DGM_PHA%ncol, Mmat%DGM_petsc, Mspars%DGM_PHA%fin, &
 !            NLENMCY, Mspars%MCY%ncol, MCY, Mspars%MCY%fin, &
 !            Mdims%u_nonods, Mspars%C%ncol, Mmat%C, Mspars%C%fin )
-        END IF
-
+        ! END IF
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
         ALLOCATE( DENOLD_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
         IF ( Mdisopt%volfra_use_theta_flux ) THEN ! We have already put density in theta...
@@ -2535,13 +2537,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
             calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
 
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
         ! Put Mmat%CT into global matrix MCY...
-        IF ( GLOBAL_SOLVE ) THEN
-            Mmat%MCY_RHS( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods ) = &
-            Mmat%CT_RHS%val( 1, 1 : Mdims%cv_nonods )
-            ! CALL PUT_CT_IN_GLOB_MAT( Mmat, MCY )
-        END IF
-
+        ! IF ( GLOBAL_SOLVE ) THEN
+        !     Mmat%MCY_RHS( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods ) = &
+        !     Mmat%CT_RHS%val( 1, 1 : Mdims%cv_nonods )
+        !     ! CALL PUT_CT_IN_GLOB_MAT( Mmat, MCY )
+        ! END IF
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )

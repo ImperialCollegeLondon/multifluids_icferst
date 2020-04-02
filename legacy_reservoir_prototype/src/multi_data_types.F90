@@ -1079,6 +1079,10 @@ contains
         if(.not.associated(Mspars%HydrostaticPressure%col))           allocate(  Mspars%HydrostaticPressure%col( mx_ncolph ) )
         if(.not.associated(Mspars%HydrostaticPressure%mid))           allocate(  Mspars%HydrostaticPressure%mid( Mdims%ph_nonods ))
 
+        ! if(.not.associated(Mspars%MCY%fin))         allocate(   Mspars%MCY%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + Mdims%cv_nonods + 1 ))
+        ! if(.not.associated(Mspars%MCY%col))          allocate( Mspars%MCY%col( mx_ncoldgm_pha + mx_nct + mx_nc + mx_ncolacv ))!should be mx_ncolcmc but we use temporarily mx_ncolacv
+        ! if(.not.associated(Mspars%MCY%mid))          allocate(  Mspars%MCY%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + Mdims%cv_nonods ))
+
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0
         Mspars%M%col = 0 ; Mspars%M%mid = 0 ; Mspars%HydrostaticPressure%fin = 0 ; Mspars%HydrostaticPressure%col = 0

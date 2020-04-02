@@ -1289,18 +1289,19 @@ contains
 
 
         !--Sparsity for the global solver. i.e. CTY and momemtum simultaneously
-        if( Mspars%CMC%ncol<1 ) FLAbort("Incorrect number of dimension of CMC sparsity matrix")
-          if(.not.(is_porous_media .or. mx_ncolmcy==0)) then
-              Mspars%MCY%fin = 0 ; Mspars%MCY%col = 0 ; Mspars%MCY%mid = 0
-              call exten_sparse_mom_cty( Mdims%ndim, Mspars%DGM_PHA%fin, Mspars%DGM_PHA%col, Mdims%nphase * Mdims%u_nonods * Mdims%ndim,&
-                  Mdims%cv_nonods, Mspars%CT%fin, Mspars%CT%col, &
-                  Mdims%u_nonods, &
-                  Mspars%C%fin, Mspars%C%col, Mspars%MCY%fin, Mspars%MCY%col, Mspars%MCY%mid, Mdims%nlenmcy, &
-                  Mspars%MCY%ncol, Mdims%nphase, Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col )
-          else
-            Mspars%MCY%ncol=0
-        endif
-        call resize(Mspars%MCY%col,Mspars%MCY%ncol)
+        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
+        ! if( Mspars%CMC%ncol<1 ) FLAbort("Incorrect number of dimension of CMC sparsity matrix")
+        !   if(.not.(is_porous_media .or. mx_ncolmcy==0)) then
+        !       Mspars%MCY%fin = 0 ; Mspars%MCY%col = 0 ; Mspars%MCY%mid = 0
+        !       call exten_sparse_mom_cty( Mdims%ndim, Mspars%DGM_PHA%fin, Mspars%DGM_PHA%col, Mdims%nphase * Mdims%u_nonods * Mdims%ndim,&
+        !           Mdims%cv_nonods, Mspars%CT%fin, Mspars%CT%col, &
+        !           Mdims%u_nonods, &
+        !           Mspars%C%fin, Mspars%C%col, Mspars%MCY%fin, Mspars%MCY%col, Mspars%MCY%mid, Mdims%nlenmcy, &
+        !           Mspars%MCY%ncol, Mdims%nphase, Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col )
+        !   else
+        !     Mspars%MCY%ncol=0
+        ! endif
+        ! call resize(Mspars%MCY%col,Mspars%MCY%ncol)
         !######################################
         !-
         !- Computing sparsity CV-FEM
