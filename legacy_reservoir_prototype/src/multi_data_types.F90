@@ -83,6 +83,7 @@ module multi_data_types
         integer :: npres      !>Total number of pressure
         integer :: n_in_pres  !>nphase/npres
         real    :: init_time  !>Initial time
+        integer :: NLENMCY    !> Lenght of the MCY matrix
 
     end type multi_dimensions
 
@@ -166,6 +167,7 @@ module multi_data_types
         type (multi_sparsity) :: C       !>C sparsity operating on pressure in force balance
         type (multi_sparsity) :: cmc     !>pressure matrix for projection method
         type (multi_sparsity) :: m       !>CV-FEM matrix
+        type (multi_sparsity) :: MCY     !>Sparsity of the momemtum and CTY equations combined
         type (multi_sparsity) :: HydrostaticPressure      !>HydrostaticPressure matrix
     end type multi_sparsities
 
@@ -190,6 +192,8 @@ module multi_data_types
         type(vector_field) :: CT_RHS!>Rigth hand side of the continuity equation
         type(petsc_csr_matrix) :: petsc_ACV!>Matrix containing the terms of transport equations
         type(vector_field) :: CV_RHS!>Rigth hand side of the saturation equation
+        type(petsc_csr_matrix)  :: petsc_MCY !>Combined momemtum and CTY matrices
+        real, dimension(:), pointer :: MCY_RHS!>Rigth hand side of the Combined momemtum and CTY system
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!>Mass matrix (matrix form by the sigmas) (storable)
         integer, dimension(:), pointer :: ICOLOR => null()!>Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
         integer :: NCOLOR !>Number of colors in ICOLOR
@@ -1119,6 +1123,10 @@ contains
         if (associated(Mspars%HydrostaticPressure%col))        deallocate(Mspars%HydrostaticPressure%col)
         if (associated(Mspars%HydrostaticPressure%mid))        deallocate(Mspars%HydrostaticPressure%mid)
 
+        if (associated(Mspars%mcy%fin))       deallocate(Mspars%mcy%fin)
+        if (associated(Mspars%mcy%col))       deallocate(Mspars%mcy%col)
+        if (associated(Mspars%mcy%mid))       deallocate(Mspars%mcy%mid)
+
         !Proceed to nullify
         if (associated(Mspars%acv%fin))       nullify(Mspars%acv%fin)
         if (associated(Mspars%acv%col))       nullify(Mspars%acv%col)
@@ -1151,6 +1159,10 @@ contains
         if (associated(Mspars%HydrostaticPressure%fin))        nullify(Mspars%HydrostaticPressure%fin)
         if (associated(Mspars%HydrostaticPressure%col))        nullify(Mspars%HydrostaticPressure%col)
         if (associated(Mspars%HydrostaticPressure%mid))        nullify(Mspars%HydrostaticPressure%mid)
+
+        if (associated(Mspars%mcy%fin))       nullify(Mspars%mcy%fin)
+        if (associated(Mspars%mcy%col))       nullify(Mspars%mcy%col)
+        if (associated(Mspars%mcy%mid))       nullify(Mspars%mcy%mid)
 
     end subroutine deallocate_multi_sparsities
 

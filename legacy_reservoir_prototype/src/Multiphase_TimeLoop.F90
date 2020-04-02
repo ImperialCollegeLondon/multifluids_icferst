@@ -118,7 +118,7 @@ contains
         !!$ Variable storing all the absorptions we may need
         type(multi_absorption) :: multi_absorp
         integer :: mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
-            mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
+            mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_ncolmcy
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
             NonLinearIteration, NonLinearIteration_Components, itimeflag
@@ -263,12 +263,12 @@ contains
 
         call Defining_MaxLengths_for_Sparsity_Matrices( Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, Mdims%cv_nloc, Mdims%ph_nloc, Mdims%cv_nonods, &
             mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, &
-            mx_ncolacv, mx_ncolm, mx_ncolph )
+            mx_ncolacv, mx_ncolm, mx_ncolph, mx_ncolmcy )
         !!$ Defining element-pair type
         call Get_Ele_Type_new( Mdims, Mdisopt )
         !Allocate and calculate the sparsity patterns matrices
         call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, &
-                mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
+                mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1, mx_ncolmcy )
         call put_CSR_spars_into_packed_state()
         !!$ Allocating space for various arrays:
         allocate( &
@@ -1250,13 +1250,13 @@ contains
 
                 call Defining_MaxLengths_for_Sparsity_Matrices( Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, Mdims%cv_nloc, Mdims%ph_nloc, Mdims%cv_nonods, &
                     mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, &
-                    mx_ncolacv, mx_ncolm, mx_ncolph )
+                    mx_ncolacv, mx_ncolm, mx_ncolph, mx_ncolmcy )
                 !!$ Defining element-pair type
                 call Get_Ele_Type( Mdims%x_nloc, Mdisopt%cv_ele_type, Mdisopt%p_ele_type, Mdisopt%u_ele_type, &
                     Mdisopt%mat_ele_type, Mdisopt%u_sele_type, Mdisopt%cv_sele_type )
                 !Allocate and calculate the sparsity patterns
                 call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv,&
-                    mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
+                    mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1, mx_ncolmcy )
                 call put_CSR_spars_into_packed_state()
 
                 if (is_porous_media) then

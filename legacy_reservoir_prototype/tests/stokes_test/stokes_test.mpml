@@ -238,9 +238,4 @@
       </prognostic>
     </scalar_field>
   </material_phase>
-  <numerical_methods>
-    <solve_mom_iteratively>
-      <Simple_preconditioner/>
-    </solve_mom_iteratively>
-  </numerical_methods>
 </icferst_options>

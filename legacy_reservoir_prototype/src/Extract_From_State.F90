@@ -179,6 +179,8 @@ contains
             Mdims%ph_nonods = 0
         end if
 
+        !Size of the Momemtum and CTY equations together
+        Mdims%nlenmcy = Mdims%u_nonods * Mdims%nphase * Mdims%ndim + Mdims%cv_nonods
         return
     end subroutine Get_Primary_Scalars_new
 
