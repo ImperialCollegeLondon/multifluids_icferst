@@ -62,7 +62,8 @@ module solvers_module
     private
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,scale_PETSc_system,&
-         Ensure_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess
+         Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
+         non_porous_ensure_sum_to_one
 
 
 contains
@@ -351,7 +352,11 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .TRUE. )
+        if (is_porous_media) then
+          call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .TRUE. )
+        else
+          call non_porous_ensure_sum_to_one(mdims, packed_state, do_not_update_halos = .TRUE.)
+        end if
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         Satura =>  sat_field%val(1,:,:)
         !Stablish minimum backtracking parameter
@@ -465,7 +470,11 @@ contains
 
         end if
         !Re-impose physical constraints
-        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .FALSE. )
+        if (is_porous_media) then
+          call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .FALSE. )
+        else
+          call non_porous_ensure_sum_to_one(Mdims, packed_state, do_not_update_halos = .FALSE.)
+        end if
 
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
@@ -751,9 +760,52 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
+
+    !!>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a
+    !> certain tolerance and also sets the saturation to be between bounds
+     subroutine non_porous_ensure_sum_to_one(Mdims, packed_state, do_not_update_halos)
+         Implicit none
+         !Global variables
+         type( state_type ), intent(inout) :: packed_state
+         type( multi_dimensions ), intent( in ) :: Mdims
+         logical, optional, intent(in) :: do_not_update_halos
+         !Local variables
+         integer :: iphase, cv_nod, i_start, i_end, ipres
+         real :: correction, sum_of_phases
+         real, dimension(:,:), pointer :: satura
+         type(tensor_field), pointer :: tfield
+
+         tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+         satura =>  tfield%val(1,:,:)
+
+         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
+         do ipres = 1, Mdims%npres
+             i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+             i_end = ipres * Mdims%nphase/Mdims%npres
+             !Set saturation to be between bounds
+             do cv_nod = 1, size(satura,2 )
+                 sum_of_phases = sum(satura(i_start:i_end, cv_nod))
+                 correction = (1.0 - sum_of_phases)
+                 !Spread the error to all the phases weighted by their presence in that CV
+                 !Increase the range to look for solutions by allowing oscillations below 0.1 percent
+                 if (abs(correction) > 1d-3) satura(i_start:i_end-1, cv_nod) = (satura(i_start:i_end-1, cv_nod) * (1.0 + correction/sum_of_phases))
+     !if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
+                 !Make sure saturation is between bounds after the modification
+                 do iphase = i_start, i_end
+                     satura(iphase,cv_nod) =  min(max(0., satura(iphase,cv_nod)),1.0)
+                 end do
+             end do
+         end do
+
+         if (present_and_true(do_not_update_halos)) return
+         !Ensure cosistency across CPUs
+         if (IsParallel())call halo_update(tfield)
+
+     end subroutine non_porous_ensure_sum_to_one
+
     !!>@brief:Ensure that the saturations at the beginning sum to one, if they do not
     !> all the error is compensated in the scapegoat_phase. Normally the last
-    subroutine Ensure_Saturation_sums_one(mdims, ndgln, packed_state, find_scapegoat_phase)
+    subroutine Initialise_Saturation_sums_one(mdims, ndgln, packed_state, find_scapegoat_phase)
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -818,7 +870,7 @@ contains
         !Deallocate
         deallocate(Normalized_sat)
 
-    end subroutine Ensure_Saturation_sums_one
+    end subroutine Initialise_Saturation_sums_one
 
 
     !!>@brief: The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain

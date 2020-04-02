@@ -1419,15 +1419,20 @@ contains
                               If_GOT_CAPDIFFUS: IF ( VAD_activated ) THEN
                                   IF(SELE == 0) THEN
                                       CAP_DIFF_COEF_DIVDX = 0.
-                                      do iphase =1, final_phase !SPRINT_TO_DO DO NOT REMBER IF THIS IS THE CORRECT LOOP!
-                                          rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
-                                              CVNORMX_ALL(:, GI) ))
-                                          rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
-                                              CVNORMX_ALL(:, GI) ))
-                                      end do
-                                      CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                          * rsum_nodi*(1.-INCOME) +&
-                                          CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
+                                      if (is_porous_media) then
+                                        do iphase =1, final_phase !SPRINT_TO_DO DO NOT REMBER IF THIS IS THE CORRECT LOOP!
+                                            rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
+                                                CVNORMX_ALL(:, GI) ))
+                                            rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
+                                                CVNORMX_ALL(:, GI) ))
+                                        end do
+                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                        * rsum_nodi*(1.-INCOME) +&
+                                        CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
+                                      else
+                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                        * (1.-INCOME) +CAP_DIFFUSION( :, MAT_NODJ ) * INCOME) /HDC
+                                      end if
                                   ELSE
                                       CAP_DIFF_COEF_DIVDX = 0.0
                                   ENDIF
@@ -2735,7 +2740,7 @@ end if
             UGI_COEF_ELE2_ALL = 0.0
             !    Conditional_SELE: IF( SELE /= 0 ) THEN ! On the boundary of the domain.
             Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
-                DO IPHASE = 1, Mdims%nphase
+                DO IPHASE = 1, final_phase
                     IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
                         UDGI_ALL(:, IPHASE) = 0.0
                         DO U_KLOC = 1, Mdims%u_nloc
@@ -2780,7 +2785,7 @@ end if
                         DT_I=LOC_DEN_I*LOC_T_I
                         DT_J=LOC_DEN_J*LOC_T_J
                     ENDIF
-                    DO IPHASE = 1, Mdims%nphase
+                    DO IPHASE = 1, final_phase
                         UDGI_INT_ALL(:,IPHASE) = (DT_I(IPHASE) * UDGI_ALL(:,IPHASE) + DT_J(IPHASE) * UDGI2_ALL(:, IPHASE)) &
                             / (DT_I(IPHASE) + DT_J(IPHASE))
                         IF( CV_DG_VEL_INT_OPT < 0 ) THEN
@@ -2807,18 +2812,18 @@ end if
             ! Define whether flux is incoming or outgoing, depending on direction of flow
             INCOME = 0.5*( 1. + SIGN(1.0, -NDOTQ) )
             !Calculate velocity velocity
-            do iphase = 1, Mdims%nphase
+            do iphase = 1, final_phase
                 NUGI_ALL(:, IPHASE) = matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI ))
             end do
             IF( between_elements ) THEN
                 ! Reduce by half and take the other half from the other side of element...
-                do iphase = 1, Mdims%nphase
+                do iphase = 1, final_phase
                     NUGI_ALL(:, IPHASE) = 0.5*NUGI_ALL(:, IPHASE) + 0.5*matmul(LOC2_NU( :, IPHASE, : ), CV_funs%sufen( :, GI ))
                 end do
             end if
             ! Calculate NDOTQNEW from NDOTQ
             if (not_OLD_VEL) then
-                do iphase = 1, Mdims%nphase
+                do iphase = 1, final_phase
                     NDOTQNEW(iphase) = NDOTQ(iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iphase,:)*&
                         ( LOC_U(:,iphase,:)-LOC_NU(:,iphase,:))), CV_funs%sufen( :, GI ))
                 end do

@@ -1021,7 +1021,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  call zero(Mmat%CV_RHS)
                  !For non-porous media make sure all the phases sum to one
                  if (.not. is_porous_media) then
-                        call non_porous_ensure_sum_to_one(packed_state)
+                    call non_porous_ensure_sum_to_one(Mdims, packed_state)
                  end if
                  ! ! !If we have components (and it is multiphase, obviously) update components
                  ! if (Mdims%ncomp > 0) call update_components()
@@ -1049,7 +1049,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
-                             call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                             if (is_porous_media) call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
                              !Also recalculate the Over-relaxation parameter
@@ -1103,44 +1103,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
          contains
-
-       !!>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a
-       !> certain tolerance and also sets the saturation to be between bounds
-        subroutine non_porous_ensure_sum_to_one(packed_state)
-            Implicit none
-            !Global variables
-            type( state_type ), intent(inout) :: packed_state
-            !Local variables
-            integer :: iphase, cv_nod, i_start, i_end, ipres
-            real :: correction, sum_of_phases
-            real, dimension(:,:), pointer :: satura
-            type(tensor_field), pointer :: tfield
-
-            tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-            satura =>  tfield%val(1,:,:)
-
-            !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
-            do ipres = 1, Mdims%npres
-                i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
-                i_end = ipres * Mdims%nphase/Mdims%npres
-                !Set saturation to be between bounds
-                do cv_nod = 1, size(satura,2 )
-                    sum_of_phases = sum(satura(i_start:i_end, cv_nod))
-                    correction = (1.0 - sum_of_phases)
-                    !Spread the error to all the phases weighted by their presence in that CV
-                    !Increase the range to look for solutions by allowing oscillations below 0.1 percent
-                    if (abs(correction) > 1d-3) satura(i_start:i_end-1, cv_nod) = (satura(i_start:i_end-1, cv_nod) * (1.0 + correction/sum_of_phases))
-		    !if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
-                    !Make sure saturation is between bounds after the modification
-                    do iphase = i_start, i_end
-                        satura(iphase,cv_nod) =  min(max(0., satura(iphase,cv_nod)),1.0)
-                    end do
-                end do
-            end do
-            if (IsParallel()) call halo_update(tfield)
-
-        end subroutine non_porous_ensure_sum_to_one
-
 
         !!!>@brief: This internal subroutine deals with the components within the Saturation Fixed Point Iteration
         !> WARNING: Still work in progress
@@ -7264,8 +7226,15 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
      !Extract variables from packed_state
      call get_var_from_packed_state(packed_state,FEPressure = P,&
-         PhaseVolumeFraction = satura, immobile_fraction = immobile_fraction, PressureCoordinate = X_ALL)
+         PhaseVolumeFraction = satura, PressureCoordinate = X_ALL)
 
+     if (is_porous_media) then
+       call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
+     else
+       !For non_porous we populate a field with values of zero. (not proud of this, needs to be updated)
+       allocate(immobile_fraction(Mdims%nphase,Mdims%totele))
+       immobile_fraction = 0.0
+     end if
      !Initiate local variables
      nphase = size(satura,1)
      cv_nonods = size(satura,2)
@@ -7421,6 +7390,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      !   end do
      ! end if
 
+
+     if (.not. is_porous_media) deallocate(immobile_fraction)
 
      !Deallocate
      if (Artificial_Pe) then
