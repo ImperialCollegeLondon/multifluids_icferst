@@ -108,7 +108,7 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
         <optional>
           <element name="PropertiesFromFile">
             <a:documentation>Path (without the extension) to the .csv file containing the fluid and porous media properties.
-NOTE: Properties in the .csv file will overwrite the input from diamond.
+&lt;b&gt;NOTE: Properties in the .csv file will overwrite the input from diamond.&lt;/b&gt;
 
 The information is stored as:
 
@@ -135,7 +135,7 @@ the final convergence achieved by the FPI solver</a:documentation>
         </optional>
         <optional>
           <element name="dump_boundaryflux">
-            <a:documentation>Surface to Integrate Over</a:documentation>
+            <a:documentation>&lt;b&gt;Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries&lt;/b&gt;</a:documentation>
             <empty/>
             <element name="surface_ids">
               <a:documentation>Surface id:</a:documentation>
@@ -386,14 +386,6 @@ NOTE: Requires -v2</a:documentation>
             <ref name="comment"/>
           </element>
         </optional>
-        <optional>
-          <element name="Mesh_Diagnostics_Angles">
-            <a:documentation>Printout the number of elements and percentage that contain an angle
-equal or bigger than the ones specified here
-Note: This may slow down your simulation should be used as a diagnostic tool</a:documentation>
-            <ref name="real_vector"/>
-          </element>
-        </optional>
       </element>
       <element name="timestepping">
         <a:documentation>Options dealing with time discretisation</a:documentation>
@@ -413,7 +405,9 @@ then this is the initial time step size.</a:documentation>
         </element>
         <optional>
           <element name="adaptive_timestep">
-            <a:documentation>Vary the timestep according to the courant number.</a:documentation>
+            <a:documentation>Vary the timestep according to the courant number.
+&lt;b&gt;Recommended method for non Darcy simulations&lt;/b&gt;
+You will need to generate the scalar field CFLNumber for each phase.</a:documentation>
             <element name="requested_cfl">
               <a:documentation>The timestep will be adjusted (within the tolerance
 and bounds specified) to target this courant
@@ -892,7 +886,7 @@ ONLY specify for the wetting phase</a:documentation>
           </choice>
           <optional>
             <element name="Dispersion">
-              <a:documentation>Specify scalar field Longitudinal Dispersivity</a:documentation>
+              <a:documentation>Specify scalar field longitudinal and transverse Dispersivity</a:documentation>
               <element name="scalar_field">
                 <attribute name="name">
                   <value>Longitudinal_Dispersivity</value>
@@ -1058,7 +1052,7 @@ It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
                 <a:documentation>Absorption in the pipes.
 If none, set it to 1.
 
-Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+&lt;b&gt;Recommended. set to 1 and use the internal method&lt;/b&gt; based on the Moody diagram that can be selected in
 /wells_and_pipes/well_options/calculate_sigma_pipe</a:documentation>
                 <attribute name="name">
                   <value>Sigma</value>
@@ -1177,7 +1171,8 @@ This will over-write the field specified in Sigma1.</a:documentation>
                   </optional>
                   <optional>
                     <element name="switch_wells_on_and_off">
-                      <a:documentation>Switches wells on and off to optimise production</a:documentation>
+                      <a:documentation>Switches wells on and off to optimise production
+&lt;b&gt;Not recommended, better use gamma with python.&lt;/b&gt;</a:documentation>
                       <element name="phase_exclude">
                         <ref name="integer"/>
                       </element>
@@ -1199,7 +1194,7 @@ The default value is 1e-2.</a:documentation>
                   <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.
 
-***This is MANDATORY when using files to define wells***</a:documentation>
+&lt;b&gt;This is MANDATORY when using files to define wells&lt;/b&gt;</a:documentation>
                   <ref name="integer_vector"/>
                   <optional>
                     <element name="Show_well_volumes_ids">
@@ -1421,7 +1416,7 @@ For Porous media the P1/P0 stands for P0, for inertia for P1.
 
 Fast =&gt; Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
 
-Balanced (recommended) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
+Balanced (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
 
 Precision =&gt; Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
 
@@ -1473,7 +1468,7 @@ Only the activated options will overwrite the values decided in simulation_quali
           <zeroOrMore>
             <element name="Time_Discretisation">
               <a:documentation>Specify a different time discretisation method for different fields
-You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
+You can use as inputs here: &lt;b&gt;PhaseVolumeFraction, Velocity or Tracer&lt;/b&gt;.
 Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
@@ -1602,7 +1597,7 @@ Useful to convert your ASCII msh files into binary to be able to decompose the m
 
 Manual suggests 2 for problems that are not very non-linear
 
-If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
+If using Fixed_Point_Iteration for multiphase porous media flow the &lt;b&gt;recommendation is ~ 20&lt;/b&gt;
 
 If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of
 non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.</a:documentation>
@@ -1629,7 +1624,7 @@ between two consecutive non-linear iterations.
 
 This can be used to control the number of non-linear interations dynamically.
 
-By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
+&lt;b&gt;By default 0.01&lt;/b&gt;, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
                   <ref name="real"/>
                   <optional>
                     <element name="adaptive_non_linear_iterations">
@@ -1684,7 +1679,7 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
               </optional>
               <optional>
                 <element name="Impose_min_max">
-                  <a:documentation>For TEMPERATURE ONLY, if there are no sources nor sinks
+                  <a:documentation>&lt;b&gt;For TEMPERATURE ONLY&lt;/b&gt;, if there are no sources nor sinks
 the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
 
 This imposes that the temperature has to be between bounds.</a:documentation>
@@ -1721,7 +1716,8 @@ By default this method only controls the errors, and based on that increases or 
 The default aim of number of FPI is the 20% of the maximum number of non-linear iterations.
 The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
 
-If this is off, a classical method based on the number of FPI performed is used instead.</a:documentation>
+If this is off, a classical method based on the number of FPI performed is used instead.
+&lt;b&gt;Recommened method together with Aim_num_FPI for adaptive time-stepping &lt;/b&gt;</a:documentation>
                         <empty/>
                         <optional>
                           <element name="Aim_num_FPI">
@@ -1736,7 +1732,7 @@ By default this is the 20% of the maximum number of non-linear iterations.</a:do
                       <element name="ensure_solvers_convergence">
                         <a:documentation>If any of the solvers failt to achieve convergence the time-step size is
 reduced and the time-level repeated without waiting to reach the maximum number of FPI.
-Note: For the saturation for porous media it allows to diverge inside the saturation FPI.</a:documentation>
+&lt;b&gt;Note: For the saturation for porous media it allows to diverge inside the saturation FPI.&lt;/b&gt;</a:documentation>
                         <empty/>
                       </element>
                     </optional>
