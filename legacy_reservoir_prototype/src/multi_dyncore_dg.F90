@@ -1914,17 +1914,26 @@ end if
           type(tensor_field), intent(inout) :: P_all, velocity
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           !Local variables
-          integer :: i, k, cv_nodi, M
-          real, dimension(Mdims%npres, Mdims%cv_nonods, stokes_max_its) :: stored_pressures, stored_residuals
+          integer :: i, k, cv_nodi, M, total_u_nodes
+          real, dimension(:,:), allocatable :: stored_field, field_residuals
           real,save :: solver_tolerance = -1
           real, dimension(:,:), allocatable :: BAK_matrix
-          real :: conv_test, total_max, total_min
+          real :: conv_test, total_max, total_min, Omega
+          logical :: restart_now
+          logical :: Special_precond = .false.
+          type( vector_field ) :: packed_vel, packed_CDP_tensor
+
+
           i = 1
-
+          allocate(stored_field(Mdims%cv_nonods, stokes_max_its))
+          allocate(field_residuals(Mdims%cv_nonods, stokes_max_its))
+          !Pointers to convert from tensor data to vector data
+          packed_vel = as_packed_vector(Velocity)
+          packed_CDP_tensor = as_packed_vector(CDP_tensor)
           !Update stored values
-          stored_pressures(:,:,i) = P_all%val(1,:,:)
+          stored_field(:, i) = P_all%val(1,1,:)
+          restart_now = .false.
 
-          !TODO USE MORE OF A, MAYBE THE BLOCK DIAGONAL, NOT THE DIAGONAL
           !TODO HIGH VISCOSITY SYSTEMS D^-0.5 * A * D^-0.5 = D^-1 * b
           if (solver_tolerance<0) then
             !read the tolerance of the non_linear solver
@@ -1935,9 +1944,10 @@ end if
           do k = 1, stokes_max_its*5
 
             !Proceed to restart the AA method, by throwing away everything!
-            if (i>stokes_max_its) then
+            if (i>stokes_max_its .or. restart_now) then
               deallocate(BAK_matrix)
-              i = 1; stored_pressures(:,:,i) = P_all%val(1,:,:)
+              i = 1; stored_field(:, i) = P_all%val(1,1,:)
+              restart_now = .false.
             end if
 
             total_max = maxval(abs(P_all%val)); call allmax(total_max)
@@ -1951,10 +1961,11 @@ end if
 
             M = i - 2; if (M <= 0) M = stokes_max_its + M
               !Find the optimal combination of pressure fields that minimise the residual
-            if (i > 2) call get_Anderson_acceleration_new_guess(Mdims%cv_nonods*Mdims%npres, M, P_ALL%val, &
-                                                        stored_pressures, stored_residuals, i, stokes_max_its, BAK_matrix)
+            if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
+                       stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
+
             !##########################Now solve the equations##########################
-            ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
+            ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
             call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
             call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diag_DGM_mat)
             !Perform Div * U for the RHS of the pressure equation
@@ -1963,17 +1974,53 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+            rhs_p%val = rhs_p%val
             call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diag_CMC_mat)
+            if (k == 1) then
+              Omega = 1.0
+
+            end if
+            !Here should go the rescaling 1/omega!!
+            P_all%val = 1./Omega * P_all%val
+
+            if (Special_precond) then !Apply Oseen preconditioner (CtMC)^-1 Ct*M^-1*A*M^-1*C * (CtMC)^-1 (Only the last bit done so far)
+              !C * (CtMC)^-1
+              call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+              !M^-1*C * (CtMC)^-1 (RE-USE VELOCITY MEMORY???)
+              CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+                  Mdims%totele, Mdims%u_nloc, ndgln%u )
+              !Now perform A multiplication; A*M^-1*C * (CtMC)^-1
+              call mult(packed_CDP_tensor, Mmat%DGM_PETSC, packed_vel) !packed_CDP_tensor and packed_vel are pointers to the corresponding fields
+              !M^-1*A*M^-1*C * (CtMC)^-1 (RE-USE VELOCITY MEMORY???)
+              CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+                  Mdims%totele, Mdims%u_nloc, ndgln%u )
+              !Ct*M^-1*A*M^-1*C * (CtMC)^-1
+              call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
+              !Solve again to finish with the Oseen preconditioner
+              !(CtMC)^-1 Ct*M^-1*A*M^-1*C * (CtMC)^-1
+              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diag_CMC_mat)
+
+
+              ! ! TEMORORARY AS THEY ARE PART
+              call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+              call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diag_DGM_mat)
+
+            end if
+
+
+
+            ! call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
-            stored_residuals(:,:,i) = deltap%val
+            ! stored_residuals(:,:,i) = deltap%val
+            field_residuals(:, i) = deltap%val(1,:)
             !##########################Now solve the equations##########################
             i = i + 1; if (i == stokes_max_its + 1 )  i = 1
             !Update stored values
-            stored_pressures(:,:,i) = P_all%val(1,:,:)
+            stored_field(:, i) = P_all%val(1,1,:)
 
           end do
-
+          deallocate(field_residuals, stored_field)
         end subroutine Stokes_Anderson_acceleration
 
         !---------------------------------------------------------------------------
@@ -1987,21 +2034,34 @@ end if
           real, dimension(:), intent(in) :: MASS_ELE
           !Local variables
           integer :: i, j
+          type( vector_field ) :: diagonal_A
 
           !Initialise to zero
-          if (have_option("/numerical_methods/solve_mom_iteratively/Simple_preconditioner")) then
+          Mmat%PIVIT_MAT = 0.
+          if (have_option("/numerical_methods/solve_mom_iteratively/Momentum_preconditioner")) then
+            call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
+            call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
+            !Introduce the diagonal of A into the Mass matrix (not ideal...)
+            do ele = 1, Mdims%totele
+              DO U_JLOC = 1, Mdims%u_nloc
+                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
+                DO JPHASE = 1, Mdims%nphase
+                  DO JDIM = 1, Mdims%ndim
+                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                    Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
+                  end do
+                end do
+              end do
+              do j = 1, size(Mmat%PIVIT_MAT,1)
+                Mmat%PIVIT_MAT(j, j, ele) = Mmat%PIVIT_MAT(j, j, ele) * MASS_ELE(ele)/dble(Mdims%u_nloc)
+              end do
+            end do
+          else
             !Just the mass matrix
             do i = 1, size(Mmat%PIVIT_MAT,3)
               do j = 1, size(Mmat%PIVIT_MAT,1)
                 Mmat%PIVIT_MAT(j, j, i) = MASS_ELE(i)/dble(Mdims%u_nloc)
-              end do
-            end do
-          else
-            !Combine diagonal of A with the mass matrix (not appropiate for the stokes projection method since we need the Laplacian)
-            do i = 1, size(Mmat%PIVIT_MAT,3)
-              do j = 1, size(Mmat%PIVIT_MAT,1)
-                ! Mmat%PIVIT_MAT(j, j, i) =   Mmat%PIVIT_MAT(j, j, i) * MASS_ELE(i)/dble(Mdims%u_nloc)!Diag(A)
-                Mmat%PIVIT_MAT(j, j, i) =   MASS_ELE(i)/dble(Mdims%u_nloc) * ( Mmat%PIVIT_MAT(j, j, i) + 1.) !Diag(A) + I
               end do
             end do
           end if
@@ -6828,27 +6888,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                  END DO
              END DO
 
-             if (solve_stokes .and. JCOLELE==ELE .and. .not. stokes_simple_precond) then
-               DO U_JLOC=1,U_NLOC
-                 DO U_ILOC=1,U_NLOC
-                   DO JPHASE=1,NPHASE
-                     DO IPHASE=1,NPHASE
-                       DO JDIM=1,NDIM
-                         DO IDIM=1,NDIM
-                           IMAT = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
-                           JMAT = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
-                           !Lumped version
-                           ! if (IMAT == JMAT)&
-                            Mmat%PIVIT_MAT(IMAT, IMAT, ELE)  = Mmat%PIVIT_MAT(IMAT, IMAT, ELE) + LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                           !Non-lumped version -below-, not working well. I presume it is because of how to mixed it with the mass matrix
-                           ! Mmat%PIVIT_MAT(IMAT, JMAT, ELE)  = Mmat%PIVIT_MAT(IMAT, JMAT, ELE) + LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                         END DO
-                       END DO
-                     END DO
-                   END DO
-                 END DO
-               END DO
-             end if
          END DO Between_Elements_And_Boundary20
      END DO Loop_Elements20
 

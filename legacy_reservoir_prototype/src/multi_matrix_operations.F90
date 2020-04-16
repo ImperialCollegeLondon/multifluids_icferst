@@ -895,6 +895,80 @@ contains
 
     END SUBROUTINE Mass_matrix_MATVEC
 
+    !@author: Pablo Salinas
+    !>@brief: Diagonal matrix times C or CT matrix, pre or post multiplication, keeping the original sparsity
+    subroutine PHA_BLOCK_DIAG_MAT(Mdims,block_mat, Matrix, nloc, findmat, colmat, mat_ndgln, pre_mult)
+      implicit none
+      type(multi_dimensions), intent(in) :: Mdims
+      integer, intent(in) :: nloc
+      INTEGER, DIMENSION( : ), intent( in ) ::  mat_ndgln, findmat, colmat
+      REAL, DIMENSION( :, :, : ), intent( in ) :: BLOCK_MAT
+      REAL, DIMENSION( :, :, : ), intent( inout ) :: Matrix
+      logical, intent(in) :: pre_mult
+      ! Local variables
+      INTEGER :: I, ele, COUNT, J, nodi, idim, iphase, counter, K
+
+      if (pre_mult) then
+        do ele = 1, Mdims%totele
+          DO I = 1, nloc
+            nodi = mat_ndgln(( ELE - 1 ) * nloc + I)
+            counter = 0
+            DO COUNT = findmat( nodi ), findmat( nodi + 1 ) - 1
+              counter = counter + 1
+              do idim = 1, Mdims%ndim
+                do iphase = 1, Mdims%nphase
+                  K = idim+(iphase-1)*Mdims%ndim+(counter-1)*Mdims%ndim*Mdims%nphase
+                  Matrix( idim, iphase, COUNT ) = Matrix( idim, iphase, COUNT ) * BLOCK_MAT(K, K, ele)
+                end do
+              end do
+            END DO
+          END DO
+        end do
+      else
+      do ele = 1, Mdims%totele
+        DO I = 1, nloc
+          nodi = mat_ndgln(( ELE - 1 ) * nloc + I)
+          counter = 0
+          DO COUNT = findmat( nodi ), findmat( nodi + 1 ) - 1
+            J = colmat( COUNT )
+            counter = counter + 1
+            do idim = 1, Mdims%ndim
+              do iphase = 1, Mdims%nphase
+                K = idim+(iphase-1)*Mdims%ndim+(counter-1)*Mdims%ndim*Mdims%nphase
+                Matrix( idim, iphase, J ) = Matrix( idim, iphase, J ) * BLOCK_MAT(K, K, ele)
+              end do
+            end do
+          END DO
+        END DO
+      end do
+      end if
+
+
+
+      ! if (solve_stokes .and. JCOLELE==ELE .and. .not. stokes_simple_precond) then
+      !   DO U_JLOC=1,U_NLOC
+      !     DO U_ILOC=1,U_NLOC
+      !       DO JPHASE=1,NPHASE
+      !         DO IPHASE=1,NPHASE
+      !           DO JDIM=1,NDIM
+      !             DO IDIM=1,NDIM
+      !               IMAT = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
+      !               JMAT = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
+      !               !Lumped version
+      !               ! if (IMAT == JMAT)&
+      !                Mmat%PIVIT_MAT(IMAT, IMAT, ELE)  = Mmat%PIVIT_MAT(IMAT, IMAT, ELE) + LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+      !               !Non-lumped version -below-, not working well. I presume it is because of how to mixed it with the mass matrix
+      !               ! Mmat%PIVIT_MAT(IMAT, JMAT, ELE)  = Mmat%PIVIT_MAT(IMAT, JMAT, ELE) + LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+      !             END DO
+      !           END DO
+      !         END DO
+      !       END DO
+      !     END DO
+      !   END DO
+      ! end if
+
+    end subroutine PHA_BLOCK_DIAG_MAT
+
 
     !>@brief: performs  U = BLOCK_MAT * CDP, where block_mat
     SUBROUTINE PHA_BLOCK_MAT_VEC( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, &

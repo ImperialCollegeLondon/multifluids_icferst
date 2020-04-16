@@ -963,17 +963,17 @@ contains
     !> A new guess is computed and returned
     !> Method explained in DOI.10.1137/10078356X
     !---------------------------------------------------------------------------
-    subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration, max_its, prev_small_matrix)
+    subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, max_its, prev_small_matrix,restart_now)
       implicit none
       integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
       integer, intent(in) :: M !> Size of the field of iterations available - 2
       real, dimension(N), intent(out) :: NewField !> New guess obtained by the Anderson Acceleration method
       real, dimension(N, M+2), intent(inout) :: History_field !> Past results obtained by the outer solver
       real, dimension(N, M+1), intent(inout) :: stored_residuals !> Past residuals obtained as the (- guessed value + G(guess value) )
-      integer, intent(inout) :: AA_iteration !> This is the iterator, only passed down to reduce it if the matrix is not full rank
       integer, optional :: max_its
       real, dimension(:,:), allocatable, optional, intent(inout) :: prev_small_matrix!> Contains the previous A'*A, speeds up the method. On exit is updated (M,M)
                                                                         !> Prepared to be passed unallocated from M = 1 and allocated internally
+      logical, intent(inout) :: restart_now
       !Local variables
       real, dimension(N,M) :: Matrix !> Matrix containing the residuals
       real, dimension(M,1) :: Small_b !>RHS containing A' * The last residual
@@ -1037,17 +1037,14 @@ contains
       end do
       call allsum(Small_b(:,1))
 
-! call printmatrix(Small_matrix)
       !Now solve the least squares optimisation problem
       Q_rank = m
       if (M > 1) call Least_squares_solver(Small_matrix,Small_b, Q_rank)
-
       if (Q_rank < m) then
         !If the least squares matrix is not full rank, then perform normal update
-        !and remove the last solution
-        !Remove last information by overwritting it
+        !and restart the cycle
         AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
-        AA_iteration = AA_iteration - 1; if (AA_iteration == 0 ) AA_iteration = max_its2
+        restart_now = .true.
       else if (M == 1) then
         AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
       else
@@ -1059,7 +1056,6 @@ contains
         end do
         AA_alphas(1) = Small_b(1,1)
       end if
-
         !Multiply previous fields by the alphas to obtain the new guess
       NewField = 0.
       do i = 1, size(AA_alphas)
@@ -1114,6 +1110,10 @@ contains
         vec_reader = given_diag
         call VecRestoreArrayF90(scale_diag,vec_reader,ierr)
       else
+        !Need the matrix ssembled
+        call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
+        call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
+
         call MatGetDiagonal(Mat_petsc%M, scale_diag, ierr)
         !Compute sqrt (we do this first to reduce the span induced by high viscosity ratios)
         call VecSqrtAbs(scale_diag, ierr)!TODO MIGHT IT BE THAT THE SYSTEM IS CHANGED AS WE GET PETSC ZEROES??? this might be
@@ -1130,6 +1130,8 @@ contains
       if (scale_flag == 0 .or. scale_flag == 2 .or. scale_flag == 4) then
         !Proceed to re-scale the matrix by doing D^-0.5 * Mat_petsc * D^-0.5
         call MatDiagonalScale(Mat_petsc%M, scale_diag, scale_diag, ierr)
+        ! call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
+        ! call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
       end if
 
       if (present(given_diag) .and. scale_flag >= 3) then

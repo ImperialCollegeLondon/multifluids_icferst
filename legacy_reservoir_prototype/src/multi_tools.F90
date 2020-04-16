@@ -801,7 +801,7 @@ END subroutine RotationMatrix
       real, dimension(size(A,2)) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
       real, dimension(3*size(A,1)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
       integer, dimension(size(A,1)) :: jpvt
-      real, parameter :: tolerance_rank = 1d-9
+      real, parameter :: tolerance_rank = 1d-12
 
       interface
         !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
@@ -895,7 +895,9 @@ END subroutine RotationMatrix
 
       rank = n
       do k = 1, n
-        if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) rank = rank - 1
+        if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) then
+          rank = rank - 1
+        end if
       end do
 
       !Perform Q * b
