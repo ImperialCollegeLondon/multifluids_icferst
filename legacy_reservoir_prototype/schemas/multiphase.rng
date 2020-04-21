@@ -1363,13 +1363,22 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';</a:documentation>
           </optional>
           <optional>
             <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.</a:documentation>
-              <optional>
-                <element name="Momentum_preconditioner">
-                  <a:documentation>Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, &lt;b&gt;unstable&lt;/b&gt; but potentially faster.</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
+              <a:documentation>Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-3.&lt;/b&gt;</a:documentation>
+              <ref name="real"/>
+              <group>
+                <optional>
+                  <element name="Momentum_preconditioner">
+                    <a:documentation>Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, &lt;b&gt;unstable&lt;/b&gt; but potentially faster.</a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Advance_preconditioner">
+                    <a:documentation>Instead of using the mass matrix as preconditioner, use a preconditioner of the type: (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1.</a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
+              </group>
             </element>
           </optional>
           <optional>
