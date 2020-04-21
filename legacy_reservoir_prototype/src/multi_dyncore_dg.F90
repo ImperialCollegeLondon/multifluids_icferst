@@ -986,7 +986,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                             ! Calculate Darcy velocity with the most up-to-date information (necessary for AI_backtracking_parameters)
                             if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
                             ! Generate all the dimensionless numbers 
-                            call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold)
+                            call AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number, backtrack_par_factor, OvRelax_param, res, resold, nonlinear_iteration)
                             !#=================================================================================================================
                             !# Vinicius-End: Added a subroutine for calculating all the dimensioless numbers required fo the ML model
                             !#=================================================================================================================       
@@ -8055,17 +8055,18 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> of the system. This subroutine also generates several dimensionless numbers cv-wise.  
     !----------------------------------------------------------------------------------------
     subroutine AI_backtracking_parameters(Mdims, ndgln, packed_state, state, courant_number_in, backtrack_par_factor, overrelaxation, &
-                                         & res, resold, for_transport)
+                                         & res, resold, outer_nonlinear_iteration, for_transport)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         type( state_type ), intent(inout) :: packed_state
         type( state_type ), dimension( : ), intent( inout ) :: state
         real, dimension(:), intent(inout) :: courant_number_in
-        real, intent(in) :: backtrack_par_factor
+        real, intent(inout) :: backtrack_par_factor
         real, dimension(:), intent(in) :: overrelaxation
         real, intent(in) :: res
         real, intent(in) :: resold   
+        integer, intent(in) :: outer_nonlinear_iteration
         logical, optional, intent(in) :: for_transport
         
         !Local variables
@@ -8100,7 +8101,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         real :: average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
         real :: average_overrelaxation, max_overrelaxation, min_overrelaxation
         real :: average_invPeclet, max_invPeclet, min_invPeclet
-        real :: shockfront_number_ratio
+        real :: shockfront_number_ratio, btpf
         
 
         !*************************************!
@@ -8506,7 +8507,62 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             min_invPeclet = 0.
             average_invPeclet = 0.
         end if
-
+        
+        !***************************!
+        !!! **Call the ML model** !!!
+        !***************************!
+        block
+            character(len=16) :: c_aspect_ratio, c_courant_number, c_shockfront_courant_number, c_shockfront_number_ratio, c_min_total_mobility, c_max_total_mobility, c_average_total_mobility, c_min_Darcy_velocity, c_max_Darcy_velocity, c_average_Darcy_velocity, c_min_shockfront_mobratio, c_max_shockfront_mobratio, c_average_shockfront_mobratio, c_average_longitudinal_capillary, c_average_transverse_capillary, c_max_longitudinal_capillary, c_max_transverse_capillary, c_min_longitudinal_capillary, c_min_transverse_capillary, c_average_buoyancy_number, c_average_longitudinal_buoyancy, c_average_transverse_buoyancy, c_max_buoyancy_number, c_max_longitudinal_buoyancy, c_max_transverse_buoyancy, c_min_buoyancy_number, c_min_longitudinal_buoyancy, c_min_transverse_buoyancy, c_average_overrelaxation, c_max_overrelaxation, c_min_overrelaxation, c_average_invPeclet, c_max_invPeclet, c_min_invPeclet, c_res, c_resold, c_res_resold, c_backtrack_par_factor, c_outer_nonlinear_iteration
+            
+            write(c_aspect_ratio,'(E16.8)')   aspect_ratio
+            write(c_courant_number,'(E16.8)')   courant_number
+            write(c_shockfront_courant_number,'(E16.8)')   shockfront_courant_number
+            write(c_shockfront_number_ratio,'(E16.8)')   shockfront_number_ratio
+            write(c_min_total_mobility,'(E16.8)')   min_total_mobility
+            write(c_max_total_mobility,'(E16.8)')   max_total_mobility
+            write(c_average_total_mobility,'(E16.8)')   average_total_mobility
+            write(c_min_Darcy_velocity,'(E16.8)')   min_Darcy_velocity
+            write(c_max_Darcy_velocity,'(E16.8)')   max_Darcy_velocity
+            write(c_average_Darcy_velocity,'(E16.8)')   average_Darcy_velocity
+            write(c_min_shockfront_mobratio,'(E16.8)')   min_shockfront_mobratio
+            write(c_max_shockfront_mobratio,'(E16.8)')   max_shockfront_mobratio
+            write(c_average_shockfront_mobratio,'(E16.8)')   average_shockfront_mobratio
+            write(c_average_longitudinal_capillary,'(E16.8)')   average_longitudinal_capillary
+            write(c_average_transverse_capillary,'(E16.8)')   average_transverse_capillary
+            write(c_max_longitudinal_capillary,'(E16.8)')   max_longitudinal_capillary
+            write(c_max_transverse_capillary,'(E16.8)')   max_transverse_capillary
+            write(c_min_longitudinal_capillary,'(E16.8)')   min_longitudinal_capillary
+            write(c_min_transverse_capillary,'(E16.8)')   min_transverse_capillary
+            write(c_average_buoyancy_number,'(E16.8)')   average_buoyancy_number
+            write(c_average_longitudinal_buoyancy,'(E16.8)')   average_longitudinal_buoyancy
+            write(c_average_transverse_buoyancy,'(E16.8)')   average_transverse_buoyancy
+            write(c_max_buoyancy_number,'(E16.8)')   max_buoyancy_number
+            write(c_max_longitudinal_buoyancy,'(E16.8)')   max_longitudinal_buoyancy
+            write(c_max_transverse_buoyancy,'(E16.8)')   max_transverse_buoyancy
+            write(c_min_buoyancy_number,'(E16.8)')   min_buoyancy_number
+            write(c_min_longitudinal_buoyancy,'(E16.8)')   min_longitudinal_buoyancy
+            write(c_min_transverse_buoyancy,'(E16.8)')   min_transverse_buoyancy
+            write(c_average_overrelaxation,'(E16.8)')   average_overrelaxation
+            write(c_max_overrelaxation,'(E16.8)')   max_overrelaxation
+            write(c_min_overrelaxation,'(E16.8)')   min_overrelaxation
+            write(c_average_invPeclet,'(E16.8)')   average_invPeclet
+            write(c_max_invPeclet,'(E16.8)')   max_invPeclet
+            write(c_min_invPeclet,'(E16.8)')   min_invPeclet
+            write(c_res,'(E16.8)')   res
+            write(c_resold,'(E16.8)')   resold
+            write(c_res_resold,'(E16.8)')   res/resold
+            write(c_backtrack_par_factor,'(E16.8)')   backtrack_par_factor
+            write(c_outer_nonlinear_iteration,'(I16)')   outer_nonlinear_iteration
+          
+            !call the machine learning model
+            call execute_command_line("~/anaconda3/envs/py3_tf/bin/python MLmodel.py " // c_aspect_ratio // c_courant_number // c_shockfront_courant_number // c_shockfront_number_ratio // c_min_total_mobility // c_max_total_mobility // c_average_total_mobility // c_min_Darcy_velocity // c_max_Darcy_velocity // c_average_Darcy_velocity // c_min_shockfront_mobratio // c_max_shockfront_mobratio // c_average_shockfront_mobratio // c_average_longitudinal_capillary // c_average_transverse_capillary // c_max_longitudinal_capillary // c_max_transverse_capillary // c_min_longitudinal_capillary // c_min_transverse_capillary // c_average_buoyancy_number // c_average_longitudinal_buoyancy // c_average_transverse_buoyancy // c_max_buoyancy_number // c_max_longitudinal_buoyancy // c_max_transverse_buoyancy // c_min_buoyancy_number // c_min_longitudinal_buoyancy // c_min_transverse_buoyancy // c_average_overrelaxation // c_max_overrelaxation // c_min_overrelaxation // c_average_invPeclet // c_max_invPeclet // c_min_invPeclet // c_res // c_resold // c_res_resold // c_backtrack_par_factor // c_outer_nonlinear_iteration //  " > btpf")
+            
+            !read result from output file
+            open(74,file='btpf',action='read')
+            read(74,*) btpf
+            close(74)
+            backtrack_par_factor = btpf
+        endblock  
         !***************************!
         !!! ***Write into file*** !!!
         !***************************!
@@ -8527,7 +8583,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             write(73, '(9(A,",",X))', advance="NO") "average_buoyancy_number", "average_longitudinal_buoyancy", "average_transverse_buoyancy", "max_buoyancy_number", "max_longitudinal_buoyancy", "max_transverse_buoyancy", "min_buoyancy_number", "min_longitudinal_buoyancy", "min_transverse_buoyancy"
             write(73, '(3(A,",",X))', advance="NO") "average_overrelaxation", "max_overrelaxation", "min_overrelaxation"
             write(73, '(3(A,",",X))', advance="NO") "average_invPeclet", "max_invPeclet", "min_invPeclet"
-            write(73, '(4(A,",",X))') "res", "resold", "res_resold", "backtrack_par_factor"
+            write(73, '(5(A,",",X))') "res", "resold", "res_resold", "backtrack_par_factor", "btpf"
             close(73)
             written_file = .true.
         end if
@@ -8544,7 +8600,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         write(73, '(9(E15.8,",",X))', advance="NO") average_buoyancy_number, average_longitudinal_buoyancy, average_transverse_buoyancy, max_buoyancy_number, max_longitudinal_buoyancy, max_transverse_buoyancy, min_buoyancy_number, min_longitudinal_buoyancy, min_transverse_buoyancy 
         write(73, '(3(E15.8,",",X))', advance="NO") average_overrelaxation, max_overrelaxation, min_overrelaxation
         write(73, '(3(E15.8,",",X))', advance="NO") average_invPeclet, max_invPeclet, min_invPeclet
-        write(73, '(4(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor
+        write(73, '(5(E15.8,",",X))') res, resold, res/resold, backtrack_par_factor, btpf
         close(73)
 
         !*****************************!
