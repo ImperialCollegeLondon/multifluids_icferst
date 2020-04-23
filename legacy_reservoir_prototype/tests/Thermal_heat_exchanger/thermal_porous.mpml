@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <icferst_options>
   <simulation_name>
-    <string_value lines="1">porous_properties</string_value>
+    <string_value lines="1">thermal_porous</string_value>
   </simulation_name>
   <porous_media_simulator/>
   <geometry>
@@ -134,6 +134,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <adaptivity_options>
           <relative_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -155,6 +158,7 @@
           </relative_measure>
         </adaptivity_options>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -190,7 +194,11 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -212,6 +220,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -234,6 +245,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -334,7 +348,11 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -345,7 +363,11 @@
             <real_value shape="3" dim1="dim" rank="1">0 0 0</real_value>
           </constant>
         </initial_condition>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -367,6 +389,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -389,6 +414,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -406,6 +434,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
@@ -420,6 +449,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <porous_properties>
@@ -435,6 +465,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
@@ -449,6 +480,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
@@ -461,6 +493,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
     </porous_properties>
@@ -477,6 +510,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Gamma">
@@ -491,6 +525,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Sigma">
@@ -505,6 +540,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="DiameterPipe">
@@ -527,6 +563,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <thermal_well_properties>
@@ -542,6 +579,7 @@
             <detectors>
               <exclude_from_detectors/>
             </detectors>
+            <output/>
           </prescribed>
         </scalar_field>
         <scalar_field name="well_thickness">
@@ -556,6 +594,7 @@
             <detectors>
               <exclude_from_detectors/>
             </detectors>
+            <output/>
           </prescribed>
         </scalar_field>
       </thermal_well_properties>

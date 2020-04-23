@@ -521,21 +521,6 @@
           <output/>
         </prescribed>
       </tensor_field>
-      <scalar_field name="porous_compressibility">
-        <prescribed>
-          <mesh name="P0DG"/>
-          <value name="WholeMesh">
-            <constant>
-              <real_value rank="0">1e-10</real_value>
-            </constant>
-          </value>
-          <stat/>
-          <detectors>
-            <exclude_from_detectors/>
-          </detectors>
-          <output/>
-        </prescribed>
-      </scalar_field>
     </porous_properties>
     <wells_and_pipes>
       <scalar_field name="Pipe">
