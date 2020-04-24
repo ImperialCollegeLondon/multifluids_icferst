@@ -1052,13 +1052,13 @@ start =
 	       ## Eutectic point	
 	       element ae {
                real
-            	}
-               )
-            },
-           ## Latent heat
-            element latent_heat {
+            	},
+	       ## Latent heat
+               element latent_heat {
                real
-            },
+                }
+               )
+            }?,
            ## bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.
             element bulk_viscosity_exponential_coefficient{
                real
@@ -1123,12 +1123,16 @@ start =
             element rescale_mom_matrices {
                empty
             }?,
-            ## Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.
-            element solve_mom_iteratively {
+            ## Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-3.</b>
+            element solve_mom_iteratively {real, 
+            (
                ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
                 element Momentum_preconditioner {
-               empty}?
-            }?,           
+               empty}?,
+               ## Instead of using the mass matrix as preconditioner, use a preconditioner of the type: (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1.
+                element Advance_preconditioner {
+               empty}?               
+            )}?,           
             ## Use an ENO (essentially non-oscillatory) scheme, useful to get rid of instabilities in high-order methods
             element use_ENO_scheme {
                empty

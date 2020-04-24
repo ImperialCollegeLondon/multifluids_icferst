@@ -1675,6 +1675,127 @@ contains
       return
     end subroutine calculate_diffusivity
 
+    !HH
+    subroutine calculate_enthalpy_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion,tracer)
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( in ) :: packed_state
+      !type( state_type ), intent( in ) :: packed_state
+      type(multi_dimensions), intent(in) :: Mdims
+      type(multi_ndgln), intent(in) :: ndgln
+      real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
+      !Local variables
+      type(scalar_field), pointer :: capacityS, capacityL, densityS, densityL, porosity
+      type(tensor_field), pointer :: diffS, diffL, saturation
+      type(tensor_field) :: tracer
+      integer :: iphase, idim, stat, ele, iloc
+      integer :: mat_inod, cv_inod
+      logical, parameter :: harmonic_average=.false.
+
+      ScalarAdvectionField_Diffusion = 0.0
+      densityS => extract_scalar_field( state(1), "porous_density" )
+      capacityS => extract_scalar_field( state(1), 'porous_heat_capacity', stat )
+      diffS => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+      saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+      porosity=>extract_scalar_field(state(1), "Porosity")
+      IF (tracer%name=="PackedEnthalpy") then
+        if (Mdims%nphase>1) then
+          densityL => extract_scalar_field( state(2), "Density")
+          capacityL => extract_scalar_field( state(2), 'TemperatureHeatCapacity', stat )
+          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)
+          ScalarAdvectionField_Diffusion = 0.
+          do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the defusivity term
+            do ele = 1, Mdims%totele
+              do iloc = 1, Mdims%mat_nloc
+                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                do idim = 1, Mdims%ndim
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                  (node_val( diffL, idim, idim, mat_inod ) * node_val( saturation, 1, 2, cv_inod )&
+                  +node_val( diffS, idim, idim, mat_inod ) * node_val( saturation, 1, 1, cv_inod )) &
+                  /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
+                  + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
+                end do
+              end do
+            end do
+          end do
+        else
+          densityL => extract_scalar_field( state(1), "Density")
+          capacityL => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
+          diffL => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
+          ScalarAdvectionField_Diffusion = 0.
+          do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the defusivity term
+            do ele = 1, Mdims%totele
+              do iloc = 1, Mdims%mat_nloc
+                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                do idim = 1, Mdims%ndim
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                  (node_val( diffL, idim, idim, mat_inod ) * node_val( porosity, cv_inod )&
+                  +node_val( diffS, idim, idim, mat_inod ) * (1-node_val( porosity, cv_inod ))) &
+                  /(node_val( porosity, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
+                  + (1-node_val( porosity, cv_inod ))*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
+                end do
+              end do
+            end do
+          end do
+        end if
+      ELSE  ! for composition
+        densityS => extract_scalar_field( state(1), "porous_density" )
+        capacityS => extract_scalar_field( state(1), 'porous_heat_capacity', stat )
+        diffS => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+        saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+        if (Mdims%nphase>1) then
+          densityL => extract_scalar_field( state(2), "Density")
+          capacityL => extract_scalar_field( state(2), 'TemperatureHeatCapacity', stat )
+          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)
+        else
+          densityL => extract_scalar_field( state(1), "Density")
+          capacityL => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
+          diffL => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
+        end if
+
+        ScalarAdvectionField_Diffusion = 0.
+        do iphase = 1, Mdims%nphase !calculate all phases but scale it with their saturations
+          do ele = 1, Mdims%totele
+            do iloc = 1, Mdims%mat_nloc
+              mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+              cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+              do idim = 1, Mdims%ndim
+                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+                ((node_val( diffL, idim, idim, mat_inod ) * node_val( saturation, 1, 2, cv_inod )&
+                +node_val( diffS, idim, idim, mat_inod ) * node_val( saturation, 1, 1, cv_inod )) &
+                /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
+                + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod)))*node_val( saturation, 1, iphase, cv_inod )
+              end do
+            end do
+          end do
+        end do
+      END IF
+
+      if ( harmonic_average ) then
+         ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
+         do iphase = 1, Mdims%nphase
+            do idim = 1, Mdims%ndim
+               do mat_inod = 1, Mdims%mat_nonods
+                  if ( ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) > 0.0 ) &
+                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                       1.0 / ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )
+               end do
+            end do
+         end do
+      end if
+
+      do iphase = 1, Mdims%nphase
+         ewrite(3,*) 'Thermal conductivity min_max', iphase, &
+              minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
+              maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
+      end do
+      return
+    end subroutine calculate_enthalpy_diffusivity
+
     !! Arash
     !>@brief: Dispersion for isotropic porous media
     subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion, tracer)

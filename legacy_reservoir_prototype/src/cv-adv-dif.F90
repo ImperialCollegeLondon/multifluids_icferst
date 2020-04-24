@@ -463,6 +463,8 @@ contains
           real, dimension(:, :,:), allocatable :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
           real, allocatable, dimension(:) :: calculate_mass_internal  ! internal changes in mass will be captured by 'calculate_mass_internal'
           real :: tmp1, tmp2, tmp3  ! Variables for parallel mass calculations
+          !HH
+          REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
 
           !Decide if we are solving for nphases-1
           Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
@@ -593,6 +595,20 @@ contains
               SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
           end if
 
+          !HH
+          if (tracer%name=="ES") then
+            allocate(SUF_T2_BC_value(1,Mdims%nphase, size(saturation_BCs%val,3)),SUF_T_BC_ROB2_value(1,Mdims%nphase, size(saturation_BCs%val,3)))
+            SUF_T2_BC_value=saturation_BCs%val
+            SUF_T2_BC_value(:,1,:)=SUF_T2_BC_value(:,2,:)+1
+            SUF_T_BC_ALL=>SUF_T2_BC_value
+
+            SUF_T_BC_ROB1_ALL=>SUF_T2_BC_value
+
+            SUF_T_BC_ROB2_value=saturation_BCs_robin2%val
+            SUF_T_BC_ROB2_value(:,1,:)=SUF_T_BC_ROB2_value(:,2,:) ! !!not +1
+            SUF_T_BC_ROB2_ALL=>SUF_T_BC_ROB2_value
+          end if
+
           IDUM = 0
           ewrite(3,*) 'In CV_ASSEMB'
           GOT_DIFFUS = .false.
@@ -639,6 +655,9 @@ contains
           D1 = ( Mdims%ndim == 1 )
           D3 = ( Mdims%ndim == 3 )
           GETMAT = .TRUE.
+          !HH
+          if (tracer%name=="ES") GETMAT = .FALSE.
+
           X_SHARE = .FALSE.
           ! Determine FEMT (finite element wise) etc from T (control volume wise)
           ! Also determine the CV mass matrix MASS_CV_PLUS and centre of the CV's XC_CV_ALL
