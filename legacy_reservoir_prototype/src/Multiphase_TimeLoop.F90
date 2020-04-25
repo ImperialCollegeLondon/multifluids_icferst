@@ -453,7 +453,7 @@ contains
           c_phi_length=1e7  !> the number of items of the coupling term coefficients stored in the system
           allocate(c_phi_series(c_phi_length))
           call C_generate (c_phi_series, c_phi_length, state, coupling)
-          if (has_phase_diagram) call initialize_magma_parameters(phase_coef,  coupling)
+          call initialize_magma_parameters(phase_coef,  coupling)
         end if
 
         !!$ Time loop
@@ -690,7 +690,7 @@ contains
                   end if
 
                   if (has_phase_diagram) then
-                    ! ! Calculate porosity from phase diagram
+                    ! ! Calculate melt fraction from phase diagram
                     call porossolve(state,packed_state, Mdims, ndgln, phase_coef)
                     ! ! Update the temperature field
                     if (have_option( '/material_phase[0]/scalar_field::Enthalpy/prognostic' )) then
@@ -886,7 +886,7 @@ contains
                 ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
-                if (current_time>finish_time) exit Loop_Time
+                if (current_time+dt>=finish_time) exit Loop_Time
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if

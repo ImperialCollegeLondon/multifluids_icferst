@@ -639,11 +639,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
            if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
            !Check that the extra parameters required for porous media thermal simulations are present
-           if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
-           .not.have_option('/porous_media/thermal_porous/scalar_field::porous_heat_capacity') .or. &
-           .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
-           FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
-         end if
+         !   if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
+         !   .not.have_option('/porous_media/thermal_porous/scalar_field::porous_heat_capacity') .or. &
+         !   .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
+         !   FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
+         ! end if
          !need to perform average of the effective heat capacity times density for the diffusion and time terms
            allocate(porous_heat_coef(Mdims%cv_nonods))
            if (Mdims%nphase==1) then
@@ -727,29 +727,28 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
              !call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
              !call zero(Mmat%petsc_ACV);
-
              Mmat%CV_RHS%val = 0.0
-             call CV_ASSEMB( state, packed_state, &
-                 Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-                 tracer3, velocity, density, multi_absorp, & !tracer3=[1+saturation, saturation]
-                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                 DEN_ALL, DENOLD_ALL, &
-                 cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
-                 SUF_SIG_DIAGTEN_BC, &
-                 DERIV%val(1,:,:), P%val, &
-                 T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-                 GETCV_DISC, GETCT, &
-                 1, IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, & ! GOT_T2=1
-                 THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                 MeanPoreCV%val, &
-                 mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &  !thermal=.false.
-                 .false.,  mass_Mn_pres, &
-                 mass_ele_transp, &
-                 TDIFFUSION = TDIFFUSION_ES,&
-                 saturation=saturation, Permeability_tensor_field = perm,&
-                 eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                 porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
-                 VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
+             ! call CV_ASSEMB( state, packed_state, &
+             !     Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+             !     tracer3, velocity, density, multi_absorp, & !tracer3=[1+saturation, saturation]
+             !     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+             !     DEN_ALL, DENOLD_ALL, &
+             !     cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+             !     SUF_SIG_DIAGTEN_BC, &
+             !     DERIV%val(1,:,:), P%val, &
+             !     T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+             !     GETCV_DISC, GETCT, &
+             !     1, IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, & ! GOT_T2=1
+             !     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+             !     MeanPoreCV%val, &
+             !     mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &  !thermal=.false.
+             !     .false.,  mass_Mn_pres, &
+             !     mass_ele_transp, &
+             !     TDIFFUSION = TDIFFUSION_ES,&
+             !     saturation=saturation, Permeability_tensor_field = perm,&
+             !     eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
+             !     porous_heat_coef_old = porous_heat_coef, solving_compositional = lcomp > 0, &
+             !     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
              ! T_source =-Mmat%CV_RHS%val
              ! to_debug=0
            else
@@ -800,9 +799,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef = porous_heat_coef, solving_compositional = lcomp > 0, &
+                   porous_heat_coef_old = porous_heat_coef, solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-
 
                if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
                  cv_rhs_one%val = Mmat%CV_RHS%val(1,:)+Mmat%CV_RHS%val(2,:)

@@ -1684,7 +1684,7 @@ contains
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
       !Local variables
-      type(scalar_field), pointer :: capacityS, capacityL, densityS, densityL, porosity
+      type(scalar_field), pointer :: capacityS, capacityL, densityS, densityL
       type(tensor_field), pointer :: diffS, diffL, saturation
       type(tensor_field) :: tracer
       integer :: iphase, idim, stat, ele, iloc
@@ -1692,11 +1692,11 @@ contains
       logical, parameter :: harmonic_average=.false.
 
       ScalarAdvectionField_Diffusion = 0.0
-      densityS => extract_scalar_field( state(1), "porous_density" )
-      capacityS => extract_scalar_field( state(1), 'porous_heat_capacity', stat )
-      diffS => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+      densityS => extract_scalar_field( state(1), "Density" )
+      capacityS => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
+      diffS => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
       saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-      porosity=>extract_scalar_field(state(1), "Porosity")
+
       IF (tracer%name=="PackedEnthalpy") then
         if (Mdims%nphase>1) then
           densityL => extract_scalar_field( state(2), "Density")
@@ -1732,19 +1732,19 @@ contains
                 do idim = 1, Mdims%ndim
                   ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                   ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                  (node_val( diffL, idim, idim, mat_inod ) * node_val( porosity, cv_inod )&
-                  +node_val( diffS, idim, idim, mat_inod ) * (1-node_val( porosity, cv_inod ))) &
-                  /(node_val( porosity, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
-                  + (1-node_val( porosity, cv_inod ))*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
+                  (node_val( diffL, idim, idim, mat_inod ) *  node_val( saturation, 1, 2, cv_inod )&   !node_val( saturation, 1, 2, cv_inod ) is phi, node_val( saturation, 1, 1, cv_inod ) is 1-phi
+                  +node_val( diffS, idim, idim, mat_inod ) *  node_val( saturation, 1, 1, cv_inod )) &
+                  /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
+                  + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
                 end do
               end do
             end do
           end do
         end if
       ELSE  ! for composition
-        densityS => extract_scalar_field( state(1), "porous_density" )
-        capacityS => extract_scalar_field( state(1), 'porous_heat_capacity', stat )
-        diffS => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
+        densityS => extract_scalar_field( state(1), "Density" )
+        capacityS => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )   ! chemical diffusivity is not defined or used so here we just use the thermal one and scale it into a very small value
+        diffS => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
         saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         if (Mdims%nphase>1) then
           densityL => extract_scalar_field( state(2), "Density")
@@ -2990,7 +2990,7 @@ contains
               mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
               cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
               DO IPHASE = 1, Mdims%nphase
-                magma_coupling = c_value(Satura(2, cv_inod))*0   ! now turned off
+                magma_coupling = c_value(Satura(2, cv_inod))   ! now turned off
                 do jphase = 1, Mdims%nphase
                   if (jphase == iphase) then
                     Magma_absorp%val(1, iphase, jphase, mat_nod ) = -magma_coupling

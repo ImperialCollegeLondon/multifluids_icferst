@@ -80,18 +80,19 @@ contains
     type(magma_phase_diagram) :: phase_coef
     type(coupling_term_coef) :: coupling
 
-    call get_option('/magma_parameters/Phase_diagram_coefficients/A1' , phase_coef%A1 )
-    call get_option('/magma_parameters/Phase_diagram_coefficients/B1' , phase_coef%B1 )
-    call get_option('/magma_parameters/Phase_diagram_coefficients/C1' , phase_coef%C1 )
-    call get_option('/magma_parameters/Phase_diagram_coefficients/ae' , phase_coef%Ae )
+    if (has_phase_diagram) then
+      call get_option('/magma_parameters/Phase_diagram_coefficients/A1' , phase_coef%A1 )
+      call get_option('/magma_parameters/Phase_diagram_coefficients/B1' , phase_coef%B1 )
+      call get_option('/magma_parameters/Phase_diagram_coefficients/C1' , phase_coef%C1 )
+      call get_option('/magma_parameters/Phase_diagram_coefficients/ae' , phase_coef%Ae )
 
-    if (have_option('/magma_parameters/Phase_diagram_coefficients/A2')) then
-      call get_option('/magma_parameters/Phase_diagram_coefficients/A2' , phase_coef%A2 )
-      call get_option('/magma_parameters/Phase_diagram_coefficients/B2' , phase_coef%B2 )
-      call get_option('/magma_parameters/Phase_diagram_coefficients/C2' , phase_coef%C2 )
+      if (have_option('/magma_parameters/Phase_diagram_coefficients/A2')) then
+        call get_option('/magma_parameters/Phase_diagram_coefficients/A2' , phase_coef%A2 )
+        call get_option('/magma_parameters/Phase_diagram_coefficients/B2' , phase_coef%B2 )
+        call get_option('/magma_parameters/Phase_diagram_coefficients/C2' , phase_coef%C2 )
+      end if
+      call get_option('/magma_parameters/Phase_diagram_coefficients/latent_heat',phase_coef%Lf)
     end if
-    call get_option('/magma_parameters/Phase_diagram_coefficients/latent_heat',phase_coef%Lf)
-
 
     call get_option('/magma_parameters/coupling_term_coefficients/coupling_power_coefficent_a' , coupling%a)
     call get_option('/magma_parameters/coupling_term_coefficients/coupling_power_coefficent_b' , coupling%b)
@@ -204,7 +205,7 @@ contains
   real, intent(in) :: Bulk_comp, Cp, rho
   type(magma_phase_diagram) :: phase_coef
   !Currently we consider a flat line
-    get_Enthalpy_Solidus = get_Solidus(Bulk_comp, phase_coef) * Cp !* rho
+    get_Enthalpy_Solidus = phase_coef%Ts * Cp !* rho
 
   end function
 
@@ -226,7 +227,7 @@ contains
 
     do cv_nodi = 1, Mdims%cv_nonods
       ! above liquidus
-        if (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BC%val(cv_nodi), Cp%val(cv_inod), 0., phase_coef)) then   !currently density is not used, so simply pass 0
+        if (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)) then   !currently density is not used, so simply pass 0
           if(BC%val(cv_nodi)>phase_coef%Ae) then
             Composition%val(1,1,cv_nodi)=1.0 !solid
           else
@@ -234,13 +235,13 @@ contains
           end if
           Composition%Val(1,2,cv_nodi)=BC%val(cv_nodi)!fluid
             ! below solidus
-        else if(enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), Cp%val(cv_inod), 0., phase_coef)) then
+        else if(enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)) then
               Composition%val(1,1,cv_nodi)=BC%val(cv_nodi)
               Composition%val(1,2,cv_nodi)=phase_coef%Ae
           ! between solidus and eutectic melting line
-        else if ((enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), Cp%val(cv_inod), 0., phase_coef)+ phase_coef%Lf*BC%val(cv_nodi)/phase_coef%Ae) .and. (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), Cp%val(cv_inod), 0., phase_coef)+ phase_coef%Lf*(1-BC%val(cv_nodi))/(1.0000001-phase_coef%Ae))) then
+        else if ((enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+ phase_coef%Lf*BC%val(cv_nodi)/phase_coef%Ae) .and. (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+ phase_coef%Lf*(1-BC%val(cv_nodi))/(1.0000001-phase_coef%Ae))) then
               Composition%val(1,2,cv_nodi)=phase_coef%Ae
-              Composition%val(1,1,cv_nodi)=0 ! (BC%val(cv_nodi)-saturation(1,2,cv_nodi)*phase_coef%Ae)/saturation(1,1,cv_nodi)
+              Composition%val(1,1,cv_nodi)=(BC%val(cv_nodi)-saturation%val(1,2,cv_nodi)*phase_coef%Ae)/saturation%val(1,1,cv_nodi)
       ! between eutectic melting and liquidus
         else
           if(BC%val(cv_nodi)>phase_coef%Ae) then
@@ -250,7 +251,7 @@ contains
             !FluidComposition%val(1,1,cv_nodi)=(-B2 + sqrt(( B1**2 ) - 4. * A2 * ( C2 - temperature%val(1,1,cv_nodi)))) / ( 2. * A2)
           else
             Composition%val(1,1,cv_nodi)=0.0
-            Composition%val(1,2,cv_nodi)=(-phase_coef%B1 - sqrt(( phase_coef%B1**2 ) - 4. * phase_coef%A1 * ( phase_coef%C1 - temperature%val(1,1,cv_nodi)))) / ( 2. * phase_coef%A1)
+            Composition%val(1,2,cv_nodi)=(-phase_coef%B1 - sqrt(phase_coef%B1**2  - 4. * phase_coef%A1 * ( phase_coef%C1 - temperature%val(1,1,cv_nodi)))) / ( 2. * phase_coef%A1)
           end if
         end if
     end do
@@ -266,13 +267,14 @@ contains
   type(magma_phase_diagram) :: phase_coef
 
   !Local variables
-  integer :: cv_nodi, iphase                          !Temporary until deciding if creating a Cp in packed_state as well
+  integer :: cv_nodi, iphase
+  type ( scalar_field), pointer :: Cp                       !Temporary until deciding if creating a Cp in packed_state as well
   type( tensor_field ), pointer :: enthalpy, temperature,  saturation, FluidComposition, dCp , den
   real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   !real, parameter :: tol = 1e-5
     !Temporary until deciding if creating a Cp in packed_state as well
     den => extract_tensor_field( packed_state,"PackedDensity" )
-    ! Cp => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
+    Cp => extract_scalar_field( state(1), 'TemperatureHeatCapacity')
     dCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
     enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
     temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
@@ -282,7 +284,7 @@ contains
 !IT CONSIDERS ONE SINGLE TEMPERATURE!!! WHICH MAKE SENSE BECAUSE AT THAT TIME SCALE THINGS ARE IN EQUILIBRIUM...
     ! do iphase =1, nphase
     !Calculate temperature using the generic formula T = (H - Lf*porosity)/Cp
-    temperature%val(1,1,:)=(enthalpy%val(1,1,:)- phase_coef%Lf*saturation%val(1,2,:))/dCp%val(1,1,:)*den%val(1,2,:)
+    temperature%val(1,1,:)=(enthalpy%val(1,1,:)- phase_coef%Lf*saturation%val(1,2,:))/Cp%val(1)  ! sprint_to_do Need to fix for variable heat capacity.
     !Now add corrections if required
     where (saturation%val(1,2, :)>0.) !If porosity > 0.
       where (temperature%val(1,1,:) < phase_coef%Ts ) !If there is mixture, temperature cannot be below the solidus
@@ -326,11 +328,9 @@ contains
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
     BC=> extract_scalar_field(state(1), "BulkComposition")
     iphase = 1
-    ! cv_nodi = 1
-    ! print *, enthalpy%val(1,1,cv_nodi)
-    ! print *, get_Enthalpy_Liquidus(BC%val(cv_nodi),Loc_Cp,
+
     do cv_nodi = 1, Mdims%cv_nonods
-      Loc_Cp = Cp%val(cv_nodi)
+      Loc_Cp = node_val(Cp,cv_nodi) ! Cp%val(cv_nodi)
       rho=den%val(1,iphase,cv_nodi)
       IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef)) then
         saturation%val(1,2, cv_nodi)=1.

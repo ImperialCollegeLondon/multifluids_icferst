@@ -515,7 +515,12 @@ contains
           end if
           !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
           U_ALL => NU_ALL
-          old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+          !HH
+          if (tracer%name=="ES") then
+            old_tracer=>tracer
+          else
+            old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+          end if
           old_density=>extract_tensor_field(packed_state,GetOldName(density))
           if (present(saturation)) then
               old_saturation=>extract_tensor_field(packed_state,&
@@ -563,7 +568,12 @@ contains
               end if
           end if
           !! Get boundary conditions from field
-          call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+          !HH
+          if (tracer%name=="ES") then
+            call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+          else
+            call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+          end if
           call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
           if (present(saturation))&
               call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
@@ -1633,7 +1643,12 @@ contains
                                   end if
 
                               ENDIF Conditional_GETCT2
-
+                              !HH
+                              if (tracer%name=="ES") then
+                                FTHETA(:)=1.0
+                                FTHETA_T2(:)=1.0
+                                FTHETA_T2_J(:)=1.0
+                              end if
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                   ! Obtain the CV discretised advection/diffusion equations
                                   ROBIN1=0.0; ROBIN2=0.0
@@ -1815,7 +1830,7 @@ contains
               END DO
           ENDIF
           !Add compressibility to the transport equation/add time derivative term
-          Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
+          Conditional_GETCV_DISC2: IF( GETCV_DISC .and. tracer%name/="ES") THEN ! Obtain the CV discretised advection/diffusion equations
               Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
 
                 ! Generate local variables (to avoid slicing) ***************
