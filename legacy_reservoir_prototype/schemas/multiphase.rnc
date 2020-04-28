@@ -1120,16 +1120,24 @@ start =
             }?,
             ## Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
             ## D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+            ##
+            ## <b>Recommened for Magma multiphase flows </b>
             element rescale_mom_matrices {
                empty
             }?,
-            ## Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-3.</b>
+            ## Use this option to switch on the Anderson acceleration method for the momentum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-3.</b>
             element solve_mom_iteratively {real, 
             (
                ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
                 element Momentum_preconditioner {
                empty}?,
-               ## Instead of using the mass matrix as preconditioner, use a preconditioner of the type: (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1.
+               ## Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
+               ## but it is more efficient that the simple preconditioner. 
+               ## 
+               ## By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 (<b>Recommended</b>)
+               ##
+               ## If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1
+               
                 element Advance_preconditioner {
                empty}?               
             )}?,           

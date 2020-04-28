@@ -895,53 +895,6 @@ contains
 
     END SUBROUTINE Mass_matrix_MATVEC
 
-    !>@author: Pablo Salinas
-    !>@brief: Multiplies a diagonal matrix as extracted from DGM_PETSC
-    !> pre_mult multiplies the matrix with diag_mat by rows, otherwise by columns (important for non-symmetric matrices)
-    subroutine PHA_BLOCK_DIAG_MAT(Mdims,diag_mat, Matrix, nloc, findmat, colmat, mat_ndgln, pre_mult)
-      implicit none
-      type(multi_dimensions), intent(in) :: Mdims
-      integer, intent(in) :: nloc
-      INTEGER, DIMENSION( : ), intent( in ) ::  mat_ndgln, findmat, colmat
-      REAL, DIMENSION( :, :), intent( in ) :: diag_mat
-      REAL, DIMENSION( :, :, : ), intent( inout ) :: Matrix
-      logical, intent(in) :: pre_mult
-      ! Local variables
-      INTEGER :: U_JLOC, ele, COUNT, J, u_inod, idim, iphase, K
-
-      if (pre_mult) then
-        do ele = 1, Mdims%totele
-          DO U_JLOC = 1, Mdims%u_nloc
-            u_inod = mat_ndgln( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-            DO COUNT = findmat( u_inod ), findmat( u_inod + 1 ) - 1
-              do idim = 1, Mdims%ndim
-                do iphase = 1, Mdims%nphase
-                  K = idim + (iphase-1)*Mdims%ndim
-                  Matrix( idim, iphase, COUNT ) = Matrix( idim, iphase, COUNT ) * diag_mat(K, u_inod)
-                end do
-              end do
-            END DO
-          END DO
-        end do
-      else
-        do ele = 1, Mdims%totele
-          DO U_JLOC = 1, Mdims%u_nloc
-            u_inod = mat_ndgln( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-            DO COUNT = findmat( u_inod ), findmat( u_inod + 1 ) - 1
-              J = colmat( COUNT )
-              do idim = 1, Mdims%ndim
-                do iphase = 1, Mdims%nphase
-                  K = idim + (iphase-1)*Mdims%ndim
-                  Matrix( idim, iphase, J ) = Matrix( idim, iphase, J ) * diag_mat(K, u_inod)
-                end do
-              end do
-            END DO
-          END DO
-        end do
-      end if
-    end subroutine PHA_BLOCK_DIAG_MAT
-
-
     !>@brief: performs  U = BLOCK_MAT * CDP, where block_mat
     SUBROUTINE PHA_BLOCK_MAT_VEC( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, &
         TOTELE, U_NLOC, U_NDGLN )

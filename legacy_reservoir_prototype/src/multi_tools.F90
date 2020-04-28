@@ -896,6 +896,7 @@ END subroutine RotationMatrix
       rank = n
       do k = 1, n
         if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) then
+! print *, "entry that is affecting the result for the least squares",k
           rank = rank - 1
         end if
       end do

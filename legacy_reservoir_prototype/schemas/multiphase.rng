@@ -1357,13 +1357,15 @@ This option is useful if your field is suddenly changing after adapting the mesh
           <optional>
             <element name="rescale_mom_matrices">
               <a:documentation>Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
-D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';</a:documentation>
+D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+
+&lt;b&gt;Recommened for Magma multiphase flows &lt;/b&gt;</a:documentation>
               <empty/>
             </element>
           </optional>
           <optional>
             <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-3.&lt;/b&gt;</a:documentation>
+              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-3.&lt;/b&gt;</a:documentation>
               <ref name="real"/>
               <group>
                 <optional>
@@ -1374,7 +1376,12 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';</a:documentation>
                 </optional>
                 <optional>
                   <element name="Advance_preconditioner">
-                    <a:documentation>Instead of using the mass matrix as preconditioner, use a preconditioner of the type: (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1.</a:documentation>
+                    <a:documentation>Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
+but it is more efficient that the simple preconditioner. 
+
+By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 (&lt;b&gt;Recommended&lt;/b&gt;)
+
+If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1</a:documentation>
                     <empty/>
                   </element>
                 </optional>
