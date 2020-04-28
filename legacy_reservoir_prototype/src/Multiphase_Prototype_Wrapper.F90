@@ -917,11 +917,13 @@ contains
             end if
 !Easiest way to create the heatcapacity field is to move where it was inside temperature!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity")) then
-                if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
-                    FLAbort("HeatCapacity specified but no prognostic temperature field specified.")
-                end if
+            !     if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
+            !         FLAbort("HeatCapacity specified but no prognostic temperature field specified.")
+            !     end if
+              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
+              end if
             end if
             !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
@@ -1064,6 +1066,7 @@ contains
         !By default it is inertia dominated
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
         is_magma = have_option('/magma_simulator')
+        has_phase_diagram=have_option('/magma_parameters/Phase_diagram_coefficients')
         is_poroelasticity = have_option('/poroelasticity')
         !Decide to solve Stokes equations instead of navier-Stokes (magma requires this option as well)
         solve_stokes = have_option('/stokes_simulator') .or. is_magma

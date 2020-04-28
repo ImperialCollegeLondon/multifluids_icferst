@@ -1052,13 +1052,13 @@ start =
 	       ## Eutectic point	
 	       element ae {
                real
-            	}
-               )
-            },
-           ## Latent heat
-            element latent_heat {
+            	},
+	       ## Latent heat
+               element latent_heat {
                real
-            },
+                }
+               )
+            }?,
            ## bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.
             element bulk_viscosity_exponential_coefficient{
                real

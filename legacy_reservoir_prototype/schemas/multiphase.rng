@@ -1242,47 +1242,49 @@ The following must be specified:
       <optional>
         <element name="magma_parameters">
           <a:documentation>Magma options</a:documentation>
-          <element name="Phase_diagram_coefficients">
-            <a:documentation>Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.</a:documentation>
-            <element name="A1">
-              <a:documentation>A1</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="B1">
-              <a:documentation>B1</a:documentation>
-              <ref name="real"/>
-            </element>
-            <element name="C1">
-              <a:documentation>C1</a:documentation>
-              <ref name="real"/>
-            </element>
-            <optional>
-              <element name="A2">
-                <a:documentation>A2</a:documentation>
+          <optional>
+            <element name="Phase_diagram_coefficients">
+              <a:documentation>Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.</a:documentation>
+              <element name="A1">
+                <a:documentation>A1</a:documentation>
                 <ref name="real"/>
               </element>
-            </optional>
-            <optional>
-              <element name="B2">
-                <a:documentation>B2</a:documentation>
+              <element name="B1">
+                <a:documentation>B1</a:documentation>
                 <ref name="real"/>
               </element>
-            </optional>
-            <optional>
-              <element name="C2">
-                <a:documentation>C2</a:documentation>
+              <element name="C1">
+                <a:documentation>C1</a:documentation>
                 <ref name="real"/>
               </element>
-            </optional>
-            <element name="ae">
-              <a:documentation>Eutectic point	</a:documentation>
-              <ref name="real"/>
+              <optional>
+                <element name="A2">
+                  <a:documentation>A2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="B2">
+                  <a:documentation>B2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="C2">
+                  <a:documentation>C2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <element name="ae">
+                <a:documentation>Eutectic point	</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="latent_heat">
+                <a:documentation>Latent heat</a:documentation>
+                <ref name="real"/>
+              </element>
             </element>
-          </element>
-          <element name="latent_heat">
-            <a:documentation>Latent heat</a:documentation>
-            <ref name="real"/>
-          </element>
+          </optional>
           <element name="bulk_viscosity_exponential_coefficient">
             <a:documentation>bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.</a:documentation>
             <ref name="real"/>
