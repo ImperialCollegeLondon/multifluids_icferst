@@ -670,7 +670,6 @@ contains
                     thermal = .false.,&
                     saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, phase_coef=  phase_coef)
                   end if
-
                   if( have_option( '/material_phase[0]/scalar_field::Composition/') .and. have_option( '/material_phase[1]/scalar_field::Composition/' ) ) then
                     call set_nu_to_u( packed_state )
                     ewrite(3,*)'Now advecting composition Field'

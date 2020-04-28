@@ -848,7 +848,7 @@ contains
     end do
     call MatAssemblyBegin(matrixi%M, MAT_FINAL_ASSEMBLY, ierr)
     call MatAssemblyEnd(matrixi%M, MAT_FINAL_ASSEMBLY, ierr)
-    call MatTranspose(matrixi%M, MAT_INPLACE_MATRIX, matrixi%M, ierr)  ! the v from MatGetValues is row-based, so after MatSetValues, the new matrix need to be transposed.... FUCK THIS STUPID PACKAGE!! TOTAL WASTE OF MY TIME FFSSSSS
+    call MatTranspose(matrixi%M, MAT_INPLACE_MATRIX, matrixi%M, ierr)  ! the v from MatGetValues is row-based, so after MatSetValues, the new matrix need to be transposed.
     ! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'matrixj.xml',viewer1,ierr)
     ! call MatView(matrixj%M,viewer1)
 

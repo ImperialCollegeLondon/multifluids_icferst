@@ -588,7 +588,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
            type( tensor_field ), pointer :: perm, python_tfield, tracer2
-           integer :: cv_disopt, cv_dg_vel_int_opt
+           integer :: cv_disopt, cv_dg_vel_int_opt, n_in_pres
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
            REAL, DIMENSION( : ), allocatable :: porous_heat_coef
@@ -609,10 +609,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(petsc_csr_matrix):: cv_m_one   !one phase cv matrix
            type(scalar_field) :: cv_rhs_one    !one phase cv rhs
            type(scalar_field), pointer :: t_one
+           type(vector_field) :: solution
            type(tensor_field):: tracer3
            type (multi_matrices):: Mmat2
            ! Phase diagram coefficents
            type(magma_phase_diagram) :: phase_coef
+           logical :: assemble_collapsed_to_one_phase
 
            if (Mdims%nphase==1) then
              loc_thermal= .true.
@@ -628,9 +630,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if ( present( icomp ) ) lcomp = icomp
 
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-
-
-
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
@@ -651,7 +650,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            else
              porous_heat_coef=0. !HH for multiphase, this need to be zero since the solid part will be added together later
            end if
-
            call force_min_max_principle(1)
            den_all    = 1
            denold_all = 1
@@ -678,11 +676,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            TDIFFUSION=0.0
 
            if ( tracer%name=="PackedEnthalpy") then
+                assemble_collapsed_to_one_phase = .true.
+                n_in_pres = 1
                 !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
                 !TDIFFUSION(:,:,:1)=0  ! Only one phase should have the diffusivity term this is done in the multi_eos
                 TDIFFUSION_ES=TDIFFUSION*phase_coef%Lf  ! diffusion for the enthalpy source term
            else
+                assemble_collapsed_to_one_phase = .false.
+                n_in_pres = Mdims%n_in_pres
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TOC Chemical diffusivity needs to be defined.
                 TDIFFUSION=TDIFFUSION/1e3
            end if
@@ -724,40 +726,48 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ! Calculate the source term of the enthalpy equation
              ! to_debug=1
              call tracer_gen(tracer3)
-             call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
-             !call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
-             !call zero(Mmat%petsc_ACV);
+             call allocate(Mmat%CV_RHS,1 , tracer%mesh,"RHS")
+             call allocate(Mmat%petsc_ACV,sparsity,[1,1],"ACV_INTENERGE")
+             call zero(Mmat%petsc_ACV);
              Mmat%CV_RHS%val = 0.0
-             ! call CV_ASSEMB( state, packed_state, &
-             !     Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
-             !     tracer3, velocity, density, multi_absorp, & !tracer3=[1+saturation, saturation]
-             !     DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-             !     DEN_ALL, DENOLD_ALL, &
-             !     cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
-             !     SUF_SIG_DIAGTEN_BC, &
-             !     DERIV%val(1,:,:), P%val, &
-             !     T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-             !     GETCV_DISC, GETCT, &
-             !     1, IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, & ! GOT_T2=1
-             !     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-             !     MeanPoreCV%val, &
-             !     mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &  !thermal=.false.
-             !     .false.,  mass_Mn_pres, &
-             !     mass_ele_transp, &
-             !     TDIFFUSION = TDIFFUSION_ES,&
-             !     saturation=saturation, Permeability_tensor_field = perm,&
-             !     eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-             !     porous_heat_coef_old = porous_heat_coef, solving_compositional = lcomp > 0, &
-             !     VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-             ! T_source =-Mmat%CV_RHS%val
-             ! to_debug=0
+             call CV_ASSEMB( state, packed_state, &
+                 Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                 tracer3, velocity, density, multi_absorp, & !tracer3=[1+saturation, saturation]
+                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                 DEN_ALL, DENOLD_ALL, &
+                 cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                 SUF_SIG_DIAGTEN_BC, &
+                 DERIV%val(1,:,:), P%val, &
+                 T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+                 GETCV_DISC, GETCT, &
+                 1, IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, & ! GOT_T2=1
+                 THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                 MeanPoreCV%val, &
+                 mass_Mn_pres, .false., RETRIEVE_SOLID_CTY, &  !thermal=.false.
+                 .false.,  mass_Mn_pres, &
+                 mass_ele_transp, &
+                 TDIFFUSION = TDIFFUSION_ES,&
+                 saturation=saturation, Permeability_tensor_field = perm,&
+                 eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
+                 porous_heat_coef_old = porous_heat_coef, solving_compositional = lcomp > 0, &
+                 VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number,assemble_collapsed_to_one_phase = .true.)
+             ! print *,size(T_source,1),size(T_source,2)
+             T_source(1,:) =Mmat%CV_RHS%val(1,:)
+
+             call allocate(Mmat%petsc_ACV,sparsity,[Mdims%npres,Mdims%npres],"ACV_INTENERGE")
+             ! call allocate(Mmat%CV_RHS, 1,tracer%mesh,"RHS")
+             call allocate(solution,1,tracer%mesh,"sol_tracer")
            else
+             call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
+             call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+             call allocate(solution,Mdims%nphase,tracer%mesh,"sol_tracer")
              ! call get_option( '/material_phase[0]/scalar_field::Composition/prognostic/temporal_discretisation/' // &
              ! 'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
              ! Field_selector = 1
              ! Q => extract_tensor_field( packed_state, "PackedCompositionSource" )
              ! T_source( :, : ) = Q % val( 1, :, : )
            end if
+           call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                !Get information for capillary pressure to be use in CV_ASSEMB
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
@@ -769,19 +779,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 Phase_with_Ovrel = -1
                end if
 
-               if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
-                 call allocate_global_multiphase_petsc_csr(cv_m_one,sparsity,tracer, 1)
-                 t_one=>extract_scalar_field(state(1), "Enthalpy")
-                 call allocate(cv_rhs_one,t_one%mesh,"ONE_PHASE_RHS")
-               end if
+               ! if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
+               !   call allocate_global_multiphase_petsc_csr(cv_m_one,sparsity,tracer, 1)
+               !   t_one=>extract_scalar_field(state(1), "Enthalpy")
+               !   call allocate(cv_rhs_one,t_one%mesh,"ONE_PHASE_RHS")
+               ! end if
                !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
-               call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
 
-               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
+
                call CV_ASSEMB( state, packed_state, &
-                   Mdims%nphase, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -793,39 +802,51 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
                    MeanPoreCV%val, &
-                   mass_Mn_pres, loc_thermal, RETRIEVE_SOLID_CTY, & !loc_thermal=.false. for multiphase case
+                   mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
                    TDIFFUSION = TDIFFUSION,&
                    saturation=saturation, Permeability_tensor_field = perm,&
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
-                   porous_heat_coef_old = porous_heat_coef, solving_compositional = lcomp > 0, &
-                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
+                   porous_heat_coef_old = porous_heat_coef,solving_compositional = lcomp > 0, &
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
+                   assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
 
                if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
-                 cv_rhs_one%val = Mmat%CV_RHS%val(1,:)+Mmat%CV_RHS%val(2,:)
-                 call zero(cv_m_one)
-                 call petsc_compact_matrix(cv_m_one, Mmat%petsc_ACV, Mdims%nphase)
+                 ! cv_rhs_one%val = Mmat%CV_RHS%val(1,:)+Mmat%CV_RHS%val(2,:)
+                 ! call zero(cv_m_one)
+                 ! call petsc_compact_matrix(cv_m_one, Mmat%petsc_ACV, Mdims%nphase)
+                 ! call petsc_solve(t_one,cv_m_one,cv_rhs_one,trim(solver_option_path), iterations_taken = its_taken)
 
-                 call petsc_solve(t_one,cv_m_one,cv_rhs_one,trim(solver_option_path), iterations_taken = its_taken)
+                 call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 ! call petsc_solve(t_one,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                  !print *,size(tracer%val,1),size(tracer%val,2)
-                 tracer%val(1,2,:)= t_one%val !copy the enthalpy value to the second phase
+                 tracer%val(:,1,:)=solution%val
+                 tracer%val(:,2,:)=solution%val
+                 ! n_in_pres = 1
+                 ! do ipres =1, mdims%npres
+                 !   do iphase = 1 , n_in_pres
+                 !    tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
+                 !  end do
+                 ! end do
                else
-                 vtracer=as_vector(tracer,dim=2)
-                 call zero(vtracer)
-                 call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 ! vtracer=as_vector(tracer,dim=2)
+                 ! call zero(vtracer)
+                 call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 tracer%val(1,:,:)=solution%val
                end if
 
                !Control how it is converging and decide
-               if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
+               !if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                !Update halo communications
                call halo_update(tracer)
-
-               repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
+               repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle#
+               repeat_assemb_solve=0
                call allor(repeat_assemb_solve)
                !Checking solver not fully implemented
+
                if (repeat_assemb_solve ) then
                    solver_not_converged = .true.
                    tracer%val(1,:,:) = temp_bak!recover backup
@@ -838,13 +859,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
 
 
+
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
-           if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
-             call deallocate(cv_m_one); nullify(cv_rhs_one%val)
-           end if
+           ! if (tracer%name=="PackedEnthalpy" .and. Mdims%nphase/=1) then
+           !   call deallocate(cv_m_one); nullify(cv_rhs_one%val)
+           ! end if
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
+           ! if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
            ewrite(3,*) 'Leaving ENTHALPY_COMPOSITION_ASSEM_SOLVE'
 
       contains
@@ -855,8 +878,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
             tracer3%mesh=tracer%mesh
             tracer3%dim=tracer%dim
             allocate(tracer3%val(tracer3%dim(1), tracer3%dim(2), node_count(tracer3%mesh)))
-            tracer3%val=tracer%val
-            tracer3%val(1,1,:)=tracer3%val(1,2,:)+1    ! For the first phase, tracer value is 1+phi
+            tracer3%val=saturation%val
+            tracer3%val(1,1,:)=tracer3%val(1,2,:)+1    ! For the first (solid) phase, tracer value is 1+phi
             tracer3%wrapped=.true.
         end subroutine
 
