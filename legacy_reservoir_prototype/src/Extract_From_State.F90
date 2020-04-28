@@ -3504,6 +3504,7 @@ end subroutine get_DarcyVelocity
       type (multi_outfluxes), intent(inout) :: outfluxes
       real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
       type (tensor_field), pointer, intent(in) :: tracer, temp_field, salt_field
+      !type (scalar_field), optional, pointer, intent (in) :: heat_capacity
       real, dimension(:), intent(in) :: Vol_flux, Mass_flux
       !local variables
       integer :: iphase, iofluxes
@@ -3530,6 +3531,11 @@ end subroutine get_DarcyVelocity
                   outfluxes%totout(2, iphase, iofluxes) =  max(  temp_field%val(1,iphase,CV_NODI),&
                   outfluxes%totout(2, iphase, iofluxes)   )
                 end do
+              !print *, temp_field%val(1,2,CV_NODI)
+            !    do iphase = start_phase, end_phase
+                  !outfluxes%totout(2, iphase, iofluxes) = outfluxes%totout(2, iphase, iofluxes) + &
+                  !Mass_flux(iphase)* temp_field%val(1,iphase,CV_NODI)!*heat_capacity%val(iphase)
+              !  end do
               end if
               !Maybe rather than max_sat would be better Mass of C? Mass_flux*Concentration
               if (has_salt) then

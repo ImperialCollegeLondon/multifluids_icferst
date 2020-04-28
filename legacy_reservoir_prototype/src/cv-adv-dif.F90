@@ -424,7 +424,7 @@ contains
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
           type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field !Arash
-
+          !type(scalar_field), pointer :: heat_capacity
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
           Real, dimension(:), pointer :: MASS_CV
           !Permeability and immobile fractions
@@ -551,6 +551,7 @@ contains
               !Extract temperature for outfluxes if required
               if (has_temperature) then
                   temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
+                  !heat_capacity => extract_tensor_field( state( iphase ), 'PackeHeatCapacity' )
                   if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0.0
               end if
               !Arash
@@ -1788,7 +1789,7 @@ contains
                             if (compute_outfluxes .and. on_domain_boundary) then
                               call update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi,  &
                                 ndotqnew * SdevFuns%DETWEI(gi) * LIMT, ndotqnew * SdevFuns%DETWEI(gi) * LIMDT, & !Vol_flux and Mass_flux
-                                old_tracer, temp_field, salt_field, 1, final_phase )
+                                old_tracer, temp_field,  salt_field, 1, final_phase)
                             end if
 
                           endif ! if(CV_NODJ.ge.CV_NODI) then
@@ -6073,10 +6074,10 @@ end if
                                             (top_domain-X_ALL(Mdims%ndim, CV_NODI))*&
                                             CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI ))
                                     else
-                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.e1!max possible for comvergence
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = 1. !max possible for convergence
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                             - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
-                                            * Bound_ele_correct( :, IPHASE, U_ILOC )* SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
+                                            * Bound_ele_correct( :, IPHASE, U_ILOC ) * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
                                     endif
 
                                 else

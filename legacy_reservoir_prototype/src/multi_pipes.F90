@@ -1816,9 +1816,9 @@ contains
                         LOC_U_RHS_U_ILOC = 0.0
                         DO IPHASE = 1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
                             DO IDIM = 1, Mdims%ndim
-                                Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )*1.e2 !optimal value
+                                Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )!*1.e2 !optimal value
                                 LOC_U_RHS_U_ILOC( IDIM, IPHASE) =  LOC_U_RHS_U_ILOC( IDIM, IPHASE ) &
-                                    - NMX_ALL( IDIM ) * SUF_P_BC_ALL_NODS( IPRES,JCV_NOD )*1.e2
+                                    - NMX_ALL( IDIM ) * SUF_P_BC_ALL_NODS( IPRES,JCV_NOD )!*1.e2
                             END DO
                         END DO
                         Mmat%U_RHS( :, Mdims%n_in_pres+1:Mdims%nphase, JU_NOD ) = Mmat%U_RHS( :, Mdims%n_in_pres+1:Mdims%nphase, JU_NOD ) + LOC_U_RHS_U_ILOC( :, Mdims%n_in_pres+1:Mdims%nphase)
