@@ -2152,23 +2152,6 @@ end if
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
 
 
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
-        ! IF ( GLOBAL_SOLVE ) THEN
-                      ! Global solve
-            ! IF ( JUST_BL_DIAG_MAT ) THEN
-            !     EWRITE(-1,*) 'OPTION NOT READY YET WITH A GLOBAL SOLVE'
-            !     STOP 8331
-            ! END IF
-            ! UP = 0.0
-            ! CALL multi_solver( MCY, UP, MCY_RHS, &
-            ! Mspars%MCY%fin, Mspars%MCY%col, &
-            ! option_path = '/material_phase[0]/vector_field::Velocity')
-            ! U_ALL2 % val = reshape( UP( 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase ), (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
-            ! P_ALL % val( 1, 1, : ) = UP( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods )
-            ! DEALLOCATE( MCY_RHS ); DEALLOCATE( MCY ); DEALLOCATE( UP )
-        ! end if
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
-
         !##################allocate DGM petsc just before the momentum solve####
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
@@ -2998,28 +2981,6 @@ end if
                 got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
         end if
 
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
-!         IF ( GLOBAL_SOLVE ) THEN
-!             ! put momentum and Mmat%C matrices into global matrix MCY...
-!             Mmat%MCY_RHS = 0.0!INSTEA OF THIS MAYBE i COULD PASS DOWN THE MEMORY OF MCY_RHS? OR POINT STUFF AROUND?
-!             DO ELE = 1, Mdims%totele
-!                 DO U_ILOC = 1, Mdims%u_nloc
-!                     U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-!                     DO IPHASE = 1, Mdims%nphase
-!                         DO IDIM = 1, Mdims%ndim
-!                             I = U_INOD + (IDIM-1)*Mdims%u_nonods + (IPHASE-1)*Mdims%ndim*Mdims%u_nonods
-!                             Mmat%MCY_RHS( I ) = Mmat%U_RHS( IDIM, IPHASE, U_INOD )
-!                         END DO
-!                     END DO
-!                 END DO
-!             END DO
-! FLAbort('Global solve for pressure-mommentum is broken until nested matrices get impliented.')
-!            CALL PUT_MOM_C_IN_GLOB_MAT( Mdims%nphase,Mdims%ndim, &
-!            Mspars%DGM_PHA%ncol, Mmat%DGM_petsc, Mspars%DGM_PHA%fin, &
-!            NLENMCY, Mspars%MCY%ncol, MCY, Mspars%MCY%fin, &
-!            Mdims%u_nonods, Mspars%C%ncol, Mmat%C, Mspars%C%fin )
-        ! END IF
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
         ALLOCATE( DENOLD_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
         IF ( Mdisopt%volfra_use_theta_flux ) THEN ! We have already put density in theta...
@@ -3057,14 +3018,6 @@ end if
             eles_with_pipe = eles_with_pipe, pipes_aux = pipes_aux, &
             calculate_mass_delta = calculate_mass_delta, outfluxes = outfluxes)
 
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
-        ! Put Mmat%CT into global matrix MCY...
-        ! IF ( GLOBAL_SOLVE ) THEN
-        !     Mmat%MCY_RHS( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods ) = &
-        !     Mmat%CT_RHS%val( 1, 1 : Mdims%cv_nonods )
-        !     ! CALL PUT_CT_IN_GLOB_MAT( Mmat, MCY )
-        ! END IF
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
         ewrite(3,*)'Back from cv_assemb'
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )
@@ -3349,109 +3302,7 @@ end if
                   END DO
               END DO
 
-
-            ! end if
-
             end subroutine
-
-            !> Put Mmat%CT into global matrix MCY
-            !> @WARNING VERY DEPRECATED NEEDS TESTING
-            SUBROUTINE PUT_CT_IN_GLOB_MAT( Mmat, Mspars)
-                implicit none
-                type (multi_matrices), intent(inout) :: Mmat
-                type (multi_sparsities), intent(in) :: Mspars
-                ! Local variables...
-                INTEGER CV_NOD, IWID, COUNT, IPHASE, COUNT_MCY1, &
-                    COUNT_MCY, COUNT_CMC, IDIM, I_MCY, J_MCY
-
-                ewrite(3,*) 'In PUT_CT_IN_GLOB_MAT'
-                Loop_CVNOD: DO CV_NOD = 1, Mdims%cv_nonods
-                    IWID = Mspars%CT%fin( CV_NOD + 1 ) - Mspars%CT%fin( CV_NOD )
-                    Loop_COUNT: DO COUNT = Mspars%CT%fin( CV_NOD ), Mspars%CT%fin( CV_NOD + 1 ) - 1
-                        Loop_PHASE: DO IPHASE = 1, Mdims%nphase
-                            Loop_DIM: DO IDIM = 1, Mdims%ndim
-                                ! COUNT_MCY1 = Mspars%MCY%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + CV_NOD ) - 1 + (COUNT - Mspars%CT%fin( CV_NOD ) +1) &
-                                !     + ( IPHASE - 1 ) * IWID * Mdims%ndim   + IWID*(IDIM-1)
-                                ! MCY( COUNT_MCY1 ) = Mmat%CT( IDIM, IPHASE, COUNT )
-                                I_MCY = Mdims%u_nonods * Mdims%nphase * Mdims%ndim + CV_NOD
-                                J_MCY = Mspars%MCY%col(Mspars%MCY%fin(I_MCY))
-                                call addto(Mmat%petsc_MCY, blocki = 1, blockj = 1, &
-                                          i = I_MCY, j = J_MCY, val = Mmat%CT( IDIM, IPHASE, COUNT ) )
-                            END DO Loop_DIM
-                        END DO Loop_PHASE
-                    END DO Loop_COUNT
-                END DO Loop_CVNOD
-
-                !##########NOT FOR THE TIME BEING...################
-                ! DO CV_NOD = 1, Mdims%cv_nonods
-                !     IWID = Mspars%CMC%fin( CV_NOD + 1 )- Mspars%CMC%fin( CV_NOD )
-                !     DO I = 1, IWID
-                !         COUNT_CMC = Mspars%CMC%fin( CV_NOD + 1) - I
-                !         COUNT_MCY = Mspars%MCY%fin( Mdims%ndim * Mdims%nphase * Mdims%u_nonods + CV_NOD + 1 ) - I
-                !         MCY( COUNT_MCY ) = DIAG_SCALE_PRES( 1, CV_NOD ) * MASS_MN_PRES( COUNT_CMC )
-                !     END DO
-                ! END DO
-                ewrite(3,*) 'Leaving PUT_CT_IN_GLOB_MAT'
-                RETURN
-            END SUBROUTINE PUT_CT_IN_GLOB_MAT
-
-
-            !> put momentum and C matrices into global matrix MCY
-            !> @WARNING VERY DEPRECATED NEEDS UPDATING
-            SUBROUTINE PUT_MOM_C_IN_GLOB_MAT( NPHASE, NDIM, &
-              NCOLDGM_PHA, DGM_PHA, FINDGM_PHA, &
-              NLENMCY, NCOLMCY, MCY, FINMCY, &
-              U_NONODS, NCOLC, C, FINDC )
-              implicit none
-
-              INTEGER, intent( in ) :: NPHASE, NDIM, U_NONODS, NCOLDGM_PHA, &
-              NCOLC, NLENMCY, NCOLMCY
-              INTEGER, DIMENSION( : ), intent( in ) ::  FINDGM_PHA
-              REAL, DIMENSION( : ), intent( in ) ::  DGM_PHA
-              INTEGER, DIMENSION( : ), intent( in ) :: FINMCY
-              INTEGER, DIMENSION( : ), intent( in ) :: FINDC
-              REAL, DIMENSION( : ), intent( inout ) :: MCY
-              REAL, DIMENSION( :, :, : ), intent( in ) :: C
-              ! Local variables...
-              INTEGER :: U_NOD_PHA, IWID, I, U_NOD, IPHASE, IDIM, U_NOD_PHA_I, COUNT, COUNT2
-
-              ewrite(3,*) 'In PUT_MOM_C_IN_GLOB_MAT'
-
-              MCY = 0.0
-              ! Put moment matrix DGM_PHA into global matrix MCY
-              DO U_NOD_PHA = 1, U_NONODS  * NDIM * NPHASE
-                IWID = FINDGM_PHA( U_NOD_PHA + 1 ) - FINDGM_PHA( U_NOD_PHA )
-
-                DO I = 1, IWID
-                  MCY( FINMCY( U_NOD_PHA ) - 1 + I ) = DGM_PHA( FINDGM_PHA( U_NOD_PHA ) - 1 + I )
-                END DO
-
-              END DO
-
-              ! Put C matrix into global matrix MCY
-
-              Loop_IPHASE: DO IPHASE = 1, NPHASE
-
-                Loop_IDIM: DO IDIM = 1, NDIM
-                  Loop_UNOD: DO U_NOD = 1, U_NONODS
-
-                    U_NOD_PHA_I = U_NOD + ( IDIM - 1 ) * U_NONODS + ( IPHASE - 1 ) * U_NONODS * NDIM
-                    IWID = FINDC( U_NOD + 1 ) - FINDC( U_NOD )
-
-                    DO I = 1, IWID
-                      COUNT2 = FINMCY( U_NOD_PHA_I + 1 ) - I
-                      COUNT = FINDC( U_NOD + 1 ) - I + ( IDIM - 1 ) * NCOLC + ( IPHASE - 1 ) * NCOLC * NDIM
-                      MCY( COUNT2 ) = C( IDIM, IPHASE, COUNT )
-                    END DO
-
-                  END DO Loop_UNOD
-                END DO Loop_IDIM
-              END DO Loop_IPHASE
-
-              ewrite(3,*) 'Leaving PUT_MOM_C_IN_GLOB_MAT'
-
-            END SUBROUTINE PUT_MOM_C_IN_GLOB_MAT
-
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
 
@@ -7494,7 +7345,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      INTEGER, DIMENSION( U_NONODS + 1), intent( in ) :: FINDC
      INTEGER, DIMENSION( NCOLC), intent( in ) :: COLC
 
-     ! Find COUNT - position in matrix : FINMCY, COLMCY
      IF(STORED_AC_SPAR_PT) THEN
          COUNT=POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE)
      ELSE
@@ -7520,7 +7370,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      INTEGER, DIMENSION( U_SNLOC,P_SNLOC,NFACE,TOTELE*IDO_STORE_AC_SPAR_PT ), intent( inout ) :: POSINMAT_C_STORE_SUF_DG
      INTEGER, DIMENSION( U_NONODS + 1), intent( in ) :: FINDC
      INTEGER, DIMENSION( NCOLC), intent( in ) :: COLC
-     ! Find COUNT2 - position in matrix : FINMCY, COLMCY
      IF(STORED_AC_SPAR_PT) THEN
          COUNT=POSINMAT_C_STORE_SUF_DG(U_SILOC,P_SJLOC,IFACE,ELE)
      ELSE
