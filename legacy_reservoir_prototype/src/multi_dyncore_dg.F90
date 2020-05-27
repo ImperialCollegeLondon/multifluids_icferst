@@ -614,6 +614,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ! Phase diagram coefficents
            type(magma_phase_diagram) :: phase_coef
            logical :: assemble_collapsed_to_one_phase
+           ! for testing
+           type(vector_field), pointer :: position_field
 
            if (Mdims%nphase==1) then
              loc_thermal= .true.
@@ -637,11 +639,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
            if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
            !Check that the extra parameters required for porous media thermal simulations are present
-         !   if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
-         !   .not.have_option('/porous_media/thermal_porous/scalar_field::porous_heat_capacity') .or. &
-         !   .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
-         !   FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
-         ! end if
+           if (.not.have_option('/material_phase::phase1/phase_properties/scalar_field::HeatCapacity') .or. &
+           .not.have_option('/material_phase::phase1/phase_properties/tensor_field::Thermal_Conductivity') .or. &
+           .not.have_option('/material_phase::phase2/phase_properties/scalar_field::HeatCapacity') .or. &
+           .not.have_option('/material_phase::phase1/phase_properties/tensor_field::Thermal_Conductivity')) then
+           FLAbort("For magma simulation where phase diagram is given, HeatCapacity, Thermal_Conductivity of both phases must be defined.")
+         end if
          !need to perform average of the effective heat capacity times density for the diffusion and time terms
            allocate(porous_heat_coef(Mdims%cv_nonods))
            if (Mdims%nphase==1) then
@@ -680,13 +683,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
                 !TDIFFUSION(:,:,:1)=0  ! Only one phase should have the diffusivity term this is done in the multi_eos
-                TDIFFUSION_ES=TDIFFUSION*phase_coef%Lf  ! diffusion for the enthalpy source term
+                TDIFFUSION_ES=TDIFFUSION*phase_coef%Lf  ! diffusivity for the enthalpy source term
            else
                 assemble_collapsed_to_one_phase = .false.
                 n_in_pres = Mdims%n_in_pres
                 call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TOC Chemical diffusivity needs to be defined.
                 TDIFFUSION=TDIFFUSION/1e3
            end if
+
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
@@ -725,6 +729,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ! Calculate the source term of the enthalpy equation
              ! to_debug=1
              call tracer_gen(tracer3)
+             ! tracer3%val=tracer3%val
              call allocate(Mmat%CV_RHS,1 , tracer%mesh,"RHS")
              call allocate(Mmat%petsc_ACV,sparsity,[1,1],"ACV_INTENERGE")
              call zero(Mmat%petsc_ACV);
@@ -734,7 +739,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  tracer3, velocity, density, multi_absorp, & !tracer3=[1+saturation, saturation]
                  DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                  DEN_ALL, DENOLD_ALL, &
-                 cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                 cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, 1.0, &   ! cv_beta=1  conservative form
                  SUF_SIG_DIAGTEN_BC, &
                  DERIV%val(1,:,:), P%val, &
                  T_SOURCE, T_ABSORB, VOLFRA_PORE, &
@@ -752,6 +757,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number,assemble_collapsed_to_one_phase = .true.)
              ! print *,size(T_source,1),size(T_source,2)
              T_source(1,:) =Mmat%CV_RHS%val(1,:)
+             T_source(1,:) =T_source(1,:)*phase_coef%Lf
+
+             ! HH for testing, output the enthalpy source term
+             position_field => extract_vector_field(state(1), "Coordinate")
+             call vtk_write_fields('ES',0, position_field, tracer%mesh,vfields=(/Mmat%CV_RHS/))
 
              call allocate(Mmat%petsc_ACV,sparsity,[Mdims%npres,Mdims%npres],"ACV_INTENERGE")
              ! call allocate(Mmat%CV_RHS, 1,tracer%mesh,"RHS")
