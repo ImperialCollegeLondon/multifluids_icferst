@@ -238,9 +238,6 @@ contains
     end if
     if (associated(state%scalar_fields)) then
        do i=1,size(state%scalar_fields)
-          if (state%scalar_fields(i)%ptr%name=="IteratedPressure") then   !!HH sprint_to_do IteratedPressure raise error when been deallocated
-            cycle
-          end if
           call deallocate(state%scalar_fields(i)%ptr)
           deallocate(state%scalar_fields(i)%ptr)
        end do

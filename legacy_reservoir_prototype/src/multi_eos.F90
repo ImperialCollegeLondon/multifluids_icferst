@@ -1703,15 +1703,14 @@ contains
           capacityL => extract_scalar_field( state(2), 'TemperatureHeatCapacity', stat )
           diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)
           ScalarAdvectionField_Diffusion = 0.
-
           do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the defusivity term
             do ele = 1, Mdims%totele
               do iloc = 1, Mdims%mat_nloc
                 mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
                 cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                 do idim = 1, Mdims%ndim
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) =&
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) +&
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
                   (node_val( diffL, idim, idim, mat_inod ) * node_val( saturation, 1, 2, cv_inod )&
                   +node_val( diffS, idim, idim, mat_inod ) * node_val( saturation, 1, 1, cv_inod )) &
                   /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
