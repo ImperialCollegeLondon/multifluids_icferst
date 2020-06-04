@@ -1720,13 +1720,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
-
         logical :: LUMP_DIAG_MOM, lump_mass
-
-        !Variables for Global solve, i.e. solving prssure and velocity simultaneously
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
-        logical :: global_solve = .false.
-        !################DISABLED UNTIL CORRECTLY IMPLEMENTED##########################
 
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/numerical_methods/rescale_mom_matrices")
@@ -1956,7 +1950,7 @@ end if
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             velocity%VAL, OLDvelocity%VAL, &
             CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
-            DT, GLOBAL_SOLVE, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
+            DT, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -2089,11 +2083,12 @@ end if
           call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 3, sqrt_inv_diag_CMC_mat)
           call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 2, sqrt_inv_diag_CMC_mat)
         end if
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, sqrt_inv_diag_CMC_mat)
 
+        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, sqrt_inv_diag_CMC_mat)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
+
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
         if (solve_stokes .or. solve_mom_iteratively ) then
@@ -2107,11 +2102,9 @@ end if
         call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
         call deallocate(deltaP)
         if (isParallel()) call halo_update(velocity)
-
         if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
         call DEALLOCATE( CDP_tensor )
         !######################## CORRECTION VELOCITY STEP####################################
-
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
         if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
@@ -2125,14 +2118,16 @@ end if
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-        if (associated(diagonal_A%val)) call deallocate(diagonal_A)
-        if (allocated(sqrt_inv_diag_CMC_mat)) deallocate(sqrt_inv_diag_CMC_mat)
 
+        !Using associate doesn't seem to be stable enough
+        if (have_option("/numerical_methods/solve_mom_iteratively/Momentum_preconditioner") .or. &
+            have_option("/numerical_methods/solve_mom_iteratively/Advance_preconditioner")  .or. &
+            rescale_mom_matrices ) call deallocate(diagonal_A)
+        if (allocated(sqrt_inv_diag_CMC_mat)) deallocate(sqrt_inv_diag_CMC_mat)
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
 
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
-
       contains
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
@@ -2715,7 +2710,7 @@ end if
         X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
-        DT, GLOBAL_SOLVE,&
+        DT, &
         MASS_MN_PRES, MASS_ELE,&
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
@@ -2746,7 +2741,7 @@ end if
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
-        LOGICAL, intent( in ) :: GLOBAL_SOLVE,RETRIEVE_SOLID_CTY,got_free_surf,FEM_continuity_equation,boussinesq
+        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,FEM_continuity_equation,boussinesq
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
