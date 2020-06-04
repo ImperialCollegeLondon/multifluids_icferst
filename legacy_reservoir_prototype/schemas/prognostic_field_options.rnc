@@ -315,6 +315,8 @@ prognostic_pressure_field =
          ##
          ## It should be noted that all parts of the model should be located below zero in y (or z in 3D) direction.
          ## The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
+         ##
+         ## <b>NOTE: Density boundary conditions must be specified.</b>
          element hydrostatic_boundaries {
             empty
          }
