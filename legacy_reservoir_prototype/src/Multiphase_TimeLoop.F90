@@ -199,7 +199,7 @@ contains
         real,allocatable, dimension(:) :: c_phi_series
         integer :: c_phi_length
         type(coupling_term_coef) :: coupling
-        type(magma_phase_diagram) :: phase_coef
+        type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
 
 #ifdef HAVE_ZOLTAN
@@ -453,7 +453,9 @@ contains
           c_phi_length=1e7  !> the number of items of the coupling term coefficients stored in the system
           allocate(c_phi_series(c_phi_length))
           call C_generate (c_phi_series, c_phi_length, state, coupling)
-          call initialize_magma_parameters(phase_coef,  coupling)
+          call initialize_magma_parameters(magma_phase_coef,  coupling)
+          !This is important to specify EnthalpyOld based on the temperature which is easier for the user
+          call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
         end if
 
         !!$ Time loop
@@ -648,9 +650,7 @@ contains
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
 
-                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-
-                Conditional_ScalarAdvectionField_Magma_enthalpy_composition:IF (is_magma) then
+                Conditional_Magma_enthalpy: IF (is_magma) then
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -659,7 +659,7 @@ contains
                     call set_nu_to_u( packed_state )
                     ewrite(3,*)'Now advecting Enthalpy Field'
                     tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
-                    call ENTHALPY_COMPOSITION_ASSEM_SOLVE( state, packed_state, &
+                    call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                     tracer_field,velocity_field,density_field, multi_absorp, dt, &
                     suf_sig_diagten_bc, Porosity_field%val, &
@@ -668,43 +668,23 @@ contains
                     THETA_GDIFF, eles_with_pipe, pipes_aux, &
                     option_path = '/material_phase[0]/scalar_field::Enthalpy', &
                     thermal = .false.,&
-                    saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, phase_coef=  phase_coef)
-                  end if
-                  if( have_option( '/material_phase[0]/scalar_field::Composition/') .and. have_option( '/material_phase[1]/scalar_field::Composition/' ) ) then
-                    call set_nu_to_u( packed_state )
-                    ewrite(3,*)'Now advecting composition Field'
-                    tracer_field=>extract_tensor_field(packed_state,"PackedComposition")
-                    call ENTHALPY_COMPOSITION_ASSEM_SOLVE( state, packed_state, &
-                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                    suf_sig_diagten_bc, Porosity_field%val, &
-                    !!$
-                    0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                    THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                    option_path = '/material_phase[0]/scalar_field::Composition', &
-                    thermal = .false.,&
-                    saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, phase_coef=phase_coef)
-                    ! update bulk composition
-                    call cal_bulkcomposition(state,packed_state)
+                    saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
                   end if
 
                   if (has_phase_diagram) then
                     ! ! Calculate melt fraction from phase diagram
-                    call porossolve(state,packed_state, Mdims, ndgln, phase_coef)
+                    call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                     ! ! Update the temperature field
                     if (have_option( '/material_phase[0]/scalar_field::Enthalpy/prognostic' )) then
-                      call enthalpy_to_temperature(Mdims, state, packed_state, phase_coef)
+                      call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                     end if
                     ! ! Update the composition
-                    call cal_solidfluidcomposition(state, packed_state, Mdims, phase_coef)
+                    call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   end if
-                END IF Conditional_ScalarAdvectionField_Magma_enthalpy_composition
+                END IF Conditional_Magma_enthalpy
 
+                sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
-
-
-
-               !!$ Arash
                !!$ Solve advection of the scalar 'SoluteMassFraction':
                Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
                    have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then

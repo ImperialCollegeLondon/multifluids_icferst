@@ -1277,15 +1277,6 @@ contains
         end if Conditional_Dimensional_3
         if( Mspars%CMC%ncol<1 ) FLAbort("Incorrect number of dimension of CMC sparsity matrix")
         call resize(Mspars%CMC%col,Mspars%CMC%ncol)
-
-
-        Mspars%DGM_PHA%fin = 0 ; Mspars%DGM_PHA%col = 0 ; Mspars%DGM_PHA%mid = 0
-        call form_dgm_pha_sparsity( Mdims%totele, Mdims%nphase, Mdims%u_nloc, Mdims%nphase * Mdims%u_nonods * Mdims%ndim, &
-            Mdims%ndim, mx_ncoldgm_pha, Mspars%DGM_PHA%ncol, &
-            Mspars%DGM_PHA%col, Mspars%DGM_PHA%fin, Mspars%DGM_PHA%mid, &
-            Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol )
-
-
         !-
         !- Computing sparsity CV-FEM
         !-

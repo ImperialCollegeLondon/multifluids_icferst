@@ -145,7 +145,7 @@ module sparse_tools_petsc
      zero, addto, addto_diag, scale, &
      extract_diagonal, assemble, incref_petsc_csr_matrix, &
      ptap, mult, mult_T, lift_boundary_conditions, dump_matrix, &
-     csr2petsc_csr, dump_petsc_csr_matrix, petsc_compact_matrix
+     csr2petsc_csr, dump_petsc_csr_matrix
 
 contains
 
@@ -816,50 +816,6 @@ contains
     matrix%is_assembled=.false.
 
   end subroutine petsc_csr_block_addto
-
-  !HH
-  subroutine petsc_compact_matrix(matrixi, matrixj, nphase)
-    !!< compact a nphase matrixj into a one phase and add to matrixi
-    type(petsc_csr_matrix), intent(inout) :: matrixi, matrixj
-    integer :: iphase,blocki,blockj
-    integer, intent(in) :: nphase
-
-    PetscScalar, dimension(:,:), allocatable:: v
-    PetscInt, allocatable:: jdxm(:), idxm(:)
-    PetscInt, allocatable:: jdxn(:), idxn(:)
-    PetscInt :: msizei, msizej
-    PetscErrorCode:: ierr
-    !PetscViewer viewer1, viewer2
-
-    call MatAssemblyBegin(matrixj%M, MAT_FINAL_ASSEMBLY, ierr)
-    call MatAssemblyEnd(matrixj%M, MAT_FINAL_ASSEMBLY, ierr)
-    msizej=size(matrixj%row_numbering%gnn2unn,1)
-    msizei=size(matrixi%row_numbering%gnn2unn,1)
-    allocate(jdxm(msizej),jdxn(msizej))
-    allocate(idxm(msizei),idxn(msizei),v(msizei,msizei))
-
-    idxm=matrixi%row_numbering%gnn2unn(:,1)
-    idxn=matrixi%column_numbering%gnn2unn(:,1)
-    do iphase=1,nphase
-      jdxm=matrixj%row_numbering%gnn2unn(:,iphase)
-      jdxn=matrixj%column_numbering%gnn2unn(:,iphase)
-      call MatGetValues(matrixj%M, msizei, jdxm, msizei, jdxn, v, ierr)
-      call MatSetValues(matrixi%M, msizei, idxm, msizei, idxn, v, ADD_VALUES, ierr)
-    end do
-    call MatAssemblyBegin(matrixi%M, MAT_FINAL_ASSEMBLY, ierr)
-    call MatAssemblyEnd(matrixi%M, MAT_FINAL_ASSEMBLY, ierr)
-    call MatTranspose(matrixi%M, MAT_INPLACE_MATRIX, matrixi%M, ierr)  ! the v from MatGetValues is row-based, so after MatSetValues, the new matrix need to be transposed.
-    ! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'matrixj.xml',viewer1,ierr)
-    ! call MatView(matrixj%M,viewer1)
-
-    ! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'matrixi.xml',viewer2,ierr)
-    ! call MatView(matrixi%M,viewer2)
-    ! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'v.xml',viewer2,ierr)
-    ! call PetscScalarview(msizei,v,viewer2)
-    matrixi%is_assembled=.FALSE.
-
-  end subroutine petsc_compact_matrix
-
 
   subroutine petsc_csr_blocks_addto(matrix, i, j, val)
     !!< Add the (blocki, blockj, :, :) th matrix of val onto the (blocki, blockj) th

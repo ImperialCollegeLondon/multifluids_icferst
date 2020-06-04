@@ -257,7 +257,7 @@ contains
     end do
   end subroutine
 
-  !Subroutine to obtain the temperature field for a given enthalpy field
+  !> @brief: Subroutine to obtain the temperature field for a given enthalpy field
   subroutine enthalpy_to_temperature(Mdims, state, packed_state, phase_coef)
   implicit none
   !Global variables
@@ -269,7 +269,7 @@ contains
   !Local variables
   integer :: cv_nodi, iphase
   type ( scalar_field), pointer :: Cp                       !Temporary until deciding if creating a Cp in packed_state as well
-  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, FluidComposition, dCp , den
+  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, dCp , den
   real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   !real, parameter :: tol = 1e-5
     !Temporary until deciding if creating a Cp in packed_state as well
@@ -298,6 +298,52 @@ contains
       temperature%val(1,iphase,:) = temperature%val(1,1,:)
     end do
   end subroutine enthalpy_to_temperature
+
+
+  !> @brief: Subroutine to obtain the enthalpy field for a given temperature field
+  !> Important for the initialisation of the enthalpy, we need ENthalpyOld to start!
+  subroutine temperature_to_enthalpy(Mdims, state, packed_state, phase_coef)
+  implicit none
+  !Global variables
+  type( state_type ), dimension( : ), intent( inout ) :: state
+  type( state_type ), intent( inout ) :: packed_state
+  type(multi_dimensions), intent( in ) :: Mdims
+  type(magma_phase_diagram) :: phase_coef
+
+  !Local variables
+  integer :: cv_nodi, iphase
+  type( tensor_field ), pointer :: enthalpy, temperature,  saturation, rhoCp
+  real, dimension(Mdims%cv_nonods) :: enthalpy_dim
+  !real, parameter :: tol = 1e-5
+    !Temporary until deciding if creating a Cp in packed_state as well
+    rhoCp =>extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+    enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
+    temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
+    saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
+    !Calculate temperature using the generic formula H = T_alpha * rho_alpha * Cp_alpha * Saturation_alpha + Lf * phi (phi = Saturation_2)
+    do cv_nodi = 1, Mdims%cv_nonods
+      do iphase = 1, Mdims%nphase
+        !First enthalpy stored in each phase
+        enthalpy%val(1,1,cv_nodi)= temperature%val(1,1,cv_nodi) * rhoCp%val(1,iphase, cv_nodi) * saturation%val(1,iphase,cv_nodi) ! sprint_to_do Need to fix for variable heat capacity.
+      end do
+      !Now consider the latent heat
+      enthalpy%val(1,1,cv_nodi)= enthalpy%val(1,1,cv_nodi) + phase_coef%Lf*saturation%val(1,2,cv_nodi)
+    end do
+    ! !Now add corrections if required
+    ! where (saturation%val(1,2, :)>0.) !If porosity > 0.
+    !   where (temperature%val(1,1,:) < phase_coef%Ts ) !If there is mixture, temperature cannot be below the solidus
+    !     temperature%val(1,1,:) = phase_coef%Ts!It seems that the Solidus line is flat
+    !   end where
+    ! ! elsewhere  !not necesarry
+    ! !   temperature%val(1,1,:) = enthalpy_dim* den%val(1,iphase,:)/Density_Cp%val(1,iphase,:)
+    ! end where
+    !Now for consistency populate the temperature of all the phase
+    do iphase = 2, Mdims%ndim
+      enthalpy%val(1,iphase,:) = enthalpy%val(1,1,:)
+    end do
+  end subroutine temperature_to_enthalpy
+
 
   !Compute porosity given an enthalpy field and a BulkComposition
   subroutine porossolve(state, packed_state, Mdims, ndgln, phase_coef)

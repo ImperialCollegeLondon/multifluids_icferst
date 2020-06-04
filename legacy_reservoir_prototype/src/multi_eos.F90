@@ -1485,20 +1485,20 @@ contains
     end subroutine calculate_u_source_cv
 
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
-    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer, calculate_solute_diffusivity)
+    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, calculate_solute_diffusivity, divide_by_rho_CP)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
       logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
+      logical, optional, intent(in) :: divide_by_rho_CP !> If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
       type(tensor_field), pointer :: diffusivity, tfield, den, saturation
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
-      type(tensor_field), intent(inout) :: tracer
 
       ScalarAdvectionField_Diffusion = 0.0
       if ( Mdims%ncomp > 1 ) then
@@ -1672,129 +1672,84 @@ contains
           maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
         endif
       end do
-      return
-    end subroutine calculate_diffusivity
 
-    !HH
-    subroutine calculate_enthalpy_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion,tracer)
-      type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( in ) :: packed_state
-      !type( state_type ), intent( in ) :: packed_state
-      type(multi_dimensions), intent(in) :: Mdims
-      type(multi_ndgln), intent(in) :: ndgln
-      real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-      !Local variables
-      type(scalar_field), pointer :: capacityS, capacityL, densityS, densityL
-      type(tensor_field), pointer :: diffS, diffL, saturation
-      type(tensor_field) :: tracer
-      integer :: iphase, idim, stat, ele, iloc
-      integer :: mat_inod, cv_inod
-      logical, parameter :: harmonic_average=.false.
-
-      ScalarAdvectionField_Diffusion = 0.0
-      densityS => extract_scalar_field( state(1), "Density" )
-      capacityS => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
-      diffS => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
-      saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-
-      IF (tracer%name=="PackedEnthalpy") then
-        if (Mdims%nphase>1) then
-          densityL => extract_scalar_field( state(2), "Density")
-          capacityL => extract_scalar_field( state(2), 'TemperatureHeatCapacity', stat )
-          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)
-          ScalarAdvectionField_Diffusion = 0.
-          do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the defusivity term
-            do ele = 1, Mdims%totele
-              do iloc = 1, Mdims%mat_nloc
-                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                do idim = 1, Mdims%ndim
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                  (node_val( diffL, idim, idim, mat_inod ) * node_val( saturation, 1, 2, cv_inod )&
-                  +node_val( diffS, idim, idim, mat_inod ) * node_val( saturation, 1, 1, cv_inod )) &
-                  /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
-                  + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
-                end do
-              end do
-            end do
-          end do
-        else
-          densityL => extract_scalar_field( state(1), "Density")
-          capacityL => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
-          diffL => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
-          ScalarAdvectionField_Diffusion = 0.
-          do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the defusivity term
-            do ele = 1, Mdims%totele
-              do iloc = 1, Mdims%mat_nloc
-                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-                do idim = 1, Mdims%ndim
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                  (node_val( diffL, idim, idim, mat_inod ) *  node_val( saturation, 1, 2, cv_inod )&   !node_val( saturation, 1, 2, cv_inod ) is phi, node_val( saturation, 1, 1, cv_inod ) is 1-phi
-                  +node_val( diffS, idim, idim, mat_inod ) *  node_val( saturation, 1, 1, cv_inod )) &
-                  /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
-                  + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
-                end do
-              end do
-            end do
-          end do
-        end if
-      ELSE  ! for composition
-        densityS => extract_scalar_field( state(1), "Density" )
-        capacityS => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )   ! chemical diffusivity is not defined or used so here we just use the thermal one and scale it into a very small value
-        diffS => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
-        saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-        if (Mdims%nphase>1) then
-          densityL => extract_scalar_field( state(2), "Density")
-          capacityL => extract_scalar_field( state(2), 'TemperatureHeatCapacity', stat )
-          diffL => extract_tensor_field( state(2), 'TemperatureDiffusivity', stat)
-        else
-          densityL => extract_scalar_field( state(1), "Density")
-          capacityL => extract_scalar_field( state(1), 'TemperatureHeatCapacity', stat )
-          diffL => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat)
-        end if
-
-        ScalarAdvectionField_Diffusion = 0.
-        do iphase = 1, Mdims%nphase !calculate all phases but scale it with their saturations
+      !If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
+      if (present_and_true(divide_by_rho_CP)) then
+        tfield => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
+        do iphase = 1, Mdims%nphase
           do ele = 1, Mdims%totele
             do iloc = 1, Mdims%mat_nloc
               mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
               cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
               do idim = 1, Mdims%ndim
                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-                ((node_val( diffL, idim, idim, mat_inod ) * node_val( saturation, 1, 2, cv_inod )&
-                +node_val( diffS, idim, idim, mat_inod ) * node_val( saturation, 1, 1, cv_inod )) &
-                /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
-                + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod)))*node_val( saturation, 1, iphase, cv_inod )
+                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )/tfield%val(1, iphase, cv_inod)
               end do
             end do
           end do
         end do
-      END IF
-
-      if ( harmonic_average ) then
-         ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
-         do iphase = 1, Mdims%nphase
-            do idim = 1, Mdims%ndim
-               do mat_inod = 1, Mdims%mat_nonods
-                  if ( ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) > 0.0 ) &
-                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                       1.0 / ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )
-               end do
-            end do
-         end do
       end if
 
-      do iphase = 1, Mdims%nphase
-         ewrite(3,*) 'Thermal conductivity min_max', iphase, &
-              minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
-              maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
-      end do
       return
-    end subroutine calculate_enthalpy_diffusivity
+    end subroutine calculate_diffusivity
+
+    ! !>@brief: Here we compute the enthalpy diffusion coefficient
+    ! subroutine calculate_enthalpy_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion,tracer)
+    !   type( state_type ), dimension( : ), intent( inout ) :: state
+    !   type( state_type ), intent( in ) :: packed_state
+    !   !type( state_type ), intent( in ) :: packed_state
+    !   type(multi_dimensions), intent(in) :: Mdims
+    !   type(multi_ndgln), intent(in) :: ndgln
+    !   real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
+    !   !Local variables
+    !   type(scalar_field), pointer :: HeatCapacity, Density
+    !   type(tensor_field), pointer :: Diffusion_coef
+    !   type(tensor_field) :: tracer
+    !   integer :: iphase, idim, stat, ele, iloc
+    !   integer :: mat_inod, cv_inod
+    !   logical, parameter :: harmonic_average=.false.
+    !
+    !   ScalarAdvectionField_Diffusion = 0.0
+    !   saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+    !
+    !   ScalarAdvectionField_Diffusion = 0.
+    !   do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the diffusivity term
+    !     Density => extract_scalar_field( state(iphase), "Density" )
+    !     HeatCapacity => extract_scalar_field( state(iphase), 'TemperatureHeatCapacity', stat )
+    !     Diffusion_coef => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat)
+    !     do ele = 1, Mdims%totele
+    !       do iloc = 1, Mdims%mat_nloc
+    !         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+    !         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+    !         do idim = 1, Mdims%ndim
+    !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+    !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+    !           node_val( Diffusion_coef, idim, idim, mat_inod ) &
+    !           /(node_val(HeatCapacity, cv_inod)*node_val(Density, cv_inod))
+    !         end do
+    !       end do
+    !     end do
+    !   end do
+    !
+    !   !Assembling everything into phase 1
+    !   ! ScalarAdvectionField_Diffusion = 0.
+    !   ! do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the diffusivity term
+    !   !   do ele = 1, Mdims%totele
+    !   !     do iloc = 1, Mdims%mat_nloc
+    !   !       mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+    !   !       cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+    !   !       do idim = 1, Mdims%ndim
+    !   !         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+    !   !         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
+    !   !         (node_val( diffL, idim, idim, mat_inod ) * node_val( saturation, 1, 2, cv_inod )&
+    !   !         +node_val( diffS, idim, idim, mat_inod ) * node_val( saturation, 1, 1, cv_inod )) &
+    !   !         /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
+    !   !         + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
+    !   !       end do
+    !   !     end do
+    !   !   end do
+    !   ! end do
+    ! end subroutine calculate_enthalpy_diffusivity
 
     !! Arash
     !>@brief: Dispersion for isotropic porous media
