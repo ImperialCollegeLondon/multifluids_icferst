@@ -455,6 +455,7 @@ contains
           call C_generate (c_phi_series, c_phi_length, state, coupling)
           call initialize_magma_parameters(magma_phase_coef,  coupling)
           !This is important to specify EnthalpyOld based on the temperature which is easier for the user
+          !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
         end if
 
@@ -601,9 +602,8 @@ contains
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
-                ! For magma simulation with phase diagram defined, phase volume fraction is not decided solving saturation equations
-                ! if phase diagram is not difined, saturation is still solved for magma simulation
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. (has_phase_diagram .and. is_magma))) then
+                ! For magma simulation with phase diagram defined, phase volume fraction is not transported but defined through the phase diagram
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -621,69 +621,67 @@ contains
                 if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
                 !#=================================================================================================================
-                !# End Velocity Update -> Move to ->the rest
+                !# End Velocity Update -> Move to ->Heat transport
                 !#=================================================================================================================
 
-                !!$ Solve advection of the scalar 'Temperature' for non magmatic process:
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) .and. (.not. is_magma)) then
-                    ewrite(3,*)'Now advecting Temperature Field'
-                    call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                        suf_sig_diagten_bc, Porosity_field%val, &
-                        !!$
-                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = .true.,&
-                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                !!$ Solve advection of the scalar 'Temperature' unless is magma...:
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. (.not. is_magma)) then
 
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-                end if Conditional_ScalarAdvectionField
+                  ewrite(3,*)'Now advecting Temperature Field'
+                  call set_nu_to_u( packed_state )
+                  !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                  tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                  suf_sig_diagten_bc, Porosity_field%val, &
+                  !!$
+                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                  option_path = '/material_phase[0]/scalar_field::Temperature', &
+                  thermal = .true.,&
+                  ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                  saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+                  !Recalculate densities
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
 
-                Conditional_Magma_enthalpy: IF (is_magma) then
+                else IF (is_magma) then !... in which case we solve for enthalpy instead 
+
+                  tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
 
-                  if (have_option( '/material_phase[0]/scalar_field::Enthalpy/prognostic' )) then
-                    call set_nu_to_u( packed_state )
-                    ewrite(3,*)'Now advecting Enthalpy Field'
-                    tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
-                    call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
-                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                    tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                    suf_sig_diagten_bc, Porosity_field%val, &
-                    !!$
-                    0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                    THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                    option_path = '/material_phase[0]/scalar_field::Enthalpy', &
-                    thermal = .false.,&
-                    saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
-                  end if
+                  call set_nu_to_u( packed_state )
+                  ewrite(3,*)'Now advecting Enthalpy Field'
+                  call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
+                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                  suf_sig_diagten_bc, Porosity_field%val, &
+                  !!$
+                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                  option_path = '/material_phase[0]/scalar_field::Enthalpy', &
+                  thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
+                  Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
 
-                  if (has_phase_diagram) then
-                    ! ! Calculate melt fraction from phase diagram
-                    call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
-                    ! ! Update the temperature field
-                    if (have_option( '/material_phase[0]/scalar_field::Enthalpy/prognostic' )) then
-                      call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
-                    end if
-                    ! ! Update the composition
-                    call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
-                  end if
-                END IF Conditional_Magma_enthalpy
+                  ! ! Calculate melt fraction from phase diagram
+                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  ! ! Update the temperature field
+                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
+                  ! ! Update the composition
+                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
+                  !Recalculate densities
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
+                END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-
+                !#=================================================================================================================
+                !# End Heat transport -> Move to -> Concentration transport
+                !#=================================================================================================================
                !!$ Solve advection of the scalar 'SoluteMassFraction':
                Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
                    have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
@@ -706,7 +704,9 @@ contains
 
                 end if Conditional_ScalarAdvectionField2
 
-
+                !#=================================================================================================================
+                !# End Concentration transport -> Move to -> Compositional transport
+                !#=================================================================================================================
 
                 !Solve for components here
                 if (have_component_field) then
@@ -722,6 +722,9 @@ contains
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
+                !#=================================================================================================================
+                !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
+                !#=================================================================================================================
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"

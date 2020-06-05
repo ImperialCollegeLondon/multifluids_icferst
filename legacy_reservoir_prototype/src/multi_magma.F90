@@ -80,7 +80,7 @@ contains
     type(magma_phase_diagram) :: phase_coef
     type(coupling_term_coef) :: coupling
 
-    if (has_phase_diagram) then
+    if (is_magma) then
       call get_option('/magma_parameters/Phase_diagram_coefficients/A1' , phase_coef%A1 )
       call get_option('/magma_parameters/Phase_diagram_coefficients/B1' , phase_coef%B1 )
       call get_option('/magma_parameters/Phase_diagram_coefficients/C1' , phase_coef%C1 )
@@ -330,16 +330,8 @@ contains
       !Now consider the latent heat
       enthalpy%val(1,1,cv_nodi)= enthalpy%val(1,1,cv_nodi) + phase_coef%Lf*saturation%val(1,2,cv_nodi)
     end do
-    ! !Now add corrections if required
-    ! where (saturation%val(1,2, :)>0.) !If porosity > 0.
-    !   where (temperature%val(1,1,:) < phase_coef%Ts ) !If there is mixture, temperature cannot be below the solidus
-    !     temperature%val(1,1,:) = phase_coef%Ts!It seems that the Solidus line is flat
-    !   end where
-    ! ! elsewhere  !not necesarry
-    ! !   temperature%val(1,1,:) = enthalpy_dim* den%val(1,iphase,:)/Density_Cp%val(1,iphase,:)
-    ! end where
     !Now for consistency populate the temperature of all the phase
-    do iphase = 2, Mdims%ndim
+    do iphase = 2, Mdims%nphase
       enthalpy%val(1,iphase,:) = enthalpy%val(1,1,:)
     end do
   end subroutine temperature_to_enthalpy

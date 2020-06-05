@@ -175,7 +175,6 @@ module global_parameters
   logical :: is_porous_initialisation = .false.
   !! Multiphase prototype, magma simulator
   logical :: is_magma = .false.
-  logical :: has_phase_diagram = .false.
   !! Multiphase prototype, poro-elasticity simulator
   logical :: is_poroelasticity = .false.
   !! Checking multifracture

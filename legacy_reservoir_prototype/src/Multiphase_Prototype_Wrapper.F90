@@ -1066,7 +1066,6 @@ contains
         !By default it is inertia dominated
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
         is_magma = have_option('/magma_simulator')
-        has_phase_diagram=have_option('/magma_parameters/Phase_diagram_coefficients')
         is_poroelasticity = have_option('/poroelasticity')
         !Decide to solve Stokes equations instead of navier-Stokes (magma requires this option as well)
         solve_stokes = have_option('/stokes_simulator') .or. is_magma
@@ -1089,8 +1088,12 @@ contains
           end if
         end if
 
-
-
+        if ((is_magma .and. .not. have_option('/magma_parameters/Phase_diagram_coefficients')) .or. &
+        ( have_option('/magma_parameters/Phase_diagram_coefficients') .and. .not. is_magma)) then
+          if (GetProcNo() == 1) then
+            FLAbort("Magma simulator requires /magma_parameters options.")
+          end if
+        end if
 
     end subroutine get_simulation_type
 

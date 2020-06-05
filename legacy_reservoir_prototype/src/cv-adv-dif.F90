@@ -592,7 +592,7 @@ contains
               SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
               SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
           end if
-           if (tracer%name == "PackedTemperature" &
+           if (tracer%name == "PackedTemperature" .or. (tracer%name == "PackedEnthalpy")&
               .or. tracer%name == "PackedSoluteMassFraction")  then
               allocate( suf_t_bc( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
                   suf_t_bc_rob2( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
@@ -607,7 +607,7 @@ contains
           ewrite(3,*) 'In CV_ASSEMB'
           GOT_DIFFUS = .false.
           if (present(TDIFFUSION)) then
-              GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * (1-final_phase+1) ) /= 0 )!<=I hate this thing...
+              GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * final_phase ) /= 0 )!<=I hate this thing...
               call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
           end if
           call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )

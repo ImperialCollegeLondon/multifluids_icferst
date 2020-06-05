@@ -327,7 +327,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ! which sums to one and therefore is the same
               !If collapsed solver then change nphase and n_in_pres
               nphase = Mdims%npres!One temperature per region
-              n_in_pres = 1
+              n_in_pres = Mdims%nphase!Need to assemble all the phases
            end if
            !Allocate the RHS
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
@@ -590,7 +590,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-           type( tensor_field ), pointer :: perm, python_tfield, tracer2
+           type( tensor_field ), pointer :: perm, python_tfield
            integer :: cv_disopt, cv_dg_vel_int_opt, n_in_pres
            real :: cv_theta, cv_beta
            type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
@@ -640,7 +640,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            !As for multiphase temperature we want to solve for only one enthalpy for the system because we consider thermal equilibrium
            assemble_collapsed_to_one_phase = .true.
-           n_in_pres = 1
+           n_in_pres = 2
 
            ! !Extract Density times HeatCapacity
            ! den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
@@ -656,9 +656,19 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !b)The diffusivity term to include rho and Cp
            TDIFFUSION=0.0
            !Obtain diffusion coefficient for temperature
+
+           !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR SALT
+           !OR WE NEED A PROGNOSTIC TEMPERATURE FIELD, WHICH IS "FINE" BUT STRANGE FOR THE USER
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, divide_by_rho_CP = .true.)
            !WE NEED SOMETHING SPECIAL FOR THIS AND LATENTHEAT*RHO IF WE HAVE COMPONENTS!
            ! call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TODO: REMOVE SUBROUTINE
+           !SOMETHING LIKE THIS, OR THIS FOR COMPOSITIONAL
+           ! call Calculate_ComponentDiffusionTerm( packed_state, &
+           !    Mdims, CV_GIdims, CV_funs, &
+           !    ndgln%mat, ndgln%u, ndgln%x, &
+           !    ncomp_diff_coef, comp_diffusion_opt, &
+           !    Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
+           !    TDiffusion )
 
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
@@ -672,10 +682,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            !Select solver options
            solver_option_path = "/solver_options/Linear_solver"
-           if (tracer%name=="PackedEnthalpy" .and. have_option('/solver_options/Custom_solver_configuration/field::Enthalpy')) then
+           if (have_option('/solver_options/Custom_solver_configuration/field::Enthalpy')) then
              solver_option_path = '/solver_options/Custom_solver_configuration/field::Enthalpy'
-           else if(tracer%name=="PackedComposition" .and. have_option('/solver_options/Custom_solver_configuration/field::Composition')) then
-             solver_option_path = '/solver_options/Custom_solver_configuration/field::Composition'
            end if
 
            if(max_allowed_its < 0)  then
@@ -684,10 +692,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
 
            call allocate(Mmat%CV_RHS,1 , tracer%mesh,"RHS")
-           call allocate(Mmat%petsc_ACV,sparsity,[1,1],"ACV_INTENERGE")
-           call allocate(solution,n_in_pres,tracer%mesh,"sol_tracer")!; call zero(solution)
-           call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+           call allocate(solution,1,tracer%mesh,"sol_tracer")!; call zero(solution)
+
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+
+               call allocate(Mmat%petsc_ACV,sparsity,[1,1],"ACV_INTENERGE")
+               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
                !Get information for capillary pressure to be use in CV_ASSEMB
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
                if (is_porous_media .and. thermal) then
@@ -722,9 +732,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase, Latent_heat = magma_phase_coefficients%Lf)
 
                  call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 tracer%val(1,1,:)=solution%val(1,:)!TODO: sprint_to_do Tracer could be used instead!
                  if (assemble_collapsed_to_one_phase .and. Mdims%n_in_pres > 1) then
                    !Enthalpy is shared for all the phases
-                   tracer%val(1,2:Mdims%n_in_pres,:)=solution%val
+                   do iphase = 2, Mdims%nphase
+                     tracer%val(1,iphase,:)=solution%val(1,:)
+                   end do
                  end if
                !Control how it is converging and decide
                !if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
