@@ -1294,7 +1294,7 @@ logical, optional, intent(in):: nomatrixdump
 
 
 
-  call Petsc_logging_start(ierr) !!-ao petsc logging
+  call Petsc_logging_start() !!-ao petsc logging
 
 
   ! Initialise profiler
@@ -1423,7 +1423,7 @@ character(len=*), intent(in):: solver_option_path
   end if
   call KSPDestroy(ksp, ierr)
 
-  call Petsc_logging_save(ierr)
+  call Petsc_logging_save()
 
 
   ! destroy everything associated with the monitors
