@@ -2648,21 +2648,13 @@ subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 
 end subroutine MyKSPMonitor
 
-subroutine Petsc_logging_start(ierr)
-!! This routine adds petsc logging for PETSc built with debugging
-  PetscErrorCode :: ierr
-  !REAL :: threshold,oldthreshold
-  call PetscLogNestedBegin(ierr);CHKERRA(ierr)
-end subroutine Petsc_logging_start
-
 subroutine Petsc_logging_save(ierr)
 !! This routine adds petsc logging for PETSc built with debugging
   PetscErrorCode :: ierr
   PetscViewer :: viewer
 
     !REAL :: threshold,oldthreshold
-    call PetscLogNestedBegin(ierr);CHKERRA(ierr)
-
+    call PetscLogNestedBegin(ierr);CHKERRA(ierr) !! this needs to be allocated before. -ao		
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
   call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
   call PetscLogView(viewer,ierr)
