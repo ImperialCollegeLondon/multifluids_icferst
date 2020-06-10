@@ -2659,6 +2659,10 @@ subroutine Petsc_logging_save(ierr)
 !! This routine adds petsc logging for PETSc built with debugging
   PetscErrorCode :: ierr
   PetscViewer :: viewer
+
+    !REAL :: threshold,oldthreshold
+    call PetscLogNestedBegin(ierr);CHKERRA(ierr)
+
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
   call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
   call PetscLogView(viewer,ierr)
