@@ -1384,7 +1384,6 @@ logical, optional, intent(in):: nomatrixdump
      ewrite(2, *) 'inf-norm of solution:', norm
   end if
 
-  call petsc_logging(ierr)
 
   if(present(sfield)) then
     call profiler_toc(sfield, "solve")
@@ -2565,22 +2564,6 @@ subroutine petsc_monitor_destroy()
   end if
 
 end subroutine petsc_monitor_destroy
-
-subroutine petsc_logging(ierr)
-!! This routine adds petsc logging for PETSc built with debugging
-  PetscErrorCode, intent(out) :: ierr
-  PetscViewer :: viewer
-  REAL :: threshold,oldthreshold
-
-  call PetscLogNestedBegin(ierr);CHKERRA(ierr)
-  !!threshold = 1.0
-  !!call PetscLogSetThreshold(threshold,oldthreshold,ierr)
-
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
-  call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
-  call PetscLogView(viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-end subroutine petsc_logging
 
 
 subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
