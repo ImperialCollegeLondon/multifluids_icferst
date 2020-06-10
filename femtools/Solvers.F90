@@ -1384,6 +1384,8 @@ logical, optional, intent(in):: nomatrixdump
      ewrite(2, *) 'inf-norm of solution:', norm
   end if
 
+  call petsc_logging(ierr)
+
   if(present(sfield)) then
     call profiler_toc(sfield, "solve")
   else if(present(vfield)) then
@@ -1391,6 +1393,7 @@ logical, optional, intent(in):: nomatrixdump
   else if(present(tfield)) then
     call profiler_toc(tfield, "solve")
   end if
+
 
 end subroutine petsc_solve_core
 
@@ -1827,8 +1830,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call KSPMonitorSet(ksp, MyKSPMonitor, PETSC_NULL_KSP, &
             &                     PETSC_NULL_FUNCTION,ierr)
     end if
-
-    call petsc_logging(ierr)
 
 #if PETSC_VERSION_MINOR<6
     if (mat/=pmat) then
