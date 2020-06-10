@@ -84,11 +84,12 @@ int main(int argc, char **argv){
 #ifdef HAVE_PYTHON
   // Initialize the Python Interpreter
   python_init_();
+  PetscLogNestedBegin();
 #endif
 
   // Start fortran main
   if(fl_command_line_options.count("simulation_name")){
-    multiphase_prototype_wrapper();    
+    multiphase_prototype_wrapper();
   }else{
     usage(argv[0]);
     exit(-1);
