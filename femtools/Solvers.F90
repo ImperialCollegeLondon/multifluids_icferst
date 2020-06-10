@@ -1292,11 +1292,6 @@ logical, optional, intent(in):: nomatrixdump
   logical print_norms, timing
   real time1, time2
 
-
-
-  call Petsc_logging_start() !!-ao petsc logging
-
-
   ! Initialise profiler
   if(present(sfield)) then
     name=sfield%name
@@ -1389,6 +1384,7 @@ logical, optional, intent(in):: nomatrixdump
      ewrite(2, *) 'inf-norm of solution:', norm
   end if
 
+ call Petsc_logging_save(ierr)
 
   if(present(sfield)) then
     call profiler_toc(sfield, "solve")
@@ -1422,9 +1418,6 @@ character(len=*), intent(in):: solver_option_path
     call DestroyMultigrid(pc)
   end if
   call KSPDestroy(ksp, ierr)
-
-  call Petsc_logging_save()
-
 
   ! destroy everything associated with the monitors
   if(have_option(trim(solver_option_path)// &
