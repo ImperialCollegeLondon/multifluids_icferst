@@ -1828,6 +1828,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
             &                     PETSC_NULL_FUNCTION,ierr)
     end if
 
+    call petsc_logging(ierr)
+
 #if PETSC_VERSION_MINOR<6
     if (mat/=pmat) then
       ! This is to make things consistent with the situation in petsc>=3.6:
@@ -2562,6 +2564,23 @@ subroutine petsc_monitor_destroy()
   end if
 
 end subroutine petsc_monitor_destroy
+
+subroutine petsc_logging(ierr)
+!! This routine adds petsc logging for PETSc built with debugging
+  PetscErrorCode, intent(out) :: ierr
+  PetscViewer :: viewer
+  REAL :: threshold,oldthreshold
+
+  call PetscLogNestedBegin(ierr);CHKERRA(ierr)
+  !!threshold = 1.0
+  !!call PetscLogSetThreshold(threshold,oldthreshold,ierr)
+
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
+  call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
+  call PetscLogView(viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+end subroutine petsc_logging
+
 
 subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 !! The monitor function that gets called each iteration of petsc_solve
