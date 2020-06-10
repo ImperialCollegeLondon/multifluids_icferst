@@ -1661,24 +1661,6 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
     call PetscInitialize(PETSC_NULL_CHARACTER, ierr); CHKERRQ(ierr);
   end subroutine Initialize_Petsc
 
-  subroutine Petsc_logging_start(ierr)
-  !! This routine adds petsc logging for PETSc built with debugging
-    PetscErrorCode, intent(out) :: ierr
-    !REAL :: threshold,oldthreshold
-    call PetscLogNestedBegin(ierr);CHKERRA(ierr)
-  end subroutine petsc_logging_start
-
-  subroutine Petsc_logging_save(ierr)
-  !! This routine adds petsc logging for PETSc built with debugging
-    PetscErrorCode, intent(out) :: ierr
-    PetscViewer :: viewer
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
-    call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
-    call PetscLogView(viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  end subroutine petsc_logging_save
-
-
 ! Simple dummy error handler that just tracks whether it's been called or not
 ! Useful for unittesting to see that petsc gives error messages at the right moment
 subroutine petsc_test_error_handler(comm,line, func, file, dir, n, p, mess, ctx, ierr)

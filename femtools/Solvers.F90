@@ -1292,6 +1292,11 @@ logical, optional, intent(in):: nomatrixdump
   logical print_norms, timing
   real time1, time2
 
+
+
+  call Petsc_logging_start() !!-ao petsc logging
+
+
   ! Initialise profiler
   if(present(sfield)) then
     name=sfield%name
@@ -1393,7 +1398,6 @@ logical, optional, intent(in):: nomatrixdump
     call profiler_toc(tfield, "solve")
   end if
 
-
 end subroutine petsc_solve_core
 
 subroutine petsc_solve_destroy(y, A, b, ksp, petsc_numbering, &
@@ -1418,6 +1422,9 @@ character(len=*), intent(in):: solver_option_path
     call DestroyMultigrid(pc)
   end if
   call KSPDestroy(ksp, ierr)
+
+  call Petsc_logging_save()
+
 
   ! destroy everything associated with the monitors
   if(have_option(trim(solver_option_path)// &
@@ -2647,6 +2654,25 @@ subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
   ierr=0
 
 end subroutine MyKSPMonitor
+
+subroutine Petsc_logging_start(ierr)
+!! This routine adds petsc logging for PETSc built with debugging
+  PetscErrorCode :: ierr
+  !REAL :: threshold,oldthreshold
+  call PetscLogNestedBegin(ierr);CHKERRA(ierr)
+end subroutine Petsc_logging_start
+
+subroutine Petsc_logging_save(ierr)
+!! This routine adds petsc logging for PETSc built with debugging
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
+  call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
+  call PetscLogView(viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+end subroutine Petsc_logging_save
+
+
 
 function create_null_space_from_options_scalar(mat, null_space_option_path) &
     result (null_space)
