@@ -102,6 +102,13 @@ int main(int argc, char **argv){
 
 #ifdef HAVE_PETSC
 
+  PetscErrorCode ierr
+  PetscViewer viewer
+
+  PetscViewerASCIIOpen(PETSC_COMM_WORLD,'filename.xml',viewer,ierr)
+  PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
+  PetscLogView(viewer,ierr)
+  PetscViewerDestroy(viewer,ierr)
 
   PetscFinalize();
 #endif
