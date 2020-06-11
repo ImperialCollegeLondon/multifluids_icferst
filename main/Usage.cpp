@@ -391,7 +391,8 @@ void PetscInit(int argc, char** argv){
   // This sets all kinds of objects such as PETSC_NULL_OBJECT, PETSC_COMM_WORLD, etc., etc.
   ierr = PetscInitializeFortran();
 
-  ierr = PetscLogNestedBegin();
+  //ierr = PetscLogNestedBegin();
+  ierr = PetscLogDefaultBegin();
 
   // CHKERRQ(ierr);
   signal(SIGSEGV, SIG_DFL);
