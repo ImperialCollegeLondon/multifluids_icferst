@@ -817,7 +817,7 @@ AC_ARG_ENABLE(petscdebug,
 if test "$enable_petscdebug" = "yes" ; then
   HAVE_PETSC_DBUG=yes
 fi
-
+AC_SUBST(HAVE_PETSC_DBUG)
 
 # Exodus-II support
 HAVE_EXODUSII=no

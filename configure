@@ -652,6 +652,7 @@ X_PRE_LIBS
 X_CFLAGS
 XMKMF
 HAVE_EXODUSII
+HAVE_PETSC_DBUG
 FCFLAGS_f
 FCFLAGS_f90
 MPICXX
@@ -11583,7 +11584,6 @@ fi
 
 
 # PETSc Debug support
-
 HAVE_PETSC_DBUG=no
 # Check whether --enable-petscdebug was given.
 if test "${enable_petscdebug+set}" = set; then :
