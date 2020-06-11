@@ -2399,8 +2399,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Saturation (Relative L2): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, &
                   "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection >= 4) then!temperature
-                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
+            else if (is_porous_media .and. variable_selection >= 4) then!Tracer
+                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
                  "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its

@@ -2280,11 +2280,11 @@ scalar_field_choice =
             attribute name { "Temperature" },
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prognostic_scalar_field
                }|
                element prescribed {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prescribed_scalar_field
                }|
                element aliased {
@@ -2305,23 +2305,42 @@ scalar_field_choice =
             attribute name { "CopiedField" },
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   attribute copy_from_field { string },
                   prognostic_scalar_field
                }
             )
          }|
-         ## Mass Fraction of Solute
+         ## Mass Fraction of Solute//Concentration
+         ## Can be used as a tracer
          element scalar_field {
             attribute rank { "0" },
             attribute name { "SoluteMassFraction" },
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prognostic_scalar_field
                }|
                element prescribed {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+         }|
+         ## Enthalpy field. <b>To be used only with Magma_simulator</b>
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "Enthalpy" },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
                   prescribed_scalar_field
                }|
                element aliased {
@@ -2473,11 +2492,11 @@ scalar_field_choice =
          #            attribute name { "NewFieldName" },
          #            (
          #               element prognostic {
-         #                  velocity_mesh_choice,
+         #                  pressure_mesh_choice,
          #                  prognostic_scalar_field
          #               }|
          #               element prescribed {
-         #                  velocity_mesh_choice,
+         #                  pressure_mesh_choice,
          #                  prescribed_scalar_field
          #               }|
          #               element aliased {
@@ -2850,6 +2869,9 @@ tensor_field_choice =
 # Prognostic tensor fields are not possible.
       (
          ## Generic field variable (tensor)
+         ##
+         ## <b>Use the name UAbsorB</b> to impose an absorption term for the momentum equation using a diagnostic tensor using python, this allows to modify the equations to be solved from this interface.
+         ## This field needs to be set up in the first phase only
          element tensor_field {
             attribute rank { "2" },
             attribute name { xsd:string },

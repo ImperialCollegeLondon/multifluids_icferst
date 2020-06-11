@@ -2726,11 +2726,11 @@ i.e. excluding the components</a:documentation>
         </attribute>
         <choice>
           <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
           </element>
           <element name="aliased">
@@ -2754,7 +2754,7 @@ for fields within the same material_phase.</a:documentation>
           <value>CopiedField</value>
         </attribute>
         <element name="prognostic">
-          <ref name="velocity_mesh_choice"/>
+          <ref name="pressure_mesh_choice"/>
           <attribute name="copy_from_field">
             <data type="string" datatypeLibrary=""/>
           </attribute>
@@ -2762,7 +2762,8 @@ for fields within the same material_phase.</a:documentation>
         </element>
       </element>
       <element name="scalar_field">
-        <a:documentation>Mass Fraction of Solute</a:documentation>
+        <a:documentation>Mass Fraction of Solute//Concentration
+Can be used as a tracer</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -2771,11 +2772,33 @@ for fields within the same material_phase.</a:documentation>
         </attribute>
         <choice>
           <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>Enthalpy field. &lt;b&gt;To be used only with Magma_simulator&lt;/b&gt;</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>Enthalpy</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
           </element>
           <element name="aliased">
@@ -2956,11 +2979,11 @@ mass fraction with a particular phase</a:documentation>
                    attribute name { "NewFieldName" },
                    (
                       element prognostic {
-                         velocity_mesh_choice,
+                         pressure_mesh_choice,
                          prognostic_scalar_field
                       }|
                       element prescribed {
-                         velocity_mesh_choice,
+                         pressure_mesh_choice,
                          prescribed_scalar_field
                       }|
                       element aliased {
@@ -3416,7 +3439,10 @@ less accurate but faster and might give smoother result.</a:documentation>
     -->
     <choice>
       <element name="tensor_field">
-        <a:documentation>Generic field variable (tensor)</a:documentation>
+        <a:documentation>Generic field variable (tensor)
+
+&lt;b&gt;Use the name UAbsorB&lt;/b&gt; to impose an absorption term for the momentum equation using a diagnostic tensor using python, this allows to modify the equations to be solved from this interface.
+This field needs to be set up in the first phase only</a:documentation>
         <attribute name="rank">
           <value>2</value>
         </attribute>

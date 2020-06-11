@@ -1549,6 +1549,8 @@ contains
 
             if (present_and_true(calculate_solute_diffusivity)) then
               do iphase = 1, Mdims%nphase
+                !Check if the field is defined for that phase
+                if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::SoluteMassFraction')) cycle
                 diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
                 do ele = 1, Mdims%totele
@@ -1720,6 +1722,7 @@ contains
 
 
       do iphase = 1, Mdims%nphase
+        if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::SoluteMassFraction')) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
         diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 

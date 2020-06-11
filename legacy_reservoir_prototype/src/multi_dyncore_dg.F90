@@ -574,12 +574,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, DIMENSION( : , : ), target, allocatable :: den_all
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
-           INTEGER :: IPHASE, its_taken
+           INTEGER :: IPHASE, its_taken, ipres
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
            integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
-           type(vector_field)  :: vtracer, residual
+           type(vector_field)  :: residual
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
@@ -600,9 +600,24 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, dimension(Mdims%cv_nonods) :: OvRelax_param
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
-           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve
            logical :: boussinesq
+           !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
+           real, parameter :: min_concentration = 1e-10
+           integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
+           integer :: nconc2
+           type(vector_field) :: solution
+           !Retrieve the number of phases that have soluteMass fraction, and then if they are concecutive and start from the first one
+           if (nconc < 0) then
+             nconc = option_count("/material_phase/scalar_field::SoluteMassFraction")
+             nconc2 = nconc
+             if (Mdims%npres > 1) nconc2 = nconc2 / 2
+             do iphase = 1, nconc2
+               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::SoluteMassFraction')) then
+                 FLAbort('SoluteMassFraction must either be defined in all the phases or to start from the first one and consecutively from that one.')
+               end if
+             end do
+           end if
 
            boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
@@ -615,7 +630,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
 
-           call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+           call allocate(Mmat%CV_RHS,nconc,tracer%mesh,"RHS")
+           call allocate(solution,nconc,tracer%mesh,"sol_tracer")!; call zero(solution)
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
@@ -655,6 +671,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0
            CDISPERSION=0.0
+
            !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer, &
            calculate_solute_diffusivity = .true.)
@@ -689,12 +706,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end if
 
                !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
+               call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   nconc, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -714,31 +731,26 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-                   vtracer=as_vector(tracer,dim=2)
 
-                   call zero_non_owned(Mmat%CV_RHS)
-                   call zero(vtracer)
-                   call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                   ! call zero_non_owned(Mmat%CV_RHS)
+                   call zero(solution)
+                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                   !Ensure concentration is between 1 and sligthly above 0
+                   solution%val = min(1., max(solution%val,min_concentration))
+                   !Copy solution back to tracer(not ideal...)
+                   do ipres =1, mdims%npres
+                     do iphase = 1 , nconc
+                      tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc,:)
+                    end do
+                   end do
 
-                   if (have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')) then
-                    !Ensure concentration is between 1 and 0
-                    tracer%val = min(1., max(tracer%val,0.))
-                   end if
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
 
-                   repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
-                   call allor(repeat_assemb_solve)
                    !Checking solver not fully implemented
-                   if (repeat_assemb_solve ) then
-                       solver_not_converged = .true.
-                       tracer%val(1,:,:) = temp_bak!recover backup!sprint_to_do this seems now fixed, remove this for this and temperature
-                       cycle!repeat
-                   else
-                       solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
-                       call allor(solver_not_converged)
-                       exit!good to go!
-                   end if
+                   solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                   call allor(solver_not_converged)
+                   exit!good to go!
 
            END DO Loop_NonLinearFlux
 

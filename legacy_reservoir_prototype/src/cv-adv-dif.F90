@@ -560,6 +560,7 @@ contains
                   if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
               end if
           end if
+
           !! Get boundary conditions from field
           call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
           call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
@@ -586,7 +587,7 @@ contains
               .or. tracer%name == "PackedSoluteMassFraction")  then
               allocate( suf_t_bc( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
                   suf_t_bc_rob2( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
-              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, mdims%nphase, &!TEMPORARY, FIXME
+              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, final_phase, &!TEMPORARY, FIXME
                   suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
               SUF_T_BC_ALL=>suf_t_bc
               SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1

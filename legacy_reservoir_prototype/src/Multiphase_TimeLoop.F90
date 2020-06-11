@@ -647,7 +647,6 @@ contains
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
-
                !!$ Arash
                !!$ Solve advection of the scalar 'SoluteMassFraction':
                Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
@@ -670,7 +669,6 @@ contains
                    nullify(tracer_field)
 
                 end if Conditional_ScalarAdvectionField2
-
 
 
                 !Solve for components here
