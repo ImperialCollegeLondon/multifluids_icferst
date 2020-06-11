@@ -81,6 +81,9 @@ int main(int argc, char **argv){
   // Initialise PETSc (this also parses PETSc command line arguments)
   PetscInit(argc, argv);
 
+//  PetscErrorCode ierr = PetscLogAllBegin();
+  PetscErrorCode ierr =	PetscLogNestedBegin(); 
+
 #ifdef HAVE_PYTHON
   // Initialize the Python Interpreter
   python_init_();
@@ -101,15 +104,20 @@ int main(int argc, char **argv){
 #endif
 
 #ifdef HAVE_PETSC
+  MPI_Comm comm;
+  PetscViewer viewer;
+  //PetscMPIInt rank,size;
+  
+  //MPI_Comm_size(comm,&size);
+  //MPI_Comm_rank(comm,&rank);
+  ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.xml",&viewer);
+  ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML);
+  ierr=PetscLogView(viewer);
+  ierr=PetscViewerDestroy(&viewer);
 
-  PetscErrorCode ierr
-  PetscViewer viewer
+  //ierr = PetscLogDump("petsc_log.info");
 
-  //PetscViewerASCIIOpen(PETSC_COMM_WORLD,'filename.xml',viewer,ierr)
-  //PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
-//  PetscLogView(viewer,ierr)
-//  PetscViewerDestroy(viewer,ierr)
-  PetscLogDump();
+
   PetscFinalize();
 #endif
 
