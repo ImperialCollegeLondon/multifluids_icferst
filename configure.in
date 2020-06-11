@@ -809,15 +809,15 @@ fi
 
 
 # PETSc Debug support
-HAVE_PETSC_DBUG=no
 AC_ARG_ENABLE(petscdebug,
 [AC_HELP_STRING([--enable-petscdebug],
 [enable petsc profiling])])
 
 if test "$enable_petscdebug" = "yes" ; then
-  HAVE_PETSC_DBUG=yes
+cat >> confdefs.h << EOF
+#define HAVE_PETSC_DBUG 1
+EOF
 fi
-AC_SUBST(HAVE_PETSC_DBUG)
 
 # Exodus-II support
 HAVE_EXODUSII=no

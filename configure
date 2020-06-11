@@ -652,7 +652,6 @@ X_PRE_LIBS
 X_CFLAGS
 XMKMF
 HAVE_EXODUSII
-HAVE_PETSC_DBUG
 FCFLAGS_f
 FCFLAGS_f90
 MPICXX
@@ -11584,7 +11583,6 @@ fi
 
 
 # PETSc Debug support
-HAVE_PETSC_DBUG=no
 # Check whether --enable-petscdebug was given.
 if test "${enable_petscdebug+set}" = set; then :
   enableval=$enable_petscdebug;
@@ -11592,9 +11590,10 @@ fi
 
 
 if test "$enable_petscdebug" = "yes" ; then
-  HAVE_PETSC_DBUG=yes
+cat >> confdefs.h << EOF
+#define HAVE_PETSC_DBUG 1
+EOF
 fi
-
 
 # Exodus-II support
 HAVE_EXODUSII=no
@@ -17603,3 +17602,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
