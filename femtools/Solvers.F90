@@ -1384,8 +1384,6 @@ logical, optional, intent(in):: nomatrixdump
      ewrite(2, *) 'inf-norm of solution:', norm
   end if
 
- call Petsc_logging_save(ierr)
-
   if(present(sfield)) then
     call profiler_toc(sfield, "solve")
   else if(present(vfield)) then
@@ -1434,6 +1432,8 @@ character(len=*), intent(in):: solver_option_path
   ! we could reuse this, but for the moment we don't:
   call deallocate(petsc_numbering)
 
+  call Petsc_logging_save(ierr)
+
 end subroutine petsc_solve_destroy
 
 subroutine petsc_solve_destroy_petsc_csr(y, b, solver_option_path)
@@ -1458,6 +1458,7 @@ character(len=*), intent(in):: solver_option_path
      petsc_monitor_has_exact=.false.
      petsc_monitor_iteration_vtus=.false.
   end if
+
 
 end subroutine petsc_solve_destroy_petsc_csr
 
