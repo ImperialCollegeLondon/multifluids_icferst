@@ -1432,7 +1432,7 @@ character(len=*), intent(in):: solver_option_path
   ! we could reuse this, but for the moment we don't:
   call deallocate(petsc_numbering)
 
-  call Petsc_logging_save(ierr)
+   !call Petsc_logging_save(ierr)
 
 end subroutine petsc_solve_destroy
 

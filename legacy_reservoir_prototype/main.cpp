@@ -80,7 +80,7 @@ int main(int argc, char **argv){
 
   // Initialise PETSc (this also parses PETSc command line arguments)
   PetscInit(argc, argv);
-  PetscLogNestedBegin();
+
 #ifdef HAVE_PYTHON
   // Initialize the Python Interpreter
   python_init_();
@@ -101,6 +101,8 @@ int main(int argc, char **argv){
 #endif
 
 #ifdef HAVE_PETSC
+
+
   PetscFinalize();
 #endif
 
