@@ -82,7 +82,10 @@ int main(int argc, char **argv){
   PetscInit(argc, argv);
 
 #ifdef HAVE_PETSC_DBUG
-PetscErrorCode ierr = PetscLogDefaultBegin();
+// Initiliase PETSc logging
+////*default logging
+  PetscErrorCode ierr = PetscLogDefaultBegin();
+  ////*nested logging
 //  PetscErrorCode ierr = PetscLogNestedBegin();
 #endif
 
@@ -106,17 +109,20 @@ PetscErrorCode ierr = PetscLogDefaultBegin();
 
 #ifdef HAVE_PETSC_DBUG
 PetscViewer viewer;
+//Collecting PETSc default logging information
 
+////*nested logging
 //PetscMPIInt rank,size;
 //MPI_Comm_size(comm,&size);
 //MPI_Comm_rank(comm,&rank);
 //ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.xml",&viewer);
 //ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML);
 
-ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
-ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
-ierr=PetscLogView(viewer);
-ierr=PetscViewerDestroy(&viewer);
+  //*default logging
+  ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
+  ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
+  ierr=PetscLogView(viewer);
+  ierr=PetscViewerDestroy(&viewer);
 #endif
 
 #ifdef HAVE_PETSC
