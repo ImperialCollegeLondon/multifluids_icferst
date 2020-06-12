@@ -1457,6 +1457,7 @@ character(len=*), intent(in):: solver_option_path
      petsc_monitor_iteration_vtus=.false.
   end if
 
+
 end subroutine petsc_solve_destroy_petsc_csr
 
 subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
@@ -2563,6 +2564,7 @@ subroutine petsc_monitor_destroy()
 
 end subroutine petsc_monitor_destroy
 
+
 subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 !! The monitor function that gets called each iteration of petsc_solve
 !! (if petsc_solve_callback_setup is called)
@@ -2644,6 +2646,30 @@ subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
   ierr=0
 
 end subroutine MyKSPMonitor
+
+subroutine Petsc_logging_save(ierr)
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief
+  !> This routine adds petsc logging for PETSc built with debugging but for specific
+  !> objects
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+
+
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+#else
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
+  call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
+  call PetscLogView(viewer,ierr)
+#endif
+#endif
+end subroutine Petsc_logging_save
+
+
+
+
 
 function create_null_space_from_options_scalar(mat, null_space_option_path) &
     result (null_space)
@@ -2756,7 +2782,7 @@ function create_null_space_from_options_vector(mat, null_space_option_path, &
      end if
    else if(have_option(trim(null_space_option_path)//'/all_rotations')) then
      rot_mask = .false.
-     if (dim==3) then
+     if (dim == 3) then
        rot_mask = .true.
      else if (dim==2) then
        rot_mask(3) = .true.
