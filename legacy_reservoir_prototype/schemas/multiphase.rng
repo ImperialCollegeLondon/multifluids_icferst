@@ -108,7 +108,7 @@ A value of 0 indicates a dump at every timestep.</a:documentation>
         <optional>
           <element name="PropertiesFromFile">
             <a:documentation>Path (without the extension) to the .csv file containing the fluid and porous media properties.
-NOTE: Properties in the .csv file will overwrite the input from diamond.
+&lt;b&gt;NOTE: Properties in the .csv file will overwrite the input from diamond.&lt;/b&gt;
 
 The information is stored as:
 
@@ -135,7 +135,7 @@ the final convergence achieved by the FPI solver</a:documentation>
         </optional>
         <optional>
           <element name="dump_boundaryflux">
-            <a:documentation>Surface to Integrate Over</a:documentation>
+            <a:documentation>&lt;b&gt;Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries&lt;/b&gt;</a:documentation>
             <empty/>
             <element name="surface_ids">
               <a:documentation>Surface id:</a:documentation>
@@ -386,14 +386,6 @@ NOTE: Requires -v2</a:documentation>
             <ref name="comment"/>
           </element>
         </optional>
-        <optional>
-          <element name="Mesh_Diagnostics_Angles">
-            <a:documentation>Printout the number of elements and percentage that contain an angle
-equal or bigger than the ones specified here
-Note: This may slow down your simulation should be used as a diagnostic tool</a:documentation>
-            <ref name="real_vector"/>
-          </element>
-        </optional>
       </element>
       <element name="timestepping">
         <a:documentation>Options dealing with time discretisation</a:documentation>
@@ -413,7 +405,9 @@ then this is the initial time step size.</a:documentation>
         </element>
         <optional>
           <element name="adaptive_timestep">
-            <a:documentation>Vary the timestep according to the courant number.</a:documentation>
+            <a:documentation>Vary the timestep according to the courant number.
+&lt;b&gt;Recommended method for non Darcy simulations&lt;/b&gt;
+You will need to generate the scalar field CFLNumber for each phase.</a:documentation>
             <element name="requested_cfl">
               <a:documentation>The timestep will be adjusted (within the tolerance
 and bounds specified) to target this courant
@@ -892,7 +886,7 @@ ONLY specify for the wetting phase</a:documentation>
           </choice>
           <optional>
             <element name="Dispersion">
-              <a:documentation>Specify scalar field Longitudinal Dispersivity</a:documentation>
+              <a:documentation>Specify scalar field longitudinal and transverse Dispersivity</a:documentation>
               <element name="scalar_field">
                 <attribute name="name">
                   <value>Longitudinal_Dispersivity</value>
@@ -930,8 +924,9 @@ ONLY specify for the wetting phase</a:documentation>
             </element>
           </optional>
           <optional>
-            <element name="thermal_porous">
-              <a:documentation>Parameters for thermal porous media simulations</a:documentation>
+            <element name="porous_properties">
+              <a:documentation>Rock properties
+For &lt;b&gt;GEOTHERMAL&lt;/b&gt; simulations, density, heat capacity and conductivity are &lt;b&gt;MANDATORY&lt;/b&gt;</a:documentation>
               <element name="scalar_field">
                 <a:documentation>Specify scalar field density of the porous media</a:documentation>
                 <attribute name="name">
@@ -949,34 +944,38 @@ ONLY specify for the wetting phase</a:documentation>
                   </element>
                 </choice>
               </element>
-              <element name="scalar_field">
-                <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
-                <attribute name="name">
-                  <value>porous_heat_capacity</value>
-                </attribute>
-                <choice>
+              <optional>
+                <element name="scalar_field">
+                  <a:documentation>Specify scalar field heat capacity of the porous media ( in S.I. J/(kg K) )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_heat_capacity</value>
+                  </attribute>
+                  <choice>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                    <element name="aliased">
+                      <ref name="generic_aliased_field"/>
+                      <ref name="output_options"/>
+                    </element>
+                  </choice>
+                </element>
+              </optional>
+              <optional>
+                <element name="tensor_field">
+                  <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
+                  <attribute name="name">
+                    <value>porous_thermal_conductivity</value>
+                  </attribute>
                   <element name="prescribed">
                     <ref name="material_mesh_choice"/>
-                    <ref name="prescribed_scalar_field"/>
+                    <ref name="prescribed_tensor_field"/>
                     <ref name="output_options"/>
                   </element>
-                  <element name="aliased">
-                    <ref name="generic_aliased_field"/>
-                    <ref name="output_options"/>
-                  </element>
-                </choice>
-              </element>
-              <element name="tensor_field">
-                <a:documentation>Specify field Thermal conductivity of the porous media (in S.I. watts per meter-kelvin =&gt; W/(m·K) )</a:documentation>
-                <attribute name="name">
-                  <value>porous_thermal_conductivity</value>
-                </attribute>
-                <element name="prescribed">
-                  <ref name="material_mesh_choice"/>
-                  <ref name="prescribed_tensor_field"/>
-                  <ref name="output_options"/>
                 </element>
-              </element>
+              </optional>
               <optional>
                 <element name="scalar_field">
                   <a:documentation>Specify scalar field compressibility of the porous media
@@ -1053,7 +1052,7 @@ It goes from 0 to 1. If completely opened, set it to 1.</a:documentation>
                 <a:documentation>Absorption in the pipes.
 If none, set it to 1.
 
-Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+&lt;b&gt;Recommended. set to 1 and use the internal method&lt;/b&gt; based on the Moody diagram that can be selected in
 /wells_and_pipes/well_options/calculate_sigma_pipe</a:documentation>
                 <attribute name="name">
                   <value>Sigma</value>
@@ -1172,7 +1171,8 @@ This will over-write the field specified in Sigma1.</a:documentation>
                   </optional>
                   <optional>
                     <element name="switch_wells_on_and_off">
-                      <a:documentation>Switches wells on and off to optimise production</a:documentation>
+                      <a:documentation>Switches wells on and off to optimise production
+&lt;b&gt;Not recommended, better use gamma with python.&lt;/b&gt;</a:documentation>
                       <element name="phase_exclude">
                         <ref name="integer"/>
                       </element>
@@ -1194,7 +1194,7 @@ The default value is 1e-2.</a:documentation>
                   <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.
 
-***This is MANDATORY when using files to define wells***</a:documentation>
+&lt;b&gt;This is MANDATORY when using files to define wells&lt;/b&gt;</a:documentation>
                   <ref name="integer_vector"/>
                   <optional>
                     <element name="Show_well_volumes_ids">
@@ -1207,7 +1207,7 @@ that the well trajectories are preserved.
               <zeroOrMore>
                 <element name="well_from_file">
                   <a:documentation>Introduce here the relative path to the file defining a 1D well
-Note that the only accepted file format is NASTRAN, i.e. .bdf.
+Note: &lt;b&gt;the only accepted file format is NASTRAN, i.e. .bdf.&lt;/b&gt;
 Each file has to describe a continuous well touching an external boundary.
 
 ***Well_volume_ids option is MANDATORY when using this method to define wells.***</a:documentation>
@@ -1507,7 +1507,7 @@ For Porous media the P1/P0 stands for P0, for inertia for P1.
 
 Fast =&gt; Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
 
-Balanced (recommended) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
+Balanced (&lt;b&gt;recommended&lt;/b&gt;) =&gt; Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
 
 Precision =&gt; Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
 
@@ -1559,7 +1559,7 @@ Only the activated options will overwrite the values decided in simulation_quali
           <zeroOrMore>
             <element name="Time_Discretisation">
               <a:documentation>Specify a different time discretisation method for different fields
-You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
+You can use as inputs here: &lt;b&gt;PhaseVolumeFraction, Velocity or Tracer&lt;/b&gt;.
 Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
@@ -1601,7 +1601,7 @@ Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
           <zeroOrMore>
             <element name="Conservative_formulation_settings">
               <a:documentation>Conservative discretisation options
-Note that non-conservative does NOT mean that we do not conserve mass
+&lt;b&gt;Note that non-conservative does NOT mean that we do not conserve mass&lt;/b&gt;
 For transport equations this is recommended to be zero.
 For PhaseVolumeFraction the recommendation is one.
 
@@ -1688,14 +1688,14 @@ Useful to convert your ASCII msh files into binary to be able to decompose the m
 
 Manual suggests 2 for problems that are not very non-linear
 
-If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
+If using Fixed_Point_Iteration for multiphase porous media flow the &lt;b&gt;recommendation is ~ 20&lt;/b&gt;
 
 If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of
 non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.</a:documentation>
           <ref name="integer"/>
           <optional>
             <element name="Fixed_Point_Iteration">
-              <a:documentation>NOTE: For multiphase porous media only. Otherwise this value is ignored.
+              <a:documentation>&lt;b&gt;NOTE: For multiphase porous media only. Otherwise this value is ignored.&lt;/b&gt;
 
 This is the convergence criterion for the Fixed Point Iteration solver.
 The functional to compare is:
@@ -1706,7 +1706,7 @@ S* is the latest saturation; So is the saturation at the previous FPI
 S1 is the saturation after the first FPI. Hence, the reduction of the difference
 of saturation is tested
 
-Recommended value: 5e-2</a:documentation>
+&lt;b&gt;Recommended value: 5e-2&lt;/b&gt;</a:documentation>
               <ref name="real"/>
               <optional>
                 <element name="Infinite_norm_tol">
@@ -1715,7 +1715,7 @@ between two consecutive non-linear iterations.
 
 This can be used to control the number of non-linear interations dynamically.
 
-By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
+&lt;b&gt;By default 0.01&lt;/b&gt;, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005</a:documentation>
                   <ref name="real"/>
                   <optional>
                     <element name="adaptive_non_linear_iterations">
@@ -1733,8 +1733,8 @@ The field selected in "adaptive_timestep_nonlinear" has preference over this</a:
               <optional>
                 <element name="Backtracking_factor">
                   <a:documentation>
-Recommended settings: Non-linear iterations ~ 20
-Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+&lt;b&gt;Recommended settings: Non-linear iterations ~ 20&lt;/b&gt;
+&lt;b&gt;Backtracking_parameter = -10&lt;/b&gt; automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
 
 The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
 
@@ -1754,7 +1754,7 @@ If positive, the input value is the entry pressure.
 
 If negative, the input value is Peclet number desired.
 
-Recommended value for Saturation =&gt; -3e2
+&lt;b&gt;Recommended value for Saturation =&gt; -3e2&lt;/b&gt;
 
 Tip: If running with temperature and single phase disable this setting it to 0.</a:documentation>
                   <ref name="real"/>
@@ -1762,7 +1762,7 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
                     <element name="Vanishing_for_transport">
                       <a:documentation>This method can also be applied for a transport equation.
 
-Recommended value for Temperature =&gt; -1e0</a:documentation>
+&lt;b&gt;Recommended value for Temperature =&gt; -1e2&lt;/b&gt;</a:documentation>
                       <ref name="real"/>
                     </element>
                   </optional>
@@ -1770,7 +1770,7 @@ Recommended value for Temperature =&gt; -1e0</a:documentation>
               </optional>
               <optional>
                 <element name="Impose_min_max">
-                  <a:documentation>For TEMPERATURE ONLY, if there are no sources nor sinks
+                  <a:documentation>&lt;b&gt;For TEMPERATURE ONLY&lt;/b&gt;, if there are no sources nor sinks
 the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
 
 This imposes that the temperature has to be between bounds.</a:documentation>
@@ -1807,7 +1807,8 @@ By default this method only controls the errors, and based on that increases or 
 The default aim of number of FPI is the 20% of the maximum number of non-linear iterations.
 The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
 
-If this is off, a classical method based on the number of FPI performed is used instead.</a:documentation>
+If this is off, a classical method based on the number of FPI performed is used instead.
+&lt;b&gt;Recommened method together with Aim_num_FPI for adaptive time-stepping &lt;/b&gt;</a:documentation>
                         <empty/>
                         <optional>
                           <element name="Aim_num_FPI">
@@ -1822,7 +1823,7 @@ By default this is the 20% of the maximum number of non-linear iterations.</a:do
                       <element name="ensure_solvers_convergence">
                         <a:documentation>If any of the solvers failt to achieve convergence the time-step size is
 reduced and the time-level repeated without waiting to reach the maximum number of FPI.
-Note: For the saturation for porous media it allows to diverge inside the saturation FPI.</a:documentation>
+&lt;b&gt;Note: For the saturation for porous media it allows to diverge inside the saturation FPI.&lt;/b&gt;</a:documentation>
                         <empty/>
                       </element>
                     </optional>
@@ -2816,11 +2817,11 @@ i.e. excluding the components</a:documentation>
         </attribute>
         <choice>
           <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
           </element>
           <element name="aliased">
@@ -2844,7 +2845,7 @@ for fields within the same material_phase.</a:documentation>
           <value>CopiedField</value>
         </attribute>
         <element name="prognostic">
-          <ref name="velocity_mesh_choice"/>
+          <ref name="pressure_mesh_choice"/>
           <attribute name="copy_from_field">
             <data type="string" datatypeLibrary=""/>
           </attribute>
@@ -2852,7 +2853,8 @@ for fields within the same material_phase.</a:documentation>
         </element>
       </element>
       <element name="scalar_field">
-        <a:documentation>Mass Fraction of Solute</a:documentation>
+        <a:documentation>Mass Fraction of Solute//Concentration
+Can be used as a tracer</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -2861,11 +2863,33 @@ for fields within the same material_phase.</a:documentation>
         </attribute>
         <choice>
           <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>Enthalpy field. &lt;b&gt;To be used only with Magma_simulator&lt;/b&gt;</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>Enthalpy</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
           </element>
           <element name="aliased">
@@ -3046,11 +3070,11 @@ mass fraction with a particular phase</a:documentation>
                    attribute name { "NewFieldName" },
                    (
                       element prognostic {
-                         velocity_mesh_choice,
+                         pressure_mesh_choice,
                          prognostic_scalar_field
                       }|
                       element prescribed {
-                         velocity_mesh_choice,
+                         pressure_mesh_choice,
                          prescribed_scalar_field
                       }|
                       element aliased {
@@ -3506,7 +3530,10 @@ less accurate but faster and might give smoother result.</a:documentation>
     -->
     <choice>
       <element name="tensor_field">
-        <a:documentation>Generic field variable (tensor)</a:documentation>
+        <a:documentation>Generic field variable (tensor)
+
+&lt;b&gt;Use the name UAbsorB&lt;/b&gt; to impose an absorption term for the momentum equation using a diagnostic tensor using python, this allows to modify the equations to be solved from this interface.
+This field needs to be set up in the first phase only</a:documentation>
         <attribute name="rank">
           <value>2</value>
         </attribute>

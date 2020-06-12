@@ -570,6 +570,7 @@ contains
                   if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
               end if
           end if
+
           !! Get boundary conditions from field
           call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
           call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
@@ -594,10 +595,10 @@ contains
           end if
            if (tracer%name == "PackedTemperature" .or. (tracer%name == "PackedEnthalpy")&
               .or. tracer%name == "PackedSoluteMassFraction")  then
-              allocate( suf_t_bc( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
-                  suf_t_bc_rob2( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
-              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, mdims%nphase, &!TEMPORARY, FIXME
-                  suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
+              allocate( suf_t_bc( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ), &
+                  suf_t_bc_rob2( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ) )
+              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, final_phase, &!TEMPORARY, FIXME! sprint_to_do is this call needed?
+                  suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)                                                  !BCs are updated autoamtically
               SUF_T_BC_ALL=>suf_t_bc
               SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
               SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
@@ -1682,13 +1683,13 @@ contains
                                       ELSE
                                         !Assemble off-diagonal cv_nodi-cv_nodj
                                         LOC_MAT_IJ = LOC_MAT_IJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME * LIMD! Advection
-                                        if (GOT_DIFFUS) LOC_MAT_IJ = LOC_MAT_IJ - FTHETA * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ -SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                        if (GOT_DIFFUS) LOC_MAT_IJ = LOC_MAT_IJ - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                        if (VAD_activated) LOC_MAT_IJ = LOC_MAT_IJ - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         !Assemble off-diagonal cv_nodj-cv_nodi, integrate the other CV side contribution (the sign is changed)...
                                         if(integrate_other_side_and_not_boundary) then
                                           LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * INCOME_J * LIMD! Advection
-                                          if (GOT_DIFFUS) LOC_MAT_JI = LOC_MAT_JI - FTHETA * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                          if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                          if (GOT_DIFFUS) LOC_MAT_JI = LOC_MAT_JI - FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                          if (VAD_activated) LOC_MAT_JI = LOC_MAT_JI - LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         end if
 
                                           IF ( GET_GTHETA ) THEN
@@ -1704,8 +1705,8 @@ contains
 
                                       !Assemble diagonal of the matrix of node cv_nodi
                                       LOC_MAT_II = LOC_MAT_II +  FTHETA_T2 * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME ) * LIMD! Advection
-                                      if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                      if (VAD_activated) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                      if (GOT_DIFFUS) LOC_MAT_II = LOC_MAT_II + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                      if (VAD_activated) LOC_MAT_II = LOC_MAT_II + LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                       if (.not.conservative_advection) LOC_MAT_II = LOC_MAT_II - FTHETA_T2 * ( ONE_M_CV_BETA ) * &
                                                                                     SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       if (on_domain_boundary) LOC_MAT_II = LOC_MAT_II + SdevFuns%DETWEI( GI ) * ROBIN1
@@ -1713,8 +1714,8 @@ contains
                                       !Assemble diagonal of the matrix of node cv_nodj
                                       if(integrate_other_side_and_not_boundary) then
                                         LOC_MAT_JJ = LOC_MAT_JJ -  FTHETA_T2_J * SdevFuns%DETWEI( GI ) * NDOTQNEW * ( 1. - INCOME_J ) * LIMD! Advection
-                                        if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
-                                        if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
+                                        if (GOT_DIFFUS) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2 * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX
+                                        if (VAD_activated) LOC_MAT_JJ = LOC_MAT_JJ +  LIMT2 * SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX
                                         if (.not.conservative_advection) LOC_MAT_JJ = LOC_MAT_JJ + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD
                                       endif
 
@@ -1737,10 +1738,10 @@ contains
                                       + ONE_M_FTHETA_T2OLD* NDOTQOLD * LIMDTOLD ) ! hi order adv
                                   ! Subtract out 1st order term non-conservative adv.
                                       if (GOT_DIFFUS) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          + (1.-FTHETA) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
+                                          + (1.-FTHETA_T2) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
                                           * ( LOC_TOLD_J - LOC_TOLD_I )
                                       if (VAD_activated) LOC_CV_RHS_I =  LOC_CV_RHS_I &
-                                          - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
+                                          - LIMT2* SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX &  ! capillary pressure stabilization term..
                                           * ( LOC_T_J - LOC_T_I )
                                       if (.not.conservative_advection) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           - FTHETA_T2 * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_I &
@@ -1774,10 +1775,10 @@ contains
                                           +  SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J * NDOTQNEW * LIMDT &
                                           + ONE_M_FTHETA_T2OLD_J * NDOTQOLD * LIMDTOLD )
                                       if (GOT_DIFFUS) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                          + (1.-FTHETA) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
+                                          + (1.-FTHETA_T2_J) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX &
                                           * ( LOC_TOLD_I - LOC_TOLD_J )
                                       if (VAD_activated) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
-                                          - SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
+                                          - LIMT2 * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX & ! capillary pressure stabilization term..
                                           * ( LOC_T_I - LOC_T_J )
                                       if (.not.conservative_advection) LOC_CV_RHS_J =  LOC_CV_RHS_J  &
                                           + FTHETA_T2_J * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW * LIMD * LOC_T_J &

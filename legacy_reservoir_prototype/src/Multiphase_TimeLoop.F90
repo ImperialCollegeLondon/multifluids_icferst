@@ -195,7 +195,7 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
-        !HH coefficients C for the coupling term in magma dynamics and phase diagram
+
         real,allocatable, dimension(:) :: c_phi_series
         integer :: c_phi_length
         type(coupling_term_coef) :: coupling
@@ -325,9 +325,22 @@ contains
                 ewrite(0, *) "WARNING: All the phases must be defined as compressible. You can use the linear option with A ~ 0 for the incompressible phase."
                 exit
             end if
+
           end do
         end if
 
+!Check that we have specified Boundary conditions for density
+        if (have_option_for_any_phase("phase_properties/Density/compressible", Mdims%ndim) .or. &
+          have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim) .or. &
+          have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )) then
+          do i = 1, Mdims%nphase
+            if (getprocno() == 1 .and. &
+            (.not. (have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions') .or. &
+            have_option('/material_phase[' // int2str( i - 1 ) // ']/scalar_field::Density/prognostic')))) then
+                ewrite(0, *) "WARNING: It is VERY important to have boundary conditions for density if your model is compressible or using hydrostatic_BCs."
+            end if
+          end do
+        end if
         !Check if we want to use a compacted mass matrix
         if ((Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')) &
                     .and. is_porous_media .and. Mdims%npres == 1) then
@@ -602,7 +615,7 @@ contains
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
-                ! For magma simulation with phase diagram defined, phase volume fraction is not transported but defined through the phase diagram
+
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
@@ -621,32 +634,32 @@ contains
                 if(is_porous_media) call get_DarcyVelocity( Mdims, ndgln, state, packed_state, upwnd )
 
                 !#=================================================================================================================
-                !# End Velocity Update -> Move to ->Heat transport
+                !# End Velocity Update -> Move to ->the rest
                 !#=================================================================================================================
 
-                !!$ Solve advection of the scalar 'Temperature' unless is magma...:
+                !!$ Solve advection of the scalar 'Temperature':
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. (.not. is_magma)) then
 
-                  ewrite(3,*)'Now advecting Temperature Field'
-                  call set_nu_to_u( packed_state )
-                  !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
-                  tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                  call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
-                  suf_sig_diagten_bc, Porosity_field%val, &
-                  !!$
-                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                  option_path = '/material_phase[0]/scalar_field::Temperature', &
-                  thermal = .true.,&
-                  ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                  saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-                  !Recalculate densities
-                  call Calculate_All_Rhos( state, packed_state, Mdims )
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                        suf_sig_diagten_bc, Porosity_field%val, &
+                        !!$
+                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = .true.,&
+                        ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 else IF (is_magma) then !... in which case we solve for enthalpy instead 
 
@@ -679,9 +692,9 @@ contains
                 END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-                !#=================================================================================================================
-                !# End Heat transport -> Move to -> Concentration transport
-                !#=================================================================================================================
+
+
+               !!$ Arash
                !!$ Solve advection of the scalar 'SoluteMassFraction':
                Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
                    have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
@@ -705,8 +718,8 @@ contains
                 end if Conditional_ScalarAdvectionField2
 
                 !#=================================================================================================================
-                !# End Concentration transport -> Move to -> Compositional transport
-                !#=================================================================================================================
+
+
 
                 !Solve for components here
                 if (have_component_field) then
@@ -722,7 +735,6 @@ contains
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
-                !#=================================================================================================================
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
                 !Check if the results are good so far and act in consequence, only does something if requested by the user

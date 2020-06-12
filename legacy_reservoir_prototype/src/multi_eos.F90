@@ -49,6 +49,8 @@ module multiphase_EOS
     use initialise_fields_module, only: initialise_field_over_regions, initialise_field
     use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     use checkpoint
+
+
     implicit none
 
     real, parameter :: flooding_hmin = 1e-5
@@ -130,7 +132,7 @@ contains
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
         allocate( drhodp_porous( cv_nonods ) )
         drhodp_porous = 0.
-        if (have_option('/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant')) then
+        if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant')) then
           call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
         end if
         do icomp = 1, ncomp
@@ -725,7 +727,7 @@ contains
         allocate( rho_porous( size(density_porous%val) ) )
         allocate( rho_porous_old(size(density_porous%val)  ) )
         allocate( eos_coefs( 1 ) ) ; eos_coefs = 0.
-        call get_option( "/porous_media/thermal_porous/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant", eos_coefs(1) )
+        call get_option( "/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant", eos_coefs(1) )
         rho_porous=0.
         perturbation_pressure = 1.
         cv_counter = 0
@@ -1547,6 +1549,8 @@ contains
 
             if (present_and_true(calculate_solute_diffusivity)) then
               do iphase = 1, Mdims%nphase
+                !Check if the field is defined for that phase
+                if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
                 diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
                 do ele = 1, Mdims%totele
@@ -1693,64 +1697,6 @@ contains
       return
     end subroutine calculate_diffusivity
 
-    ! !>@brief: Here we compute the enthalpy diffusion coefficient
-    ! subroutine calculate_enthalpy_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion,tracer)
-    !   type( state_type ), dimension( : ), intent( inout ) :: state
-    !   type( state_type ), intent( in ) :: packed_state
-    !   !type( state_type ), intent( in ) :: packed_state
-    !   type(multi_dimensions), intent(in) :: Mdims
-    !   type(multi_ndgln), intent(in) :: ndgln
-    !   real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-    !   !Local variables
-    !   type(scalar_field), pointer :: HeatCapacity, Density
-    !   type(tensor_field), pointer :: Diffusion_coef
-    !   type(tensor_field) :: tracer
-    !   integer :: iphase, idim, stat, ele, iloc
-    !   integer :: mat_inod, cv_inod
-    !   logical, parameter :: harmonic_average=.false.
-    !
-    !   ScalarAdvectionField_Diffusion = 0.0
-    !   saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-    !
-    !   ScalarAdvectionField_Diffusion = 0.
-    !   do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the diffusivity term
-    !     Density => extract_scalar_field( state(iphase), "Density" )
-    !     HeatCapacity => extract_scalar_field( state(iphase), 'TemperatureHeatCapacity', stat )
-    !     Diffusion_coef => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat)
-    !     do ele = 1, Mdims%totele
-    !       do iloc = 1, Mdims%mat_nloc
-    !         mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-    !         cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-    !         do idim = 1, Mdims%ndim
-    !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-    !           ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-    !           node_val( Diffusion_coef, idim, idim, mat_inod ) &
-    !           /(node_val(HeatCapacity, cv_inod)*node_val(Density, cv_inod))
-    !         end do
-    !       end do
-    !     end do
-    !   end do
-    !
-    !   !Assembling everything into phase 1
-    !   ! ScalarAdvectionField_Diffusion = 0.
-    !   ! do iphase = Mdims%nphase, Mdims%nphase !Only the last phase have the diffusivity term
-    !   !   do ele = 1, Mdims%totele
-    !   !     do iloc = 1, Mdims%mat_nloc
-    !   !       mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-    !   !       cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-    !   !       do idim = 1, Mdims%ndim
-    !   !         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-    !   !         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )+&
-    !   !         (node_val( diffL, idim, idim, mat_inod ) * node_val( saturation, 1, 2, cv_inod )&
-    !   !         +node_val( diffS, idim, idim, mat_inod ) * node_val( saturation, 1, 1, cv_inod )) &
-    !   !         /(node_val( saturation, 1, 2, cv_inod )*node_val(capacityL, cv_inod)*node_val(densityL, cv_inod)&
-    !   !         + node_val( saturation, 1, 1, cv_inod )*node_val(capacityS, cv_inod)*node_val(densityS, cv_inod))
-    !   !       end do
-    !   !     end do
-    !   !   end do
-    !   ! end do
-    ! end subroutine calculate_enthalpy_diffusivity
-
     !! Arash
     !>@brief: Dispersion for isotropic porous media
     subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion, tracer)
@@ -1778,98 +1724,99 @@ contains
       DispDiaComp = 0.
 
 
-       boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
+      boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
-                den => extract_tensor_field( packed_state,"PackedDensity" )
-                sfield=>extract_scalar_field(state(1),"Porosity")
-                ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
+      den => extract_tensor_field( packed_state,"PackedDensity" )
+      sfield=>extract_scalar_field(state(1),"Porosity")
+      ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
 
-                if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
-                    tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
-                    tdisp => tdfield%val
-                else
-                    allocate(tdisp(size(ldfield%val)))
-                    tdisp = ldfield%val / 10.
-                end if
+      if (have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+        tdfield=>extract_scalar_field(state(1),"Transverse_Dispersivity")
+        tdisp => tdfield%val
+      else
+        allocate(tdisp(size(ldfield%val)))
+        tdisp = ldfield%val / 10.
+      end if
 
 
-                do iphase = 1, Mdims%nphase
-                    darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
-                    diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+      do iphase = 1, Mdims%nphase
+        if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
+        darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
+        diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
-                    do ele = 1, Mdims%totele
-                        ele_nod = min(size(sfield%val), ele)
-                         do u_iloc = 1, mdims%u_nloc
-                            u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
-                            do cv_iloc = 1, Mdims%cv_nloc
-                                mat_inod = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
-                                cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
-                            vel_av = 0
+        do ele = 1, Mdims%totele
+          ele_nod = min(size(sfield%val), ele)
+          do u_iloc = 1, mdims%u_nloc
+            u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
+            do cv_iloc = 1, Mdims%cv_nloc
+              mat_inod = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
+              cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
+              vel_av = 0
 
-                            do idim1 = 1, Mdims%ndim
-                                vel_comp2(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
-                                (sfield%val(ele_nod)))**2
+              do idim1 = 1, Mdims%ndim
+                vel_comp2(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
+                (sfield%val(ele_nod)))**2
 
-                                vel_comp(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
-                                (sfield%val(ele_nod)))
+                vel_comp(idim1) = ((darcy_velocity(iphase)%ptr%val(idim1,u_nod))/&
+                (sfield%val(ele_nod)))
 
-                                if (Mdims%ndim == 2) then
-                                    vel_comp2(3) = 0
-                                    vel_comp(3) = 0
-                                endif
+                if (Mdims%ndim == 2) then
+                  vel_comp2(3) = 0
+                  vel_comp(3) = 0
+                endif
 
-                                vel_av = vel_av + vel_comp2(idim1)
-                            end do
+                vel_av = vel_av + vel_comp2(idim1)
+              end do
 
-                            vel_av = SQRT(vel_av)
+              vel_av = SQRT(vel_av)
 
-                            do idim1 = 1, Mdims%ndim
-                                do idim2 = 1, Mdims%ndim
-                                    if (idim1 == idim2) then
-                                        DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod)
-                                    else
-                                        DispCoeffMat(idim1, idim2) = vel_av * tdisp(ele_nod)
-                                    endif
-                                end do
-                            end do
-
-                            !! Diagonal components of the dispersion tensor
-                            DispDiaComp = (1.0/(vel_av**2))*matmul(DispCoeffMat, vel_comp2)
-
-                            !! Off-diaginal components of the dispersion tensor
-                            do idim1 = 1, Mdims%ndim
-                                do idim2 = 1, Mdims%ndim
-                                    if (idim1 .NE. idim2) then
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
-                                        ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdisp(ele_nod))) *&
-                                        (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
-                                    else
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        sfield%val(ele_nod)*DispDiaComp(idim1)
-                                    endif
-
-                                    if (boussinesq) then
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase )
-                                    else
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
-                                        SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
-                                        den%val(1, 1, cv_loc)
-                                    endif
-
-                                end do
-                            end do
-                        end do
-                        end do
-                    end do
+              do idim1 = 1, Mdims%ndim
+                do idim2 = 1, Mdims%ndim
+                  if (idim1 == idim2) then
+                    DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod)
+                  else
+                    DispCoeffMat(idim1, idim2) = vel_av * tdisp(ele_nod)
+                  endif
                 end do
-                if (.not.have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
-                    deallocate(tdisp)
-                end if
+              end do
+
+              !! Diagonal components of the dispersion tensor
+              DispDiaComp = (1.0/(vel_av**2))*matmul(DispCoeffMat, vel_comp2)
+
+              !! Off-diaginal components of the dispersion tensor
+              do idim1 = 1, Mdims%ndim
+                do idim2 = 1, Mdims%ndim
+                  if (idim1 .NE. idim2) then
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
+                    ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdisp(ele_nod))) *&
+                    (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
+                  else
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    sfield%val(ele_nod)*DispDiaComp(idim1)
+                  endif
+
+                  if (boussinesq) then
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase )
+                  else
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
+                    SoluteDispersion( mat_inod, idim1, idim2, iphase ) *&
+                    den%val(1, 1, cv_loc)
+                  endif
+
+                end do
+              end do
+            end do
+          end do
+        end do
+      end do
+      if (.not.have_option("/porous_media/Dispersion/scalar_field::Transverse_Dispersivity")) then
+        deallocate(tdisp)
+      end if
 
       return
-  end subroutine calculate_solute_dispersity
+    end subroutine calculate_solute_dispersity
 
     !>@brief: Computes the viscosity effect as a momemtum diffusion, this is zero for porous media
     subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
@@ -1889,7 +1836,7 @@ contains
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc, ndim1, ndim2, idim, jdim
       integer :: multiplier
-      !Magma variables
+
       real :: exp_zeta_function
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
