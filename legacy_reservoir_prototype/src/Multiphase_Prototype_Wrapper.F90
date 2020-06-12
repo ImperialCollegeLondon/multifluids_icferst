@@ -926,11 +926,11 @@ contains
             end if
             !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
-              if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
-                  ! FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")! Not all the phases need to have concentration defined
+              ! FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")! Not all the phases need to have concentration defined
+              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
-                end if
+              end if
             end if
 
             if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
