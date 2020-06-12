@@ -1432,8 +1432,6 @@ character(len=*), intent(in):: solver_option_path
   ! we could reuse this, but for the moment we don't:
   call deallocate(petsc_numbering)
 
-   !call Petsc_logging_save(ierr)
-
 end subroutine petsc_solve_destroy
 
 subroutine petsc_solve_destroy_petsc_csr(y, b, solver_option_path)
@@ -2650,15 +2648,18 @@ subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 end subroutine MyKSPMonitor
 
 subroutine Petsc_logging_save(ierr)
-!! This routine adds petsc logging for PETSc built with debugging
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief
+  !> This routine adds petsc logging for PETSc built with debugging but for specific
+  !> objects
   PetscErrorCode :: ierr
   PetscViewer :: viewer
-    !REAL :: threshold,oldthreshold
-  !  call PetscLogNestedBegin(ierr);CHKERRA(ierr) !! this needs to be allocated before. -ao
+
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
   call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
   call PetscLogView(viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+
 end subroutine Petsc_logging_save
 
 
