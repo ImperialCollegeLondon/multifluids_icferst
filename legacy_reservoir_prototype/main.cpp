@@ -84,12 +84,12 @@ int main(int argc, char **argv){
 #ifdef HAVE_PETSC_DBUG
 // Initiliase PETSc logging
 ////*default logging
+
 #if PETSC_VERSION_MINOR<8
 
 #else
   PetscErrorCode ierr = PetscLogDefaultBegin();
 #endif
-
   ////*nested logging
 //  PetscErrorCode ierr = PetscLogNestedBegin();
 #endif
@@ -122,9 +122,11 @@ PetscViewer viewer;
 //MPI_Comm_rank(comm,&rank);
 //ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.xml",&viewer);
 //ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML);
+
 #if PETSC_VERSION_MINOR<8
 
 #else
+
   //*default logging
   ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
   ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
