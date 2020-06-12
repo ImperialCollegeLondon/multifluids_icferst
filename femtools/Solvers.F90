@@ -2656,10 +2656,14 @@ subroutine Petsc_logging_save(ierr)
   PetscErrorCode :: ierr
   PetscViewer :: viewer
 
+#if PETSC_VERSION_MINOR<8
+
+#else
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
   call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
   call PetscLogView(viewer,ierr)
-
+#endif
+  
 end subroutine Petsc_logging_save
 
 
