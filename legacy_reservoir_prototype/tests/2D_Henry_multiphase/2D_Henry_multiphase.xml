@@ -11,8 +11,6 @@
 max_sat1 = stat("2D_Henry_multiphase.stat")["air"]["PhaseVolumeFraction"]["max"][-1]</variable>
     <variable name="max_sat2" language="python">from fluidity_tools import stat_parser as stat
 max_sat2 = stat("2D_Henry_multiphase.stat")["water"]["PhaseVolumeFraction"]["max"][-1]</variable>
-    <variable name="int_conc1" language="python">from fluidity_tools import stat_parser as stat
-int_conc1 = stat("2D_Henry_multiphase.stat")["air"]["SoluteMassFraction"]["integral"][-1]</variable>
     <variable name="int_conc2" language="python">from fluidity_tools import stat_parser as stat
 int_conc2 = stat("2D_Henry_multiphase.stat")["water"]["SoluteMassFraction"]["integral"][-1]</variable>
 
@@ -20,7 +18,6 @@ int_conc2 = stat("2D_Henry_multiphase.stat")["water"]["SoluteMassFraction"]["int
   <pass_tests>
     <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.8) &lt; 0.05)</test>
     <test name="Assert final max sat 2" language="python">assert(abs(max_sat2 - 1.0) &lt; 0.05)</test>
-    <test name="Assert integral concentration in air" language="python">assert(abs(int_conc1 - 0.0) &lt; 0.01)</test>
     <test name="Assert integral concentration in water" language="python">assert(abs(int_conc2 - 0.38)/0.38 &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>

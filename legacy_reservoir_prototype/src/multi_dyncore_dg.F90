@@ -731,11 +731,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                    !Ensure concentration is between 1 and sligthly above 0
+
                    solution%val = min(1., max(solution%val,min_concentration))
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
@@ -2249,44 +2249,6 @@ end if
         END DO
 
         ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
-      end subroutine
-        !########Solve the system#############
-        !Re-scale of the matrix to allow working with small values of sigma
-        !this is a hack to deal with bad preconditioners and divide by zero errors.
-            !Since we save the parameter rescaleVal, we only do this one time
-                !If it is parallel then we want to be consistent between cpus
-            !End of re-scaling
-      subroutine compute_velocity_times_viscosity(state, Mdims, ndgln, velocity, velocity_visc)
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        type(multi_dimensions), intent(in) :: Mdims
-        type(multi_ndgln), intent(in) :: ndgln
-        REAL, DIMENSION( :, :, : ), intent(in) :: velocity
-        REAL, DIMENSION( :, :, : ), intent(inout) ::velocity_visc
-        !Solve the system to obtain dP (difference of pressure)
-        integer :: ele, iphase, u_iloc, u_inod, cv_iloc, cv_nod, idim, multiplier
-        type( tensor_field ), pointer :: visc_field
-
-        velocity_visc = 0.
-        ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
-        do iphase = 1, Mdims%nphase
-          visc_field => extract_tensor_field( state( iphase ), 'Viscosity' )
-
-          multiplier = 1
-          if (size(visc_field%val,3) == 1)  multiplier = 0
-          do ele = 1, Mdims%totele
-            do u_iloc = 1, Mdims%u_nloc
-              U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-              do cv_iloc = 1, Mdims%cv_nloc
-                CV_NOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + cv_iloc ) * multiplier + (1 - multiplier)
-                do idim = 1, Mdims%ndim!CONSIDER ONLY ISOTROPIC VISCOSITY (BECAUSE WE USE THE STRESS FORM MAINLY)
-                  velocity_visc(idim, iphase, U_INOD) = velocity_visc(idim, iphase, U_INOD) &
-                              + velocity(idim, iphase, U_INOD) * visc_field%val(idim, idim, CV_NOD )/dble(Mdims%cv_nloc)
-                end do
-              end do
-            end do
-          end do
-        end do
       end subroutine
 
         !!>@brief: Compute a CV pressure from a FE representation

@@ -571,31 +571,6 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="SoluteMassFraction" rank="0">
-      <prognostic>
-        <mesh name="PressureMesh"/>
-        <initial_condition name="WholeMesh">
-          <constant>
-            <real_value rank="0">0</real_value>
-          </constant>
-        </initial_condition>
-        <boundary_conditions name="all">
-          <surface_ids>
-            <integer_value shape="4" rank="1">7 8 9 10</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">0.00001</real_value>
-            </constant>
-          </type>
-        </boundary_conditions>
-        <detectors>
-          <include_in_detectors/>
-        </detectors>
-        <consistent_interpolation/>
-      </prognostic>
-    </scalar_field>
     <multiphase_properties>
       <Relperm_Corey>
         <scalar_field name="relperm_max">

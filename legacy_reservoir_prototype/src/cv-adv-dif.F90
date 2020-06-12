@@ -585,10 +585,10 @@ contains
           end if
            if (tracer%name == "PackedTemperature" &
               .or. tracer%name == "PackedSoluteMassFraction")  then
-              allocate( suf_t_bc( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
-                  suf_t_bc_rob2( 1,mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
-              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, final_phase, &!TEMPORARY, FIXME
-                  suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)
+              allocate( suf_t_bc( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ), &
+                  suf_t_bc_rob2( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ) )
+              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, final_phase, &!TEMPORARY, FIXME! sprint_to_do is this call needed?
+                  suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)                                                  !BCs are updated autoamtically
               SUF_T_BC_ALL=>suf_t_bc
               SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
               SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
