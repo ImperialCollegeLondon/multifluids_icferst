@@ -328,7 +328,9 @@ contains
           have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim) .or. &
           have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )) then
           do i = 1, Mdims%nphase
-            if (getprocno() == 1 .and. .not. have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions')) then
+            if (getprocno() == 1 .and. &
+            (.not. (have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions') .or. &
+            have_option('/material_phase[' // int2str( i - 1 ) // ']/scalar_field::Density/prognostic')))) then
                 ewrite(0, *) "WARNING: It is VERY important to have boundary conditions for density if your model is compressible or using hydrostatic_BCs."
             end if
           end do
