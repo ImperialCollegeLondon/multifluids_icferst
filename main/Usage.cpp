@@ -392,7 +392,7 @@ void PetscInit(int argc, char** argv){
   ierr = PetscInitializeFortran();
 
   //ierr = PetscLogNestedBegin();
-  ierr = PetscLogDefaultBegin();
+  //ierr = PetscLogDefaultBegin();
 
   // CHKERRQ(ierr);
   signal(SIGSEGV, SIG_DFL);

@@ -2656,10 +2656,15 @@ subroutine Petsc_logging_save(ierr)
   PetscErrorCode :: ierr
   PetscViewer :: viewer
 
+
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+#else
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
   call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
   call PetscLogView(viewer,ierr)
-
+#endif
+#endif
 end subroutine Petsc_logging_save
 
 
@@ -2777,7 +2782,7 @@ function create_null_space_from_options_vector(mat, null_space_option_path, &
      end if
    else if(have_option(trim(null_space_option_path)//'/all_rotations')) then
      rot_mask = .false.
-     if (dim==3) then
+     if (dim == 3) then
        rot_mask = .true.
      else if (dim==2) then
        rot_mask(3) = .true.
