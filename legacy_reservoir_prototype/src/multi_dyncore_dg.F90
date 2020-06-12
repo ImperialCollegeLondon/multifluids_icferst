@@ -603,7 +603,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            logical :: repeat_assemb_solve
            logical :: boussinesq
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
-           real, parameter :: min_concentration = 1e-10
+           real, parameter :: min_concentration = 0.
            integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
            integer :: nconc2
            type(vector_field) :: solution
