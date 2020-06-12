@@ -81,6 +81,14 @@ int main(int argc, char **argv){
   // Initialise PETSc (this also parses PETSc command line arguments)
   PetscInit(argc, argv);
 
+#ifdef HAVE_PETSC_DBUG
+// Initiliase PETSc logging
+////*default logging
+  PetscErrorCode ierr = PetscLogDefaultBegin();
+  ////*nested logging
+//  PetscErrorCode ierr = PetscLogNestedBegin();
+#endif
+
 #ifdef HAVE_PYTHON
   // Initialize the Python Interpreter
   python_init_();
@@ -88,7 +96,7 @@ int main(int argc, char **argv){
 
   // Start fortran main
   if(fl_command_line_options.count("simulation_name")){
-    multiphase_prototype_wrapper();    
+    multiphase_prototype_wrapper();
   }else{
     usage(argv[0]);
     exit(-1);
@@ -97,6 +105,24 @@ int main(int argc, char **argv){
 #ifdef HAVE_PYTHON
   // Finalize the Python Interpreter
   python_end_();
+#endif
+
+#ifdef HAVE_PETSC_DBUG
+PetscViewer viewer;
+//Collecting PETSc default logging information
+
+////*nested logging
+//PetscMPIInt rank,size;
+//MPI_Comm_size(comm,&size);
+//MPI_Comm_rank(comm,&rank);
+//ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.xml",&viewer);
+//ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML);
+
+  //*default logging
+  ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
+  ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
+  ierr=PetscLogView(viewer);
+  ierr=PetscViewerDestroy(&viewer);
 #endif
 
 #ifdef HAVE_PETSC
