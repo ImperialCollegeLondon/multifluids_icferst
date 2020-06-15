@@ -1722,7 +1722,9 @@ This can be used to control the number of non-linear interations dynamically.
                       <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;
 
 The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
                       <ref name="integer"/>
@@ -1797,7 +1799,9 @@ By default the tolerance is 1e-2</a:documentation>
                   <a:documentation>Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction</a:documentation>
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;</a:documentation>
                   <ref name="integer"/>
                   <group>
                     <optional>
