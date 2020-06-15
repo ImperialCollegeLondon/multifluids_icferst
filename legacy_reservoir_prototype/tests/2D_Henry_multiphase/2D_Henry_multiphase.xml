@@ -18,7 +18,7 @@ int_conc2 = stat("2D_Henry_multiphase.stat")["water"]["SoluteMassFraction"]["int
   <pass_tests>
     <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.8) &lt; 0.05)</test>
     <test name="Assert final max sat 2" language="python">assert(abs(max_sat2 - 1.0) &lt; 0.05)</test>
-    <test name="Assert integral concentration in water" language="python">assert(abs(int_conc2 - 0.38)/0.38 &lt; 0.01)</test>
+    <test name="Assert integral concentration in water" language="python">assert(abs(int_conc2 - 0.31)/0.31 &lt; 0.05)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
