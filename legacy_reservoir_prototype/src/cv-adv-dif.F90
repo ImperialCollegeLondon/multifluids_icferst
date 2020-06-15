@@ -593,11 +593,12 @@ contains
               SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
               SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
           end if
-           if (tracer%name == "PackedTemperature" .or. (tracer%name == "PackedEnthalpy")&
-              .or. tracer%name == "PackedSoluteMassFraction")  then
-              allocate( suf_t_bc( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ), &
-                  suf_t_bc_rob2( 1,final_phase,Mdims%cv_snloc*Mdims%stotel ) )
-              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, final_phase, &!TEMPORARY, FIXME! sprint_to_do is this call needed?
+           if (tracer%name == "PackedTemperature" ) then
+              !(tracer%name == "PackedEnthalpy")&
+              ! .or. tracer%name == "PackedSoluteMassFraction")  then !Not sure if it is required for temperature either...
+              allocate( suf_t_bc( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), &
+                  suf_t_bc_rob2( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ) )
+              call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, size(tracer_BCs%val,2), &!TEMPORARY, FIXME! sprint_to_do is this call needed?
                   suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer)                                                  !BCs are updated autoamtically
               SUF_T_BC_ALL=>suf_t_bc
               SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
@@ -1447,15 +1448,15 @@ contains
                                   IF(SELE == 0) THEN
                                       CAP_DIFF_COEF_DIVDX = 0.
                                       if (is_porous_media) then
-                                        do iphase =1, final_phase !SPRINT_TO_DO DO NOT REMBER IF THIS IS THE CORRECT LOOP!
-                                            rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
-                                                CVNORMX_ALL(:, GI) ))
-                                            rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
-                                                CVNORMX_ALL(:, GI) ))
-                                        end do
-                                        CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
-                                        * rsum_nodi*(1.-INCOME) +&
-                                        CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
+                                      do iphase =1, final_phase !SPRINT_TO_DO DO NOT REMBER IF THIS IS THE CORRECT LOOP!
+                                          rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
+                                              CVNORMX_ALL(:, GI) ))
+                                          rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
+                                              CVNORMX_ALL(:, GI) ))
+                                      end do
+                                      CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
+                                          * rsum_nodi*(1.-INCOME) +&
+                                          CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj * INCOME) /HDC
                                       else
                                         CAP_DIFF_COEF_DIVDX = (CAP_DIFFUSION( :, MAT_NODI )&
                                         * (1.-INCOME) +CAP_DIFFUSION( :, MAT_NODJ ) * INCOME) /HDC
@@ -1471,7 +1472,7 @@ contains
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
-
+                              ! Pack ndotq information:
                               if (asssembling_enthalpy) then
                                 IF(SELE == 0) THEN
                                   !Average of the coefficient in shared CVs between elements
@@ -1651,6 +1652,7 @@ contains
                                   end if
 
                               ENDIF Conditional_GETCT2
+
                               Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                                   ! Obtain the CV discretised advection/diffusion equations
                                   ROBIN1=0.0; ROBIN2=0.0
@@ -1855,7 +1857,7 @@ contains
                                 old_tracer, temp_field, salt_field, 1, final_phase )
                             end if
 
-                           endif !if(CV_NODJ.ge.CV_NODI) then
+                          endif ! if(CV_NODJ.ge.CV_NODI) then
                       END IF Conditional_integration
                   END DO Loop_GCOUNT
               END DO Loop_CV_ILOC
@@ -1866,7 +1868,7 @@ contains
               END DO
           ENDIF
           !Add compressibility to the transport equation/add time derivative term
-          Conditional_GETCV_DISC2: IF( GETCV_DISC) THEN ! Obtain the CV discretised advection/diffusion equations
+          Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
               Loop_CVNODI2: DO CV_NODI = 1, Mdims%cv_nonods ! Put onto the diagonal of the matrix
 
                 ! Generate local variables (to avoid slicing) ***************
@@ -2032,17 +2034,11 @@ contains
           call deallocate(velocity_BCs)
           if(got_free_surf .or. is_porous_media .or. Mmat%CV_pressure) call deallocate(pressure_BCs)
           if (present(saturation)) then
-            call deallocate(saturation_BCs)
-            call deallocate(saturation_BCs_robin2)
+              call deallocate(saturation_BCs)
+              call deallocate(saturation_BCs_robin2)
           end if
 
-          if (tracer%name == "PackedTemperature" )  then
-            deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
-          end if
-          ! Arash
-          if (tracer%name == "PackedSoluteMassFraction" )  then
-            deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
-          end if
+          if (allocated(suf_t_bc)) deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)

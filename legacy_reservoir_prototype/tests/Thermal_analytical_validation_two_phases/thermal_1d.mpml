@@ -272,6 +272,23 @@
             </constant>
           </type>
         </boundary_conditions>
+        <boundary_conditions name="all_but_inlet">
+          <surface_ids>
+            <integer_value shape="3" rank="1">8 9 10</integer_value>
+          </surface_ids>
+          <type name="robin">
+            <order_zero_coefficient>
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </order_zero_coefficient>
+            <order_one_coefficient>
+              <constant>
+                <real_value rank="0">0.</real_value>
+              </constant>
+            </order_one_coefficient>
+          </type>
+        </boundary_conditions>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -487,6 +504,23 @@
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
+          </type>
+        </boundary_conditions>
+        <boundary_conditions name="all_but_inlet">
+          <surface_ids>
+            <integer_value shape="3" rank="1">8 9 10</integer_value>
+          </surface_ids>
+          <type name="robin">
+            <order_zero_coefficient>
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </order_zero_coefficient>
+            <order_one_coefficient>
+              <constant>
+                <real_value rank="0">0.</real_value>
+              </constant>
+            </order_one_coefficient>
           </type>
         </boundary_conditions>
         <detectors>
