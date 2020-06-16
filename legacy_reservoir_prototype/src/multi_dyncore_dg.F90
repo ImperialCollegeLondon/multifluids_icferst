@@ -135,7 +135,7 @@ contains
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
-           integer :: ncomp_diff_coef, comp_diffusion_opt, nphase, n_in_pres
+           integer :: ncomp_diff_coef, comp_diffusion_opt, nphase, n_in_pres, auxI
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
            type( tensor_field ), pointer :: perm, python_tfield
            integer :: cv_disopt, cv_dg_vel_int_opt
@@ -327,7 +327,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ! which sums to one and therefore is the same
               !If collapsed solver then change nphase and n_in_pres
               nphase = Mdims%npres!One temperature per region
-              n_in_pres = Mdims%nphase!Need to assemble all the phases
+              n_in_pres = Mdims%n_in_pres!Need to assemble all the phases
            end if
            !Allocate the RHS
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
@@ -380,7 +380,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
                  do iphase = 1 , n_in_pres
-                  tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
+                   auxI = IPHASE
+                   if (assemble_collapsed_to_one_phase) auxI = 1
+                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(auxI+(ipres-1)*n_in_pres,:)
                 end do
                end do
 
@@ -407,15 +409,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            END DO Loop_NonLinearFlux
 
-           if (assemble_collapsed_to_one_phase .and. Mdims%n_in_pres > 1) then
-             !Now we populate back the other temperatures if we have solved for a collapsed system
-             temperature => extract_tensor_field(packed_state, "PackedTemperature")
-             do ipres =1, mdims%npres
-               do iphase = 2 , Mdims%n_in_pres
-                temperature%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = temperature%val(1,1+(ipres-1)*Mdims%n_in_pres,:)
-              end do
-             end do
-           end if
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
