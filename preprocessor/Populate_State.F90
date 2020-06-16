@@ -1367,11 +1367,6 @@ contains
            end do
         end if
     end if
-    !HH
-    if (is_magma .and. have_option('/material_phase::phase1/scalar_field::Composition')) then
-      call allocate_and_insert_scalar_field('/material_phase::phase1/scalar_field::Composition', &
-      states(1), field_name='BulkComposition')
-    end if
 
     if (have_option("/porous_media/wells_and_pipes")) then
        do i=1, nstates

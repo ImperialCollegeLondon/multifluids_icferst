@@ -960,11 +960,6 @@ contains
                 add_source=.true.,add_absorption=.true.)
             call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
         end if
-        if (option_count("/material_phase/scalar_field::Composition")>0) then
-            call insert_sfield(packed_state,"Composition",1,nphase,&
-                add_source=.true.,add_absorption=.true.)
-            call insert_sfield(packed_state,"FEComposition",1,nphase)
-        end if
 
         !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
@@ -1270,19 +1265,6 @@ contains
                     call unpack_sfield(state(i),packed_state,"Enthalpy",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
-                if(have_option(trim(state(i)%option_path)&
-                    //'/scalar_field::Composition')) then
-                    call unpack_sfield(state(i),packed_state,"OldComposition",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"Composition"),&
-                        extract_scalar_field(state(i),"OldComposition")))
-                    call unpack_sfield(state(i),packed_state,"IteratedComposition",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"Composition"),&
-                        extract_scalar_field(state(i),"IteratedComposition")))
-                    call unpack_sfield(state(i),packed_state,"CompositionSource",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"CompositionAbsorption",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"Composition",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Composition"),"Composition")
-                end if
 
                 !! Arash
                 if(have_option(trim(state(i)%option_path)&
@@ -1342,10 +1324,6 @@ contains
         !! HH
         if (option_count("/material_phase/scalar_field::Enthalpy")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
-        end if
-
-        if (option_count("/material_phase/scalar_field::Composition")>0) then
-            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Composition")
         end if
 
         !! Arash
@@ -2892,8 +2870,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
     EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, SoluteMassFraction,&
     OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
-    Enthalpy,OldEnthalpy, IteratedEnthalpy,FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
-    Composition,OldComposition, IteratedComposition,FEComposition, OldFEComposition, IteratedFEComposition)
+    Enthalpy,OldEnthalpy, IteratedEnthalpy,FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy)
     !This subroutine returns a pointer to the desired values of a variable stored in packed state
     !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
     !and also all of them are optional, hence you can obtaine whichever you want
@@ -2917,7 +2894,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
         Enthalpy, OldEnthalpy, IteratedEnthalpy, FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
-        Composition,OldComposition, IteratedComposition,FEComposition, OldFEComposition, IteratedFEComposition,&
         SoluteMassFraction, OldSoluteMassFraction, IteratedSoluteMassFraction, FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
@@ -3070,31 +3046,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     if (present(IteratedFEEnthalpy)) then
         tfield => extract_tensor_field( packed_state, "PackedIteratedFEEnthalpy" )
         IteratedFEEnthalpy =>  tfield%val(1,:,:)
-    end if
-
-    if (present(Composition)) then
-        tfield => extract_tensor_field( packed_state, "PackedComposition" )
-        Composition =>  tfield%val(1,:,:)
-    end if
-    if (present(OldComposition)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldComposition" )
-        OldComposition =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedComposition)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedComposition" )
-        IteratedComposition =>  tfield%val(1,:,:)
-    end if
-    if (present(FEComposition)) then
-        tfield => extract_tensor_field( packed_state, "PackedFEComposition" )
-        FEComposition =>  tfield%val(1,:,:)
-    end if
-    if (present(OldFEComposition)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldFEComposition" )
-        OldFEComposition =>  tfield%val(1,:,:)
-    end if
-    if (present(IteratedFEComposition)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedFEComposition" )
-        IteratedFEComposition =>  tfield%val(1,:,:)
     end if
 
     !Arash

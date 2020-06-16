@@ -1,4 +1,3 @@
-
 !    Copyright (C) 2006 Imperial College London and others.
 !
 !    Please see the AUTHORS file in the main source directory for a full list
@@ -158,16 +157,25 @@ contains
     series(1)=2*series(2)-series(3)
   end subroutine C_generate
 
-  subroutine cal_bulkcomposition(state,packed_state)
+
+  !>@brief: Computes the bulk Composition for two phases
+  subroutine cal_bulkcomposition(state,packed_state, Mdims, BulkComposition)
     type( state_type ), dimension( : ), intent( inout ) :: state
     type( state_type ), intent( inout ) :: packed_state
+    type(multi_dimensions), intent( in ) :: Mdims
+    real, dimension(:), intent(inout) :: BulkComposition
+    !Local variables
     type( tensor_field), pointer :: Composition, saturation
-    type( scalar_field), pointer :: BulkComposition
-    Composition=>extract_tensor_field(packed_state,"PackedComposition")
+    integer :: iphase, cv_inod
+    Composition=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-    BulkComposition=> extract_scalar_field(state(1),"BulkComposition")
 
-    BulkComposition%val=Composition%val(1,1,:)*saturation%val(1,1,:)+Composition%val(1,2,:)*saturation%val(1,2,:)
+    BulkComposition = 0.
+    do cv_inod = 1, Mdims%cv_nonods
+      do iphase = 1, Mdims%nphase
+        BulkComposition(cv_inod) = BulkComposition(cv_inod) + Composition%val(1,iphase,cv_inod)*saturation%val(1,iphase,cv_inod)
+      end do
+    end do
   end subroutine
 
   real function get_Liquidus(Bulk_comp,phase_coef)
@@ -214,37 +222,44 @@ contains
     type( state_type ), intent( inout ) :: packed_state
     type( multi_dimensions), intent( in ) :: Mdims
     type( tensor_field), pointer :: Composition, temperature, enthalpy, saturation
-    type( scalar_field), pointer :: BC, Cp !bulk composition and heat capacity
+    type( scalar_field), pointer :: Cp !bulk composition and heat capacity
+    real, dimension(Mdims%cv_nonods) :: BulkComposition
     type(magma_phase_diagram) :: phase_coef
     integer :: cv_nodi
 
-    BC=> extract_scalar_field(state(1), "BulkComposition")
-    Composition=>extract_tensor_field(packed_state,"PackedComposition")
+    ! BulkComposition=> extract_scalar_field(state(1), "BulkComposition")
+    Composition=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
     temperature =>  extract_tensor_field( packed_state, "PackedTemperature" )
     enthalpy=>extract_tensor_field(packed_state,"PackedEnthalpy")
     Cp => extract_scalar_field(state(1), 'TemperatureHeatCapacity')   !
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
+    !Compute BulkComposition
+    call cal_bulkcomposition(state,packed_state, Mdims, BulkComposition)
+
     do cv_nodi = 1, Mdims%cv_nonods
       ! above liquidus
-        if (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)) then   !currently density is not used, so simply pass 0
-          if(BC%val(cv_nodi)>phase_coef%Ae) then
+        if (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BulkComposition(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)) then   !currently density is not used, so simply pass 0
+          if(BulkComposition(cv_nodi)>phase_coef%Ae) then
             Composition%val(1,1,cv_nodi)=1.0 !solid
           else
             Composition%val(1,1,cv_nodi)=0.0
           end if
-          Composition%Val(1,2,cv_nodi)=BC%val(cv_nodi)!fluid
+          Composition%Val(1,2,cv_nodi)=BulkComposition(cv_nodi)!fluid
             ! below solidus
-        else if(enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)) then
-              Composition%val(1,1,cv_nodi)=BC%val(cv_nodi)
+        else if(enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)) then
+              Composition%val(1,1,cv_nodi)=BulkComposition(cv_nodi)
               Composition%val(1,2,cv_nodi)=phase_coef%Ae
           ! between solidus and eutectic melting line
-        else if ((enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+ phase_coef%Lf*BC%val(cv_nodi)/phase_coef%Ae) .and. (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+ phase_coef%Lf*(1-BC%val(cv_nodi))/(1.0000001-phase_coef%Ae))) then
+        else if ((enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+&
+                   phase_coef%Lf*BulkComposition(cv_nodi)/phase_coef%Ae) .and. &
+                   (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi), node_val(Cp,cv_nodi) , 0., phase_coef)+ &
+                   phase_coef%Lf*(1-BulkComposition(cv_nodi))/(1.0000001-phase_coef%Ae))) then
               Composition%val(1,2,cv_nodi)=phase_coef%Ae
-              Composition%val(1,1,cv_nodi)=(BC%val(cv_nodi)-saturation%val(1,2,cv_nodi)*phase_coef%Ae)/saturation%val(1,1,cv_nodi)
+              Composition%val(1,1,cv_nodi)=(BulkComposition(cv_nodi)-saturation%val(1,2,cv_nodi)*phase_coef%Ae)/saturation%val(1,1,cv_nodi)
       ! between eutectic melting and liquidus
         else
-          if(BC%val(cv_nodi)>phase_coef%Ae) then
+          if(BulkComposition(cv_nodi)>phase_coef%Ae) then
             Composition%val(1,1,cv_nodi)=1.0
             ! now that A2=B2=0, this expression is meaningless for fluid compositino and will get a error for devide A2 (=0)
             Composition%val(1,2,cv_nodi)= 1.0
@@ -337,7 +352,7 @@ contains
   end subroutine temperature_to_enthalpy
 
 
-  !Compute porosity given an enthalpy field and a BulkComposition
+  !> @brief: Compute porosity(Saturation) given an enthalpy field and a BulkComposition
   subroutine porossolve(state, packed_state, Mdims, ndgln, phase_coef)
   implicit none
   !Global variables
@@ -350,7 +365,8 @@ contains
   integer ::  iphase, k, i
   real :: test_poro, test_poro_prev        !Temporary until deciding if creating a Cp in packed_state as well
   type( tensor_field ), pointer :: enthalpy, den, saturation
-  type (scalar_field), pointer :: BC, Cp
+  type (scalar_field), pointer :: Cp
+  real, dimension(Mdims%cv_nonods) :: BulkComposition
   !real, dimension(Mdims%cv_nonods) :: enthalpy_dim
   real :: fx, fdashx, Loc_Cp, rho
   !Parameters for the non_linear solvers (Maybe a newton solver here makes sense?)
@@ -364,49 +380,52 @@ contains
     Cp => extract_scalar_field( state(1), 'TemperatureHeatCapacity')
     enthalpy => extract_tensor_field( packed_state,"PackedEnthalpy" )
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-    BC=> extract_scalar_field(state(1), "BulkComposition")
+
+    !Compute BulkComposition
+    call cal_bulkcomposition(state,packed_state, Mdims, BulkComposition)
+
     iphase = 1
 
     do cv_nodi = 1, Mdims%cv_nonods
       Loc_Cp = node_val(Cp,cv_nodi) ! Cp%val(cv_nodi)
       rho=den%val(1,iphase,cv_nodi)
-      IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef)) then
+      IF (enthalpy%val(1,1,cv_nodi)>get_Enthalpy_Liquidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
         saturation%val(1,2, cv_nodi)=1.
         saturation%val(1,1, cv_nodi)=0.
-      ELSE IF (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef)) then
+      ELSE IF (enthalpy%val(1,1,cv_nodi)<get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)) then
         saturation%val(1,2, cv_nodi)=0.
         saturation%val(1,1, cv_nodi)=1.
       ELSE
-        if (BC%val(cv_nodi) <= phase_coef%Ae) then
-          He=get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*BC%val(cv_nodi)/phase_coef%Ae
+        if (BulkComposition(cv_nodi) <= phase_coef%Ae) then
+          He=get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*BulkComposition(cv_nodi)/phase_coef%Ae
           if (enthalpy%val(1,1,cv_nodi)<=He) then
-            test_poro=BC%val(cv_nodi)*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef))/phase_coef%Ae
+            test_poro=BulkComposition(cv_nodi)*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/phase_coef%Ae
           else
             k=1
             test_poro = 1.0
             test_poro_prev=0
             do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol)
-              fx = (phase_coef%Lf/Loc_Cp)*test_poro**3 + (phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + phase_coef%B1*BC%val(cv_nodi)*test_poro + phase_coef%A1*BC%val(cv_nodi)**2
-              fdashx=3*phase_coef%Lf/Loc_Cp*test_poro**2+2*(phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+phase_coef%B1*BC%val(cv_nodi)
+              fx = (phase_coef%Lf/Loc_Cp)*test_poro**3 + (phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro**2 + phase_coef%B1*BulkComposition(cv_nodi)*test_poro + phase_coef%A1*BulkComposition(cv_nodi)**2
+              fdashx=3*phase_coef%Lf/Loc_Cp*test_poro**2+2*(phase_coef%C1-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp)*test_poro+phase_coef%B1*BulkComposition(cv_nodi)
               test_poro_prev = test_poro
               test_poro = test_poro - fx/fdashx
               k=k+1
             end do
           end if
-        else if (BC%val(cv_nodi) > phase_coef%Ae) then
-          He=get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*(1-BC%val(cv_nodi))/(1-phase_coef%Ae)
+        else if (BulkComposition(cv_nodi) > phase_coef%Ae) then
+          He=get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef)+phase_coef%Lf*(1-BulkComposition(cv_nodi))/(1-phase_coef%Ae)
           if (enthalpy%val(1,1,cv_nodi)<=He) then
-            test_poro=(1-BC%val(cv_nodi))*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BC%val(cv_nodi),Loc_Cp, rho, phase_coef))/(1-phase_coef%Ae)
+            test_poro=(1-BulkComposition(cv_nodi))*(enthalpy%val(1,1,cv_nodi)-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(He-get_Enthalpy_Solidus(BulkComposition(cv_nodi),Loc_Cp, rho, phase_coef))/(1-phase_coef%Ae)
           else
             k=1
             test_poro = 1.0
             test_poro_prev=0
             do while (k<Max_its .and. abs(test_poro - test_poro_prev) > tol .and. test_poro<=1)
-              fx= (phase_coef%Lf/Loc_Cp)**test_poro**3+(phase_coef%C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+phase_coef%A2+phase_coef%B2)*test_poro**2+(2*phase_coef%A2*BC%val(cv_nodi)-2*phase_coef%A2+&
-              phase_coef%B2*BC%val(cv_nodi)-phase_coef%B2)*test_poro+phase_coef%A2*(BC%val(cv_nodi)-1)**2
+              fx= (phase_coef%Lf/Loc_Cp)**test_poro**3+(phase_coef%C2-enthalpy%val(1,iphase,cv_nodi)/Loc_Cp+phase_coef%A2+phase_coef%B2)*test_poro**2+(2*phase_coef%A2*BulkComposition(cv_nodi)-2*phase_coef%A2+&
+              phase_coef%B2*BulkComposition(cv_nodi)-phase_coef%B2)*test_poro+phase_coef%A2*(BulkComposition(cv_nodi)-1)**2
 
               fdashx = 3.*(phase_coef%Lf/Loc_Cp)*test_poro**2 + 2.*(phase_coef%C2-enthalpy%val(1,iphase, cv_nodi)/Loc_Cp + phase_coef%A2 + phase_coef%B2)*test_poro +&
-              (2.*phase_coef%A2*BC%val(cv_nodi) - 2.*phase_coef%A2 + phase_coef%B2*BC%val(cv_nodi) - phase_coef%B2)
+              (2.*phase_coef%A2*BulkComposition(cv_nodi) - 2.*phase_coef%A2 + phase_coef%B2*BulkComposition(cv_nodi) - phase_coef%B2)
 
               test_poro_prev = test_poro!Store to check convergence the previous value
               test_poro = test_poro - fx/fdashx
@@ -419,5 +438,61 @@ contains
       END IF
     end do
   end subroutine
+
+
+
+  !>@brief:This subroutine calculates the coupling term for the magma modelling
+  !>and adds it to the absorptiont term to impose the coupling between phase
+  !>NOTE: It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
+  subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln, c_phi_series)
+    implicit none
+    type( state_type ), dimension( : ), intent( inout ) :: state
+    type( state_type ), intent( inout ) :: packed_state
+    type (multi_field) :: Magma_absorp
+    type( multi_dimensions ), intent( in ) :: Mdims
+    type(multi_ndgln), intent(in) :: ndgln
+    real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
+    !Local variables
+    integer :: mat_nod, ele, CV_ILOC, cv_inod, magma_coupling, iphase, jphase
+    type(tensor_field), pointer :: saturation
+    integer:: c_phi_size ! length of c_phi_series
+    real, dimension(4):: test
+    !Get from packed_state
+    saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
+    c_phi_size=size(c_phi_series)
+    !Give for granted we are in memory type = 3 for magma
+    DO ELE = 1, Mdims%totele
+        DO CV_ILOC = 1, Mdims%cv_nloc
+            mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+            cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            DO IPHASE = 1, Mdims%nphase
+              magma_coupling = c_value(saturation%val(1,2, cv_inod))   ! now turned off
+              do jphase = 1, Mdims%nphase
+                if (jphase == iphase) then
+                  Magma_absorp%val(1, iphase, jphase, mat_nod ) = -magma_coupling
+                else
+                  Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
+                end if
+              end do
+            end do
+        END DO
+    END DO
+  contains
+    real function c_value(phi)
+        real, intent(in) :: phi
+        integer :: pos
+        real:: portion
+
+        pos= int(phi*(c_phi_size-1))+1
+        if (pos==c_phi_size) then
+          c_value=c_phi_series(c_phi_size)
+        else
+          ! portion=(phi-c_phi_series(pos))*c_phi_size
+          ! c_value=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
+          c_value=c_phi_series(pos)
+        end if
+      end function c_value
+  end subroutine calculate_Magma_absorption
 
 end module multi_magma
