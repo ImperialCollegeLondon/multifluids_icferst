@@ -2025,8 +2025,8 @@ end if
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
           !Retrieve the diagonal of the momentum matrix only once if required
-          if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner") .or. &
-              .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")  .or. &
+          if (((solve_stokes .or. solve_mom_iteratively) &
+               .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
               rescale_mom_matrices ) then
             call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
@@ -2138,8 +2138,8 @@ end if
         end if
 
         !Using associate doesn't seem to be stable enough
-        if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner") .or. &
-            .not.have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")  .or. &
+        if (((solve_stokes .or. solve_mom_iteratively) &
+             .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
             rescale_mom_matrices ) call deallocate(diagonal_A)
         if (allocated(sqrt_inv_diag_CMC_mat)) deallocate(sqrt_inv_diag_CMC_mat)
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
