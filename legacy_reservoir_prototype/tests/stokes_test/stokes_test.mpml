@@ -38,6 +38,12 @@
         </Infinite_norm_tol>
       </Fixed_Point_Iteration>
     </Non_Linear_Solver>
+    <Momemtum_matrix>
+      <rescale_mom_matrices/>
+      <solve_mom_iteratively>
+        <real_value rank="0">1e-7</real_value>
+      </solve_mom_iteratively>
+    </Momemtum_matrix>
   </solver_options>
   <io>
     <dump_format>
@@ -234,11 +240,4 @@
       </prognostic>
     </scalar_field>
   </material_phase>
-  <numerical_methods>
-    <rescale_mom_matrices/>
-    <solve_mom_iteratively>
-      <real_value rank="0">1e-7</real_value>
-      <Advance_preconditioner/>
-    </solve_mom_iteratively>
-  </numerical_methods>
 </icferst_options>

@@ -1741,9 +1741,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         logical :: LUMP_DIAG_MOM, lump_mass
 
         !For the time being, let the user decide whether to rescale the mom matrices
-        rescale_mom_matrices = have_option("/numerical_methods/rescale_mom_matrices")
+        rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
         !The stokes solver method can be activated from diamond also
-        solve_mom_iteratively = have_option("/numerical_methods/solve_mom_iteratively")
+        solve_mom_iteratively = have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively")
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
           if (rescaleVal < 0.) then
@@ -2025,8 +2025,8 @@ end if
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
           !Retrieve the diagonal of the momentum matrix only once if required
-          if (have_option("/numerical_methods/solve_mom_iteratively/Momentum_preconditioner") .or. &
-              have_option("/numerical_methods/solve_mom_iteratively/Advance_preconditioner")  .or. &
+          if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner") .or. &
+              .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")  .or. &
               rescale_mom_matrices ) then
             call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
@@ -2138,8 +2138,8 @@ end if
         end if
 
         !Using associate doesn't seem to be stable enough
-        if (have_option("/numerical_methods/solve_mom_iteratively/Momentum_preconditioner") .or. &
-            have_option("/numerical_methods/solve_mom_iteratively/Advance_preconditioner")  .or. &
+        if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner") .or. &
+            .not.have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")  .or. &
             rescale_mom_matrices ) call deallocate(diagonal_A)
         if (allocated(sqrt_inv_diag_CMC_mat)) deallocate(sqrt_inv_diag_CMC_mat)
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
@@ -2171,7 +2171,7 @@ end if
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
           type( vector_field ), intent(inout) :: diagonal_A
           !Local variables
-          logical, save :: Special_precond = .false.
+          logical, save :: Special_precond = .true.!> Selects the BfB type preconditioner, we want this on by default
           integer, save :: show_FPI_conv
           integer :: i, k, cv_nodi, M, total_u_nodes
           real, dimension(:,:), allocatable :: stored_field, field_residuals
@@ -2185,11 +2185,11 @@ end if
 
           !Retrieve settings from diamond
           if (solver_tolerance<0) then
-            call get_option("/numerical_methods/solve_mom_iteratively", solver_tolerance, default = 1d-3)
+            call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively", solver_tolerance, default = 1d-7)
             show_FPI_conv = 1
             if (have_option( '/io/Show_Convergence')) show_FPI_conv = 0
             !Type of preconditioner
-            Special_precond = have_option("/numerical_methods/solve_mom_iteratively/Advance_preconditioner")
+            Special_precond = .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")
           end if
 
           allocate(ref_pressure(Mdims%npres,Mdims%cv_nonods));ref_pressure = 0.
@@ -2212,8 +2212,8 @@ end if
             call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = velocity%dim); call zero(aux_velocity)
             packed_aux_velocity = as_packed_vector(aux_velocity)
             exponent_diag = 0.5!Default
-            if (have_option("/numerical_methods/rescale_mom_matrices")) exponent_diag = exponent_diag - 0.5!Already multiplied by Ad^-0.5
-            if (have_option("/numerical_methods/solve_mom_iteratively/Momentum_preconditioner")) exponent_diag = exponent_diag + 0.5!Need more of Ad
+            if (have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")) exponent_diag = exponent_diag - 0.5!Already multiplied by Ad^-0.5
+            if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) exponent_diag = exponent_diag + 0.5!Need more of Ad
           end if
 
           i = 1
@@ -2356,7 +2356,7 @@ end if
 
           !Initialise to zero
           Mmat%PIVIT_MAT = 0.
-          if (have_option("/numerical_methods/solve_mom_iteratively/Momentum_preconditioner")) then
+          if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
             do ele = 1, Mdims%totele
               DO U_JLOC = 1, Mdims%u_nloc
@@ -6990,10 +6990,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
      integer, dimension(:), pointer :: neighbours
      integer :: nb
-     logical :: skip, stokes_simple_precond
-
-     stokes_simple_precond = have_option("/numerical_methods/solve_mom_iteratively/Simple_preconditioner")
-
+     logical :: skip
 
      ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
      Loop_Elements20: DO ELE = 1, TOTELE
