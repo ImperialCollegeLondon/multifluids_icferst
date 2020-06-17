@@ -124,13 +124,14 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../../include/confdefs.h ../../include/elements.mod ../../include/fdebug.h \
    ../../include/field_options.mod ../../include/fields_allocates.mod \
    ../../include/fldebug.mod ../../include/futils.mod \
-   ../../include/global_parameters.mod ../../include/memory_diagnostics.mod \
-   ../../include/parallel_tools.mod ../../include/reference_counting.mod \
-   ../../include/shape_functions.mod ../../include/solvers.mod \
-   ../../include/sparse_tools_petsc.mod ../../include/spud.mod \
-   ../../include/state_module.mod ../include/compositional_terms.mod \
-   ../include/copy_outof_state.mod ../include/cv_advection.mod \
-   ../include/matrix_operations.mod ../include/multi_data_types.mod \
+   ../../include/global_parameters.mod ../../include/ieee_arithmetic.mod \
+   ../../include/memory_diagnostics.mod ../../include/parallel_tools.mod \
+   ../../include/reference_counting.mod ../../include/shape_functions.mod \
+   ../../include/solvers.mod ../../include/sparse_tools_petsc.mod \
+   ../../include/spud.mod ../../include/state_module.mod \
+   ../include/compositional_terms.mod ../include/copy_outof_state.mod \
+   ../include/cv_advection.mod ../include/matrix_operations.mod \
+   ../include/multi_data_types.mod ../include/multi_magma.mod \
    ../include/multi_pipes.mod ../include/multi_surface_tension.mod \
    ../include/multi_tools.mod ../include/multiphase_eos.mod \
    ../include/shape_functions_ndim.mod \

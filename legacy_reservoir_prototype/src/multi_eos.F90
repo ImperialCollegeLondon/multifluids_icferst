@@ -1487,20 +1487,20 @@ contains
     end subroutine calculate_u_source_cv
 
     !>@brief: Here we compute component/solute/thermal diffusion coefficient
-    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, tracer, calculate_solute_diffusivity)
+    subroutine calculate_diffusivity(state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion, calculate_solute_diffusivity, divide_by_rho_CP)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
       logical, optional, intent(in) :: calculate_solute_diffusivity !If present, calculates solute diffusivity instead of thermal diffusivity
+      logical, optional, intent(in) :: divide_by_rho_CP !> If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
       !Local variables
       type(scalar_field), pointer :: component, sfield, solid_concentration
       type(tensor_field), pointer :: diffusivity, tfield, den, saturation
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
-      type(tensor_field), intent(inout) :: tracer
 
       ScalarAdvectionField_Diffusion = 0.0
       if ( Mdims%ncomp > 1 ) then
@@ -1549,6 +1549,8 @@ contains
 
             if (present_and_true(calculate_solute_diffusivity)) then
               do iphase = 1, Mdims%nphase
+                !Check if the field is defined for that phase
+                if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
                 diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
                 do ele = 1, Mdims%totele
@@ -1674,6 +1676,24 @@ contains
           maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
         endif
       end do
+
+      !If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
+      if (present_and_true(divide_by_rho_CP)) then
+        tfield => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
+        do iphase = 1, Mdims%nphase
+          do ele = 1, Mdims%totele
+            do iloc = 1, Mdims%mat_nloc
+              mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+              cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+              do idim = 1, Mdims%ndim
+                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )/tfield%val(1, iphase, cv_inod)
+              end do
+            end do
+          end do
+        end do
+      end if
+
       return
     end subroutine calculate_diffusivity
 
@@ -1720,6 +1740,7 @@ contains
 
 
       do iphase = 1, Mdims%nphase
+        if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
         diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
@@ -1809,13 +1830,14 @@ contains
       !Local variables
       type( tensor_field ), pointer :: t_field, tp_field, tc_field
       integer :: iphase, icomp, stat, mat_nod, cv_nod, ele
-      type( scalar_field ), pointer :: component
-      logical :: linearise_viscosity
+      type( scalar_field ), pointer :: component, saturation
+      logical :: linearise_viscosity, cg_mesh
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc, ndim1, ndim2, idim, jdim
       integer :: multiplier
 
+      real :: exp_zeta_function
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
@@ -1871,6 +1893,11 @@ contains
                   end do
                end do
             else
+               if (is_magma)  then
+                 saturation => extract_scalar_field(state(2), "PhaseVolumeFraction") !HH melt is the 2nd phase
+                 call get_option('/magma_parameters/bulk_viscosity_exponential_coefficient' , exp_zeta_function)
+               end if
+               cg_mesh = have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')
                do iphase = 1, Mdims%nphase
                   tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
                   do ele = 1, ele_count( tp_field )
@@ -1889,16 +1916,20 @@ contains
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        if(have_option( '/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/diagnostic/mesh::PressureMesh')) then
+                        !Currently only magma uses momentum_diffusion2
+                        if (iphase==1 .and. is_magma) then !only the solid phase has bulk viscosity
+                          momentum_diffusion2%val(iphase, 1, 1, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))*0 !now turned off
+                        end if
+                        if(cg_mesh) then
                           mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
                         else
                           mat_nod = mat_nod * multiplier + (1 - multiplier)! this is for DG
                         end if
-                        if ( have_option( '/blasting' ) ) then
-                           t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
-                        else
-                           t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
-                        end if
+                        ! if ( have_option( '/blasting' ) ) then
+                        !    t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
+                        ! else
+                        !    t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+                        ! end if
 
                      end do
                   end do
@@ -1915,6 +1946,21 @@ contains
 
 
       return
+    Contains
+      !---------------------------------------------------------------------------
+      !> @author Haiyang Hu
+      !> @brief TO BE FILLED BY THE AUTHOR
+      !---------------------------------------------------------------------------
+      real function zeta(a,n,phi)
+        implicit none
+        ! bulk viscosity zeta=a*phi^-n
+        real :: a!> TO BE FILLED
+        real :: n!> TO BE FILLED
+        real :: phi!> TO BE FILLED
+        zeta=a*phi**(-n)
+        return
+      end function zeta
+
     end subroutine calculate_viscosity
 
 
@@ -2818,44 +2864,6 @@ contains
         end if
 
     end subroutine initialise_porous_media
-
-
-    !>@brief:This subroutine calculates the coupling term for the magma modelling
-    !>and adds it to the absorptiont term to impose the coupling between phase
-    !>NOTE: It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
-    subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln)
-      implicit none
-      type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state
-      type (multi_field) :: Magma_absorp
-      type( multi_dimensions ), intent( in ) :: Mdims
-      type(multi_ndgln), intent(in) :: ndgln
-      !Local variables
-      integer :: mat_nod, ele, CV_ILOC, cv_inod, magma_coupling, iphase, jphase
-      real, dimension(:,:), pointer :: Satura
-
-      !Get from packed_state
-      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
-
-      !Give for granted we are in memory type = 3 for magma
-      DO ELE = 1, Mdims%totele
-          DO CV_ILOC = 1, Mdims%cv_nloc
-              mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-              cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-              DO IPHASE = 1, Mdims%nphase
-                magma_coupling = Satura(iphase, cv_inod)*0!Haiyang to include his C here
-                do jphase = 1, Mdims%nphase
-                  if (jphase == 1) then
-                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
-                  else
-                    Magma_absorp%val(1, iphase, jphase, mat_nod ) = - magma_coupling
-                  end if
-                end do
-              end do
-          END DO
-      END DO
-
-    end subroutine calculate_Magma_absorption
 
 
 end module multiphase_EOS

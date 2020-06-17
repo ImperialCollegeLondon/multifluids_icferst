@@ -269,6 +269,7 @@
             <solver/>
           </continuous>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -441,6 +442,7 @@
         <galerkin_projection>
           <discontinuous/>
         </galerkin_projection>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -455,6 +457,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -510,6 +513,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="GalerkinProjection" rank="1">

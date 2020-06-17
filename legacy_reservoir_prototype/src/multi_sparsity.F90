@@ -1159,7 +1159,6 @@ contains
         mx_ncolacv = 3 * mx_nface_p1 * cv_nonods * nphase + cv_nonods * ( nphase - 1 ) * nphase
 
         mx_ncolph = mxnele * 4  * 6 + ph_nloc
-
         return
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
 

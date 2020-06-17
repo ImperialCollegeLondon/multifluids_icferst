@@ -500,6 +500,7 @@ contains
 !print all the options in the diamond file and added here to the terminal
         ! call print_options()
         !Call fluidity to populate state
+
         call populate_state(state)
 
     end subroutine populate_multi_state
@@ -918,18 +919,20 @@ contains
 !Easiest way to create the heatcapacity field is to move where it was inside temperature!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity")) then
                 if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
-                    FLAbort("HeatCapacity specified but no prognostic temperature field specified.")
+                    FLAbort("HeatCapacity specified but no prognostic temperature field specified. This is required even if solving for Magma/Enthalpy.")
                 end if
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
-                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
+              ! if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
+              call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
+                "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
+              ! end if
             end if
             !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
-              if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
-                  FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")
-              end if
+              ! FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")! Not all the phases need to have concentration defined
+              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+              end if
             end if
 
             if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
@@ -1065,7 +1068,7 @@ contains
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
         is_magma = have_option('/magma_simulator')
         is_poroelasticity = have_option('/poroelasticity')
-        !Decide to solve Stokes equations instead of navier-Stokes (magma reuires this option as well)
+        !Decide to solve Stokes equations instead of navier-Stokes (magma requires this option as well)
         solve_stokes = have_option('/stokes_simulator') .or. is_magma
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/femdem_fracture' )
@@ -1086,8 +1089,12 @@ contains
           end if
         end if
 
-
-
+        if ((is_magma .and. .not. have_option('/magma_parameters/Phase_diagram_coefficients')) .or. &
+        ( have_option('/magma_parameters/Phase_diagram_coefficients') .and. .not. is_magma)) then
+          if (GetProcNo() == 1) then
+            FLAbort("Magma simulator requires /magma_parameters options.")
+          end if
+        end if
 
     end subroutine get_simulation_type
 

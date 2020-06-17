@@ -9,68 +9,55 @@ import sys
 from math import *
 import matplotlib.pyplot as plt
 import numpy as np
-import math
-from scipy.special import erfc
 from scipy import interpolate
 from scipy.interpolate import interp1d
 import os
 
 
-
-#SETTINGS ANALYTICAL SOLUTION
-t = 0.1
-nodes = 202
-gamma = 1.
-pi = 3.141596
-Tolerance_L1_NORM = 0.019
-
 print 'Running the model'
+
+#Get path
+
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/icferst'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/*mpml')
+os.system(binpath + ' ' + path + '/stokes_test.mpml')
 
 
-def analytical_solution(X_coords):
-    coords = np.asarray(X_coords)
-    term1=erfc((coords-(gamma*t))/(2.*sqrt(t)))
-    term2=(np.exp(gamma*coords))*erfc((coords+(gamma*t))/(2.*sqrt(t)))
-    term3=1.+(0.5*gamma*(2.-coords+(gamma*t)))
-    term4=erfc((2.-coords+(gamma*t))/(2.*sqrt(t)))
-    term5=gamma*(sqrt(t/pi))*np.exp(-((2.-coords+(gamma*t))**2.)/(4.*t))
-    analytical=(0.5*(term1+term2))+(np.exp(gamma)*((term3*term4)-term5))
-
-    return analytical
+#TOLERANCE OF THE CHECKING
+#The present values are just above the values I got when writing the script
+Tolerance_L1_NORM = 0.00012
 
 #RETRIEVE AUTOMATICALLY THE LAST VTU FILE
-AutoNumber = 0
-for files in os.listdir(path):
-    if files.endswith(".vtu"):
-        pos = files.rfind('_')
-        pos2 = files.rfind('.')
-        AutoFile = files[:pos]
-        AutoNumber = max(AutoNumber, int(files[pos+1:pos2]))
+#AutoNumber = 0
+#for files in os.listdir(path):
+#    if files.endswith(".vtu"):
+#        pos = files.rfind('_')
+#        pos2 = files.rfind('.')
+#        AutoFile = files[:pos]
+#        AutoNumber = max(AutoNumber, int(files[pos+1:pos2]))
 
 
-AutomaticFile = AutoFile
-AutomaticVTU_Number = AutoNumber
+AutomaticFile = "stokes_test"
+AutomaticVTU_Number = 1
 
 #Plot the results in 2d?
 showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
-data_name = 'phase1::Temperature'
-#Initial and last coordinate of the probe
-x0 = 0.0
-x1 = 1.0
+data_name = 'Velocity'
 
-y0 = 0.0001 # 1.0/float(NUMBER)
-y1 = y0 #<==Temporary, it can handle different values
+#Initial and last coordinate of the probe
+x0 = 0.5
+x1 = 0.5
+
+y0 = 0.0 #
+y1 = 0.1 #
 
 z0 = 0.0
 z1 = 0.0
 #Resolution of the probe
-resolution = nodes
+resolution = 1000
 
 
 #TO EXTRACT VECTORIAL VARIABLES,
@@ -116,29 +103,25 @@ hy = (y1 - y0) / resolution
 hz = (z1 - z0) / resolution
 
 Experimental_X = []
-for i in range(resolution+1):
-    detector.append([hx * i + x0, hy * i + y0, hz * i + z0])
-    Experimental_X.append(hx * i + x0)
+Experimental_X = []
+for i in range(resolution):
+    detector.append([hx * i + x0, hy * i + y0 , hz * i + z0])
+    Experimental_X.append(hy * i + y0)
 
 #print 'using',len(detector),'detectors'
+
+
+###########Create the probe line end#############
+
 
 points = vtk.vtkPoints()
 points.SetDataTypeToDouble()
 
-for i in range(len(detector)-1):
+for i in range(len(detector)):
     points.InsertNextPoint(detector[i][0], detector[i][1], detector[i][2])
 
 detectors = vtk.vtkPolyData()
 detectors.SetPoints(points)    
-
-###########Create the probe line end#############
-
-#for i in range(len(detector)):
-#    points.InsertNextPoint(detector[i][0], detector[i][1], detector[i][2])
-
-
-#detectors = vtk.vtkPolyData()
-#detectors.SetPoints(points)
 
 
 probe = vtk.vtkProbeFilter()
@@ -152,49 +135,46 @@ probe.Update()
 data = probe.GetOutput()
 
 for j in range(points.GetNumberOfPoints()):
-    #print data.GetPointData().GetScalars(data_name)
     FS.append(  data.GetPointData().GetScalars(data_name).GetTuple(j))
+#    FS.append(  data.GetPointData().GetScalars(data_name).GetTuple(j))
+
+#So far we have the information from the analytical result
 
 
-#Calculate analytical solution
-Experimental_X = np.linspace(0, 1.0, num=nodes, endpoint=True, retstep=False, dtype=None)
+Analytical_X = []
+Analytical_Y = []
 
+Analytical_X1 = np.linspace(0.0, 0.1, num=resolution, retstep=True)
+Analytical_X = Analytical_X1[0][:]
+#Flow between plates formula for pressure drop of 1, Lenght = 1, viscosity = 1, H = 0.2
+for i in range(resolution):
+    Analytical_Y.append( 0.5*float(Analytical_X[i])*(0.1 - float(Analytical_X[i])))
 
-#Analytical_X = []
-#Analytical_Y = []
-#Analytical=file('Analytical','r')
-#while True:
-#    cadena=Analytical.readline()
-#    if len(cadena) ==0:
-#        break # EOF
-#    if len(cadena) <2:
-#        continue # If a line is empty       
-#    lista = cadena.split()
-#    Analytical_X.append(float(lista[0]))
-#    Analytical_Y.append(float(lista[1]))
-#Analytical.close
+#Create spline curve
+#tck = interpolate.splrep(Analytical_X, Analytical_Y, s=0.08)
+f = interp1d(Analytical_X, Analytical_Y,kind ='linear')
 
-Analytical_Y = analytical_solution(Experimental_X)
-
-#Compare results
-#Convert tuple to array
+#COnvert tuple to array
 Experimental_Y = []
 for item in FS:
-    Experimental_Y.extend(item)
-    
-#Create spline curve
-f = interp1d(Experimental_X, Analytical_Y,kind ='cubic')
+    auxR =  item[0]
+    Experimental_Y.append(auxR)
+    #Experimental_Y.extend(auxR)
+
 L1_sum = 0.0
+L2_sum = 0.0
+L1_sum_shock_front = 0.0
+L2_sum_shock_front = 0.0
 N_shock = 0
 Infinite_Norm = 0.0
-
 for i in range(len(Experimental_X)):
     if (i==0):#The first position is exact, so no need to interpolate
         L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
         continue
-    
+
     position = Experimental_X[i]
-#    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
+   
+    #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
         print 'The size of the Experimental and Analytical experiments is different'
@@ -203,34 +183,37 @@ for i in range(len(Experimental_X)):
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
         Infinite_Norm = abs(x - Experimental_Y[i])
     L1_sum = L1_sum + abs(x - Experimental_Y[i])
-     
-        
+    if (abs(x - Experimental_Y[i])>1/100000000):
+        N_shock = N_shock + 1
+        L1_sum_shock_front = L1_sum_shock_front + abs(x - Experimental_Y[i])
         
 L1_norm= L1_sum / len(Experimental_X) 
-  
+
 Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
+#Check the experiment has finished
+#if (AutoNumber < 20): Passed = False
 
+#print L1_norm
 if (Passed): 
-    print 'Thermal_analytical_validation_two_phases OK'
+    print 'BL works OK'
 else:
-    print 'Thermal_analytical_validation_two_phases NOT work'
+    print 'BL does NOT work'
 
-#print "L1_norm:", L1_norm
 
 if (showPlot):
     fig, ax = plt.subplots()
-#    x = []
-#    Analytical = []
-#    for i in range(len(detector)):
-#        x.append(float(detector[i][0]))
-#        Analytical.append(float(FS[i][0]))
-    line = plt.Line2D(Experimental_X, Analytical_Y, color='black', linewidth=2)
-    line2 = plt.Line2D(Experimental_X, FS, color='blue', linewidth=2)
+    x = []
+    y = []
+    for i in range(len(detector)):
+        x.append(float(detector[i][1]))
+        y.append(float(FS[i][0]))
+    line = plt.Line2D(x, y, color='red', linewidth=2)
+    line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=2)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)
     ax.add_line(line)
     ax.add_line(line2)
-    plt.autoscale(enable=True, axis='both', tight=None)
+    ax.set(xlim=(0, 0.1), ylim=(0, 2e-3))
     plt.show()

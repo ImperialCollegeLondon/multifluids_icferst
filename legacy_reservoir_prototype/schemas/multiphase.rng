@@ -1240,6 +1240,81 @@ The following must be specified:
         </element>
       </optional>
       <optional>
+        <element name="magma_parameters">
+          <a:documentation>Magma options</a:documentation>
+          <optional>
+            <element name="Phase_diagram_coefficients">
+              <a:documentation>Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.</a:documentation>
+              <element name="A1">
+                <a:documentation>A1</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="B1">
+                <a:documentation>B1</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="C1">
+                <a:documentation>C1</a:documentation>
+                <ref name="real"/>
+              </element>
+              <optional>
+                <element name="A2">
+                  <a:documentation>A2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="B2">
+                  <a:documentation>B2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="C2">
+                  <a:documentation>C2</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <element name="ae">
+                <a:documentation>Eutectic point	</a:documentation>
+                <ref name="real"/>
+              </element>
+              <element name="latent_heat">
+                <a:documentation>Latent heat</a:documentation>
+                <ref name="real"/>
+              </element>
+            </element>
+          </optional>
+          <element name="bulk_viscosity_exponential_coefficient">
+            <a:documentation>bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.</a:documentation>
+            <ref name="real"/>
+          </element>
+          <element name="coupling_term_coefficients">
+            <a:documentation>The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b) for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.</a:documentation>
+            <element name="coupling_power_coefficent_a">
+              <a:documentation>Power law coefficient a</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="coupling_power_coefficent_b">
+              <a:documentation>Power law coefficient b</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="grain_size">
+              <a:documentation>Grain size</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="cut_a">
+              <a:documentation>the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.</a:documentation>
+              <ref name="real"/>
+            </element>
+            <element name="cut_b">
+              <a:documentation>the range above which the coupling terms follow the Hindered settling </a:documentation>
+              <ref name="real"/>
+            </element>
+          </element>
+        </element>
+      </optional>
+      <optional>
         <element name="femdem_fracture">
           <a:documentation>Fracking options</a:documentation>
           <optional>
@@ -1279,24 +1354,6 @@ that otherwise might have been cut off. Enable this option to avoid doing this o
 
 This option is useful if your field is suddenly changing after adapting the mesh.</a:documentation>
               <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="rescale_mom_matrices">
-              <a:documentation>Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
-D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';</a:documentation>
-              <empty/>
-            </element>
-          </optional>
-          <optional>
-            <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momemtum equations. Apart from the Anderson method, the mass matrix is a lumped version. This is ACTIVATED by default for Stokes.</a:documentation>
-              <optional>
-                <element name="Simple_preconditioner">
-                  <a:documentation>Instead of using the diagonal of the Momemtum matrix, only the mass matrix is used as preconditioner.</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
             </element>
           </optional>
           <optional>
@@ -1631,7 +1688,9 @@ This can be used to control the number of non-linear interations dynamically.
                       <a:documentation>Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;
 
 The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
                       <ref name="integer"/>
@@ -1706,7 +1765,9 @@ By default the tolerance is 1e-2</a:documentation>
                   <a:documentation>Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
 
 A Variable to check has to be chosen:
-1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction</a:documentation>
+1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;</a:documentation>
                   <ref name="integer"/>
                   <group>
                     <optional>
@@ -1774,6 +1835,47 @@ By default dt*1e-3.</a:documentation>
                   </group>
                 </element>
               </optional>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="Momemtum_matrix">
+          <a:documentation>Specify options associated with the Momentum matrix. Useful mainly for: Stokes, Magma and Solid-fluid coupling flow.</a:documentation>
+          <optional>
+            <element name="rescale_mom_matrices">
+              <a:documentation>Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
+D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+
+&lt;b&gt;Recommened for Magma multiphase flows/Solid-fluid coupling&lt;/b&gt;</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="solve_mom_iteratively">
+              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped. 
+
+This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.&lt;/b&gt;</a:documentation>
+              <ref name="real"/>
+              <group>
+                <optional>
+                  <element name="Momentum_preconditioner">
+                    <a:documentation>Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, &lt;b&gt;unstable&lt;/b&gt; but potentially faster.</a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Disable_advance_preconditioner">
+                    <a:documentation>Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
+but it is more efficient that the simple preconditioner (&lt;b&gt;This option disables this feature, NOT RECOMMENDED&lt;/b&gt;). 
+
+By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 
+
+If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (&lt;b&gt;Unstable&lt;/b&gt;)</a:documentation>
+                    <empty/>
+                  </element>
+                </optional>
+              </group>
             </element>
           </optional>
         </element>
@@ -2726,11 +2828,11 @@ i.e. excluding the components</a:documentation>
         </attribute>
         <choice>
           <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
           </element>
           <element name="aliased">
@@ -2754,7 +2856,7 @@ for fields within the same material_phase.</a:documentation>
           <value>CopiedField</value>
         </attribute>
         <element name="prognostic">
-          <ref name="velocity_mesh_choice"/>
+          <ref name="pressure_mesh_choice"/>
           <attribute name="copy_from_field">
             <data type="string" datatypeLibrary=""/>
           </attribute>
@@ -2762,7 +2864,8 @@ for fields within the same material_phase.</a:documentation>
         </element>
       </element>
       <element name="scalar_field">
-        <a:documentation>Mass Fraction of Solute</a:documentation>
+        <a:documentation>Mass Fraction of Solute//Concentration
+Can be used as a tracer</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
@@ -2771,11 +2874,33 @@ for fields within the same material_phase.</a:documentation>
         </attribute>
         <choice>
           <element name="prognostic">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>Enthalpy field. &lt;b&gt;To be used only with Magma_simulator&lt;/b&gt;</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>Enthalpy</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
             <ref name="prescribed_scalar_field"/>
           </element>
           <element name="aliased">
@@ -2956,11 +3081,11 @@ mass fraction with a particular phase</a:documentation>
                    attribute name { "NewFieldName" },
                    (
                       element prognostic {
-                         velocity_mesh_choice,
+                         pressure_mesh_choice,
                          prognostic_scalar_field
                       }|
                       element prescribed {
-                         velocity_mesh_choice,
+                         pressure_mesh_choice,
                          prescribed_scalar_field
                       }|
                       element aliased {
@@ -3416,7 +3541,10 @@ less accurate but faster and might give smoother result.</a:documentation>
     -->
     <choice>
       <element name="tensor_field">
-        <a:documentation>Generic field variable (tensor)</a:documentation>
+        <a:documentation>Generic field variable (tensor)
+
+&lt;b&gt;Use the name UAbsorB&lt;/b&gt; to impose an absorption term for the momentum equation using a diagnostic tensor using python, this allows to modify the equations to be solved from this interface.
+This field needs to be set up in the first phase only</a:documentation>
         <attribute name="rank">
           <value>2</value>
         </attribute>

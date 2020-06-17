@@ -130,6 +130,7 @@
           <exclude_from_detectors/>
         </detectors>
         <no_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -224,6 +225,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -268,6 +270,23 @@
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
+          </type>
+        </boundary_conditions>
+        <boundary_conditions name="all_but_inlet">
+          <surface_ids>
+            <integer_value shape="3" rank="1">8 9 10</integer_value>
+          </surface_ids>
+          <type name="robin">
+            <order_zero_coefficient>
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </order_zero_coefficient>
+            <order_one_coefficient>
+              <constant>
+                <real_value rank="0">0.</real_value>
+              </constant>
+            </order_one_coefficient>
           </type>
         </boundary_conditions>
         <detectors>
@@ -440,6 +459,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -486,6 +506,23 @@
             </constant>
           </type>
         </boundary_conditions>
+        <boundary_conditions name="all_but_inlet">
+          <surface_ids>
+            <integer_value shape="3" rank="1">8 9 10</integer_value>
+          </surface_ids>
+          <type name="robin">
+            <order_zero_coefficient>
+              <constant>
+                <real_value rank="0">0</real_value>
+              </constant>
+            </order_zero_coefficient>
+            <order_one_coefficient>
+              <constant>
+                <real_value rank="0">0.</real_value>
+              </constant>
+            </order_one_coefficient>
+          </type>
+        </boundary_conditions>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -523,6 +560,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
@@ -537,6 +575,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <porous_properties>
@@ -552,6 +591,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
@@ -566,6 +606,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
@@ -578,6 +619,7 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
     </porous_properties>

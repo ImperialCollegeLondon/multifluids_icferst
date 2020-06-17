@@ -954,6 +954,13 @@ contains
         if (.not. is_porous_media) call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
+        !HH
+        if (option_count("/material_phase/scalar_field::Enthalpy")>0) then
+            call insert_sfield(packed_state,"Enthalpy",1,nphase,&
+                add_source=.true.,add_absorption=.true.)
+            call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
+        end if
+
         !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
@@ -1243,6 +1250,22 @@ contains
                     call unpack_sfield(state(i),packed_state,"Temperature",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
+
+                !! HH
+                if(have_option(trim(state(i)%option_path)&
+                    //'/scalar_field::Enthalpy')) then
+                    call unpack_sfield(state(i),packed_state,"OldEnthalpy",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Enthalpy"),&
+                        extract_scalar_field(state(i),"OldEnthalpy")))
+                    call unpack_sfield(state(i),packed_state,"IteratedEnthalpy",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Enthalpy"),&
+                        extract_scalar_field(state(i),"IteratedEnthalpy")))
+                    call unpack_sfield(state(i),packed_state,"EnthalpySource",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"EnthalpyAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"Enthalpy",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
+                end if
+
                 !! Arash
                 if(have_option(trim(state(i)%option_path)&
                     //'/scalar_field::SoluteMassFraction')) then
@@ -1296,6 +1319,11 @@ contains
 
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
+        end if
+
+        !! HH
+        if (option_count("/material_phase/scalar_field::Enthalpy")>0) then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
         end if
 
         !! Arash
@@ -2119,19 +2147,21 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     integer, save :: nonlinear_its=0!> Needed for adapt_within_fpi to consider all the non-linear iterations together
     real, save :: stored_dt = -1 !> Backup of the time-step size
     logical, save :: adjusted_ts_to_dump = .false.!> Flag to see if we need to modify dt to ensure we match a certain time level
+    logical, save :: Check_temp_and_tracer = .false. !> Flag to see if we are in the case of checking temperature and tracer
     real :: dt, auxR, dump_period
-    integer :: Aim_num_FPI, auxI, incr_threshold
+    integer :: Aim_num_FPI, auxI, incr_threshold, stat1, stat2
     integer, save :: show_FPI_conv!> Whether printing out to the user convergence or not
     real, save :: OldDt
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
-    real, dimension(:,:), pointer :: phasevolumefraction, temperature, solutemassfraction
+    real, dimension(:,:), pointer :: phasevolumefraction
+    type(tensor_field), pointer :: temperature, solutemassfraction, enthalpy
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message =''
     !Variables for automatic non-linear iterations
     real, save :: dt_by_user = -1
     real :: tolerance_between_non_linear, min_ts, max_ts,&
-        Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres
+        Infinite_norm_tol, calculate_mass_tol, inf_norm_pres, Infinite_norm_tol_pres, inf_norm_temp
     real :: max_calculate_mass_delta !> local variable, holds the maximum mass error
     real, dimension(2) :: totally_min_max
     logical :: PID_controller !> Are we using a Proportional integration derivator controller of the time-step size?
@@ -2256,38 +2286,39 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     end if
                     reference_field(0,1,:) = pressure(1,1,:)
                     reference_field(1,:,:) = phasevolumefraction
-                case (4)!Temperature
-                    call get_var_from_packed_state(packed_state, temperature = temperature)
+                case (4,5)!Tracer
+
+                  temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
+                  solutemassfraction => extract_tensor_field(packed_state, "PackedSoluteMassFraction", stat2)
+                  Check_temp_and_tracer = (stat1==0 .and. stat2==0)
+                  auxI = 2
+
+                  if (Check_temp_and_tracer) auxI = 3
                     if (allocated(reference_field)) then
-                        if (size(reference_field,2) /= size(temperature,1) .or. &
-                            size(reference_field,3) /= size(temperature,2) ) then
+                        if (size(reference_field,2) /= size(phasevolumefraction,1) .or. &
+                            size(reference_field,3) /= size(phasevolumefraction,2) ) then
                             deallocate(reference_field)
-                            !If temperature, also keep and eye on saturation with the other convergence criterion
-                            allocate (reference_field(0:2,size(temperature,1),size(temperature,2) ))
+                            !Always keep an eye on the saturation, if both two tracers then temperature goes in 3
+                            allocate (reference_field(0:auxI,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                         end if
                     else
-                        allocate (reference_field(0:2,size(temperature,1),size(temperature,2) ))
+                        allocate (reference_field(0:auxI,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
                     end if
                     reference_field(0,1,:) = pressure(1,1,:)
-                    reference_field(1,:,:) = temperature
-                    reference_field(2,:,:) = phasevolumefraction
-                    !! Arash
-                  case (5)!Salt
-                      call get_var_from_packed_state(packed_state, solutemassfraction = solutemassfraction)
-                      if (allocated(reference_field)) then
-                          if (size(reference_field,2) /= size(solutemassfraction,1) .or. &
-                              size(reference_field,3) /= size(solutemassfraction,2) ) then
-                              deallocate(reference_field)
-                              !If temperature, also keep and eye on saturation with the other convergence criterion
-                              allocate (reference_field(0:2,size(solutemassfraction,1),size(solutemassfraction,2) ))
-                          end if
-                      else
-                          allocate (reference_field(0:2,size(solutemassfraction,1),size(solutemassfraction,2) ))
-                      end if
-                      reference_field(0,1,:) = pressure(1,1,:)
-                      reference_field(1,:,:) = solutemassfraction
-                      reference_field(2,:,:) = phasevolumefraction
+                    if (Check_temp_and_tracer) then
+                      reference_field(1,1:size(solutemassfraction%val,2),:) = solutemassfraction%val(1,1:size(solutemassfraction%val,2),:)
+                      !Special position for temperature, why not!
+                      reference_field(3,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
+                    else if (stat1==0) then
+                      reference_field(1,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
+                    else if (stat2==0) then
+                      reference_field(1,1:size(solutemassfraction%val,2),:) = solutemassfraction%val(1,1:size(solutemassfraction%val,2),:)
+                    end if
+                    !Instead of enthalpy we may as well check the temperature field
+                    ! temperature => extract_tensor_field([packed_state, PackedEnthalpy, stat])
+                    ! if (stat/=0) reference_field(1,:,:) = Enthalpy(1:size(solutemassfraction,1),:)
 
+                    reference_field(2,:,:) = phasevolumefraction
                 case default !Default as pressure is always defined and changes more smoothly than velocity
                     if (allocated(reference_field)) then
                         if (size(reference_field,3) /= size(pressure,3) ) then
@@ -2343,29 +2374,36 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, nonlinear_its)
                     backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
 
-                case (4)!Temperature
-                    call get_var_from_packed_state(packed_state, temperature = temperature)
-                    !Calculate normalized infinite norm of the difference
-                                                            !This Mask is important because otherwise it gets the lowest saturation value
-                    totally_min_max(1)=minval(reference_field(1,:,:))
-                    totally_min_max(2)=maxval(reference_field(1,:,:))!use stored temperature
+                case (4,5)!Tracer
+                  temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
+                  solutemassfraction => extract_tensor_field(packed_state, "PackedSoluteMassFraction", stat2)
+                  !#################TEMPERATURE############################
+                  !Calculate normalized infinite norm of the difference
+
+                  inf_norm_temp = 0.
+                  if (stat1==0) then
+                    auxI = 1
+                    if (stat2==0) auxI = 3
+                    totally_min_max(1)=minval(reference_field(auxI,:,:))
+                    totally_min_max(2)=maxval(reference_field(auxI,:,:))!use stored temperature
                     !For parallel
                     call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                    !Analyse the difference !Calculate infinite norm, not consider wells
-                    ts_ref_val = inf_norm_scalar_normalised(temperature(1:Mdims%n_in_pres,:), reference_field(1,1:Mdims%n_in_pres,:), 1.0, totally_min_max)
-                    !Calculate value of the l infinitum for the saturation as well
-                    inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
-                    !! Arash
-                case (5)!Salt
-                  call get_var_from_packed_state(packed_state, solutemassfraction = solutemassfraction)
-                  !ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
-                  !Calculate value of the l infinitum for the saturation as well
-                  !inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
 
-                  !!!!!!!
-                  ts_ref_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-solutemassfraction(1:Mdims%n_in_pres,:)))!/backtrack_or_convergence
-                  inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
-!                  backtrack_or_convergence = get_Convergence_Functional(solutemassfraction, reference_field(1,:,:), backtrack_or_convergence)
+                    !Analyse the difference !Calculate infinite norm, not consider wells
+                    inf_norm_temp = inf_norm_scalar_normalised(temperature%val(1,1:size(temperature%val,2),:), reference_field(1,1:size(temperature%val,2),:), 1.0, totally_min_max)
+                  end if
+
+                  if (stat2==0) then
+                    ts_ref_val = maxval(abs(reference_field(1,1:size(solutemassfraction%val,2),:)-solutemassfraction%val(1, 1:size(solutemassfraction%val,2),:)))!/backtrack_or_convergence
+                    inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
+                  else
+                    !Overwrite for the output message, since it is not being used by the tracer
+                    ts_ref_val = inf_norm_temp
+                  end if
+                  !For single phase there is no backtracking and therefore no backtracking correction
+                  if (Mdims%n_in_pres == 1) backtrack_or_convergence = 1.0
+                  !Calculate value of the l infinitum for the saturation as well
+                  inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))/backtrack_or_convergence
 
                 case default!Pressure
                     !Calculate normalized infinite norm of the difference
@@ -2399,9 +2437,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             if (is_porous_media .and. variable_selection == 3) then
                 write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Saturation (Relative L2): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val, &
                   "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
-            else if (is_porous_media .and. variable_selection >= 4) then!temperature
-                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Temperature (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
+            else if (is_porous_media .and. variable_selection >= 4) then!Tracer
+               if (.not. Check_temp_and_tracer) then
+                write(output_message, '(a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Saturation (L_inf):", inf_norm_val,&
                  "; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
+               else
+                 write(output_message, '(a, E10.3,a, E10.3,a,E10.3,a, E10.3, a, i0, a, E10.3)' )"Tracer (L_inf): ",ts_ref_val,"; Temperature (L_inf): ",inf_norm_temp, &
+                 "; Saturation (L_inf):", inf_norm_val,"; Pressure (L_inf):", inf_norm_pres, "; Total iterations: ", nonlinear_its, "; Mass error:", max_calculate_mass_delta
+               end if
             else
                 write(output_message, '(a, E10.3,a,i0)' ) "L_inf:", inf_norm_val, "; Total iterations: ", nonlinear_its
             end if
@@ -2826,7 +2869,8 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
     EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, SoluteMassFraction,&
-    OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction)
+    OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
+    Enthalpy,OldEnthalpy, IteratedEnthalpy,FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy)
     !This subroutine returns a pointer to the desired values of a variable stored in packed state
     !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
     !and also all of them are optional, hence you can obtaine whichever you want
@@ -2849,6 +2893,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
+        Enthalpy, OldEnthalpy, IteratedEnthalpy, FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
         SoluteMassFraction, OldSoluteMassFraction, IteratedSoluteMassFraction, FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
@@ -2976,6 +3021,33 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
         IteratedFETemperature =>  tfield%val(1,:,:)
     end if
+
+    !!HH
+    if (present(Enthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedEnthalpy" )
+        Enthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(OldEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldEnthalpy" )
+        OldEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedEnthalpy" )
+        IteratedEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(FEEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedFEEnthalpy" )
+        FEEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(OldFEEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldFEEnthalpy" )
+        OldFEEnthalpy =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedFEEnthalpy)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedFEEnthalpy" )
+        IteratedFEEnthalpy =>  tfield%val(1,:,:)
+    end if
+
     !Arash
     if (present(SoluteMassFraction)) then
         tfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )

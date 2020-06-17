@@ -196,6 +196,12 @@ contains
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
 
+        real,allocatable, dimension(:) :: c_phi_series
+        integer :: c_phi_length
+        type(coupling_term_coef) :: coupling
+        type(magma_phase_diagram) :: magma_phase_coef
+        real :: bulk_power
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -323,12 +329,14 @@ contains
           end do
         end if
 
-        !CHeck that we have specified Boundary conditions for density
+!Check that we have specified Boundary conditions for density
         if (have_option_for_any_phase("phase_properties/Density/compressible", Mdims%ndim) .or. &
           have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim) .or. &
           have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )) then
           do i = 1, Mdims%nphase
-            if (getprocno() == 1 .and. .not. have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions')) then
+            if (getprocno() == 1 .and. &
+            (.not. (have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions') .or. &
+            have_option('/material_phase[' // int2str( i - 1 ) // ']/scalar_field::Density/prognostic')))) then
                 ewrite(0, *) "WARNING: It is VERY important to have boundary conditions for density if your model is compressible or using hydrostatic_BCs."
             end if
           end do
@@ -410,7 +418,7 @@ contains
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
-            call Ensure_Saturation_sums_one(Mdims, ndgln, packed_state, find_scapegoat_phase = .true.)
+            call Initialise_Saturation_sums_one(Mdims, ndgln, packed_state, .true.)
         end if
 
         !!$ Starting Time Loop
@@ -453,6 +461,16 @@ contains
            ! call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
+        !HH Initialize all the magma simulation related coefficients
+        if (is_magma) then
+          c_phi_length=1e7  !> the number of items of the coupling term coefficients stored in the system
+          allocate(c_phi_series(c_phi_length))
+          call C_generate (c_phi_series, c_phi_length, state, coupling)
+          call initialize_magma_parameters(magma_phase_coef,  coupling)
+          !This is important to specify EnthalpyOld based on the temperature which is easier for the user
+          !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
+          call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
+        end if
 
         !!$ Time loop
         Loop_Time: do
@@ -546,7 +564,7 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln)
+                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln, c_phi_series)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -591,15 +609,14 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken)
-
+                        calculate_mass_delta, outfluxes, pres_its_taken, its)
                 end if Conditional_ForceBalanceEquation
 
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
 
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -621,8 +638,8 @@ contains
                 !#=================================================================================================================
 
                 !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. (.not. is_magma)) then
+
                     ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
                     !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
@@ -643,7 +660,36 @@ contains
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
-                end if Conditional_ScalarAdvectionField
+
+                else IF (is_magma) then !... in which case we solve for enthalpy instead 
+
+                  tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
+                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+
+                  call set_nu_to_u( packed_state )
+                  ewrite(3,*)'Now advecting Enthalpy Field'
+                  call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
+                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                  suf_sig_diagten_bc, Porosity_field%val, &
+                  !!$
+                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                  option_path = '/material_phase[0]/scalar_field::Enthalpy', &
+                  thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
+                  Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
+
+                  ! ! Calculate melt fraction from phase diagram
+                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  ! ! Update the temperature field
+                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
+                  ! ! Update the composition
+                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
+                  !Recalculate densities
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
+                END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
@@ -671,6 +717,8 @@ contains
 
                 end if Conditional_ScalarAdvectionField2
 
+                !#=================================================================================================================
+
 
 
                 !Solve for components here
@@ -687,6 +735,8 @@ contains
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
+                !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
+                !#=================================================================================================================
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
@@ -829,7 +879,7 @@ contains
                 ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
-                if (current_time>finish_time) exit Loop_Time
+                if (current_time+dt>=finish_time) exit Loop_Time
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if

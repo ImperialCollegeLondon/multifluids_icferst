@@ -4,18 +4,19 @@
   <owner userid="pablo.salinas"/>
   <tags>stokes mpml</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>../../../bin/icferst stokes_test.mpml</command_line>
-  </problem_definition>
-  <variables>
-    <variable name="max_P" language="python">from fluidity_tools import stat_parser as stat
-max_P = stat("stokes_test.stat")["phase1"]["Pressure"]["max"][-1]</variable>
-     <variable name="max_vel" language="python">from fluidity_tools import stat_parser as stat
-max_vel = stat("stokes_test.stat")["phase1"]["Velocity%magnitude"]["max"][-1]</variable>
-  </variables> 
-  
+    <command_line>python ./*.py &gt; log</command_line>
+</problem_definition>
+  <variables/>
   <pass_tests>
-    <test name="Assert final max pressure" language="python">assert(abs(max_P - 1.0) &lt; 0.05)</test>
-    <test name="Assert final max velocity" language="python">assert(abs(max_vel - 8.5e-3)/8.5e-3 &lt; 0.05)</test>
+    <test name="3D_BL" language="python">stokes_test = False
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
+
+if 'OK' in last: stokes_test = True
+
+assert(stokes_test)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
