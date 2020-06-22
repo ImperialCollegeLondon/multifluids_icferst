@@ -413,6 +413,13 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
            if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
+
+           if (allocated(den_all)) deallocate(den_all)
+           if (allocated(denold_all)) deallocate(denold_all)
+           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
+           call deallocate(solution); nullify(solution%val)
+
+
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
