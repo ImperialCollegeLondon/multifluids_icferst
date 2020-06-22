@@ -762,6 +762,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+           if (allocated(den_all)) deallocate(den_all)
+           if (allocated(denold_all)) deallocate(denold_all)
+           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
+           call deallocate(solution); nullify(solution%val)
            ! if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
            ewrite(3,*) 'Leaving ENTHALPY_ASSEM_SOLVE'
 
@@ -1020,6 +1024,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+           if (allocated(den_all)) deallocate(den_all)
+           if (allocated(denold_all)) deallocate(denold_all)
+           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
+           call deallocate(solution); nullify(solution%val)
            ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
 
       contains
