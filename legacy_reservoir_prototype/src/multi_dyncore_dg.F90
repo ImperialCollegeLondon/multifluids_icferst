@@ -2269,7 +2269,9 @@ end if
 
             !We use deltaP as residual check for convergence
             if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
-              ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k
+              if (getprocno() == 1) then
+                ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k
+              end if
               return
             end if
             M = i - 2; if (M <= 0) M = stokes_max_its + M
