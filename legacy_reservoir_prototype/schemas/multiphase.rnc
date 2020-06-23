@@ -1513,6 +1513,12 @@ solver_options =
         ## This is ACTIVATED by default for Stokes/Magma flow. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.</b>
         element solve_mom_iteratively {real, 
         (
+        ## Maximum restart iteration allowed. The default value is 15.
+         element restart_its {
+           real}?,
+        ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
+         element Max_restarts {
+           real}?,  
            ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
             element Momentum_preconditioner {
            empty}?,

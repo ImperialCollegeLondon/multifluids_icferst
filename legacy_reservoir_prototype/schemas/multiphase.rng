@@ -1859,6 +1859,18 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
               <ref name="real"/>
               <group>
                 <optional>
+                  <element name="restart_its">
+                    <a:documentation>Maximum restart iteration allowed. The default value is 15.</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Max_restarts">
+                    <a:documentation>Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
                   <element name="Momentum_preconditioner">
                     <a:documentation>Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, &lt;b&gt;unstable&lt;/b&gt; but potentially faster.</a:documentation>
                     <empty/>
