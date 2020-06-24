@@ -522,7 +522,14 @@ start =
             scalar_field_choice*,
             vector_field_choice*,
             tensor_field_choice*,
-            ## Parameters required to model multiphase flow
+            ## Parameters required to model porous media multiphase flow
+            ## If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
+            ##
+            ## Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
+            ##
+            ## Capillary pressure disabled.
+            ##
+            ## Inmobile fraction = 0.
             element multiphase_properties {
                ## Option for relperm type in prototype code
                   ## Corey relperm:
@@ -554,7 +561,9 @@ start =
                         )
                      }
                 }?,
-               ## Option for capillary pressure
+               ## Options for capillary pressure
+               ##
+               ## <b>You should specify this ONLY for the wetting phase</b>
                element capillary_pressure {
                   ## Brooks-Corey equation
                   ##
@@ -563,8 +572,7 @@ start =
                   ## For imbibition swith the formula is:
                   ##
                   ## ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure
-                  ##
-                  ## You should specify this ONLY for the wetting phase
+                 
                   element type_Brooks_Corey {
                     ## Entry pressure of the formula
                     element scalar_field {
@@ -1513,6 +1521,12 @@ solver_options =
         ## This is ACTIVATED by default for Stokes/Magma flow. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.</b>
         element solve_mom_iteratively {real, 
         (
+        ## Maximum restart iteration allowed. The default value is 15.
+         element restart_its {
+           real}?,
+        ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
+         element Max_restarts {
+           real}?,  
            ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
             element Momentum_preconditioner {
            empty}?,

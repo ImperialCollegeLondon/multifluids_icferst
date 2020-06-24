@@ -1742,7 +1742,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
         !Stokes variables
-        integer, parameter :: stokes_max_its = 15 !> Maximum number of iterations allowed to the AA stokes solver
+        integer :: stokes_max_its !> Maximum number of iterations allowed to the AA stokes solver
         real, dimension(Mdims%totele) :: MASS_ELE
         integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
         logical :: solve_mom_iteratively = .false.
@@ -1759,6 +1759,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
         !The stokes solver method can be activated from diamond also
         solve_mom_iteratively = have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively")
+        !Retrieve the maximum allowed number of its
+        call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/restart_its", stokes_max_its, default = 15)
         if (is_porous_media) then !Find parameter to re-scale the pressure matrix
           !Since we save the parameter rescaleVal, we only do this one time
           if (rescaleVal < 0.) then
@@ -2188,7 +2190,7 @@ end if
           !Local variables
           logical, save :: Special_precond = .true.!> Selects the BfB type preconditioner, we want this on by default
           integer, save :: show_FPI_conv
-          integer :: i, k, cv_nodi, M, total_u_nodes
+          integer :: i, k, cv_nodi, M, total_u_nodes, Max_restarts
           real, dimension(:,:), allocatable :: stored_field, field_residuals
           real,save :: solver_tolerance = -1
           real, dimension(:,:), allocatable :: BAK_matrix, ref_pressure
@@ -2206,6 +2208,8 @@ end if
             !Type of preconditioner
             Special_precond = .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")
           end if
+          !Retrieve the maximum number
+          call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Max_restarts", Max_restarts, default = 5)
 
           allocate(ref_pressure(Mdims%npres,Mdims%cv_nonods));ref_pressure = 0.
           !#####################################################################
@@ -2240,7 +2244,7 @@ end if
           !Update stored values
           stored_field(:, i) = P_all%val(1,1,:)
           restart_now = .false.
-          do k = 1, stokes_max_its*5
+          do k = 1, stokes_max_its*Max_restarts
 
             !Proceed to restart the AA method, by throwing away everything!
             if (i>stokes_max_its .or. restart_now) then
@@ -2264,8 +2268,10 @@ end if
             ref_pressure = P_ALL%val(1,:,:)
 
             !We use deltaP as residual check for convergence
-            if ( conv_test < solver_tolerance .or.  k == stokes_max_its*5) then
-              ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k-1
+            if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
+              if (getprocno() == 1) then
+                ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k
+              end if
               return
             end if
             M = i - 2; if (M <= 0) M = stokes_max_its + M
@@ -2278,6 +2284,7 @@ end if
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
             call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
             call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            if (isParallel()) call halo_update(velocity)
             !Perform Div * U for the RHS of the pressure equation
             !If we end up using the residual, this call just below is unnecessary
             rhs_p%val = 0.
@@ -2285,6 +2292,7 @@ end if
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
             call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, sqrt_inv_diag_CMC_mat, update_pres = .not. Special_precond)!don
+            if (isParallel()) call halo_update(deltap)
             if (k == 1) then
               Omega = 1.0
             end if
