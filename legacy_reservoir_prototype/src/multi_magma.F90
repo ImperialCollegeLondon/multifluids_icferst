@@ -121,7 +121,7 @@ contains
     real :: mu !liquid viscosity needs to be build later
     real :: low,high !transition points
     real :: H,s !value of the smoothing function and the smoothing factor
-    logical :: Test=.false. ! set to true to have uniform Darcy-like c coefficient
+    logical :: Test=.true. ! set to true to have uniform Darcy-like c coefficient
     type( tensor_field ), pointer :: t_field !liquid viscosity
     type(coupling_term_coef), intent(in) :: coupling
 

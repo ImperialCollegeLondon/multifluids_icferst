@@ -201,11 +201,6 @@ contains
         type(coupling_term_coef) :: coupling
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
-        ! The Source term of the composition, currently only consider two phase magma
-        real, dimension(:,:), allocatable :: Composition_source
-        ! To record the compostion value and melt fraction before the phase diagram
-        real, dimension(:), allocatable :: Compostion_temp
-        real, dimension(:), allocatable :: melt_temp
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -215,10 +210,6 @@ contains
 #endif
 
 
-
-        allocate( melt_temp(Mdims%cv_nonods ) )
-        allocate( Compostion_temp(Mdims%cv_nonods ) )
-        allocate( Composition_source(2, Mdims%cv_nonods ) )
         ! Check wether we are using the CV_Galerkin method
         numberfields_CVGalerkin_interp=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
 
@@ -557,8 +548,6 @@ contains
             !Initialise to zero the SFPI counter
             SFPI_taken = 0
             !########DO NOT MODIFY THE ORDERING IN THIS SECTION AND TREAT IT AS A BLOCK#######
-            ! HH The initial guess for the compostion exchange is 0
-            Composition_source=0
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
               !for the diagnostic field, now it seems to be working fine...
                 ewrite(2,*) '  NEW ITS', its
@@ -672,7 +661,7 @@ contains
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
 
-                else IF (is_magma) then !... in which case we solve for enthalpy instead
+                else IF (is_magma) then !... in which case we solve for enthalpy instead 
 
                   tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
@@ -692,37 +681,12 @@ contains
                   thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
                   Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
 
-                  !Solve for components here
-                  if (have_component_field) then
-                       !!$ Calculate Density_Component for compositional
-                       if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
-
-                       sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-                       call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
-                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
-                       multi_absorp, DT, SUF_SIG_DIAGTEN_BC, &
-                       Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
-                       theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
-                       sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, Composition_source)
-                  end if
-
                   ! ! Calculate melt fraction from phase diagram
                   call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   ! ! Update the temperature field
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   ! ! Update the composition
-                  tracer_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentMassFraction")
-                  ! record the component and melt fraction before they being updated by the phase diagram
-                  Compostion_temp(:)= tracer_field%val(1,2,:)  ! second phase is the melt!
-                  melt_temp(:) = saturation_field%val(1,2,:)
-
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
-                  ! Calulate the composition source term
-                  do cv_inod = 1, Mdims%cv_nonods
-                      Composition_source(2, cv_inod) = (tracer_field%val(1,2,cv_inod)*saturation_field%val(1,2,cv_inod) - Compostion_temp (cv_inod)*melt_temp(cv_inod))/DT  ! need to check the sign!
-                      Composition_source(1, :)=-Composition_source(2, :) ! The gain of the first phase  is the loss of the second phase
-                  end do
-
                   !Recalculate densities
                   call Calculate_All_Rhos( state, packed_state, Mdims )
                 END IF Conditional_ScalarAdvectionField
@@ -757,7 +721,20 @@ contains
 
 
 
+                !Solve for components here
+                if (have_component_field) then
 
+                     !!$ Calculate Density_Component for compositional
+                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
+
+                     sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
+                     call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
+                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+                     multi_absorp, DT, SUF_SIG_DIAGTEN_BC, &
+                     Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux,  &
+                     theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
+                     sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+                end if
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
