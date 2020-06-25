@@ -82,7 +82,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number, Composition_source)
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -157,6 +157,8 @@ contains
            real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve, assemble_collapsed_to_one_phase
            type(vector_field) :: solution
+           ! For the source term of the composition solver
+           real, dimension (:,:), optional, intent(in) :: Composition_source
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -287,6 +289,11 @@ contains
            ! Check for a python-set source field when solving for temperature/internal energy
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
+
+           ! Adding the source term for the composition solver
+
+           if (PRESENT(Composition_source)) T_SOURCE=T_SOURCE+Composition_source
+
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -1429,7 +1436,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          SUF_SIG_DIAGTEN_BC, &
          GET_THETA_FLUX, USE_THETA_FLUX,  &
          THETA_GDIFF, eles_with_pipe, pipes_aux, mass_ele, &
-         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, Composition_source)
          implicit none
          type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
          type( state_type ), intent( inout ) :: packed_state
@@ -1459,6 +1466,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          type(tensor_field), pointer :: Component_Absorption, perm_field, ComponentMassFraction, OldComponentMassFraction
          type(vector_field), pointer :: porosity_field, MeanPoreCV
          real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j
+         !Source term for the component exchange between phases
+         real, dimension (:,:), optional, intent( in ) :: Composition_source
 
          !Obtain the number of faces in the control volume space
          ncv_faces=CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIDIMS = CV_GIdims)
@@ -1517,7 +1526,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     theta_gdiff, eles_with_pipe, pipes_aux,&
                     thermal = .false.,& ! the false means that we don't add an extra source term
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
-                    icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
+                    icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field, Composition_source=Composition_source)
 
                 !This is to ensure boundedness of the ComponentMassFraction (OLD METHOD)
                 tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
