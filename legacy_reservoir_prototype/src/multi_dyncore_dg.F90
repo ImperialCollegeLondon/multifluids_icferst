@@ -677,7 +677,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ! Check for a python-set source field when solving for Enthalpy/internal energy
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
-
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
            !Select solver options
@@ -801,7 +800,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        THETA_GDIFF, eles_with_pipe, pipes_aux, &
        mass_ele_transp, &
        THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number,&
+       Composition_magma_source )
 
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -831,6 +831,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
            type (multi_pipe_package), intent(in) :: pipes_aux
            real, optional, dimension(:), intent(inout) :: Courant_number
+           real, optional, dimension(:,:), intent(in) :: Composition_magma_source
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
            integer :: nits_flux_lim, its_flux_lim
@@ -927,6 +928,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            Q => extract_tensor_field( packed_state, "PackedSoluteMassFractionSource" )
            T_source( :, : ) = Q % val( 1, :, : )
 
+           !Introduce the source/sink term between the phases
+           if (is_magma) then
+             if (present(Composition_magma_source) .and. Mdims%nphase == 2) T_SOURCE = T_SOURCE + Composition_magma_source
+           end if
            !sprint to do, just pass down the other values...
            cv_disopt = Mdisopt%t_disopt
            cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
