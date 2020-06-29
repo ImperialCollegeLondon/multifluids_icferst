@@ -3720,7 +3720,12 @@ end if
 
         !JXiang
         solid_implicit = have_option( '/solid_implicit')
+! JXiang WITH CP RESOLVE THIS LATER
 
+!          allocate(NU_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
+!          allocate(NUOLD_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
+         allocate(NU_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
+         allocate(NUOLD_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
 !        solid_implicit = .FALSE.
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
@@ -3735,11 +3740,6 @@ end if
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
         else !Normal and more general method
 ! JXiang WITH CP RESOLVE THIS LATER
-
- !          allocate(NU_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
- !          allocate(NUOLD_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
-          allocate(NU_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
-          allocate(NUOLD_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
 
           if(solid_implicit) then
 !           allocate(UG_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
