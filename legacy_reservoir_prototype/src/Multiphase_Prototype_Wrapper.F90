@@ -334,6 +334,14 @@ contains
         !         end if
         !     end do
         ! end if
+        if (is_magma) then
+          !For magma we need a scalar field, maybe in the future a vector field, or a scalar field per phase, for the time being one is enough as
+          !for the other phase the value is just the negative
+          !We need it in diamond to make sure it is interpolated when the mesh is adapted
+          i = 1
+          option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::"
+          call copy_option(trim(option_path)//"PhaseVolumeFraction",trim(option_path)//"Magma_comp_source")
+        end if
 
         if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
             ewrite(1, *) "For adapt within FPI, create necessary backups for storing the old fields. Check multiphase_prototype_wrapper"

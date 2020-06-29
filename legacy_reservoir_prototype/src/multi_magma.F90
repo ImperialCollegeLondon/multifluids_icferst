@@ -498,23 +498,26 @@ contains
   !>@brief:Compute the source/sink term of the phase change between the concentration living in both two phases
   !> it requires to have Compostion_temp and melt_temp stored before calling cal_solidfluidcomposition
   !> then the RHS is updated to be used in the next non-linear iteration
-  subroutine compute_composition_change_source(Mdims, packed_state, Composition_source, melt_temp, Compostion_temp, dt)
+  subroutine compute_composition_change_source(Mdims, state, packed_state, melt_temp, Compostion_temp, dt)
+    type( state_type ), dimension(:), intent( inout ) :: state
     type( state_type ), intent( inout ) :: packed_state
     type( multi_dimensions), intent( in ) :: Mdims
-    real, dimension(:,:), intent(inout) :: Composition_source
     real, dimension(:), intent(in) :: Compostion_temp, melt_temp
     real, intent(in) :: dt
     !Local variables
     integer :: cv_inod
     type(tensor_field), pointer :: Solute_new, saturation_new
+    type(scalar_field), pointer :: Composition_source
 
+    Composition_source => extract_scalar_field(state(1), "Magma_comp_source")
     Solute_new=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
     saturation_new => extract_tensor_field(packed_state, "PackedPhaseVolumeFraction")
 
     do cv_inod = 1, Mdims%cv_nonods
-        Composition_source(2, cv_inod) = (Solute_new%val(1,2,cv_inod)*saturation_new%val(1,2,cv_inod) - Compostion_temp(cv_inod)*melt_temp(cv_inod))/DT  ! need to check the sign!
+      ! The gain of the first phase  is the loss of the second phase
+      Composition_source%val(cv_inod) = -(Solute_new%val(1,2,cv_inod)*saturation_new%val(1,2,cv_inod) - Compostion_temp(cv_inod)*melt_temp(cv_inod))/DT  ! need to check the sign!
     end do
-    Composition_source(1, :)=-Composition_source(2, :) ! The gain of the first phase  is the loss of the second phase
+    ! Composition_source(1, :)=-Composition_source(2, :)
 
 
   end subroutine compute_composition_change_source

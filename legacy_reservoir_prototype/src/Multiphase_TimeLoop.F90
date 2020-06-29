@@ -201,8 +201,6 @@ contains
         type(coupling_term_coef) :: coupling
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
-        ! For the source term of the composition solver
-        real, dimension (:,:), allocatable :: Composition_magma_source
         ! To record the compostion value and melt fraction before the phase diagram
        real, dimension(:), allocatable :: Compostion_temp
        real, dimension(:), allocatable :: melt_temp
@@ -475,7 +473,6 @@ contains
           !This is important to specify EnthalpyOld based on the temperature which is easier for the user
           !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
-          allocate(Composition_magma_source(Mdims%nphase, Mdims%cv_nonods)); Composition_magma_source = 0.
         end if
 
         !!$ Time loop
@@ -716,8 +713,7 @@ contains
                        !!$
                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number, &
-                       Composition_magma_source = Composition_magma_source)
+                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                    nullify(tracer_field)
 
@@ -733,7 +729,7 @@ contains
                   ! ! Update the composition
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term
-                  call compute_composition_change_source(Mdims, packed_state, Composition_magma_source, melt_temp, Compostion_temp, dt)
+                  call compute_composition_change_source(Mdims, state, packed_state, melt_temp, Compostion_temp, dt)
                   deallocate(Compostion_temp, melt_temp)
                 end if
                 !#=================================================================================================================
@@ -946,7 +942,6 @@ contains
         call deallocate_porous_adv_coefs(upwnd)
         call deallocate_multi_absorption(multi_absorp, .true.)
         call deallocate_multi_pipe_package(pipes_aux)
-        if (allocated(Composition_magma_source)) deallocate(Composition_magma_source, Compostion_temp, melt_temp)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields_CVGalerkin_interp > 0) then
@@ -1338,7 +1333,6 @@ contains
                     end if
                     call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state)!<= just in case, cap unphysical values if there are still some
                 end if
-                if (allocated(Composition_magma_source)) deallocate(Composition_magma_source)
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
                   if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
@@ -1404,7 +1398,6 @@ contains
                     END DO
                     DEALLOCATE( RSUM )
                 end if
-                if (is_magma) allocate(Composition_magma_source(Mdims%nphase, Mdims%cv_nonods))
                 call Calculate_All_Rhos( state, packed_state, Mdims )
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
