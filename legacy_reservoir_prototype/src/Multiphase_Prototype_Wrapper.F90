@@ -500,6 +500,7 @@ contains
 !print all the options in the diamond file and added here to the terminal
         ! call print_options()
         !Call fluidity to populate state
+
         call populate_state(state)
 
     end subroutine populate_multi_state
@@ -541,8 +542,8 @@ contains
                     property = property(1:bar_pos-1)//'/'//property(bar_pos+1:len_trim(property))
                     bar_pos = index(property,'-')
                 end if
-                !Thermal_porous data is also an special case
-                if (index(property,'thermal_porous') > 0 )then
+                !porous_properties data is also an special case
+                if (index(property,'porous_properties') > 0 )then
                     !Unify the first two entries
                     property = property(1:bar_pos-1)//'/'//property(bar_pos+1:len_trim(property))
                     bar_pos = index(property,'-')
@@ -649,10 +650,10 @@ contains
         end if
     end subroutine read_fluid_and_rock_properties_from_csv
 
+    !>@brief: In this subroutine. We populate the input file elements that are not user-selected in IC_FERST.rnc. (i.e. we set all the things that the user doesn't need to worry about).
+    !>@WARNING:IT IS VERY IMPORTANT NOT TO CHANGE THE ORDERING IN THIS SUBROUTINE!!!
     subroutine autocomplete_input_file(nphase, npres, ncomp)
                 ! ################################
-        ! In this subroutine. We populate the input file elements that are not user-selected in IC_FERST.rnc. (i.e. we set all the things that the user doesn't need to worry about).
-        !IT IS VERY IMPORTANT NOT TO CHANGE THE ORDERING IN THIS SUBROUTINE!!!
         implicit none
         integer, intent(in) :: nphase, npres, ncomp
         !Local variables
@@ -929,6 +930,18 @@ contains
 
                 !If we have specified BCs then copy them here as well
                 l = option_count("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions")
+
+                if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/compressible")) then
+                  if (l < 1) then
+                    if (GetProcNo() == 1) then
+                      ewrite(0, *) "################################################################################"
+                      ewrite(0, *) "#WARNING: Compressible flow REQUIRES boundary conditions, run at your own risk.#"
+                      ewrite(0, *) "################################################################################"
+                    end if
+                  end if
+                end if
+
+
                 do k =1, l !Copy all the BCs to the new location
                   !Retrieve name of the BC to keep consistency
                   call get_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions["// int2str( k - 1 )//"]/name", option_name)
@@ -954,18 +967,20 @@ contains
 !Easiest way to create the heatcapacity field is to move where it was inside temperature!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity")) then
                 if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
-                    FLAbort("HeatCapacity specified but no prognostic temperature field specified.")
+                    FLAbort("HeatCapacity specified but no prognostic temperature field specified. This is required even if solving for Magma/Enthalpy.")
                 end if
-                call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
-                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
+              ! if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic")) then
+              call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/scalar_field::HeatCapacity",&
+                "/material_phase["// int2str( i - 1 )//"]/scalar_field::Temperature/prognostic/scalar_field::HeatCapacity")
+              ! end if
             end if
             !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
-              if (.not. have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
-                  FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")
-              end if
+              ! FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")! Not all the phases need to have concentration defined
+              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+              end if
             end if
 
             if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
@@ -1053,7 +1068,7 @@ contains
     end subroutine autocomplete_input_file
 
 
-
+    !>@brief: Obvious insn't it?
     subroutine set_up_generic_warning_message()
         implicit none
 
@@ -1071,7 +1086,7 @@ contains
         multi_generic_warning = trim(multi_generic_warning)//NEW_LINE('aux')//"May a bug be found, please file it in the corresponding repository following the standard procedure"
 
     end subroutine set_up_generic_warning_message
-
+    !>@brief: We can use fluidity to read an ASCII mesh and generate a binary mesh with ICFERST
     subroutine create_bin_msh_file(state)
         implicit none
         type(state_type), dimension(:), pointer, intent(inout) :: state
@@ -1092,16 +1107,16 @@ contains
 
     end subroutine create_bin_msh_file
 
+    !>@brief:This subroutine selects the type of simulator to perform
+    !>and activates the flags from global_parameters accordingly
     subroutine get_simulation_type()
-        !This subroutine selects the type of simulator to perform
-        !and activates the flags from global_parameters accordingly
         implicit none
         integer :: Vdegree, Pdegree
         !By default it is inertia dominated
         is_porous_media = have_option('/porous_media_simulator') .or. have_option('/is_porous_media')
         is_magma = have_option('/magma_simulator')
         is_poroelasticity = have_option('/poroelasticity')
-        !Decide to solve Stokes equations instead of navier-Stokes (magma reuires this option as well)
+        !Decide to solve Stokes equations instead of navier-Stokes (magma requires this option as well)
         solve_stokes = have_option('/stokes_simulator') .or. is_magma
         !Flag to set up the coupling with femdem
         is_multifracture = have_option( '/femdem_fracture' )
@@ -1122,8 +1137,12 @@ contains
           end if
         end if
 
-
-
+        if ((is_magma .and. .not. have_option('/magma_parameters/Phase_diagram_coefficients')) .or. &
+        ( have_option('/magma_parameters/Phase_diagram_coefficients') .and. .not. is_magma)) then
+          if (GetProcNo() == 1) then
+            FLAbort("Magma simulator requires /magma_parameters options.")
+          end if
+        end if
 
     end subroutine get_simulation_type
 

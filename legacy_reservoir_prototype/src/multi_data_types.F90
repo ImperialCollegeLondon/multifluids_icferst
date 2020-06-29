@@ -1075,6 +1075,7 @@ contains
         if(.not.associated(Mspars%HydrostaticPressure%col))           allocate(  Mspars%HydrostaticPressure%col( mx_ncolph ) )
         if(.not.associated(Mspars%HydrostaticPressure%mid))           allocate(  Mspars%HydrostaticPressure%mid( Mdims%ph_nonods ))
 
+
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0
         Mspars%M%col = 0 ; Mspars%M%mid = 0 ; Mspars%HydrostaticPressure%fin = 0 ; Mspars%HydrostaticPressure%col = 0

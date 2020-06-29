@@ -88,6 +88,9 @@ module multiphase_time_loop
 
 
 contains
+    !> @brief This is the main subroutine. It performs the time-loop and
+    !> therefore calls all the necessary blocks to solve for the system of equations,
+    !> adapt the mesh etc.
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
         implicit none
@@ -192,8 +195,14 @@ contains
         ! Andreas. Declare the parameters required for skipping pressure solve
         Integer:: rcp                 !Requested-cfl-for-Pressure. It is a multiple of CFLNumber
         Logical:: EnterSolve =.true., after_adapt_itime =.false.  !Flag to either enter or not the pressure solve
-        type(vector_field), pointer :: XOLD_ALL,X_ALL, vfield, vfield2, X_coord
-        Logical:: solid_implicit, diffusion_solid_implicit
+        type(vector_field), pointer :: XOLD_ALL,X_ALL, vfield, vfield2, X_coord !JXiang
+        Logical:: solid_implicit, diffusion_solid_implicit    !JXiang
+
+        real,allocatable, dimension(:) :: c_phi_series
+        integer :: c_phi_length
+        type(coupling_term_coef) :: coupling
+        type(magma_phase_diagram) :: magma_phase_coef
+        real :: bulk_power
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -318,9 +327,22 @@ contains
                 ewrite(0, *) "WARNING: All the phases must be defined as compressible. You can use the linear option with A ~ 0 for the incompressible phase."
                 exit
             end if
+
           end do
         end if
 
+!Check that we have specified Boundary conditions for density
+        if (have_option_for_any_phase("phase_properties/Density/compressible", Mdims%ndim) .or. &
+          have_option_for_any_phase("phase_properties/Density/python_state", Mdims%ndim) .or. &
+          have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/hydrostatic_boundaries' )) then
+          do i = 1, Mdims%nphase
+            if (getprocno() == 1 .and. &
+            (.not. (have_option('/material_phase[' // int2str( i - 1 ) // ']/phase_properties/Density/boundary_conditions') .or. &
+            have_option('/material_phase[' // int2str( i - 1 ) // ']/scalar_field::Density/prognostic')))) then
+                ewrite(0, *) "WARNING: It is VERY important to have boundary conditions for density if your model is compressible or using hydrostatic_BCs."
+            end if
+          end do
+        end if
         !Check if we want to use a compacted mass matrix
         if ((Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')) &
                     .and. is_porous_media .and. Mdims%npres == 1) then
@@ -398,7 +420,7 @@ contains
             !Allocate the memory to obtain the sigmas at the interface between elements
             call allocate_porous_adv_coefs(Mdims, upwnd)
             !Ensure that the initial condition for the saturation sum to 1.
-            call Ensure_Saturation_sums_one(Mdims, ndgln, packed_state, find_scapegoat_phase = .true.)
+            call Initialise_Saturation_sums_one(Mdims, ndgln, packed_state, .true.)
         end if
 !JXiang 8/11/2019 change coordinates of mesh       
         solid_implicit= have_option( '/solid_implicit')
@@ -461,6 +483,16 @@ contains
            ! call initialize_pipes_package_and_gamma(state, pipes_aux, Mdims, Mspars)
         end if
 
+        !HH Initialize all the magma simulation related coefficients
+        if (is_magma) then
+          c_phi_length=1e7  !> the number of items of the coupling term coefficients stored in the system
+          allocate(c_phi_series(c_phi_length))
+          call C_generate (c_phi_series, c_phi_length, state, coupling)
+          call initialize_magma_parameters(magma_phase_coef,  coupling)
+          !This is important to specify EnthalpyOld based on the temperature which is easier for the user
+          !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
+          call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
+        end if
 
         !!$ Time loop
         Loop_Time: do
@@ -554,7 +586,7 @@ contains
                         CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
                 end if
 
-                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln)
+                if ( is_magma ) call calculate_Magma_absorption(Mdims, state, packed_state, multi_absorp%Magma, ndgln, c_phi_series)
 
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
@@ -599,9 +631,9 @@ contains
                         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                        calculate_mass_delta, outfluxes, pres_its_taken)
-
+                        calculate_mass_delta, outfluxes, pres_its_taken, its)
                 end if Conditional_ForceBalanceEquation
+               !JXiang
                if(solid_implicit) then
                !call one single diffusion equation here
                X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -610,12 +642,13 @@ contains
   !             ewrite(3,*)"before all_diffusion",its,XOLD_ALL%val
  !              ewrite(3,*)"X_ALL",its,X_ALL%val
                call all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+  !             ewrite(3,*)"after all_diffusion",its,XOLD_ALL%val
                END If
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
 
-                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
 
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
@@ -637,8 +670,8 @@ contains
                 !#=================================================================================================================
 
                 !!$ Solve advection of the scalar 'Temperature':
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. (.not. is_magma)) then
+
                     ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
                     !call calculate_diffusivity( state, packed_state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
@@ -659,7 +692,36 @@ contains
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
                     call Calculate_All_Rhos( state, packed_state, Mdims )
-                end if Conditional_ScalarAdvectionField
+
+                else IF (is_magma) then !... in which case we solve for enthalpy instead 
+
+                  tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
+                  density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                  saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                  velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+
+                  call set_nu_to_u( packed_state )
+                  ewrite(3,*)'Now advecting Enthalpy Field'
+                  call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
+                  Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                  tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                  suf_sig_diagten_bc, Porosity_field%val, &
+                  !!$
+                  0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                  THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                  option_path = '/material_phase[0]/scalar_field::Enthalpy', &
+                  thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
+                  Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
+
+                  ! ! Calculate melt fraction from phase diagram
+                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  ! ! Update the temperature field
+                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
+                  ! ! Update the composition
+                  call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
+                  !Recalculate densities
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
+                END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
@@ -687,6 +749,8 @@ contains
 
                 end if Conditional_ScalarAdvectionField2
 
+                !#=================================================================================================================
+
 
 
                 !Solve for components here
@@ -703,6 +767,8 @@ contains
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
+                !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
+                !#=================================================================================================================
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
@@ -773,7 +839,8 @@ contains
                     ewrite(1,*) "Courant_number and shock-front Courant number", Courant_number
                 end if
             end if
-            
+
+            !JXiang change coordinate of pressure mesh            
             if(solid_implicit) then
             X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
             XOLD_ALL => extract_vector_field( state , "SolidOldCoordinate" )
@@ -781,6 +848,7 @@ contains
             XOLD_ALL%val=X_ALL%val
             x_coord%val=X_ALL%val
            end if
+ 
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
 
@@ -851,7 +919,7 @@ contains
                 ! dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc ) Original
                 !Make sure we finish at required time and we don't get dt = 0
                 dt = max(min(dt, finish_time - current_time), 1d-15)
-                if (current_time>finish_time) exit Loop_Time
+                if (current_time+dt>=finish_time) exit Loop_Time
                 call allmin(dt)
                 call set_option( '/timestepping/timestep', dt )
             end if
@@ -916,9 +984,9 @@ contains
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
         return
     contains
-
+        !> routine puts various CSR sparsities into packed_state
         subroutine put_CSR_spars_into_packed_state()
-            !!! routine puts various CSR sparsities into packed_state
+
             use sparse_tools
             type(csr_sparsity), pointer :: sparsity
             type(tensor_field), pointer :: tfield
@@ -1092,6 +1160,7 @@ contains
             end do
         end subroutine linearise_components
 
+        !> @brief In this internal subrotuine the generation of output vts and checkpoint are performed
         subroutine create_dump_vtu_and_checkpoints()
 
             ! sprint to do: check this routine - why are we swapping pressure fields??
@@ -1126,7 +1195,7 @@ contains
             end if
         end subroutine create_dump_vtu_and_checkpoints
 
-        !This subroutine performs all the necessary steps to adapt the mesh and create new memory
+        !>This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
             !local variables
             type( scalar_field ), pointer :: s_field, s_field2, s_field3
@@ -1364,7 +1433,7 @@ contains
         end subroutine adapt_mesh_mp
 
 
-
+    !>@brief Update the memory when moving to a new time-level by copying the fields into the OLD fields
     subroutine copy_packed_new_to_old(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(scalar_field), pointer :: sfield, nsfield
@@ -1404,6 +1473,7 @@ contains
         end if
     end subroutine copy_packed_new_to_old
 
+    !>@brief Copies the linear velocity U into the non-linear velocity field NU
     subroutine set_nu_to_u(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(tensor_field), pointer :: u, uold, nu, nuold
@@ -1415,11 +1485,16 @@ contains
         nuold % val = uold % val
     end subroutine set_nu_to_u
 
+    !>@author : Pablo Salinas
+    !>@brief In this subroutine we control all the necessary steps to adapt the mesh within the non-linear loop.
+    !> This is useful to ensure that the mesh is always well placed.
+    !> There are two steps, relaxation of the tolerance in the first loop of the non-linear solver to get a good guess but cheaply,
+    !> and secondly adaptation of the mesh based on the new and old field. For more information see: doi.org/10.1007/s10596-018-9759-z
     subroutine adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its, flag)
         implicit none
         logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
-        integer, intent(inout) :: its
-        integer, intent(in)    :: flag
+        integer, intent(inout) :: its !> Non-linear iteration
+        integer, intent(in)    :: flag!> Controls the steps, either 1 or 2.
         ! Local variables
         type(scalar_field), pointer :: sat1, sat2
         type(vector_field), pointer :: vfield1, vfield2

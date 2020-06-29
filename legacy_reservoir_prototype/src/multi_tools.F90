@@ -38,12 +38,14 @@ module multi_tools
 
     implicit none
 
+    !>@brief: Type to keep an eye on the quality of the elements
+    !>@DEPRECATED
     type bad_elements
         integer :: bad_ele
         real :: angle
-        real :: perp_height ! perp height from base (assuming an isosceles triangle)
-        real, allocatable, dimension(:,:) :: rotmatrix ! the rotation matrix to 'stretch' the bad element in the direction normal to the big angle
-        real :: base ! length of side opposite the large angle
+        real :: perp_height !> perp height from base (assuming an isosceles triangle)
+        real, allocatable, dimension(:,:) :: rotmatrix !> the rotation matrix to 'stretch' the bad element in the direction normal to the big angle
+        real :: base !> length of side opposite the large angle
     end type
 
 contains
@@ -59,9 +61,9 @@ contains
         RETURN
     END FUNCTION R2NORM
 
+    !>@brief:This function is a tolerance function for strictly positive values used as a denominator.
+    !> If the value of VALUE less than 1E-10, then it returns TOLERANCE otherwise VALUE.
     real function ptolfun(value)
-        ! This function is a tolerance function for strictly positive values used as a denominator.
-        ! If the value of VALUE less than 1E-10, then it returns TOLERANCE otherwise VALUE.
 
         implicit none
         real, intent(in) :: value
@@ -74,11 +76,11 @@ contains
 
     end function ptolfun
 
+    !>@brief:This function is a tolerance function for a value which is used as a denominator.
+    !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
+    !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
     PURE function tolfun(value) result(v_tolfun)
     !real function tolfun(value)
-        ! This function is a tolerance function for a value which is used as a denominator.
-        ! If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
-        ! the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
 
         implicit none
         real, intent(in) :: value
@@ -108,6 +110,7 @@ contains
 
     end function tolfun_many
 
+    !!>@brief: VOlume of a tetrahedron defined by coordinates
     function tetvolume(x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3)
         IMPLICIT NONE
 
@@ -140,8 +143,8 @@ contains
 
     end function vtolfun
 
+    !>@brief:Checks if a number is a Nan
     subroutine nan_check(a,k)
-    !Checks if a number is a Nan
         real :: a
         integer :: k
 
@@ -151,8 +154,8 @@ contains
 
     end subroutine nan_check
 
+    !>@brief:Checks if an array is a Nan
     subroutine nan_check_arr(a,k)
-    !Checks if an array is a Nan
         real, dimension(:,:) :: a
         integer :: k
 
@@ -163,18 +166,18 @@ contains
     end subroutine nan_check_arr
 
 
+    !>@brief: The function computes NVDFUNNEW, the normalised value of the
+    !> advected variable on the face of the control volume, based on
+    !> the normalised value of the advected variable in the donor CV,
+    !> UC, and the high-order estimate of the face value UF.
+    !> NVDFUNNEW is limited so that it is in the non-oscillatory
+    !> region of normalised variable diagram (NVD).
+    !>
+    !> XI is the parameter in equation 38 of the Riemann paper. If XI is equal
+    !> to 2 then this corresponds to a TVD condition in 1-D, a value of XI
+    !> equal to 3 has been recommended elsewhere
     PURE FUNCTION NVDFUNNEW_MANY( UF, UC, XI_LIMIT ) result(nvd_limit)
         implicit none
-        ! The function computes NVDFUNNEW, the normalised value of the
-        ! advected variable on the face of the control volume, based on
-        ! the normalised value of the advected variable in the donor CV,
-        ! UC, and the high-order estimate of the face value UF.
-        ! NVDFUNNEW is limited so that it is in the non-oscillatory
-        ! region of normalised variable diagram (NVD).
-        !
-        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
-        ! equal to 3 has been recommended elsewhere
         !
         REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
         real, dimension(size(uc)) :: nvd_limit
@@ -198,18 +201,18 @@ contains
 
 
 
+    !>@brief: The function computes NVDFUNNEW, the normalised value of the
+    !> advected variable on the face of the control volume, based on
+    !> the normalised value of the advected variable in the donor CV,
+    !> UC, and the high-order estimate of the face value UF.
+    !> NVDFUNNEW is limited so that it is in the non-oscillatory
+    !> region of normalised variable diagram (NVD).
+    !>
+    !> XI is the parameter in equation 38 of the Riemann paper. If XI is equal
+    !> to 2 then this corresponds to a TVD condition in 1-D, a value of XI
+    !> equal to 3 has been recommended elsewhere
     FUNCTION NVDFUNNEW_MANY_sqrt( UF, UC, XI_LIMIT ) result(nvd_limit)
         implicit none
-        ! The function computes NVDFUNNEW, the normalised value of the
-        ! advected variable on the face of the control volume, based on
-        ! the normalised value of the advected variable in the donor CV,
-        ! UC, and the high-order estimate of the face value UF.
-        ! NVDFUNNEW is limited so that it is in the non-oscillatory
-        ! region of normalised variable diagram (NVD).
-        !
-        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
-        ! equal to 3 has been recommended elsewhere
         !
         REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
         real, dimension(size(uc)) :: nvd_limit
@@ -228,8 +231,8 @@ contains
         ndglno=> mesh%ndglno
     end function get_ndglno
 
-    !Sort a list in increasing order
-    !Vec is the vector to sort and n is an starting point, like 1
+    !>@brief:Sort a list in increasing order
+    !>Vec is the vector to sort and n is an starting point, like 1
     recursive  subroutine quicksort(vec,n)
 
         implicit none
@@ -308,11 +311,11 @@ contains
     end subroutine quicksort
 
 
+    !>@brief: Calculate FACE_ELE - the list of elements surrounding an
+    !> element and referenced with a face -ve values correspond to surface elements.
     SUBROUTINE CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
         FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
         CV_SLOCLIST, X_NLOC, X_NDGLN)
-        ! Calculate FACE_ELE - the list of elements surrounding an
-        ! element and referenced with a face -ve values correspond to surface elements.
         IMPLICIT NONE
         INTEGER, intent( in ) :: TOTELE, STOTEL, NFACE, CV_NLOC, CV_SNLOC, CV_NONODS, &
             X_NLOC
@@ -478,9 +481,9 @@ contains
     END SUBROUTINE CALC_FACE_ELE
 
     !sprint_to_do; we need to see how this behaves with many regions ids
+    !>@brief:Copies the data from inval to outval safely.
+    !>If the sizes are different outval is populated using the first value of inval
     subroutine assign_val(outval,inval)
-        !Copies the data from inval to outval safely.
-        !If the sizes are different outval is populated using the first value of inval
         implicit none
         real, dimension(:), intent(inout) :: outval
         real, dimension(:), intent(in) :: inval
@@ -493,9 +496,9 @@ contains
     end subroutine assign_val
 
 
+    !!>@brief:This function returns the value at position input_X using
+    !>X_points, Y_points to form a linear (size == 2) or quadratic (size == 3) interpolation
     real function table_interpolation(X_points, Y_points, input_X)
-        !This function returns the value at position input_X using
-        !X_points, Y_points to form a linear (size == 2) or quadratic (size == 3) interpolation
         implicit none
         real, intent(in) :: input_X
         real, dimension(:), intent(in) :: X_points, Y_points
@@ -522,16 +525,16 @@ contains
         end if
     end function table_interpolation
 
+    !>@brief:Template of csv table
+    !>OPTIONAL section (header)
+    !>real1,real2,real3,..., size(extra_data)
+    !>rows,columns
+    !>2,3
+    !>Pressure,Saturation
+    !>1000,0.9
+    !>250,0.5
+    !>100,0.1
     subroutine read_csv_table(data_array, path_to_table, extra_data)
-        !Template of csv table
-        !OPTIONAL section (header)
-        !real1,real2,real3,..., size(extra_data)
-        !rows,columns
-        !2,3
-        !Pressure,Saturation
-        !1000,0.9
-        !250,0.5
-        !100,0.1
         implicit none
         real, dimension(:,:), allocatable, intent(inout) :: data_array
         character( len = option_path_len ), intent(in) :: path_to_table
@@ -561,8 +564,8 @@ contains
     end subroutine read_csv_table
 
 
+    !>@brief:This subroutine reads a csv file and returns them in an array
     subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
-        !This subroutine reads a csv file and returns
         implicit none
         integer, intent(out) :: Nentries
         character( len = option_path_len ), intent(in) :: path_to_table
@@ -589,8 +592,8 @@ contains
 
     end subroutine extract_strings_from_csv_file
 
-    !Subroutine to print Arrays by (columns,rows)
-    !Matrix = 2D Array
+    !>@brief:Subroutine to print Arrays by (columns,rows)
+    !>Matrix = 2D Array
     subroutine printMatrix(Matrix)
         implicit none
 
@@ -622,7 +625,7 @@ contains
         print *,"";
     end subroutine PrintMatrix
 
-
+!>@brief: Roates a matrix A using the toration matrix R????
 subroutine RotationMatrix(a,R)
 
     real, dimension(3), intent(in)    :: a ! normal vector of length opposite the largest angle of a 'bad' element
@@ -686,9 +689,9 @@ subroutine RotationMatrix(a,R)
 END subroutine RotationMatrix
 
 
+    !>@brief:This subroutine reads a nastran file that contains the information defining the 1D path of a well
+    !>the input relative filepath should include the file format, for example: well.bdf
     subroutine read_nastran_file(filepath, node, edges)
-        !This subroutine reads a nastran file that contains the information defining the 1D path of a well
-        !the input relative filepath should include the file format, for example: well.bdf
         implicit none
         character( len = * ), intent(in) :: filepath
         real, dimension(:,:), allocatable, intent(inout) :: node
@@ -798,7 +801,7 @@ END subroutine RotationMatrix
       real, dimension(size(A,2)) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
       real, dimension(3*size(A,1)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
       integer, dimension(size(A,1)) :: jpvt
-      real, parameter :: tolerance_rank = 1d-9
+      real, parameter :: tolerance_rank = 1d-12
 
       interface
         !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
@@ -892,7 +895,10 @@ END subroutine RotationMatrix
 
       rank = n
       do k = 1, n
-        if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) rank = rank - 1
+        if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) then
+! print *, "entry that is affecting the result for the least squares",k
+          rank = rank - 1
+        end if
       end do
 
       !Perform Q * b

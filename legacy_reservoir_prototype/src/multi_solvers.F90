@@ -62,26 +62,27 @@ module solvers_module
     private
 
     public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,scale_PETSc_system,&
-         Ensure_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess
+         Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
+         non_porous_ensure_sum_to_one, duplicate_petsc_matrix
 
 
 contains
 
 
+  !!>@brief: This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
+  !> The sparcity of the local CV connectivity is in: small_findrm, small_colm.
+  !> ngl_its=max no of global iterations e.g. 100.
+  !> error_tol = tolerance on the iterations.
+  !>
+  !> nloc_its: This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
+  !> nloc_its2: This iteration is very good at avoiding stagnating but does spread the modifcations far.
+  !> us a single iteration because of this as default...
+  !> nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
+  !> however it can stagnate.
     subroutine BoundedSolutionCorrections( state, packed_state, &
         Mdims, CV_funs, small_findrm, small_colm, Field_name, &
         for_sat, min_max_limits)
         implicit none
-        ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
-        ! The sparcity of the local CV connectivity is in: small_findrm, small_colm.
-        ! ngl_its=max no of global iterations e.g. 100.
-        ! error_tol = tolerance on the iterations.
-        !
-        ! nloc_its: This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
-        ! nloc_its2: This iteration is very good at avoiding stagnating but does spread the modifcations far.
-        ! us a single iteration because of this as default...
-        ! nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
-        ! however it can stagnate.
         integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 500
         real, parameter :: w_relax = 0.5, error_tol = 1.0e-5
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -310,12 +311,12 @@ contains
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
+    !!>@brief:In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
+    !>this idea is based on the paper SPE-173267-MS.
+    !>The method ensures convergence "independent" of the time step.
     subroutine FPI_backtracking(nphase, Mdims, ndgln, state, packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, &
         Previous_convergence, satisfactory_convergence, new_backtrack_par, Max_sat_its, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res)
-        !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
-        !this idea is based on the paper SPE-173267-MS.
-        !The method ensures convergence "independent" of the time step.
         implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -351,7 +352,11 @@ contains
         new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .TRUE. )
+        if (is_porous_media) then
+          call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .TRUE. )
+        else
+          call non_porous_ensure_sum_to_one(mdims, packed_state, do_not_update_halos = .TRUE.)
+        end if
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         Satura =>  sat_field%val(1,:,:)
         !Stablish minimum backtracking parameter
@@ -465,13 +470,17 @@ contains
 
         end if
         !Re-impose physical constraints
-        call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .FALSE. )
+        if (is_porous_media) then
+          call Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos = .FALSE. )
+        else
+          call non_porous_ensure_sum_to_one(Mdims, packed_state, do_not_update_halos = .FALSE.)
+        end if
 
         !Inform of the new backtrack_par parameter used
         new_backtrack_par = backtrack_pars(1)
 
     contains
-
+        !!>@brief: Based on a history of convergence and backtracking factors an optimal bracktrack factor is computed
         real function get_optimal_backtrack_par(backtrack_pars, Convergences, Coefficients)
             implicit none
             real, dimension(:), intent(in) ::backtrack_pars, Convergences
@@ -595,6 +604,7 @@ contains
         !            if (abs(backtrack_pars(1)-get_optimal_backtrack_par) < 1d-3 ) get_optimal_backtrack_par = min(get_optimal_backtrack_par*1.01,1.0)
         end function
 
+        !!>@brief: Fitting of two or three points, it solves an easy least squares system
         subroutine Cubic_fitting(backtrack_pars, Convergences, Coefficients)
             implicit none
             real, dimension(:), intent(in) ::backtrack_pars, Convergences
@@ -644,9 +654,9 @@ contains
 
     end subroutine FPI_backtracking
 
+    !!>@brief:This subroutines eliminates the oscillations in the saturation that are bigger than a
+    !>certain tolerance and also sets the saturation to be between bounds
     subroutine Set_Saturation_to_sum_one(mdims, ndgln, packed_state, state, do_not_update_halos)
-        !This subroutines eliminates the oscillations in the saturation that are bigger than a
-        !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -750,7 +760,52 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
-    subroutine Ensure_Saturation_sums_one(mdims, ndgln, packed_state, find_scapegoat_phase)
+
+    !!>@brief: This subroutines eliminates the oscillations in the saturation that are bigger than a
+    !> certain tolerance and also sets the saturation to be between bounds
+     subroutine non_porous_ensure_sum_to_one(Mdims, packed_state, do_not_update_halos)
+         Implicit none
+         !Global variables
+         type( state_type ), intent(inout) :: packed_state
+         type( multi_dimensions ), intent( in ) :: Mdims
+         logical, optional, intent(in) :: do_not_update_halos
+         !Local variables
+         integer :: iphase, cv_nod, i_start, i_end, ipres
+         real :: correction, sum_of_phases
+         real, dimension(:,:), pointer :: satura
+         type(tensor_field), pointer :: tfield
+
+         tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+         satura =>  tfield%val(1,:,:)
+
+         !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
+         do ipres = 1, Mdims%npres
+             i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
+             i_end = ipres * Mdims%nphase/Mdims%npres
+             !Set saturation to be between bounds
+             do cv_nod = 1, size(satura,2 )
+                 sum_of_phases = sum(satura(i_start:i_end, cv_nod))
+                 correction = (1.0 - sum_of_phases)
+                 !Spread the error to all the phases weighted by their presence in that CV
+                 !Increase the range to look for solutions by allowing oscillations below 0.1 percent
+                 if (abs(correction) > 1d-3) satura(i_start:i_end-1, cv_nod) = (satura(i_start:i_end-1, cv_nod) * (1.0 + correction/sum_of_phases))
+     !if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
+                 !Make sure saturation is between bounds after the modification
+                 do iphase = i_start, i_end
+                     satura(iphase,cv_nod) =  min(max(0., satura(iphase,cv_nod)),1.0)
+                 end do
+             end do
+         end do
+
+         if (present_and_true(do_not_update_halos)) return
+         !Ensure cosistency across CPUs
+         if (IsParallel())call halo_update(tfield)
+
+     end subroutine non_porous_ensure_sum_to_one
+
+    !!>@brief:Ensure that the saturations at the beginning sum to one, if they do not
+    !> all the error is compensated in the scapegoat_phase. Normally the last
+    subroutine Initialise_Saturation_sums_one(mdims, ndgln, packed_state, find_scapegoat_phase)
         Implicit none
         !Global variables
         type( multi_dimensions ), intent( in ) :: Mdims
@@ -815,11 +870,11 @@ contains
         !Deallocate
         deallocate(Normalized_sat)
 
-    end subroutine Ensure_Saturation_sums_one
+    end subroutine Initialise_Saturation_sums_one
 
 
+    !!>@brief: The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
     subroutine auto_backtracking(Mdims, backtrack_par_factor, courant_number_in, first_time_step, nonlinear_iteration, I_am_temperature)
-        !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         real, intent(inout) :: backtrack_par_factor
@@ -908,17 +963,17 @@ contains
     !> A new guess is computed and returned
     !> Method explained in DOI.10.1137/10078356X
     !---------------------------------------------------------------------------
-    subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, AA_iteration, max_its, prev_small_matrix)
+    subroutine get_Anderson_acceleration_new_guess(N, M, NewField, History_field, stored_residuals, max_its, prev_small_matrix,restart_now)
       implicit none
       integer, intent(in) :: N !> Size if the field of interest. Used also to turn vector/tensor fields into scalar fields internally here
       integer, intent(in) :: M !> Size of the field of iterations available - 2
       real, dimension(N), intent(out) :: NewField !> New guess obtained by the Anderson Acceleration method
       real, dimension(N, M+2), intent(inout) :: History_field !> Past results obtained by the outer solver
       real, dimension(N, M+1), intent(inout) :: stored_residuals !> Past residuals obtained as the (- guessed value + G(guess value) )
-      integer, intent(inout) :: AA_iteration !> This is the iterator, only passed down to reduce it if the matrix is not full rank
       integer, optional :: max_its
       real, dimension(:,:), allocatable, optional, intent(inout) :: prev_small_matrix!> Contains the previous A'*A, speeds up the method. On exit is updated (M,M)
                                                                         !> Prepared to be passed unallocated from M = 1 and allocated internally
+      logical, intent(inout) :: restart_now
       !Local variables
       real, dimension(N,M) :: Matrix !> Matrix containing the residuals
       real, dimension(M,1) :: Small_b !>RHS containing A' * The last residual
@@ -982,17 +1037,14 @@ contains
       end do
       call allsum(Small_b(:,1))
 
-! call printmatrix(Small_matrix)
       !Now solve the least squares optimisation problem
       Q_rank = m
       if (M > 1) call Least_squares_solver(Small_matrix,Small_b, Q_rank)
-
       if (Q_rank < m) then
         !If the least squares matrix is not full rank, then perform normal update
-        !and remove the last solution
-        !Remove last information by overwritting it
+        !and restart the cycle
         AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
-        AA_iteration = AA_iteration - 1; if (AA_iteration == 0 ) AA_iteration = max_its2
+        restart_now = .true.
       else if (M == 1) then
         AA_alphas = 0; AA_alphas(size(AA_alphas)) = 1
       else
@@ -1004,7 +1056,6 @@ contains
         end do
         AA_alphas(1) = Small_b(1,1)
       end if
-
         !Multiply previous fields by the alphas to obtain the new guess
       NewField = 0.
       do i = 1, size(AA_alphas)
@@ -1026,20 +1077,20 @@ contains
     !> @author Pablo Salinas
     !> @brief In this subroutine the matrix and RHS are re-scaled based on the formula
     !> D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
-    !> IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere using given_diag
+    !> IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere using inv_sqrt_given_diag
     !> This should allow to deal with high ranges of viscosity ratio for example
     !> A and b are re-written
     !> Usage: if the system is going to be repeatedly solved, first call with flag [3] and the flags [1] and [2] as necessary
     !> If only one off, then call with flag [0]; If solve system and in the future need to re-scale RHS then use flag == 4
-    !> NOTE: If only the RHS is re-scaled it is suggested to use given_diag outside of this subroutine
+    !> NOTE: If only the RHS is re-scaled it is suggested to use inv_sqrt_given_diag outside of this subroutine
     !---------------------------------------------------------------------------
-    subroutine scale_PETSc_system(Mat_petsc, b, size_B, scale_flag, given_diag)
+    subroutine scale_PETSc_system(Mat_petsc, b, size_B, scale_flag, inv_sqrt_given_diag)
       implicit none
       integer, intent(in) :: size_B !> We need to pass down the size of B so we can consider here only vectors and not (:,:) fields
       type(petsc_csr_matrix), intent(inout)::  Mat_petsc !>  System matrix in PETSc format
       real, dimension(size_B), intent(inout) :: b !> RHS of the system as a real vector
       integer, intent(in) :: scale_flag !> 0 = A and b; 1 = only b; 2 = only A; 3 = return the diagonal of A only; 4  == does all
-      real, dimension(:), allocatable, optional :: given_diag !> We store here D^-0.5; Allocated internally, deallocated outside
+      real, dimension(:), allocatable, optional :: inv_sqrt_given_diag !> We store here D^-0.5; Allocated internally, deallocated outside
       !Local variables
       integer :: ierr
       Vec, target :: scale_diag
@@ -1053,17 +1104,20 @@ contains
       end if
 
       !Extract diagonal from A
-      if (present(given_diag).and. scale_flag <= 2) then
+      if (present(inv_sqrt_given_diag).and. scale_flag <= 2) then
         !If stored the diagonal, just retrieve it. A pain in the *** to use PETSc the Vec format, so this is a workaround...
         call VecGetArrayF90(scale_diag,vec_reader,ierr)
-        vec_reader = given_diag
+        vec_reader = inv_sqrt_given_diag
         call VecRestoreArrayF90(scale_diag,vec_reader,ierr)
       else
+        !Need the matrix ssembled
+        call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
+        call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
+
         call MatGetDiagonal(Mat_petsc%M, scale_diag, ierr)
         !Compute sqrt (we do this first to reduce the span induced by high viscosity ratios)
-        call VecSqrtAbs(scale_diag, ierr)!TODO MIGHT IT BE THAT THE SYSTEM IS CHANGED AS WE GET PETSC ZEROES??? this might be
-        !Calculate D^-0.5                  !useful MatSeqAIJGetArrayF90 can try to do the scaling in fortran? should be simple as it is diagonal times matrix
-                                            !TODO MAYBE SCALE THE WHOLE SYSTEM UP OR DOWN?
+        call VecSqrtAbs(scale_diag, ierr)
+        !COmpute the inverse
         call VecReciprocal(scale_diag, ierr)
       end if
       !Rescale the RHS by doing D^-1*b
@@ -1075,18 +1129,33 @@ contains
       if (scale_flag == 0 .or. scale_flag == 2 .or. scale_flag == 4) then
         !Proceed to re-scale the matrix by doing D^-0.5 * Mat_petsc * D^-0.5
         call MatDiagonalScale(Mat_petsc%M, scale_diag, scale_diag, ierr)
+        ! call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
+        ! call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
       end if
 
-      if (present(given_diag) .and. scale_flag >= 3) then
+      if (present(inv_sqrt_given_diag) .and. scale_flag >= 3) then
 
-        allocate(given_diag(size_B))
+        allocate(inv_sqrt_given_diag(size_B))
         call VecGetArrayReadF90(scale_diag,vec_reader,ierr)
-        given_diag =  vec_reader
+        inv_sqrt_given_diag =  vec_reader
         call VecRestoreArrayReadF90(scale_diag,vec_reader,ierr)
       end if
       !Deallocate unnecessary memory
       call VecDestroy(scale_diag, ierr)
 
     end subroutine scale_PETSc_system
+
+
+    subroutine duplicate_petsc_matrix(MAT_A,MAT_B)
+      type(petsc_csr_matrix), intent(in)::MAT_A
+      type(petsc_csr_matrix), intent(inout)::MAT_B
+      !Local variables
+      integer :: ierr
+
+      call allocate(MAT_B, MAT_A%M, MAT_A%row_numbering, MAT_A%column_numbering, "DGM_PETSC_scaled")
+      call MatDuplicate(MAT_A%M,MAT_COPY_VALUES,MAT_B%M, ierr)!Deep copy
+      call assemble(MAT_B)
+
+    end subroutine
 
 end module solvers_module
