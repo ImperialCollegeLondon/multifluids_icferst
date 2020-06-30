@@ -1457,6 +1457,7 @@ character(len=*), intent(in):: solver_option_path
      petsc_monitor_iteration_vtus=.false.
   end if
 
+
 end subroutine petsc_solve_destroy_petsc_csr
 
 subroutine ConvergenceCheck(reason, iterations, name, solver_option_path, &
@@ -1698,6 +1699,7 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
     PetscErrorCode ierr
     PetscObject vf
     KSPConvergedReason reason
+    MatFactorShiftType shifttype
     logical startfromzero, remove_null_space
 
     ewrite(1,*) "Inside setup_ksp_from_options"
@@ -1729,7 +1731,8 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
 
     if(trim(ksptype) == 'cg') then
         if (have_option(trim(solver_option_path)//'/preconditioner::hypre/shift_positive_definite')) then
-         call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !> shift the mat to positive definite - ao 12-02-20
+         shifttype=MAT_SHIFT_POSITIVE_DEFINITE
+         call PCFactorSetShiftType(pc,shifttype, ierr) !> shift the mat to positive definite - ao 12-02-20
          !print *, "MAT shifting to positive definite"
          ewrite(2, *) 'forcing the MAT to shift to a positive definite for CG and HYPRE combo'
         end if
@@ -2019,9 +2022,6 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       !>try to force the matrix to be positive definite -ao 13/02/20
       if (hypretype=='boomeramg') then
         if (have_option(trim(option_path)//'/boomeramg_relaxation')) then
-          !call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE, ierr) !> shift the mat to positive definite - ao 12-02-20
-          !def=PETSC_DECIDE
-          !call PCFactorSetShiftAmount(pc, def, ierr);
           call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_relax_type_all","symmetric-SOR/Jacobi", ierr)
           call PetscOptionsSetValue(PETSC_NULL_OPTIONS,"-pc_hypre_boomeramg_coarsen_type","Falgout", ierr)
            !print *, "BoomerAMG relaxation"
@@ -2564,6 +2564,7 @@ subroutine petsc_monitor_destroy()
 
 end subroutine petsc_monitor_destroy
 
+
 subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
 !! The monitor function that gets called each iteration of petsc_solve
 !! (if petsc_solve_callback_setup is called)
@@ -2645,6 +2646,30 @@ subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
   ierr=0
 
 end subroutine MyKSPMonitor
+
+subroutine Petsc_logging_save(ierr)
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief
+  !> This routine adds petsc logging for PETSc built with debugging but for specific
+  !> objects
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+
+
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+#else
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'petsc_log.xml',viewer,ierr)
+  call PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML,ierr)
+  call PetscLogView(viewer,ierr)
+#endif
+#endif
+end subroutine Petsc_logging_save
+
+
+
+
 
 function create_null_space_from_options_scalar(mat, null_space_option_path) &
     result (null_space)
@@ -2757,7 +2782,7 @@ function create_null_space_from_options_vector(mat, null_space_option_path, &
      end if
    else if(have_option(trim(null_space_option_path)//'/all_rotations')) then
      rot_mask = .false.
-     if (dim==3) then
+     if (dim == 3) then
        rot_mask = .true.
      else if (dim==2) then
        rot_mask(3) = .true.

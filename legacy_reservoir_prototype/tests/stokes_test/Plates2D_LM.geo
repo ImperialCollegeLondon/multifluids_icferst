@@ -1,19 +1,17 @@
-resolution_low  = 0.2;
-resolution_high = 0.05;
-resolution_med  = 0.05;
+resolution  = 0.01;
 
-xmax = 6*Pi;
-ymax = (2.0/3.0)*Pi;
-zmax = 1.0;
+xmax = 1;
+ymax = 0.1;
+zmax = 0.1;
 
 //Computational Domain 
 
-Point(1) = {  0.0,  0.0,    0.0, resolution_low};
-Point(2) = {  xmax, 0.0,    0.0, resolution_low};
-Point(3) = {  xmax, zmax/2, 0.0, resolution_low};
-Point(4) = {  xmax, zmax,   0.0, resolution_low};
-Point(5) = {  0.0,  zmax,   0.0, resolution_low};
-Point(6) = {  0.0,  zmax/2, 0.0, resolution_low};
+Point(1) = {  0.0,  0.0,    0.0, resolution};
+Point(2) = {  xmax, 0.0,    0.0, resolution};
+Point(3) = {  xmax, ymax/2, 0.0, resolution};
+Point(4) = {  xmax, ymax,   0.0, resolution};
+Point(5) = {  0.0,  ymax,   0.0, resolution};
+Point(6) = {  0.0,  ymax/2, 0.0, resolution};
 
 
 //Horizontal Lines // 
@@ -43,3 +41,5 @@ Physical Line(4) = {4};     // TOP
 Physical Line(5) = {1};     // BOTTOM
 
 Physical Surface(1) = {1, 2};
+Mesh.Algorithm = 1;
+Mesh.MshFileVersion = 2;
