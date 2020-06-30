@@ -78,8 +78,25 @@ contains
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
         logical :: boussinesq, compute_rhoCP
         logical, parameter :: harmonic_average=.false.
+!JXiang
+        real, dimension( : ), allocatable :: density_temp,ml,vol
+        integer :: n0,n1,n2,n3,cv_nodi
+        real :: x0, x1,x2,x3,y0,y1,y2,y3,z0, z1,z2,z3,cv_mass
+        logical :: force_solid_implicit
+        type( scalar_field ), pointer  :: density_solid, sigma
+        type( vector_field ), pointer  :: x_all
+        integer, dimension( : ), pointer :: x_ndgln
+        force_solid_implicit = have_option( '/force_solid_implicit')
+    !    force_solid_implicit = have_option( '/solid_implicit')
 
+        if(force_solid_implicit) then
+        x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+        density_solid=>extract_scalar_field( state(1), "Density_Solid" )
+        sigma=>extract_scalar_field( state(1), "Sigma_Solid" )
+        end if
 
+!        force_solid_implicit = have_option( '/force_solid_implicit')
+!JXiang
         !For simple Black-Oil modelling the density have to account for the disolved gas in it
         !and the three phases are modified simultaneously. Hence other models are overwritten
         if (have_option( "/physical_parameters/black-oil_PVT_table" ))then
@@ -95,6 +112,7 @@ contains
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+        x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )  !JXiang
 
         PackedDRhoDPressure => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
         PackedDRhoDPressure%val = 0.
@@ -270,6 +288,35 @@ contains
            Density => extract_scalar_field( state( iphase ), "Density" )
            Density % val = field1 % val( 1, iphase, : )
         end do
+!Jxiang
+           if(force_solid_implicit) then ! overwrite the density with the solids density...
+              allocate(density_temp(cv_nonods), ml(cv_nonods),vol(totele)) 
+              density_temp = 0.0; ml=0.0
+              do ele=1,Mdims%totele
+                 n0=x_ndgln((ele-1)*Mdims%cv_nloc +1);  n1=x_ndgln((ele-1)*Mdims%cv_nloc +2)
+                 n2=x_ndgln((ele-1)*Mdims%cv_nloc +3);  n3=x_ndgln((ele-1)*Mdims%cv_nloc +4)
+                 x0=x_all%val(1,n0); y0=x_all%val(2,n0); z0=x_all%val(3,n0)
+                 x1=x_all%val(1,n1); y1=x_all%val(2,n1); z1=x_all%val(3,n1)
+                 x2=x_all%val(1,n2); y2=x_all%val(2,n2); z2=x_all%val(3,n2)
+                 x3=x_all%val(1,n3); y3=x_all%val(2,n3); z3=x_all%val(3,n3)
+                 vol(ele) = tetvolume(x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3)
+              end do
+              do ele=1,Mdims%totele
+                 do cv_iloc=1,Mdims%cv_nloc
+                    cv_nodi=cv_ndgln((ele-1)*Mdims%cv_nloc + cv_iloc) 
+                    cv_mass = vol(ele)/ real(Mdims%cv_nloc)
+                    density_temp(cv_nodi) = density_temp(cv_nodi) + cv_mass*( Density % val(cv_nodi)*(1.-sigma%val(ele))   +&
+                    density_solid%val(ele)*sigma%val(ele) )
+                    ml(cv_nodi)= ml(cv_nodi) + cv_mass
+                 end do
+              end do
+              density_temp = density_temp/ml
+              Density % val(:)= Density_temp(:)
+           deallocate(density_temp)
+           deallocate(ml)
+           deallocate(vol)
+           endif
+!Jxiang      
 
     end subroutine Calculate_All_Rhos
 

@@ -99,7 +99,7 @@ contains
           tracer, velocity, density, multi_absorp, &
           DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B,&
           DEN_ALL, DENOLD_ALL, &
-          CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, &
+          CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA_temp, &  !JXiang
           SUF_SIG_DIAGTEN_BC, &
           DERIV, CV_P, &
           SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
@@ -262,7 +262,8 @@ contains
           REAL, DIMENSION( :, : ), intent( inout ) :: DENOLD_ALL!> Density of the field, different memory to the feld density, used to apply the Boussinesq approximation
           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-          REAL, intent( in ) :: DT, CV_THETA, CV_BETA
+          REAL, intent( in ) :: DT, CV_THETA, CV_BETA_TEMP    !  JXiang
+          REAL  ::CV_BETA    !JXiang
           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
           REAL, DIMENSION( :, : ), intent( in ) :: DERIV !> Derivative of the density against the pressure (nphase,Mdims%cv_nonods)
           REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
@@ -390,7 +391,8 @@ contains
           real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
           real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
           real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL
-          real, dimension(:, :, :), pointer :: U_ALL, NU_ALL, NUOLD_ALL
+          real, dimension(:, :, :), pointer :: U_ALL_TEMP, NU_ALL_TEMP, NUOLD_ALL_TEMP  !JXiang
+          real, dimension(:, :, :), allocatable :: U_ALL, NU_ALL, NUOLD_ALL  !JXiang
 
           real, dimension( final_phase ) :: DIAG_SCALE_PRES_phase
           real, dimension( final_phase ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
@@ -470,6 +472,17 @@ contains
           logical :: asssembling_enthalpy = .false.
           real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
           real, dimension(:,:), allocatable :: ENTH_RHS_DIFFUSION
+
+          !JXiang
+
+          LOGICAL:: solid_implicit
+          type( vector_field ), pointer :: UG_ALL
+          integer :: u_nodi, global_phase, compact_phase
+          type( scalar_field ), pointer  :: sigma, absorption
+
+          CV_BETA=CV_BETA_TEMP
+          solid_implicit = have_option( '/solid_implicit')
+          !JXiang
           !Logical to identify if we are assembling for enthalpy, which requires an special RHS
           asssembling_enthalpy = present(Latent_heat)
 
@@ -516,13 +529,49 @@ contains
           !#################SET WORKING VARIABLES#################
 
           call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
-             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
+             OldNonlinearVelocity = NUOLD_ALL_TEMP, NonlinearVelocity = NU_ALL_TEMP)  !JXiang
           if (.not. present_and_true(solving_compositional)) then
             if (is_porous_media)  call get_var_from_packed_state(packed_state, Immobile_fraction = Imble_frac)
           end if
-          !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
-          U_ALL => NU_ALL
+          !JXiang 
+            allocate(U_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
+            allocate(NU_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
+            allocate(NUOLD_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
+          
+            DO IDIM=1,Mdims%ndim
+                  DO IPHASE = 1, Mdims%nphase
+                     DO U_NODI=1,Mdims%u_nonods
+                  NU_ALL(IDIM,IPHASE,U_NODI)= NU_ALL_TEMP(IDIM,IPHASE,U_NODI)
+                  NUOLD_ALL(IDIM,IPHASE,U_NODI)= NUOLD_ALL_TEMP(IDIM,IPHASE,U_NODI)
+                  END DO
+                  END DO
+               END DO
 
+
+    if(solid_implicit) then
+
+           UG_ALL=>extract_vector_field(state( 1 ),"GridSolidVelocity")
+
+               IF(.NOT. GETCT) THEN
+! temporarily change to 1.0                       
+                       CV_BETA=0.0
+
+                    DO IDIM=1,Mdims%ndim
+                     DO IPHASE = 1, Mdims%nphase
+                      DO U_NODI=1,Mdims%u_nonods
+                      NU_ALL(IDIM,IPHASE,U_NODI)= NU_ALL_TEMP(IDIM,IPHASE,U_NODI)-UG_ALL%val(IDIM,U_NODI)
+                      NUOLD_ALL(IDIM,IPHASE,U_NODI)= NUOLD_ALL_TEMP(IDIM,IPHASE,U_NODI)-UG_ALL%val(IDIM,U_NODI)
+                      END DO
+                     END DO
+                  END DO
+               END IF
+
+!          U_ALL => NU_ALL 
+     endif
+          U_ALL = NU_ALL 
+          !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
+!          U_ALL => NU_ALL
+!JXiang
           old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
           old_density=>extract_tensor_field(packed_state,GetOldName(density))
           if (present(saturation)) then
@@ -531,7 +580,19 @@ contains
           end if
           T_ALL =>tracer%val(1,:,:)
           TOLD_ALL =>old_tracer%val(1,:,:)
-          if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
+!JXiang
+          if (tracer%name == "PackedPhaseVolumeFraction") THEN 
+                  call get_var_from_packed_state(packed_state,Velocity = U_ALL_TEMP)
+!                  U_ALL(:,:,:)=U_ALL_TEMP(:,:,:)
+                    DO IDIM=1,Mdims%ndim
+                     DO IPHASE = 1, Mdims%nphase
+                      DO U_NODI=1,Mdims%u_nonods
+                      U_ALL(IDIM,IPHASE,U_NODI)= U_ALL_TEMP(IDIM,IPHASE,U_NODI)
+                      END DO
+                     END DO
+                  END DO
+          end if
+!JXiang
          !################## END OF SET VARIABLES ##################
 
           IF( GETCT ) THEN
@@ -875,14 +936,30 @@ contains
 
           ! Calculate MEAN_PORE_CV
           MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
+
+!JXiang
+      if(solid_implicit) sigma=>extract_scalar_field( state(1), "Sigma_Solid" )
+
+
+        !JXiang comment out mean_pore for inertia 
+
           DO ELE = 1, Mdims%totele
               DO CV_ILOC = 1, Mdims%cv_nloc
                   CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                   SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
-                  MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
+                  IF((solid_implicit).AND. (.not. GETCT)) THEN
+!                  IF(.false.) THEN
+!                  MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
+!                      MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )*sigma%val(ELE)
+                      MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
+                      MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )*max(1.e-3, (1.0-sigma%val(ELE)) ) 
+                  ELSE
+                      MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
                       MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )
+                  END IF
               END DO
           END DO
+          !  JXiang end
           DO IPRES = 1, Mdims%npres
               MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
           END DO
@@ -2042,6 +2119,11 @@ contains
           if (allocated(suf_t_bc)) deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
+!JXiang
+          deallocate(NU_ALL)
+          deallocate(NUOLD_ALL)
+          deallocate(U_ALL)
+!JXiang
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
           if (asssembling_enthalpy) deallocate(ENTH_RHS_DIFFUSION, ENTH_RHS_DIFF_COEF_DIVDX)
 
@@ -5205,7 +5287,7 @@ end if
 
 
 
-
+!JXiang for calculate solid stress, to be finished
     SUBROUTINE CALC_STRESS_TEN(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
         UFENX_ILOC, UFENX_JLOC,  TEN_XX, TEN_VOL )
         ! determine stress form of viscocity...
@@ -5251,8 +5333,53 @@ end if
 
     END SUBROUTINE CALC_STRESS_TEN
 
+    SUBROUTINE CALC_STRESS_TEN_SOLIDS(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
+    UFENX0, TEN_XX, TEN_VOL )
+    ! determine stress form of viscocity...
+    IMPLICIT NONE
+    INTEGER, intent( in )  :: NDIM
+    REAL, DIMENSION( :, :  ), intent( inOUT ) :: STRESS_IJ
+!    REAL, DIMENSION( : ), intent( in ) :: UFENX_ILOC
+    REAL, DIMENSION( :,: ), intent( in ) :: UFENX0
+    REAL, DIMENSION( :,: ), intent( in ) :: TEN_XX
+    ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
+    REAL, intent( in ) :: TEN_VOL
+!    REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
+    REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
+    ! Local variables...
+    REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM),PRESSURE
+    INTEGER :: IDIM,JDIM
+    REAL::DPEMU,DPELA
 
+    DPEMU=1.0e+09
+    DPELA=2.0e+09
+    DO JDIM=1,NDIM
+        DO IDIM=1,NDIM
+    FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX0(IDIM,JDIM)*UFENX0(JDIM,IDIM)
+!    FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX_ILOC(IDIM,JDIM)*UFENX0(JDIM,IDIM)
+        END DO
+    END DO
 
+!    FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
+
+    DO JDIM=1,NDIM
+       DO IDIM=1,NDIM
+       STRESS_IJ(IDIM,IDIM ) = (DPEMU/TEN_VOL)*FEN_TEN_XX(IDIM,JDIM)
+       END DO
+      STRESS_IJ( JDIM,JDIM ) = STRESS_IJ(JDIM,JDIM)+(DPELA*LOG(FEN_TEN_VOL(IDIM)-DPEMU))/FEN_TEN_VOL(IDIM)
+    END DO
+
+    DO JDIM=1,NDIM    
+            PRESSURE = PRESSURE+STRESS_IJ( JDIM,JDIM )/NDIM
+    END DO
+
+    DO JDIM=1,NDIM    
+             STRESS_IJ( JDIM,JDIM ) = STRESS_IJ( JDIM,JDIM )-PRESSURE
+    END DO
+
+    RETURN
+
+END SUBROUTINE CALC_STRESS_TEN_SOLIDS
 
     SUBROUTINE CALC_STRESS_TEN_REDUCE(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
         FEN_TEN_XX, FEN_TEN_VOL,  UFENX_JLOC  )
