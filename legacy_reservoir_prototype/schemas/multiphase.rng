@@ -50,6 +50,10 @@ as an absorption term and also the RHS that should include the second time-deriv
 and also the coupling terms. The first phase is considered the solid phase.</a:documentation>
           <ref name="comment"/>
         </element>
+        <element name="solid_implicit">
+          <a:documentation>Implicit solid simulator</a:documentation>
+          <ref name="comment"/>
+        </element>
       </choice>
       <ref name="geometry"/>
       <ref name="solver_options"/>
