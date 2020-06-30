@@ -61,9 +61,9 @@ module solvers_module
 
     private
 
-    public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,scale_PETSc_system,&
+    public :: BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one,&
          Initialise_Saturation_sums_one, auto_backtracking, get_Anderson_acceleration_new_guess, &
-         non_porous_ensure_sum_to_one, duplicate_petsc_matrix
+         non_porous_ensure_sum_to_one, duplicate_petsc_matrix, scale_PETSc_matrix
 
 
 contains
@@ -1072,79 +1072,43 @@ contains
 
     end subroutine get_Anderson_acceleration_new_guess
 
-
     !---------------------------------------------------------------------------
     !> @author Pablo Salinas
-    !> @brief In this subroutine the matrix and RHS are re-scaled based on the formula
+    !> @brief In this subroutine the matrix is re-scaled based on the formula
     !> D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
-    !> IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere using inv_sqrt_given_diag
+    !> IMPORTANT: the step X = D^-0.5 * X' needs to be done elsewhere store the diagonal before calling this
     !> This should allow to deal with high ranges of viscosity ratio for example
-    !> A and b are re-written
-    !> Usage: if the system is going to be repeatedly solved, first call with flag [3] and the flags [1] and [2] as necessary
-    !> If only one off, then call with flag [0]; If solve system and in the future need to re-scale RHS then use flag == 4
-    !> NOTE: If only the RHS is re-scaled it is suggested to use inv_sqrt_given_diag outside of this subroutine
+    !> A is-written
     !---------------------------------------------------------------------------
-    subroutine scale_PETSc_system(Mat_petsc, b, size_B, scale_flag, inv_sqrt_given_diag)
+    subroutine scale_PETSc_matrix(Mat_petsc)
       implicit none
-      integer, intent(in) :: size_B !> We need to pass down the size of B so we can consider here only vectors and not (:,:) fields
       type(petsc_csr_matrix), intent(inout)::  Mat_petsc !>  System matrix in PETSc format
-      real, dimension(size_B), intent(inout) :: b !> RHS of the system as a real vector
-      integer, intent(in) :: scale_flag !> 0 = A and b; 1 = only b; 2 = only A; 3 = return the diagonal of A only; 4  == does all
-      real, dimension(:), allocatable, optional :: inv_sqrt_given_diag !> We store here D^-0.5; Allocated internally, deallocated outside
       !Local variables
-      integer :: ierr
+      integer :: ierr, m, n
       Vec, target :: scale_diag
-      real, DIMENSION(:), pointer :: vec_reader
 
       !Proceed to allocate memory for the diagonal of A
+      call MatGetLocalSize(Mat_petsc%M,m, n, ierr)
       if (isparallel()) then
-        call VecCreateMPI(MPI_COMM_FEMTOOLS, size_B, PETSC_DETERMINE, scale_diag, ierr)
+        call VecCreateMPI(MPI_COMM_FEMTOOLS, m, PETSC_DETERMINE, scale_diag, ierr)
       else
-        call VecCreateSeq(MPI_COMM_SELF, size_B, scale_diag, ierr)
+        call VecCreateSeq(MPI_COMM_SELF, m, scale_diag, ierr)
       end if
-
+      !Need the matrix ssembled
+      call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
+      call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
       !Extract diagonal from A
-      if (present(inv_sqrt_given_diag).and. scale_flag <= 2) then
-        !If stored the diagonal, just retrieve it. A pain in the *** to use PETSc the Vec format, so this is a workaround...
-        call VecGetArrayF90(scale_diag,vec_reader,ierr)
-        vec_reader = inv_sqrt_given_diag
-        call VecRestoreArrayF90(scale_diag,vec_reader,ierr)
-      else
-        !Need the matrix ssembled
-        call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
-        call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
-
-        call MatGetDiagonal(Mat_petsc%M, scale_diag, ierr)
-        !Compute sqrt (we do this first to reduce the span induced by high viscosity ratios)
-        call VecSqrtAbs(scale_diag, ierr)
-        !COmpute the inverse
-        call VecReciprocal(scale_diag, ierr)
-      end if
-      !Rescale the RHS by doing D^-1*b
-      if (scale_flag <= 1 .or. scale_flag == 4 ) then
-        call VecGetArrayReadF90(scale_diag,vec_reader,ierr)
-        b = b * vec_reader
-        call VecRestoreArrayReadF90(scale_diag,vec_reader,ierr)
-      end if
-      if (scale_flag == 0 .or. scale_flag == 2 .or. scale_flag == 4) then
-        !Proceed to re-scale the matrix by doing D^-0.5 * Mat_petsc * D^-0.5
-        call MatDiagonalScale(Mat_petsc%M, scale_diag, scale_diag, ierr)
-        ! call MatAssemblyBegin(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
-        ! call MatAssemblyEnd(Mat_petsc%M, MAT_FINAL_ASSEMBLY, ierr)
-      end if
-
-      if (present(inv_sqrt_given_diag) .and. scale_flag >= 3) then
-
-        allocate(inv_sqrt_given_diag(size_B))
-        call VecGetArrayReadF90(scale_diag,vec_reader,ierr)
-        inv_sqrt_given_diag =  vec_reader
-        call VecRestoreArrayReadF90(scale_diag,vec_reader,ierr)
-      end if
+      call MatGetDiagonal(Mat_petsc%M, scale_diag, ierr)
+      !Compute sqrt (we do this first to reduce the span induced by high viscosity ratios)
+      call VecSqrtAbs(scale_diag, ierr)
+      !Compute the inverse
+      call VecReciprocal(scale_diag, ierr)
+      !Proceed to re-scale the matrix by doing D^-0.5 * Mat_petsc * D^-0.5
+      call MatDiagonalScale(Mat_petsc%M, scale_diag, scale_diag, ierr)
       !Deallocate unnecessary memory
       call VecDestroy(scale_diag, ierr)
 
-    end subroutine scale_PETSc_system
-
+    end subroutine scale_PETSc_matrix
 
     subroutine duplicate_petsc_matrix(MAT_A,MAT_B)
       type(petsc_csr_matrix), intent(in)::MAT_A
