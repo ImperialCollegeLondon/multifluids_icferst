@@ -1,9 +1,9 @@
 !    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
 !    but WITHOUT ANY WARRANTY; without seven the implied warranty of
