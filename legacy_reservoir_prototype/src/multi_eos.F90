@@ -78,7 +78,7 @@ contains
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
         logical :: boussinesq, compute_rhoCP
         logical, parameter :: harmonic_average=.false.
-!JXiang calculate density field considering solid density
+!JXiang
         real, dimension( : ), allocatable :: density_temp,ml,vol
         integer :: n0,n1,n2,n3,cv_nodi
         real :: x0, x1,x2,x3,y0,y1,y2,y3,z0, z1,z2,z3,cv_mass
@@ -87,12 +87,15 @@ contains
         type( vector_field ), pointer  :: x_all
         integer, dimension( : ), pointer :: x_ndgln
         force_solid_implicit = have_option( '/force_solid_implicit')
+    !    force_solid_implicit = have_option( '/solid_implicit')
+
         if(force_solid_implicit) then
         x_all => extract_vector_field( packed_state, "PressureCoordinate" )
         density_solid=>extract_scalar_field( state(1), "Density_Solid" )
         sigma=>extract_scalar_field( state(1), "Sigma_Solid" )
         end if
 
+!        force_solid_implicit = have_option( '/force_solid_implicit')
 !JXiang
         !For simple Black-Oil modelling the density have to account for the disolved gas in it
         !and the three phases are modified simultaneously. Hence other models are overwritten

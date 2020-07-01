@@ -547,8 +547,7 @@ contains
                   END DO
                END DO
 
-    !JXiang fluid-solid coupling to recalculate NU=NU-UG
-    ! change U_ALL from pointer to array
+
     if(solid_implicit) then
 
            UG_ALL=>extract_vector_field(state( 1 ),"GridSolidVelocity")
@@ -566,6 +565,8 @@ contains
                      END DO
                   END DO
                END IF
+
+!          U_ALL => NU_ALL 
      endif
           U_ALL = NU_ALL 
           !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
@@ -5315,6 +5316,7 @@ end if
 
         DO JDIM=1,NDIM
             DO IDIM=1,NDIM
+                !               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM)
                 STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM)
             END DO
         END DO
