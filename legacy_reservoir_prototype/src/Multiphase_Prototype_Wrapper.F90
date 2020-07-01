@@ -849,7 +849,7 @@ contains
         option_path = "/io/output_mesh[0]/name"
         call add_option(trim(option_path), stat=stat)
         call set_option(trim(option_path),"PressureMesh")
-          !JXiang  7/11/2019  
+          !JXiang  7/11/2019  fluid-solid coupling option
             option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOriginalCoordinate/prognostic"
             if (.not.have_option(option_path)) then
                 call add_option(trim(option_path),  stat=stat)
