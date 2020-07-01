@@ -1,26 +1,16 @@
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
+!    modify it under the terms of the GNU General Public
 !    License as published by the Free Software Foundation,
 !    version 2.1 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -1746,10 +1736,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         real, dimension(Mdims%totele) :: MASS_ELE
         integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
         logical :: solve_mom_iteratively = .false.
-        type( vector_field ) :: diagonal_A
+        type( vector_field ) :: diagonal_A, diagonal_CMC!> Variables to perform rescaling D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
         !Variables to re-scale PETSc matrices
         logical :: rescale_mom_matrices = .false.
-        real, dimension(:), allocatable :: sqrt_inv_diag_CMC_mat, sqrt_inv_diag_DGM_mat
 
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
@@ -2079,7 +2068,7 @@ end if
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
         else
             if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
-              if (rescale_mom_matrices) call scale_PETSc_system(Mmat%DGM_PETSC, Mmat%U_RHS, Mdims%ndim * Mdims%nphase * Mdims%u_nonods, 2)
+              if (rescale_mom_matrices) call scale_PETSc_matrix(Mmat%DGM_PETSC)
               !For a velocity field the diagonal of A needs to be extracted using a vector field
               call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             end if
@@ -2115,11 +2104,12 @@ end if
         end if
         if (rescale_mom_matrices) then
           !Retrieve diagonal and re-scale matrix
-          call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 3, sqrt_inv_diag_CMC_mat)
-          call scale_PETSc_system(cmc_petsc, rhs_p%val, size(rhs_p%val,1) *size(rhs_p%val,2), 2, sqrt_inv_diag_CMC_mat)
+          call allocate(diagonal_CMC, Mdims%npres, pressure%mesh, "diagonal_CMC")
+          call extract_diagonal(cmc_petsc, diagonal_CMC)
+          call scale_PETSc_matrix(cmc_petsc)
         end if
 
-        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, sqrt_inv_diag_CMC_mat)
+        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
         if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
         if (isParallel()) call halo_update(P_all)
@@ -2157,8 +2147,10 @@ end if
         !Using associate doesn't seem to be stable enough
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
-            rescale_mom_matrices ) call deallocate(diagonal_A)
-        if (allocated(sqrt_inv_diag_CMC_mat)) deallocate(sqrt_inv_diag_CMC_mat)
+            rescale_mom_matrices ) then
+            call deallocate(diagonal_A)
+            call deallocate(diagonal_CMC)
+          end if
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
 
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
@@ -2291,7 +2283,7 @@ end if
             call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
             rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
             call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
-            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, sqrt_inv_diag_CMC_mat, update_pres = .not. Special_precond)!don
+            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
             if (isParallel()) call halo_update(deltap)
             if (k == 1) then
               Omega = 1.0
@@ -2312,7 +2304,7 @@ end if
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !Solve again the system to finish the preconditioner
-              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, sqrt_inv_diag_CMC_mat)
+              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
             end if
             if (isParallel()) call halo_update(P_all)
             !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
@@ -2428,10 +2420,10 @@ end if
           packed_vel%val = 0.
           rhs%val = rhs%val + U_RHS
           !Rescale RHS (it is given that the matrix has been already re-scaled)
-          if (rescale_mom_matrices) rhs%val = rhs%val / diagonal_A%val**0.5
+          if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           !If the system is re-scaled then now it is time to recover the correct solution
-          if (rescale_mom_matrices) packed_vel%val = packed_vel%val / diagonal_A%val**0.5
+          if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
 #ifdef USING_GFORTRAN
       !Nothing to do since we have pointers
@@ -2447,7 +2439,7 @@ end if
         !> @author Pablo Salinas
         !> @brief Compute deltaP by solving the pressure equation using the CMC matrix
         !---------------------------------------------------------------------------
-        subroutine solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, sqrt_inv_diag_CMC_mat, update_pres)
+        subroutine solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres)
 
           implicit none
           type(multi_dimensions), intent(in) :: Mdims
@@ -2455,19 +2447,19 @@ end if
           type( vector_field ), intent(inout) :: deltap
           real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
           type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
-          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: sqrt_inv_diag_CMC_mat
+          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: diagonal_CMC
           logical, optional, intent(in) :: update_pres
           !Local variables
           integer :: its_taken
 
-          !Rescale RHS (it is given that the matrix has been already re-scaled)
-          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val * sqrt_inv_diag_CMC_mat
+          !Rescale RHS (it is given the the matrix has been already re-scaled)
+          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
           call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
           pres_its_taken = its_taken
 
           if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
           !If the system is re-scaled then now it is time to recover the correct solution
-          if (rescale_mom_matrices) deltap%val = deltap%val * sqrt_inv_diag_CMC_mat
+          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC) !Recover original X; X = D^-0.5 * X'
           !If false update pressure then return before doing so
           if (present_and_false(update_pres)) then
             return
