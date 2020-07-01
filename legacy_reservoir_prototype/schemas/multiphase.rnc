@@ -41,6 +41,8 @@ start =
                 ## as an absorption term and also the RHS that should include the second time-derivative for the solid phase
                 ## and also the coupling terms. The first phase is considered the solid phase.
                 element poroelasticity{comment}
+                ## Implicit solid simulator
+                element solid_implicit{comment}|
              ),
          geometry,
 	     solver_options,
