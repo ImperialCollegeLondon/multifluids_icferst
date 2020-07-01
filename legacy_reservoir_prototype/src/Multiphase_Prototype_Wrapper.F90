@@ -1,26 +1,16 @@
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -849,7 +839,7 @@ contains
         option_path = "/io/output_mesh[0]/name"
         call add_option(trim(option_path), stat=stat)
         call set_option(trim(option_path),"PressureMesh")
-          !JXiang  7/11/2019  
+          !JXiang  7/11/2019
             option_path = "/material_phase["// int2str( 0 )//"]/vector_field::SolidOriginalCoordinate/prognostic"
             if (.not.have_option(option_path)) then
                 call add_option(trim(option_path),  stat=stat)
@@ -880,7 +870,7 @@ contains
                 call add_option(trim(option_path)//"/detectors",  stat=stat)
                 call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                 call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
-            end if            
+            end if
             option_path = "/material_phase["// int2str( 0 )//"]/vector_field::GridSolidVelocity/prognostic"
             if (.not.have_option(option_path)) then
                 call add_option(trim(option_path),  stat=stat)
@@ -894,7 +884,7 @@ contains
                 call add_option(trim(option_path)//"/detectors",  stat=stat)
                 call add_option(trim(option_path)//"/detectors/exclude_from_detectors",  stat=stat)
                 call add_option(trim(option_path)//"/do_not_recalculate",  stat=stat)
-            end if 
+            end if
 
             ! JXiang 7/11/2019
 
