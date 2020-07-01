@@ -71,9 +71,6 @@ module multiphase_1D_engine
 
 contains
 
-
-
-
      SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
 ! *************************************************************************************************
 ! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
