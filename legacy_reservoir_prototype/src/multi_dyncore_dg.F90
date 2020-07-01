@@ -4773,7 +4773,9 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
         call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
         !JXiang
         ALLOCATE( STRESS_IJ_solid_ELE( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc,Mdims%u_nloc )); STRESS_IJ_solid_ELE = 0.
-        !JXiang
+        ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
+        STRESS_IJ_SOLID_ELE_EXT=0.0
+        !JXiang end
         IF(solid_implicit) THEN
         ALLOCATE( SLOC_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
         ALLOCATE( SLOC2_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
@@ -4804,10 +4806,6 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
 
         IF(GOT_DIFFUS.AND.LINEAR_HIGHORDER_DIFFUSION) THEN
             ALLOCATE( STRESS_IJ_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
-            !JXiang
-            ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) ) 
-            STRESS_IJ_SOLID_ELE_EXT=0.0
-            !JXiang end
             ALLOCATE( S_INV_NNX_MAT12(Mdims%ndim, Mdims%u_snloc, 2*Mdims%u_nloc) )
             ALLOCATE( NNX_MAT_ELE(Mdims%ndim, Mdims%u_nloc, Mdims%u_nloc, Mdims%totele), NN_MAT_ELE(Mdims%u_nloc, Mdims%u_nloc, Mdims%totele) )
         ENDIF
