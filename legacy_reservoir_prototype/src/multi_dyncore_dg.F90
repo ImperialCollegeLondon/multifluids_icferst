@@ -2149,8 +2149,9 @@ end if
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
             rescale_mom_matrices ) then
             call deallocate(diagonal_A)
-            call deallocate(diagonal_CMC)
           end if
+
+        if (rescale_mom_matrices)  call deallocate(diagonal_CMC)
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
 
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
