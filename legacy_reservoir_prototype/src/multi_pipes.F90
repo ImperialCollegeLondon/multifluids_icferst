@@ -802,6 +802,7 @@ contains
                   IF ( GETCV_DISC ) THEN ! this is on the boundary...
                       ! Put results into the RHS vector
                       LOC_CV_RHS_I = 0.0
+                      LOC_MAT_II = 0.
                       DO IPHASE= 1, final_phase
                         compact_phase = iphase + (Mdims%npres - 1)*final_phase
                         LOC_CV_RHS_I( compact_phase ) =  LOC_CV_RHS_I( compact_phase ) &
@@ -817,12 +818,26 @@ contains
                       end do
                       ! Put into matrix...
                       do iphase = wells_first_phase, final_phase*2
-                          call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                              + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
-                          if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                              -suf_area * NDOTQ(iphase) * LIMD(iphase))
+                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase)
+                        if (.not.conservative_advection) LOC_MAT_II(iphase) = LOC_MAT_II(iphase) -suf_area * NDOTQ(iphase) * LIMD(iphase)
                       end do
-                      call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
+                      ! do iphase = wells_first_phase, final_phase*2
+                      !   LOC_MAT_II(iphase) =
+                      !     call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
+                      !         + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
+                      !     if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
+                      !         -suf_area * NDOTQ(iphase) * LIMD(iphase))
+                      ! end do
+                      ! call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
+                      do iphase = wells_first_phase, final_phase*2
+                        assembly_phase = iphase
+                        !For the RHS collapsing to assemble into phase 2 can be done just here
+                        if (assemble_collapsed_to_one_phase) assembly_phase = 2
+                        call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_CV_RHS_I(IPHASE))
+                        !Introduce the information into the petsc_ACV matrix
+                        call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase) )
+                      end do
+
                   ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
 
                   !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
@@ -841,11 +856,13 @@ contains
       END DO
       IF ( GETCV_DISC ) THEN
           do iphase = wells_first_phase, final_phase*2
+            assembly_phase = iphase
+            if (assemble_collapsed_to_one_phase) assembly_phase = 2
               do cv_nodi = 1, Mdims%cv_nonods
                   if ( pipe_diameter%val(cv_nodi) <= 1e-8 ) then
-                      cv_nodj = cv_nodi ; jphase = iphase
-                      i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, iphase )
-                      j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, jphase )
+                      cv_nodj = cv_nodi
+                      i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
+                      j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
                       call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, 1.0, INSERT_VALUES, ierr )
                   end if
               end do
@@ -1331,12 +1348,12 @@ contains
                   ! global_phase = jphase + (ipres - 1)*Mdims%n_in_pres
                   compact_phase = jphase + (ipres - 1)*final_phase
                   assembly_phase = compact_phase
-                  if (assemble_collapsed_to_one_phase) assembly_phase = ipres
+                  if (assemble_collapsed_to_one_phase) assembly_phase = 1 + (jphase-1)/Mdims%n_in_pres!ipres
                     do iphase=1 , final_phase*2
                       !Implicit method in all the cases
                       assembly_phase_2 = iphase
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
-                      call addto(Mmat%petsc_ACV,iphase,assembly_phase, &
+                      call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                           cv_nodi, cv_nodi, &
                           MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
                           ! if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
@@ -1374,6 +1391,7 @@ contains
                     end do
                 end do
             end if
+
             !Assemble into the matrix/RHS
             DO IPHASE= 1, final_phase*2
                 assembly_phase = iphase

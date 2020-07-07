@@ -370,9 +370,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
                  do iphase = 1 , n_in_pres
-                   auxI = IPHASE
-                   if (assemble_collapsed_to_one_phase) auxI = 1
-                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(auxI+(ipres-1)*n_in_pres,:)
+                   auxI = IPHASE + (ipres-1)*n_in_pres
+                   if (assemble_collapsed_to_one_phase) auxI = ipres
+                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(auxI,:)
                 end do
                end do
 
