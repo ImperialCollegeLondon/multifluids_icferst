@@ -1697,7 +1697,7 @@ contains
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
       type(tensor_field), pointer :: diffusivity, den
-      type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
+      type (vector_field_pointer), dimension(Mdims%n_in_pres) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc, ele_nod_disp
       real :: vel_av
@@ -1728,7 +1728,7 @@ contains
       end if
 
 
-      do iphase = 1, Mdims%nphase
+      do iphase = 1, Mdims%n_in_pres
         if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
         diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )

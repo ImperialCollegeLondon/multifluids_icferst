@@ -864,14 +864,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
            real, parameter :: min_concentration = 0.
            integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
-           integer :: nconc2
+           integer, save :: nconc_in_pres
            type(vector_field) :: solution
            !Retrieve the number of phases that have soluteMass fraction, and then if they are concecutive and start from the first one
            if (nconc < 0) then
              nconc = option_count("/material_phase/scalar_field::SoluteMassFraction")
-             nconc2 = nconc
-             if (Mdims%npres > 1) nconc2 = nconc2 / 2
-             do iphase = 1, nconc2
+             nconc_in_pres = nconc
+             if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
+             do iphase = 1, nconc_in_pres
                if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::SoluteMassFraction')) then
                  FLAbort('SoluteMassFraction must either be defined in all the phases or to start from the first one and consecutively from that one.')
                end if
@@ -970,7 +970,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   nconc, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -998,8 +998,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    solution%val = min(1., max(solution%val,min_concentration))
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
-                     do iphase = 1 , nconc
-                      tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc,:)
+                     do iphase = 1 , nconc_in_pres
+                      tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
                     end do
                    end do
 
