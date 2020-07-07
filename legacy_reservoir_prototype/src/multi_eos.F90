@@ -1697,9 +1697,9 @@ contains
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
       type(tensor_field), pointer :: diffusivity, den
-      type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
+      type (vector_field_pointer), dimension(Mdims%n_in_pres) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
-      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc
+      integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc, ele_nod_disp
       real :: vel_av
       real, dimension(3, 3) :: DispCoeffMat
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
@@ -1728,13 +1728,14 @@ contains
       end if
 
 
-      do iphase = 1, Mdims%nphase
+      do iphase = 1, Mdims%n_in_pres
         if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
         diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
         do ele = 1, Mdims%totele
           ele_nod = min(size(sfield%val), ele)
+          ele_nod_disp = min(size(ldfield%val), ele)
           do u_iloc = 1, mdims%u_nloc
             u_nod = ndgln%u(( ELE - 1) * Mdims%u_nloc + u_iloc )
             do cv_iloc = 1, Mdims%cv_nloc
@@ -1762,9 +1763,9 @@ contains
               do idim1 = 1, Mdims%ndim
                 do idim2 = 1, Mdims%ndim
                   if (idim1 == idim2) then
-                    DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod)
+                    DispCoeffMat(idim1, idim2) = vel_av * ldfield%val(ele_nod_disp)
                   else
-                    DispCoeffMat(idim1, idim2) = vel_av * tdisp(ele_nod)
+                    DispCoeffMat(idim1, idim2) = vel_av * tdisp(ele_nod_disp)
                   endif
                 end do
               end do
@@ -1778,7 +1779,7 @@ contains
                   if (idim1 .NE. idim2) then
                     SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                     sfield%val(ele_nod)*(1.0/(vel_av**2)) *&
-                    ((vel_av * ldfield%val(ele_nod)) - (vel_av * tdisp(ele_nod))) *&
+                    ((vel_av * ldfield%val(ele_nod_disp)) - (vel_av * tdisp(ele_nod_disp))) *&
                     (ABS(vel_comp(idim1)) * ABS(vel_comp(idim2)))
                   else
                     SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&

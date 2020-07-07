@@ -134,6 +134,15 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call get_option("/timestepping/current_time", current_time)
     call get_option("/timestepping/finish_time", finish_time)
 
+    !Check if initial dt is bigger than finish_time
+    if (current_time + dt > finish_time) then
+      if (GetProcNo() == 1) then
+        ewrite(0, *) "WARNING: The time-step is bigger than the finish time, adjusted to the finish time."
+      end if
+      dt = finish_time - current_time
+      call set_option("/timestepping/timestep", dt)
+    end if
+
     call get_option('/simulation_name',simulation_name)
     call initialise_diagnostics(trim(simulation_name),state, ICFERST = .true.)
 

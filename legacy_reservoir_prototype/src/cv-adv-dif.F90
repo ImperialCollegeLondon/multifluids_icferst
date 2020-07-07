@@ -599,7 +599,7 @@ contains
           ewrite(3,*) 'In CV_ASSEMB'
           GOT_DIFFUS = .false.
           if (present(TDIFFUSION)) then
-              GOT_DIFFUS = ( R2NORM( TDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * final_phase ) /= 0 )!<=I hate this thing...
+              GOT_DIFFUS = ( R2NORM( TDIFFUSION, size(TDIFFUSION,1) * size(TDIFFUSION,2) * size(TDIFFUSION,3) * size(TDIFFUSION,4)  ) /= 0 )!<=I hate this thing...
               call allor(GOT_DIFFUS)                                                  !it should be if present then true, but it breaks the parallel CWC P1DGP2
           end if
           call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
