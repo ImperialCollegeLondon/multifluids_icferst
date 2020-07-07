@@ -1005,7 +1005,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-
+                   !Update halo communications
+                   call halo_update(tracer)
                    !Checking solver not fully implemented
                    solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
                    call allor(solver_not_converged)
