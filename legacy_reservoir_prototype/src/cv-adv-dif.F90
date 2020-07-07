@@ -734,6 +734,7 @@ contains
           !###############Conditional allocations######################
           LIMT_HAT=0.0
           IF ( VAD_activated) THEN
+            
               ALLOCATE( CAP_DIFFUSION( final_phase, Mdims%mat_nonods ) )
               !Introduce the information in CAP_DIFFUSION
               CAP_DIFFUSION = 0.!Initialize to zero just in case

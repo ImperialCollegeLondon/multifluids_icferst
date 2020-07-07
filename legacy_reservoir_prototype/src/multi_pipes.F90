@@ -699,8 +699,8 @@ contains
                           end do
                           do iphase = wells_first_phase, final_phase*2
                             assembly_phase = iphase
-                            !For the RHS collapsing to assemble into phase 1 can be done just here
-                            if (assemble_collapsed_to_one_phase) assembly_phase = wells_first_phase
+                            !For the RHS collapsing to assemble into phase 2 can be done just here
+                            if (assemble_collapsed_to_one_phase) assembly_phase = 2
                             call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
                             !Introduce the information into the petsc_ACV matrix
                             call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
@@ -1004,7 +1004,6 @@ contains
 
       !Define phase where we start the assembly, this is the first phase of the well domains.
       wells_first_phase = 1 + final_phase
-
 
       have_absorption = associated( absorbt_all )
       one_m_cv_beta = 1.0 - cv_beta
@@ -1379,7 +1378,7 @@ contains
             DO IPHASE= 1, final_phase*2
                 assembly_phase = iphase
                 !For the RHS collapsing to assemble into phase 1 can be done just here
-                if (assemble_collapsed_to_one_phase) assembly_phase = 1
+                if (assemble_collapsed_to_one_phase) assembly_phase = 2
                 call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
                 !Introduce the information into the petsc_ACV matrix
                 call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
