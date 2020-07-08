@@ -821,14 +821,6 @@ contains
                         LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase)
                         if (.not.conservative_advection) LOC_MAT_II(iphase) = LOC_MAT_II(iphase) -suf_area * NDOTQ(iphase) * LIMD(iphase)
                       end do
-                      ! do iphase = wells_first_phase, final_phase*2
-                      !   LOC_MAT_II(iphase) =
-                      !     call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                      !         + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
-                      !     if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                      !         -suf_area * NDOTQ(iphase) * LIMD(iphase))
-                      ! end do
-                      ! call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
                       do iphase = wells_first_phase, final_phase*2
                         assembly_phase = iphase
                         !For the RHS collapsing to assemble into phase 2 can be done just here
@@ -1348,7 +1340,7 @@ contains
                   ! global_phase = jphase + (ipres - 1)*Mdims%n_in_pres
                   compact_phase = jphase + (ipres - 1)*final_phase
                   assembly_phase = compact_phase
-                  if (assemble_collapsed_to_one_phase) assembly_phase = 1 + (jphase-1)/Mdims%n_in_pres!ipres
+                  if (assemble_collapsed_to_one_phase) assembly_phase = ipres!1 + (jphase-1)/Mdims%n_in_pres
                     do iphase=1 , final_phase*2
                       !Implicit method in all the cases
                       assembly_phase_2 = iphase
