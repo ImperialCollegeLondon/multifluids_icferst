@@ -1,0 +1,76 @@
+BeginZE /data4/cj215/fluidity-solidity/SolidityDev-merge/tests/falling_sphere_test_case_m/solid.gid/solid.post.vv
+   x -0.157449 0.146819
+   y 0.100911 -0.110044
+   z -0.519615 0.519615
+   e 0.173205
+   v -0.157264 0.143133 0.891057
+   r -0.400997
+   m -0.628939 0.669603 -0.395054 0 -0.759642 -0.637429 0.128955 0 -0.165471 0.381204 0.909562 0 0 0 0 1
+   c 0 0 0
+   pd 0
+   pno 0
+   pfo 0
+   pf 4
+   pv 0
+   NowUse 2
+   DrawingType 3
+   LightVector 90 90 150 0
+   OGLShadow(UseShadows) 0
+   OGLShadow(RenderMode) RenderNice
+   OGLShadow(ShadowBias) -0.002
+   OGLShadow(AmbientShadows) 1
+   OGLShadow(UseFBO) 1
+   OGLShadow(FBOSize) 0
+   OGLShadow(DimmedLightFactor) 0.02
+   OGLStereo(UseStereo) 0
+   OGLStereo(RelativeEyeDistance) 1
+   OGLStereo(FlipEyes) 0
+   OGLStereo(StereoMode) AnaglyphColors
+   OGLStereo(EyeDistance) 0.075
+   OGLStereo(LeftEyeDistance) 1 0 0 1
+   OGLStereo(RightEyeDistance) 0 1 1 1
+EndZE /data4/cj215/fluidity-solidity/SolidityDev-merge/tests/falling_sphere_test_case_m/solid.gid/solid.post.vv
+
+
+BeginPostState
+BeginSingleMesh
+  Num meshes: 1
+  Num sets: 1
+  Num cuts: 0
+  Mesh: 0
+  State: On
+    Name: "Layer0"
+    IdSet: 1
+    Color Type: 1
+    Color Ambient: 0 0.2 0 0.498039
+    Color Diffuse: 0 1 0 0.498039
+    Color Specular: 0.8 0.8 0.8 0.498039
+    Color Shininess: 0.3
+    Property Massive: 1
+    Property Transparent: 0
+    Property Style: 13
+    Property Edge Width: 1
+    Property Vector Filter Factor: 0
+    Property Stream Arrow: 0
+  EndMesh: 0
+  Set: 0
+  State: On
+    Name: "Layer0"
+    IdSet: 1
+    Color Type: 1
+    Color Ambient: 0 0.2 0 0.498039
+    Color Diffuse: 0 1 0 0.498039
+    Color Specular: 0.8 0.8 0.8 0.498039
+    Color Shininess: 0.3
+    Property Massive: 0
+    Property Transparent: 0
+    Property Style: 13
+    Property Edge Width: 1
+    Property Vector Filter Factor: 0
+    Property Stream Arrow: 0
+  EndSet: 0
+EndSingleMesh
+  Post_Prefs_Vector_Size: 0 32 32 32
+  ResultView: {Id 4} {No results} {} {} {} {} 4 0
+EndPostState
+

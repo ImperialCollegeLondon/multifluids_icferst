@@ -1,0 +1,805 @@
+JointToFEM
+i2eljp[0][0]=-1
+i2eljp[24][0]=0	i2eljp[24][1]=0
+i2eljp[0][0]=-1
+i2eljp[25][0]=0	i2eljp[25][1]=0
+i2eljp[0][0]=-1
+i2eljp[26][0]=0	i2eljp[26][1]=0
+i2eljp[0][0]=-1
+i2eljp[27][0]=0	i2eljp[27][1]=0
+i2eljp[28][0]=-1	i2eljp[28][1]=-1
+i2eljp[29][0]=-1	i2eljp[29][1]=-1
+i2eljp[30][0]=-1	i2eljp[30][1]=-1
+i2eljp[31][0]=2	i2eljp[31][1]=-1
+i2eljp[2][1]=-1
+i2eljp[32][0]=2	i2eljp[32][1]=2
+i2eljp[2][1]=-1
+i2eljp[33][0]=2	i2eljp[33][1]=2
+i2eljp[2][1]=-1
+i2eljp[34][0]=2	i2eljp[34][1]=2
+i2eljp[35][0]=-1	i2eljp[35][1]=-1
+i2eljp[36][0]=-1	i2eljp[36][1]=-1
+i2eljp[37][0]=-1	i2eljp[37][1]=-1
+i2eljp[38][0]=-1	i2eljp[38][1]=-1
+i2eljp[39][0]=-1	i2eljp[39][1]=-1
+i2eljp[40][0]=-1	i2eljp[40][1]=-1
+i2eljp[41][0]=-1	i2eljp[41][1]=-1
+i2eljp[42][0]=-1	i2eljp[42][1]=-1
+i2eljp[43][0]=-1	i2eljp[43][1]=-1
+i2eljp[44][0]=-1	i2eljp[44][1]=-1
+i2eljp[45][0]=-1	i2eljp[45][1]=-1
+i2eljp[46][0]=-1	i2eljp[46][1]=-1
+i2eljp[47][0]=-1	i2eljp[47][1]=-1
+i2eljp[48][0]=-1	i2eljp[48][1]=-1
+i2eljp[49][0]=-1	i2eljp[49][1]=-1
+i2eljp[50][0]=-1	i2eljp[50][1]=-1
+i2eljp[51][0]=-1	i2eljp[51][1]=-1
+i2eljp[52][0]=-1	i2eljp[52][1]=-1
+i2eljp[53][0]=-1	i2eljp[53][1]=-1
+i2eljp[54][0]=8	i2eljp[54][1]=-1
+i2eljp[8][1]=-1
+i2eljp[55][0]=8	i2eljp[55][1]=8
+i2eljp[8][1]=-1
+i2eljp[56][0]=8	i2eljp[56][1]=8
+i2eljp[8][1]=-1
+i2eljp[57][0]=8	i2eljp[57][1]=8
+i2eljp[58][0]=-1	i2eljp[58][1]=-1
+i2eljp[59][0]=-1	i2eljp[59][1]=-1
+i2eljp[60][0]=-1	i2eljp[60][1]=-1
+i2eljp[61][0]=-1	i2eljp[61][1]=-1
+i2eljp[62][0]=-1	i2eljp[62][1]=-1
+i2eljp[63][0]=-1	i2eljp[63][1]=-1
+i2eljp[64][0]=-1	i2eljp[64][1]=-1
+i2eljp[65][0]=-1	i2eljp[65][1]=-1
+i2eljp[66][0]=-1	i2eljp[66][1]=-1
+i2eljp[67][0]=-1	i2eljp[67][1]=-1
+i2eljp[68][0]=-1	i2eljp[68][1]=-1
+i2eljp[69][0]=-1	i2eljp[69][1]=-1
+i2eljp[70][0]=-1	i2eljp[70][1]=-1
+i2eljp[71][0]=-1	i2eljp[71][1]=-1
+i2eljp[72][0]=-1	i2eljp[72][1]=-1
+i2eljp[73][0]=-1	i2eljp[73][1]=-1
+i2eljp[74][0]=-1	i2eljp[74][1]=-1
+i2eljp[75][0]=-1	i2eljp[75][1]=-1
+i2eljp[76][0]=-1	i2eljp[76][1]=-1
+i2eljp[77][0]=14	i2eljp[77][1]=-1
+i2eljp[14][1]=-1
+i2eljp[78][0]=14	i2eljp[78][1]=14
+i2eljp[14][1]=-1
+i2eljp[79][0]=14	i2eljp[79][1]=14
+i2eljp[14][1]=-1
+i2eljp[80][0]=14	i2eljp[80][1]=14
+i2eljp[81][0]=-1	i2eljp[81][1]=-1
+i2eljp[82][0]=-1	i2eljp[82][1]=-1
+i2eljp[83][0]=-1	i2eljp[83][1]=-1
+i2eljp[84][0]=-1	i2eljp[84][1]=-1
+i2eljp[85][0]=-1	i2eljp[85][1]=-1
+i2eljp[86][0]=-1	i2eljp[86][1]=-1
+i2eljp[87][0]=-1	i2eljp[87][1]=-1
+i2eljp[88][0]=-1	i2eljp[88][1]=-1
+i2eljp[89][0]=-1	i2eljp[89][1]=-1
+i2eljp[90][0]=-1	i2eljp[90][1]=-1
+i2eljp[91][0]=-1	i2eljp[91][1]=-1
+i2eljp[92][0]=-1	i2eljp[92][1]=-1
+i2eljp[93][0]=-1	i2eljp[93][1]=-1
+i2eljp[94][0]=-1	i2eljp[94][1]=-1
+i2eljp[95][0]=-1	i2eljp[95][1]=-1
+i2eljp[96][0]=-1	i2eljp[96][1]=-1
+i2eljp[97][0]=-1	i2eljp[97][1]=-1
+i2eljp[98][0]=-1	i2eljp[98][1]=-1
+i2eljp[99][0]=-1	i2eljp[99][1]=-1
+i2eljp[100][0]=20	i2eljp[100][1]=-1
+i2eljp[20][1]=-1
+i2eljp[101][0]=20	i2eljp[101][1]=20
+i2eljp[20][1]=-1
+i2eljp[102][0]=20	i2eljp[102][1]=20
+i2eljp[20][1]=-1
+i2eljp[103][0]=20	i2eljp[103][1]=20
+i2eljp[104][0]=-1	i2eljp[104][1]=-1
+i2eljp[105][0]=-1	i2eljp[105][1]=-1
+i2eljp[106][0]=-1	i2eljp[106][1]=-1
+i2eljp[107][0]=-1	i2eljp[107][1]=-1
+i2eljp[108][0]=-1	i2eljp[108][1]=-1
+i2eljp[109][0]=-1	i2eljp[109][1]=-1
+i2eljp[110][0]=-1	i2eljp[110][1]=-1
+i2eljp[111][0]=-1	i2eljp[111][1]=-1
+i2eljp[112][0]=-1	i2eljp[112][1]=-1
+i2eljp[113][0]=-1	i2eljp[113][1]=-1
+i2eljp[114][0]=-1	i2eljp[114][1]=-1
+i2eljp[115][0]=-1	i2eljp[115][1]=-1
+FEM_eljp[0][0]=-1
+FEM_eljp[0][1]=-1
+FEM_eljp[0][2]=-1
+FEM_eljp[0][3]=-1
+FEM_eljp[0][4]=-1
+FEM_eljp[0][5]=-1
+FEM_eljp[1][0]=-1
+FEM_eljp[1][1]=-1
+FEM_eljp[1][2]=-1
+FEM_eljp[1][3]=-1
+FEM_eljp[1][4]=-1
+FEM_eljp[1][5]=-1
+FEM_eljp[2][0]=31
+FEM_eljp[2][1]=-1
+FEM_eljp[2][2]=-1
+FEM_eljp[2][3]=-1
+FEM_eljp[2][4]=-1
+FEM_eljp[2][5]=-1
+FEM_eljp[3][0]=-1
+FEM_eljp[3][1]=-1
+FEM_eljp[3][2]=-1
+FEM_eljp[3][3]=-1
+FEM_eljp[3][4]=-1
+FEM_eljp[3][5]=-1
+FEM_eljp[4][0]=-1
+FEM_eljp[4][1]=-1
+FEM_eljp[4][2]=-1
+FEM_eljp[4][3]=-1
+FEM_eljp[4][4]=-1
+FEM_eljp[4][5]=-1
+FEM_eljp[5][0]=-1
+FEM_eljp[5][1]=-1
+FEM_eljp[5][2]=-1
+FEM_eljp[5][3]=-1
+FEM_eljp[5][4]=-1
+FEM_eljp[5][5]=-1
+FEM_eljp[6][0]=-1
+FEM_eljp[6][1]=-1
+FEM_eljp[6][2]=-1
+FEM_eljp[6][3]=-1
+FEM_eljp[6][4]=-1
+FEM_eljp[6][5]=-1
+FEM_eljp[7][0]=-1
+FEM_eljp[7][1]=-1
+FEM_eljp[7][2]=-1
+FEM_eljp[7][3]=-1
+FEM_eljp[7][4]=-1
+FEM_eljp[7][5]=-1
+FEM_eljp[8][0]=54
+FEM_eljp[8][1]=-1
+FEM_eljp[8][2]=-1
+FEM_eljp[8][3]=-1
+FEM_eljp[8][4]=-1
+FEM_eljp[8][5]=-1
+FEM_eljp[9][0]=-1
+FEM_eljp[9][1]=-1
+FEM_eljp[9][2]=-1
+FEM_eljp[9][3]=-1
+FEM_eljp[9][4]=-1
+FEM_eljp[9][5]=-1
+FEM_eljp[10][0]=-1
+FEM_eljp[10][1]=-1
+FEM_eljp[10][2]=-1
+FEM_eljp[10][3]=-1
+FEM_eljp[10][4]=-1
+FEM_eljp[10][5]=-1
+FEM_eljp[11][0]=-1
+FEM_eljp[11][1]=-1
+FEM_eljp[11][2]=-1
+FEM_eljp[11][3]=-1
+FEM_eljp[11][4]=-1
+FEM_eljp[11][5]=-1
+FEM_eljp[12][0]=-1
+FEM_eljp[12][1]=-1
+FEM_eljp[12][2]=-1
+FEM_eljp[12][3]=-1
+FEM_eljp[12][4]=-1
+FEM_eljp[12][5]=-1
+FEM_eljp[13][0]=-1
+FEM_eljp[13][1]=-1
+FEM_eljp[13][2]=-1
+FEM_eljp[13][3]=-1
+FEM_eljp[13][4]=-1
+FEM_eljp[13][5]=-1
+FEM_eljp[14][0]=77
+FEM_eljp[14][1]=-1
+FEM_eljp[14][2]=-1
+FEM_eljp[14][3]=-1
+FEM_eljp[14][4]=-1
+FEM_eljp[14][5]=-1
+FEM_eljp[15][0]=-1
+FEM_eljp[15][1]=-1
+FEM_eljp[15][2]=-1
+FEM_eljp[15][3]=-1
+FEM_eljp[15][4]=-1
+FEM_eljp[15][5]=-1
+FEM_eljp[16][0]=-1
+FEM_eljp[16][1]=-1
+FEM_eljp[16][2]=-1
+FEM_eljp[16][3]=-1
+FEM_eljp[16][4]=-1
+FEM_eljp[16][5]=-1
+FEM_eljp[17][0]=-1
+FEM_eljp[17][1]=-1
+FEM_eljp[17][2]=-1
+FEM_eljp[17][3]=-1
+FEM_eljp[17][4]=-1
+FEM_eljp[17][5]=-1
+FEM_eljp[18][0]=-1
+FEM_eljp[18][1]=-1
+FEM_eljp[18][2]=-1
+FEM_eljp[18][3]=-1
+FEM_eljp[18][4]=-1
+FEM_eljp[18][5]=-1
+FEM_eljp[19][0]=-1
+FEM_eljp[19][1]=-1
+FEM_eljp[19][2]=-1
+FEM_eljp[19][3]=-1
+FEM_eljp[19][4]=-1
+FEM_eljp[19][5]=-1
+FEM_eljp[20][0]=100
+FEM_eljp[20][1]=-1
+FEM_eljp[20][2]=-1
+FEM_eljp[20][3]=-1
+FEM_eljp[20][4]=-1
+FEM_eljp[20][5]=-1
+FEM_eljp[21][0]=-1
+FEM_eljp[21][1]=-1
+FEM_eljp[21][2]=-1
+FEM_eljp[21][3]=-1
+FEM_eljp[21][4]=-1
+FEM_eljp[21][5]=-1
+FEM_eljp[22][0]=-1
+FEM_eljp[22][1]=-1
+FEM_eljp[22][2]=-1
+FEM_eljp[22][3]=-1
+FEM_eljp[22][4]=-1
+FEM_eljp[22][5]=-1
+FEM_eljp[23][0]=-1
+FEM_eljp[23][1]=-1
+FEM_eljp[23][2]=-1
+FEM_eljp[23][3]=-1
+FEM_eljp[23][4]=-1
+FEM_eljp[23][5]=-1
+JOINT_eljp[24][0]=0
+JOINT_eljp[24][1]=0
+JOINT_eljp[24][2]=-1
+JOINT_eljp[24][3]=-1
+JOINT_eljp[24][4]=-1
+JOINT_eljp[24][5]=-1
+JOINT_eljp[25][0]=0
+JOINT_eljp[25][1]=0
+JOINT_eljp[25][2]=-1
+JOINT_eljp[25][3]=-1
+JOINT_eljp[25][4]=-1
+JOINT_eljp[25][5]=-1
+JOINT_eljp[26][0]=0
+JOINT_eljp[26][1]=0
+JOINT_eljp[26][2]=-1
+JOINT_eljp[26][3]=-1
+JOINT_eljp[26][4]=-1
+JOINT_eljp[26][5]=-1
+JOINT_eljp[27][0]=0
+JOINT_eljp[27][1]=0
+JOINT_eljp[27][2]=-1
+JOINT_eljp[27][3]=-1
+JOINT_eljp[27][4]=-1
+JOINT_eljp[27][5]=-1
+JOINT_eljp[28][0]=-1
+JOINT_eljp[28][1]=-1
+JOINT_eljp[28][2]=-1
+JOINT_eljp[28][3]=-1
+JOINT_eljp[28][4]=-1
+JOINT_eljp[28][5]=-1
+JOINT_eljp[29][0]=-1
+JOINT_eljp[29][1]=-1
+JOINT_eljp[29][2]=-1
+JOINT_eljp[29][3]=-1
+JOINT_eljp[29][4]=-1
+JOINT_eljp[29][5]=-1
+JOINT_eljp[30][0]=-1
+JOINT_eljp[30][1]=-1
+JOINT_eljp[30][2]=-1
+JOINT_eljp[30][3]=-1
+JOINT_eljp[30][4]=-1
+JOINT_eljp[30][5]=-1
+JOINT_eljp[31][0]=2
+JOINT_eljp[31][1]=-1
+JOINT_eljp[31][2]=-1
+JOINT_eljp[31][3]=-1
+JOINT_eljp[31][4]=-1
+JOINT_eljp[31][5]=-1
+JOINT_eljp[32][0]=2
+JOINT_eljp[32][1]=2
+JOINT_eljp[32][2]=-1
+JOINT_eljp[32][3]=-1
+JOINT_eljp[32][4]=-1
+JOINT_eljp[32][5]=-1
+JOINT_eljp[33][0]=2
+JOINT_eljp[33][1]=2
+JOINT_eljp[33][2]=-1
+JOINT_eljp[33][3]=-1
+JOINT_eljp[33][4]=-1
+JOINT_eljp[33][5]=-1
+JOINT_eljp[34][0]=2
+JOINT_eljp[34][1]=2
+JOINT_eljp[34][2]=-1
+JOINT_eljp[34][3]=-1
+JOINT_eljp[34][4]=-1
+JOINT_eljp[34][5]=-1
+JOINT_eljp[35][0]=-1
+JOINT_eljp[35][1]=-1
+JOINT_eljp[35][2]=-1
+JOINT_eljp[35][3]=-1
+JOINT_eljp[35][4]=-1
+JOINT_eljp[35][5]=-1
+JOINT_eljp[36][0]=-1
+JOINT_eljp[36][1]=-1
+JOINT_eljp[36][2]=-1
+JOINT_eljp[36][3]=-1
+JOINT_eljp[36][4]=-1
+JOINT_eljp[36][5]=-1
+JOINT_eljp[37][0]=-1
+JOINT_eljp[37][1]=-1
+JOINT_eljp[37][2]=-1
+JOINT_eljp[37][3]=-1
+JOINT_eljp[37][4]=-1
+JOINT_eljp[37][5]=-1
+JOINT_eljp[38][0]=-1
+JOINT_eljp[38][1]=-1
+JOINT_eljp[38][2]=-1
+JOINT_eljp[38][3]=-1
+JOINT_eljp[38][4]=-1
+JOINT_eljp[38][5]=-1
+JOINT_eljp[39][0]=-1
+JOINT_eljp[39][1]=-1
+JOINT_eljp[39][2]=-1
+JOINT_eljp[39][3]=-1
+JOINT_eljp[39][4]=-1
+JOINT_eljp[39][5]=-1
+JOINT_eljp[40][0]=-1
+JOINT_eljp[40][1]=-1
+JOINT_eljp[40][2]=-1
+JOINT_eljp[40][3]=-1
+JOINT_eljp[40][4]=-1
+JOINT_eljp[40][5]=-1
+JOINT_eljp[41][0]=-1
+JOINT_eljp[41][1]=-1
+JOINT_eljp[41][2]=-1
+JOINT_eljp[41][3]=-1
+JOINT_eljp[41][4]=-1
+JOINT_eljp[41][5]=-1
+JOINT_eljp[42][0]=-1
+JOINT_eljp[42][1]=-1
+JOINT_eljp[42][2]=-1
+JOINT_eljp[42][3]=-1
+JOINT_eljp[42][4]=-1
+JOINT_eljp[42][5]=-1
+JOINT_eljp[43][0]=-1
+JOINT_eljp[43][1]=-1
+JOINT_eljp[43][2]=-1
+JOINT_eljp[43][3]=-1
+JOINT_eljp[43][4]=-1
+JOINT_eljp[43][5]=-1
+JOINT_eljp[44][0]=-1
+JOINT_eljp[44][1]=-1
+JOINT_eljp[44][2]=-1
+JOINT_eljp[44][3]=-1
+JOINT_eljp[44][4]=-1
+JOINT_eljp[44][5]=-1
+JOINT_eljp[45][0]=-1
+JOINT_eljp[45][1]=-1
+JOINT_eljp[45][2]=-1
+JOINT_eljp[45][3]=-1
+JOINT_eljp[45][4]=-1
+JOINT_eljp[45][5]=-1
+JOINT_eljp[46][0]=-1
+JOINT_eljp[46][1]=-1
+JOINT_eljp[46][2]=-1
+JOINT_eljp[46][3]=-1
+JOINT_eljp[46][4]=-1
+JOINT_eljp[46][5]=-1
+JOINT_eljp[47][0]=-1
+JOINT_eljp[47][1]=-1
+JOINT_eljp[47][2]=-1
+JOINT_eljp[47][3]=-1
+JOINT_eljp[47][4]=-1
+JOINT_eljp[47][5]=-1
+JOINT_eljp[48][0]=-1
+JOINT_eljp[48][1]=-1
+JOINT_eljp[48][2]=-1
+JOINT_eljp[48][3]=-1
+JOINT_eljp[48][4]=-1
+JOINT_eljp[48][5]=-1
+JOINT_eljp[49][0]=-1
+JOINT_eljp[49][1]=-1
+JOINT_eljp[49][2]=-1
+JOINT_eljp[49][3]=-1
+JOINT_eljp[49][4]=-1
+JOINT_eljp[49][5]=-1
+JOINT_eljp[50][0]=-1
+JOINT_eljp[50][1]=-1
+JOINT_eljp[50][2]=-1
+JOINT_eljp[50][3]=-1
+JOINT_eljp[50][4]=-1
+JOINT_eljp[50][5]=-1
+JOINT_eljp[51][0]=-1
+JOINT_eljp[51][1]=-1
+JOINT_eljp[51][2]=-1
+JOINT_eljp[51][3]=-1
+JOINT_eljp[51][4]=-1
+JOINT_eljp[51][5]=-1
+JOINT_eljp[52][0]=-1
+JOINT_eljp[52][1]=-1
+JOINT_eljp[52][2]=-1
+JOINT_eljp[52][3]=-1
+JOINT_eljp[52][4]=-1
+JOINT_eljp[52][5]=-1
+JOINT_eljp[53][0]=-1
+JOINT_eljp[53][1]=-1
+JOINT_eljp[53][2]=-1
+JOINT_eljp[53][3]=-1
+JOINT_eljp[53][4]=-1
+JOINT_eljp[53][5]=-1
+JOINT_eljp[54][0]=8
+JOINT_eljp[54][1]=-1
+JOINT_eljp[54][2]=-1
+JOINT_eljp[54][3]=-1
+JOINT_eljp[54][4]=-1
+JOINT_eljp[54][5]=-1
+JOINT_eljp[55][0]=8
+JOINT_eljp[55][1]=8
+JOINT_eljp[55][2]=-1
+JOINT_eljp[55][3]=-1
+JOINT_eljp[55][4]=-1
+JOINT_eljp[55][5]=-1
+JOINT_eljp[56][0]=8
+JOINT_eljp[56][1]=8
+JOINT_eljp[56][2]=-1
+JOINT_eljp[56][3]=-1
+JOINT_eljp[56][4]=-1
+JOINT_eljp[56][5]=-1
+JOINT_eljp[57][0]=8
+JOINT_eljp[57][1]=8
+JOINT_eljp[57][2]=-1
+JOINT_eljp[57][3]=-1
+JOINT_eljp[57][4]=-1
+JOINT_eljp[57][5]=-1
+JOINT_eljp[58][0]=-1
+JOINT_eljp[58][1]=-1
+JOINT_eljp[58][2]=-1
+JOINT_eljp[58][3]=-1
+JOINT_eljp[58][4]=-1
+JOINT_eljp[58][5]=-1
+JOINT_eljp[59][0]=-1
+JOINT_eljp[59][1]=-1
+JOINT_eljp[59][2]=-1
+JOINT_eljp[59][3]=-1
+JOINT_eljp[59][4]=-1
+JOINT_eljp[59][5]=-1
+JOINT_eljp[60][0]=-1
+JOINT_eljp[60][1]=-1
+JOINT_eljp[60][2]=-1
+JOINT_eljp[60][3]=-1
+JOINT_eljp[60][4]=-1
+JOINT_eljp[60][5]=-1
+JOINT_eljp[61][0]=-1
+JOINT_eljp[61][1]=-1
+JOINT_eljp[61][2]=-1
+JOINT_eljp[61][3]=-1
+JOINT_eljp[61][4]=-1
+JOINT_eljp[61][5]=-1
+JOINT_eljp[62][0]=-1
+JOINT_eljp[62][1]=-1
+JOINT_eljp[62][2]=-1
+JOINT_eljp[62][3]=-1
+JOINT_eljp[62][4]=-1
+JOINT_eljp[62][5]=-1
+JOINT_eljp[63][0]=-1
+JOINT_eljp[63][1]=-1
+JOINT_eljp[63][2]=-1
+JOINT_eljp[63][3]=-1
+JOINT_eljp[63][4]=-1
+JOINT_eljp[63][5]=-1
+JOINT_eljp[64][0]=-1
+JOINT_eljp[64][1]=-1
+JOINT_eljp[64][2]=-1
+JOINT_eljp[64][3]=-1
+JOINT_eljp[64][4]=-1
+JOINT_eljp[64][5]=-1
+JOINT_eljp[65][0]=-1
+JOINT_eljp[65][1]=-1
+JOINT_eljp[65][2]=-1
+JOINT_eljp[65][3]=-1
+JOINT_eljp[65][4]=-1
+JOINT_eljp[65][5]=-1
+JOINT_eljp[66][0]=-1
+JOINT_eljp[66][1]=-1
+JOINT_eljp[66][2]=-1
+JOINT_eljp[66][3]=-1
+JOINT_eljp[66][4]=-1
+JOINT_eljp[66][5]=-1
+JOINT_eljp[67][0]=-1
+JOINT_eljp[67][1]=-1
+JOINT_eljp[67][2]=-1
+JOINT_eljp[67][3]=-1
+JOINT_eljp[67][4]=-1
+JOINT_eljp[67][5]=-1
+JOINT_eljp[68][0]=-1
+JOINT_eljp[68][1]=-1
+JOINT_eljp[68][2]=-1
+JOINT_eljp[68][3]=-1
+JOINT_eljp[68][4]=-1
+JOINT_eljp[68][5]=-1
+JOINT_eljp[69][0]=-1
+JOINT_eljp[69][1]=-1
+JOINT_eljp[69][2]=-1
+JOINT_eljp[69][3]=-1
+JOINT_eljp[69][4]=-1
+JOINT_eljp[69][5]=-1
+JOINT_eljp[70][0]=-1
+JOINT_eljp[70][1]=-1
+JOINT_eljp[70][2]=-1
+JOINT_eljp[70][3]=-1
+JOINT_eljp[70][4]=-1
+JOINT_eljp[70][5]=-1
+JOINT_eljp[71][0]=-1
+JOINT_eljp[71][1]=-1
+JOINT_eljp[71][2]=-1
+JOINT_eljp[71][3]=-1
+JOINT_eljp[71][4]=-1
+JOINT_eljp[71][5]=-1
+JOINT_eljp[72][0]=-1
+JOINT_eljp[72][1]=-1
+JOINT_eljp[72][2]=-1
+JOINT_eljp[72][3]=-1
+JOINT_eljp[72][4]=-1
+JOINT_eljp[72][5]=-1
+JOINT_eljp[73][0]=-1
+JOINT_eljp[73][1]=-1
+JOINT_eljp[73][2]=-1
+JOINT_eljp[73][3]=-1
+JOINT_eljp[73][4]=-1
+JOINT_eljp[73][5]=-1
+JOINT_eljp[74][0]=-1
+JOINT_eljp[74][1]=-1
+JOINT_eljp[74][2]=-1
+JOINT_eljp[74][3]=-1
+JOINT_eljp[74][4]=-1
+JOINT_eljp[74][5]=-1
+JOINT_eljp[75][0]=-1
+JOINT_eljp[75][1]=-1
+JOINT_eljp[75][2]=-1
+JOINT_eljp[75][3]=-1
+JOINT_eljp[75][4]=-1
+JOINT_eljp[75][5]=-1
+JOINT_eljp[76][0]=-1
+JOINT_eljp[76][1]=-1
+JOINT_eljp[76][2]=-1
+JOINT_eljp[76][3]=-1
+JOINT_eljp[76][4]=-1
+JOINT_eljp[76][5]=-1
+JOINT_eljp[77][0]=14
+JOINT_eljp[77][1]=-1
+JOINT_eljp[77][2]=-1
+JOINT_eljp[77][3]=-1
+JOINT_eljp[77][4]=-1
+JOINT_eljp[77][5]=-1
+JOINT_eljp[78][0]=14
+JOINT_eljp[78][1]=14
+JOINT_eljp[78][2]=-1
+JOINT_eljp[78][3]=-1
+JOINT_eljp[78][4]=-1
+JOINT_eljp[78][5]=-1
+JOINT_eljp[79][0]=14
+JOINT_eljp[79][1]=14
+JOINT_eljp[79][2]=-1
+JOINT_eljp[79][3]=-1
+JOINT_eljp[79][4]=-1
+JOINT_eljp[79][5]=-1
+JOINT_eljp[80][0]=14
+JOINT_eljp[80][1]=14
+JOINT_eljp[80][2]=-1
+JOINT_eljp[80][3]=-1
+JOINT_eljp[80][4]=-1
+JOINT_eljp[80][5]=-1
+JOINT_eljp[81][0]=-1
+JOINT_eljp[81][1]=-1
+JOINT_eljp[81][2]=-1
+JOINT_eljp[81][3]=-1
+JOINT_eljp[81][4]=-1
+JOINT_eljp[81][5]=-1
+JOINT_eljp[82][0]=-1
+JOINT_eljp[82][1]=-1
+JOINT_eljp[82][2]=-1
+JOINT_eljp[82][3]=-1
+JOINT_eljp[82][4]=-1
+JOINT_eljp[82][5]=-1
+JOINT_eljp[83][0]=-1
+JOINT_eljp[83][1]=-1
+JOINT_eljp[83][2]=-1
+JOINT_eljp[83][3]=-1
+JOINT_eljp[83][4]=-1
+JOINT_eljp[83][5]=-1
+JOINT_eljp[84][0]=-1
+JOINT_eljp[84][1]=-1
+JOINT_eljp[84][2]=-1
+JOINT_eljp[84][3]=-1
+JOINT_eljp[84][4]=-1
+JOINT_eljp[84][5]=-1
+JOINT_eljp[85][0]=-1
+JOINT_eljp[85][1]=-1
+JOINT_eljp[85][2]=-1
+JOINT_eljp[85][3]=-1
+JOINT_eljp[85][4]=-1
+JOINT_eljp[85][5]=-1
+JOINT_eljp[86][0]=-1
+JOINT_eljp[86][1]=-1
+JOINT_eljp[86][2]=-1
+JOINT_eljp[86][3]=-1
+JOINT_eljp[86][4]=-1
+JOINT_eljp[86][5]=-1
+JOINT_eljp[87][0]=-1
+JOINT_eljp[87][1]=-1
+JOINT_eljp[87][2]=-1
+JOINT_eljp[87][3]=-1
+JOINT_eljp[87][4]=-1
+JOINT_eljp[87][5]=-1
+JOINT_eljp[88][0]=-1
+JOINT_eljp[88][1]=-1
+JOINT_eljp[88][2]=-1
+JOINT_eljp[88][3]=-1
+JOINT_eljp[88][4]=-1
+JOINT_eljp[88][5]=-1
+JOINT_eljp[89][0]=-1
+JOINT_eljp[89][1]=-1
+JOINT_eljp[89][2]=-1
+JOINT_eljp[89][3]=-1
+JOINT_eljp[89][4]=-1
+JOINT_eljp[89][5]=-1
+JOINT_eljp[90][0]=-1
+JOINT_eljp[90][1]=-1
+JOINT_eljp[90][2]=-1
+JOINT_eljp[90][3]=-1
+JOINT_eljp[90][4]=-1
+JOINT_eljp[90][5]=-1
+JOINT_eljp[91][0]=-1
+JOINT_eljp[91][1]=-1
+JOINT_eljp[91][2]=-1
+JOINT_eljp[91][3]=-1
+JOINT_eljp[91][4]=-1
+JOINT_eljp[91][5]=-1
+JOINT_eljp[92][0]=-1
+JOINT_eljp[92][1]=-1
+JOINT_eljp[92][2]=-1
+JOINT_eljp[92][3]=-1
+JOINT_eljp[92][4]=-1
+JOINT_eljp[92][5]=-1
+JOINT_eljp[93][0]=-1
+JOINT_eljp[93][1]=-1
+JOINT_eljp[93][2]=-1
+JOINT_eljp[93][3]=-1
+JOINT_eljp[93][4]=-1
+JOINT_eljp[93][5]=-1
+JOINT_eljp[94][0]=-1
+JOINT_eljp[94][1]=-1
+JOINT_eljp[94][2]=-1
+JOINT_eljp[94][3]=-1
+JOINT_eljp[94][4]=-1
+JOINT_eljp[94][5]=-1
+JOINT_eljp[95][0]=-1
+JOINT_eljp[95][1]=-1
+JOINT_eljp[95][2]=-1
+JOINT_eljp[95][3]=-1
+JOINT_eljp[95][4]=-1
+JOINT_eljp[95][5]=-1
+JOINT_eljp[96][0]=-1
+JOINT_eljp[96][1]=-1
+JOINT_eljp[96][2]=-1
+JOINT_eljp[96][3]=-1
+JOINT_eljp[96][4]=-1
+JOINT_eljp[96][5]=-1
+JOINT_eljp[97][0]=-1
+JOINT_eljp[97][1]=-1
+JOINT_eljp[97][2]=-1
+JOINT_eljp[97][3]=-1
+JOINT_eljp[97][4]=-1
+JOINT_eljp[97][5]=-1
+JOINT_eljp[98][0]=-1
+JOINT_eljp[98][1]=-1
+JOINT_eljp[98][2]=-1
+JOINT_eljp[98][3]=-1
+JOINT_eljp[98][4]=-1
+JOINT_eljp[98][5]=-1
+JOINT_eljp[99][0]=-1
+JOINT_eljp[99][1]=-1
+JOINT_eljp[99][2]=-1
+JOINT_eljp[99][3]=-1
+JOINT_eljp[99][4]=-1
+JOINT_eljp[99][5]=-1
+JOINT_eljp[100][0]=20
+JOINT_eljp[100][1]=-1
+JOINT_eljp[100][2]=-1
+JOINT_eljp[100][3]=-1
+JOINT_eljp[100][4]=-1
+JOINT_eljp[100][5]=-1
+JOINT_eljp[101][0]=20
+JOINT_eljp[101][1]=20
+JOINT_eljp[101][2]=-1
+JOINT_eljp[101][3]=-1
+JOINT_eljp[101][4]=-1
+JOINT_eljp[101][5]=-1
+JOINT_eljp[102][0]=20
+JOINT_eljp[102][1]=20
+JOINT_eljp[102][2]=-1
+JOINT_eljp[102][3]=-1
+JOINT_eljp[102][4]=-1
+JOINT_eljp[102][5]=-1
+JOINT_eljp[103][0]=20
+JOINT_eljp[103][1]=20
+JOINT_eljp[103][2]=-1
+JOINT_eljp[103][3]=-1
+JOINT_eljp[103][4]=-1
+JOINT_eljp[103][5]=-1
+JOINT_eljp[104][0]=-1
+JOINT_eljp[104][1]=-1
+JOINT_eljp[104][2]=-1
+JOINT_eljp[104][3]=-1
+JOINT_eljp[104][4]=-1
+JOINT_eljp[104][5]=-1
+JOINT_eljp[105][0]=-1
+JOINT_eljp[105][1]=-1
+JOINT_eljp[105][2]=-1
+JOINT_eljp[105][3]=-1
+JOINT_eljp[105][4]=-1
+JOINT_eljp[105][5]=-1
+JOINT_eljp[106][0]=-1
+JOINT_eljp[106][1]=-1
+JOINT_eljp[106][2]=-1
+JOINT_eljp[106][3]=-1
+JOINT_eljp[106][4]=-1
+JOINT_eljp[106][5]=-1
+JOINT_eljp[107][0]=-1
+JOINT_eljp[107][1]=-1
+JOINT_eljp[107][2]=-1
+JOINT_eljp[107][3]=-1
+JOINT_eljp[107][4]=-1
+JOINT_eljp[107][5]=-1
+JOINT_eljp[108][0]=-1
+JOINT_eljp[108][1]=-1
+JOINT_eljp[108][2]=-1
+JOINT_eljp[108][3]=-1
+JOINT_eljp[108][4]=-1
+JOINT_eljp[108][5]=-1
+JOINT_eljp[109][0]=-1
+JOINT_eljp[109][1]=-1
+JOINT_eljp[109][2]=-1
+JOINT_eljp[109][3]=-1
+JOINT_eljp[109][4]=-1
+JOINT_eljp[109][5]=-1
+JOINT_eljp[110][0]=-1
+JOINT_eljp[110][1]=-1
+JOINT_eljp[110][2]=-1
+JOINT_eljp[110][3]=-1
+JOINT_eljp[110][4]=-1
+JOINT_eljp[110][5]=-1
+JOINT_eljp[111][0]=-1
+JOINT_eljp[111][1]=-1
+JOINT_eljp[111][2]=-1
+JOINT_eljp[111][3]=-1
+JOINT_eljp[111][4]=-1
+JOINT_eljp[111][5]=-1
+JOINT_eljp[112][0]=-1
+JOINT_eljp[112][1]=-1
+JOINT_eljp[112][2]=-1
+JOINT_eljp[112][3]=-1
+JOINT_eljp[112][4]=-1
+JOINT_eljp[112][5]=-1
+JOINT_eljp[113][0]=-1
+JOINT_eljp[113][1]=-1
+JOINT_eljp[113][2]=-1
+JOINT_eljp[113][3]=-1
+JOINT_eljp[113][4]=-1
+JOINT_eljp[113][5]=-1
+JOINT_eljp[114][0]=-1
+JOINT_eljp[114][1]=-1
+JOINT_eljp[114][2]=-1
+JOINT_eljp[114][3]=-1
+JOINT_eljp[114][4]=-1
+JOINT_eljp[114][5]=-1
+JOINT_eljp[115][0]=-1
+JOINT_eljp[115][1]=-1
+JOINT_eljp[115][2]=-1
+JOINT_eljp[115][3]=-1
+JOINT_eljp[115][4]=-1
+JOINT_eljp[115][5]=-1

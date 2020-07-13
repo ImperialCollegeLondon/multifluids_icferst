@@ -1,0 +1,8 @@
+ inside blasting
+ inside initialise_femdem
+ Sphere_R01_fine.Y3D                                                                                  
+ iflag
+ /simulation_type/intertia_dominated
+           1           0           0
+ iflag
+           1           0           0

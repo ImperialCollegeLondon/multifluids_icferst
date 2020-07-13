@@ -1,0 +1,33 @@
+BeginZE /data4/cj215/fluidity-solidity/SolidityDev-merge/tests/thermal_coupling_flow_past_sphere/solid.gid/solid.vv
+   x -0.149564 0.149564
+   y 0.0866028 -0.0866028
+   z -0.259808 0.259808
+   e 0.0866025
+   v -0.695025 0.0355937 0.0269677
+   r -0.717597
+   m 0.996012 -0.0107731 -0.0885703 0 -0.0881808 0.0324269 -0.995576 0 0.0135975 0.999416 0.0313476 0 0 0 0 1
+   c 0 0 0
+   pd 0
+   pno 0
+   pfo 0
+   pf 4
+   pv 0
+   NowUse 1
+   DrawingType 0
+   LightVector 90 90 150 0
+   OGLShadow(UseShadows) 0
+   OGLShadow(RenderMode) RenderNice
+   OGLShadow(ShadowBias) -0.002
+   OGLShadow(AmbientShadows) 1
+   OGLShadow(UseFBO) 1
+   OGLShadow(FBOSize) 1024
+   OGLShadow(DimmedLightFactor) 0.02
+   OGLStereo(UseStereo) 0
+   OGLStereo(RelativeEyeDistance) 1
+   OGLStereo(FlipEyes) 0
+   OGLStereo(StereoMode) AnaglyphColors
+   OGLStereo(EyeDistance) 0.075
+   OGLStereo(LeftEyeDistance) 1 0 0 1
+   OGLStereo(RightEyeDistance) 0 1 1 1
+EndZE /data4/cj215/fluidity-solidity/SolidityDev-merge/tests/thermal_coupling_flow_past_sphere/solid.gid/solid.vv
+

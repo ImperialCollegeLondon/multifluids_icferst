@@ -1,0 +1,40 @@
+BeginZE /home/ao1414/data/dev/3D_MP_SOLID/Asiri_merge/test_3D_coupling/fracture_single_block/sb.gid/sb.vv
+   x 0.983385 7.57599
+   y 1.68904 -2.099
+   z -6.7082 6.7082
+   e 2.23607
+   v -0.399207 0.440967 0.554764
+   r -0.581738
+   m -0.00442979 0.29338 -0.955986 0 -0.997528 0.0657416 0.0247975 0 0.0701231 0.953733 0.292363 0 0 0 0 1
+   c 4 0 0
+   pd 0
+   pno 0
+   pfo 0
+   pf 4
+   pv 0
+   NowUse 1
+   DrawingType 0
+   LightVector 90 90 150 0
+   OGLShadow(UseShadows) 0
+   OGLShadow(RenderMode) RenderNice
+   OGLShadow(ShadowBias) -0.002
+   OGLShadow(AmbientShadows) 1
+   OGLShadow(UseFBO) 0
+   OGLShadow(FBOSize) 1024
+   OGLShadow(DimmedLightFactor) 0.02
+   OGLStereo(UseStereo) 0
+   OGLStereo(RelativeEyeDistance) 1
+   OGLStereo(FlipEyes) 0
+   OGLStereo(StereoMode) AnaglyphColors
+   OGLStereo(EyeDistance) 0.075
+   OGLStereo(LeftEyeDistance) 1 0 0 1
+   OGLStereo(RightEyeDistance) 0 1 1 1
+EndZE /home/ao1414/data/dev/3D_MP_SOLID/Asiri_merge/test_3D_coupling/fracture_single_block/sb.gid/sb.vv
+
+BeginMirror
+   Mirror 0 Angle 0.0 AngleFake -15.0 SizeFactor 2.0 HeightOffset 0.25 Color #d9e5f24d Backlight Off EdgeStyle No Type Scene DrawMode Mirror
+EndMirror
+
+BeginInfo
+eJzdV9tu6jgUfecrLM3LjNQiKC1T8daeMhUaoBXQinmynGQneI5j59hJgTnqv8+2cw/pfMA8kawVnH1Ze9nZ+eJ+eDccj8nuO178mt/8NlhymZ0IGLgOVSYDlnIlyWQ4ngxH1+PR9DoCCZr75Ocv47vJ9ZuXyTQj29Ur2WVAnsAnUzK+m93eziY35G33jdyMxtNPcrqf0untYKciQcbD32fkebknH9xkTBAekNHpZnJFWJpCnKT4wGB3AA2EGyIVUR+gBTu7v/hKpnBKh4PBSwLyWcwGhJD3+frpZTMjPx81Z5K8skx8WnyD+Hwzt8wKDCP78fgzf36zXbysER4P74ijppj9jSOfFtvX5cNfZLH+42WzetjlD3o8NURDQO6vSKQBpL3wBKaMv0wkB0ZGVySAJD2Qm9srYlKQPheWxUsNChMZuvWXi9Vit8Ul7c2KncgO88kw2S3/B2ZYrtv7kpkLiEHiixcy4D6YGZmMRqML9h10eklPnror301L7lvmAV4kX7z74YNxwTwB2KEAQ48hVvpMjHtoRFaP5xRMsRaPs5gclf7OZURkFnugiQoJFMHNyN1oRP4cuNTn+918bSvv0n9e0ofX1+WcJsz/DgFN+AmEqWHsOraaMq3ZmSrvb/BTR24eqaszTfPgK1CzI/WyMARtSizULLJx0ESrSLP4AjcHFoAu4QMTIQ2FYmkeTYnzmEWYX3kbZyLlhsWJgBbUCUj5vsgMjg/9kYE+l7BbuQi0k1eiuI2VYaSQNtLIcZNofEWJ5ZEXC5gmipFSwWSUsQjoGBXR4NSxfUdZ7HEsRIkWKVBPabu6LzDLLuerONFgbGYXFAqLxuziLyA/KAuCPhhX87iEXkorYzym+7hApZMuHnOtFQ4p1ZAAu8hJYicSdbRFC2l6VF1eYyGxbHVTU82kSZSxKaWan0q8UGZvCwuuo7cCbavtyKXtAL7AIbsFxZGTAYUfmXNdasBKoWg50n2qRbinmpMul5eGKum71XASKfMiXV7jJauuXRC+Ekq3od64ajrMpP8FJVTEfaqSNhpzGbNTGzOZh1XPy2lRX/CEfiiRxUAPXNY4apALbHXTJWpS2r+khUBzKDk3DcNiuYt4dpczyJlqceck2Hscn9LHSipUEa6Fw1EBdlYLJXiCp314rRDLRElWyqMz6pY9cJNW0rGAc5Y8JJdk9WRhm3kWxX7T4WpLzUEBuMMG3Tp8YUiO6jGkHBfnCJWgwtBA9TSago/vwEHTMatiMYD9CJg+tzVVKgVtDfxMMN2hc3uyojINTNfhl/lUbF4CetSsEpqVUzvZ/tvJUwegEGD3K/trMbWXdeGGl3Wp0q+auFAB9TgzXbwY1t63t/vTa11NwmyeHyuMx9jgai+yUHd6Fo+rXHCxCqArOktqZo8zaFluMkv0Pwx4sX7efGUQq/n2wUmVcmkjqbFiPAKcoKhCUV54Amlu8Q5u26iDzr7n62ar1++lv6CHVVDf6QBhwaNDipZ/onBKlCx2RyS62zBC+A48EGNoocAWFIaT45eNQfxye7gAx3Rs8Zf5Fv/NsGx2mlwI2+dFPiSN/ajGUntiK6F6r+5SW+pO8HbyYp4Ue7XDv9r7W2R7LloUyrnA9pcnNIfWJ5DGbfMIsn1b9xjeJ1L7mTvqb+ebd3egt5DbRSNw/fPtTNpTiSOctt3XBUorVF0Ms8+Pc/tcL253QK8otFUTaI1YobyKean2pRYFMNMU4z7PKfTQ7UIe1UhSLPrZ+j6x3x63nW+Pb8vFfL37Xyb3gl3Dryr8fCgv8QOLrObrNwv9C1n1IYQ=
+EndInfo

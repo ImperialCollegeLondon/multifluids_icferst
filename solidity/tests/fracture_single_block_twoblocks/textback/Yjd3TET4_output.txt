@@ -1,0 +1,901 @@
+OLD element:0
+OLD element nodes:7 5 8 15
+x[7]=0.353553	y[7]=0.353553	z[7]=0.000000
+X[18]=0.353553	Y[18]=0.353553	Z[18]=0.000000
+in=7,jn=5,kn=8,ln=8,ijnew=i1jnef[8]=-1
+NEW JOINT element:24
+NEW JOINT element nodes:18 19 20 8 5 7
+i1jnen[0]=-1
+i1jnef[8]=24
+x[5]=-0.353553	y[5]=0.353553	z[5]=0.000000
+X[19]=-0.353553	Y[19]=0.353553	Z[19]=0.000000
+in=5,jn=8,kn=15,ln=15,ijnew=i1jnef[15]=-1
+NEW JOINT element:25
+NEW JOINT element nodes:19 20 21 15 8 5
+i1jnen[1]=-1
+i1jnef[15]=25
+x[8]=-0.353553	y[8]=-0.353553	z[8]=0.000000
+X[20]=-0.353553	Y[20]=-0.353553	Z[20]=0.000000
+in=8,jn=15,kn=7,ln=15,ijnew=i1jnef[15]=25
+ijnew=-1
+NEW JOINT element:26
+NEW JOINT element nodes:20 21 18 7 15 8
+i1jnen[2]=25
+i1jnef[15]=26
+x[15]=0.353553	y[15]=0.353553	z[15]=1.000000
+X[21]=0.353553	Y[21]=0.353553	Z[21]=1.000000
+in=15,jn=7,kn=5,ln=15,ijnew=i1jnef[15]=26
+ijnew=25
+ijnew=-1
+NEW JOINT element:27
+NEW JOINT element nodes:21 18 19 5 7 15
+i1jnen[3]=26
+i1jnef[15]=27
+UPDATED OLD element nodes:18 19 20 21
+OLD element:1
+OLD element nodes:8 11 7 13
+x[8]=-0.353553	y[8]=-0.353553	z[8]=0.000000
+X[22]=-0.353553	Y[22]=-0.353553	Z[22]=0.000000
+in=8,jn=11,kn=7,ln=11,ijnew=i1jnef[11]=-1
+NEW JOINT element:28
+NEW JOINT element nodes:22 23 24 7 11 8
+i1jnen[4]=-1
+i1jnef[11]=28
+x[11]=0.353553	y[11]=-0.353553	z[11]=0.000000
+X[23]=0.353553	Y[23]=-0.353553	Z[23]=0.000000
+in=11,jn=7,kn=13,ln=13,ijnew=i1jnef[13]=-1
+NEW JOINT element:29
+NEW JOINT element nodes:23 24 25 13 7 11
+i1jnen[5]=-1
+i1jnef[13]=29
+x[7]=0.353553	y[7]=0.353553	z[7]=0.000000
+X[24]=0.353553	Y[24]=0.353553	Z[24]=0.000000
+in=7,jn=13,kn=8,ln=13,ijnew=i1jnef[13]=29
+ijnew=-1
+NEW JOINT element:30
+NEW JOINT element nodes:24 25 22 8 13 7
+i1jnen[6]=29
+i1jnef[13]=30
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[25]=0.153206	Y[25]=-0.153206	Z[25]=0.639124
+in=13,jn=8,kn=11,ln=13,ijnew=i1jnef[13]=30
+ijnew=29
+ijnew=-1
+NEW JOINT element:31
+NEW JOINT element nodes:25 22 23 11 8 13
+i1jnen[7]=30
+i1jnef[13]=31
+UPDATED OLD element nodes:22 23 24 25
+OLD element:2
+OLD element nodes:8 11 13 16
+x[8]=-0.353553	y[8]=-0.353553	z[8]=0.000000
+X[26]=-0.353553	Y[26]=-0.353553	Z[26]=0.000000
+in=8,jn=11,kn=13,ln=13,ijnew=i1jnef[13]=31
+***5***,ijnew=-100
+x[11]=0.353553	y[11]=-0.353553	z[11]=0.000000
+X[27]=0.353553	Y[27]=-0.353553	Z[27]=0.000000
+in=11,jn=13,kn=16,ln=16,ijnew=i1jnef[16]=-1
+NEW JOINT element:32
+NEW JOINT element nodes:27 28 29 16 13 11
+i1jnen[8]=-1
+i1jnef[16]=32
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[28]=0.153206	Y[28]=-0.153206	Z[28]=0.639124
+in=13,jn=16,kn=8,ln=16,ijnew=i1jnef[16]=32
+ijnew=-1
+NEW JOINT element:33
+NEW JOINT element nodes:28 29 26 8 16 13
+i1jnen[9]=32
+i1jnef[16]=33
+x[16]=-0.353553	y[16]=-0.353553	z[16]=1.000000
+X[29]=-0.353553	Y[29]=-0.353553	Z[29]=1.000000
+in=16,jn=8,kn=11,ln=16,ijnew=i1jnef[16]=33
+ijnew=32
+ijnew=-1
+NEW JOINT element:34
+NEW JOINT element nodes:29 26 27 11 8 16
+i1jnen[10]=33
+i1jnef[16]=34
+UPDATED OLD element nodes:26 27 28 29
+OLD element:3
+OLD element nodes:11 7 13 17
+x[11]=0.353553	y[11]=-0.353553	z[11]=0.000000
+X[30]=0.353553	Y[30]=-0.353553	Z[30]=0.000000
+in=11,jn=7,kn=13,ln=13,ijnew=i1jnef[13]=31
+ijnew=30
+ijnew=29
+***4***,ijnew=-100
+x[7]=0.353553	y[7]=0.353553	z[7]=0.000000
+X[31]=0.353553	Y[31]=0.353553	Z[31]=0.000000
+in=7,jn=13,kn=17,ln=17,ijnew=i1jnef[17]=-1
+NEW JOINT element:35
+NEW JOINT element nodes:31 32 33 17 13 7
+i1jnen[11]=-1
+i1jnef[17]=35
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[32]=0.153206	Y[32]=-0.153206	Z[32]=0.639124
+in=13,jn=17,kn=11,ln=17,ijnew=i1jnef[17]=35
+ijnew=-1
+NEW JOINT element:36
+NEW JOINT element nodes:32 33 30 11 17 13
+i1jnen[12]=35
+i1jnef[17]=36
+x[17]=0.353553	y[17]=-0.353553	z[17]=1.000000
+X[33]=0.353553	Y[33]=-0.353553	Z[33]=1.000000
+in=17,jn=11,kn=7,ln=17,ijnew=i1jnef[17]=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:37
+NEW JOINT element nodes:33 30 31 7 11 17
+i1jnen[13]=36
+i1jnef[17]=37
+UPDATED OLD element nodes:30 31 32 33
+OLD element:4
+OLD element nodes:13 11 17 16
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[34]=0.153206	Y[34]=-0.153206	Z[34]=0.639124
+in=13,jn=11,kn=17,ln=17,ijnew=i1jnef[17]=37
+ijnew=36
+***2***,ijnew=-100
+x[11]=0.353553	y[11]=-0.353553	z[11]=0.000000
+X[35]=0.353553	Y[35]=-0.353553	Z[35]=0.000000
+in=11,jn=17,kn=16,ln=17,ijnew=i1jnef[17]=37
+ijnew=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:38
+NEW JOINT element nodes:35 36 37 16 17 11
+i1jnen[14]=37
+i1jnef[17]=38
+x[17]=0.353553	y[17]=-0.353553	z[17]=1.000000
+X[36]=0.353553	Y[36]=-0.353553	Z[36]=1.000000
+in=17,jn=16,kn=13,ln=17,ijnew=i1jnef[17]=38
+ijnew=37
+ijnew=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:39
+NEW JOINT element nodes:36 37 34 13 16 17
+i1jnen[15]=38
+i1jnef[17]=39
+x[16]=-0.353553	y[16]=-0.353553	z[16]=1.000000
+X[37]=-0.353553	Y[37]=-0.353553	Z[37]=1.000000
+in=16,jn=13,kn=11,ln=16,ijnew=i1jnef[16]=34
+ijnew=33
+ijnew=32
+***1***,ijnew=-100
+UPDATED OLD element nodes:34 35 36 37
+OLD element:5
+OLD element nodes:17 13 16 14
+x[17]=0.353553	y[17]=-0.353553	z[17]=1.000000
+X[38]=0.353553	Y[38]=-0.353553	Z[38]=1.000000
+in=17,jn=13,kn=16,ln=17,ijnew=i1jnef[17]=39
+***2***,ijnew=-100
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[39]=0.153206	Y[39]=-0.153206	Z[39]=0.639124
+in=13,jn=16,kn=14,ln=16,ijnew=i1jnef[16]=34
+ijnew=33
+ijnew=32
+ijnew=-1
+NEW JOINT element:40
+NEW JOINT element nodes:39 40 41 14 16 13
+i1jnen[16]=34
+i1jnef[16]=40
+x[16]=-0.353553	y[16]=-0.353553	z[16]=1.000000
+X[40]=-0.353553	Y[40]=-0.353553	Z[40]=1.000000
+in=16,jn=14,kn=17,ln=17,ijnew=i1jnef[17]=39
+ijnew=38
+ijnew=37
+ijnew=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:41
+NEW JOINT element nodes:40 41 38 17 14 16
+i1jnen[17]=39
+i1jnef[17]=41
+x[14]=-0.353553	y[14]=0.353553	z[14]=1.000000
+X[41]=-0.353553	Y[41]=0.353553	Z[41]=1.000000
+in=14,jn=17,kn=13,ln=17,ijnew=i1jnef[17]=41
+ijnew=39
+ijnew=38
+ijnew=37
+ijnew=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:42
+NEW JOINT element nodes:41 38 39 13 17 14
+i1jnen[18]=41
+i1jnef[17]=42
+UPDATED OLD element nodes:38 39 40 41
+OLD element:6
+OLD element nodes:13 16 14 8
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[42]=0.153206	Y[42]=-0.153206	Z[42]=0.639124
+in=13,jn=16,kn=14,ln=16,ijnew=i1jnef[16]=40
+***4***,ijnew=-100
+x[16]=-0.353553	y[16]=-0.353553	z[16]=1.000000
+X[43]=-0.353553	Y[43]=-0.353553	Z[43]=1.000000
+in=16,jn=14,kn=8,ln=16,ijnew=i1jnef[16]=40
+ijnew=34
+ijnew=33
+ijnew=32
+ijnew=-1
+NEW JOINT element:43
+NEW JOINT element nodes:43 44 45 8 14 16
+i1jnen[19]=40
+i1jnef[16]=43
+x[14]=-0.353553	y[14]=0.353553	z[14]=1.000000
+X[44]=-0.353553	Y[44]=0.353553	Z[44]=1.000000
+in=14,jn=8,kn=13,ln=14,ijnew=i1jnef[14]=-1
+NEW JOINT element:44
+NEW JOINT element nodes:44 45 42 13 8 14
+i1jnen[20]=-1
+i1jnef[14]=44
+x[8]=-0.353553	y[8]=-0.353553	z[8]=0.000000
+X[45]=-0.353553	Y[45]=-0.353553	Z[45]=0.000000
+in=8,jn=13,kn=16,ln=16,ijnew=i1jnef[16]=43
+ijnew=40
+ijnew=34
+ijnew=33
+***6***,ijnew=-100
+UPDATED OLD element nodes:42 43 44 45
+OLD element:7
+OLD element nodes:17 13 14 15
+x[17]=0.353553	y[17]=-0.353553	z[17]=1.000000
+X[46]=0.353553	Y[46]=-0.353553	Z[46]=1.000000
+in=17,jn=13,kn=14,ln=17,ijnew=i1jnef[17]=42
+***5***,ijnew=-100
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[47]=0.153206	Y[47]=-0.153206	Z[47]=0.639124
+in=13,jn=14,kn=15,ln=15,ijnew=i1jnef[15]=27
+ijnew=26
+ijnew=25
+ijnew=-1
+NEW JOINT element:45
+NEW JOINT element nodes:47 48 49 15 14 13
+i1jnen[21]=27
+i1jnef[15]=45
+x[14]=-0.353553	y[14]=0.353553	z[14]=1.000000
+X[48]=-0.353553	Y[48]=0.353553	Z[48]=1.000000
+in=14,jn=15,kn=17,ln=17,ijnew=i1jnef[17]=42
+ijnew=41
+ijnew=39
+ijnew=38
+ijnew=37
+ijnew=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:46
+NEW JOINT element nodes:48 49 46 17 15 14
+i1jnen[22]=42
+i1jnef[17]=46
+x[15]=0.353553	y[15]=0.353553	z[15]=1.000000
+X[49]=0.353553	Y[49]=0.353553	Z[49]=1.000000
+in=15,jn=17,kn=13,ln=17,ijnew=i1jnef[17]=46
+ijnew=42
+ijnew=41
+ijnew=39
+ijnew=38
+ijnew=37
+ijnew=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:47
+NEW JOINT element nodes:49 46 47 13 17 15
+i1jnen[23]=46
+i1jnef[17]=47
+UPDATED OLD element nodes:46 47 48 49
+OLD element:8
+OLD element nodes:17 13 15 7
+x[17]=0.353553	y[17]=-0.353553	z[17]=1.000000
+X[50]=0.353553	Y[50]=-0.353553	Z[50]=1.000000
+in=17,jn=13,kn=15,ln=17,ijnew=i1jnef[17]=47
+***5***,ijnew=-100
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[51]=0.153206	Y[51]=-0.153206	Z[51]=0.639124
+in=13,jn=15,kn=7,ln=15,ijnew=i1jnef[15]=45
+ijnew=27
+ijnew=26
+ijnew=25
+ijnew=-1
+NEW JOINT element:48
+NEW JOINT element nodes:51 52 53 7 15 13
+i1jnen[24]=45
+i1jnef[15]=48
+x[15]=0.353553	y[15]=0.353553	z[15]=1.000000
+X[52]=0.353553	Y[52]=0.353553	Z[52]=1.000000
+in=15,jn=7,kn=17,ln=17,ijnew=i1jnef[17]=47
+ijnew=46
+ijnew=42
+ijnew=41
+ijnew=39
+ijnew=38
+ijnew=37
+ijnew=36
+ijnew=35
+ijnew=-1
+NEW JOINT element:49
+NEW JOINT element nodes:52 53 50 17 7 15
+i1jnen[25]=47
+i1jnef[17]=49
+x[7]=0.353553	y[7]=0.353553	z[7]=0.000000
+X[53]=0.353553	Y[53]=0.353553	Z[53]=0.000000
+in=7,jn=17,kn=13,ln=17,ijnew=i1jnef[17]=49
+ijnew=47
+ijnew=46
+ijnew=42
+ijnew=41
+ijnew=39
+ijnew=38
+ijnew=37
+ijnew=36
+ijnew=35
+***2***,ijnew=-100
+UPDATED OLD element nodes:50 51 52 53
+OLD element:9
+OLD element nodes:13 14 15 8
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[54]=0.153206	Y[54]=-0.153206	Z[54]=0.639124
+in=13,jn=14,kn=15,ln=15,ijnew=i1jnef[15]=48
+ijnew=45
+***4***,ijnew=-100
+x[14]=-0.353553	y[14]=0.353553	z[14]=1.000000
+X[55]=-0.353553	Y[55]=0.353553	Z[55]=1.000000
+in=14,jn=15,kn=8,ln=15,ijnew=i1jnef[15]=48
+ijnew=45
+ijnew=27
+ijnew=26
+ijnew=25
+ijnew=-1
+NEW JOINT element:50
+NEW JOINT element nodes:55 56 57 8 15 14
+i1jnen[26]=48
+i1jnef[15]=50
+x[15]=0.353553	y[15]=0.353553	z[15]=1.000000
+X[56]=0.353553	Y[56]=0.353553	Z[56]=1.000000
+in=15,jn=8,kn=13,ln=15,ijnew=i1jnef[15]=50
+ijnew=48
+ijnew=45
+ijnew=27
+ijnew=26
+ijnew=25
+ijnew=-1
+NEW JOINT element:51
+NEW JOINT element nodes:56 57 54 13 8 15
+i1jnen[27]=50
+i1jnef[15]=51
+x[8]=-0.353553	y[8]=-0.353553	z[8]=0.000000
+X[57]=-0.353553	Y[57]=-0.353553	Z[57]=0.000000
+in=8,jn=13,kn=14,ln=14,ijnew=i1jnef[14]=44
+***5***,ijnew=-100
+UPDATED OLD element nodes:54 55 56 57
+OLD element:10
+OLD element nodes:13 15 7 8
+x[13]=0.153206	y[13]=-0.153206	z[13]=0.639124
+X[58]=0.153206	Y[58]=-0.153206	Z[58]=0.639124
+in=13,jn=15,kn=7,ln=15,ijnew=i1jnef[15]=51
+ijnew=50
+ijnew=48
+***4***,ijnew=-100
+x[15]=0.353553	y[15]=0.353553	z[15]=1.000000
+X[59]=0.353553	Y[59]=0.353553	Z[59]=1.000000
+in=15,jn=7,kn=8,ln=15,ijnew=i1jnef[15]=51
+ijnew=50
+ijnew=48
+ijnew=45
+ijnew=27
+ijnew=26
+***5***,ijnew=-100
+x[7]=0.353553	y[7]=0.353553	z[7]=0.000000
+X[60]=0.353553	Y[60]=0.353553	Z[60]=0.000000
+in=7,jn=8,kn=13,ln=13,ijnew=i1jnef[13]=31
+ijnew=30
+***2***,ijnew=-100
+x[8]=-0.353553	y[8]=-0.353553	z[8]=0.000000
+X[61]=-0.353553	Y[61]=-0.353553	Z[61]=0.000000
+in=8,jn=13,kn=15,ln=15,ijnew=i1jnef[15]=51
+***5***,ijnew=-100
+UPDATED OLD element nodes:58 59 60 61
+OLD element:11
+OLD element nodes:8 5 14 15
+x[8]=-0.353553	y[8]=-0.353553	z[8]=0.000000
+X[62]=-0.353553	Y[62]=-0.353553	Z[62]=0.000000
+in=8,jn=5,kn=14,ln=14,ijnew=i1jnef[14]=44
+ijnew=-1
+NEW JOINT element:52
+NEW JOINT element nodes:62 63 64 14 5 8
+i1jnen[28]=44
+i1jnef[14]=52
+x[5]=-0.353553	y[5]=0.353553	z[5]=0.000000
+X[63]=-0.353553	Y[63]=0.353553	Z[63]=0.000000
+in=5,jn=14,kn=15,ln=15,ijnew=i1jnef[15]=51
+ijnew=50
+ijnew=48
+ijnew=45
+ijnew=27
+ijnew=26
+ijnew=25
+ijnew=-1
+NEW JOINT element:53
+NEW JOINT element nodes:63 64 65 15 14 5
+i1jnen[29]=51
+i1jnef[15]=53
+x[14]=-0.353553	y[14]=0.353553	z[14]=1.000000
+X[64]=-0.353553	Y[64]=0.353553	Z[64]=1.000000
+in=14,jn=15,kn=8,ln=15,ijnew=i1jnef[15]=53
+ijnew=51
+ijnew=50
+***4***,ijnew=-100
+x[15]=0.353553	y[15]=0.353553	z[15]=1.000000
+X[65]=0.353553	Y[65]=0.353553	Z[65]=1.000000
+in=15,jn=8,kn=5,ln=15,ijnew=i1jnef[15]=53
+ijnew=51
+ijnew=50
+ijnew=48
+ijnew=45
+ijnew=27
+ijnew=26
+ijnew=25
+***1***,ijnew=-100
+UPDATED OLD element nodes:62 63 64 65
+OLD element:12
+OLD element nodes:6 9 12 0
+x[6]=-0.353553	y[6]=0.353553	z[6]=0.000000
+X[66]=-0.353553	Y[66]=0.353553	Z[66]=0.000000
+in=6,jn=9,kn=12,ln=12,ijnew=i1jnef[12]=-1
+NEW JOINT element:54
+NEW JOINT element nodes:66 67 68 12 9 6
+i1jnen[30]=-1
+i1jnef[12]=54
+x[9]=0.353553	y[9]=0.353553	z[9]=0.000000
+X[67]=0.353553	Y[67]=0.353553	Z[67]=0.000000
+in=9,jn=12,kn=0,ln=12,ijnew=i1jnef[12]=54
+ijnew=-1
+NEW JOINT element:55
+NEW JOINT element nodes:67 68 69 0 12 9
+i1jnen[31]=54
+i1jnef[12]=55
+x[12]=0.353553	y[12]=-0.353553	z[12]=0.000000
+X[68]=0.353553	Y[68]=-0.353553	Z[68]=0.000000
+in=12,jn=0,kn=6,ln=12,ijnew=i1jnef[12]=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:56
+NEW JOINT element nodes:68 69 66 6 0 12
+i1jnen[32]=55
+i1jnef[12]=56
+x[0]=-0.353553	y[0]=0.353553	z[0]=-1.000000
+X[69]=-0.353553	Y[69]=0.353553	Z[69]=-1.000000
+in=0,jn=6,kn=9,ln=9,ijnew=i1jnef[9]=-1
+NEW JOINT element:57
+NEW JOINT element nodes:69 66 67 9 6 0
+i1jnen[33]=-1
+i1jnef[9]=57
+UPDATED OLD element nodes:66 67 68 69
+OLD element:13
+OLD element nodes:12 10 6 1
+x[12]=0.353553	y[12]=-0.353553	z[12]=0.000000
+X[70]=0.353553	Y[70]=-0.353553	Z[70]=0.000000
+in=12,jn=10,kn=6,ln=12,ijnew=i1jnef[12]=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:58
+NEW JOINT element nodes:70 71 72 6 10 12
+i1jnen[34]=56
+i1jnef[12]=58
+x[10]=-0.353553	y[10]=-0.353553	z[10]=0.000000
+X[71]=-0.353553	Y[71]=-0.353553	Z[71]=0.000000
+in=10,jn=6,kn=1,ln=10,ijnew=i1jnef[10]=-1
+NEW JOINT element:59
+NEW JOINT element nodes:71 72 73 1 6 10
+i1jnen[35]=-1
+i1jnef[10]=59
+x[6]=-0.353553	y[6]=0.353553	z[6]=0.000000
+X[72]=-0.353553	Y[72]=0.353553	Z[72]=0.000000
+in=6,jn=1,kn=12,ln=12,ijnew=i1jnef[12]=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:60
+NEW JOINT element nodes:72 73 70 12 1 6
+i1jnen[36]=58
+i1jnef[12]=60
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[73]=-0.153206	Y[73]=-0.153206	Z[73]=-0.639124
+in=1,jn=12,kn=10,ln=12,ijnew=i1jnef[12]=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:61
+NEW JOINT element nodes:73 70 71 10 12 1
+i1jnen[37]=60
+i1jnef[12]=61
+UPDATED OLD element nodes:70 71 72 73
+OLD element:14
+OLD element nodes:12 10 1 4
+x[12]=0.353553	y[12]=-0.353553	z[12]=0.000000
+X[74]=0.353553	Y[74]=-0.353553	Z[74]=0.000000
+in=12,jn=10,kn=1,ln=12,ijnew=i1jnef[12]=61
+***5***,ijnew=-100
+x[10]=-0.353553	y[10]=-0.353553	z[10]=0.000000
+X[75]=-0.353553	Y[75]=-0.353553	Z[75]=0.000000
+in=10,jn=1,kn=4,ln=10,ijnew=i1jnef[10]=59
+ijnew=-1
+NEW JOINT element:62
+NEW JOINT element nodes:75 76 77 4 1 10
+i1jnen[38]=59
+i1jnef[10]=62
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[76]=-0.153206	Y[76]=-0.153206	Z[76]=-0.639124
+in=1,jn=4,kn=12,ln=12,ijnew=i1jnef[12]=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:63
+NEW JOINT element nodes:76 77 74 12 4 1
+i1jnen[39]=61
+i1jnef[12]=63
+x[4]=0.353553	y[4]=-0.353553	z[4]=-1.000000
+X[77]=0.353553	Y[77]=-0.353553	Z[77]=-1.000000
+in=4,jn=12,kn=10,ln=12,ijnew=i1jnef[12]=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:64
+NEW JOINT element nodes:77 74 75 10 12 4
+i1jnen[40]=63
+i1jnef[12]=64
+UPDATED OLD element nodes:74 75 76 77
+OLD element:15
+OLD element nodes:10 6 1 3
+x[10]=-0.353553	y[10]=-0.353553	z[10]=0.000000
+X[78]=-0.353553	Y[78]=-0.353553	Z[78]=0.000000
+in=10,jn=6,kn=1,ln=10,ijnew=i1jnef[10]=62
+ijnew=59
+***4***,ijnew=-100
+x[6]=-0.353553	y[6]=0.353553	z[6]=0.000000
+X[79]=-0.353553	Y[79]=0.353553	Z[79]=0.000000
+in=6,jn=1,kn=3,ln=6,ijnew=i1jnef[6]=-1
+NEW JOINT element:65
+NEW JOINT element nodes:79 80 81 3 1 6
+i1jnen[41]=-1
+i1jnef[6]=65
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[80]=-0.153206	Y[80]=-0.153206	Z[80]=-0.639124
+in=1,jn=3,kn=10,ln=10,ijnew=i1jnef[10]=62
+ijnew=59
+ijnew=-1
+NEW JOINT element:66
+NEW JOINT element nodes:80 81 78 10 3 1
+i1jnen[42]=62
+i1jnef[10]=66
+x[3]=-0.353553	y[3]=-0.353553	z[3]=-1.000000
+X[81]=-0.353553	Y[81]=-0.353553	Z[81]=-1.000000
+in=3,jn=10,kn=6,ln=10,ijnew=i1jnef[10]=66
+ijnew=62
+ijnew=59
+ijnew=-1
+NEW JOINT element:67
+NEW JOINT element nodes:81 78 79 6 10 3
+i1jnen[43]=66
+i1jnef[10]=67
+UPDATED OLD element nodes:78 79 80 81
+OLD element:16
+OLD element nodes:1 10 3 4
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[82]=-0.153206	Y[82]=-0.153206	Z[82]=-0.639124
+in=1,jn=10,kn=3,ln=10,ijnew=i1jnef[10]=67
+ijnew=66
+***2***,ijnew=-100
+x[10]=-0.353553	y[10]=-0.353553	z[10]=0.000000
+X[83]=-0.353553	Y[83]=-0.353553	Z[83]=0.000000
+in=10,jn=3,kn=4,ln=10,ijnew=i1jnef[10]=67
+ijnew=66
+ijnew=62
+ijnew=59
+ijnew=-1
+NEW JOINT element:68
+NEW JOINT element nodes:83 84 85 4 3 10
+i1jnen[44]=67
+i1jnef[10]=68
+x[3]=-0.353553	y[3]=-0.353553	z[3]=-1.000000
+X[84]=-0.353553	Y[84]=-0.353553	Z[84]=-1.000000
+in=3,jn=4,kn=1,ln=4,ijnew=i1jnef[4]=-1
+NEW JOINT element:69
+NEW JOINT element nodes:84 85 82 1 4 3
+i1jnen[45]=-1
+i1jnef[4]=69
+x[4]=0.353553	y[4]=-0.353553	z[4]=-1.000000
+X[85]=0.353553	Y[85]=-0.353553	Z[85]=-1.000000
+in=4,jn=1,kn=10,ln=10,ijnew=i1jnef[10]=68
+ijnew=67
+ijnew=66
+ijnew=62
+***1***,ijnew=-100
+UPDATED OLD element nodes:82 83 84 85
+OLD element:17
+OLD element nodes:3 1 4 2
+x[3]=-0.353553	y[3]=-0.353553	z[3]=-1.000000
+X[86]=-0.353553	Y[86]=-0.353553	Z[86]=-1.000000
+in=3,jn=1,kn=4,ln=4,ijnew=i1jnef[4]=69
+***2***,ijnew=-100
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[87]=-0.153206	Y[87]=-0.153206	Z[87]=-0.639124
+in=1,jn=4,kn=2,ln=4,ijnew=i1jnef[4]=69
+ijnew=-1
+NEW JOINT element:70
+NEW JOINT element nodes:87 88 89 2 4 1
+i1jnen[46]=69
+i1jnef[4]=70
+x[4]=0.353553	y[4]=-0.353553	z[4]=-1.000000
+X[88]=0.353553	Y[88]=-0.353553	Z[88]=-1.000000
+in=4,jn=2,kn=3,ln=4,ijnew=i1jnef[4]=70
+ijnew=69
+ijnew=-1
+NEW JOINT element:71
+NEW JOINT element nodes:88 89 86 3 2 4
+i1jnen[47]=70
+i1jnef[4]=71
+x[2]=0.353553	y[2]=0.353553	z[2]=-1.000000
+X[89]=0.353553	Y[89]=0.353553	Z[89]=-1.000000
+in=2,jn=3,kn=1,ln=3,ijnew=i1jnef[3]=-1
+NEW JOINT element:72
+NEW JOINT element nodes:89 86 87 1 3 2
+i1jnen[48]=-1
+i1jnef[3]=72
+UPDATED OLD element nodes:86 87 88 89
+OLD element:18
+OLD element nodes:1 4 2 12
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[90]=-0.153206	Y[90]=-0.153206	Z[90]=-0.639124
+in=1,jn=4,kn=2,ln=4,ijnew=i1jnef[4]=71
+ijnew=70
+***4***,ijnew=-100
+x[4]=0.353553	y[4]=-0.353553	z[4]=-1.000000
+X[91]=0.353553	Y[91]=-0.353553	Z[91]=-1.000000
+in=4,jn=2,kn=12,ln=12,ijnew=i1jnef[12]=64
+ijnew=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:73
+NEW JOINT element nodes:91 92 93 12 2 4
+i1jnen[49]=64
+i1jnef[12]=73
+x[2]=0.353553	y[2]=0.353553	z[2]=-1.000000
+X[92]=0.353553	Y[92]=0.353553	Z[92]=-1.000000
+in=2,jn=12,kn=1,ln=12,ijnew=i1jnef[12]=73
+ijnew=64
+ijnew=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:74
+NEW JOINT element nodes:92 93 90 1 12 2
+i1jnen[50]=73
+i1jnef[12]=74
+x[12]=0.353553	y[12]=-0.353553	z[12]=0.000000
+X[93]=0.353553	Y[93]=-0.353553	Z[93]=0.000000
+in=12,jn=1,kn=4,ln=12,ijnew=i1jnef[12]=74
+ijnew=73
+ijnew=64
+ijnew=63
+***6***,ijnew=-100
+UPDATED OLD element nodes:90 91 92 93
+OLD element:19
+OLD element nodes:3 1 2 0
+x[3]=-0.353553	y[3]=-0.353553	z[3]=-1.000000
+X[94]=-0.353553	Y[94]=-0.353553	Z[94]=-1.000000
+in=3,jn=1,kn=2,ln=3,ijnew=i1jnef[3]=72
+***5***,ijnew=-100
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[95]=-0.153206	Y[95]=-0.153206	Z[95]=-0.639124
+in=1,jn=2,kn=0,ln=2,ijnew=i1jnef[2]=-1
+NEW JOINT element:75
+NEW JOINT element nodes:95 96 97 0 2 1
+i1jnen[51]=-1
+i1jnef[2]=75
+x[2]=0.353553	y[2]=0.353553	z[2]=-1.000000
+X[96]=0.353553	Y[96]=0.353553	Z[96]=-1.000000
+in=2,jn=0,kn=3,ln=3,ijnew=i1jnef[3]=72
+ijnew=-1
+NEW JOINT element:76
+NEW JOINT element nodes:96 97 94 3 0 2
+i1jnen[52]=72
+i1jnef[3]=76
+x[0]=-0.353553	y[0]=0.353553	z[0]=-1.000000
+X[97]=-0.353553	Y[97]=0.353553	Z[97]=-1.000000
+in=0,jn=3,kn=1,ln=3,ijnew=i1jnef[3]=76
+ijnew=72
+ijnew=-1
+NEW JOINT element:77
+NEW JOINT element nodes:97 94 95 1 3 0
+i1jnen[53]=76
+i1jnef[3]=77
+UPDATED OLD element nodes:94 95 96 97
+OLD element:20
+OLD element nodes:3 1 0 6
+x[3]=-0.353553	y[3]=-0.353553	z[3]=-1.000000
+X[98]=-0.353553	Y[98]=-0.353553	Z[98]=-1.000000
+in=3,jn=1,kn=0,ln=3,ijnew=i1jnef[3]=77
+***5***,ijnew=-100
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[99]=-0.153206	Y[99]=-0.153206	Z[99]=-0.639124
+in=1,jn=0,kn=6,ln=6,ijnew=i1jnef[6]=65
+ijnew=-1
+NEW JOINT element:78
+NEW JOINT element nodes:99 100 101 6 0 1
+i1jnen[54]=65
+i1jnef[6]=78
+x[0]=-0.353553	y[0]=0.353553	z[0]=-1.000000
+X[100]=-0.353553	Y[100]=0.353553	Z[100]=-1.000000
+in=0,jn=6,kn=3,ln=6,ijnew=i1jnef[6]=78
+ijnew=65
+ijnew=-1
+NEW JOINT element:79
+NEW JOINT element nodes:100 101 98 3 6 0
+i1jnen[55]=78
+i1jnef[6]=79
+x[6]=-0.353553	y[6]=0.353553	z[6]=0.000000
+X[101]=-0.353553	Y[101]=0.353553	Z[101]=0.000000
+in=6,jn=3,kn=1,ln=6,ijnew=i1jnef[6]=79
+ijnew=78
+ijnew=65
+***2***,ijnew=-100
+UPDATED OLD element nodes:98 99 100 101
+OLD element:21
+OLD element nodes:1 2 0 12
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[102]=-0.153206	Y[102]=-0.153206	Z[102]=-0.639124
+in=1,jn=2,kn=0,ln=2,ijnew=i1jnef[2]=75
+***4***,ijnew=-100
+x[2]=0.353553	y[2]=0.353553	z[2]=-1.000000
+X[103]=0.353553	Y[103]=0.353553	Z[103]=-1.000000
+in=2,jn=0,kn=12,ln=12,ijnew=i1jnef[12]=74
+ijnew=73
+ijnew=64
+ijnew=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:80
+NEW JOINT element nodes:103 104 105 12 0 2
+i1jnen[56]=74
+i1jnef[12]=80
+x[0]=-0.353553	y[0]=0.353553	z[0]=-1.000000
+X[104]=-0.353553	Y[104]=0.353553	Z[104]=-1.000000
+in=0,jn=12,kn=1,ln=12,ijnew=i1jnef[12]=80
+ijnew=74
+ijnew=73
+ijnew=64
+ijnew=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:81
+NEW JOINT element nodes:104 105 102 1 12 0
+i1jnen[57]=80
+i1jnef[12]=81
+x[12]=0.353553	y[12]=-0.353553	z[12]=0.000000
+X[105]=0.353553	Y[105]=-0.353553	Z[105]=0.000000
+in=12,jn=1,kn=2,ln=12,ijnew=i1jnef[12]=81
+ijnew=80
+ijnew=74
+***5***,ijnew=-100
+UPDATED OLD element nodes:102 103 104 105
+OLD element:22
+OLD element nodes:1 0 6 12
+x[1]=-0.153206	y[1]=-0.153206	z[1]=-0.639124
+X[106]=-0.153206	Y[106]=-0.153206	Z[106]=-0.639124
+in=1,jn=0,kn=6,ln=6,ijnew=i1jnef[6]=79
+ijnew=78
+***4***,ijnew=-100
+x[0]=-0.353553	y[0]=0.353553	z[0]=-1.000000
+X[107]=-0.353553	Y[107]=0.353553	Z[107]=-1.000000
+in=0,jn=6,kn=12,ln=12,ijnew=i1jnef[12]=81
+ijnew=80
+ijnew=74
+ijnew=73
+ijnew=64
+ijnew=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+***5***,ijnew=-100
+x[6]=-0.353553	y[6]=0.353553	z[6]=0.000000
+X[108]=-0.353553	Y[108]=0.353553	Z[108]=0.000000
+in=6,jn=12,kn=1,ln=12,ijnew=i1jnef[12]=81
+ijnew=80
+ijnew=74
+ijnew=73
+ijnew=64
+ijnew=63
+ijnew=61
+ijnew=60
+***2***,ijnew=-100
+x[12]=0.353553	y[12]=-0.353553	z[12]=0.000000
+X[109]=0.353553	Y[109]=-0.353553	Z[109]=0.000000
+in=12,jn=1,kn=0,ln=12,ijnew=i1jnef[12]=81
+***5***,ijnew=-100
+UPDATED OLD element nodes:106 107 108 109
+OLD element:23
+OLD element nodes:12 9 2 0
+x[12]=0.353553	y[12]=-0.353553	z[12]=0.000000
+X[110]=0.353553	Y[110]=-0.353553	Z[110]=0.000000
+in=12,jn=9,kn=2,ln=12,ijnew=i1jnef[12]=81
+ijnew=80
+ijnew=74
+ijnew=73
+ijnew=64
+ijnew=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+ijnew=54
+ijnew=-1
+NEW JOINT element:82
+NEW JOINT element nodes:110 111 112 2 9 12
+i1jnen[58]=81
+i1jnef[12]=82
+x[9]=0.353553	y[9]=0.353553	z[9]=0.000000
+X[111]=0.353553	Y[111]=0.353553	Z[111]=0.000000
+in=9,jn=2,kn=0,ln=9,ijnew=i1jnef[9]=57
+ijnew=-1
+NEW JOINT element:83
+NEW JOINT element nodes:111 112 113 0 2 9
+i1jnen[59]=57
+i1jnef[9]=83
+x[2]=0.353553	y[2]=0.353553	z[2]=-1.000000
+X[112]=0.353553	Y[112]=0.353553	Z[112]=-1.000000
+in=2,jn=0,kn=12,ln=12,ijnew=i1jnef[12]=82
+ijnew=81
+ijnew=80
+***4***,ijnew=-100
+x[0]=-0.353553	y[0]=0.353553	z[0]=-1.000000
+X[113]=-0.353553	Y[113]=0.353553	Z[113]=-1.000000
+in=0,jn=12,kn=9,ln=12,ijnew=i1jnef[12]=82
+ijnew=81
+ijnew=80
+ijnew=74
+ijnew=73
+ijnew=64
+ijnew=63
+ijnew=61
+ijnew=60
+ijnew=58
+ijnew=56
+ijnew=55
+***1***,ijnew=-100
+UPDATED OLD element nodes:110 111 112 113
+@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@@@@**********@@@
+******Yjd3TET4 FINISHED******

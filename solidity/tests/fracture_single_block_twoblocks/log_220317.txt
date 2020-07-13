@@ -1,0 +1,744 @@
+running multiphase
+05022017-2
+05022017-2
+05022017-2
+05022017-2
+05022017-2
+in y3d_allocate 
+
+06072016_11
+ydn->nnopo 18 
+06072016_15
+06072016_12
+06072016_13
+06072016_14
+ncindex:   1
+ysp->nspd:   1
+NEW input
+ ydx->nelem_t   24
+ yde->nelem1 24
+
+ydx->nelem1 18
+
+ENTERED INTO YMD ---------------------------------- 
+
+exited YMD 
+
+yde->nelem2 116
+
+ydx->nnopo 114
+
+*YlinkCONtoJOINT* node 18, element 24, surface 24
+*YfindFEMcon* node 18, element 24, surface 24
+output-4444444 
+In ring, nnodeq: 16
+In ring, nnodeq, nelem_t: 16 24
+
+In ring2, nnodeq: 16
+output-45555555 
+nelem_T: 24
+output-5-1 
+output-6666666 
+06072017_6 
+06072017_7 
+06072017_8 
+06072017_9 
+06072017_10 
+output-7777777 
+output-8888888 
+out y3d_allocate 
+
+nnelem_t_s is 24
+
+nnode is 96
+
+nnelem_l is 24
+
+in y3d_popullate 
+
+in y3d_populate 2 
+
+nnode_l 96
+in y3d_populate 6 
+
+out y3d_popullate 
+
+frame 1/2
+in 3D FEMDEM 
+
+in 3D FEMDEM 1 
+
+in 3D FEMDEM 2 
+name: single_crack.Y3D
+number of loop in 3D  FEMDEM is 100
+
+before inside pressure 0
+
+before inside pressure 1
+
+before inside pressure 2
+
+before inside pressure 3
+
+before inside pressure 4
+
+before inside pressure 5
+
+before inside pressure 6
+
+before inside pressure 7
+
+before inside pressure 8
+
+before inside pressure 9
+
+before inside pressure 10
+
+before inside pressure 11
+
+before inside pressure 12
+
+before inside pressure 13
+
+before inside pressure 14
+
+before inside pressure 15
+
+before inside pressure 16
+
+before inside pressure 17
+
+before inside pressure 18
+
+before inside pressure 19
+
+before inside pressure 20
+
+before inside pressure 21
+
+before inside pressure 22
+
+before inside pressure 23
+
+before inside pressure 24
+
+before inside pressure 25
+
+before inside pressure 26
+
+before inside pressure 27
+
+before inside pressure 28
+
+before inside pressure 29
+
+before inside pressure 30
+
+before inside pressure 31
+
+before inside pressure 32
+
+before inside pressure 33
+
+before inside pressure 34
+
+before inside pressure 35
+
+before inside pressure 36
+
+before inside pressure 37
+
+before inside pressure 38
+
+before inside pressure 39
+
+before inside pressure 40
+
+before inside pressure 41
+
+before inside pressure 42
+
+before inside pressure 43
+
+before inside pressure 44
+
+before inside pressure 45
+
+before inside pressure 46
+
+before inside pressure 47
+
+before inside pressure 48
+
+before inside pressure 49
+
+before inside pressure 50
+
+before inside pressure 51
+
+before inside pressure 52
+
+before inside pressure 53
+
+before inside pressure 54
+
+before inside pressure 55
+
+before inside pressure 56
+
+before inside pressure 57
+
+before inside pressure 58
+
+before inside pressure 59
+
+before inside pressure 60
+
+before inside pressure 61
+
+before inside pressure 62
+
+before inside pressure 63
+
+before inside pressure 64
+
+before inside pressure 65
+
+before inside pressure 66
+
+before inside pressure 67
+
+before inside pressure 68
+
+before inside pressure 69
+
+before inside pressure 70
+
+before inside pressure 71
+
+before inside pressure 72
+
+before inside pressure 73
+
+before inside pressure 74
+
+before inside pressure 75
+
+before inside pressure 76
+
+before inside pressure 77
+
+before inside pressure 78
+
+before inside pressure 79
+
+before inside pressure 80
+
+before inside pressure 81
+
+before inside pressure 82
+
+before inside pressure 83
+
+before inside pressure 84
+
+before inside pressure 85
+
+before inside pressure 86
+
+before inside pressure 87
+
+before inside pressure 88
+
+before inside pressure 89
+
+before inside pressure 90
+
+before inside pressure 91
+
+before inside pressure 92
+
+before inside pressure 93
+
+before inside pressure 94
+
+before inside pressure 95
+
+before inside pressure 96
+
+before inside pressure 97
+
+before inside pressure 98
+
+before inside pressure 99
+
+total bouyancy force at last timestep  0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00
+
+f1dt  6.013470e-154 0.000000e+00 0.000000e+00 0.000000e+00
+
+f1dt1  6.013470e-154 0.000000e+00 0.000000e+00
+
+f1dt2  0.000000e+00 0.000000e+00 0.000000e+00
+
+output-4444444 
+In ring, nnodeq: 16
+In ring, nnodeq, nelem_t: 16 24
+
+In ring2, nnodeq: 16
+output-45555555 
+nelem_T: 24
+output-5-1 
+output-6666666 
+06072017_6 
+06072017_7 
+06072017_8 
+06072017_9 
+06072017_10 
+output-7777777 
+output-8888888 
+out 3D FEMDEM 
+
+in y3d_allocate 
+
+output-4444444 
+In ring, nnodeq: 16
+In ring, nnodeq, nelem_t: 16 24
+
+In ring2, nnodeq: 16
+output-45555555 
+nelem_T: 24
+output-5-1 
+output-6666666 
+06072017_6 
+06072017_7 
+06072017_8 
+06072017_9 
+06072017_10 
+output-7777777 
+output-8888888 
+out y3d_allocate 
+
+nnelem_t_s is 24
+
+nnode is 96
+
+nnelem_l is 24
+
+in y3d_popullate 
+
+in y3d_populate 2 
+
+nnode_l 96
+in y3d_populate 6 
+
+out y3d_popullate 
+
+in 3D FEMDEM 
+
+in 3D FEMDEM 1 
+
+in 3D FEMDEM 2 
+name: single_crack.Y3D
+number of loop in 3D  FEMDEM is 100
+
+before inside pressure 100
+
+before inside pressure 101
+
+before inside pressure 102
+
+before inside pressure 103
+
+before inside pressure 104
+
+before inside pressure 105
+
+before inside pressure 106
+
+before inside pressure 107
+
+before inside pressure 108
+
+before inside pressure 109
+
+before inside pressure 110
+
+before inside pressure 111
+
+before inside pressure 112
+
+before inside pressure 113
+
+before inside pressure 114
+
+before inside pressure 115
+
+before inside pressure 116
+
+before inside pressure 117
+
+before inside pressure 118
+
+before inside pressure 119
+
+before inside pressure 120
+
+before inside pressure 121
+
+before inside pressure 122
+
+before inside pressure 123
+
+before inside pressure 124
+
+before inside pressure 125
+
+before inside pressure 126
+
+before inside pressure 127
+
+before inside pressure 128
+
+before inside pressure 129
+
+before inside pressure 130
+
+before inside pressure 131
+
+before inside pressure 132
+
+before inside pressure 133
+
+before inside pressure 134
+
+before inside pressure 135
+
+before inside pressure 136
+
+before inside pressure 137
+
+before inside pressure 138
+
+before inside pressure 139
+
+before inside pressure 140
+
+before inside pressure 141
+
+before inside pressure 142
+
+before inside pressure 143
+
+before inside pressure 144
+
+before inside pressure 145
+
+before inside pressure 146
+
+before inside pressure 147
+
+before inside pressure 148
+
+before inside pressure 149
+
+before inside pressure 150
+
+before inside pressure 151
+
+before inside pressure 152
+
+before inside pressure 153
+
+before inside pressure 154
+
+before inside pressure 155
+
+before inside pressure 156
+
+before inside pressure 157
+
+before inside pressure 158
+
+before inside pressure 159
+
+before inside pressure 160
+
+before inside pressure 161
+
+before inside pressure 162
+
+before inside pressure 163
+
+before inside pressure 164
+
+before inside pressure 165
+
+before inside pressure 166
+
+before inside pressure 167
+
+before inside pressure 168
+
+before inside pressure 169
+
+before inside pressure 170
+
+before inside pressure 171
+
+before inside pressure 172
+
+before inside pressure 173
+
+before inside pressure 174
+
+before inside pressure 175
+
+before inside pressure 176
+
+before inside pressure 177
+
+before inside pressure 178
+
+before inside pressure 179
+
+before inside pressure 180
+
+before inside pressure 181
+
+before inside pressure 182
+
+before inside pressure 183
+
+before inside pressure 184
+
+before inside pressure 185
+
+before inside pressure 186
+
+before inside pressure 187
+
+before inside pressure 188
+
+before inside pressure 189
+
+before inside pressure 190
+
+before inside pressure 191
+
+before inside pressure 192
+
+before inside pressure 193
+
+before inside pressure 194
+
+before inside pressure 195
+
+before inside pressure 196
+
+before inside pressure 197
+
+before inside pressure 198
+
+before inside pressure 199
+
+total bouyancy force at last timestep  -6.267308e+276 -1.044551e+277 1.329497e+277 0.000000e+00
+
+f1dt  6.013470e-154 0.000000e+00 0.000000e+00 0.000000e+00
+
+f1dt1  6.013470e-154 0.000000e+00 0.000000e+00
+
+f1dt2  0.000000e+00 0.000000e+00 0.000000e+00
+
+output-4444444 
+In ring, nnodeq: 16
+In ring, nnodeq, nelem_t: 16 24
+
+In ring2, nnodeq: 16
+output-45555555 
+nelem_T: 24
+output-5-1 
+output-6666666 
+06072017_6 
+06072017_7 
+06072017_8 
+06072017_9 
+06072017_10 
+output-7777777 
+output-8888888 
+out 3D FEMDEM 
+
+ WARNING: Failed to converge.
+ PETSc did not converge for matrix solve of: Pressure
+ Reason for non-convergence: KSP_DIVERGED_NAN              
+ Number of iterations:            0
+ Sending signal to dump and finish
+ Dumping matrix equation in file called matrixdump
+ scalar_field Permeability31 has reference count 1
+ and id 133
+ scalar_field Permeability32 has reference count 1
+ and id 132
+ scalar_field Permeability33 has reference count 1
+ and id 131
+ scalar_field Permeability23 has reference count 1
+ and id 130
+ scalar_field Permeability13 has reference count 1
+ and id 129
+ scalar_field Permeability22 has reference count 1
+ and id 128
+ scalar_field Permeability21 has reference count 1
+ and id 127
+ scalar_field Permeability12 has reference count 1
+ and id 126
+ scalar_field Permeability11 has reference count 1
+ and id 125
+ mesh_type P0DG has reference count 9
+ and id 41
+ mesh_type SurfaceP0DG has reference count 1
+ and id 40
+ element_type  has reference count 2
+ and id 65
+ element_type  has reference count 1
+ and id 64
+ quadrature_type  has reference count 3
+ and id 40
+ quadrature_type  has reference count 1
+ and id 39
+ csr_matrix CoordinateMeshFaceList has reference count 1
+ and id 12
+ csr_sparsity EEListSparsity has reference count 2
+ and id 34
+ scalar_field Permeability31 has reference count 1
+ and id 60
+ scalar_field Permeability32 has reference count 1
+ and id 59
+ scalar_field Permeability33 has reference count 1
+ and id 58
+ scalar_field Permeability23 has reference count 1
+ and id 57
+ scalar_field Permeability13 has reference count 1
+ and id 56
+ scalar_field Permeability22 has reference count 1
+ and id 55
+ scalar_field Permeability21 has reference count 1
+ and id 54
+ scalar_field Permeability12 has reference count 1
+ and id 53
+ scalar_field Permeability11 has reference count 1
+ and id 52
+ mesh_type P0DG has reference count 9
+ and id 8
+ mesh_type SurfaceP0DG has reference count 1
+ and id 7
+ element_type  has reference count 2
+ and id 12
+ element_type  has reference count 1
+ and id 11
+ quadrature_type  has reference count 3
+ and id 8
+ quadrature_type  has reference count 1
+ and id 7
+ csr_matrix CoordinateMeshFaceList has reference count 1
+ and id 1
+ csr_sparsity EEListSparsity has reference count 2
+ and id 2
+ Current memory usage in bytes:
+          TotalMemory                1580168.
+          MeshMemory                  405168.
+          ScalarFieldMemory           755352.
+          VectorFieldMemory                0.
+          TensorFieldMemory                0.
+          MatrixSparsityMemory        251792.
+          MatrixMemory                167856.
+          TransformCacheMemory             0.
+ inside initialise_femdem
+ single_crack.Y3D                                                                                     
+ nodes_r, elements_r, edges_r, nodes_v, elements_v, edges_v
+          32          72          48          96          24          24
+          72
+          48
+          32
+          24
+          24
+          96
+ passed populate here -------------------------------------
+ point0- 
+          72
+          72
+          72
+          72
+          48
+          48
+          48
+          32
+          32
+          32
+          24
+          24
+          24
+          24
+          24
+          24
+          24
+          96
+          96
+          96
+ AO-----testing size---------
+          72
+ AO---- testing values ------
+  0.10000000000000001     
+  0.10000000000000001     
+  0.10000000000000001     
+   0.0000000000000000     
+ ----------------------------
+  create the ring mesh 
+ cv_nloc           10
+ -----WARNING: PORE PRESSURE IS NOT INCLUDED!------
+ inside calculate_volume_fraction
+ Projecting Permeability
+ finish deallocate_femdem------
+ inside initialise_femdem
+ single_crack.Y3D                                                                                     
+ nodes_r, elements_r, edges_r, nodes_v, elements_v, edges_v
+          32          72          48          96          24          24
+          72
+          48
+          32
+          24
+          24
+          96
+ passed populate here -------------------------------------
+ point0- 
+          72
+          72
+          72
+          72
+          48
+          48
+          48
+          32
+          32
+          32
+          24
+          24
+          24
+          24
+          24
+          24
+          24
+          96
+          96
+          96
+ AO-----testing size---------
+          72
+ AO---- testing values ------
+  0.10000000000000001     
+  0.10000000000000001     
+  0.10000000000000001     
+   0.0000000000000000     
+ ----------------------------
+  create the ring mesh 
+ cv_nloc           10
+ -----WARNING: PORE PRESSURE IS NOT INCLUDED!------
+ inside calculate_volume_fraction
+ Projecting Permeability
+ finish deallocate_femdem------

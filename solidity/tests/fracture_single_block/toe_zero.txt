@@ -1,0 +1,14 @@
+total_number 0
+particle_number_per_layer 0
+
+maximum_dimension -120 400 400
+
+normal_direction 3 4 0
+
+grid_number 0
+
+
+
+particle_velocity 0.0 -8.0 0
+control_velocity yes
+impact_velocity 0.0 0.0 0

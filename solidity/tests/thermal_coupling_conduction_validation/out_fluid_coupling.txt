@@ -1,0 +1,124 @@
+ Inside femdemthermal
+ inside initialise_femdem
+ solid.Y3D                                                                                            
+ iflag
+ /simulation_type/intertia_dominated
+           1           0           0
+ iflag
+ iflag
+           1           0           3
+05022017-2
+05022017-2
+05022017-2
+05022017-2
+05022017-2
+in y3d_allocate 
+
+NEW input
+ surface element number is 728
+yde->nelem1 -------------------- 5130
+
+ydx->nnopo1 1064
+
+yde->nelem2 ----------------- 5130
+
+ydx->nnopo 1064
+
+ydc->iflag ----------------- 1
+ydc->iflag ----------------- 0
+ydc->iflag ----------------- 3
+----------------------------------------------------------- ncmno=1064 nnopo=1064 
+
+
+
+
+
+*YlinkCONtoJOINT* node 1064, element 5130, surface 728
+*YfindFEMcon* node 1064, element 5130, surface 728
+output-4444444 
+In ring, nnodeq: 366
+In ring, nnodeq, nelem_t: 366 728
+
+In ring2, nnodeq: 366
+output-45555555 
+nelem_T: 728
+output-5-1 
+output-7777777 
+nnelem_t_s is 728
+
+nnode is 1064
+
+nnelem_l is 5130
+
+nnelem_l_r is 732 2184 1456
+
+out y3d_allocate 
+
+ nodes_r, elements_r, edges_r, nodes_v, elements_v, edges_v
+         732        2184        1456        1064        5130         728
+        2184
+        1456
+         732
+        5130
+         728
+        1064
+in y3d_popullate 
+
+in y3d_populate 2 
+
+nceml ncsfel ncmno 5130 728 1064 
+
+ncmel 1064 
+
+ncmel 5130 
+
+out y3d_popullate 
+
+ passed populate here -------------------------------------
+ point0- 
+        2184
+        2184
+        2184
+        2184
+        1456
+        1456
+        1456
+         732
+         732
+         732
+        5130
+        5130
+        5130
+        5130
+         728
+         728
+         728
+        1064
+        1064
+        1064
+ AO-----testing size---------
+        2184
+ AO---- testing values ------
+   1.0416666666666669E-008
+   1.0416666666666669E-008
+   1.0416666666666669E-008
+   0.0000000000000000     
+ ----------------------------
+  create the ring mesh 
+ WARNING: an incomplete surface mesh has been provided.
+ This will not work in parallel.
+ All parts of the domain boundary need to be marked with a (physical) surface id.
+ flag_thm
+           3
+ cv_nloc            4
+ In solver option:/tmp/galerkin_projection/continuous/solver/preconditioner[0]
+*** ERROR ***
+Error message: The fluidity binary is built without hypre support!
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator MPI_COMM_WORLD
+with errorcode 16.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------

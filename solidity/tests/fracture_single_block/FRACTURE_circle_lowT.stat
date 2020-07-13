@@ -1,0 +1,104 @@
+<header>
+<constant name="FluidityVersion" type="string" value="master:a4b64eb455b1ae708a4ad8c1afd7ea89918c9b44" />
+<constant name="CompileTime" type="string" value="Mar  9 2017 11:37:10" />
+<constant name="StartTime" type="string" value="20170309 145123.269+0000" />
+<constant name="HostName" type="string" value="Unknown" />
+<constant name="format" type="string" value="plain_text" />
+<field column="1" name="ElapsedTime" statistic="value"/>
+<field column="2" name="dt" statistic="value"/>
+<field column="3" name="ElapsedWallTime" statistic="value"/>
+<field column="4" name="CoordinateMesh" statistic="nodes"/>
+<field column="5" name="CoordinateMesh" statistic="elements"/>
+<field column="6" name="CoordinateMesh" statistic="surface_elements"/>
+<field column="7" name="TotalMemory" statistic="current" material_phase="Memory"/>
+<field column="8" name="TotalMemory" statistic="min" material_phase="Memory"/>
+<field column="9" name="TotalMemory" statistic="max" material_phase="Memory"/>
+<field column="10" name="MeshMemory" statistic="current" material_phase="Memory"/>
+<field column="11" name="MeshMemory" statistic="min" material_phase="Memory"/>
+<field column="12" name="MeshMemory" statistic="max" material_phase="Memory"/>
+<field column="13" name="ScalarFieldMemory" statistic="current" material_phase="Memory"/>
+<field column="14" name="ScalarFieldMemory" statistic="min" material_phase="Memory"/>
+<field column="15" name="ScalarFieldMemory" statistic="max" material_phase="Memory"/>
+<field column="16" name="VectorFieldMemory" statistic="current" material_phase="Memory"/>
+<field column="17" name="VectorFieldMemory" statistic="min" material_phase="Memory"/>
+<field column="18" name="VectorFieldMemory" statistic="max" material_phase="Memory"/>
+<field column="19" name="TensorFieldMemory" statistic="current" material_phase="Memory"/>
+<field column="20" name="TensorFieldMemory" statistic="min" material_phase="Memory"/>
+<field column="21" name="TensorFieldMemory" statistic="max" material_phase="Memory"/>
+<field column="22" name="MatrixSparsityMemory" statistic="current" material_phase="Memory"/>
+<field column="23" name="MatrixSparsityMemory" statistic="min" material_phase="Memory"/>
+<field column="24" name="MatrixSparsityMemory" statistic="max" material_phase="Memory"/>
+<field column="25" name="MatrixMemory" statistic="current" material_phase="Memory"/>
+<field column="26" name="MatrixMemory" statistic="min" material_phase="Memory"/>
+<field column="27" name="MatrixMemory" statistic="max" material_phase="Memory"/>
+<field column="28" name="TransformCacheMemory" statistic="current" material_phase="Memory"/>
+<field column="29" name="TransformCacheMemory" statistic="min" material_phase="Memory"/>
+<field column="30" name="TransformCacheMemory" statistic="max" material_phase="Memory"/>
+<field column="31" name="Pressure" statistic="min" material_phase="fluid"/>
+<field column="32" name="Pressure" statistic="max" material_phase="fluid"/>
+<field column="33" name="Pressure" statistic="l2norm" material_phase="fluid"/>
+<field column="34" name="Pressure" statistic="integral" material_phase="fluid"/>
+<field column="35" name="Density" statistic="min" material_phase="fluid"/>
+<field column="36" name="Density" statistic="max" material_phase="fluid"/>
+<field column="37" name="Density" statistic="l2norm" material_phase="fluid"/>
+<field column="38" name="Density" statistic="integral" material_phase="fluid"/>
+<field column="39" name="PhaseVolumeFraction" statistic="min" material_phase="fluid"/>
+<field column="40" name="PhaseVolumeFraction" statistic="max" material_phase="fluid"/>
+<field column="41" name="PhaseVolumeFraction" statistic="l2norm" material_phase="fluid"/>
+<field column="42" name="PhaseVolumeFraction" statistic="integral" material_phase="fluid"/>
+<field column="43" name="SolidConcentration" statistic="min" material_phase="fluid"/>
+<field column="44" name="SolidConcentration" statistic="max" material_phase="fluid"/>
+<field column="45" name="SolidConcentration" statistic="l2norm" material_phase="fluid"/>
+<field column="46" name="SolidConcentration" statistic="integral" material_phase="fluid"/>
+<field column="47" name="SolidConcentrationInterpolationErrorBound" statistic="min" material_phase="fluid"/>
+<field column="48" name="SolidConcentrationInterpolationErrorBound" statistic="max" material_phase="fluid"/>
+<field column="49" name="SolidConcentrationInterpolationErrorBound" statistic="l2norm" material_phase="fluid"/>
+<field column="50" name="SolidConcentrationInterpolationErrorBound" statistic="integral" material_phase="fluid"/>
+<field column="51" name="Dummy" statistic="min" material_phase="fluid"/>
+<field column="52" name="Dummy" statistic="max" material_phase="fluid"/>
+<field column="53" name="Dummy" statistic="l2norm" material_phase="fluid"/>
+<field column="54" name="Dummy" statistic="integral" material_phase="fluid"/>
+<field column="55" name="TotalFlux" statistic="min" material_phase="fluid"/>
+<field column="56" name="TotalFlux" statistic="max" material_phase="fluid"/>
+<field column="57" name="TotalFlux" statistic="l2norm" material_phase="fluid"/>
+<field column="58" name="TotalFlux" statistic="integral" material_phase="fluid"/>
+<field column="59" name="GalerkinProjection" statistic="min" material_phase="fluid"/>
+<field column="60" name="GalerkinProjection" statistic="max" material_phase="fluid"/>
+<field column="61" name="GalerkinProjection" statistic="l2norm" material_phase="fluid"/>
+<field column="62" name="GalerkinProjection" statistic="integral" material_phase="fluid"/>
+<field column="63" name="Porosity" statistic="min" material_phase="fluid"/>
+<field column="64" name="Porosity" statistic="max" material_phase="fluid"/>
+<field column="65" name="Porosity" statistic="l2norm" material_phase="fluid"/>
+<field column="66" name="Porosity" statistic="integral" material_phase="fluid"/>
+<field column="67" name="Velocity%magnitude" statistic="min" material_phase="fluid"/>
+<field column="68" name="Velocity%magnitude" statistic="max" material_phase="fluid"/>
+<field column="69" name="Velocity%magnitude" statistic="l2norm" material_phase="fluid"/>
+<field column="70" name="Velocity%1" statistic="min" material_phase="fluid"/>
+<field column="71" name="Velocity%1" statistic="max" material_phase="fluid"/>
+<field column="72" name="Velocity%1" statistic="l2norm" material_phase="fluid"/>
+<field column="73" name="Velocity%1" statistic="integral" material_phase="fluid"/>
+<field column="74" name="Velocity%2" statistic="min" material_phase="fluid"/>
+<field column="75" name="Velocity%2" statistic="max" material_phase="fluid"/>
+<field column="76" name="Velocity%2" statistic="l2norm" material_phase="fluid"/>
+<field column="77" name="Velocity%2" statistic="integral" material_phase="fluid"/>
+<field column="78" name="Velocity%3" statistic="min" material_phase="fluid"/>
+<field column="79" name="Velocity%3" statistic="max" material_phase="fluid"/>
+<field column="80" name="Velocity%3" statistic="l2norm" material_phase="fluid"/>
+<field column="81" name="Velocity%3" statistic="integral" material_phase="fluid"/>
+<field column="82" name="Darcy_Velocity%magnitude" statistic="min" material_phase="fluid"/>
+<field column="83" name="Darcy_Velocity%magnitude" statistic="max" material_phase="fluid"/>
+<field column="84" name="Darcy_Velocity%magnitude" statistic="l2norm" material_phase="fluid"/>
+<field column="85" name="Darcy_Velocity%1" statistic="min" material_phase="fluid"/>
+<field column="86" name="Darcy_Velocity%1" statistic="max" material_phase="fluid"/>
+<field column="87" name="Darcy_Velocity%1" statistic="l2norm" material_phase="fluid"/>
+<field column="88" name="Darcy_Velocity%1" statistic="integral" material_phase="fluid"/>
+<field column="89" name="Darcy_Velocity%2" statistic="min" material_phase="fluid"/>
+<field column="90" name="Darcy_Velocity%2" statistic="max" material_phase="fluid"/>
+<field column="91" name="Darcy_Velocity%2" statistic="l2norm" material_phase="fluid"/>
+<field column="92" name="Darcy_Velocity%2" statistic="integral" material_phase="fluid"/>
+<field column="93" name="Darcy_Velocity%3" statistic="min" material_phase="fluid"/>
+<field column="94" name="Darcy_Velocity%3" statistic="max" material_phase="fluid"/>
+<field column="95" name="Darcy_Velocity%3" statistic="l2norm" material_phase="fluid"/>
+<field column="96" name="Darcy_Velocity%3" statistic="integral" material_phase="fluid"/>
+</header>
+  0.10000000000000001E-004  0.10000000000000001E-004  0.18544000000000000E+002 1714 7017 2240  0.14986980000000000E+008  0.00000000000000000E+000  0.16233568000000000E+008  0.22405240000000000E+007  0.00000000000000000E+000  0.22405240000000000E+007  0.10544240000000000E+007  0.00000000000000000E+000  0.10681360000000000E+007  0.29431360000000000E+007  0.00000000000000000E+000  0.56371840000000000E+007  0.63642560000000000E+007  0.00000000000000000E+000  0.72244160000000000E+007  0.60781600000000000E+006  0.00000000000000000E+000  0.70718800000000000E+006  0.11304000000000000E+006  0.00000000000000000E+000  0.28435200000000000E+006  0.16637840000000000E+007  0.00000000000000000E+000  0.16637840000000000E+007                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN  0.10000000000000000E+001  0.10000000000000000E+001  0.14696938456699067E+002  0.21599999999999994E+003  0.00000000000000000E+000  0.10000000000000000E+001  0.25646195974656818E+001  0.92213990213249915E+001  0.10000000000000000E-001  0.10000000000000000E-001  0.14696938456699093E+000  0.21599999999999899E+001  0.00000000000000000E+000  0.10000000000000000E+001  0.22785258946358153E+001  0.51916802525259422E+001  0.10000000000000000E-002  0.38058449731689502E-001  0.36251381841381866E-001  0.27444069994927639E+000 -0.28613088774352702E+000  0.15616975515682447E+001  0.18802168508238979E+001  0.51916802525970214E+001  0.10000000000000001E+000  0.10000000000000001E+000  0.14696938456699034E+001  0.21600000000000005E+002                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN                       NaN  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000  0.00000000000000000E+000
