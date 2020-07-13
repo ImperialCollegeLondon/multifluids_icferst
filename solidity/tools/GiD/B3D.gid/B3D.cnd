@@ -1,0 +1,346 @@
+CONDITION: Point-Initial-Data
+CONDTYPE: over points
+CONDMESHTYPE: over nodes
+QUESTION: Velocity#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Displacement#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+END CONDITION
+
+CONDITION: Point-Constraints
+CONDTYPE: over points
+CONDMESHTYPE: over nodes
+QUESTION: Constraints-X#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Constraints-Y#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Constraints-Z#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Z-Value
+VALUE: 0.0
+
+QUESTION: Vibration_in_x_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_y_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_z_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Nodal_heat_flux#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Convection_condition#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+QUESTION: Convection_coeffcient
+VALUE: 0
+
+END CONDITION
+
+CONDITION: Line-Initial-Data
+CONDTYPE: over lines
+CONDMESHTYPE: over nodes
+QUESTION: Velocity#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Displacement#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+END CONDITION
+
+CONDITION: Line-Constraints
+CONDTYPE: over Lines
+CONDMESHTYPE: over nodes
+QUESTION: Constraints-X#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Constraints-Y#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Constraints-Z#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Z-Value
+VALUE: 0.0
+
+QUESTION: Vibration_in_x_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_y_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_z_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Nodal_heat_flux#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Convection_condition#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+QUESTION: Convection_coeffcient
+VALUE: 0
+END CONDITION
+
+CONDITION: Surface-Initial-Data
+CONDTYPE: over surfaces
+CONDMESHTYPE: over nodes
+QUESTION: Velocity#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Displacement#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+END CONDITION
+
+CONDITION: Surface-Constraints
+CONDTYPE: over surfaces
+CONDMESHTYPE: over nodes
+QUESTION: Constraints-X#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Constraints-Y#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Constraints-Z#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Z-Value
+VALUE: 0.0
+
+QUESTION: Vibration_in_x_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_y_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_z_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Nodal_heat_flux#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Convection_condition#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+QUESTION: Convection_coeffcient
+VALUE: 0
+
+END CONDITION
+
+CONDITION:FACENODES
+CONDTYPE: over surfaces
+CONDMESHTYPE: over nodes
+QUESTION: SET?(No_value_required):
+VALUE:0
+END CONDITION
+
+CONDITION: Volume-Initial-Data
+CONDTYPE: over volumes
+CONDMESHTYPE: over nodes
+QUESTION: Velocity#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Displacement#CB#(0,1)
+VALUE: 0
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+END CONDITION
+
+
+CONDITION:Volume-Constraints
+CONDTYPE: over volumes
+CONDMESHTYPE: over nodes
+QUESTION: Constraints-X#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: X-Value
+VALUE: 0.0
+QUESTION: Constraints-Y#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Y-Value
+VALUE: 0.0
+QUESTION: Constraints-Z#CB#(Force,Acceleration,Velocity)
+Value: Force
+QUESTION: Z-Value
+VALUE: 0.0
+QUESTION: Vibration_in_x_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_y_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Vibration_in_z_direction#CB#(0,1)
+VALUE: 0
+QUESTION: Amplitude
+VALUE: 0.0
+QUESTION: Frequency
+VALUE: 0.0
+
+QUESTION: Temperature#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Nodal_heat_flux#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+
+QUESTION: Convection_condition#CB#(0,1)
+VALUE: 0
+QUESTION: Value
+VALUE: 0
+QUESTION: Convection_coeffcient
+VALUE: 0
+
+END CONDITION
+
+
+CONDITION: Element
+CONDTYPE: over volumes
+CONDMESHTYPE: over elements
+QUESTION: Model:#CB#(Fracture,Visco-Elastic)
+VALUE:Visco-Elastic
+QUESTION: Mesh-Refine:
+VALUE: 0
+END CONDITION
+
+CONDITION: Surface-Load
+CONDTYPE: over surfaces
+CONDMESHTYPE: over face elements
+QUESTION: Surface-Presure
+VALUE: 0.0
+END CONDITION

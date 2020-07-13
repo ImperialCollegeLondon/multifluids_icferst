@@ -1,0 +1,14 @@
+This directory contains the complete source code for FEMDEM3D. This code is provided by Queen Mary University of London and Imperial College of Science, Technology and Medicine under the GNU Lesser General Public License version 3. Please see the file Readme.txt for the details of agreement and copyright.
+
+
+Exceptions: The following files and subdirectories are modified versions from the Fluidity configuration files. They therefore follow the License agreement corresponding to the Fluidity project.  Please see the copyright notice provided on the header of configure.in for more information.
+- aclocal.m4
+- install-sh
+- config.sub
+- config.guess
+- configure.in
+- /include/*.*
+- Makefile.in
+- source/Makefile.in
+
+
