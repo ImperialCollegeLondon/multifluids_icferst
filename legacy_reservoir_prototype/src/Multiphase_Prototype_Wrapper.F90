@@ -931,6 +931,10 @@ contains
               if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+              else
+                call get_option("/material_phase["// int2str( i - 1 )//"]/name", option_name)
+                ewrite(0, *) "ERROR: Solute_Diffusivity specified for phase: "// trim(option_name)// " but SoluteMassFraction is not defined."
+                stop
               end if
             end if
 

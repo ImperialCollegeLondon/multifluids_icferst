@@ -1538,7 +1538,7 @@ contains
 
             if (present_and_true(calculate_solute_diffusivity)) then
               do iphase = 1, Mdims%nphase
-                !Check if the field is defined for that phase
+                !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
                 if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
                 diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
 
