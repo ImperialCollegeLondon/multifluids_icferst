@@ -44,9 +44,3 @@
 #define SIGNAL
 #undef __FEMDEM_VERSION__
 #define __FEMDEM_VERSION__ "Unversioned directory"
-#undef __FEMDEM_VERSION__
-#define __FEMDEM_VERSION__ "Unversioned directory"
-#undef __FEMDEM_VERSION__
-#define __FEMDEM_VERSION__ "Unversioned directory"
-#undef __FEMDEM_VERSION__
-#define __FEMDEM_VERSION__ "Unversioned directory"
