@@ -40,7 +40,7 @@
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkZLibDataCompressor.h>
 
-#if VTK_MAJOR_VERSION>7
+#if VTK_MAJOR_VERSION>6
 #include <vtkMPIController.h>
 #include <vtkMPICommunicator.h>
 #endif
