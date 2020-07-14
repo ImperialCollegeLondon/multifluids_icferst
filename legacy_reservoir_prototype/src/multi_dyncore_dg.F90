@@ -481,6 +481,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( scalar_field ), pointer :: porosity, density_porous, Cp_porous, density_porous_old
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
         real, dimension(Mdims%cv_nonods) :: cv_counter
+        real :: auxR
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_old => extract_scalar_field( state(1), "porous_density_old" )
@@ -504,8 +505,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         end do
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
-        porous_heat_coef = porous_heat_coef/cv_counter!<= includes an average of porous and fluid properties
-        porous_heat_coef_old = porous_heat_coef_old/cv_counter!<= includes an average of porous and fluid properties5
+        auxR = 1.0
+        !If thermal equilibrium for porous media then porous media is added more than once, so needs to be adjusted
+        if (assemble_collapsed_to_one_phase) auxR = real(Mdims%n_in_pres)
+        porous_heat_coef = porous_heat_coef/(cv_counter*auxR)!<= includes an average of porous and fluid properties
+        porous_heat_coef_old = porous_heat_coef_old/(cv_counter*auxR)!<= includes an average of porous and fluid properties5
       end subroutine effective_Cp_density
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
