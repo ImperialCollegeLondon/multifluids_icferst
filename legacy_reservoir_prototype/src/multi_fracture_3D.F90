@@ -1,4 +1,3 @@
-!flag
 !    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
