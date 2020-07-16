@@ -1,0 +1,4 @@
+#ifndef _FLUIDITY_VERSION_H
+#define _FLUIDITY_VERSION_H
+#define __FLUIDITY_VERSION__ "geraldine_dev:3a27887d55eddc2400538925f20f5ed459823f47"
+#endif /* _FLUIDITY_VERSION_H */
