@@ -1,27 +1,16 @@
-
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -57,6 +46,7 @@ module matrix_operations
     use multi_data_types
     use multi_tools
     implicit none
+
 #include "petsc_legacy.h"
 contains
 
@@ -79,9 +69,9 @@ contains
     !
 
 
+    !>@brief: This sub finds the inverse of the matrix A and puts it back in A.
+    !> MAT, MAT2, X and B are working vectors.
     SUBROUTINE MATINV( A, N, NMAX)!, MAT, MAT2, X, B)
-        ! This sub finds the inverse of the matrix A and puts it back in A.
-        ! MAT, MAT2, X and B are working vectors.
         IMPLICIT NONE
         INTEGER, intent( in ) :: N, NMAX
         REAL, DIMENSION( :, : ), intent( inout ) ::  A
@@ -130,9 +120,9 @@ contains
 
     END SUBROUTINE MATINV
 
+    !>@brief: This sub finds the inverse of the matrix A and puts it back in A.
+    !> MAT, MAT2, X and B are working vectors.
     SUBROUTINE MATINVold( A, N, MAT,B)
-        ! This sub finds the inverse of the matrix A and puts it back in A.
-        ! MAT, MAT2, X and B are working vectors.
         IMPLICIT NONE
         INTEGER, intent( in ) :: N
         REAL, DIMENSION( :, : ), intent( inout ) ::  A
@@ -215,13 +205,15 @@ contains
     END SUBROUTINE SMLINNGOT
 
 
+    !>@brief:Initialize the momentum equation (CMC) and introduces the corresponding values in it.
+    !>COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
+    !>or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
     SUBROUTINE COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         pipes_aux, got_free_surf,  MASS_SUF, &
         FEM_continuity_equation )
         !use multiphase_1D_engine
-        !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
         implicit none
         ! form pressure matrix CMC using a colouring approach
         type(multi_dimensions), intent(in) :: Mdims
@@ -252,8 +244,6 @@ contains
             if (GetProcNo()>1) ndpset=0
         end if
 
-        !COLOR_GET_CMC_PHA_FAST is very memory hungry, so we let the user decide
-        !or if we are using a compacted lumped mass matrix then the memory reduction compensates this extra memory usage
         IF ( have_option("/numerical_methods/create_P_mat_fast") .or. size(Mmat%PIVIT_MAT,1) == 1) THEN
             ! Fast but memory intensive
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
@@ -274,7 +264,7 @@ contains
         call assemble( CMC_petsc )
     contains
 
-
+      !>@brief: form pressure matrix CMC using a colouring approach
        SUBROUTINE COLOR_GET_CMC_PHA_SLOW( Mdims, Mspars, ndgln, Mmat,  &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
@@ -518,6 +508,7 @@ contains
             RETURN
         END SUBROUTINE COLOR_GET_CMC_PHA_SLOW
 
+        !>@brief: form pressure matrix CMC using a colouring approach, requires more memory
         SUBROUTINE COLOR_GET_CMC_PHA_FAST( Mdims, Mspars, ndgln, Mmat, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
@@ -787,8 +778,8 @@ contains
 
 
 
-
-    SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, Mdims )
+    !>@brief: Inversion of the mass matrix. If compacted this is much more efficient
+    SUBROUTINE Mass_matrix_inversion( PIVIT_MAT, Mdims )
         implicit none
         REAL, DIMENSION( : , : , : ), intent( inout ), CONTIGUOUS :: PIVIT_MAT
         type(multi_dimensions), intent(in) :: Mdims
@@ -835,12 +826,12 @@ contains
           deallocate(MAT)
         end if
 
-    END SUBROUTINE PHA_BLOCK_INV
+    END SUBROUTINE Mass_matrix_inversion
 
-    SUBROUTINE PHA_BLOCK_MAT_VEC_old( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
+    !>@brief: U = Mass_matrix * Vector (tipically vector is Grad * P + RHS and this is used to obtain the velocity)
+    SUBROUTINE Mass_matrix_MATVEC( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
-        ! U = BLOCK_MAT * CDP
         INTEGER, intent( in )  :: NDIM, NPHASE, TOTELE, U_NLOC
         INTEGER, DIMENSION( : ), intent( in ), target ::  U_NDGLN
         REAL, DIMENSION( ndim * nphase * U_NLOC * TOTELE ), intent( inout ) :: U!Reshape done implicitly
@@ -891,13 +882,12 @@ contains
         RETURN
 
 
-    END SUBROUTINE PHA_BLOCK_MAT_VEC_old
+    END SUBROUTINE Mass_matrix_MATVEC
 
-
+    !>@brief: performs  U = BLOCK_MAT * CDP, where block_mat
     SUBROUTINE PHA_BLOCK_MAT_VEC( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
-        ! U = BLOCK_MAT * CDP
         INTEGER, intent( in )  :: U_NONODS, NDIM, NPHASE, TOTELE, U_NLOC
         INTEGER, DIMENSION( : ), intent( in ), target ::  U_NDGLN
         REAL, DIMENSION( : ), intent( inout ) :: U
@@ -967,6 +957,7 @@ contains
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC
 
+    !>@brief:U = BLOCK_MAT * CDP
     SUBROUTINE PHA_BLOCK_MAT_VEC2( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
@@ -1015,6 +1006,7 @@ contains
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC2
 
+    !>@brief: U = BLOCK_MAT * CDP
     SUBROUTINE PHA_BLOCK_MAT_VEC_MANY2( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, NBLOCK, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
@@ -1078,7 +1070,7 @@ contains
 
 
 
-
+!>@brief: U = BLOCK_MAT * CDP
     SUBROUTINE PHA_BLOCK_MAT_VEC_MANY( U, BLOCK_MAT, CDP, NDIM, NPHASE, NBLOCK, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
@@ -1120,12 +1112,12 @@ contains
         RETURN
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY
-
+    !>@brief: U = BLOCK_MAT * CDP
+    !>The difference with PHA_BLOCK_MAT_VEC_MANY is that the input CDP is overwritten with the output
     SUBROUTINE PHA_BLOCK_MAT_VEC_MANY_REUSING( BLOCK_MAT, CDP, NDIM, NPHASE, NBLOCK, &
         TOTELE, U_NLOC, U_NDGLN )
         implicit none
         ! U = BLOCK_MAT * CDP
-        !The difference with PHA_BLOCK_MAT_VEC_MANY is that the input CDP is overwritten with the output
         INTEGER, intent( in )  :: NDIM, NPHASE, TOTELE, U_NLOC, NBLOCK
         INTEGER, DIMENSION( : ), intent( in ) ::  U_NDGLN
         REAL, DIMENSION( :, : , : ), intent( in ), contiguous :: BLOCK_MAT
@@ -1173,9 +1165,9 @@ contains
 
 
 
+    !>@brief: CV_RHS=CT*U
     SUBROUTINE CT_MULT( CV_RHS, U, V, W, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
-        ! CV_RHS=CT*U
         implicit none
         INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLCT
         REAL, DIMENSION( CV_NONODS ), intent( inout) :: CV_RHS
@@ -1206,7 +1198,7 @@ contains
 
     END SUBROUTINE CT_MULT
 
-
+    !>@brief:CV_RHS=CT*U
     SUBROUTINE CT_MULT2( CV_RHS, U, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
         ! CV_RHS=CT*U
@@ -1230,7 +1222,7 @@ contains
         RETURN
 
     END SUBROUTINE CT_MULT2
-
+    !>@brief: CV_RHS = CT * U
     SUBROUTINE CT_MULT_MANY( CV_RHS, U, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &
         CT, NCOLCT, FINDCT, COLCT )
         ! CV_RHS = CT * U
@@ -1269,7 +1261,7 @@ contains
         RETURN
 
     END SUBROUTINE CT_MULT_MANY
-
+    !>@brief: CDP=C*DP
     SUBROUTINE C_MULT_MANY( CDP, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &
         C, NCOLC, FINDC, COLC )
         implicit none
@@ -1301,7 +1293,7 @@ contains
         RETURN
 
     END SUBROUTINE C_MULT_MANY
-
+    !>@brief: CDP=C*DP
     SUBROUTINE C_MULT2( CDP, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         C, NCOLC, FINDC, COLC )
         implicit none
@@ -1328,6 +1320,26 @@ contains
 
     END SUBROUTINE C_MULT2
 
+    !>@brief: Performs the multiplication CDP_tensor = Mmat%C * deltap
+    subroutine C_MULT2_MULTI_PRES( Mdims, Mspars, Mmat, deltap, CDP_tensor )
+      !Performs the multiplication CDP_tensor = Mmat%C * deltap
+      implicit none
+      type(multi_dimensions), intent(in) :: Mdims
+      type (multi_sparsities), intent(in) :: Mspars
+      type (multi_matrices), intent(in) :: Mmat
+      real, dimension(Mdims%npres,Mdims%cv_nonods), intent(in) :: deltap
+      type(tensor_field), intent(inout) :: cdp_tensor
+      !Local variables
+      integer :: ipres
+
+      DO IPRES = 1, Mdims%npres
+        CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap( IPRES, : ), &
+        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+      END DO
+
+      end subroutine C_MULT2_MULTI_PRES
+
+      !>@brief: DP = (C)^T U_LONG
     SUBROUTINE CT_MULT_WITH_C( DP, U_LONG, U_NONODS, NDIM, NPHASE, &
         C, NCOLC, FINDC, COLC )
         implicit none
@@ -1363,7 +1375,7 @@ contains
         RETURN
 
     END SUBROUTINE CT_MULT_WITH_C
-
+    !>@brief: DP = (C)^T U_ALL
     SUBROUTINE CT_MULT_WITH_C3( DP, U_ALL, U_NONODS, NDIM, NPHASE, &
         C, NCOLC, FINDC, COLC )
         implicit none
@@ -1399,7 +1411,7 @@ contains
 
     END SUBROUTINE CT_MULT_WITH_C3
 
-
+    !>@brief: DP = (C)^T U_LONG
     SUBROUTINE CT_MULT_WITH_C_MANY( DP, U_LONG, U_NONODS, NDIM, NPHASE, &
         C, FINDC, COLC )
         implicit none
@@ -1459,6 +1471,7 @@ contains
         RETURN
     END SUBROUTINE ULONG_2_UVW
 
+    !>@brief: Find position in matrix POSMAT which has column GLOBJ
     subroutine posinmat( posmat, globi, globj, &
         findrm, colm )
         ! Find position in matrix POSMAT which has column GLOBJ
@@ -1499,6 +1512,7 @@ contains
 
         return
     end subroutine posinmat
+
 
     subroutine assemble_global_multiphase_csr(global_csr,&
         block_csr,dense_block_matrix,block_to_global,global_dense_block)
@@ -1611,5 +1625,6 @@ contains
         matrix%ksp = PETSC_NULL_KSP
 
     end function allocate_momentum_matrix
+
 
 end module matrix_operations

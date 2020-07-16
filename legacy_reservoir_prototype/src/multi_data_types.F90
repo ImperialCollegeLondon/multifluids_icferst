@@ -1,27 +1,16 @@
-     
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -54,35 +43,35 @@ module multi_data_types
     end interface
 
     type multi_dimensions
-        integer :: ndim       !Number of dimensions
-        integer :: cv_nloc    !Number of local control volumes
-        integer :: u_nloc     !Number of local velocity nodes
-        integer :: cv_snloc   !Number of local control volumes on the surface?
-        integer :: u_snloc    !Number of local velocity nodes on the surface?
-        integer :: nstate     !Number of states in state
-        integer :: ncomp      !Number of components
-        integer :: xu_nloc    !Number of local velocity nodes of the Continuous mesh
-        integer :: x_nloc     !Number of local control volumes of the Continuous mesh
-        integer :: x_snloc    !Number of local surface control volumes of the Continuous mesh
-        integer :: x_nloc_p1  !???
-        integer :: x_nonods_p1!???
-        integer :: p_nloc     !Number of local pressure nodes
-        integer :: p_snloc    !Number of local pressure nodes on the surface?
-        integer :: mat_nloc   !Number of local material nodes
-        integer :: totele     !Total number of elements
-        integer :: stotel     !Total number of surface elements?
-        integer :: cv_nonods  !Total number of control volumes
-        integer :: p_nonods   !Total number of pressure nodes
-        integer :: mat_nonods !Total number of sub-control volumes
-        integer :: u_nonods   !Total number of velocity nodes
-        integer :: xu_nonods  !Total number of velocity nodes of the Continuous mesh
-        integer :: x_nonods   !Total number of control volumes of the Continuous mesh
-        integer :: ph_nloc    !Number of ????
-        integer :: ph_nonods  !Total number of ????
-        integer :: nphase     !Total number of phases
-        integer :: npres      !Total number of pressure
-        integer :: n_in_pres  !nphase/npres
-        real    :: init_time  !Initial time
+        integer :: ndim       !>Number of dimensions
+        integer :: cv_nloc    !>Number of local control volumes
+        integer :: u_nloc     !>Number of local velocity nodes
+        integer :: cv_snloc   !>Number of local control volumes on the surface?
+        integer :: u_snloc    !>Number of local velocity nodes on the surface?
+        integer :: nstate     !>Number of states in state
+        integer :: ncomp      !>Number of components
+        integer :: xu_nloc    !>Number of local velocity nodes of the Continuous mesh
+        integer :: x_nloc     !>Number of local control volumes of the Continuous mesh
+        integer :: x_snloc    !>Number of local surface control volumes of the Continuous mesh
+        integer :: x_nloc_p1  !>???
+        integer :: x_nonods_p1!>???
+        integer :: p_nloc     !>Number of local pressure nodes
+        integer :: p_snloc    !>Number of local pressure nodes on the surface?
+        integer :: mat_nloc   !>Number of local material nodes
+        integer :: totele     !>Total number of elements
+        integer :: stotel     !>Total number of surface elements?
+        integer :: cv_nonods  !>Total number of control volumes
+        integer :: p_nonods   !>Total number of pressure nodes
+        integer :: mat_nonods !>Total number of sub-control volumes
+        integer :: u_nonods   !>Total number of velocity nodes
+        integer :: xu_nonods  !>Total number of velocity nodes of the Continuous mesh
+        integer :: x_nonods   !>Total number of control volumes of the Continuous mesh
+        integer :: ph_nloc    !>Number of ????
+        integer :: ph_nonods  !>Total number of ????
+        integer :: nphase     !>Total number of phases
+        integer :: npres      !>Total number of pressure
+        integer :: n_in_pres  !>nphase/npres
+        real    :: init_time  !>Initial time
 
     end type multi_dimensions
 
@@ -99,54 +88,54 @@ module multi_data_types
     end type multi_discretization_opts
 
     type multi_gi_dimensions
-        integer :: cv_ngi     !Number of gauss integer points
-        integer :: scvngi     !Number of gauss integer points in the surface of a control volume
-        integer :: sbcvngi    !Number of gauss integer points in the surface boundary of a control volume
-        integer :: nface      !Number of faces per element
+        integer :: cv_ngi     !>Number of gauss integer points
+        integer :: scvngi     !>Number of gauss integer points in the surface of a control volume
+        integer :: sbcvngi    !>Number of gauss integer points in the surface boundary of a control volume
+        integer :: nface      !>Number of faces per element
     end type multi_gi_dimensions
 
 
     !Data structure to store all the shape functions to facilitate its movement throughtout the code
     type multi_shape_funs
-        real, pointer, dimension( : , : ) :: cvn => null()! Control volume shape function; dimension( cv_nloc, cv_ngi )
-        real, pointer, dimension( : ) :: cvweight=> null()!Weigth of the control volume; dimension( cv_ngi )
-        real, pointer, dimension(  : , : ) :: cvfen=> null()!Finite element of the control volume; dimension( cv_nloc, cv_ngi )
-        real, pointer, dimension( : , : , :)  ::  cvfenlx_all=> null()!dimension( ndim, cv_nloc, cv_ngi )
-        real, pointer, dimension(  : , : )  :: ufen=> null()!Finite element of the element; dimension( u_nloc, cv_ngi )
-        real, pointer, dimension(  : , :,: )  :: ufenlx_all=> null()!dimension( ndim, u_nloc, cv_ngi )
-        integer, pointer, dimension(  : , : )  :: cv_neiloc=> null()!dimension( cv_nloc, scvngi )
-        logical, pointer, dimension(  : , : ) :: cv_on_face=> null(), cvfem_on_face=> null()!dimension( cv_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: scvfen=> null(), scvfenslx=> null(), scvfensly=> null()!dimension( cv_nloc, scvngi )
-        real, pointer, dimension( : )  :: scvfeweigh=> null()!dimension( scvngi )
-        real, pointer, dimension(  : , : ,: )  :: scvfenlx_all=> null()!dimension( ndim, cv_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: sufen=> null(), sufenslx=> null(), sufensly=> null()!dimension( u_nloc, scvngi )
-        real, pointer, dimension(  : , :, : )  :: sufenlx_all=> null() !dimension( ndim, u_nloc, scvngi )
-        logical, pointer, dimension(  : , : )  :: u_on_face=> null(), ufem_on_face=> null()!dimension( u_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: sbcvn=> null()!dimension( cv_snloc, sbcvngi )
-        real, pointer, dimension(  : , : )  :: sbcvfen=> null(), sbcvfenslx=> null(), sbcvfensly=> null()! dimension( cv_snloc, sbcvngi )
-        real, pointer, dimension( : )  :: sbcvfeweigh=> null()!dimension( sbcvngi )
-        real, pointer, dimension(  : , :, : )  :: sbcvfenlx_all=> null()!dimension( ndim, cv_snloc, sbcvngi )
-        real, pointer, dimension(  : , : )  :: sbufen=> null(), sbufenslx=> null(), sbufensly=> null()!dimension( u_snloc, sbcvngi )
-        real, pointer, dimension(  : , :,: )  :: sbufenlx_all=> null() !dimension( ndim, u_snloc, sbcvngi )
-        integer, pointer, dimension(  : , : )  :: cv_sloclist=> null()!dimension( nface, cv_snloc )
-        integer, pointer, dimension(  : , : )  :: u_sloclist=> null()!dimension( nface, u_snloc )
-        integer, pointer, dimension( : )  :: findgpts=> null()!dimension( cv_nloc + 1 )
-        integer, pointer, dimension( : )  :: colgpts=> null()!dimension( cv_nloc * scvngi )
+        real, pointer, dimension( : , : ) :: cvn => null()!> Control volume shape function; dimension( cv_nloc, cv_ngi )
+        real, pointer, dimension( : ) :: cvweight=> null()!>Weigth of the control volume; dimension( cv_ngi )
+        real, pointer, dimension(  : , : ) :: cvfen=> null()!>Finite element of the control volume; dimension( cv_nloc, cv_ngi )
+        real, pointer, dimension( : , : , :)  ::  cvfenlx_all=> null()!>dimension( ndim, cv_nloc, cv_ngi )
+        real, pointer, dimension(  : , : )  :: ufen=> null()!>Finite element of the element; dimension( u_nloc, cv_ngi )
+        real, pointer, dimension(  : , :,: )  :: ufenlx_all=> null()!>dimension( ndim, u_nloc, cv_ngi )
+        integer, pointer, dimension(  : , : )  :: cv_neiloc=> null()!>dimension( cv_nloc, scvngi )
+        logical, pointer, dimension(  : , : ) :: cv_on_face=> null(), cvfem_on_face=> null()!>dimension( cv_nloc, scvngi )
+        real, pointer, dimension(  : , : )  :: scvfen=> null(), scvfenslx=> null(), scvfensly=> null()!>dimension( cv_nloc, scvngi )
+        real, pointer, dimension( : )  :: scvfeweigh=> null()!>dimension( scvngi )
+        real, pointer, dimension(  : , : ,: )  :: scvfenlx_all=> null()!>dimension( ndim, cv_nloc, scvngi )
+        real, pointer, dimension(  : , : )  :: sufen=> null(), sufenslx=> null(), sufensly=> null()!>dimension( u_nloc, scvngi )
+        real, pointer, dimension(  : , :, : )  :: sufenlx_all=> null() !>dimension( ndim, u_nloc, scvngi )
+        logical, pointer, dimension(  : , : )  :: u_on_face=> null(), ufem_on_face=> null()!>dimension( u_nloc, scvngi )
+        real, pointer, dimension(  : , : )  :: sbcvn=> null()!>dimension( cv_snloc, sbcvngi )
+        real, pointer, dimension(  : , : )  :: sbcvfen=> null(), sbcvfenslx=> null(), sbcvfensly=> null()!> dimension( cv_snloc, sbcvngi )
+        real, pointer, dimension( : )  :: sbcvfeweigh=> null()!>dimension( sbcvngi )
+        real, pointer, dimension(  : , :, : )  :: sbcvfenlx_all=> null()!>dimension( ndim, cv_snloc, sbcvngi )
+        real, pointer, dimension(  : , : )  :: sbufen=> null(), sbufenslx=> null(), sbufensly=> null()!>dimension( u_snloc, sbcvngi )
+        real, pointer, dimension(  : , :,: )  :: sbufenlx_all=> null() !>dimension( ndim, u_snloc, sbcvngi )
+        integer, pointer, dimension(  : , : )  :: cv_sloclist=> null()!>dimension( nface, cv_snloc )
+        integer, pointer, dimension(  : , : )  :: u_sloclist=> null()!>dimension( nface, u_snloc )
+        integer, pointer, dimension( : )  :: findgpts=> null()!>dimension( cv_nloc + 1 )
+        integer, pointer, dimension( : )  :: colgpts=> null()!>dimension( cv_nloc * scvngi )
         integer :: ncolgpts
-        type(petsc_csr_matrix) ::CV2FE !Matrix to convert from CV to FE
-        type(petsc_csr_matrix) ::FE2CV !Matrix to convert from FE to CV
+        type(petsc_csr_matrix) ::CV2FE !>Matrix to convert from CV to FE
+        type(petsc_csr_matrix) ::FE2CV !>Matrix to convert from FE to CV
 
     end type multi_shape_funs
 
     !Data structure to store the derivatives of the shape functions and conversors from reference element to local
     type multi_dev_shape_funs
-        real :: volume!Volume of the local element
-        real, pointer, dimension(:) :: detwei=> null()!Determinant times weigth (i.e: conversor from reference element to local element)
-        real, pointer, dimension(:) :: ra => null()   !???
-        real, pointer, dimension(:, :, :) :: cvfenx_all=> null()!Space derivatives of the pressure (CV) shape functions
-        real, pointer, dimension(:, :, :) :: ufenx_all=> null()!Space derivatives of the velocity (FE) shape functions
-        real, pointer, dimension(:, :, :) :: nx_all => null()!Space derivatives of a generic field.
-        real, pointer, dimension(:, :, :) :: inv_jac => null()!Inverse of the Jacobian matrix
+        real :: volume!>Volume of the local element
+        real, pointer, dimension(:) :: detwei=> null()!>Determinant times weigth (i.e: conversor from reference element to local element)
+        real, pointer, dimension(:) :: ra => null()   !>???
+        real, pointer, dimension(:, :, :) :: cvfenx_all=> null()!>Space derivatives of the pressure (CV) shape functions
+        real, pointer, dimension(:, :, :) :: ufenx_all=> null()!>Space derivatives of the velocity (FE) shape functions
+        real, pointer, dimension(:, :, :) :: nx_all => null()!>Space derivatives of a generic field.
+        real, pointer, dimension(:, :, :) :: inv_jac => null()!>Inverse of the Jacobian matrix
     end type multi_dev_shape_funs
     !This type comprises the four necessary variables to represent matrices using a CSR structure
     type multi_sparsity
@@ -158,99 +147,99 @@ module multi_data_types
 
     !This data type contains all the sparsities necessary in the multiphase prototype code
     type multi_sparsities
-        type (multi_sparsity) :: acv     !CV multi-phase eqns (e.g. vol frac, temp)
-        type (multi_sparsity) :: small_acv !Local CV multi-phase eqns (e.g. vol frac, temp)
-        type (multi_sparsity) :: ele     !Element connectivity
-        type (multi_sparsity) :: dgm_pha !Force balance sparsity
-        type (multi_sparsity) :: ct      !CT sparsity - global continuity eqn
-        type (multi_sparsity) :: C       !C sparsity operating on pressure in force balance
-        type (multi_sparsity) :: cmc     !pressure matrix for projection method
-        type (multi_sparsity) :: m       !CV-FEM matrix
-        type (multi_sparsity) :: HydrostaticPressure      !HydrostaticPressure matrix
+        type (multi_sparsity) :: acv     !>CV multi-phase eqns (e.g. vol frac, temp)
+        type (multi_sparsity) :: small_acv !>Local CV multi-phase eqns (e.g. vol frac, temp)
+        type (multi_sparsity) :: ele     !>Element connectivity
+        type (multi_sparsity) :: dgm_pha !>Force balance sparsity
+        type (multi_sparsity) :: ct      !>CT sparsity - global continuity eqn
+        type (multi_sparsity) :: C       !>C sparsity operating on pressure in force balance
+        type (multi_sparsity) :: cmc     !>pressure matrix for projection method
+        type (multi_sparsity) :: m       !>CV-FEM matrix
+        type (multi_sparsity) :: HydrostaticPressure      !>HydrostaticPressure matrix
     end type multi_sparsities
 
     type multi_ndgln
-        integer, dimension( : ), pointer  :: cv=> null()     !Control volume local to global numbering
-        integer, dimension( : ), pointer  :: u=> null()      !Velocity local to global numbering
-        integer, dimension( : ), pointer  :: p=> null()      !Pressure local to global numbering
-        integer, dimension( : ), pointer  :: x=> null()      !Continuous mesh pressure local to global numbering
-        integer, dimension( : ), pointer  :: x_p1=> null()   !Continuous mesh pressure P1 local to global numbering
-        integer, dimension( : ), pointer  :: xu=> null()     !Continuous mesh velocity local to global numbering
-        integer, dimension( : ), pointer  :: mat=> null()    !Pressure discontinuous local to global numbering
-        integer, dimension( : ), pointer ::  suf_cv=> null() !Surface control volume local to global numering
-        integer, dimension( : ), pointer ::  suf_p=> null()  !Pressure local to global numbering
-        integer, dimension( : ), pointer ::  suf_u=> null()  !Velocity surface local to global numbering
+        integer, dimension( : ), pointer  :: cv=> null()     !>Control volume local to global numbering
+        integer, dimension( : ), pointer  :: u=> null()      !>Velocity local to global numbering
+        integer, dimension( : ), pointer  :: p=> null()      !>Pressure local to global numbering
+        integer, dimension( : ), pointer  :: x=> null()      !>Continuous mesh pressure local to global numbering
+        integer, dimension( : ), pointer  :: x_p1=> null()   !>Continuous mesh pressure P1 local to global numbering
+        integer, dimension( : ), pointer  :: xu=> null()     !>Continuous mesh velocity local to global numbering
+        integer, dimension( : ), pointer  :: mat=> null()    !>Pressure discontinuous local to global numbering
+        integer, dimension( : ), pointer ::  suf_cv=> null() !>Surface control volume local to global numering
+        integer, dimension( : ), pointer ::  suf_p=> null()  !>Pressure local to global numbering
+        integer, dimension( : ), pointer ::  suf_u=> null()  !>Velocity surface local to global numbering
     end type multi_ndgln
 
     type multi_matrices
-        real, dimension( :, :, : ), pointer :: C => null()!Pressure matrix using a FE discretization (storable)
-        real, dimension( :, :, : ), pointer :: C_CV => null()!Pressure matrix using a CV discretization (storable)
-        REAL, DIMENSION( :, :, : ), pointer :: U_RHS => null()!Rigth hand side of the momentum equation
-        real, dimension( :, :, : ), pointer :: CT => null()!Continuity equation matrix
-        type(vector_field) :: CT_RHS!Rigth hand side of the continuity equation
-        type(petsc_csr_matrix) :: petsc_ACV!Matrix of the saturation equation
-        type(vector_field) :: CV_RHS!Rigth hand side of the saturation equation
-        real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!Mass matrix (matrix form by the sigmas) (storable)
-        integer, dimension(:), pointer :: ICOLOR => null()!Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
-        integer :: NCOLOR !Number of colors in ICOLOR
-        type(petsc_csr_matrix):: DGM_PETSC!Big matrix to solve the pressure in inertia flows (don't know much more)
-        logical :: NO_MATRIX_STORE !Flag to whether calculate and use DGM_PETSC or C
-        logical :: CV_pressure     !Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
-        logical :: stored = .false.!Flag to be true when the storable matrices have been stored
-        logical :: compact_PIVIT_MAT = .false. !Flag to know whether to use a compacted mass matrix or not
-        integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()!Stores locations used by the limiters
-        real, dimension(:), pointer :: limiters_ELEMATWEI=> null()!Stores weights used by the limiters
+        real, dimension( :, :, : ), pointer :: C => null()!>Gradient matrix using a FE discretization (storable)
+        real, dimension( :, :, : ), pointer :: C_CV => null()!>Gradient matrix using a CV discretization (storable)
+        REAL, DIMENSION( :, :, : ), pointer :: U_RHS => null()!>Rigth hand side of the momentum equation
+        real, dimension( :, :, : ), pointer :: CT => null()!>Divergence matrix
+        type(vector_field) :: CT_RHS!>Rigth hand side of the continuity equation
+        type(petsc_csr_matrix) :: petsc_ACV!>Matrix containing the terms of transport equations
+        type(vector_field) :: CV_RHS!>Rigth hand side of the saturation equation
+        real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!>Mass matrix (matrix form by the sigmas) (storable)
+        integer, dimension(:), pointer :: ICOLOR => null()!>Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
+        integer :: NCOLOR !>Number of colors in ICOLOR
+        type(petsc_csr_matrix):: DGM_PETSC!>Matrix contatining the momemtum terms for Navier-Stokes/Stokes equation
+        logical :: NO_MATRIX_STORE !>Flag to whether calculate and use DGM_PETSC or C
+        logical :: CV_pressure     !>Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
+        logical :: stored = .false.!>Flag to be true when the storable matrices have been stored
+        logical :: compact_PIVIT_MAT = .false. !>Flag to know whether to use a compacted mass matrix or not
+        integer, dimension(:), pointer :: limiters_ELEMATPSI=> null()!>Stores locations used by the limiters
+        real, dimension(:), pointer :: limiters_ELEMATWEI=> null()!>Stores weights used by the limiters
     end type multi_matrices
 
 
     type porous_adv_coefs
-        real, dimension( :, :, :, : ), pointer :: adv_coef => null()!Sigmas at the boundary to calculate fluxes
-        real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()!Inverse of sigmas at the boundary to calculate fluxes
-        real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!Gradient of the sigmas at the boundary to calculate fluxes
+        real, dimension( :, :, :, : ), pointer :: adv_coef => null()!>Sigmas at the boundary to calculate fluxes
+        real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()!>Inverse of sigmas at the boundary to calculate fluxes
+        real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!>Gradient of the sigmas at the boundary to calculate fluxes
     end type porous_adv_coefs
 
     type multi_field
         real, dimension( :, :, :, : ), pointer :: val => null()
 
-        logical :: have_field =  .false. ! do we need this field for this simulation?
-        logical :: is_constant = .false. ! if ( .true. ) nonods = 1 for what follows     -   DELETE THIS MAYBE ???
+        logical :: have_field =  .false. !> do we need this field for this simulation?
+        logical :: is_constant = .false. !> if ( .true. ) nonods = 1 for what follows     -   DELETE THIS MAYBE ???
 
-        integer :: memory_type = -1 ! 0  Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods )
-                                    ! 1  Isotropic - ( 1, 1, nphase, nonods ) - diagonal
-                                    ! 2  Anisotropic - ( ndim, ndim, nphase, nonods )
-                                    ! 3  Isotropic coupled - ( 1, nphase, nphase, nonods )
-                                    ! 4  Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods )
-                                    ! 6 Isotropic coupled - ( 1, ndim, nphase, nonods )
-                                    !    This is for porous media. We assume isotropic properties like permiability to be diagonal
+        integer :: memory_type = -1 !> 0  Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods )
+                                    !> 1  Isotropic - ( 1, 1, nphase, nonods ) - diagonal
+                                    !> 2  Anisotropic - ( ndim, ndim, nphase, nonods )
+                                    !> 3  Isotropic coupled - ( 1, nphase, nphase, nonods )
+                                    !> 4  Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods )
+                                    !> 6 Isotropic coupled - ( 1, ndim, nphase, nonods )
+                                    !>    This is for porous media. We assume isotropic properties like permiability to be diagonal
 
-        integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 ! dimensions of field
+        integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 !> dimensions of field
 
     end type multi_field
 
 
     type multi_absorption
         !Comprises all the absorption terms that migth be required
-        type (multi_field) :: PorousMedia ! <= Memory_type = 2 -> Fully Anisotropic tensors.
-                                          !    Memory_type = 6-> Isotropic Symmetric tensors
+        type (multi_field) :: PorousMedia !> <= Memory_type = 2 -> Fully Anisotropic tensors.
+                                          !>    Memory_type = 6-> Isotropic Symmetric tensors
         type (multi_field) :: Components
         type (multi_field) :: Temperature
-        !! Arash
+        !>! Arash
         type (multi_field) :: SaltConcentration
         type (multi_field) :: Velocity
-        !Magma absorption
-        type (multi_field) :: Magma !Initially to use memory type = 3  Isotropic coupled
+        !>Magma absorption
+        type (multi_field) :: Magma !>Initially to use memory type = 3  Isotropic coupled
     end type multi_absorption
 
     type multi_transport_scalar
         !Contains all the information for generic scalar fields to solve for
-        character(len = FIELD_NAME_LEN) :: name!To extract from state
-        character(len = option_path_len) :: path!Path from diamond
-        logical :: coupled_field!Is the field coupled between phases?
-        type (multi_field) :: absorption!Absorption of this field
+        character(len = FIELD_NAME_LEN) :: name!>To extract from state
+        character(len = option_path_len) :: path!>Path from diamond
+        logical :: coupled_field!>Is the field coupled between phases?
+        type (multi_field) :: absorption!>Absorption of this field
     end type
 
     type multi_pipe_package
-        !Contains all the information required to model pipes.
+        !>Contains all the information required to model pipes.
         real, dimension( :, :, : ), pointer  :: gamma_pres_abs=> null()
         real, dimension( :, :, : ), pointer  :: gamma_pres_abs_nano=> null()
         real, dimension( : ), pointer        :: mass_pipe=> null()
@@ -260,19 +249,19 @@ module multi_data_types
     end type
 
     type multi_outfluxes
-        !Contains variables to analyse the flux across the BCs that the user is interested
-        logical :: calculate_flux !True if all the process related with this has to start or not
-        integer, dimension(:), allocatable :: outlet_id !ids the user wants
-        real :: porevolume ! for outfluxes.csv to calculate the pore volume injected
-        real, allocatable, dimension(:,:,:) :: totout!(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
+        !>Contains variables to analyse the flux across the BCs that the user is interested
+        logical :: calculate_flux !>True if all the process related with this has to start or not
+        integer, dimension(:), allocatable :: outlet_id !>ids the user wants
+        real :: porevolume !> for outfluxes.csv to calculate the pore volume injected
+        real, allocatable, dimension(:,:,:) :: totout!>(field -saturation, temperature-, Mdims%nphase, size(outlet_id))
         real, dimension(:,:),  allocatable  :: intflux
     end type
 
      type pipe_coords
-            integer :: ele, npipes                               !Element containing pipes, pipes per element
-            logical, allocatable, dimension(:) :: pipe_index     !nodes with pipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds1!size npipes
-            integer, allocatable, dimension(:) :: pipe_corner_nds2!size npipes
+            integer :: ele, npipes                               !>Element containing pipes, pipes per element
+            logical, allocatable, dimension(:) :: pipe_index     !>nodes with pipes
+            integer, allocatable, dimension(:) :: pipe_corner_nds1!>size npipes
+            integer, allocatable, dimension(:) :: pipe_corner_nds2!>size npipes
      end type pipe_coords
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
@@ -281,7 +270,7 @@ module multi_data_types
 contains
 
     subroutine allocate_multi_field1( state, Mdims, field_name, mfield )
-        !*********UNTESTED*********
+        !>*********UNTESTED*********
         implicit none
 
         type( state_type ), intent( in ) :: state
@@ -1074,6 +1063,7 @@ contains
         if(.not.associated(Mspars%HydrostaticPressure%fin))           allocate(  Mspars%HydrostaticPressure%fin( Mdims%ph_nonods + 1 ))
         if(.not.associated(Mspars%HydrostaticPressure%col))           allocate(  Mspars%HydrostaticPressure%col( mx_ncolph ) )
         if(.not.associated(Mspars%HydrostaticPressure%mid))           allocate(  Mspars%HydrostaticPressure%mid( Mdims%ph_nonods ))
+
 
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0

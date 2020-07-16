@@ -392,8 +392,9 @@ where "y" and "z" are the vertical coordinates in 2D and 3D, respectively; "p0" 
 under 'dirichlet/constant' for each boundary (however, it typically has a value of 0.0).
 p0 can also be used to adjust the pressure at the highest point of a pressure boundary if it is located below 0.0.
 
-It should be noted that all parts of the model should be located below zero in y (or z in 3D) direction.
-The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.</a:documentation>
+The gravitational acceleration is considered to be in negative y (or negative z in 3D) direction.
+
+&lt;b&gt;NOTE: Density boundary conditions must be specified.&lt;/b&gt;</a:documentation>
           <empty/>
         </element>
       </optional>

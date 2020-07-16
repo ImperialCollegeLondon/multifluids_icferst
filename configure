@@ -769,6 +769,7 @@ enable_verbose
 with_femdem
 with_psmile
 with_netcdf
+enable_petscdebug
 with_exodusii
 enable_petsc_fortran_modules
 with_x
@@ -1447,6 +1448,7 @@ Optional Features:
   --enable-shared         Compile objects with -fPIC to enable the 'make
                           shared' target.
   --enable-verbose        turns on super verbosity
+  --enable-petscdebug     enable petsc profiling
   --disable-petsc-fortran-modules
                           By default fluidity tries to use fortran modules
                           provided with petsc. Use
@@ -3807,8 +3809,8 @@ if test "$fcompiler" = "ifort" ; then
       { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Early versions of intel 11.1 are bugged and cannot be used to compile Fluidity. Make sure you have at least version 11.1.073." >&5
 $as_echo "$as_me: WARNING: Early versions of intel 11.1 are bugged and cannot be used to compile Fluidity. Make sure you have at least version 11.1.073." >&2;}
     fi
-    FFLAGS="$FFLAGS -vec-report=0"
-    FCFLAGS="$FCFLAGS -vec-report=0"
+    FFLAGS="$FFLAGS -vec-report0"
+    FCFLAGS="$FCFLAGS -vec-report0"
 fi
 
 ac_ext=c
@@ -11577,6 +11579,20 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+fi
+
+
+# PETSc Debug support
+# Check whether --enable-petscdebug was given.
+if test "${enable_petscdebug+set}" = set; then :
+  enableval=$enable_petscdebug;
+fi
+
+
+if test "$enable_petscdebug" = "yes" ; then
+cat >> confdefs.h << EOF
+#define HAVE_PETSC_DBUG 1
+EOF
 fi
 
 # Exodus-II support

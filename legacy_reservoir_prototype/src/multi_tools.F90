@@ -1,27 +1,16 @@
-
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -38,12 +27,14 @@ module multi_tools
 
     implicit none
 
+    !>@brief: Type to keep an eye on the quality of the elements
+    !>@DEPRECATED
     type bad_elements
         integer :: bad_ele
         real :: angle
-        real :: perp_height ! perp height from base (assuming an isosceles triangle)
-        real, allocatable, dimension(:,:) :: rotmatrix ! the rotation matrix to 'stretch' the bad element in the direction normal to the big angle
-        real :: base ! length of side opposite the large angle
+        real :: perp_height !> perp height from base (assuming an isosceles triangle)
+        real, allocatable, dimension(:,:) :: rotmatrix !> the rotation matrix to 'stretch' the bad element in the direction normal to the big angle
+        real :: base !> length of side opposite the large angle
     end type
 
 contains
@@ -59,9 +50,9 @@ contains
         RETURN
     END FUNCTION R2NORM
 
+    !>@brief:This function is a tolerance function for strictly positive values used as a denominator.
+    !> If the value of VALUE less than 1E-10, then it returns TOLERANCE otherwise VALUE.
     real function ptolfun(value)
-        ! This function is a tolerance function for strictly positive values used as a denominator.
-        ! If the value of VALUE less than 1E-10, then it returns TOLERANCE otherwise VALUE.
 
         implicit none
         real, intent(in) :: value
@@ -74,11 +65,11 @@ contains
 
     end function ptolfun
 
+    !>@brief:This function is a tolerance function for a value which is used as a denominator.
+    !> If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
+    !> the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
     PURE function tolfun(value) result(v_tolfun)
     !real function tolfun(value)
-        ! This function is a tolerance function for a value which is used as a denominator.
-        ! If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
-        ! the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
 
         implicit none
         real, intent(in) :: value
@@ -108,6 +99,7 @@ contains
 
     end function tolfun_many
 
+    !!>@brief: VOlume of a tetrahedron defined by coordinates
     function tetvolume(x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3)
         IMPLICIT NONE
 
@@ -140,8 +132,8 @@ contains
 
     end function vtolfun
 
+    !>@brief:Checks if a number is a Nan
     subroutine nan_check(a,k)
-    !Checks if a number is a Nan
         real :: a
         integer :: k
 
@@ -151,8 +143,8 @@ contains
 
     end subroutine nan_check
 
+    !>@brief:Checks if an array is a Nan
     subroutine nan_check_arr(a,k)
-    !Checks if an array is a Nan
         real, dimension(:,:) :: a
         integer :: k
 
@@ -163,18 +155,18 @@ contains
     end subroutine nan_check_arr
 
 
+    !>@brief: The function computes NVDFUNNEW, the normalised value of the
+    !> advected variable on the face of the control volume, based on
+    !> the normalised value of the advected variable in the donor CV,
+    !> UC, and the high-order estimate of the face value UF.
+    !> NVDFUNNEW is limited so that it is in the non-oscillatory
+    !> region of normalised variable diagram (NVD).
+    !>
+    !> XI is the parameter in equation 38 of the Riemann paper. If XI is equal
+    !> to 2 then this corresponds to a TVD condition in 1-D, a value of XI
+    !> equal to 3 has been recommended elsewhere
     PURE FUNCTION NVDFUNNEW_MANY( UF, UC, XI_LIMIT ) result(nvd_limit)
         implicit none
-        ! The function computes NVDFUNNEW, the normalised value of the
-        ! advected variable on the face of the control volume, based on
-        ! the normalised value of the advected variable in the donor CV,
-        ! UC, and the high-order estimate of the face value UF.
-        ! NVDFUNNEW is limited so that it is in the non-oscillatory
-        ! region of normalised variable diagram (NVD).
-        !
-        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
-        ! equal to 3 has been recommended elsewhere
         !
         REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
         real, dimension(size(uc)) :: nvd_limit
@@ -198,18 +190,18 @@ contains
 
 
 
+    !>@brief: The function computes NVDFUNNEW, the normalised value of the
+    !> advected variable on the face of the control volume, based on
+    !> the normalised value of the advected variable in the donor CV,
+    !> UC, and the high-order estimate of the face value UF.
+    !> NVDFUNNEW is limited so that it is in the non-oscillatory
+    !> region of normalised variable diagram (NVD).
+    !>
+    !> XI is the parameter in equation 38 of the Riemann paper. If XI is equal
+    !> to 2 then this corresponds to a TVD condition in 1-D, a value of XI
+    !> equal to 3 has been recommended elsewhere
     FUNCTION NVDFUNNEW_MANY_sqrt( UF, UC, XI_LIMIT ) result(nvd_limit)
         implicit none
-        ! The function computes NVDFUNNEW, the normalised value of the
-        ! advected variable on the face of the control volume, based on
-        ! the normalised value of the advected variable in the donor CV,
-        ! UC, and the high-order estimate of the face value UF.
-        ! NVDFUNNEW is limited so that it is in the non-oscillatory
-        ! region of normalised variable diagram (NVD).
-        !
-        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
-        ! equal to 3 has been recommended elsewhere
         !
         REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
         real, dimension(size(uc)) :: nvd_limit
@@ -228,8 +220,8 @@ contains
         ndglno=> mesh%ndglno
     end function get_ndglno
 
-    !Sort a list in increasing order
-    !Vec is the vector to sort and n is an starting point, like 1
+    !>@brief:Sort a list in increasing order
+    !>Vec is the vector to sort and n is an starting point, like 1
     recursive  subroutine quicksort(vec,n)
 
         implicit none
@@ -308,11 +300,11 @@ contains
     end subroutine quicksort
 
 
+    !>@brief: Calculate FACE_ELE - the list of elements surrounding an
+    !> element and referenced with a face -ve values correspond to surface elements.
     SUBROUTINE CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
         FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
         CV_SLOCLIST, X_NLOC, X_NDGLN)
-        ! Calculate FACE_ELE - the list of elements surrounding an
-        ! element and referenced with a face -ve values correspond to surface elements.
         IMPLICIT NONE
         INTEGER, intent( in ) :: TOTELE, STOTEL, NFACE, CV_NLOC, CV_SNLOC, CV_NONODS, &
             X_NLOC
@@ -478,9 +470,9 @@ contains
     END SUBROUTINE CALC_FACE_ELE
 
     !sprint_to_do; we need to see how this behaves with many regions ids
+    !>@brief:Copies the data from inval to outval safely.
+    !>If the sizes are different outval is populated using the first value of inval
     subroutine assign_val(outval,inval)
-        !Copies the data from inval to outval safely.
-        !If the sizes are different outval is populated using the first value of inval
         implicit none
         real, dimension(:), intent(inout) :: outval
         real, dimension(:), intent(in) :: inval
@@ -493,9 +485,9 @@ contains
     end subroutine assign_val
 
 
+    !!>@brief:This function returns the value at position input_X using
+    !>X_points, Y_points to form a linear (size == 2) or quadratic (size == 3) interpolation
     real function table_interpolation(X_points, Y_points, input_X)
-        !This function returns the value at position input_X using
-        !X_points, Y_points to form a linear (size == 2) or quadratic (size == 3) interpolation
         implicit none
         real, intent(in) :: input_X
         real, dimension(:), intent(in) :: X_points, Y_points
@@ -522,16 +514,16 @@ contains
         end if
     end function table_interpolation
 
+    !>@brief:Template of csv table
+    !>OPTIONAL section (header)
+    !>real1,real2,real3,..., size(extra_data)
+    !>rows,columns
+    !>2,3
+    !>Pressure,Saturation
+    !>1000,0.9
+    !>250,0.5
+    !>100,0.1
     subroutine read_csv_table(data_array, path_to_table, extra_data)
-        !Template of csv table
-        !OPTIONAL section (header)
-        !real1,real2,real3,..., size(extra_data)
-        !rows,columns
-        !2,3
-        !Pressure,Saturation
-        !1000,0.9
-        !250,0.5
-        !100,0.1
         implicit none
         real, dimension(:,:), allocatable, intent(inout) :: data_array
         character( len = option_path_len ), intent(in) :: path_to_table
@@ -561,8 +553,8 @@ contains
     end subroutine read_csv_table
 
 
+    !>@brief:This subroutine reads a csv file and returns them in an array
     subroutine extract_strings_from_csv_file(csv_table_strings, path_to_table, Nentries)
-        !This subroutine reads a csv file and returns
         implicit none
         integer, intent(out) :: Nentries
         character( len = option_path_len ), intent(in) :: path_to_table
@@ -589,8 +581,8 @@ contains
 
     end subroutine extract_strings_from_csv_file
 
-    !Subroutine to print Arrays by (columns,rows)
-    !Matrix = 2D Array
+    !>@brief:Subroutine to print Arrays by (columns,rows)
+    !>Matrix = 2D Array
     subroutine printMatrix(Matrix)
         implicit none
 
@@ -622,7 +614,7 @@ contains
         print *,"";
     end subroutine PrintMatrix
 
-
+!>@brief: Roates a matrix A using the toration matrix R????
 subroutine RotationMatrix(a,R)
 
     real, dimension(3), intent(in)    :: a ! normal vector of length opposite the largest angle of a 'bad' element
@@ -686,9 +678,9 @@ subroutine RotationMatrix(a,R)
 END subroutine RotationMatrix
 
 
+    !>@brief:This subroutine reads a nastran file that contains the information defining the 1D path of a well
+    !>the input relative filepath should include the file format, for example: well.bdf
     subroutine read_nastran_file(filepath, node, edges)
-        !This subroutine reads a nastran file that contains the information defining the 1D path of a well
-        !the input relative filepath should include the file format, for example: well.bdf
         implicit none
         character( len = * ), intent(in) :: filepath
         real, dimension(:,:), allocatable, intent(inout) :: node
@@ -777,5 +769,138 @@ END subroutine RotationMatrix
 
         end subroutine get_nodes_edges
     end subroutine read_nastran_file
+
+
+    !---------------------------------------------------------------------------
+    !> @author Pablo Salinas
+    !> @brief Subroutine that solves the least squares problem |Ax-b|2 using LAPACK and blas
+    !> Subroutine tested and compared with Matlab (not recommended changing it since it is a pain!)
+    !> Only for serial: The best option is to solve in each processor the optimisation system by performing
+    !> A' * A = A' *b; so the system becomes very small as COLUMS <<< ROWS
+    !---------------------------------------------------------------------------
+    subroutine Least_squares_solver(A, b, rank)
+      implicit none
+      real, dimension(:,:), intent(inout) :: A !> Input matrix to decompose, returns the Q and R combined
+      real, dimension(:,:), intent(inout) :: b !> Input RHS term, returns the X that minimise the system
+      integer, intent(inout) :: rank
+      !Local variables
+      integer :: i, j, k, theta, m, n, nrhs, lda, ldb
+      !Parameters for dgegp3 to compute the QR decomposition
+      integer :: info!>If info = -i, the i-th parameter had an illegal value
+      real, dimension(size(A,2)) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+      real, dimension(3*size(A,1)+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      integer, dimension(size(A,1)) :: jpvt
+      real, parameter :: tolerance_rank = 1d-12
+
+      interface
+        !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
+          subroutine dgeqrf(m, n, MAT, lda, tau, work, lwork, info)
+            implicit none
+            integer :: m!>Rows of MAT
+            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
+            integer :: lda !>The first dimension of MAT
+            integer :: lwork!> The size of the work array; 0 == best performance
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(lda,n) :: MAT!>input/output matrix
+            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+          end subroutine dgeqrf
+      end interface
+
+      interface
+        !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
+          subroutine dgeqp3(m, n, MAT, lda, jpvt, tau, work, lwork, info)
+            implicit none
+            integer :: m!>Rows of MAT
+            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
+            integer :: lda !>The first dimension of MAT
+            integer :: lwork!> The size of the work array; 0 == best performance
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(lda,n) :: MAT!>input/output matrix
+            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+            integer, dimension(n) :: jpvt!>Specifies columns that are not free to move, I guess useful if updating the QR decomposition
+          end subroutine dgeqp3
+      end interface
+
+      interface
+          !> @brief Interface to Lapack to show a Q matrix computed using dgeqp3
+          subroutine dorgqr(m, n, k, mat, lda, tau, work, lwork, info)
+            implicit none
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: lwork!> The size of the work array; 0 == best performance
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+          end subroutine dorgqr
+      end interface
+
+      interface
+          !> @brief LAPACK subroutine to perform Q times C, Q obtained using dgeqp3
+          subroutine DORMQR(side, trans, m, n, k, MAT, lda, tau, c, ldc, work, lwork, info)
+            implicit none
+            character(len=1) :: side, trans !> Either L or R (Left right); N or T (T == Transpose)
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+            integer :: ldc !>The leading dimension of c. Constraint: ldc≥ max(1, m)
+            integer :: lwork!> The size of the work array;For better performance, try using lwork = n*blocksize (if side = 'L') or lwork = m*blocksize (if side = 'R') where blocksize is a machine-dependent value (typically, 16 to 64) required for optimum performance of the blocked algorithm.
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(ldc,m) :: C !>Overwritten by the product Q*C, QT*C, C*Q, or C*QT (as specified by side and trans).
+            real, dimension(N) :: tau !>Contains scalar factors of the elementary reflectors for the matrix Q.
+            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+          end subroutine DORMQR
+      end interface
+
+      interface
+          !> @brief BLAS subroutine to solve the system RX = C
+          subroutine dtrsm(side, uplo, transa, diag, m, n, alpha, mat, lda, b, ldb)
+            implicit none
+            character(len=1) :: side, uplo, transa, diag !> Either L or R (Left right); N or T (T == Transpose)
+            integer :: m,n !>Rows and colums respectively
+            integer :: lda !>The first dimension of a
+            integer :: info!>If info = -i, the i-th parameter had an illegal value
+            real :: alpha !> alpha is zero, then a is not referenced and b need not be set before entry.
+            integer :: ldb !>The first dimension of b
+            real, dimension(m,n) :: MAT!>input/output matrix
+            real, dimension(m,n) :: B!>input/output matrix
+          end subroutine dtrsm
+      end interface
+
+      !Specify dimensions
+      m = size(A,1); n = size(A,2); lda = max(1,m)
+      !Compute QR decomposition
+      jpvt = 0; !Could be an input
+      ldb = size(b,1); nrhs = size(b,2); tau =0.
+      !Obtain QR decomposition of A using pivoting
+      call dgeqp3(m, n, A, lda, jpvt, tau, work, 3* n + 1, info)
+      ! call dgeqrf(m, n, A, lda, tau, work, 3* n + 1, info)
+      !dorgqr is to obtain Q only
+      ! call dorgqr(m, n, min(n,m), A, lda, tau, work, 3* n + 1, info)
+
+      rank = n
+      do k = 1, n
+        if (abs(A(k,k)) <= tolerance_rank * abs(A(1,1))) then
+! print *, "entry that is affecting the result for the least squares",k
+          rank = rank - 1
+        end if
+      end do
+
+      !Perform Q * b
+      CALL DORMQR('L','T',m, nrhs, n, A, lda, tau, B, ldb, work, 3* n + 1, info)
+      !Now obtain X by solving the system RX = C
+      CALL DTRSM('L','U','N','N',min(n,m), nrhs,1., A,lda,B, ldb)
+      !Now permute back the results so everything is consistent
+      DO J = 1, NRHS
+        DO I = 1, N!ldb??
+          WORK(JPVT(I)) = B(I,J)
+        end do
+          B(:,J) = WORK(1:ldb)
+      end do
+    end subroutine Least_squares_solver
 
 end module multi_tools

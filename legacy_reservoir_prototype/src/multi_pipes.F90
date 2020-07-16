@@ -1,27 +1,16 @@
-
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -71,14 +60,14 @@ module multi_pipes
         WIC_P_BC_DIRICHLET = 1, &
         WIC_P_BC_FREE = 2
 
-    real:: tolerancePipe = 1d-2!tolerancePipe has to be around 1e-2 because that is the precision of the nastran input file
+    real:: tolerancePipe = 1d-2!> tolerancePipe has to be around 1e-2 because that is the precision of the nastran input file
 
 contains
 
+  !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                   INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
-      ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
       type(multi_dimensions), intent(in) :: Mdims
@@ -710,8 +699,8 @@ contains
                           end do
                           do iphase = wells_first_phase, final_phase*2
                             assembly_phase = iphase
-                            !For the RHS collapsing to assemble into phase 1 can be done just here
-                            if (assemble_collapsed_to_one_phase) assembly_phase = wells_first_phase
+                            !For the RHS collapsing to assemble into phase 2 can be done just here
+                            if (assemble_collapsed_to_one_phase) assembly_phase = 2
                             call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
                             !Introduce the information into the petsc_ACV matrix
                             call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
@@ -813,6 +802,7 @@ contains
                   IF ( GETCV_DISC ) THEN ! this is on the boundary...
                       ! Put results into the RHS vector
                       LOC_CV_RHS_I = 0.0
+                      LOC_MAT_II = 0.
                       DO IPHASE= 1, final_phase
                         compact_phase = iphase + (Mdims%npres - 1)*final_phase
                         LOC_CV_RHS_I( compact_phase ) =  LOC_CV_RHS_I( compact_phase ) &
@@ -828,12 +818,18 @@ contains
                       end do
                       ! Put into matrix...
                       do iphase = wells_first_phase, final_phase*2
-                          call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                              + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase))
-                          if (.not.conservative_advection) call addto( Mmat%petsc_ACV, iphase, iphase, JCV_NOD, JCV_NOD, &
-                              -suf_area * NDOTQ(iphase) * LIMD(iphase))
+                        LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + suf_area * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase)
+                        if (.not.conservative_advection) LOC_MAT_II(iphase) = LOC_MAT_II(iphase) -suf_area * NDOTQ(iphase) * LIMD(iphase)
                       end do
-                      call addto( Mmat%CV_RHS, JCV_NOD, LOC_CV_RHS_I )
+                      do iphase = wells_first_phase, final_phase*2
+                        assembly_phase = iphase
+                        !For the RHS collapsing to assemble into phase 2 can be done just here
+                        if (assemble_collapsed_to_one_phase) assembly_phase = 2
+                        call addto(Mmat%CV_RHS,assembly_phase, JCV_NOD,LOC_CV_RHS_I(IPHASE))
+                        !Introduce the information into the petsc_ACV matrix
+                        call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,JCV_NOD,JCV_NOD, LOC_MAT_II(iphase) )
+                      end do
+
                   ENDIF ! ENDOF IF ( GETCV_DISC ) THEN
 
                   !Finally store fluxes across all the boundaries either for mass conservation check or mass outflux
@@ -852,42 +848,44 @@ contains
       END DO
       IF ( GETCV_DISC ) THEN
           do iphase = wells_first_phase, final_phase*2
+            assembly_phase = iphase
+            if (assemble_collapsed_to_one_phase) assembly_phase = 2
               do cv_nodi = 1, Mdims%cv_nonods
                   if ( pipe_diameter%val(cv_nodi) <= 1e-8 ) then
-                      cv_nodj = cv_nodi ; jphase = iphase
-                      i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, iphase )
-                      j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, jphase )
+                      cv_nodj = cv_nodi
+                      i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
+                      j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
                       call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, 1.0, INSERT_VALUES, ierr )
                   end if
               end do
           end do
        end if
   CONTAINS
+    !>@brief: This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    !> difference face values TDCEN(1...SNGI) using a NVD shceme.
+    !> INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
+    !> LIBETA is the flux limiting parameter.
+    !> TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
+    !> TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
+    !> PELEOT=element at other side of current face.
+    !> ELEOT2=element at other side of the element ELEOTH.
+    !> ELESID=element next to oposing current face.
+    !> DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
+    !> The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    !> This sub finds the neighbouring elements. Suppose that this is the face IFACE.
+    !>---------------------------------------------------
+    !>|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !>---------------------------------------------------
+    !> TAIN         THALF       TAOUT
+    !>---------------------------------------------------
+    !>TEXTIN
+    !>TEXOUT<
+    !>---------------------------------------------------
     PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
         TDLIM, TDCEN, INCOME, &
         ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
         TUPWIN, TUPWI2, DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU )
         implicit none
-        ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-        ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-        ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-        ! LIBETA is the flux limiting parameter.
-        ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-        ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-        ! PELEOT=element at other side of current face.
-        ! ELEOT2=element at other side of the element ELEOTH.
-        ! ELESID=element next to oposing current face.
-        ! DENOIN, CTILIN, DENOOU, CTILOU, FTILIN, FTILOU => memory
-        ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-        ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-        !---------------------------------------------------
-        !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-        !---------------------------------------------------
-        ! TAIN         THALF       TAOUT
-        !---------------------------------------------------
-        !>TEXTIN
-        !TEXOUT<
-        !---------------------------------------------------
         INTEGER, intent( in ) :: NFIELD
         REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
         REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
@@ -916,9 +914,9 @@ contains
         RETURN
     END SUBROUTINE ONVDLIM_ANO_MANY
 
+    !!>@brief: Obtain sele from a cv_nod that is on the boundary
+    !if not found then returns -1. Important to read BCs
     real function sele_from_cv_nod(Mdims, ndgln, cv_jnod)
-        !Obtain sele from a cv_nod that is on the boundary
-        !if not found then returns -1
         implicit none
         integer, intent(in) ::cv_jnod
         type(multi_ndgln), intent(in) :: ndgln
@@ -940,13 +938,13 @@ contains
 
   END SUBROUTINE MOD_1D_CT_AND_ADV
 
+  !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
+  !> NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4.
+  !> We define wells_first_phase as the first phase of the well domain
   subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY( state, packed_state, tracer, den_all, denold_all, final_phase, Mdims, ndgln, DERIV, CV_P, &
                   SOURCT_ALL, ABSORBT_ALL, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL,&
                   getcv_disc, getct, Mmat, Mspars, upwnd, GOT_T2, DT, pipes_aux, DIAG_SCALE_PRES_COUP, DIAG_SCALE_PRES, &
                   mean_pore_cv, eles_with_pipe, thermal, CV_BETA, MASS_CV, INV_B, MASS_ELE, bcs_outfluxes, outfluxes, porous_heat_coef, assemble_collapsed_to_one_phase )
-      ! This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
-      !NOTE final_phase has to be define for the reservoir domain, i.e. for two phase flow it can be either 1 or 2, not 3 or 4.
-      !We define wells_first_phase as the first phase of the well domain
       type(tensor_field), intent(inout) :: tracer
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
@@ -1016,7 +1014,6 @@ contains
       !Define phase where we start the assembly, this is the first phase of the well domains.
       wells_first_phase = 1 + final_phase
 
-
       have_absorption = associated( absorbt_all )
       one_m_cv_beta = 1.0 - cv_beta
       Solve_all_phases = .not. have_option("/numerical_methods/solve_nphases_minus_one")
@@ -1084,6 +1081,7 @@ contains
           SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
 
       GAMMA_PRES_ABS2 = 0.0
+      !A_GAMMA_PRES_ABS only for compressible flow? sprint_to_do DO WE NEED TO DO THIS FOR Incompressible FLOW??
       A_GAMMA_PRES_ABS = 0.0
       DO CV_NODI = 1, Mdims%cv_nonods
 
@@ -1342,12 +1340,12 @@ contains
                   ! global_phase = jphase + (ipres - 1)*Mdims%n_in_pres
                   compact_phase = jphase + (ipres - 1)*final_phase
                   assembly_phase = compact_phase
-                  if (assemble_collapsed_to_one_phase) assembly_phase = ipres
+                  if (assemble_collapsed_to_one_phase) assembly_phase = ipres!1 + (jphase-1)/Mdims%n_in_pres
                     do iphase=1 , final_phase*2
                       !Implicit method in all the cases
                       assembly_phase_2 = iphase
                       if (assemble_collapsed_to_one_phase) assembly_phase_2 = 1 + (iphase-1)/Mdims%n_in_pres
-                      call addto(Mmat%petsc_ACV,iphase,assembly_phase, &
+                      call addto(Mmat%petsc_ACV,assembly_phase_2,assembly_phase, &
                           cv_nodi, cv_nodi, &
                           MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, compact_phase, CV_NODI ))
                           ! if(.not.conservative_advection) then ! original method - all implicit (may be unstable in some cases 12/07/2017)
@@ -1385,11 +1383,12 @@ contains
                     end do
                 end do
             end if
+
             !Assemble into the matrix/RHS
             DO IPHASE= 1, final_phase*2
                 assembly_phase = iphase
                 !For the RHS collapsing to assemble into phase 1 can be done just here
-                if (assemble_collapsed_to_one_phase) assembly_phase = 1
+                if (assemble_collapsed_to_one_phase) assembly_phase = 2
                 call addto(Mmat%CV_RHS,assembly_phase, CV_NODI,LOC_CV_RHS_I(IPHASE))
                 !Introduce the information into the petsc_ACV matrix
                 call addto(Mmat%petsc_ACV,assembly_phase,assembly_phase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
@@ -1458,10 +1457,10 @@ contains
   end subroutine ASSEMBLE_PIPE_TRANSPORT_AND_CTY
 
 
+  !>@brief: This sub modifies Mmat%C for 1D pipe modelling
     SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe, GET_PIVIT_MAT, &
         &                         WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
         &                         U_SOURCE, U_SOURCE_CV )
-        ! This sub modifies Mmat%C for 1D pipe modelling
         IMPLICIT NONE
         TYPE(STATE_TYPE), DIMENSION( : ), INTENT( IN ) :: STATE
         TYPE(STATE_TYPE), INTENT( IN ) :: packed_STATE
@@ -1845,6 +1844,7 @@ contains
         RETURN
     END SUBROUTINE MOD_1D_FORCE_BAL_C
 
+    !>@brief: Introduces friction within the pipes based on a Moody diagram approach and based on a given roughness on the pipes
     SUBROUTINE SIGMA_PIPE_FRICTION( SIGMA, U, DIAM, DEN, VISC, E_ROUGHNESS )
         IMPLICIT NONE
         REAL, INTENT( IN ) :: U,DIAM,DEN,VISC,E_ROUGHNESS
@@ -1877,9 +1877,9 @@ contains
 
 
 
+    !>@brief: Calculate the local corner nodes...
+    !> CV_MID_SIDE(ICORN,JCORN)= CV_ILOC local node number for node between these two corner nodes
     SUBROUTINE CALC_CORNER_NODS( CV_LOC_CORNER, NDIM, CV_NLOC, CV_QUADRATIC, CV_MID_SIDE )
-        ! Calculate the local corner nodes...
-        ! CV_MID_SIDE(ICORN,JCORN)= CV_ILOC local node number for node between these two corner nodes
         IMPLICIT NONE
         INTEGER, INTENT( IN ) :: CV_NLOC, NDIM
         INTEGER, DIMENSION( : ), INTENT( INOUT ) :: CV_LOC_CORNER
@@ -1925,10 +1925,10 @@ contains
         RETURN
     END SUBROUTINE CALC_CORNER_NODS
 
+    !>@brief: Calculate element angle sweeped out by element and pipe
+    !> X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
+    !> X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 are the other corner 2 nodes of an element.
     REAL FUNCTION CALC_ELE_ANGLE_3D( X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2, X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
-        ! Calculate element angle sweeped out by element and pipe
-        ! X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
-        ! X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 are the other corner 2 nodes of an element.
         IMPLICIT NONE
         REAL, intent( in ) :: X_ALL_CORN_PIPE1(3), X_ALL_CORN_PIPE2(3),  X_ALL_CORN_PIPE3(3), X_ALL_CORN_PIPE4(3)
         REAL :: X_PIPE1(3), X_PIPE2(3), X_PIPE3(3), X_PIPE4(3)
@@ -1968,12 +1968,14 @@ contains
     END FUNCTION CALC_ELE_ANGLE_3D
 
 
-
+    !>@brief: In this subroutine the elements that contain pipes are identified
+    !> The pipes can either be defined using python (DEPRECATED)
+    !> or a nastran file defining the trajectory of each well by points
     subroutine retrieve_pipes_coords(state, packed_state, Mdims, ndgln, eles_with_pipe)
         implicit none
         type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(in) :: packed_state
-        type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe!allocated inside
+        type(pipe_coords), dimension(:), allocatable, intent(inout) :: eles_with_pipe!>allocated inside
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         !Local variables
@@ -2132,6 +2134,8 @@ contains
         end if
     contains
 
+        !!>@brief: Check whether a node is within a pipe
+        !> We define a virtual cylinder and we check whether the node falls within it.
         logical function is_within_pipe(P, v1, v2, tol)
             implicit none
             real, dimension(:), intent(in) :: P, v1, v2
@@ -2174,8 +2178,9 @@ contains
         end function is_within_pipe
 
 
+        !>@brief: For a given NASTRAN file find a node that is within the pipe
+        !> It uses brute force but only within the regions that contain a well, the sleeves defined in diamond
         subroutine find_pipe_seeds(well_domains, X, nodes, edges, pipe_seeds)
-            !For a given NASTRAN file find a node that is within the pipe
             implicit none
             type (scalar_field), pointer :: well_domains
             real, dimension(:,:), intent(in) :: X
@@ -2248,6 +2253,7 @@ contains
             if (size(pipe_seeds)>0) pipe_seeds = aux_pipe_seeds(1:l)
         end subroutine find_pipe_seeds
 
+        !>@brief: Once a seed for a node is found, this subroutine finds all the nodes that form a well by searching neirhbouring elements only
         subroutine find_nodes_of_well(X, nodes, edges, pipe_seeds, eles_with_pipe, diameter_of_the_pipe_aux)
             implicit none
             real, dimension(:,:), intent(in) :: X

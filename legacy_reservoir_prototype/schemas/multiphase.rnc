@@ -34,6 +34,8 @@ start =
                 element porous_media_simulator{comment}|
                 ## Magma flow simulator
                 element magma_simulator{comment}|
+                ## Stokes flow simulator
+                element stokes_simulator{comment}|
                 ## Poro-elasticity simulator:
                 ## This requires to define through diamond the tensor field in phase 1 UAbsorB
                 ## as an absorption term and also the RHS that should include the second time-derivative for the solid phase
@@ -95,7 +97,7 @@ start =
                }
             ),
             ## Path (without the extension) to the .csv file containing the fluid and porous media properties.
-            ## NOTE: Properties in the .csv file will overwrite the input from diamond.
+            ## <b>NOTE: Properties in the .csv file will overwrite the input from diamond.</b>
             ##
             ## The information is stored as:
             ##
@@ -114,7 +116,7 @@ start =
             element Courant_number {
                comment
             }?,
-            ## Surface to Integrate Over
+            ## <b>Generates a .csv file including the volume_flux, rates, etc. across the specified boundaries</b>
             element dump_boundaryflux {
             empty,
             ## Surface id:
@@ -328,12 +330,6 @@ start =
             ## Disable dump at simulation end
             element disable_dump_at_end {
                comment
-            }?,
-            ## Printout the number of elements and percentage that contain an angle
-            ## equal or bigger than the ones specified here
-	    ## Note: This may slow down your simulation should be used as a diagnostic tool
-            element Mesh_Diagnostics_Angles {
-               real_vector
             }?
          },
          ## Options dealing with time discretisation
@@ -353,6 +349,8 @@ start =
                real
             },
             ## Vary the timestep according to the courant number.
+            ## <b>Recommended method for non Darcy simulations</b>
+            ## You will need to generate the scalar field CFLNumber for each phase.
             element adaptive_timestep {
                ## The timestep will be adjusted (within the tolerance
                ## and bounds specified) to target this courant
@@ -470,12 +468,14 @@ start =
                   element prognostic {
                      # mesh choice with PressureMesh as first option
                      pressure_mesh_choice,
-                     prognostic_pressure_field
+                     prognostic_pressure_field,
+                     output_options
                   }|
                   element prescribed {
                      # mesh choice with PressureMesh as first option
                      pressure_mesh_choice,
-                     prescribed_scalar_field
+                     prescribed_scalar_field,
+                     output_options
                   }|
                   ## Compute pressure from Density and InternalEnergy
                   ## via a compressible equation of state.
@@ -499,16 +499,19 @@ start =
                (
                   element prognostic {
                      velocity_mesh_choice,
-                     prognostic_velocity_field
+                     prognostic_velocity_field,
+                     output_options
                   }|
                   element prescribed {
                      velocity_mesh_choice,
-                     prescribed_vector_field
+                     prescribed_vector_field,
+                     output_options
                   }|
                   element diagnostic {
                      velocity_mesh_choice,
                      vector_python_diagnostic_algorithm,
-                     diagnostic_vector_field
+                     diagnostic_vector_field,
+                     output_options
                   }|
                   element aliased {
                      attribute material_phase_name { xsd:string },
@@ -519,7 +522,14 @@ start =
             scalar_field_choice*,
             vector_field_choice*,
             tensor_field_choice*,
-            ## Parameters required to model multiphase flow
+            ## Parameters required to model porous media multiphase flow
+            ## If modeling multiphase porous media flow and a field left unspecified or all of them, the default values will be used. These are:
+            ##
+            ## Relperm: Brooks-Corey model with exponent = 2 and Krmax = 1.
+            ##
+            ## Capillary pressure disabled.
+            ##
+            ## Inmobile fraction = 0.
             element multiphase_properties {
                ## Option for relperm type in prototype code
                   ## Corey relperm:
@@ -551,7 +561,9 @@ start =
                         )
                      }
                 }?,
-               ## Option for capillary pressure
+               ## Options for capillary pressure
+               ##
+               ## <b>You should specify this ONLY for the wetting phase</b>
                element capillary_pressure {
                   ## Brooks-Corey equation
                   ##
@@ -560,8 +572,7 @@ start =
                   ## For imbibition swith the formula is:
                   ##
                   ## ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure
-                  ##
-                  ## You should specify this ONLY for the wetting phase
+                 
                   element type_Brooks_Corey {
                     ## Entry pressure of the formula
                     element scalar_field {
@@ -656,10 +667,12 @@ start =
                (
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_scalar_field
+                     prescribed_scalar_field,
+                     output_options
                   }|
                   element aliased {
-                     generic_aliased_field
+                     generic_aliased_field,
+                     output_options
                   }
                )
             },
@@ -670,12 +683,14 @@ start =
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                     element diagnostic {
                     material_mesh_choice,
                     scalar_python_diagnostic_algorithm,
-                    diagnostic_scalar_field
+                    diagnostic_scalar_field,
+                     output_options
                   }
                   )
                }|
@@ -684,12 +699,14 @@ start =
                   (
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_vector_field
+                     prescribed_vector_field,
+                     output_options
                   }|
                     element diagnostic {
                     material_mesh_choice,
                     vector_python_diagnostic_algorithm,
-                    diagnostic_vector_field
+                    diagnostic_vector_field,
+                     output_options
                   }
                   )
                }|
@@ -698,27 +715,31 @@ start =
                   (
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_tensor_field
+                     prescribed_tensor_field,
+                     output_options
                   }|
                     element diagnostic {
                     material_mesh_choice,
                     tensor_python_diagnostic_algorithm,
-                    diagnostic_tensor_field
+                    diagnostic_tensor_field,
+                     output_options
                   }
                   )
                }
             ),
-            ## Specify scalar field Longitudinal Dispersivity
+            ## Specify scalar field longitudinal and transverse Dispersivity
             element Dispersion {
                element scalar_field {
                   attribute name { "Longitudinal_Dispersivity" },
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                      element aliased {
-                        generic_aliased_field
+                        generic_aliased_field,
+                     output_options
                      }
                   )
                },
@@ -727,26 +748,31 @@ start =
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                      element aliased {
-                        generic_aliased_field
+                        generic_aliased_field,
+                     output_options
                      }
                   )
                }?
             }?,
-            ## Parameters for thermal porous media simulations
-            element thermal_porous{
+            ## Rock properties
+            ## For <b>GEOTHERMAL</b> simulations, density, heat capacity and conductivity are <b>MANDATORY</b>
+            element porous_properties{
                 ## Specify scalar field density of the porous media
                 element scalar_field {
                    attribute name { "porous_density" },
                    (
                       element prescribed {
                          material_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                         output_options
                       }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                         output_options
                       }
                    )
                 },
@@ -756,13 +782,15 @@ start =
                    (
                       element prescribed {
                          material_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                        output_options
                       }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                        output_options
                       }
                    )
-                },
+                }?,
 
 
 
@@ -771,9 +799,10 @@ start =
                   attribute name { "porous_thermal_conductivity" },
                   element prescribed {
                      material_mesh_choice,
-                     prescribed_tensor_field
+                     prescribed_tensor_field,
+                     output_options
                   }
-               },
+               }?,
 
                ## Specify scalar field compressibility of the porous media
                ## ( in Pa-1 den = den_surface*exp(c*(P_res-P_surface))
@@ -783,10 +812,12 @@ start =
                   (
                      element prescribed {
                         material_mesh_choice,
-                        prescribed_scalar_field
+                        prescribed_scalar_field,
+                     output_options
                      }|
                      element aliased {
-                        generic_aliased_field
+                        generic_aliased_field,
+                     output_options
                      }
                   )
                }?
@@ -803,14 +834,17 @@ start =
                    (
                       element prescribed {
                          material_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
@@ -821,21 +855,24 @@ start =
                    (
                       element prescribed {
                          pressure_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
                 ## Absorption in the pipes.
                 ## If none, set it to 1.
                 ##
-                ## Recommended. set to 1 and/or use the internal method based on the Moody diagram that can be selected in
+                ## <b>Recommended. set to 1 and use the internal method</b> based on the Moody diagram that can be selected in
                 ## /wells_and_pipes/well_options/calculate_sigma_pipe
 
                 element scalar_field {
@@ -843,14 +880,17 @@ start =
                    (
                       element prescribed {
                          subcv_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
@@ -862,14 +902,17 @@ start =
                    (
                       element prescribed {
                          pressure_mesh_choice,
-                         prescribed_scalar_field
+                         prescribed_scalar_field,
+                     output_options
                       }|
                     element diagnostic {
                       vector_python_diagnostic_algorithm,
-                      diagnostic_scalar_field_no_adapt
+                      diagnostic_scalar_field_no_adapt,
+                     output_options
                     }|
                       element aliased {
-                         generic_aliased_field
+                         generic_aliased_field,
+                     output_options
                       }
                    )
                 },
@@ -884,14 +927,17 @@ start =
                        (
                           element prescribed {
                              pressure_mesh_choice,
-                             prescribed_scalar_field
+                             prescribed_scalar_field,
+                            output_options
                           }|
                         element diagnostic {
                           vector_python_diagnostic_algorithm,
-                          diagnostic_scalar_field_no_adapt
+                          diagnostic_scalar_field_no_adapt,
+                             output_options
                         }|
                           element aliased {
-                             generic_aliased_field
+                             generic_aliased_field,
+                            output_options
                           }
                        )
                     },
@@ -904,14 +950,17 @@ start =
                        (
                           element prescribed {
                              pressure_mesh_choice,
-                             prescribed_scalar_field
+                             prescribed_scalar_field,
+                            output_options
                           }|
                         element diagnostic {
                           vector_python_diagnostic_algorithm,
-                          diagnostic_scalar_field_no_adapt
+                          diagnostic_scalar_field_no_adapt,
+                            output_options
                         }|
                           element aliased {
-                             generic_aliased_field
+                             generic_aliased_field,
+                            output_options
                           }
                        )
                     }
@@ -926,6 +975,7 @@ start =
                       element pipe_roughness{ real }?
                    }?,
                    ## Switches wells on and off to optimise production
+                   ## <b>Not recommended, better use gamma with python.</b>
                    element switch_wells_on_and_off{
                       element phase_exclude{ integer }
                    }?,
@@ -941,7 +991,7 @@ start =
                 ## When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
                 ## that the well trajectories are preserved.
                 ##
-                ## ***This is MANDATORY when using files to define wells***
+                ## <b>This is MANDATORY when using files to define wells</b>
                 element well_volume_ids {
                   integer_vector,
                       (
@@ -950,7 +1000,7 @@ start =
                       )
                  }?,
                  ## Introduce here the relative path to the file defining a 1D well
-                 ## Note that the only accepted file format is NASTRAN, i.e. .bdf.
+                 ## Note: <b>the only accepted file format is NASTRAN, i.e. .bdf.</b>
                  ## Each file has to describe a continuous well touching an external boundary.
                  ##
                  ## ***Well_volume_ids option is MANDATORY when using this method to define wells.***
@@ -973,6 +1023,78 @@ start =
 	         element FWL {
 	         	real
 		        }?
+         }?,
+
+        ## Magma options
+         element magma_parameters {
+         (
+           ## Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.
+            element Phase_diagram_coefficients {		
+		(
+		## A1
+            	element A1 {
+               real
+            	},
+		## B1
+            	element B1 {
+               real
+            	},
+		## C1
+            	element C1 {
+               real
+            	},
+		## A2
+            	element A2 {
+               real
+            	}?,
+		## B2
+            	element B2 {
+               real
+            	}?,
+		## C2
+            	element C2 {
+               real
+            	}?,
+	       ## Eutectic point	
+	       element ae {
+               real
+            	},
+	       ## Latent heat
+               element latent_heat {
+               real
+                }
+               )
+            }?,
+           ## bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.
+            element bulk_viscosity_exponential_coefficient{
+               real
+            },
+            ## The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b) for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.
+            element coupling_term_coefficients{
+		(
+		## Power law coefficient a
+            	element coupling_power_coefficent_a {
+               real
+            	},
+		## Power law coefficient b
+            	element coupling_power_coefficent_b {
+               real
+            	},
+		## Grain size
+            	element grain_size {
+               real
+            	},     
+		## the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
+            	element cut_a {
+               real
+            	},  
+		## the range above which the coupling terms follow the Hindered settling 
+            	element cut_b {
+               real
+            	}              
+	    )
+            }
+            )
          }?,
 
         ## Fracking options
@@ -1008,11 +1130,6 @@ start =
             }?,
             ## Use a method to avoid distortion due to boundaries
             element use_reflect_method {
-               empty
-            }?,
-            ## Upwinding is used for the parts of the domain where there is no shock-front nor rarefaction.
-            ## Elsewhere a high-order advection scheme is used. This should increase the speed of the simulation.
-            element local_upwinding {
                empty
             }?,
             ## Use the row-sum method to create a lumped mass matrix.
@@ -1089,7 +1206,7 @@ geometry =
            ##
            ## Fast => Element pair = P1/P0DGP1(CV). Upwinding and implicit Euler;
            ##
-           ## Balanced (recommended) => Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
+           ## Balanced (<b>recommended</b>) => Element pair = P1/P0DGP1(CV). High order advection scheme and adaptive theta;
            ##
            ## Precision => Element pair = P1DGP2(CV). High order advection scheme and adaptive theta
            ##
@@ -1119,7 +1236,7 @@ geometry =
                 element exclude_from_mesh_adaptivity{empty}?
              }*,
              ## Specify a different time discretisation method for different fields
-             ## You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
+             ## You can use as inputs here: <b>PhaseVolumeFraction, Velocity or Tracer</b>.
              ## Tracer accounts for Temperature, SoluteMassFraction, etc.
              element Time_Discretisation {
                 ##Name of the Field
@@ -1152,7 +1269,7 @@ geometry =
              }*,
 
              ## Conservative discretisation options
-             ## Note that non-conservative does NOT mean that we do not conserve mass
+             ## <b>Note that non-conservative does NOT mean that we do not conserve mass</b>
              ## For transport equations this is recommended to be zero.
              ## For PhaseVolumeFraction the recommendation is one.
              ##
@@ -1229,13 +1346,13 @@ solver_options =
         ##
         ## Manual suggests 2 for problems that are not very non-linear
         ##
-        ## If using Fixed_Point_Iteration for multiphase porous media flow the recommendation is ~ 20
+        ## If using Fixed_Point_Iteration for multiphase porous media flow the <b>recommendation is ~ 20</b>
         ##
         ## If using Fixed_Point_Iteration/Infinite_norm_tol/adaptive_non_linear_iterations to dynamically control the number of
         ## non-linear iterations or Fixed_Point_Iteration/adaptive_timestep_nonlinear then ~ 15 is recommended.
 		element Non_Linear_Solver {
            integer,
-           ##NOTE: For multiphase porous media only. Otherwise this value is ignored.
+           ##<b>NOTE: For multiphase porous media only. Otherwise this value is ignored.</b>
            ##
            ## This is the convergence criterion for the Fixed Point Iteration solver.
            ## The functional to compare is:
@@ -1246,7 +1363,7 @@ solver_options =
            ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
            ## of saturation is tested
            ##
-           ## Recommended value: 5e-2
+           ## <b>Recommended value: 5e-2</b>
            element Fixed_Point_Iteration{
               real,
               (
@@ -1255,14 +1372,16 @@ solver_options =
                 ##
                 ## This can be used to control the number of non-linear interations dynamically.
                 ##
-                ## By default 0.01, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005
+                ## <b>By default 0.01</b>, 0.03 is a good value to increase the speed of the simulations; Recommended between 0.05 and 0.005
                 element Infinite_norm_tol{
                 real,
                   (
                     ## Use the infinity norm of the selected field to control the number of non-linear interations dynamically.
                     ##
                     ## A Variable to check has to be chosen:
-                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction
+                    ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+                    ##
+                    ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature</b>
                     ##
                     ## The field selected in "adaptive_timestep_nonlinear" has preference over this
                     element adaptive_non_linear_iterations{
@@ -1273,8 +1392,8 @@ solver_options =
               ),
               (
                 ##
-                ## Recommended settings: Non-linear iterations ~ 20
-                ## Backtracking_parameter = -10 automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
+                ## <b>Recommended settings: Non-linear iterations ~ 20</b>
+                ## <b>Backtracking_parameter = -10</b> automatically selection based on the Courant number, the shock-front Courant number and the physics of the problem
                 ##
                 ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
                 ##
@@ -1293,7 +1412,7 @@ solver_options =
                 ##
                 ## If negative, the input value is Peclet number desired.
                 ##
-                ## Recommended value for Saturation => -3e2
+                ## <b>Recommended value for Saturation => -3e2</b>
                 ##
                 ## Tip: If running with temperature and single phase disable this setting it to 0.
                 element Vanishing_relaxation{
@@ -1301,14 +1420,14 @@ solver_options =
                   (
                     ## This method can also be applied for a transport equation.
                     ##
-                    ## Recommended value for Temperature => -1e0
+                    ## <b>Recommended value for Temperature => -1e2</b>
                     element Vanishing_for_transport{
                     real
                     }?
                   )
                 }?,
               (
-                ## For TEMPERATURE ONLY, if there are no sources nor sinks
+                ## <b>For TEMPERATURE ONLY</b>, if there are no sources nor sinks
                 ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
                 ##
 	            ## This imposes that the temperature has to be between bounds.
@@ -1329,7 +1448,11 @@ solver_options =
                 ## Adaptive timestep based on the number of non-linear iterations performed by the FPI solver.
                 ##
                 ## A Variable to check has to be chosen:
-                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Temperature; 5 = SoluteMassFraction
+                ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
+                ##
+                ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature</b>
+                
+                
                 element adaptive_timestep_nonlinear{
                     integer,
                   (
@@ -1339,6 +1462,7 @@ solver_options =
                     ## The increase_factor and decrease_factor are multiplied by 1.2 to give more flexibility to the PID controller.
                     ##
                     ## If this is off, a classical method based on the number of FPI performed is used instead.
+                    ## <b>Recommened method together with Aim_num_FPI for adaptive time-stepping </b>
                     element PID_controller {
                       empty,
                         ## Time-step size is controlled to try to always perform the specified number of FPI introduced here.
@@ -1349,7 +1473,7 @@ solver_options =
                     }?,
                     ## If any of the solvers failt to achieve convergence the time-step size is
                     ## reduced and the time-level repeated without waiting to reach the maximum number of FPI.
-                    ## Note: For the saturation for porous media it allows to diverge inside the saturation FPI.
+                    ## <b>Note: For the saturation for porous media it allows to diverge inside the saturation FPI.</b>
                     element ensure_solvers_convergence {
                       empty
                     }?,
@@ -1382,7 +1506,41 @@ solver_options =
                 }?
               )
            }?
-        }?
+        }?,
+        ## Specify options associated with the Momentum matrix. Useful mainly for: Stokes, Magma and Solid-fluid coupling flow.
+        element Momemtum_matrix{(
+        ## Use this option if you are triying to solve a system that is spanning many orders of magnitude, for example very high viscosity ratios. The Momemtum system is re-scaled as:
+        ## D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+        ##
+        ## <b>Recommened for Magma multiphase flows/Solid-fluid coupling</b>
+        element rescale_mom_matrices {
+           empty
+        }?,
+        ## Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped. 
+        ##
+        ## This is ACTIVATED by default for Stokes/Magma flow. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.</b>
+        element solve_mom_iteratively {real, 
+        (
+        ## Maximum restart iteration allowed. The default value is 15.
+         element restart_its {
+           real}?,
+        ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
+         element Max_restarts {
+           real}?,  
+           ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
+            element Momentum_preconditioner {
+           empty}?,
+           ## Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
+           ## but it is more efficient that the simple preconditioner (<b>This option disables this feature, NOT RECOMMENDED</b>). 
+           ## 
+           ## By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 
+           ##
+           ## If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (<b>Unstable</b>)
+           
+            element Disable_advance_preconditioner {
+           empty}?               
+        )}?
+       )}?           
       )}
    )
 
@@ -1869,6 +2027,55 @@ prognostic_scalar_stat_no_old_or_nonlinear_options.stat =
       mixing_stats*
    )
 
+
+
+# Output options for prognostic fields
+prognostic_scalar_output_options =
+   (
+      ## Specify what is written to vtu dump files.
+      element output {
+         ## Exclude this field from dump files.
+         element exclude_from_vtu {
+            empty
+         }?,
+         ## Select this option to also write the values of this field
+         ## on the previous timestep.
+         ## (included under the name: Old<field_name> )
+         element include_previous_time_step {
+            empty
+         }?,
+         ## Select this option to also write the values of this field
+         ## used in the nonlinear iteration.
+         ## (included under the name: Nonlinear<field_name> )
+         element include_nonlinear_field {
+            empty
+         }?,
+         ## Output a file details the convergence (or otherwise) of
+         ## this field with every advective nonlinear
+         ## iteration.
+         ## ONLY WORKS FOR PURE CONTROL VOLUME DISCRETISATIONS.
+         element convergence_file {
+            comment
+         }?
+      }
+   )
+
+
+
+# Output options for fields
+output_options =
+   (
+      ## Specify what is written to dump files.
+      element output {
+         ## Exclude this field from dump files.
+         element exclude_from_vtu {
+            empty
+         }?
+      }
+   )
+
+
+
 # Diagnostic statistics options for vector fields, with enabled by default
 vector_field_stat_options_enabled_default = include_stat
 vector_field_stat_options_enabled_default |= exclude_components_from_stat
@@ -2147,16 +2354,19 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
-                  prognostic_scalar_field
+                  prognostic_scalar_field,
+                     output_options
                }|
                element prescribed {
                   pressure_mesh_choice,
-                  prescribed_scalar_field
+                  prescribed_scalar_field,
+                     output_options
                }|
                element diagnostic {
                   scalar_diagnostic_algorithms,
                   pressure_mesh_choice,
-                  diagnostic_scalar_field
+                  diagnostic_scalar_field,
+                     output_options
                }|
                element aliased {
                   generic_aliased_field
@@ -2179,11 +2389,11 @@ scalar_field_choice =
             attribute name { "Temperature" },
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prognostic_scalar_field
                }|
                element prescribed {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prescribed_scalar_field
                }|
                element aliased {
@@ -2204,23 +2414,42 @@ scalar_field_choice =
             attribute name { "CopiedField" },
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   attribute copy_from_field { string },
                   prognostic_scalar_field
                }
             )
          }|
-         ## Mass Fraction of Solute
+         ## Mass Fraction of Solute//Concentration
+         ## Can be used as a tracer
          element scalar_field {
             attribute rank { "0" },
             attribute name { "SoluteMassFraction" },
             (
                element prognostic {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
                   prognostic_scalar_field
                }|
                element prescribed {
-                  velocity_mesh_choice,
+                  pressure_mesh_choice,
+                  prescribed_scalar_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+         }|
+         ## Enthalpy field. <b>To be used only with Magma_simulator</b>
+         element scalar_field {
+            attribute rank { "0" },
+            attribute name { "Enthalpy" },
+            (
+               element prognostic {
+                  pressure_mesh_choice,
+                  prognostic_scalar_field
+               }|
+               element prescribed {
+                  pressure_mesh_choice,
                   prescribed_scalar_field
                }|
                element aliased {
@@ -2372,11 +2601,11 @@ scalar_field_choice =
          #            attribute name { "NewFieldName" },
          #            (
          #               element prognostic {
-         #                  velocity_mesh_choice,
+         #                  pressure_mesh_choice,
          #                  prognostic_scalar_field
          #               }|
          #               element prescribed {
-         #                  velocity_mesh_choice,
+         #                  pressure_mesh_choice,
          #                  prescribed_scalar_field
          #               }|
          #               element aliased {
@@ -2569,15 +2798,18 @@ vector_field_choice =
             (
                element prescribed {
                   mesh_choice,
-                  prescribed_vector_field
+                  prescribed_vector_field,
+                     output_options
                }|
                element aliased {
-                  generic_aliased_field
+                  generic_aliased_field,
+                     output_options
                }|
                element diagnostic {
                   vector_diagnostic_algorithms,
                   velocity_mesh_choice,
-                  diagnostic_vector_field
+                  diagnostic_vector_field,
+                     output_options
                }
             )
          }|
@@ -2746,6 +2978,9 @@ tensor_field_choice =
 # Prognostic tensor fields are not possible.
       (
          ## Generic field variable (tensor)
+         ##
+         ## <b>Use the name UAbsorB</b> to impose an absorption term for the momentum equation using a diagnostic tensor using python, this allows to modify the equations to be solved from this interface.
+         ## This field needs to be set up in the first phase only
          element tensor_field {
             attribute rank { "2" },
             attribute name { xsd:string },
@@ -2757,15 +2992,18 @@ tensor_field_choice =
             (
                element prescribed {
                   mesh_choice,
-                  prescribed_tensor_field
+                  prescribed_tensor_field,
+                     output_options
                }|
                element aliased {
-                  generic_aliased_field
+                  generic_aliased_field,
+                     output_options
                }|
                element diagnostic {
                   tensor_diagnostic_algorithms,
                   velocity_mesh_choice,
-                  diagnostic_tensor_field
+                  diagnostic_tensor_field,
+                     output_options
                }
             )
          }|

@@ -182,6 +182,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -221,6 +222,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -235,6 +237,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -311,6 +314,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
@@ -323,9 +327,10 @@
             </constant>
           </isotropic>
         </value>
+        <output/>
       </prescribed>
     </tensor_field>
-    <thermal_porous>
+    <porous_properties>
       <scalar_field name="porous_density">
         <prescribed>
           <mesh name="P0DG"/>
@@ -338,6 +343,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="porous_heat_capacity">
@@ -352,6 +358,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <tensor_field name="porous_thermal_conductivity">
@@ -364,8 +371,9 @@
               </constant>
             </isotropic>
           </value>
+          <output/>
         </prescribed>
       </tensor_field>
-    </thermal_porous>
+    </porous_properties>
   </porous_media>
 </icferst_options>

@@ -1,27 +1,16 @@
-
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -47,12 +36,13 @@ module shape_functions_Linear_Quadratic
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
   logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.!With this true it does not work...we need to fix it
 
+    !>@brief: Calculates the derivatives of the shape functions
     interface DETNLXR
         module procedure DETNLXR1
         module procedure DETNLXR2
         module procedure DETNLXR3
     end interface DETNLXR
-
+    !>@brief: Computes the derivatives of the shape functions and the inverse of the Jacobian
     interface DETNLXR_INVJAC
         module procedure DETNLXR_INVJAC1
         module procedure DETNLXR_INVJAC2
@@ -62,13 +52,13 @@ module shape_functions_Linear_Quadratic
 contains
 
 
+  !!>@brief: This subrt computes shape functions M and N and their derivatives
+  !> at the Gauss points.
+  !> NB: We may need to define surface elements for p and (u,v,w)
   subroutine re2dn4( lowqua, ngi, ngi_l, nloc, mloc, &
        m, weight, n, nlx, nly, &
        sngi, snloc, sweigh, sn, snlx, &
        l1, l2 )
-    ! This subrt computes shape functions M and N and their derivatives
-    ! at the Gauss points.
-    ! NB: We may need to define surface elements for p and (u,v,w)
     implicit none
     logical, intent( in ) :: lowqua
     integer, intent( in ) :: ngi, ngi_l, nloc, mloc
@@ -1155,15 +1145,14 @@ contains
 
 
 
-
+  !>@brief: Computes the number of Gauss integration points and all the necessary information
   subroutine retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE, &
        scalar_nloc, vector_nloc )
     implicit none
     type( multi_GI_dimensions ), intent( inout ) :: GIdims
     type( multi_dimensions ), intent( in ) :: Mdims
     integer, intent( in ) :: cv_ele_type
-!!$ If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-    logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
+    logical, intent( in ) :: QUAD_OVER_WHOLE_ELE!>f QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
     integer, intent( in ), optional :: scalar_nloc, vector_nloc
 !!$Local variable
     integer :: cv_nloc, u_nloc
@@ -2361,10 +2350,10 @@ module shape_functions_NDim
 
 contains
 
+  !>@brief: For quadratic elements. Shape functions associated with volume integration
+  !> using both CV basis functions CVN as well as FEM basis functions N (and
+  !> its derivatives NLX, NLY, NLZ)
   subroutine quad_1d_shape( cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, n, nlx, un, unlx )
-    ! For quadratic elements. Shape functions associated with volume integration
-    ! using both CV basis functions CVN as well as FEM basis functions N (and
-    ! its derivatives NLX, NLY, NLZ)
     implicit none
     integer, intent( in ) :: cv_ngi, cv_nloc, u_nloc
     real, dimension( :, : ), intent( inout ) :: cvn
@@ -2503,11 +2492,11 @@ contains
   end subroutine quad_1d_shape
 
 
+  !>@brief: For quadratic elements: Shape functions associated with volume integration
+  !> using both CV (CVN) and FEM (N and its derivatives NLX/Y/Z) basis functions.
   subroutine quad_nd_shape( ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
        n, nlx, nly, nlz, &
        un, unlx, unly, unlz )
-    ! For quadratic elements: Shape functions associated with volume integration
-    ! using both CV (CVN) and FEM (N and its derivatives NLX/Y/Z) basis functions.
 
     implicit none
     integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc
@@ -2589,12 +2578,12 @@ contains
   end subroutine quad_nd_shape
 
 
+  !>@brief: For quadatic elements -- shape functions associated with volume
+  !> integration using both CV basis functions CVN as well as FEM basis
+  !> functions N (and its derivatives NLX, NLY, NLZ)
   subroutine quad_nd_shape_N( cv_ele_type, ndim, cv_ngi, cv_nloc, cvn, cvweigh, &
        n, nlx, nly, nlz, &
        cv_ngi_1d, cv_nloc_1d, cvn_1d, cvweigh_1d, n_1d, nlx_1d )
-    ! For quadatic elements -- shape functions associated with volume
-    ! integration using both CV basis functions CVN as well as FEM basis
-    ! functions N (and its derivatives NLX, NLY, NLZ)
     implicit none
     integer, intent( in ) :: cv_ele_type, ndim, cv_ngi, cv_nloc
     real, dimension( :, : ), intent( inout ) :: cvn
@@ -2679,13 +2668,13 @@ contains
   end subroutine quad_nd_shape_N
 
 
+  !>@brief: Compute shape functions N, UN etc for linear trianles. Shape functions
+  !> associated with volume integration using both CV basis functions CVN, as
+  !> well as FEM basis functions N (and its derivatives NLX, NLY, NLZ). Also
+  !> for velocity basis functions UN, UNLX, UNLY, UNLZ.
   subroutine vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
        n, nlx, nly, nlz, &
        un, unlx, unly, unlz )
-    ! Compute shape functions N, UN etc for linear trianles. Shape functions
-    ! associated with volume integration using both CV basis functions CVN, as
-    ! well as FEM basis functions N (and its derivatives NLX, NLY, NLZ). Also
-    ! for velocity basis functions UN, UNLX, UNLY, UNLZ.
     implicit none
     integer, intent( in ) :: cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc
     real, dimension( :, : ), intent( inout ) :: cvn
@@ -2801,14 +2790,14 @@ contains
 
 
 
+  !>@brief: new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra .....
+  !> Compute shape functions N, UN etc for linear trianles. Shape functions
+  !> associated with volume integration using both CV basis functions CVN, as
+  !> well as FEM basis functions N (and its derivatives NLX, NLY, NLZ). Also
+  !> for velocity basis functions UN, UNLX, UNLY, UNLZ.
   subroutine new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
        n, nlx, nly, nlz, &
        un, unlx, unly, unlz )
-    ! new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra .....
-    ! Compute shape functions N, UN etc for linear trianles. Shape functions
-    ! associated with volume integration using both CV basis functions CVN, as
-    ! well as FEM basis functions N (and its derivatives NLX, NLY, NLZ). Also
-    ! for velocity basis functions UN, UNLX, UNLY, UNLZ.
     implicit none
     integer, intent( in ) :: cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc
     real, dimension( :, : ), intent( inout ) :: cvn
@@ -3439,17 +3428,17 @@ contains
     return
   end subroutine Compute_XNDGLN_TriTetQuadHex
 
+  !>@brief: Compute shape functions N, UN etc for linear triangles. Shape functions
+  !> associated with volume integration using both CV basis functions CVN, as
+  !> well as FEM basis functions SN (and its derivatives SNLX, SNLY, SNLZ). Also
+  !> for velocity basis functions SUN, SUNLX, SUNLY, SUNLZ.
+  !> Also the derivatives along the CV faces: sufnlx, sufnly, sufunlx, sufunly
   subroutine suf_cv_tri_tet_shape( cv_ele_type, ndim, scvngi, cv_nloc, u_nloc, scvfeweigh, &
        scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly,  &
        sufen, sufenlx, sufenly, sufenlz, sufenslx, sufensly, &
        cv_neiloc, cvfem_neiloc, ufem_neiloc )
     !        sn, snlx, snly, snlz, sufnlx, sufnly,  &
     !        sun, sunlx, sunly, sunlz, sufunlx, sufunly  )
-    ! Compute shape functions N, UN etc for linear triangles. Shape functions
-    ! associated with volume integration using both CV basis functions CVN, as
-    ! well as FEM basis functions SN (and its derivatives SNLX, SNLY, SNLZ). Also
-    ! for velocity basis functions SUN, SUNLX, SUNLY, SUNLZ.
-    ! Also the derivatives along the CV faces: sufnlx, sufnly, sufunlx, sufunly
     implicit none
     integer, intent( in ) :: cv_ele_type, ndim, scvngi, cv_nloc, u_nloc
     real, dimension( : ), intent( inout ) :: scvfeweigh
@@ -3692,6 +3681,14 @@ contains
 
 
 
+  !>@brief: the surface quadrature pts in local coord are l1, l2, l3, l4,
+  !> and the associated normals normx, normy, normz  and the surface area is sarea
+  !> The position of the nodes of the tet are: (X_LOC, Y_LOC, Z_LOC)
+  !> Calculate cv_neiloc:
+  !> To get the neighbouring node for node ILOC and surface quadrature point SGI
+  !>               CV_JLOC = CV_NEILOC( CV_ILOC, SGI )
+  !> The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and  36 = 4x6 + 6x4/2  = 60 pts.
+  !> @WARNING: Disabled because it introduces errors
   subroutine james_quadrature_quad_tet(l1, l2, l3, l4,  normx, normy, normz, sarea, &
        X_LOC, Y_LOC, Z_LOC, CV_NEILOC, cv_nloc, scvngi)
     implicit none
@@ -3700,13 +3697,6 @@ contains
          normx( scvngi ), normy( scvngi ), normz( scvngi ), sarea( scvngi )
     real, intent( inout ) :: X_LOC( cv_nloc ), Y_LOC( cv_nloc ), Z_LOC( cv_nloc )
     integer, dimension( cv_nloc, scvngi ), intent( inout ) :: CV_NEILOC
-    ! the surface quadrature pts in local coord are l1, l2, l3, l4,
-    ! and the associated normals normx, normy, normz  and the surface area is sarea
-    ! The position of the nodes of the tet are: (X_LOC, Y_LOC, Z_LOC)
-    ! Calculate cv_neiloc:
-    ! To get the neighbouring node for node ILOC and surface quadrature point SGI
-    !               CV_JLOC = CV_NEILOC( CV_ILOC, SGI )
-    ! The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and  36 = 4x6 + 6x4/2  = 60 pts.
 
     real, parameter :: haf=1.0/2.0
     real, dimension(4,10) :: xi
@@ -4139,18 +4129,18 @@ contains
 
 
 
+  !>@brief: this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly,
+  !> their weights scvweigh and local connectivity cv_neiloc_cells, cvfem_neiloc
+  !> on the boundaries of the cv_nloc_cells control volumes.
+  !> The control volume types are defines using cv_ele_type_cells.
+  !> cv_neiloc_cells is associated with the CV cells
+  !> cvfem_neiloc is associated with the FEM basis SN etc.
   subroutine Compute_SurfaceShapeFunctions_Triangle_Tetrahedron( &
        cv_nloc_cells, cv_ele_type_cells, &
        cv_ele_type, ndim, totele, cv_nloc, scvngi, x_nonods, &
        quad_cv_nloc, x_ndgln, x, y, z, lx, ly, lz, fem_nod, &
        sn, snlx, snly, snlz, sufnlx, sufnly, &
        scvweigh, cv_neiloc_cells, cvfem_neiloc )
-    ! this subroutine calculates shape functions sn, snlx, snly, snlz, sufnlx, sufnly,
-    ! their weights scvweigh and local connectivity cv_neiloc_cells, cvfem_neiloc
-    ! on the boundaries of the cv_nloc_cells control volumes.
-    ! The control volume types are defines using cv_ele_type_cells.
-    ! cv_neiloc_cells is associated with the CV cells
-    ! cvfem_neiloc is associated with the FEM basis SN etc.
     use shape_functions
     implicit none
     integer, intent( in ) :: cv_nloc_cells, cv_ele_type_cells
@@ -5115,13 +5105,13 @@ contains
 
 
 
+  !>@brief: Determine the volume shape functions n, nlx, nly, nlz
+  !> and weights cvweigh for the cv_nloc_cells CV cells.
   subroutine shape_tri_tet( cv_ele_type_cells, cv_nloc_cells, &
        cv_ele_type, ndim, totele, cv_nloc, cv_ngi, x_nonods, &
        quad_cv_nloc, x_ndgln, x, y, z, lx, ly, lz, &
        n, nlx, nly, nlz, cvweigh )
 
-    ! Determine the volume shape functions n, nlx, nly, nlz
-    ! and weights cvweigh for the cv_nloc_cells CV cells.
 
     use shape_functions
     implicit none
@@ -7916,6 +7906,10 @@ contains
 !!!!!!!!
 
 
+!>@brief: This subrt defines the sub-control volume and FEM shape functions.
+!> Shape functions associated with volume integration using both CV basis
+!> functions CVN as well as FEM basis functions CVFEN (and its derivatives
+!> CVFENLX, CVFENLY, CVFENLZ)
   SUBROUTINE SHAPE_one_ele2(&
        ndim, cv_ele_type, &
        cv_ngi, cv_nloc, u_nloc,  &
@@ -7929,10 +7923,6 @@ contains
                                 ! Surface element shape funcs
        nface, &
        cv_sloclist, u_sloclist, cv_snloc, u_snloc )
-    ! This subrt defines the sub-control volume and FEM shape functions.
-    ! Shape functions associated with volume integration using both CV basis
-    ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
-    ! CVFENLX, CVFENLY, CVFENLZ)
     implicit none
     integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc
     real, dimension( : ), intent( inout ) :: cvweight
@@ -8112,15 +8102,15 @@ contains
 
 
 
+  !>@brief:This subroutine defines the shape functions M and N and their
+  !>     derivatives at the Gauss points for quadratic elements.
+  !>     For 3-D FLOW.
   SUBROUTINE TR2or3DQU(NGI,NLOC,MLOC,&
        &     M,MLX,MLY,MLZ,&
        &     WEIGHT,N,NLX,NLY,NLZ,&
        &     SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY,&
        &     SMLOC,&
        &     SM,SMLX,SMLY,D3)
-    !     This subroutine defines the shape functions M and N and their
-    !     derivatives at the Gauss points for quadratic elements.
-    !     For 3-D FLOW.
     INTEGER , intent(in) :: SNGI,SNLOC,SMLOC,NLOC,MLOC,NGI
     real, dimension(:), intent(inout) :: SWEIGH, WEIGHT
     real, dimension(:,:), intent(inout) :: SN, SNLX, SNLY, SM, SMLX, SMLY, M, MLX, MLY, MLZ, N, NLX, NLY, NLZ
@@ -8330,7 +8320,7 @@ contains
 
 
 
-
+  !>@brief: Work out the shape functions and their derivatives...
   SUBROUTINE SHATRInew(L1, L2, L3, L4, WEIGHT, &
        NLOC,NGI,  N,NLX_ALL)
     ! Interface to SHATRIold using the new style variables
@@ -8348,10 +8338,10 @@ contains
   end subroutine SHATRInew
   !
   !
+  !>@brief: Work out the shape functions and their derivatives...
   SUBROUTINE SHATRIold(L1, L2, L3, L4, WEIGHT, D3, &
        NLOC,NGI,  &
        N,NLX,NLY,NLZ)
-    ! Work out the shape functions and there derivatives...
     IMPLICIT NONE
     INTEGER , intent(in) :: NLOC,NGI
     LOGICAL , intent(in) :: D3
@@ -8570,11 +8560,11 @@ contains
   !
   !
   !
+  !>@brief: This sub calculates the local corrds L1, L2, L3, L4 and
+  !> weights at the quadrature points.
+  !> If D3 it does this for 3Dtetrahedra elements else
+  !> triangular elements.
   SUBROUTINE TRIQUAold(L1, L2, L3, L4, WEIGHT, D3,NGI)
-    ! This sub calculates the local corrds L1, L2, L3, L4 and
-    ! weights at the quadrature points.
-    ! If D3 it does this for 3Dtetrahedra elements else
-    ! triangular elements.
     IMPLICIT NONE
     INTEGER , intent(in):: NGI
     LOGICAL , intent(in) :: D3
@@ -9970,9 +9960,9 @@ contains
   end function Volume_TetHex
 
 
+  !!>@brief:Calculates the CVN and CVWEIGH shape functions
+  !> This subroutine is specially created to be used with compact_overlapping
   subroutine get_CVN_compact_overlapping( cv_ele_type, ndim, cv_ngi, cv_nloc, cvn, cvweigh)!, &
-    !Calculates the CVN and CVWEIGH shape functions
-    !This subroutine is specially created to be used with compact_overlapping
     implicit none
     integer, intent( in ) :: cv_ele_type, ndim, cv_ngi, cv_nloc
     real, dimension( :, : ), intent( inout ) :: cvn
@@ -10045,6 +10035,8 @@ contains
     return
   end subroutine get_CVN_compact_overlapping
 
+  !>@brief: Provides a number defining the type of element we are dealing with
+  !> 4,5 Linear tetrahedra, 10 quadratic tetrahedra; 3,4 Linear triangle, 5 quadratic triangle
   integer function Get_NwiCel( d3, nloc )
     implicit none
     logical :: d3

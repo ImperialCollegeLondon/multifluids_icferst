@@ -1,27 +1,16 @@
-
-!    Copyright (C) 2006 Imperial College London and others.
-!
-!    Please see the AUTHORS file in the main source directory for a full list
-!    of copyright holders.
-!
-!    Prof. C Pain
-!    Applied Modelling and Computation Group
-!    Department of Earth Science and Engineering
-!    Imperial College London
-!
-!    amcgsoftware@imperial.ac.uk
+!    Copyright (C) 2020 Imperial College London and others.
 !
 !    This library is free software; you can redistribute it and/or
-!    modify it under the terms of the GNU Lesser General Public
-!    License as published by the Free Software Foundation,
-!    version 2.1 of the License.
+!    modify it under the terms of the GNU Affero General Public License
+!    as published by the Free Software Foundation,
+!    version 3.0 of the License.
 !
 !    This library is distributed in the hope that it will be useful,
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of
+!    but WITHOUT ANY WARRANTY; without seven the implied warranty of
 !    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 !    Lesser General Public License for more details.
 !
-!    You should have received a copy of the GNU Lesser General Public
+!    You should have received a copy of the GNU General Public
 !    License along with this library; if not, write to the Free Software
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
@@ -61,15 +50,19 @@ module multiphase_1D_engine
     use multi_tools, only: CALC_FACE_ELE
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
+    use multi_magma
+
     implicit none
 
-    private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_porous_Mass_matrix
+    private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
-    public  :: INTENERGE_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
+    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
     FORCE_BAL_CTY_ASSEM_SOLVE
 
 contains
-
+  !---------------------------------------------------------------------------
+  !> @author Chris Pain, Pablo Salinas
+  !> @brief Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -79,7 +72,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number)
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number )
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -132,7 +125,7 @@ contains
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
-           integer :: ncomp_diff_coef, comp_diffusion_opt, nphase, n_in_pres
+           integer :: ncomp_diff_coef, comp_diffusion_opt, nphase, n_in_pres, auxI
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
            type( tensor_field ), pointer :: perm, python_tfield
            integer :: cv_disopt, cv_dg_vel_int_opt
@@ -181,13 +174,12 @@ contains
                  !in this case we need to solve then only for one temperature per region(reservoir/wells)
                  assemble_collapsed_to_one_phase = .true.
                 !Check that the extra parameters required for porous media thermal simulations are present
-                if (.not.have_option('/porous_media/thermal_porous/scalar_field::porous_density') .or. &
-                    .not.have_option('/porous_media/thermal_porous/scalar_field::porous_heat_capacity') .or. &
-                    .not.have_option('/porous_media/thermal_porous/tensor_field::porous_thermal_conductivity')) then
+                if (.not.have_option('/porous_media/porous_properties/scalar_field::porous_density') .or. &
+                    .not.have_option('/porous_media/porous_properties/scalar_field::porous_heat_capacity') .or. &
+                    .not.have_option('/porous_media/porous_properties/tensor_field::porous_thermal_conductivity')) then
                     FLAbort("For thermal porous media flows the following fields are mandatory: porous_density, porous_heat_capacity and porous_thermal_conductivity ")
                 end if
                 !need to perform average of the effective heat capacity times density for the diffusion and time terms
-
                 allocate(porous_heat_coef(Mdims%cv_nonods))
                 allocate(porous_heat_coef_old(Mdims%cv_nonods))
                 call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
@@ -255,8 +247,8 @@ contains
            TDIFFUSION=0.0
 
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
-                !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-                call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)
+                !For porous media thermal two fields are returned. Being one the diffusivity of the porous medium
+                call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)
            end if
 
            ! get diffusivity for compositional
@@ -325,7 +317,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              ! which sums to one and therefore is the same
               !If collapsed solver then change nphase and n_in_pres
               nphase = Mdims%npres!One temperature per region
-              n_in_pres = 1
+              n_in_pres = Mdims%n_in_pres!Need to assemble all the phases
            end if
            !Allocate the RHS
            call allocate(Mmat%CV_RHS,nphase,tracer%mesh,"RHS")
@@ -346,7 +338,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                !Solves a PETSC warning saying that we are storing information out of range
                call allocate(Mmat%petsc_ACV,sparsity,[nphase,nphase],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
-
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
@@ -371,6 +362,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    porous_heat_coef = porous_heat_coef,porous_heat_coef_old = porous_heat_coef_old,solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
                    assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase)
+
                ! vtracer=as_vector(tracer,dim=2)
                ! call zero(vtracer)
                call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
@@ -378,7 +370,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                !Copy solution back to tracer(not ideal...)
                do ipres =1, mdims%npres
                  do iphase = 1 , n_in_pres
-                  tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*n_in_pres,:)
+                   auxI = IPHASE + (ipres-1)*n_in_pres
+                   if (assemble_collapsed_to_one_phase) auxI = ipres
+                   tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(auxI,:)
                 end do
                end do
 
@@ -405,23 +399,22 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            END DO Loop_NonLinearFlux
 
-           if (assemble_collapsed_to_one_phase .and. Mdims%n_in_pres > 1) then
-             !Now we populate back the other temperatures if we have solved for a collapsed system
-             temperature => extract_tensor_field(packed_state, "PackedTemperature")
-             do ipres =1, mdims%npres
-               do iphase = 2 , Mdims%n_in_pres
-                temperature%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = temperature%val(1,1+(ipres-1)*Mdims%n_in_pres,:)
-              end do
-             end do
-           end if
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
            if (allocated(porous_heat_coef)) deallocate(porous_heat_coef)
            if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
+
+           if (allocated(den_all)) deallocate(den_all)
+           if (allocated(denold_all)) deallocate(denold_all)
+           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
+           call deallocate(solution); nullify(solution%val)
+
+
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
 
+      !>@brief: Checks convergence on the temperature field, it checks the infinite norm
       real function convergence_check(temperature, reference_temp)
           implicit none
           real, dimension(:,:,:) :: temperature, reference_temp
@@ -438,7 +431,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
       end function convergence_check
 
 
-
+      !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
+      !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
       subroutine force_min_max_principle(entrance)
         integer, intent(in) :: entrance
         !Local variables
@@ -476,17 +470,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       end subroutine
 
+      !>@brief: Checks convergence on the temperature field Calculation of the averaged heat capacity and density
+      !> average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
+      !> Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
+      !> as it is stored cv-wise
       subroutine effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
-        ! Calculation of the averaged heat capacity and density
-        ! average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
-        ! Since porous promerties is defined element-wise and fluid properties CV-wise we perform an average
-        ! as it is stored cv-wise
           implicit none
         REAL, DIMENSION( : ), intent(inout) :: porous_heat_coef, porous_heat_coef_old
         !Local variables
         type( scalar_field ), pointer :: porosity, density_porous, Cp_porous, density_porous_old
         integer :: ele, cv_inod, iloc, p_den, h_cap, ele_nod
         real, dimension(Mdims%cv_nonods) :: cv_counter
+        real :: auxR
 
         density_porous => extract_scalar_field( state(1), "porous_density" )
         density_porous_old => extract_scalar_field( state(1), "porous_density_old" )
@@ -510,13 +505,288 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         end do
         !Since nodes are visited more than once, this performs a simple average
         !This is the order it has to be done
-        porous_heat_coef = porous_heat_coef/cv_counter!<= includes an average of porous and fluid properties
-        porous_heat_coef_old = porous_heat_coef_old/cv_counter!<= includes an average of porous and fluid properties5
+        auxR = 1.0
+        !If thermal equilibrium for porous media then porous media is added more than once, so needs to be adjusted
+        if (assemble_collapsed_to_one_phase) auxR = real(Mdims%n_in_pres)
+        porous_heat_coef = porous_heat_coef/(cv_counter*auxR)!<= includes an average of porous and fluid properties
+        porous_heat_coef_old = porous_heat_coef_old/(cv_counter*auxR)!<= includes an average of porous and fluid properties5
       end subroutine effective_Cp_density
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
+  !---------------------------------------------------------------------------
+  !> @author Chris Pain, Pablo Salinas, Haiyang Hu
+  !> @brief Calls to generate the transport equation for the enthalpy equation.
+  !> This is efectively the temperature equation but making the enthalpy implicit by substituting the temperature by its linear relationship
+  !> with enthalpy: H = rho Cp Temp + rho Lf phi; Where Lf is the latent heat and phi is the amount of liquid fluid phase
+  SUBROUTINE ENTHALPY_ASSEM_SOLVE( state, packed_state, &
+       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
+       tracer, velocity, density, multi_absorp, DT, &
+       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
+       IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
+       THETA_GDIFF, eles_with_pipe, pipes_aux, &
+       option_path, &
+       mass_ele_transp, &
+       thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
+       icomp, saturation, Permeability_tensor_field, nonlinear_iteration, Courant_number, &
+       magma_phase_coefficients)
+           ! Solve for enthalpy energy using a control volume method.
+           implicit none
+           type( state_type ), dimension( : ), intent( inout ) :: state
+           type( state_type ), intent( inout ) :: packed_state
+           type(multi_dimensions), intent(in) :: Mdims
+           type(multi_GI_dimensions), intent(in) :: CV_GIdims
+           type(multi_shape_funs), intent(inout) :: CV_funs
+           type (multi_sparsities), intent(in) :: Mspars
+           type(multi_ndgln), intent(in) :: ndgln
+           type (multi_discretization_opts) :: Mdisopt
+           type (multi_matrices), intent(inout) :: Mmat
+           type (porous_adv_coefs), intent(inout) :: upwnd
+           type(tensor_field), intent(inout) :: tracer
+           type(tensor_field), intent(in) :: velocity, density
+           type(multi_absorption), intent(inout) :: multi_absorp
+           INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
+           LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
+           LOGICAL, intent( in ), optional ::THERMAL
+           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
+           REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+           REAL, intent( in ) :: DT
+           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+           character( len = * ), intent( in ), optional :: option_path
+           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
+           type(tensor_field), intent(in), optional :: saturation
+           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
+           integer, optional :: icomp, nonlinear_iteration
+           type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
+           type (multi_pipe_package), intent(in) :: pipes_aux
+           real, optional, dimension(:), intent(inout) :: Courant_number
+           ! Local variables
+           LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
+           integer :: nits_flux_lim, its_flux_lim
+           REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) :: TDIFFUSION
+           REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
+           real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
+           REAL, DIMENSION( : , : ), allocatable :: denold_all, t_source
+           REAL, DIMENSION( : , : ), target, allocatable :: den_all
+           REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
+           type( tensor_field ), pointer :: P, Q
+           INTEGER :: IPHASE, its_taken
+           LOGICAL :: RETRIEVE_SOLID_CTY
+           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
+           type( vector_field ), pointer  :: MeanPoreCV, python_vfield
+           integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat, stat
+           type(vector_field)  :: vtracer, residual
+           type(csr_sparsity), pointer :: sparsity
+           real, dimension(:,:,:), allocatable :: Velocity_Absorption
+           real, dimension(:,:,:), pointer :: T_AbsorB=>null()
+           integer :: ncomp_diff_coef, comp_diffusion_opt
+           real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
+           type( tensor_field ), pointer :: perm, python_tfield
+           integer :: cv_disopt, cv_dg_vel_int_opt, n_in_pres
+           real :: cv_theta, cv_beta
+           type( scalar_field ), pointer :: sfield, porous_field, solid_concentration
+           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+           !Variables to stabilize the non-linear iteration solver
+           real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           real :: aux
+           real, save :: inf_tolerance = -1
+           !Variables to control the PETCs solver
+           integer, save :: max_allowed_its = -1
+           !Variables for vanishing diffusion
+           real, dimension(Mdims%cv_nonods) :: OvRelax_param
+           integer :: Phase_with_Ovrel
+           !Enthalpy backup for the petsc bug
+           logical :: repeat_assemb_solve
+           type(vector_field) :: solution
+           ! Phase diagram coefficents
+           type(magma_phase_diagram) :: magma_phase_coefficients
+           logical :: assemble_collapsed_to_one_phase
+
+           if (present(Permeability_tensor_field)) then
+              perm => Permeability_tensor_field
+           else
+              perm=>extract_tensor_field(packed_state,"Permeability")
+           end if
+
+           !Checking if components
+           lcomp = 0
+           if ( present( icomp ) ) lcomp = icomp
+
+           sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+           allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
+
+           allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0!SPRINT_TO_DO TURN THESE T_SOURCE INTO POINTERS OR DIRECTLY REMOVE THEM
+           IGOT_T2_loc = 1
+           !Sprint_to_do Not sure why we need this....
+           p => extract_tensor_field( packed_state, "PackedCVPressure", stat )
+           if (stat/=0) p => extract_tensor_field( packed_state, "PackedFEPressure", stat )
+
+           !Retrieve settings for the discretisation
+           NITS_FLUX_LIM = 1; cv_disopt = Mdisopt%t_disopt
+           cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
+           cv_theta = Mdisopt%t_theta; cv_beta = Mdisopt%t_beta
+
+           deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
+
+
+           !As for multiphase temperature we want to solve for only one enthalpy for the system because we consider thermal equilibrium
+           assemble_collapsed_to_one_phase = .true.
+           n_in_pres = 2
+
+           ! !Extract Density times HeatCapacity
+           ! den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
+           ! denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
+           ! if (stat /= 0) then
+           !   den_all2 => extract_tensor_field( packed_state, "PackedDensity", stat )
+           !   denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
+           ! end if
+           !Since we solve for enthalpy the density and CP are included within the enthalpy, this terms are only required for the RHS  and the diffusion terms
+           !In order to solve the enthalpy equation we make the
+           !a) density in the equation 1
+           den_all    = 1.0; denold_all = 1.0
+           !b)The diffusivity term to include rho and Cp
+           TDIFFUSION=0.0
+           !Obtain diffusion coefficient for temperature
+
+           !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR SALT
+           !OR WE NEED A PROGNOSTIC TEMPERATURE FIELD, WHICH IS "FINE" BUT STRANGE FOR THE USER
+           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, divide_by_rho_CP = .true.)
+           !WE NEED SOMETHING SPECIAL FOR THIS AND LATENTHEAT*RHO IF WE HAVE COMPONENTS!
+           ! call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TODO: REMOVE SUBROUTINE
+           !SOMETHING LIKE THIS, OR THIS FOR COMPOSITIONAL
+           ! call Calculate_ComponentDiffusionTerm( packed_state, &
+           !    Mdims, CV_GIdims, CV_funs, &
+           !    ndgln%mat, ndgln%u, ndgln%x, &
+           !    ncomp_diff_coef, comp_diffusion_opt, &
+           !    Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
+           !    TDiffusion )
+
+           ! Check for a python-set absorption field when solving for Enthalpy/internal energy
+           python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
+           if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
+
+           ! Check for a python-set source field when solving for Enthalpy/internal energy
+           python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
+           if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
+
+           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+
+           !Select solver options
+           solver_option_path = "/solver_options/Linear_solver"
+           if (have_option('/solver_options/Custom_solver_configuration/field::Enthalpy')) then
+             solver_option_path = '/solver_options/Custom_solver_configuration/field::Enthalpy'
+           end if
+
+           if(max_allowed_its < 0)  then
+               call get_option( trim(solver_option_path)//"max_iterations",&
+                max_allowed_its, default = 500)
+           end if
+
+           call allocate(Mmat%CV_RHS,1 , tracer%mesh,"RHS")
+           call allocate(solution,1,tracer%mesh,"sol_tracer")!; call zero(solution)
+
+           Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+
+               call allocate(Mmat%petsc_ACV,sparsity,[1,1],"ACV_INTENERGE")
+               call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+               !Get information for capillary pressure to be use in CV_ASSEMB
+                !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
+               if (is_porous_media .and. thermal) then
+                   !Get information for capillary pressure to be use in CV_ASSEMB
+                   Phase_with_Ovrel = 1
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+               else
+                Phase_with_Ovrel = -1
+               end if
+
+               call CV_ASSEMB( state, packed_state, &
+                   n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   tracer, velocity, density, multi_absorp, &
+                   DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                   DEN_ALL, DENOLD_ALL, &
+                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, cv_beta, &
+                   SUF_SIG_DIAGTEN_BC, &
+                   DERIV%val(1,:,:), P%val, &
+                   T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+                   GETCV_DISC, GETCT, &
+                   IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
+                   THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                   MeanPoreCV%val, &
+                   mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+                   .false.,  mass_Mn_pres, &
+                   mass_ele_transp, &
+                   TDIFFUSION = TDIFFUSION,&
+                   saturation=saturation, Permeability_tensor_field = perm,&
+                   eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
+                   solving_compositional = lcomp > 0, &
+                   VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number, &
+                   assemble_collapsed_to_one_phase = assemble_collapsed_to_one_phase, Latent_heat = magma_phase_coefficients%Lf)
+
+                 call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                 tracer%val(1,1,:)=solution%val(1,:)!TODO: sprint_to_do Tracer could be used instead!
+                 if (assemble_collapsed_to_one_phase .and. Mdims%n_in_pres > 1) then
+                   !Enthalpy is shared for all the phases
+                   do iphase = 2, Mdims%nphase
+                     tracer%val(1,iphase,:)=solution%val(1,:)
+                   end do
+                 end if
+               !Control how it is converging and decide
+               !if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
+               !Just after the solvers
+               call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
+               !Update halo communications
+               call halo_update(tracer)
+               repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle#
+               repeat_assemb_solve=0
+               call allor(repeat_assemb_solve)
+               !Checking solver not fully implemented
+
+               if (repeat_assemb_solve ) then
+                   solver_not_converged = .true.
+                   cycle!repeat
+               else
+                   solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                   call allor(solver_not_converged)
+                   exit!good to go!
+               end if
+
+           END DO Loop_NonLinearFlux
+
+           call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+           if (allocated(den_all)) deallocate(den_all)
+           if (allocated(denold_all)) deallocate(denold_all)
+           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
+           call deallocate(solution); nullify(solution%val)
+           ! if (allocated(porous_heat_coef_old)) deallocate(porous_heat_coef_old)
+           ewrite(3,*) 'Leaving ENTHALPY_ASSEM_SOLVE'
+
+      contains
+
+      real function convergence_check(Enthalpy, reference_temp)
+          implicit none
+          real, dimension(:,:,:) :: Enthalpy, reference_temp
+          !Local variables
+          real, dimension(2) :: totally_min_max
+
+          totally_min_max(1)=minval(reference_temp, MASK = reference_temp > 1.1)!Using Kelvin it is unlikely that the temperature gets to 1 Kelvin!
+          totally_min_max(2)=maxval(reference_temp)!use stored Enthalpy
+          !For parallel
+          call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+          !Analyse the difference
+          convergence_check = inf_norm_scalar_normalised(Enthalpy(1,:,:), reference_temp(1,:,:), 1.0, totally_min_max)
+
+      end function convergence_check
+
+  END SUBROUTINE ENTHALPY_ASSEM_SOLVE
+
+
   !! Arash
+  !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
+  !> @brief Calls to generate and solve the transport equation for the concentration field.
+  !---------------------------------------------------------------------------
   SUBROUTINE SOLUTE_ASSEM_SOLVE( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
@@ -567,12 +837,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            REAL, DIMENSION( : , : ), target, allocatable :: den_all
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P, Q
-           INTEGER :: IPHASE, its_taken
+           INTEGER :: IPHASE, its_taken, ipres
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV, python_vfield
            integer :: lcomp, Field_selector, IGOT_T2_loc, python_stat
-           type(vector_field)  :: vtracer, residual
+           type(vector_field)  :: residual
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:,:), allocatable :: Velocity_Absorption
            real, dimension(:,:,:), pointer :: T_AbsorB=>null()
@@ -593,9 +863,24 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            real, dimension(Mdims%cv_nonods) :: OvRelax_param
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
-           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: temp_bak
            logical :: repeat_assemb_solve
            logical :: boussinesq
+           !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
+           real, parameter :: min_concentration = 0.
+           integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
+           integer, save :: nconc_in_pres
+           type(vector_field) :: solution
+           !Retrieve the number of phases that have soluteMass fraction, and then if they are concecutive and start from the first one
+           if (nconc < 0) then
+             nconc = option_count("/material_phase/scalar_field::SoluteMassFraction")
+             nconc_in_pres = nconc
+             if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
+             do iphase = 1, nconc_in_pres
+               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::SoluteMassFraction')) then
+                 FLAbort('SoluteMassFraction must either be defined in all the phases or to start from the first one and consecutively from that one.')
+               end if
+             end do
+           end if
 
            boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
@@ -608,7 +893,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            lcomp = 0
            if ( present( icomp ) ) lcomp = icomp
 
-           call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
+           call allocate(Mmat%CV_RHS,nconc,tracer%mesh,"RHS")
+           call allocate(solution,nconc,tracer%mesh,"sol_tracer")!; call zero(solution)
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
 
@@ -648,8 +934,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0
            CDISPERSION=0.0
+
            !For porous media thermaltwo fields are returned. Being one the diffusivity of the porous medium
-           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer, &
+           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, &
            calculate_solute_diffusivity = .true.)
 
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
@@ -682,12 +969,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end if
 
                !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV_INTENERGE")
+               call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_INTENERGE")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   Mdims%n_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
+                   nconc_in_pres, Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, multi_absorp, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                    DEN_ALL, DENOLD_ALL, &
@@ -707,39 +994,39 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-                   vtracer=as_vector(tracer,dim=2)
+                   ! call zero_non_owned(Mmat%CV_RHS)
+                   call zero(solution)
+                   call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                   !Ensure concentration is between 1 and sligthly above 0
 
-                   call zero_non_owned(Mmat%CV_RHS)
-                   call zero(vtracer)
-                   call petsc_solve(vtracer,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
+                   solution%val = min(1., max(solution%val,min_concentration))
+                   !Copy solution back to tracer(not ideal...)
+                   do ipres =1, mdims%npres
+                     do iphase = 1 , nconc_in_pres
+                      tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
+                    end do
+                   end do
 
-                   if (have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')) then
-                    !Ensure concentration is between 1 and 0
-                    tracer%val = min(1., max(tracer%val,0.))
-                   end if
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
-
-                   repeat_assemb_solve = (its_taken == 0)!PETSc may fail for a bug then we want to repeat the cycle
-                   call allor(repeat_assemb_solve)
+                   !Update halo communications
+                   call halo_update(tracer)
                    !Checking solver not fully implemented
-                   if (repeat_assemb_solve ) then
-                       solver_not_converged = .true.
-                       tracer%val(1,:,:) = temp_bak!recover backup!sprint_to_do this seems now fixed, remove this for this and temperature
-                       cycle!repeat
-                   else
-                       solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
-                       call allor(solver_not_converged)
-                       exit!good to go!
-                   end if
+                   solver_not_converged = its_taken >= max_allowed_its!If failed because of too many iterations we need to continue with the non-linear loop!
+                   call allor(solver_not_converged)
+                   exit!good to go!
 
            END DO Loop_NonLinearFlux
 
            call deallocate(Mmat%CV_RHS); nullify(Mmat%CV_RHS%val)
+           if (allocated(den_all)) deallocate(den_all)
+           if (allocated(denold_all)) deallocate(denold_all)
+           if (allocated(T_SOURCE)) deallocate(T_SOURCE)
+           call deallocate(solution); nullify(solution%val)
            ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
 
       contains
-
+        !>@brief: Checks convergence on the concentration field, it checks the infinite norm
       real function convergence_check(temperature, reference_temp)
           implicit none
           real, dimension(:,:,:) :: temperature, reference_temp
@@ -757,6 +1044,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   END SUBROUTINE SOLUTE_ASSEM_SOLVE
 
+    !---------------------------------------------------------------------------
+    !> @author Chris Pain, Pablo Salinas
+    !> @brief Calls to generate the transport equation for the saturation. Embeded an FPI with backtracking method is uncluded
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, multi_absorp, upwnd, &
          eles_with_pipe, pipes_aux, DT, SUF_SIG_DIAGTEN_BC, &
@@ -1011,7 +1301,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                  call zero(Mmat%CV_RHS)
                  !For non-porous media make sure all the phases sum to one
                  if (.not. is_porous_media) then
-                        call non_porous_ensure_sum_to_one(packed_state)
+                    call non_porous_ensure_sum_to_one(Mdims, packed_state)
                  end if
                  ! ! !If we have components (and it is multiphase, obviously) update components
                  ! if (Mdims%ncomp > 0) call update_components()
@@ -1039,7 +1329,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
                              !Velocity is recalculated through updating the sigmas
-                             call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
+                             if (is_porous_media) call Calculate_PorousMedia_AbsorptionTerms( nphase, state, packed_state, multi_absorp%PorousMedia, Mdims, &
                                    CV_funs, CV_GIdims, Mspars, ndgln, upwnd, suf_sig_diagten_bc )
 
                              !Also recalculate the Over-relaxation parameter
@@ -1094,46 +1384,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
          contains
 
-        subroutine non_porous_ensure_sum_to_one(packed_state)
-            !This subroutines eliminates the oscillations in the saturation that are bigger than a
-            !certain tolerance and also sets the saturation to be between bounds
-            Implicit none
-            !Global variables
-            type( state_type ), intent(inout) :: packed_state
-            !Local variables
-            integer :: iphase, cv_nod, i_start, i_end, ipres
-            real :: correction, sum_of_phases
-            real, dimension(:,:), pointer :: satura
-            type(tensor_field), pointer :: tfield
-
-            tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-            satura =>  tfield%val(1,:,:)
-
-            !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
-            do ipres = 1, Mdims%npres
-                i_start = 1 + (ipres-1) * Mdims%nphase/Mdims%npres
-                i_end = ipres * Mdims%nphase/Mdims%npres
-                !Set saturation to be between bounds
-                do cv_nod = 1, size(satura,2 )
-                    sum_of_phases = sum(satura(i_start:i_end, cv_nod))
-                    correction = (1.0 - sum_of_phases)
-                    !Spread the error to all the phases weighted by their presence in that CV
-                    !Increase the range to look for solutions by allowing oscillations below 0.1 percent
-                    if (abs(correction) > 1d-3) satura(i_start:i_end-1, cv_nod) = (satura(i_start:i_end-1, cv_nod) * (1.0 + correction/sum_of_phases))
-		    !if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (satura(i_start:i_end, cv_nod) * (1.0 + correction/sum_of_phases))
-                    !Make sure saturation is between bounds after the modification
-                    do iphase = i_start, i_end
-                        satura(iphase,cv_nod) =  min(max(0., satura(iphase,cv_nod)),1.0)
-                    end do
-                end do
-            end do
-            if (IsParallel()) call halo_update(tfield)
-
-        end subroutine non_porous_ensure_sum_to_one
-
-
+        !!!>@brief: This internal subroutine deals with the components within the Saturation Fixed Point Iteration
+        !> WARNING: Still work in progress
         subroutine update_components()
-          !This internal subroutine deals with the components within the Saturation Fixed Point Iteration
           implicit none
           real, dimension(Mdims%nphase, Mdims%cv_nonods) :: comp_theta_gdiff
 
@@ -1163,6 +1416,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
 
 
+    !>@brief:In this subroutine the components are solved for all the phases.
+    !>Systems for each component are assembled and solved by calling INTENERGE_ASSEM_SOLVE
     subroutine Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
          multi_absorp, DT, &
@@ -1170,8 +1425,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
          GET_THETA_FLUX, USE_THETA_FLUX,  &
          THETA_GDIFF, eles_with_pipe, pipes_aux, mass_ele, &
          sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-         !In this subroutine the components are solved for all the phases.
-         !Systems for each component are assembled and solved by calling INTENERGE_ASSEM_SOLVE
          implicit none
          type( state_type ), dimension( : ), intent( inout ) :: state, multicomponent_state
          type( state_type ), intent( inout ) :: packed_state
@@ -1347,10 +1600,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
       contains
 
+        !!>@brief: This subroutines eliminates the oscillations in the component that are bigger than a
+        !certain tolerance and also sets the component to be between bounds
+        !> WARNING: It is currently not working well...better to use Chris' method which uses a RHS
         subroutine ensure_components_sum_to_one(packed_state)
-            !This subroutines eliminates the oscillations in the component that are bigger than a
-            !certain tolerance and also sets the component to be between bounds
-            !It is currently not working well...better to use Chris' method which uses a RHS
             Implicit none
             !Global variables
             type( state_type ), intent(inout) :: packed_state
@@ -1389,12 +1642,16 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     end subroutine Compositional_Assemble_Solve
 
 
+    !> @author Chris Pain, Pablo Salinas, Asiri Obeysekara
+    !> @brief Calls to generate the Gradient Matrix, the divergence matrix, the momentum matrix and the mass matrix
+    !> Once these matrices (and corresponding RHSs) are generated the system of equations is solved.
+    !---------------------------------------------------------------------------
    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt,  &
         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity, pressure, &
         DT, SUF_SIG_DIAGTEN_BC, V_SOURCE, VOLFRA_PORE, &
         IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J,&
-        calculate_mass_delta, outfluxes, pres_its_taken)
+        calculate_mass_delta, outfluxes, pres_its_taken, nonlinear_its)
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1412,7 +1669,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type (multi_pipe_package), intent(in) :: pipes_aux
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
-        INTEGER, intent( in ) :: IGOT_THETA_FLUX
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, nonlinear_its
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
@@ -1426,7 +1683,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         character(len=option_path_len) :: solver_option_pressure = "/solver_options/Linear_solver"
         character(len=option_path_len) :: solver_option_velocity = "/solver_options/Linear_solver"
 
-        LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER :: IGOT_CMC_PRECON
 ! Gidaspow model B - can use conservative from of
@@ -1443,7 +1699,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         real, dimension(:,:,:), allocatable :: velocity_absorption, U_SOURCE_CV_ALL
         real, dimension(:,:,:,:), allocatable :: UDIFFUSION_ALL
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
-        type( multi_field ) :: UDIFFUSION_ALL2
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B, CMC_PRECON
         REAL, DIMENSION( :, :, : ), allocatable :: DU_VEL, U_RHS_CDP2
@@ -1457,20 +1712,18 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL
-        REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
+        REAL, DIMENSION( :, : ), allocatable :: sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3!, test12
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, python_tfield
+        type( tensor_field ), pointer :: OLDvelocity, den_all2, denold_all2, tfield, den_all3!, u_all2
+        type( tensor_field ), pointer :: p_all, cvp_all, deriv, python_tfield
         type( vector_field ), pointer :: x_all2, U
         type( scalar_field ), pointer :: sf, soldf, gamma, cvp
         type( vector_field ) :: packed_vel, rhs
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
-        type(halo_type), pointer :: halo
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
-        REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
@@ -1483,6 +1736,34 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Variables to control de performance of the solvers
         integer :: its_taken
         integer, save :: max_allowed_P_its = -1, max_allowed_V_its = -1
+        !Stokes variables
+        integer :: stokes_max_its !> Maximum number of iterations allowed to the AA stokes solver
+        real, dimension(Mdims%totele) :: MASS_ELE
+        integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
+        logical :: solve_mom_iteratively = .false.
+        type( vector_field ) :: diagonal_A, diagonal_CMC!> Variables to perform rescaling D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
+        !Variables to re-scale PETSc matrices
+        logical :: rescale_mom_matrices = .false.
+
+        REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
+        REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
+        logical :: LUMP_DIAG_MOM, lump_mass
+
+        !For the time being, let the user decide whether to rescale the mom matrices
+        rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
+        !The stokes solver method can be activated from diamond also
+        solve_mom_iteratively = have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively")
+        !Retrieve the maximum allowed number of its
+        call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/restart_its", stokes_max_its, default = 15)
+        if (is_porous_media) then !Find parameter to re-scale the pressure matrix
+          !Since we save the parameter rescaleVal, we only do this one time
+          if (rescaleVal < 0.) then
+            tfield => extract_tensor_field(packed_state,"Permeability")
+            rescaleVal = minval(tfield%val, MASK = tfield%val > 1d-30)
+            !If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) call allmin(rescaleVal)
+          end if
+        end if
 
         !Retrieve solver setting configurations
         solver_option_pressure = "/solver_options/Linear_solver"
@@ -1529,8 +1810,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ALLOCATE( MASS_MN_PRES( Mspars%CMC%ncol )) ; MASS_MN_PRES=0.
         ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
 
-        U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
-        UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
+        ! U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
+        OLDvelocity => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         !For porous media we do not need PackedCVPressure
@@ -1551,10 +1832,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         call allocate(rhs_p,Mdims%npres,pressure%mesh,"PressureCorrectionRHS")
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         JUST_BL_DIAG_MAT = .false.
-        IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
-           sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
-           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
-        end IF
 
         !Calculate gravity source terms
         allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
@@ -1573,6 +1850,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
+           end if
+           if (solve_stokes) then
+             !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
+             !By making uden =0. these terms will be effectively zeroed.
+              UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
            end if
         end if
 
@@ -1594,8 +1876,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ENDIF
         ENDIF
         allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
+        if (is_magma) then !We need to allocate for the bulk viscosity
+          ALLOCATE(UDIFFUSION_VOL_ALL%val(Mdims%nphase,1,1, Mdims%mat_nonods )) ; UDIFFUSION_VOL_ALL%val=0.
+        end if
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
-        call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_ALL2 )
+        call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL )
         !UDIFFUSION_VOL_ALL = 0.
 
         allocate(velocity_absorption(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
@@ -1692,15 +1977,15 @@ end if
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
              velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux,&
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
-            U_ALL2%VAL, UOLD_ALL2%VAL, &
-            P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:),&
-            DT, MASS_MN_PRES, & ! pressure matrix for projection method
+            velocity%VAL, OLDvelocity%VAL, &
+            CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
+            DT, MASS_MN_PRES, MASS_ELE,& ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
         deallocate(UDIFFUSION_ALL)
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -1711,49 +1996,63 @@ end if
               SIGMA( IPHASE, : ) = velocity_absorption( (IPHASE-1)*Mdims%ndim+1, (IPHASE-1)*Mdims%ndim+1, : )
            END DO
 
-           call get_entire_boundary_condition( pressure,&
-                ['weakdirichlet','freesurface  '],&
+           call get_entire_boundary_condition( pressure, ['weakdirichlet','freesurface  '],&
                 pressure_BCs, WIC_P_BC_ALL )
-           SUF_P_BC_ALL => pressure_BCs%val
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mdims, Mspars, Mmat, ndgln, eles_with_pipe,&
-                associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA,&
-                U_ALL2%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
+                associated(Mmat%PIVIT_MAT) .and. .not.Mmat%Stored, WIC_P_BC_ALL, pressure_BCs%val, SIGMA,&
+                velocity%VAL, U_SOURCE_ALL, U_SOURCE_CV_ALL )
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
         deallocate(velocity_absorption, U_SOURCE_CV_ALL)
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
+
+
+        !##################allocate DGM petsc just before the momentum solve####
+        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
+        IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
+           sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
+           Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
+        end IF
+        ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
+        lump_diag_mom=.false.
+        lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media))
+        if(.not.mmat%no_matrix_store) then
+          if(lump_diag_mom)then
+            call comb_vel_matrix_diag_dist_lump(diag_bigm_con, bigm_con, &
+            mmat%dgm_petsc, &
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
+          else
+            call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
+            mmat%dgm_petsc, &
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure, Mmat)  ! element connectivity.
+          end if
+          deallocate( diag_bigm_con )
+          deallocate( bigm_con)
+        end if
+
+
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
-            CALL PHA_BLOCK_INV(Mmat%PIVIT_MAT, Mdims )
-        end if
-        sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
-    !sprint_to_do #####TO OPTIMISE THE PIPES EITHER A LOCALLY BLOCK CMC_PETSC MATRIX (i don't think this is possible) IS REQUIRED OR A NEW SPARSITY######
-        diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
-        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
-        if (associated(pressure%mesh%halos)) then
-           halo => pressure%mesh%halos(2)
-        else
-           nullify(halo)
+          !Retrieve the diagonal of the momentum matrix only once if required
+          if (((solve_stokes .or. solve_mom_iteratively) &
+               .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
+              rescale_mom_matrices ) then
+            call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
+            call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
+          end if
+          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
+          !Now invert the Mass matrix
+          CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
 
-        !Form pressure matrix
-        CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-        pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
-! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
-
-        Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store') !-ao added a flag
 
         ! solve using a projection method
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
+        call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
-        DO IPRES = 1, Mdims%npres
-            CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), P_ALL%val( 1, IPRES, : ), &
-                Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-        END DO
+        call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+
         if ( high_order_Ph ) then
             if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                 allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
@@ -1763,44 +2062,482 @@ end if
                 deallocate(U_ABSORBIN)
             end if
         end if
+
+
+        !"########################UPDATE VELOCITY STEP####################################"
+        !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
+        !MAYBE ONLY AFTER ADAPT/START OF TIME?
         IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
             !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
-            CALL PHA_BLOCK_MAT_VEC_old( U_ALL2 % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+            CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
-        ELSE
-            ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
-            !SPRINT_TO_DO: THIS BUSSINES OF RESHAPING IS AWFUL...
-            call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
-            rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
-            ! call zero_non_owned(rhs)
-            if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                call zero(velocity)
-                packed_vel=as_packed_vector(velocity)
-                call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
-                if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
-#ifndef USING_GFORTRAN
-                velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
-#endif
-                U_ALL2 % VAL=velocity%val
+        else
+            if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
+              if (rescale_mom_matrices) call scale_PETSc_matrix(Mmat%DGM_PETSC)
+              !For a velocity field the diagonal of A needs to be extracted using a vector field
+              call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
             end if
-            UP_VEL=[velocity%val]
-            call deallocate(Mmat%DGM_PETSC)
-            call deallocate(rhs)
-            U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
-            deallocate( UP_VEL )
+            if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
         END IF
-        ! if (isParallel() ) call halo_update(U_ALL2)!<=This solves spots in the saturation field but introduces instabilities in the pressure field
+        !"########################UPDATE PRESSURE STEP####################################"
+        !Form pressure matrix (Sprint_to_do move this (and the allocate!) just before the pressure solver, for inertia this is a huge save as for that momemt DGM_petsc is deallocated!)
+        sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
+        diag = Mdims%npres == 1!Make it non-diagonal to allow coupling between reservoir and pipes domains
+        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
+        CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
+        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+        pipes_aux, got_free_surf,  MASS_SUF, FEM_continuity_equation )
+! call MatView(CMC_petsc%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
+
+        !This section is to impose a pressure of zero at some node (when solving for only a gradient of pressure)
+        !This is deprecated as the remove_null space method works much better (provided by PETSc)
+        call get_option( '/material_phase[0]/scalar_field::Pressure/' // 'prognostic/reference_node', ndpset, default = 0 )
+        if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
+        !======================================================================================
+        ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
+        ewrite(3,*)'about to solve for pressure'
+        !Perform Div * U for the RHS of the pressure equation
+        rhs_p%val = 0.
+        call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
+        rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
+        call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+        !Re-scale system so we can deal with SI units of permeability
+        if (is_porous_media) then
+          call scale(cmc_petsc, 1.0/rescaleVal)
+          rhs_p%val = rhs_p%val / rescaleVal
+        end if
+        if (rescale_mom_matrices) then
+          !Retrieve diagonal and re-scale matrix
+          call allocate(diagonal_CMC, Mdims%npres, pressure%mesh, "diagonal_CMC")
+          call extract_diagonal(cmc_petsc, diagonal_CMC)
+          call scale_PETSc_matrix(cmc_petsc)
+        end if
+
+        call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(cmc_petsc)
+        if ( .not. (solve_stokes .or. solve_mom_iteratively)) call deallocate(rhs_p)
+        if (isParallel()) call halo_update(P_all)
+
+        !"########################UPDATE PRESSURE STEP####################################"
+        !We may apply the Anderson acceleration method
+        if (solve_stokes .or. solve_mom_iteratively ) then
+          call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+                                          MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+          call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
+        end if
+
+        !######################## CORRECTION VELOCITY STEP####################################
+        !Ensure that the velocity fulfils the continuity equation before moving on
+        call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+        call deallocate(deltaP)
+        if (isParallel()) call halo_update(velocity)
+        if ( after_adapt .and. cty_proj_after_adapt ) OLDvelocity % VAL = velocity % VAL
+        call DEALLOCATE( CDP_tensor )
+        !######################## CORRECTION VELOCITY STEP####################################
+        ! Calculate control volume averaged pressure CV_P from fem pressure P
+        !Ensure that prior to comming here the halos have been updated
+        if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
+!
+        DEALLOCATE( Mmat%CT )
+        DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
+        DEALLOCATE( Mmat%U_RHS )
+        DEALLOCATE( MASS_MN_PRES )
+        call deallocate(Mmat%CT_RHS)
+        if (.not.is_porous_media) then
+            DEALLOCATE( Mmat%PIVIT_MAT )
+            nullify(Mmat%PIVIT_MAT)
+        end if
+
+        !Using associate doesn't seem to be stable enough
+        if (((solve_stokes .or. solve_mom_iteratively) &
+             .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
+            rescale_mom_matrices ) then
+            call deallocate(diagonal_A)
+          end if
+
+        if (rescale_mom_matrices)  call deallocate(diagonal_CMC)
+        if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
+
+        ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
+        return
+      contains
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Generic subroutine that perform the Anderson acceleration solver.
+        !> This is storing a set of results for a system that converges based on a FPI
+        !> and finding an optimal combination of all of these results that minimise the residual
+        !> Method explained in DOI.10.1137/16M1076770
+        !---------------------------------------------------------------------------
+        subroutine Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
+            MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
+          implicit none
+          integer, intent(in) :: stokes_max_its
+          type( state_type ), intent( inout ) :: packed_state
+          type(multi_dimensions), intent(in) :: Mdims
+          type (multi_sparsities), intent(in) :: Mspars
+          type (multi_matrices), intent(inout) :: Mmat
+          type(multi_ndgln), intent(in) :: ndgln
+          real, dimension(:), intent(in) :: MASS_ELE
+          REAL, DIMENSION( :, :, : ), intent(in) :: INV_B
+          type( vector_field ), intent(inout) :: rhs_p
+          type( vector_field ), intent(inout) :: deltap
+          type(tensor_field), intent(inout) :: P_all, velocity
+          type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
+          type( vector_field ), intent(inout) :: diagonal_A
+          !Local variables
+          logical, save :: Special_precond = .true.!> Selects the BfB type preconditioner, we want this on by default
+          integer, save :: show_FPI_conv
+          integer :: i, k, cv_nodi, M, total_u_nodes, Max_restarts
+          real, dimension(:,:), allocatable :: stored_field, field_residuals
+          real,save :: solver_tolerance = -1
+          real, dimension(:,:), allocatable :: BAK_matrix, ref_pressure
+          real :: conv_test, total_max, total_min, Omega, exponent_diag
+          logical :: restart_now
+          type(tensor_field) :: aux_velocity
+          type( vector_field ) :: packed_vel, packed_CDP_tensor, packed_aux_velocity
+          real, dimension(2) :: totally_min_max
+
+          !Retrieve settings from diamond
+          if (solver_tolerance<0) then
+            call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively", solver_tolerance, default = 1d-7)
+            show_FPI_conv = 1
+            if (have_option( '/io/Show_Convergence')) show_FPI_conv = 0
+            !Type of preconditioner
+            Special_precond = .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Disable_advance_preconditioner")
+          end if
+          !Retrieve the maximum number
+          call get_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Max_restarts", Max_restarts, default = 5)
+
+          allocate(ref_pressure(Mdims%npres,Mdims%cv_nonods));ref_pressure = 0.
+          !#####################################################################
+          !Check normalised relative pressure convergence before getting into the AA loop
+          ref_pressure = P_ALL%val(1,:,:) - deltap%val
+          totally_min_max(1)=minval(ref_pressure)!use stored field
+          totally_min_max(2)=maxval(ref_pressure)!use stored field
+          !For parallel
+          call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+          conv_test = inf_norm_scalar_normalised(P_ALL%val(1,:,:), ref_pressure, 1.0, totally_min_max)
+          if ( conv_test < solver_tolerance) then
+            ewrite(1,*)"No need for AA"
+            deallocate(ref_pressure)
+            return
+          end if
+          !#####################################################################
+
+          if (Special_precond) then
+            call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = velocity%dim); call zero(aux_velocity)
+            packed_aux_velocity = as_packed_vector(aux_velocity)
+            exponent_diag = 0.5!Default
+            if (have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")) exponent_diag = exponent_diag - 0.5!Already multiplied by Ad^-0.5
+            if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) exponent_diag = exponent_diag + 0.5!Need more of Ad
+          end if
+
+          i = 1
+          allocate(stored_field(Mdims%cv_nonods, stokes_max_its))
+          allocate(field_residuals(Mdims%cv_nonods, stokes_max_its))
+          !Pointers to convert from tensor data to vector data
+          packed_vel = as_packed_vector(Velocity)
+          packed_CDP_tensor = as_packed_vector(CDP_tensor)
+          !Update stored values
+          stored_field(:, i) = P_all%val(1,1,:)
+          restart_now = .false.
+          do k = 1, stokes_max_its*Max_restarts
+
+            !Proceed to restart the AA method, by throwing away everything!
+            if (i>stokes_max_its .or. restart_now) then
+              deallocate(BAK_matrix)
+              ! i = 1; stored_field(:, i) = P_all%val(1,1,:)!<=stable but requires three loops without acceleration
+              !We try to rduce the time without acceleration by re-using some information
+              !from the previous loop
+              if (i == 1 )  i = stokes_max_its
+              field_residuals(:, 1) = field_residuals(:, i-1)
+              stored_field(:, 1) = stored_field(:, i)
+              i = 2; stored_field(:, i) = P_all%val(1,1,:)
+              restart_now = .false.
+            end if
+
+            !Check normalised relative pressure convergence
+            totally_min_max(1)=minval(ref_pressure)!use stored field
+            totally_min_max(2)=maxval(ref_pressure)!use stored field
+            !For parallel
+            call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+            conv_test = inf_norm_scalar_normalised(P_ALL%val(1,:,:), ref_pressure, 1.0, totally_min_max)
+            ref_pressure = P_ALL%val(1,:,:)
+
+            !We use deltaP as residual check for convergence
+            if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
+              if (getprocno() == 1) then
+                ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k
+              end if
+              return
+            end if
+            M = i - 2; if (M <= 0) M = stokes_max_its + M
+              !Find the optimal combination of pressure fields that minimise the residual
+            if (i > 2) call get_Anderson_acceleration_new_guess(size(stored_field,1), M, P_all%val(1,1,:), &
+                       stored_field(:,1:i), field_residuals(:,1:i), stokes_max_its, BAK_matrix, restart_now)
+
+
+            !##########################Now solve the equations##########################
+            ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
+            call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
+            call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            if (isParallel()) call halo_update(velocity)
+            !Perform Div * U for the RHS of the pressure equation
+            !If we end up using the residual, this call just below is unnecessary
+            rhs_p%val = 0.
+            call compute_DIV_U(Mdims, Mmat, Mspars, velocity%val, INV_B, rhs_p)
+            rhs_p%val = Mmat%CT_RHS%val - rhs_p%val
+            call include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+            call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val, update_pres = .not. Special_precond)!don
+            if (isParallel()) call halo_update(deltap)
+            if (k == 1) then
+              Omega = 1.0
+            end if
+            !Omega should go within solve_and_update_pressure
+            ! deltap%val = 1./Omega * deltap%val !and then add it to the pressure, not having done so before
+            if (Special_precond ) then !Apply a BfB type preconditioner (GtMG)^-1 Gt*diag(a)^-1*A*G * (GtMG)^-1
+              !Multiply by the gradient (C)
+              call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)!The equations are for deltap not Pressure!
+              !Now multiply by the inverse of the lumped mass matrix (to keeps the units consistent)
+              call mult_inv_Mass_vel_vector(Mdims, ndgln, CDP_tensor%val, MASS_ELE)
+              !Diag_A^-0.5 x previous
+              if (exponent_diag > 1d-8) packed_CDP_tensor%val = packed_CDP_tensor%val / diagonal_A%val**exponent_diag
+              !A x previous
+              call mult( packed_aux_velocity, Mmat%DGM_PETSC, packed_CDP_tensor )
+              !Diag_A^-0.5 x previous
+              if (exponent_diag > 1d-8) packed_aux_velocity%val = packed_aux_velocity%val / diagonal_A%val**exponent_diag
+              !Ct x previous
+              call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
+              !Solve again the system to finish the preconditioner
+              call solve_and_update_pressure(Mdims, rhs_p, P_all%val, deltap, cmc_petsc, diagonal_CMC%val)
+            end if
+            if (isParallel()) call halo_update(P_all)
+            !Update residual with the variation from the guessed value and the actual value obtained after appliying the function
+            field_residuals(:, i) = P_all%val(1,1,:) - stored_field(:, i) !deltap%val(1,:)
+            !##########################Now solve the equations##########################
+            i = i + 1;
+            if (i == stokes_max_its + 1 ) then
+              i = 1
+              restart_now = .true.
+            end if
+            !Update stored values
+            stored_field(:, i) = P_all%val(1,1,:)
+
+          end do
+          if (Special_precond) then
+            call deallocate(aux_velocity)
+          end if
+          deallocate(field_residuals, stored_field, ref_pressure)
+        end subroutine Stokes_Anderson_acceleration
+
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Multiplies the inv of the lumped mass matrix times the vel_vector
+        !> vel_vector = vel_vector / (mass_ele/vel_local_nodes)
+        !---------------------------------------------------------------------------
+        subroutine mult_inv_Mass_vel_vector(Mdims, ndgln, vel_vector, MASS_ELE)
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          type(multi_ndgln), intent(in) :: ndgln
+          real, dimension(:,:,:), intent(inout) :: vel_vector
+          real, dimension(:), intent(in) :: MASS_ELE
+          !Local variables
+          integer :: u_inod, ele, u_iloc, iphase, idim
+          real :: Real_u_nloc
+
+          Real_u_nloc = dble(Mdims%u_nloc)
+
+          do ele = 1, Mdims%totele
+            DO u_iloc = 1, Mdims%u_nloc
+              u_inod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + u_iloc )
+              DO iphase = 1, Mdims%nphase
+                DO idim = 1, Mdims%ndim
+                  vel_vector(idim, iphase, u_inod)= vel_vector(idim, iphase, u_inod)/ (MASS_ELE(ele)/Real_u_nloc)
+                end do
+              end do
+            end do
+          end do
+
+        end subroutine mult_inv_Mass_vel_vector
+
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not
+        !---------------------------------------------------------------------------
+        subroutine generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          type (multi_matrices), intent(inout) :: Mmat
+          real, dimension(:), intent(in) :: MASS_ELE
+          type( vector_field ), intent(in) :: diagonal_A
+          !Local variables
+          integer :: i, j
+
+
+          !Initialise to zero
+          Mmat%PIVIT_MAT = 0.
+          if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
+            !Introduce the diagonal of A into the Mass matrix (not ideal...)
+            do ele = 1, Mdims%totele
+              DO U_JLOC = 1, Mdims%u_nloc
+                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
+                DO JPHASE = 1, Mdims%nphase
+                  DO JDIM = 1, Mdims%ndim
+                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                    Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
+                  end do
+                end do
+              end do
+              do j = 1, size(Mmat%PIVIT_MAT,1)
+                Mmat%PIVIT_MAT(j, j, ele) = Mmat%PIVIT_MAT(j, j, ele) * MASS_ELE(ele)/dble(Mdims%u_nloc)
+              end do
+            end do
+          else
+            !Just the mass matrix
+            do i = 1, size(Mmat%PIVIT_MAT,3)
+              do j = 1, size(Mmat%PIVIT_MAT,1)
+                Mmat%PIVIT_MAT(j, j, i) = MASS_ELE(i)/dble(Mdims%u_nloc)
+              end do
+            end do
+          end if
+
+        end subroutine
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Update velocity by solving the momentum equation for a given pressure, the RHS is formed here
+        !> If rescale_mom_matrices =  .true., here the RHS rescaled
+        !---------------------------------------------------------------------------
+        subroutine solve_and_update_velocity(Mmat,Velocity, CDP_tensor, U_RHS, diagonal_A)
+
+          implicit none
+          type (multi_matrices), intent(inout) :: Mmat
+          real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
+          type(tensor_field), intent(inout) :: Velocity, CDP_tensor
+          type( vector_field ), intent(inout) :: diagonal_A
+          !Local variables
+          type( vector_field ) :: packed_vel, rhs
+          !Pointers to convert from tensor data to vector data
+          packed_vel = as_packed_vector(Velocity)
+          rhs = as_packed_vector(CDP_tensor)
+
+          !Compute - u_new = A^-1( - Gradient * P + RHS)
+          packed_vel%val = 0.
+          rhs%val = rhs%val + U_RHS
+          !Rescale RHS (it is given that the matrix has been already re-scaled)
+          if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+          call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
+          !If the system is re-scaled then now it is time to recover the correct solution
+          if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+          if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
+#ifdef USING_GFORTRAN
+      !Nothing to do since we have pointers
+#else
+    !For intel compilers we perform a direct reshaping of memory
+    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods)
+    call deallocate(packed_vel); call deallocate(rhs)
+#endif
+
+
+        end subroutine solve_and_update_velocity
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Compute deltaP by solving the pressure equation using the CMC matrix
+        !---------------------------------------------------------------------------
+        subroutine solve_and_update_pressure(Mdims, rhs_p, P_all, deltap, cmc_petsc, diagonal_CMC, update_pres)
+
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          type( vector_field ), intent(inout) :: rhs_p
+          type( vector_field ), intent(inout) :: deltap
+          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(inout) :: P_all!Ensure dynamic conversion from three entries to two
+          type(petsc_csr_matrix), intent(inout) ::  CMC_petsc
+          real, dimension(Mdims%npres, Mdims%cv_nonods), intent(in) :: diagonal_CMC
+          logical, optional, intent(in) :: update_pres
+          !Local variables
+          integer :: its_taken
+
+          !Rescale RHS (it is given the the matrix has been already re-scaled)
+          if (rescale_mom_matrices ) rhs_p%val = rhs_p%val/ sqrt(diagonal_CMC)!Recover original X; X = D^-0.5 * X'
+          call petsc_solve(deltap, cmc_petsc, rhs_p, option_path = trim(solver_option_pressure), iterations_taken = its_taken)
+          pres_its_taken = its_taken
+
+          if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
+          !If the system is re-scaled then now it is time to recover the correct solution
+          if (rescale_mom_matrices) deltap%val = deltap%val/ sqrt(diagonal_CMC) !Recover original X; X = D^-0.5 * X'
+          !If false update pressure then return before doing so
+          if (present_and_false(update_pres)) then
+            return
+          else
+            !Now update the pressure
+            P_all = P_all + deltap%val
+          end if
+
+        end subroutine solve_and_update_pressure
+
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Project back the velocity from a non divergent-free space to a divergent free space
+        !---------------------------------------------------------------------------
+        subroutine project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
+          !Project back the velocity from a non divergent-free space to a divergent free space
+          implicit none
+          type(multi_dimensions), intent(in) :: Mdims
+          type (multi_sparsities), intent(in) :: Mspars
+          type (multi_matrices), intent(in) :: Mmat
+          type(multi_ndgln), intent(in) :: ndgln
+          type(tensor_field), intent(inout) :: velocity
+          type( vector_field ), intent(inout) :: deltap
+          type(tensor_field), intent(inout) :: cdp_tensor!>To reuse memory
+          !Local variables
+          REAL, DIMENSION( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods ) :: DU_VEL
+
+          !Perform C * DP
+          call zero(cdp_tensor)
+          call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)
+
+          ! DU = BLOCK_MAT * CDP: Project back the velocity from a non divergent-free space to a divergent free space
+          DU_VEL = 0.
+          CALL Mass_matrix_MATVEC( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
+          Mdims%totele, Mdims%u_nloc, ndgln%u )
+
+          velocity%val = velocity%val + DU_VEL
+
+          !if (solve_stokes) we will have to change this, as this only works as for inertia as long as M only contains the mass of the elements
+
+        end subroutine project_velocity_to_affine_space
+
+        !---------------------------------------------------------------------------
+        !> @author Pablo Salinas
+        !> @brief Calculates the divergence of the velocity by multipliying it by the Ct matrix
+        !---------------------------------------------------------------------------
+      subroutine compute_DIV_U(Mdims, Mmat, Mspars, velocity, INV_B, rhs_p, force_transpose_C)
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_sparsities), intent(in) :: Mspars
+        type (multi_matrices), intent(in) :: Mmat
+        REAL, DIMENSION( :, :, : ), intent(in) :: INV_B, velocity
+        type( vector_field ), intent(inout) :: rhs_p
+        logical, optional, intent(in) :: force_transpose_C
+        !Local variables
+        REAL, DIMENSION( :, : ), allocatable :: rhs_p2
+        integer :: iphase, CV_NOD, ipres
+        logical :: force_transpose_C2
+
+        force_transpose_C2 = .false.
+        if (present(force_transpose_C)) force_transpose_C2 = force_transpose_C
 
         IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-            if ( .not.FEM_continuity_equation ) then ! original
-                ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
+          ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
+            if ( .not.FEM_continuity_equation .and. .not. force_transpose_C2) then ! original
                 DO IPHASE = 1, Mdims%nphase
-                    CALL CT_MULT2( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                      CALL CT_MULT2( rhs_p2(IPHASE,:), velocity( :, IPHASE : IPHASE, : ), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%CT( :, IPHASE : IPHASE, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
             else
                 DO IPHASE = 1, Mdims%nphase
-                    CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                      CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), velocity( :, IPHASE : IPHASE, : ), &
                         Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                 END DO
             end if
@@ -1812,28 +2549,49 @@ end if
                     rhs_p%val(IPRES,CV_NOD)= SUM( rhs_p2(1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres,CV_NOD) )
                 END DO
             END DO
+              deallocate(rhs_p2)
         ELSE
-            if ( .not.FEM_continuity_equation ) then ! original
+            if ( .not.FEM_continuity_equation .and. .not. force_transpose_C2) then ! original
                 DO IPRES = 1, Mdims%npres
-                    CALL CT_MULT2( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
+                      CALL CT_MULT2( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
                         Mmat%CT( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
             else
                 DO IPRES = 1, Mdims%npres
-                    CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
+                      CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), velocity( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
                         Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                 END DO
             end if
         END IF
-        rhs_p%val = -rhs_p%val + Mmat%CT_RHS%val
+
+      end subroutine compute_DIV_U
+
+      !---------------------------------------------------------------------------
+      !> @author Chris Pain, Pablo Salinas
+      !> @brief Include in the pressure matrix the compressibility terms (based on taylor expansion series) to ensure that we account for this term
+      !> as implicitly as possible
+      !---------------------------------------------------------------------------
+      subroutine include_compressibility_terms_into_RHS(Mdims, rhs_p, DIAG_SCALE_PRES, MASS_MN_PRES, MASS_SUF, pipes_aux, DIAG_SCALE_PRES_COUP)
+
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type( vector_field ), intent(inout) :: rhs_p
+        REAL, DIMENSION( : ), intent(in) :: MASS_MN_PRES, MASS_SUF
+        REAL, DIMENSION( :, : ), intent(in) :: DIAG_SCALE_PRES
+        REAL, DIMENSION( :, :, : ), intent(in) :: DIAG_SCALE_PRES_COUP
+        type (multi_pipe_package), intent(in) :: pipes_aux
+        !Local variables
+        type( tensor_field ), pointer :: pold_all
+        integer :: CV_NOD, COUNT, CV_JNOD, IPRES, JPRES
+
         if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
         ! Matrix vector involving the mass diagonal term
         DO CV_NOD = 1, Mdims%cv_nonods
             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
                 CV_JNOD = Mspars%CMC%col( COUNT )
                 DO IPRES = 1, Mdims%npres
-                    IF (( Mdims%npres > 1 ).AND.PIPES_1D) THEN
+                    IF (( Mdims%npres > 1 )) THEN
                         IF(IPRES==1) THEN
                             rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                                 -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
@@ -1851,104 +2609,18 @@ end if
                     end if
                     IF ( Mdims%npres > 1 ) THEN
                         DO JPRES = 1, Mdims%npres
-                            IF(PIPES_1D) THEN
                                 rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                                     -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * pipes_aux%MASS_CVFEM2PIPE( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
-                            ELSE
-                                rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-                                    -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
-                            ENDIF
                         END DO
                     END IF
                 END DO
             END DO
         END DO
 
-        call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
-            'prognostic/reference_node', ndpset, default = 0 )
-        if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
         ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
-        ewrite(3,*)'about to solve for pressure'
-        !########Solve the system#############
-        !Re-scale of the matrix to allow working with small values of sigma
-        !this is a hack to deal with bad preconditioners and divide by zero errors.
-        if (is_porous_media) then
-            !Since we save the parameter rescaleVal, we only do this one time
-            if (rescaleVal < 0.) then
-                tfield => extract_tensor_field(packed_state,"Permeability")
-                rescaleVal = minval(tfield%val, MASK = tfield%val > 1d-30)
-                !If it is parallel then we want to be consistent between cpus
-                if (IsParallel()) call allmin(rescaleVal)
-            end if
-            call scale(cmc_petsc, 1.0/rescaleVal)
-            rhs_p%val = rhs_p%val / rescaleVal
-            !End of re-scaling
-        end if
-        call zero(deltaP)!;call zero_non_owned(rhs_p)
-        !Solve the system to obtain dP (difference of pressure)
-        call petsc_solve(deltap,cmc_petsc,rhs_p,option_path = trim(solver_option_pressure), iterations_taken = its_taken)
-pres_its_taken = its_taken
+      end subroutine
 
-        if (its_taken >= max_allowed_P_its) solver_not_converged = .true.
-        ! if (isParallel()) call zero_non_owned(deltap)!MAYBE WITH THIS ONE WE DON'T NEED TO DO HALO_UPDATE FOR PRESSURE NOT VELOCITY
-
-        P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
-
-        if (isParallel()) call halo_update(P_all)
-
-        call deallocate(rhs_p)
-        call deallocate(cmc_petsc)
-        ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
-        ! Use a projection method
-        ! CDP = Mmat%C * DP
-        !CALL C_MULT2( CDP_tensor%val, deltap%val, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-        DO IPRES = 1, Mdims%npres
-            CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap%val( IPRES, : ), &
-                Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-        END DO
-        call deallocate(deltaP)
-        ! if (isParallel()) call zero_non_owned(cdp_tensor)
-        ! Correct velocity...
-        ! DU = BLOCK_MAT * CDP
-        ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
-        CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
-            Mdims%totele, Mdims%u_nloc, ndgln%u )
-        U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
-        if (isParallel()) call halo_update(U_ALL2)
-
-        DEALLOCATE( DU_VEL )
-        if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
-        call DEALLOCATE( CDP_tensor )
-        ! Calculate control volume averaged pressure CV_P from fem pressure P
-        !Ensure that prior to comming here the halos have been updated
-        if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
-!
-        DEALLOCATE( Mmat%CT )
-        DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
-        DEALLOCATE( Mmat%U_RHS )
-        DEALLOCATE( MASS_MN_PRES )
-        call deallocate(Mmat%CT_RHS)
-        if (.not.is_porous_media) then
-            DEALLOCATE( Mmat%PIVIT_MAT )
-            nullify(Mmat%PIVIT_MAT)
-        end if
-
-        ! Copy back memory; sprint_to_do remove this...
-        !(Pablo)WHAT IS THIS?? SEEMS RUBBISH TO ME...
-        do iphase=1,Mdims%nphase
-           U=>extract_vector_field(state(iphase),"U",stat)
-           if(stat==0)then
-              do idim=1,Mdims%ndim
-                 U%val(idim,:)=U_ALL2%val(idim,iphase,:)
-              end do
-           end if
-        end do
-
-        ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
-        return
-
-    contains
-
+        !!>@brief: Compute a CV pressure from a FE representation
         subroutine calc_CVPres_from_FEPres()
             !This is for FE pressure
             implicit none
@@ -1957,7 +2629,7 @@ pres_its_taken = its_taken
             if (Mmat%CV_pressure.and.is_porous_media) then!Pressure is already CV...
                 CVP_ALL%VAL(1,1,:) = P_ALL%VAL(1,1,:)
                 !...inside the wells it is still FE pressure
-                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+          IF(Mdims%npres>1) THEN
                     IPRES = Mdims%npres
                     CVP_ALL%VAL(1,ipres,:) = 0.
                     DO CV_NOD = 1, Mdims%cv_nonods
@@ -1975,7 +2647,7 @@ pres_its_taken = its_taken
                 end if
             else
                 CVP_ALL%VAL = 0.0
-                IF(Mdims%npres>1.AND.PIPES_1D) THEN
+          IF(Mdims%npres>1) THEN
                     MASS_CV = 0.0
                     IPRES = 1
                     DO CV_NOD = 1, Mdims%cv_nonods
@@ -2029,19 +2701,18 @@ pres_its_taken = its_taken
         end subroutine calc_CVPres_from_FEPres
 
 
-
-
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 
+    !>@brief: Form the global CTY and momentum eqns and combine to form one large matrix eqn.
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         velocity, pressure, multi_absorp, eles_with_pipe, pipes_aux, &
         X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
-        P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
+        CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
         DT, &
-        MASS_MN_PRES,&
+        MASS_MN_PRES, MASS_ELE,&
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
@@ -2052,9 +2723,8 @@ pres_its_taken = its_taken
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes)
+        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
         implicit none
-        ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
@@ -2078,7 +2748,7 @@ pres_its_taken = its_taken
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL
-        REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P, P
+        REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL, DENOLD_ALL
         REAL, DIMENSION(  : , :  ), intent( in ) :: DERIV
         REAL, DIMENSION(  : ,  :   ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -2086,7 +2756,7 @@ pres_its_taken = its_taken
         REAL, DIMENSION(  : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
+        REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES, MASS_ELE
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, INV_B
@@ -2096,6 +2766,9 @@ pres_its_taken = its_taken
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         type (multi_outfluxes), intent(inout) :: outfluxes
         real, dimension(:,:), intent(inout) :: calculate_mass_delta
+        REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  DIAG_BIGM_CON
+        REAL, DIMENSION( :,:,:,:,:,:,: ), allocatable ::  BIGM_CON
+
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -2130,12 +2803,12 @@ pres_its_taken = its_taken
                 X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
                 U_ALL, UOLD_ALL, &
                 U_ALL, UOLD_ALL, &    ! This is nu...
-                UDEN_ALL, UDENOLD_ALL, DERIV,&
+                UDEN_ALL, UDENOLD_ALL, DERIV, &
                 DT, &
                 JUST_BL_DIAG_MAT, &
                 UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, DEN_ALL, RETRIEVE_SOLID_CTY, &
-                IPLIKE_GRAD_SOU, &
-                P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, FEM_continuity_equation=FEM_continuity_equation)
+                IPLIKE_GRAD_SOU,DIAG_BIGM_CON, BIGM_CON, &
+                got_free_surf, MASS_SUF, FEM_continuity_equation, MASS_ELE)
         end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
@@ -2163,7 +2836,7 @@ pres_its_taken = its_taken
             DEN_OR_ONE, DENOLD_OR_ONE, &
             Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, v_beta, &
             SUF_SIG_DIAGTEN_BC, &
-            DERIV,CV_P, &
+            DERIV, CV_P, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &
             GETCV_DISC, GETCT, &
             IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, Mdisopt%volfra_use_theta_flux, &
@@ -2183,7 +2856,8 @@ pres_its_taken = its_taken
 
       contains
 
-
+        !!>@brief: If using the CV formulation and porous media, the momemtum equation and the mass matrix are much simpler
+        !> and faster to compute than for Navier-Stokes. Therefore, here the RHS and the Mass matrix are computed for this case
         SUBROUTINE porous_assemb_force_cty( packed_state, pressure,&
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
             implicit none
@@ -2198,7 +2872,7 @@ pres_its_taken = its_taken
             real, dimension(:,:,:), intent(in) :: U_SOURCE_CV_ALL
             type( tensor_field ), intent(in) :: pressure
             ! Local Variables
-            integer :: CV_ILOC, CV_JLOC, GI, ELE, U_ILOC, U_INOD, CV_INOD
+            integer :: CV_ILOC, CV_JLOC, GI, ELE, U_ILOC, U_INOD, CV_INOD, stat
             real, dimension(FE_GIdims%cv_ngi, Mdims%u_nloc) :: UFEN_REVERSED
             real, dimension(FE_GIdims%cv_ngi, Mdims%cv_nloc) :: CVN_REVERSED
             !Variables for capillary pressure
@@ -2209,6 +2883,7 @@ pres_its_taken = its_taken
             real, dimension(:), allocatable :: NORMX_ALL, sdetwe
             real, dimension(:, :), allocatable ::  XL_ALL, XSL_ALL, SNORMXN_ALL!should remove all local conversions
             real, dimension(:, :, :), allocatable :: LOC_U_RHS !should remove all local conversions
+            type(tensor_field), pointer :: CapPressure
             !Diamond options
             logical, save :: options_read = .false., Bubble_element_active,capillary_pressure_activated, Diffusive_cap_only, gravity_on
             real, save :: gravty = 0.0
@@ -2237,6 +2912,7 @@ pres_its_taken = its_taken
                 Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
             end if
 
+            CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
 
             DO U_ILOC=1,Mdims%u_nloc
                 DO GI=1,FE_GIdims%cv_ngi
@@ -2277,7 +2953,7 @@ pres_its_taken = its_taken
                     if (.not.Mmat%Stored) then
                       if (.not. Bubble_element_active) then
                         !Use the method based on diagonal scaling for lagrangian elements
-                        call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
+                        call get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
                       else !Use the row-sum method for P1DGBLP1DG(CV)
                         call get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
                       end if
@@ -2365,7 +3041,7 @@ pres_its_taken = its_taken
                         END IF
                         !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                         call Introduce_Cap_press_term(&
-                            packed_state, Mdims, Mmat, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
+                            packed_state, Mdims, Mmat, CapPressure%val, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
                             ndgln%cv, ndgln%x, ele2, iface,&
                             sdetwe, SNORMXN_ALL, FE_funs%u_sloclist( IFACE, : ), FE_funs%cv_sloclist( IFACE, : ), MAT_OTHER_LOC )
                     END DO Between_Elements_And_Boundary
@@ -2381,10 +3057,10 @@ pres_its_taken = its_taken
             call deallocate_multi_dev_shape_funs(Devfuns)
         END SUBROUTINE porous_assemb_force_cty
 
+        !!>@brief:This subroutine creates a mass matrix using various approaches
+        !>Here no homogenisation can be performed.
+        !> NOTE: FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE, AND GET_POROUS_MASS_MATRIX IS KEPT FOR THE DIAGONAL SCALING METHOD
         subroutine get_massMatrix(ELE, Mdims, DevFuns, Mmat, X_ALL, UFEN_REVERSED)
-              !This subroutine creates a mass matrix using various approaches
-              !Here no homogenisation can be performed.
-              !FOR THE TIME BEING ONLY ROW_SUM IS ACTIVATED HERE, AND GET_POROUS_MASS_MATRIX IS KEPT FOR THE DIAGONAL SCALING METHOD
               implicit none
               integer, intent(in) :: ELE
               type(multi_dimensions), intent(in) :: Mdims
@@ -2458,9 +3134,6 @@ pres_its_taken = its_taken
                   END DO
               END DO
 
-
-            ! end if
-
             end subroutine
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
@@ -2468,7 +3141,8 @@ pres_its_taken = its_taken
 
 
 
-
+    !>@brief: Forms the gradient matrix (FE) and the momemtum matrix for intertia. This includes up to all the terms
+    !> required by the navier-stokes equation
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
@@ -2478,9 +3152,8 @@ pres_its_taken = its_taken
         UDEN, UDENOLD, DERIV, &
         DT, JUST_BL_DIAG_MAT,  &
         UDIFFUSION, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &
-        IPLIKE_GRAD_SOU, &
-        P,&
-        got_free_surf, mass_suf, FEM_continuity_equation )
+        IPLIKE_GRAD_SOU,  DIAG_BIGM_CON, BIGM_CON,&
+        got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2506,13 +3179,16 @@ pres_its_taken = its_taken
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
-        REAL, DIMENSION( :, :, : ), intent( in ) :: P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
+        REAL, DIMENSION ( :, :, :,   :, :, :, :), allocatable :: DIAG_BIGM_CON
+         REAL, DIMENSION ( :, :, :,   :, :, :,   : ), allocatable ::BIGM_CON
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, FEM_continuity_equation
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
+        real, dimension(:), intent(inout) :: MASS_ELE
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
-        LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE., STAB_VISC_WITH_ABS=.FALSE.
+        LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE.
+        logical :: STAB_VISC_WITH_ABS=.FALSE.
         LOGICAL :: STRESS_FORM, STRESS_FORM_STAB, THERMAL_STAB_VISC, THERMAL_LES_VISC, THERMAL_FLUID_VISC, Q_SCHEME
         ! if STAB_VISC_WITH_ABS then stabilize (in the projection mehtod) the viscosity using absorption.
         REAL, PARAMETER :: WITH_NONLIN = 1.0, TOLER = 1.E-10
@@ -2532,8 +3208,7 @@ pres_its_taken = its_taken
         INTEGER, DIMENSION( : ), allocatable :: CV_SLOC2LOC, U_SLOC2LOC, &
         U_ILOC_OTHER_SIDE, U_OTHER_LOC, MAT_OTHER_LOC
         REAL, DIMENSION( : ),    ALLOCATABLE ::  &
-        SDETWE, VLN,VLN_OLD, &
-        MASS_ELE
+        SDETWE, VLN,VLN_OLD
         REAL, DIMENSION( :, : ),    ALLOCATABLE :: XL_ALL, XL2_ALL, XSL_ALL, SNORMXN_ALL
         REAL, DIMENSION ( : , :,  : ), allocatable :: GRAD_SOU_GI_NMX, GRAD_SOU_GI, GRAD_SOU2_GI_NMX, GRAD_SOU2_GI
         REAL, DIMENSION ( : , :,  : ), allocatable :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
@@ -2587,8 +3262,7 @@ pres_its_taken = its_taken
             LOGICAL :: GOT_VIRTUAL_MASS = .false.
 ! If FEM_DEN then use an FEM representation of density - only used within an element (default is FEM for between elements and on boundary).
             LOGICAL, PARAMETER :: FEM_DEN = .false.
-            real :: w
-            real, parameter :: wv=1.0, ws=1.0 ! DevFuns%VOLUME off-diagonal and surface weights, respectively
+            real :: w = 1.0, ws = 1.0 !> Weights for pivit_on_viscosity
 ! LINEAR_HIGHORDER_DIFFUSION is the switch for the high-order linear scheme...
 !            LOGICAL, PARAMETER ::  LINEAR_HIGHORDER_DIFFUSION = .TRUE.
             LOGICAL ::  LINEAR_HIGHORDER_DIFFUSION
@@ -2631,7 +3305,6 @@ pres_its_taken = its_taken
         REAL, DIMENSION ( : ), allocatable :: LOC_P
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_PLIKE_GRAD_SOU_COEF, LOC_PLIKE_GRAD_SOU_GRAD
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_SOURCE, LOC_U_SOURCE_CV
-        REAL, DIMENSION ( :, :, :,   :, :, :,   : ), allocatable :: DIAG_BIGM_CON, BIGM_CON
         ! memory for fast retreval of surface info...
         INTEGER, DIMENSION ( :, :, : ), allocatable :: STORED_U_ILOC_OTHER_SIDE, STORED_U_OTHER_LOC, STORED_MAT_OTHER_LOC
         INTEGER, DIMENSION ( :, :, : ), allocatable :: POSINMAT_C_STORE
@@ -2675,7 +3348,7 @@ pres_its_taken = its_taken
         INTEGER :: P_INOD, IDIM_VEL
         logical :: mom_conserv, lump_mass, lump_mass2, lump_absorption, BETWEEN_ELE_STAB, LUMP_DIAG_MOM
         real :: beta
-        INTEGER :: FILT_DEN, J2, JU2_NOD_DIM_PHA
+        INTEGER :: J2, JU2_NOD_DIM_PHA
         LOGICAL :: SIMPLE_DIFF_CALC
         REAL :: DIFF_MIN_FRAC, DIFF_MAX_FRAC
         REAL :: AVE_SNORMXN_ALL(Mdims%ndim)
@@ -2710,6 +3383,7 @@ pres_its_taken = its_taken
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
         !Capillary pressure variables
         logical :: capillary_pressure_activated, Diffusive_cap_only
+        type(tensor_field), pointer :: CapPressure
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf, sfield
@@ -2757,6 +3431,7 @@ pres_its_taken = its_taken
         !Check capillary options
         capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', Mdims%nphase)
         Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
+        CapPressure => extract_tensor_field( packed_state, "PackedCapPressure", stat )
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
         call get_option( "/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
@@ -2800,7 +3475,7 @@ pres_its_taken = its_taken
 
         !Decide whether to use the simple mass matrix (Volume/U_NLOC) or the one using shape functions
         use_simple_lumped_homogenenous_mass_matrix = (Porous_media_PIVIT_not_stored_yet .and.is_porous_media&
-                 .and. (Mmat%CV_pressure .or. have_option('/numerical_methods/simple_mass_matrix')))
+                 .and. (Mmat%CV_pressure .or. have_option('/numerical_methods/lump_mass_matrix')))
 
         !If we do not have an index where we have stored Mmat%C, then we need to calculate it
         got_c_matrix  = Mmat%stored .or. Mmat%CV_pressure
@@ -2846,7 +3521,7 @@ pres_its_taken = its_taken
 
         !For P1DGP1 the DCVFEM method does not work and requires P0DGP1. This is done through homogenisation
         !For historic reasons we always lump with the DCVFEM
-        if (Mmat%CV_pressure.and. is_porous_media) then
+        if (Mmat%CV_pressure .and. is_porous_media) then
             lump_mass = .true.
             call get_option( &
             '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
@@ -3001,7 +3676,7 @@ pres_its_taken = its_taken
         ALLOCATE( GRAD_SOU_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
         ALLOCATE( GRAD_SOU2_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
         GRAD_SOU_GI_NMX=0.0 ; GRAD_SOU2_GI_NMX=0.0
-        ALLOCATE( MASS_ELE( Mdims%totele )) ; MASS_ELE=0.0
+        ! ALLOCATE( MASS_ELE( Mdims%totele )) ; MASS_ELE=0.0
         ! Allocating for non-linear Petrov-Galerkin diffusion stabilization...
         ALLOCATE( LOC_MASS_INV(Mdims%u_nloc, Mdims%u_nloc) )
         ALLOCATE( LOC_MASS(Mdims%u_nloc, Mdims%u_nloc) )
@@ -3141,22 +3816,10 @@ pres_its_taken = its_taken
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
         ENDIF
-        IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
+        ! IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
         if (.not.got_c_matrix) Mmat%C = 0.0
         Mmat%U_RHS = 0.0
 
-        LUMP_DIAG_MOM=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices DIAG_BIGM_CON and BIGM_CON !!IF(LUMP_DIAG_MOM) THEN
-        IF (.NOT.Mmat%NO_MATRIX_STORE ) THEN!Only for inertia flow !matrix being allocated
-          IF(LUMP_DIAG_MOM) THEN
-            ALLOCATE( DIAG_BIGM_CON( 1, Mdims%ndim, 1, Mdims%nphase, 1,Mdims%u_nloc,Mdims%totele ) ) !-ao making diagonals of the mom matrix (1)
-            ALLOCATE( BIGM_CON(1, Mdims%ndim, 1, Mdims%nphase,1, Mdims%u_nloc, Mspars%ELE%ncol ) ) !-ao making diagonals of the mom matrix (2)
-          ELSE
-            ALLOCATE( DIAG_BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mdims%totele ) )
-            ALLOCATE( BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mspars%ELE%ncol ) )
-          END IF
-            DIAG_BIGM_CON = 0.0
-            BIGM_CON = 0.0
-        END IF
         if ( got_free_surf ) then
             if ( FEM_continuity_equation ) then
                 MASS_SUF=0.0
@@ -3208,9 +3871,12 @@ pres_its_taken = its_taken
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
         !Simplify the Navier-Stokes equations to Stokes
-        if (is_poroelasticity .or. is_magma) then
+        if (is_poroelasticity .or. is_magma .or. solve_stokes) then
             GOT_DIFFUS = .true.!Activate diffusion but considering the inertia terms are disabled!
             GOT_UDEN = .false.!Disable inertia terms
+            PIVIT_ON_VISC= .false.!This is to add viscosity terms into the Mu matrix
+            STAB_VISC_WITH_ABS = .false.!Adds diffusion terms into Mu also in the RHS
+            zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -3258,24 +3924,24 @@ pres_its_taken = its_taken
             sf=> extract_scalar_field( packed_state, "SolidConcentration" )
             delta_u_all => extract_vector_field( packed_state, "delta_U" ) ! this is delta_u
             us_all => extract_vector_field( packed_state, "solid_U" )
-            if ( .false. ) then ! Do not switch this to false.
-                DO ELE = 1, Mdims%totele
-                    DO CV_ILOC = 1, Mdims%cv_nloc
-                        MAT_NOD = ndgln%mat( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
-                        CV_NOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
-                        DO IPHASE = 1, Mdims%nphase
-                            UDIFFUSION_ALL( :, :, IPHASE, MAT_NOD ) = UDIFFUSION_ALL( :, :, IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
-                            UDIFFUSION_VOL_ALL( IPHASE, MAT_NOD ) = UDIFFUSION_VOL_ALL( IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
-                        END DO
-                    END DO
-                END DO
-            end if
             allocate( vol_s_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
 
 
-
+        LUMP_DIAG_MOM=.false.
+        LUMP_DIAG_MOM=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media)) !!-ao flag to lump matrices DIAG_BIGM_CON and BIGM_CON !!IF(LUMP_DIAG_MOM) THEN
+        IF (.NOT.Mmat%NO_MATRIX_STORE ) THEN!Only for inertia flow !matrix being allocated
+          IF(LUMP_DIAG_MOM) THEN
+            ALLOCATE( DIAG_BIGM_CON( 1, Mdims%ndim, 1, Mdims%nphase, 1,Mdims%u_nloc,Mdims%totele ))  !-ao making diagonals of the mom matrix (1)
+            ALLOCATE( BIGM_CON(1, Mdims%ndim, 1, Mdims%nphase,1, Mdims%u_nloc, Mspars%ELE%ncol ))  !-ao making diagonals of the mom matrix (2)
+          ELSE
+            ALLOCATE( DIAG_BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mdims%totele ) )
+            ALLOCATE( BIGM_CON( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%nphase, Mdims%u_nloc, Mdims%u_nloc, Mspars%ELE%ncol ) )
+          END IF
+            DIAG_BIGM_CON = 0.0
+            BIGM_CON = 0.0
+        END IF
 
 
 
@@ -3324,7 +3990,7 @@ pres_its_taken = its_taken
             end if
             !Default mass matrix for porous media
             if (use_simple_lumped_homogenenous_mass_matrix) then
-                call get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
+                call get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
             end if
 
             ! *********subroutine Determine local vectors...
@@ -3376,7 +4042,7 @@ pres_its_taken = its_taken
             END DO
             DO P_ILOC = 1, Mdims%p_nloc
                 P_INOD = ndgln%p( ( ELE - 1 ) * Mdims%p_nloc + P_ILOC )
-                LOC_P( P_ILOC ) = P( 1,1,P_INOD )
+                LOC_P( P_ILOC ) = pressure%val( 1,1,P_INOD )
             END DO
             LOC_U_ABSORB = 0.0
             IF(RETRIEVE_SOLID_CTY) LOC_U_ABS_STAB_SOLID_RHS=0.0
@@ -3492,60 +4158,13 @@ pres_its_taken = its_taken
                 END DO
             END DO
             ! Start filtering density
-            !FILT_DEN = 1
-            !FILT_DEN = 2 ! best option to use
-            !Don't remove the code comment below!!!
-            FILT_DEN = 0
-!            IF ( FILT_DEN /= 0 ) THEN ! Filter the density...
-!                DENGI = 0.0 ; DENGIOLD = 0.0
-!                MASS_U = 0.0 ; MASS_U_CV = 0.0
-!                DO U_ILOC = 1, Mdims%u_nloc
-!                    DO U_JLOC = 1, Mdims%u_nloc
-!                        NN = SUM( FE_funs%ufen( U_ILOC, : ) * FE_funs%ufen( U_JLOC, : ) * DevFuns%DETWEI(:) )
-!                        IF ( FILT_DEN==2 ) THEN ! Lump the mass matrix for the filter - positive density...
-!                            MASS_U( U_ILOC, U_ILOC ) = MASS_U( U_ILOC, U_ILOC ) + NN
-!                        ELSE
-!                            MASS_U( U_ILOC, U_JLOC ) = MASS_U( U_ILOC, U_JLOC ) + NN
-!                        END IF
-!                    END DO
-!                END DO
-!                DO U_ILOC = 1, Mdims%u_nloc
-!                    DO CV_JLOC = 1, Mdims%cv_nloc
-!                        NCVM = SUM( FE_funs%ufen( U_ILOC, : ) * CVN_SHORT( CV_JLOC, : ) * DevFuns%DETWEI(:) )
-!                        MASS_U_CV( U_ILOC, CV_JLOC ) = MASS_U_CV( U_ILOC, CV_JLOC ) + NCVM
-!                    END DO
-!                END DO
-!
-!                STORE_MASS_U=MASS_U
-!                ! Store the LU decomposition...
-!                GOTDEC = .FALSE.
-!
-!                RHS_U_CV = 0.0 ; RHS_U_CV_OLD = 0.0
-!                DO CV_JLOC = 1, Mdims%cv_nloc
-!                    DO U_ILOC = 1, Mdims%u_nloc
-!                        RHS_U_CV( :, U_ILOC ) = RHS_U_CV( :, U_ILOC ) + MASS_U_CV( U_ILOC, CV_JLOC ) * LOC_UDEN( :, CV_JLOC )
-!                        RHS_U_CV_OLD( :, U_ILOC ) = RHS_U_CV_OLD( :, U_ILOC ) + MASS_U_CV( U_ILOC, CV_JLOC ) * LOC_UDENOLD( :, CV_JLOC )
-!                    END DO
-!                END DO
-!
-!                DO IPHASE = 1, Mdims%nphase
-!                    CALL SMLINNGOT( STORE_MASS_U, UDEN_VFILT( IPHASE, : ), RHS_U_CV( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
-!                    GOTDEC = .TRUE.
-!                    CALL SMLINNGOT( STORE_MASS_U, UDENOLD_VFILT( IPHASE, : ), RHS_U_CV_OLD( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
-!                END DO
-!
-!                DO U_ILOC = 1, Mdims%u_nloc
-!                    DO GI = 1, CV_NGI
-!                        DENGI( :, GI ) = DENGI( :, GI ) + FE_funs%ufen( U_ILOC, GI ) * UDEN_VFILT( :, U_ILOC )
-!                        DENGIOLD( :, GI ) = DENGIOLD( :, GI ) + FE_funs%ufen( U_ILOC, GI ) * UDENOLD_VFILT( :, U_ILOC )
-!                    END DO
-!                END DO
-!            END IF
-! not good to have -ve density at quadature pt...
-            DENGI = MAX( 0.0, DENGI )
-            DENGIOLD = MAX( 0.0, DENGIOLD )
             SIGMAGI = 0.0 ; SIGMAGI_STAB = 0.0
             TEN_XX  = 0.0 ; TEN_VOL  = 0.0
+            !FILT_DEN = 1
+              DENGI = MAX( 0.0, DENGI )
+              DENGIOLD = MAX( 0.0, DENGIOLD )
+            !FILT_DEN = 2 ! best option to use
+            !Don't remove the code comment below!!!
             if (is_porous_media) then
                 DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
                     SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
@@ -3624,6 +4243,8 @@ pres_its_taken = its_taken
             END IF
 
             if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
+              ! if (solve_stokes) exit !The pivit matrix is create elsewhere (this do not work see below )
+
 !            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
@@ -3639,7 +4260,6 @@ pres_its_taken = its_taken
                             NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) = &
                                 NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
 
-                            ! Chris change ordering of NN_SIGMAGI_STAB_SOLID_RHS_ELE
                             IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) =&
                                 NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) + RNN * SIGMAGI_STAB_SOLID_RHS( :, :, GI )
                             DO JPHASE = 1, Mdims%nphase
@@ -3693,7 +4313,11 @@ pres_its_taken = its_taken
                         END DO
                     END DO
                 END IF
+
                 DO U_JLOC = 1, Mdims%u_nloc
+
+if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of this section is required, but the only way I found to not break up everything is this (nonsensical...)
+
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO JPHASE = 1, Mdims%nphase
                             DO JDIM = 1, Mdims%ndim
@@ -3716,17 +4340,18 @@ pres_its_taken = its_taken
                                                     lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
                                             end if
                                         ELSE
-                                            Mmat%PIVIT_MAT( I, J, ELE ) =  &
+                                            Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
                                                 NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
                                         END IF
+
                                         IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
                                           IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
                                             IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
                                               IF ( LUMP_MASS ) THEN
-                                                DIAG_BIGM_CON( 1 , JDIM, 1, JPHASE, 1, U_ILOC, ELE ) =  &
-                                                DIAG_BIGM_CON(1, JDIM,1, JPHASE, 1, U_ILOC, ELE )  &
+                                                DIAG_BIGM_CON( 1 , JDIM, 1, JPHASE, 1, U_JLOC, ELE ) =  &
+                                                DIAG_BIGM_CON(1, JDIM,1, JPHASE, 1, U_JLOC, ELE )  &
                                                 + NN_SIGMAGI_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT
@@ -3775,11 +4400,7 @@ pres_its_taken = its_taken
                         END DO LOOP_CVNODS21
                     ELSE ! ENDOF IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
                         Loop_CVNods2: DO CV_JLOC = 1, Mdims%cv_nloc
-                            IF ( RETRIEVE_SOLID_CTY .OR. FEM_BUOYANCY ) THEN
-                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
-                            ELSE
                                 NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
-                            END IF
                             IF ( LUMP_MASS ) THEN
                                 CV_ILOC = U_ILOC
                                 LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_ILOC )
@@ -3788,6 +4409,7 @@ pres_its_taken = its_taken
                             END IF
                         END DO LOOP_CVNODS2
                     END IF ! ENDOF IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
+
                     Loop_DGNods2: DO U_JLOC = 1, Mdims%u_nloc
                         VLN = 0.0
                         VLN_OLD = 0.0
@@ -3835,6 +4457,7 @@ pres_its_taken = its_taken
                         END DO Loop_Gauss2
                         NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                         LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
+
                         DO JPHASE = 1, Mdims%nphase
                             DO JDIM = 1, Mdims%ndim
                                 JPHA_JDIM = (JPHASE-1)*Mdims%ndim + JDIM
@@ -3899,8 +4522,6 @@ pres_its_taken = its_taken
                                             IF(PIVIT_ON_VISC) THEN
                                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                                w=1.0
-                                                !                                                if (i/=j) w = wv
                                                 Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     = Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
@@ -3962,8 +4583,6 @@ pres_its_taken = its_taken
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                            w=1.0
-                                            !                                            if (i/=j) w = wv
                                             Mmat%PIVIT_MAT( I,J, ELE ) &
                                                 = Mmat%PIVIT_MAT( I,J, ELE ) + w * VLK_ELE( IPHASE, U_ILOC, U_JLOC )
                                         END IF
@@ -4223,10 +4842,6 @@ pres_its_taken = its_taken
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                            !                                        w=1.0
-                                            !                                        if (i/=j) w = wv
-                                            !                                        Mmat%PIVIT_MAT( I,J, ELE )  &
-                                            !                                        = Mmat%PIVIT_MAT( I,J, ELE ) + w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
                                             Mmat%PIVIT_MAT( I,J, ELE )  &
                                                 = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
                                         ENDIF
@@ -4459,7 +5074,7 @@ pres_its_taken = its_taken
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                    packed_state, Mdims, Mmat, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
+                    packed_state, Mdims, Mmat, CapPressure%val, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
                     ndgln%cv, ndgln%x, ele2, iface,&
                     sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
                 ! ********Mapping to local variables****************
@@ -5066,7 +5681,7 @@ pres_its_taken = its_taken
                             END DO
                         END DO
                     END DO
-                    IF(GOT_DIFFUS .AND. LINEAR_HIGHORDER_DIFFUSION) THEN
+                    IF(GOT_DIFFUS .AND. LINEAR_HIGHORDER_DIFFUSION .and. .not. Mmat%NO_MATRIX_STORE) THEN
                         IF(ELE2.GT.0) THEN ! Internal to domain
                             DO U_JLOC=1,Mdims%u_nloc
                                 U_JLOC2 = U_JLOC
@@ -5076,12 +5691,12 @@ pres_its_taken = its_taken
                                         JPHASE = IPHASE
                                         IF(LUMP_DIAG_MOM) THEN
                                           DO IDIM=1,Mdims%ndim
-                                          DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
-                                              =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )
+                                            DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
+                                                =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )
                                           END DO
                                         ELSE
-                                        DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                            =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
+                                          DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
+                                              =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             DO IDIM=1,Mdims%ndim
@@ -5096,8 +5711,8 @@ pres_its_taken = its_taken
                                         ! Contributions from the other element...
                                         IF(LUMP_DIAG_MOM) THEN
                                           DO IDIM=1,Mdims%ndim
-                                            BIGM_CON( 1,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
-                                            =BIGM_CON( 1,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
+                                            BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)  &
+                                            =BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
                                           END DO
                                         ELSE
                                           BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
@@ -5506,23 +6121,11 @@ pres_its_taken = its_taken
         END DO Loop_Elements2
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
-        IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
-          IF(LUMP_DIAG_MOM)THEN
-          CALL COMB_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
-              Mmat%DGM_petsc, &
-              Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
-          ELSE
-            CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
-                Mmat%DGM_petsc, &
-                Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
-          END IF
-
-                IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
-                    call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS) !This subroutine introduces in the pivit matrix the temporal terms
-            DEALLOCATE( DIAG_BIGM_CON )
-            DEALLOCATE( BIGM_CON)
-
+         IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
+               IF(have_option("/numerical_methods/lump_mass_matrix/get_all_in_mass_matrix"))  &
+                 call get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_MASS, LUMP_DIAG_MOM) !This subroutine introduces in the pivit matrix the temporal terms
         ENDIF
+
         DEALLOCATE( UD, UD_ND )
         DEALLOCATE( UDOLD, UDOLD_ND )
         DEALLOCATE( DENGI )
@@ -5570,7 +6173,7 @@ pres_its_taken = its_taken
         DEALLOCATE( SNDOTQOLD_IN )
         DEALLOCATE( SNDOTQOLD_OUT )
         DEALLOCATE( GRAD_SOU_GI_NMX )
-        DEALLOCATE( MASS_ELE )
+        ! DEALLOCATE( MASS_ELE )
         DEALLOCATE( FACE_ELE )
         ! Deallocating for non-linear Petrov-Galerkin diffusion stabilization...
         DEALLOCATE( LOC_MASS_INV )
@@ -5630,14 +6233,14 @@ pres_its_taken = its_taken
         RETURN
     contains
 
-    subroutine get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_PIVIT_ON_ALL)
-        !This subroutine introduces in the pivit matrix the temporal terms
-        !****this is under testing****
+      !!>@brief:This subroutine introduces in the pivit matrix the temporal terms
+      !> WARNING****this is under testing****
+    subroutine get_all_in_mass_matrix(Mdims, Mmat, DIAG_BIGM_CON, LUMP_PIVIT_ON_ALL, LUMP_DIAG_MOM)
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION ( :, :, :,   :, :, :,   : ), intent(in) :: DIAG_BIGM_CON
-        logical, intent(in) :: LUMP_PIVIT_ON_ALL
+        logical, intent(in) :: LUMP_PIVIT_ON_ALL, LUMP_DIAG_MOM
         !Local variables
         integer :: ele, u_jloc, u_iloc, iphase, jphase, idim, jdim, i, j
 
@@ -5682,15 +6285,15 @@ pres_its_taken = its_taken
     END SUBROUTINE ASSEMB_FORCE_CTY
 
 
+    !>@brief: This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the
+    !> inter element coupling for the viscocity discretization.
+    !> NNX_MAT, NNX_MAT2 contain matricies of first derivative times basis function for current element and neightbouring element.
+    !> Similarly NN_MAT, NN_MAT2, contain the element-wise mass matrices.
+    !> Only call this sub if element not next to the boundary...
     SUBROUTINE DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT, NNX_MAT2, NN_MAT, NN_MAT2,  &
         U_SNLOC, U_NLOC, SBUFEN_REVERSED, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
         U_SLOC2LOC, U_OTHER_LOC, U_NLOC_EXT, ON_BOUNDARY )
 
-        ! This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the
-        ! inter element coupling for the viscocity discretization.
-        ! NNX_MAT, NNX_MAT2 contain matricies of first derivative times basis function for current element and neightbouring element.
-        ! Similarly NN_MAT, NN_MAT2, contain the element-wise mass matrices.
-        ! Only call this sub if element not next to the boundary...
 
         INTEGER, intent( in ) :: U_SNLOC, U_NLOC, SBCVNGI, NDIM, U_NLOC_EXT
         LOGICAL, intent( in ) :: ON_BOUNDARY
@@ -5715,7 +6318,6 @@ pres_its_taken = its_taken
         !          INTEGER :: ELE2_LOC_GL_NODS(U_NLOC)
         INTEGER IDIM, U_SILOC, U_ILOC, U_SJLOC, U_JLOC, U_ILOC2, U_JLOC2, I
         !
-        !            print *,'just inside DG_VISC_LIN ON_BOUNDARY:',ON_BOUNDARY
 
 
         NNX_MAT12  = 0.0
@@ -5810,11 +6412,11 @@ pres_its_taken = its_taken
 
 
 
+    !>@brief: This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_UDIFFUSION_VOL
     SUBROUTINE VISCOCITY_TENSOR_LES_CALC(LES_UDIFFUSION, LES_UDIFFUSION_VOL, DUX_ELE_ALL, &
         NDIM,NPHASE, U_NLOC,X_NLOC,TOTELE, X_NONODS, &
         X_ALL, X_NDGLN,  MAT_NONODS, MAT_NLOC, MAT_NDGLN, LES_DISOPT, LES_CS, UDEN, CV_NONODS, CV_NDGLN, &
         U_NDGLN, U_NONODS, U_ALL, DERIV )
-        ! This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_UDIFFUSION_VOL
         IMPLICIT NONE
         REAL, intent( in ) :: LES_CS
         INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, TOTELE, X_NONODS, MAT_NONODS, CV_NONODS, MAT_NLOC, LES_DISOPT, U_NONODS
@@ -5953,10 +6555,10 @@ pres_its_taken = its_taken
 
         contains
 
+          !!>@brief: This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_U_UDIFFUSION_VOL
             SUBROUTINE VISCOCITY_TENSOR_LES_CALC_U( LES_U_UDIFFUSION, LES_U_UDIFFUSION_VOL, Q_SCHEME_ABS_CONT_VOL, &
                 DUX_ELE_ALL, NDIM,NPHASE, U_NLOC,X_NLOC,TOTELE, X_NONODS, &
                 X_ALL, X_NDGLN, LES_DISOPT, CS,  U_NDGLN, U_NONODS, U_ALL)
-                ! This subroutine calculates a tensor of viscocity LES_UDIFFUSION, LES_U_UDIFFUSION_VOL
                 IMPLICIT NONE
                 INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, TOTELE, X_NONODS, LES_DISOPT, U_NONODS
                 REAL, intent( in ) :: CS
@@ -6072,10 +6674,10 @@ pres_its_taken = its_taken
             END SUBROUTINE VISCOCITY_TENSOR_LES_CALC_U
 
 
+            !!>@brief:    This sub calculates the ELEMENT-WISE TENSOR TENS
+            !>     REPRESENTS THE SIZE AND SHAPE OF THE SURROUNDING ELEMENTS.
+            !>     LES_DISOPT=LES option.
             SUBROUTINE ONEELETENS_ALL( LOC_X_ALL, LES_DISOPT, ONE_OVER_H2, TENSXX_ALL, X_NLOC, NDIM, MEAN_UDER_U, NPHASE )
-                !     This sub calculates the ELEMENT-WISE TENSOR TENS
-                !     REPRESENTS THE SIZE AND SHAPE OF THE SURROUNDING ELEMENTS.
-                !     LES_DISOPT=LES option.
                 IMPLICIT NONE
                 INTEGER, intent( in ) ::  X_NLOC, NDIM, NPHASE
                 LOGICAL, intent( in ) ::  ONE_OVER_H2
@@ -6224,14 +6826,14 @@ pres_its_taken = its_taken
             END SUBROUTINE ONEELETENS_ALL
 
             !
+            !!>@brief:This sub performs Jacobi rotations of a symmetric matrix in order to
+            !> find the eigen-vectors V and the eigen values A so
+            !> that AA=V^T D V & D is diagonal.
+            !> It uses the algorithm of Matrix Computations 2nd edition, p196.
             !!sprint_to_do!!!!MOVE TO FORTRAN 90
             SUBROUTINE JACDIA(AA,V,D,N, &
                 ! Working arrays...
                 A)
-                ! This sub performs Jacobi rotations of a symmetric matrix in order to
-                ! find the eigen-vectors V and the eigen values A so
-                ! that AA=V^T D V & D is diagonal.
-                ! It uses the algorithm of Matrix Computations 2nd edition, p196.
                 IMPLICIT NONE
                 REAL TOLER,CONVEG
                 PARAMETER(TOLER=1.E-14,CONVEG=1.E-7)
@@ -6335,10 +6937,10 @@ pres_its_taken = its_taken
         !
         !
         !!sprint_to_do!!!OPTIMIZE, VECTORIZE
+        !!>@brief: This sub performs matrix-matrix multiplication A=R*A.
+        !> PRE-MULTIPLY matrix A by transpose of Rotation matrix
+        !> is realised by passing -SINALF down into SINALF.
         SUBROUTINE JACPRE(SINALF,COSALF,P,Q,A,N)
-            ! This sub performs matrix-matrix multiplication A=R*A.
-            ! PRE-MULTIPLY matrix A by transpose of Rotation matrix
-            ! is realised by passing -SINALF down into SINALF.
             IMPLICIT NONE
             INTEGER N
             REAL SINALF,COSALF,A(N,N)
@@ -6389,29 +6991,33 @@ pres_its_taken = its_taken
 
 
 
+    !>@brief: This subroutine combines the distributed and block diagonal for an element
+    !> into the matrix DGM_PHA.
+    !> For stokes also the diagonal of the matrix is introduced in the mass matrix
  SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
-     FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
-     ! This subroutine combines the distributed and block diagonal for an element
-     ! into the matrix DGM_PHA.
+     FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat)  ! Element connectivity.
      IMPLICIT NONE
-     INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
+     INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
      !
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
      type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
      INTEGER, DIMENSION(: ), intent( in ) :: FINELE
      INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+     type(multi_matrices), intent(inout) :: Mmat
      type( tensor_field ) :: velocity
      type( tensor_field ) :: pressure
+     !Local variables
      INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
      INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
-     INTEGER :: COUNT_ELE,JCOLELE
+     INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
      real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
      integer, dimension(:), pointer :: neighbours
      integer :: nb
      logical :: skip
-     ALLOCATE(LOC_DGM_PHA(NDIM_VEL,NDIM_VEL,NPHASE,NPHASE,U_NLOC,U_NLOC))
+
+     ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
      Loop_Elements20: DO ELE = 1, TOTELE
          if (IsParallel()) then
              if (.not. assemble_ele(pressure,ele)) then
@@ -6445,11 +7051,11 @@ pres_its_taken = its_taken
                  DO U_ILOC=1,U_NLOC
                      DO JPHASE=1,NPHASE
                          DO IPHASE=1,NPHASE
-                             DO JDIM=1,NDIM_VEL
-                                 DO IDIM=1,NDIM_VEL
+                             DO JDIM=1,NDIM
+                                 DO IDIM=1,NDIM
                                      ! New for rapid code ordering of variables...
-                                     I=IDIM + (IPHASE-1)*NDIM_VEL
-                                     J=JDIM + (JPHASE-1)*NDIM_VEL
+                                     I=IDIM + (IPHASE-1)*NDIM
+                                     J=JDIM + (JPHASE-1)*NDIM
                                      GLOBI=(ELE-1)*U_NLOC + U_ILOC
                                      GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
                                      if (.not. node_owned(velocity,globi)) cycle
@@ -6461,6 +7067,7 @@ pres_its_taken = its_taken
                      END DO
                  END DO
              END DO
+
          END DO Between_Elements_And_Boundary20
      END DO Loop_Elements20
 
@@ -6469,13 +7076,13 @@ pres_its_taken = its_taken
      RETURN
  END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST
 
+ !>@brief: This subroutine combines the distributed and block diagonal for an element
+ !> into the matrix DGM_PHA.
  SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
-     FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
-     ! This subroutine combines the distributed and block diagonal for an element
-     ! into the matrix DGM_PHA.
+     FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
      IMPLICIT NONE
-     INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
+     INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
      !
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
@@ -6491,7 +7098,7 @@ pres_its_taken = its_taken
      integer, dimension(:), pointer :: neighbours
      integer :: nb
      logical :: skip
-     ALLOCATE(LOC_DGM_PHA(NDIM_VEL,NDIM_VEL,NPHASE,NPHASE,U_NLOC,U_NLOC))
+     ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
      Loop_Elements20: DO ELE = 1, TOTELE
          if (IsParallel()) then
              if (.not. assemble_ele(pressure,ele)) then
@@ -6514,27 +7121,27 @@ pres_its_taken = its_taken
          Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
              JCOLELE=COLELE(COUNT_ELE)
 
-            IF(JCOLELE==ELE) THEN
-                 ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
-                 LOC_DGM_PHA(:,:,:, :,:,:) = DIAG_BIGM_CON(:,:,:, :,:,:, ELE) + BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
-             ELSE
-                 LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
-             ENDIF
+            ! IF(JCOLELE==ELE) THEN
+            !      ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+            !      LOC_DGM_PHA(1,:,1, :,1,:) = DIAG_BIGM_CON(1,:,1, :,1,:, ELE) + BIGM_CON(1,:,1, :,1,:, COUNT_ELE)
+            !  ELSE
+            !      LOC_DGM_PHA(1,:,1, :,1,:) = BIGM_CON(1,:,1, :,1,:, COUNT_ELE)
+            !  ENDIF
 
             DO U_JLOC=1,U_NLOC
               DO JPHASE=1,NPHASE
-                DO JDIM=1,NDIM_VEL
+                DO JDIM=1,NDIM
                   ! New for rapid code ordering of variables...
-                  J=JDIM + (JPHASE-1)*NDIM_VEL
+                  J=JDIM + (JPHASE-1)*NDIM
                   GLOBI=(ELE-1)*U_NLOC + U_JLOC
                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                  ! IF(JCOLELE==ELE) THEN
-                  !   ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
-                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, ELE) &
-                  !   + BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
-                  ! ELSE
-                  !   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
-                  ! ENDIF
+                  IF(JCOLELE==ELE) THEN
+                    ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+                    LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, ELE) &
+                    + BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
+                  ELSE
+                    LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC) = BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC, COUNT_ELE)
+                  ENDIF
                   if (.not. node_owned(velocity,globi)) cycle
                   call addto(dgm_petsc, J , J , globi , globj , &
                   LOC_DGM_PHA(1,JDIM,1,JPHASE,1,U_JLOC))
@@ -6569,7 +7176,6 @@ pres_its_taken = its_taken
      INTEGER, DIMENSION( U_NONODS + 1), intent( in ) :: FINDC
      INTEGER, DIMENSION( NCOLC), intent( in ) :: COLC
 
-     ! Find COUNT - position in matrix : FINMCY, COLMCY
      IF(STORED_AC_SPAR_PT) THEN
          COUNT=POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE)
      ELSE
@@ -6595,7 +7201,6 @@ pres_its_taken = its_taken
      INTEGER, DIMENSION( U_SNLOC,P_SNLOC,NFACE,TOTELE*IDO_STORE_AC_SPAR_PT ), intent( inout ) :: POSINMAT_C_STORE_SUF_DG
      INTEGER, DIMENSION( U_NONODS + 1), intent( in ) :: FINDC
      INTEGER, DIMENSION( NCOLC), intent( in ) :: COLC
-     ! Find COUNT2 - position in matrix : FINMCY, COLMCY
      IF(STORED_AC_SPAR_PT) THEN
          COUNT=POSINMAT_C_STORE_SUF_DG(U_SILOC,P_SJLOC,IFACE,ELE)
      ELSE
@@ -6612,6 +7217,7 @@ pres_its_taken = its_taken
 
 
 
+ !>@brief: This sub will linearise a p2 field
  subroutine linearise_field( field_in, field_out )
      implicit none
      type( tensor_field ), intent( in ) :: field_in
@@ -6621,7 +7227,6 @@ pres_its_taken = its_taken
      integer :: n, totele, cv_nloc, ncomp, nphase, cv_nonods, ele, cv_iloc, cv_nod
      real, dimension( :, :, : ), allocatable :: field_tmp, field_cv_nod
 
-     ! This sub will linearise a p2 field
 
      field_out = 0.0
 
@@ -6674,10 +7279,12 @@ pres_its_taken = its_taken
  end subroutine linearise_field
 
 
- subroutine Introduce_Cap_press_term(packed_state, Mdims, Mmat, FE_funs, Devfuns, &
+ !>@brief: This subroutine introduces the capillary pressure term in the RHS
+ !> This works for a system considering one single pressure
+ !> Therefore, the capillary pressure is a term introduced as a RHS which affects the ffective velocity
+ subroutine Introduce_Cap_press_term(packed_state, Mdims, Mmat, CapPressure, FE_funs, Devfuns, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
-     !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
      type( state_type ), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
@@ -6691,128 +7298,120 @@ pres_its_taken = its_taken
      integer, dimension(:), intent(in) :: U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC
      real, dimension(:), intent(in) :: sdetwe
      type(multi_dev_shape_funs), intent(inout) :: Devfuns
+     real, dimension(:,:,:), intent(in) :: CapPressure
      !Local parameters
      !!Use a finite element projection of the CapPressure, it can only be false for PnDGPn(DG) elements
-     logical, parameter :: Cap_to_FEM = .true.
+     logical, parameter :: Cap_to_FEM = .false.
      !Use integration by parts to introduce the CapPressure, otherwise it uses the integration by parts twice approach
-     logical, parameter :: Int_by_part_CapPress = .false.
-
+     logical, parameter :: Int_by_part_CapPress = .true.
+     !The combination Cap_to_FEM = .false. and Int_by_part_CapPress = .true. seems better for DCVFEM and the same for CVFEM
      !Local variables
      integer :: iphase, cv_inod, u_siloc, cv_jloc,&
          CV_SJLOC, u_iloc, cv_Xnod
-     real, dimension(:,:), pointer :: CapPressure
      real, pointer, dimension(:, :) :: CV_Bound_Shape_Func
      real, pointer, dimension(:, :) :: CV_Shape_Func
      real, dimension(Mdims%NDIM) :: NMX_ALL
      logical :: DISC_PRES ! discontinuous pressure flag, only perform volumetric integral for the continuous pressure method, otherwise an extra surface intergal is needed
      ! following integration by parts twice which introduces the jump condition see Gomes et al 2016
 
-     call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
-
      !Retrieve derivatives of the shape functions
      call DETNLXR_PLUS_U(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
-        FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
+     FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
 
-    ! discontinuous pressure flag
-    DISC_PRES = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
+     ! discontinuous pressure flag
+     DISC_PRES = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
 
      !Project to FEM
-     if (CAP_to_FEM .and..not. Mmat%CV_pressure) then
-         !Point my pointers to the FEM shape functions
-         CV_Bound_Shape_Func => FE_funs%sbcvfen
-         CV_Shape_Func => FE_funs%cvfen
-     else
-         !Point my shape functions to the Control volume ones
-         CV_Bound_Shape_Func => FE_funs%sbcvn
-         CV_Shape_Func => FE_funs%cvn
-     end if
+     CV_Bound_Shape_Func => FE_funs%sbcvfen
+     CV_Shape_Func => FE_funs%cvfen
 
      !Integration by parts
      if (Int_by_part_CapPress .or. .not. CAP_to_FEM) then
-         if (iface == 1) then!The volumetric term is added just one time
-             !Firstly we add the volumetric integral
-             DO U_ILOC = 1, Mdims%u_nloc
-                 DO CV_JLOC = 1, Mdims%cv_nloc
-                     ! -Integral(FE_funs%cvn CapPressure Grad FE_funs%ufen dV)
-                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                     DO IPHASE = 1, Mdims%nphase
-                         LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                             !(FE_funs%cvn Grad FE_funs%ufen)
-                             + matmul(Devfuns%UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *Devfuns%detwei )&
-                             !CapPressure
-                             * CapPressure(IPHASE, CV_INOD)
-                     END DO
-                 end do
-             end do
-         end if
-         !Performing the surface integral, -Integral(FE_funs%cvn CapPressure ᐁFE_funs%ufen dV)
-         DO U_SILOC = 1, Mdims%u_snloc
-             U_ILOC = U_SLOC2LOC( U_SILOC )
-             DO CV_SJLOC = 1, Mdims%cv_snloc
-                 CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
-                 CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                 NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) &
-                     * CV_Bound_Shape_Func( CV_SJLOC, : ) * SDETWE( : ))
-                 if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-                     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-                 else !If no neighbour then we use the same value.
-                     cv_Xnod = CV_INOD
-                 end if
-                 do iphase = 1, Mdims%nphase
-                     LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                         - NMX_ALL(:) * 0.5*(CapPressure(iphase, CV_INOD)+CapPressure(iphase, cv_Xnod))
-                 end do
-             end do
+       if (iface == 1) then!The volumetric term is added just one time
+         !Firstly we add the volumetric integral
+         DO U_ILOC = 1, Mdims%u_nloc
+           DO CV_JLOC = 1, Mdims%cv_nloc
+             ! -Integral(FE_funs%cvn CapPressure Grad FE_funs%ufen dV)
+             CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+             DO IPHASE = 1, Mdims%nphase
+               LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
+               !(FE_funs%cvn Grad FE_funs%ufen)
+               + matmul(Devfuns%UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *Devfuns%detwei )&
+               !CapPressure
+               * CapPressure(1, IPHASE, CV_INOD)
+             END DO
+           end do
          end do
+       end if
+       !Performing the surface integral, -Integral(FE_funs%cvn CapPressure ᐁFE_funs%ufen dV)
+       DO U_SILOC = 1, Mdims%u_snloc
+         U_ILOC = U_SLOC2LOC( U_SILOC )
+         DO CV_SJLOC = 1, Mdims%cv_snloc
+           CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
+           CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+           NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) &
+           * CV_Bound_Shape_Func( CV_SJLOC, : ) * SDETWE( : ))
+           ! if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
+           !     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
+           ! else !If no neighbour then we use the same value.
+           ! cv_Xnod = CV_INOD
+           ! end if
+           do iphase = 1, Mdims%nphase
+             LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
+             - NMX_ALL(:) * CapPressure(1, iphase, CV_INOD)
+             !- NMX_ALL(:) * 0.5*(CapPressure(iphase, CV_INOD)+CapPressure(iphase, cv_Xnod))
+           end do
+         end do
+       end do
      else !Volumetric integration only (requires the CapPressure to be in FEM)
-         if (iface ==1) then!The volumetric term is added just one time
-             DO U_ILOC = 1, Mdims%u_nloc
-                 DO CV_JLOC = 1, Mdims%cv_nloc
-                     ! Integral(Grad FE_funs%cvn CapPressure FE_funs%ufen dV)
-                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                     DO IPHASE = 1, Mdims%nphase
-                         LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                             !(Grad FE_funs%cvn FE_funs%ufen)
-                             - matmul(Devfuns%CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *Devfuns%DETWEI )&
-                             !CapPressure
-                             * CapPressure(IPHASE, CV_INOD)
-                     END DO
-                 end do
+       if (iface ==1) then!The volumetric term is added just one time
+         DO U_ILOC = 1, Mdims%u_nloc
+           DO CV_JLOC = 1, Mdims%cv_nloc
+             ! Integral(Grad FE_funs%cvn CapPressure FE_funs%ufen dV)
+             CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+             DO IPHASE = 1, Mdims%nphase
+               LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
+               !(Grad FE_funs%cvn FE_funs%ufen)
+               - matmul(Devfuns%CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *Devfuns%DETWEI )&
+               !CapPressure
+               * CapPressure(1, IPHASE, CV_INOD)
+             END DO
+           end do
+         end do
+       end if
+       !Get neighbouring nodes!SPRINT_TO_DO Use beta instead of the 0.5 for this. Also it seems that dPc/dS grad S is more stable
+       !Also if not dicsontinuous formulation do not perform this operation
+       if (DISC_PRES) then
+         !Get neighbouring nodes
+         !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
+         DO U_SILOC = 1, Mdims%u_snloc
+           U_ILOC = U_SLOC2LOC( U_SILOC )
+           DO CV_SJLOC = 1, Mdims%cv_snloc
+             CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
+             CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+             NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
+             if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
+               cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
+             else !If no neighbour then we use the same value.
+               cv_Xnod = CV_INOD
+             end if
+             do iphase = 1, Mdims%nphase
+               LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
+               + NMX_ALL(:) * 0.5* (CapPressure(1, iphase, CV_INOD) - CapPressure(1, iphase, cv_Xnod))
              end do
-         end if
-	 !Get neighbouring nodes!SPRINT_TO_DO Use beta instead of the 0.5 for this. Also it seems that dPc/dS grad S is more stable
-         !Also if not dicsontinuous formulation do not perform this operation
-         if (DISC_PRES) then
-	   !Get neighbouring nodes
-	   !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
-	   DO U_SILOC = 1, Mdims%u_snloc
-	       U_ILOC = U_SLOC2LOC( U_SILOC )
-	       DO CV_SJLOC = 1, Mdims%cv_snloc
-	           CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
-	           CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-	           NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
-	           if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-	               cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-	           else !If no neighbour then we use the same value.
-	               cv_Xnod = CV_INOD
-	           end if
-	           do iphase = 1, Mdims%nphase
-	               LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-	                   + NMX_ALL(:) * 0.5* (CapPressure(iphase, CV_INOD) - CapPressure(iphase, cv_Xnod))
-	           end do
-	       end do
-	   end do
-         end if
+           end do
+         end do
+       end if
      end if
 
  end subroutine Introduce_Cap_press_term
 
 
 
+ !!>@brief: This subroutine calculates the overrelaxation parameter (Vanishing relaxation) we introduce in the saturation equation
+ !> Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
+ !> For more information read: doi.org/10.1016/j.cma.2019.07.004
  subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, for_transport)
-     !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
-     !It is the derivative of the capillary pressure for each node.
-     !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
      implicit none
      type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent(inout) :: packed_state
@@ -6824,7 +7423,7 @@ pres_its_taken = its_taken
      !Local variables
      real, save :: domain_length = -1
      integer, save :: Cap_pressure_relevant = -1
-     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
+     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc, idim
      real :: Pe_aux, parl_max, parl_min, Pe_max, Pe_min
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe
@@ -6836,8 +7435,15 @@ pres_its_taken = its_taken
 
      !Extract variables from packed_state
      call get_var_from_packed_state(packed_state,FEPressure = P,&
-         PhaseVolumeFraction = satura, immobile_fraction = immobile_fraction, PressureCoordinate = X_ALL)
+         PhaseVolumeFraction = satura, PressureCoordinate = X_ALL)
 
+     if (is_porous_media) then
+       call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
+     else
+       !For non_porous we populate a field with values of zero. (not proud of this, needs to be updated)
+       allocate(immobile_fraction(Mdims%nphase,Mdims%totele))
+       immobile_fraction = 0.0
+     end if
      !Initiate local variables
      nphase = size(satura,1)
      cv_nonods = size(satura,2)
@@ -6909,13 +7515,16 @@ pres_its_taken = its_taken
 
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) then
-                     parl_max = maxval(X_ALL)
-                     parl_min = minval(X_ALL)
+                   do idim = 1, Mdims%ndim
+                    !Apples with apples! Check each dimension individually
+                     parl_max = maxval(X_ALL(idim,:))
+                     parl_min = minval(X_ALL(idim,:))
                      if (IsParallel()) then
                          call allmax(parl_max)
                          call allmin(parl_min)
                      end if
-                     domain_length = abs(parl_max-parl_min)
+                     domain_length = max(domain_length, abs(parl_max-parl_min))
+                   end do
                  end if
                  Pe_aux = abs(Pe_aux)
                   !Obtain an approximation of the capillary number to obtain an entry pressure
@@ -6991,6 +7600,8 @@ pres_its_taken = its_taken
      ! end if
 
 
+     if (.not. is_porous_media) deallocate(immobile_fraction)
+
      !Deallocate
      if (Artificial_Pe) then
          deallocate(Pe, Cap_exp)
@@ -6999,6 +7610,9 @@ pres_its_taken = its_taken
 
  end subroutine getOverrelaxation_parameter
 
+!>@brief: Instead of including the gravity in the RHS normally, here a system based on a Laplacian is created and solved
+!> that accounts for the gravity effect in the system. Next, this is introduced as a RHS in the momemtum equation
+!> This allows for higher precision for the gravity effect.
 subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state, nphase, u_absorbin )
 
       implicit none
@@ -7431,11 +8045,11 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine high_order_pressure_solve
 
 
+    !>@brief: Determine if we have an oscillation in the normal direction...
+    !> dg_oscilat_detect=1.0- CENTRAL SCHEME.
+    !> dg_oscilat_detect=0.0- UPWIND SCHEME.
     REAL FUNCTION dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
     N_DOT_DU, N_DOT_DU2, SINCOME, MASS_ELE, MASS_ELE2 )
-        ! Determine if we have an oscillation in the normal direction...
-        ! dg_oscilat_detect=1.0- CENTRAL SCHEME.
-        ! dg_oscilat_detect=0.0- UPWIND SCHEME.
         real SNDOTQ_KEEP, SNDOTQ2_KEEP, N_DOT_DU, N_DOT_DU2, SINCOME
         REAL MASS_ELE, MASS_ELE2
         ! If cons_oscillation then apply upwinding as often as possible...
@@ -7492,6 +8106,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         return
     end function dg_oscilat_detect
 
+    !>@brief: This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
+    !> based on a non-linear method and a non-oscillating scheme.
+    !> This implements the stress and tensor form of diffusion and calculates a jump conidition.
+    !> which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+    !> The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+    !> look at the manual DG treatment of viscocity.
     SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( Mdims, DIFF_COEF_DIVDX, &
         DIFF_COEFOLD_DIVDX, STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
         SBUFEN_REVERSED,SBCVFEN_REVERSED,SBCVNGI, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
@@ -7501,12 +8121,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
         ELE, ELE2, SNORMXN_ALL, &
         SLOC_DUX_ELE_ALL, SLOC2_DUX_ELE_ALL,   SLOC_DUOLDX_ELE_ALL, SLOC2_DUOLDX_ELE_ALL,  &
         SELE, WIC_U_BC, WIC_U_BC_DIRICHLET, SIMPLE_DIFF_CALC, DIFF_MIN_FRAC, DIFF_MAX_FRAC  )
-        ! This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
-        ! based on a non-linear method and a non-oscillating scheme.
-        ! This implements the stress and tensor form of diffusion and calculates a jump conidition.
-        ! which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-        ! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
-        ! look at the manual DG treatment of viscocity.
         IMPLICIT NONE
         type(multi_dimensions), intent(in) :: Mdims
         LOGICAL, intent( in ) :: STRESS_FORM, STRESS_FORM_STAB, SIMPLE_DIFF_CALC
@@ -7717,16 +8331,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
         contains
 
+          !!>@brief: Calculate DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD
+          !> This implements the stress and tensor form of diffusion and calculates a jump conidition.
+          !> DIFF_STAND_DIVDX_U is the minimal amount of diffusion.
+          ! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+          ! look at the manual DG treatment of viscocity.
             SUBROUTINE FOR_TENS_DERIVS_NDOTS( DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD,  &
                 DIFF_GI_ADDED, SLOC_DUX_ELE_ALL, SLOC_DUOLDX_ELE_ALL, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, &
                 NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN_REVERSED, SBCVFEN_REVERSED, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
                 STRESS_FORM, STRESS_FORM_STAB )
 
-                ! Calculate DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD
-                ! This implements the stress and tensor form of diffusion and calculates a jump conidition.
-                ! DIFF_STAND_DIVDX_U is the minimal amount of diffusion.
-                ! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
-                ! look at the manual DG treatment of viscocity.
                 IMPLICIT NONE
                 INTEGER, intent( in )  :: NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI
                 REAL, intent( in )  :: HDC, ZERO_OR_TWO_THIRDS
@@ -7921,8 +8535,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
     END SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
-    subroutine get_porous_Mass_matrix(ELE, Mdims, DevFuns, Mmat)
-      !A diagonal mass matrix is obtained using the direct lump process
+    !>@brief:A diagonal mass matrix is obtained using the direct lump process
+    subroutine get_diagonal_mass_matrix(ELE, Mdims, DevFuns, Mmat)
         implicit none
         integer, intent(in) :: ELE
         type(multi_dimensions), intent(in) :: Mdims
@@ -7986,7 +8600,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 END DO
         end select
 
-
         !If pressure boundary element, then we homogenize the velocity in the element
         if (lump_vol_factor<-1d24) then
             call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', vel_degree )
@@ -8019,7 +8632,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
             end do
         end do
 
-    end subroutine get_porous_Mass_matrix
+    end subroutine get_diagonal_mass_matrix
+
 
 
 
