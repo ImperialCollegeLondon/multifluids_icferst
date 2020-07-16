@@ -1729,7 +1729,7 @@ If positive, the input value is the entry pressure.
 
 If negative, the input value is Peclet number desired.
 
-&lt;b&gt;Recommended value for Saturation =&gt; -1e2&lt;/b&gt;
+&lt;b&gt;Recommended value for Saturation =&gt; -3e2&lt;/b&gt;
 
 Tip: If running with temperature and single phase disable this setting it to 0.</a:documentation>
                   <ref name="real"/>
