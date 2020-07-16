@@ -3040,7 +3040,7 @@ end if
                            ! ***********SUBROUTINE DETERMINE_OTHER_SIDE_FACE - END************
                         END IF
                         !Calculate all the necessary stuff and introduce the CapPressure in the RHS
-                        call Introduce_Cap_press_term(&
+                        call Introduce_Grad_RHS_field_term (&
                             packed_state, Mdims, Mmat, CapPressure%val, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
                             ndgln%cv, ndgln%x, ele2, iface,&
                             sdetwe, SNORMXN_ALL, FE_funs%u_sloclist( IFACE, : ), FE_funs%cv_sloclist( IFACE, : ), MAT_OTHER_LOC )
@@ -5073,7 +5073,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     ENDIF
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
-                if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
+                if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Grad_RHS_field_term (&
                     packed_state, Mdims, Mmat, CapPressure%val, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
                     ndgln%cv, ndgln%x, ele2, iface,&
                     sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
@@ -7279,10 +7279,10 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  end subroutine linearise_field
 
 
- !>@brief: This subroutine introduces the capillary pressure term in the RHS
- !> This works for a system considering one single pressure
- !> Therefore, the capillary pressure is a term introduced as a RHS which affects the ffective velocity
- subroutine Introduce_Cap_press_term(packed_state, Mdims, Mmat, CapPressure, FE_funs, Devfuns, &
+ !>@brief: This subroutine performs and introduces the gradient of a RHS field (Capillary pressure for example)
+ !> for the momentum equation. The inout field is RHS_field
+ !> For capillary pressure: The capillary pressure is a term introduced as a RHS which affects the effective velocity
+ subroutine Introduce_Grad_RHS_field_term (packed_state, Mdims, Mmat, RHS_field, FE_funs, Devfuns, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
      Implicit none
@@ -7298,11 +7298,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      integer, dimension(:), intent(in) :: U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC
      real, dimension(:), intent(in) :: sdetwe
      type(multi_dev_shape_funs), intent(inout) :: Devfuns
-     real, dimension(:,:,:), intent(in) :: CapPressure
+     real, dimension(:,:,:), intent(in) :: RHS_field
      !Local parameters
-     !!Use a finite element projection of the CapPressure, it can only be false for PnDGPn(DG) elements
+     !!Use a finite element projection of the RHS_field, it can only be false for PnDGPn(DG) elements
      logical, parameter :: Cap_to_FEM = .false.
-     !Use integration by parts to introduce the CapPressure, otherwise it uses the integration by parts twice approach
+     !Use integration by parts to introduce the RHS_field, otherwise it uses the integration by parts twice approach
      logical, parameter :: Int_by_part_CapPress = .true.
      !The combination Cap_to_FEM = .false. and Int_by_part_CapPress = .true. seems better for DCVFEM and the same for CVFEM
      !Local variables
@@ -7331,19 +7331,19 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
          !Firstly we add the volumetric integral
          DO U_ILOC = 1, Mdims%u_nloc
            DO CV_JLOC = 1, Mdims%cv_nloc
-             ! -Integral(FE_funs%cvn CapPressure Grad FE_funs%ufen dV)
+             ! -Integral(FE_funs%cvn RHS_field Grad FE_funs%ufen dV)
              CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
              DO IPHASE = 1, Mdims%nphase
                LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
                !(FE_funs%cvn Grad FE_funs%ufen)
                + matmul(Devfuns%UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *Devfuns%detwei )&
-               !CapPressure
-               * CapPressure(1, IPHASE, CV_INOD)
+               !RHS_field
+               * RHS_field(1, IPHASE, CV_INOD)
              END DO
            end do
          end do
        end if
-       !Performing the surface integral, -Integral(FE_funs%cvn CapPressure ᐁFE_funs%ufen dV)
+       !Performing the surface integral, -Integral(FE_funs%cvn RHS_field ᐁFE_funs%ufen dV)
        DO U_SILOC = 1, Mdims%u_snloc
          U_ILOC = U_SLOC2LOC( U_SILOC )
          DO CV_SJLOC = 1, Mdims%cv_snloc
@@ -7358,22 +7358,22 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
            end if
            do iphase = 1, Mdims%nphase
              LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-             - NMX_ALL(:) * 0.5*(CapPressure(1, iphase, CV_INOD)+CapPressure(1, iphase, cv_Xnod))
+             - NMX_ALL(:) * 0.5*(RHS_field(1, iphase, CV_INOD)+RHS_field(1, iphase, cv_Xnod))
            end do
          end do
        end do
-     else !Volumetric integration only (requires the CapPressure to be in FEM)
+     else !Volumetric integration only (requires the RHS_field to be in FEM)
        if (iface ==1) then!The volumetric term is added just one time
          DO U_ILOC = 1, Mdims%u_nloc
            DO CV_JLOC = 1, Mdims%cv_nloc
-             ! Integral(Grad FE_funs%cvn CapPressure FE_funs%ufen dV)
+             ! Integral(Grad FE_funs%cvn RHS_field FE_funs%ufen dV)
              CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
              DO IPHASE = 1, Mdims%nphase
                LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
                !(Grad FE_funs%cvn FE_funs%ufen)
                - matmul(Devfuns%CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *Devfuns%DETWEI )&
-               !CapPressure
-               * CapPressure(1, IPHASE, CV_INOD)
+               !RHS_field
+               * RHS_field(1, IPHASE, CV_INOD)
              END DO
            end do
          end do
@@ -7382,7 +7382,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
        !Also if not dicsontinuous formulation do not perform this operation
        if (DISC_PRES) then
          !Get neighbouring nodes
-         !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
+         !Performing the surface integral, Integral(FE_funs%cvn (Average RHS_field) ᐁFE_funs%ufen dV)
          DO U_SILOC = 1, Mdims%u_snloc
            U_ILOC = U_SLOC2LOC( U_SILOC )
            DO CV_SJLOC = 1, Mdims%cv_snloc
@@ -7396,14 +7396,14 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              end if
              do iphase = 1, Mdims%nphase
                LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-               + NMX_ALL(:) * 0.5* (CapPressure(1, iphase, CV_INOD) - CapPressure(1, iphase, cv_Xnod))
+               + NMX_ALL(:) * 0.5* (RHS_field(1, iphase, CV_INOD) - RHS_field(1, iphase, cv_Xnod))
              end do
            end do
          end do
        end if
      end if
 
- end subroutine Introduce_Cap_press_term
+ end subroutine Introduce_Grad_RHS_field_term
 
 
 
