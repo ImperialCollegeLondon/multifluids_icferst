@@ -7351,15 +7351,14 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
            CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
            NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) &
            * CV_Bound_Shape_Func( CV_SJLOC, : ) * SDETWE( : ))
-           ! if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-           !     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
-           ! else !If no neighbour then we use the same value.
-           ! cv_Xnod = CV_INOD
-           ! end if
+           if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
+             cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
+           else !If no neighbour then we use the same value.
+             cv_Xnod = CV_INOD
+           end if
            do iphase = 1, Mdims%nphase
              LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
-             - NMX_ALL(:) * CapPressure(1, iphase, CV_INOD)
-             !- NMX_ALL(:) * 0.5*(CapPressure(iphase, CV_INOD)+CapPressure(iphase, cv_Xnod))
+             - NMX_ALL(:) * 0.5*(CapPressure(1, iphase, CV_INOD)+CapPressure(1, iphase, cv_Xnod))
            end do
          end do
        end do
