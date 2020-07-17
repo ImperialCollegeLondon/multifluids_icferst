@@ -458,8 +458,6 @@ contains
           REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
           !Variables for Enthalpy
           logical :: asssembling_enthalpy = .false.
-          real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
-          real, dimension(:,:), allocatable :: ENTH_RHS_DIFFUSION
           !Logical to identify if we are assembling for enthalpy, which requires an special RHS
           asssembling_enthalpy = present(Latent_heat)
 
@@ -746,22 +744,6 @@ contains
                   end do
               end do
           ENDIF
-
-          !Here we prepare the diffusion term for the RHS of the enthalpy equation
-          !TODO: Maybe this is not needed and TDIFFUSION can be directly used
-          if (asssembling_enthalpy) then
-            allocate(ENTH_RHS_DIFF_COEF_DIVDX (final_phase), ENTH_RHS_DIFFUSION (final_phase, Mdims%mat_nonods))
-            do ele = 1, Mdims%totele
-                do CV_ILOC = 1, Mdims%cv_nloc
-                    CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    do iphase = 1, final_phase
-                      ENTH_RHS_DIFFUSION(iphase, MAT_NODI) = &
-                          TDIFFUSION(MAT_NODI, 1, 1, iphase)
-                    end do
-                end do
-            end do
-          end if
           ndotq = 0. ! ;         ndotqold = 0.
           ! variables for get_int_tden********************
 
@@ -1463,16 +1445,6 @@ contains
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
                               ! Pack ndotq information:
-                              if (asssembling_enthalpy) then
-                                IF(SELE == 0) THEN
-                                  !Average of the coefficient in shared CVs between elements
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.5* (ENTH_RHS_DIFFUSION( :, MAT_NODJ ) + ENTH_RHS_DIFFUSION( :, MAT_NODI )) /HDC
-                                ELSE
-                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.0
-                                ENDIF
-                              end if
-
-                              ! Pack ndotq information:
                               call PACK_LOC_ALL( F_INCOME, INCOME, &
                                   INCOMEOLD, INCOME, INCOMEOLD, & !Tracer, density and T2
                                   INCOME, INCOMEOLD, IGOT_T_PACK, use_volume_frac_T2, final_phase )
@@ -1746,16 +1718,16 @@ contains
                                       if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODI)*SdevFuns%DETWEI(GI) &
+                                            Latent_heat * LIMD(1) * SdevFuns%DETWEI(GI) &!density%val(1, 1, CV_NODI)*
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
+                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
                                         !Advection term solid
                                             +  (1. + LIMT2(2)) * NDOTQNEW(1) * LOC_T2_I(1) )
                                         !Liquid phase
                                         LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) &
+                                            Latent_heat * LIMD(2)*SdevFuns%DETWEI(GI) &!density%val(1, 2, CV_NODI)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
+                                             * ( -DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
                                         !Advection term fluid
                                             +   NDOTQNEW(2) * LOC_T2_I(2)**2. )
                                       end if
@@ -1781,16 +1753,16 @@ contains
                                       if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODJ)*SdevFuns%DETWEI(GI) &
+                                            Latent_heat * LIMD(1)*SdevFuns%DETWEI(GI) &!density%val(1, 1, CV_NODJ)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
+                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
                                         !Advection term solid
                                             +  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODJ)*SdevFuns%DETWEI(GI) &
+                                            Latent_heat * LIMD(2) *SdevFuns%DETWEI(GI) &!density%val(1, 2, CV_NODJ)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
+                                             * ( -DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
                                         !Advection term fluid
                                             +   NDOTQNEW(2) * LOC_T2_J(2)**2. )
                                       end if
@@ -2033,7 +2005,6 @@ contains
           if (VAD_activated) deallocate(CAP_DIFFUSION)
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
-          if (asssembling_enthalpy) deallocate(ENTH_RHS_DIFFUSION, ENTH_RHS_DIFF_COEF_DIVDX)
 
           RETURN
       contains
