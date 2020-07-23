@@ -1757,14 +1757,14 @@ contains
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              * ( -DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
                                         !Advection term solid
-                                            +  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
+                                            -  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
                                             Latent_heat * LIMD(2) *SdevFuns%DETWEI(GI) &!density%val(1, 2, CV_NODJ)
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              * ( -DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
                                         !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_J(2)**2. )
+                                            -   NDOTQNEW(2) * LOC_T2_J(2)**2. )
                                       end if
                                   endif
                                   IF ( GET_GTHETA ) THEN

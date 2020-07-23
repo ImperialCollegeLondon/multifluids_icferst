@@ -675,8 +675,6 @@ contains
                   thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
                   Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
 
-                  !Here we  Calculate melt fraction from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   ! ! Update the temperature field
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   !Recalculate densities
@@ -716,6 +714,9 @@ contains
                   tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
                   allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
                   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
+
+                  !Here we  Calculate melt fraction from phase diagram
+                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   ! ! Update the composition
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term
