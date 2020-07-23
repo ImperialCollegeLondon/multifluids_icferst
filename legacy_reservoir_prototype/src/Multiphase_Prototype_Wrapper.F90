@@ -744,7 +744,8 @@ contains
           end if
         end do
 
-        if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
+        if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .or. &
+            have_option("/porous_media/Self_Potential")) then!For the self potential we solve a Laplacian equation as well so we re-use the sparsity
           !Introduce the HydrostaticPressure mesh, quadratic and continuous
           option_path = "/geometry/mesh::HydrostaticPressure/"
           call add_option(trim(option_path)//"from_mesh", stat=stat)
@@ -755,7 +756,7 @@ contains
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
           call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', k )
-          if (k == 0) then !For P0DG we use a hydrostatic pressure solver of order one. sprint_to_do => this is because it is unfinished but I am not sure if it is worth it
+          if (k == 0) then !For P0DG we use a hydrostatic pressure solver of order one.
             call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
           else
             call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)

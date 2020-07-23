@@ -8634,6 +8634,148 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine get_diagonal_mass_matrix
 
 
+    !>@brief: In this method we assemble and solve the Laplacia system using at least P1 elements
+    subroutine generate_and_solve_Self_Potential_system( Mdims, ndgln, state, packed_state )
+          implicit none
+
+          type(multi_dimensions), intent( in ) :: Mdims
+          type( state_type ), dimension( : ), intent( inout ) :: state
+          type( state_type ), intent( inout ) :: packed_state
+          type(multi_ndgln), intent(in) :: ndgln
+          ! local variables...
+          integer :: ph_nloc, ph_snloc, stat ,ele, i,&
+                    ph_ele_type, cv_iloc, cv_jloc, cv_inod, cv_jnod, idim, iphase
+          type( vector_field ), pointer :: x
+          type( mesh_type ), pointer :: CVmesh
+          real, dimension( : ), allocatable, target :: detwei, ra
+          real :: volume
+          real, dimension(:,:,:), allocatable :: phfenx_all, ufenx_all
+          real :: nxnx, rhs_conc
+          type( scalar_field ) :: rhs, ph_sol
+          type( petsc_csr_matrix ) :: matrix
+          type( csr_sparsity ), pointer :: sparsity
+          type( multi_GI_dimensions ) :: phGIdims
+          type( multi_shape_funs ) :: ph_funs
+          character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+          !Porous fields and fields for the RHS
+          logical :: enabled_FluidPotential, enabled_SoluteMassFraction, enabled_FluidTemperature
+          type(tensor_field), pointer :: SoluteMassFraction, Temperature, FluidPotential, Rock_conductivity, Coupling_temp, Coupling_conc, Coupling_pot
+
+          !Retrieve fields
+          ! Rock_conductivity => extract_scalar_field(state(1), "Rock_Conductivity")
+
+          SoluteMassFraction=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
+          enabled_SoluteMassFraction = (stat == 0)
+          ! if (enabled_SoluteMassFraction) Coupling_conc => extract_scalar_field(state(1), "Coupling_concentration")
+
+          Temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
+          enabled_FluidTemperature = (stat == 0)
+          ! if (enabled_FluidTemperature) Coupling_temp => extract_scalar_field(state(1), "Coupling_temperature")
+
+          FluidPotential=>extract_tensor_field(packed_state,"PackedFluidPotential", stat)
+          enabled_FluidPotential = (stat == 0)
+          ! if (enabled_FluidPotential) Coupling_pot => extract_scalar_field(state(1), "Coupling_fluid_potential")
+
+          !Solver options, if specified
+          solver_option_path = "/solver_options/Linear_solver"
+          if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver')) then
+            solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver'
+          end if
+
+          ! SP Solver elements
+          call get_option("/geometry/mesh::HydrostaticPressure/from_mesh/mesh_shape/polynomial_degree", i)
+          if ( i == 1) then
+            ! Same degree as the CV mesh!
+            if ( Mdims%ndim == 2 ) then
+               ph_ele_type = 3; ph_nloc = 3 ; ph_snloc = 3
+            else
+               ph_ele_type = 7; ph_nloc = 4 ; ph_snloc = 4
+            end if
+          else
+            if ( Mdims%ndim == 2 ) then
+              ph_ele_type = 4; ph_nloc = 6 ; ph_snloc = 3
+            else
+              ph_ele_type = 8; ph_nloc = 10 ; ph_snloc = 6
+            end if
+          end if
+
+          call retrieve_ngi( phGIdims, Mdims, ph_ele_type, quad_over_whole_ele = .true. )
+          call allocate_multi_shape_funs( ph_funs, Mdims, phGIdims )
+          call cv_fem_shape_funs( ph_funs, Mdims, phGIdims, ph_ele_type, quad_over_whole_ele = .true. )
+
+          x => extract_vector_field( packed_state, "PressureCoordinate" )
+          CVmesh => extract_mesh( state( 1 ), "PressureMesh" )
+          allocate(phfenx_all(Mdims%ndim, size(ph_funs%cvfenlx_all,2), phGIdims%cv_ngi))
+          allocate(ufenx_all(Mdims%ndim, size(ph_funs%ufenlx_all,2) ,phGIdims%cv_ngi))
+          allocate(detwei(phGIdims%cv_ngi)); allocate(ra(phGIdims%cv_ngi))
+
+          sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
+          call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
+          call allocate( rhs, CVmesh, "rhs" ); call zero ( rhs )
+          call allocate( ph_sol, CVmesh, "ph_sol" ); call zero( ph_sol )
+
+          do  ele = 1, Mdims%totele
+            ! calculate detwei,ra,nx,ny,nz for element ele
+            call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
+            ndgln%x, Mdims%totele, Mdims%x_nonods, Mdims%x_nloc, ph_nloc, phGIdims%cv_ngi, &
+            ph_funs%cvfen, ph_funs%cvfenlx_all(1,:,:), ph_funs%cvfenlx_all(2,:,:), ph_funs%cvfenlx_all(3,:,:), &
+            ph_funs%cvweight, detwei, ra, volume, Mdims%ndim == 1, Mdims%ndim == 3, .false., phfenx_all, &
+            Mdims%u_nloc, ph_funs%ufenlx_all(1,:,:), ph_funs%ufenlx_all(2,:,:), ph_funs%ufenlx_all(3,:,:), &
+            ufenx_all)
+
+            ! form the system
+            do cv_iloc = 1, Mdims%cv_nloc
+              cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+              do cv_jloc = 1, Mdims%cv_nloc
+                cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+                nxnx = 0.0
+                do iphase = 1, Mdims%n_in_pres
+                  do idim = 1, Mdims%ndim!Laplacian
+                    nxnx = nxnx + sum( phfenx_all( idim, cv_iloc, : ) * Rock_conductivity%val(1, iphase, cv_inod) &
+                    * phfenx_all( idim, cv_jloc, : ) * detwei )
+                  end do
+                end do
+                call addto( matrix, 1, 1, cv_inod, cv_jnod, nxnx)
+              end do
+
+!ALSO WILL NEED TO ADD THE INTERFACE STUFF AS THE PARAMETERS ARE BASED ON SATURATION?
+
+              !RHS
+              rhs_conc = 0.0
+              do cv_jloc = 1, Mdims%cv_nloc
+                cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+                do iphase = 1, Mdims%n_in_pres
+                  do idim = 1, Mdims%ndim!Laplacian (DOUBLE CHECK HAT FOR THE RHS THIS IS DOING WHAT I WANT IT TO DO)
+                    if (enabled_SoluteMassFraction) then!ALSO THE COUPLING TERMS, MAY NEED TO USE A MODIFIED HARMONIC AVERAGE...
+                      rhs_conc = rhs_conc + sum( phfenx_all( idim, cv_iloc, : ) * Coupling_conc%val(1, iphase, cv_inod)  * &
+                      phfenx_all( idim, cv_jloc, : ) * SoluteMassFraction%val(1, iphase, cv_jnod) * detwei )
+                    end if
+                  end do
+                end do
+              end do
+              call addto( rhs, cv_inod, - rhs_conc )
+            end do
+          end do
+
+          !Add remove null_space if not bcs specified for the field since we always have natural BCs
+          call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
+          call zero(ph_sol) !; call zero_non_owned(rhs)
+          call petsc_solve( ph_sol, matrix, rhs, option_path = trim(solver_option_path) )
+
+          ! call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, iphase)
+          ! read*
+          !Remove remove_null_space
+          call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
+          if (IsParallel()) call halo_update(ph_sol)
+
+          ! deallocate
+          call deallocate_multi_shape_funs( ph_funs )
+          call deallocate( rhs )
+          call deallocate( ph_sol )
+          call deallocate( matrix )
+          deallocate( phfenx_all, ufenx_all, detwei, ra )
+          return
+        end subroutine generate_and_solve_Self_Potential_system
 
 
  end module multiphase_1D_engine
