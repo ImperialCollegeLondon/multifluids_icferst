@@ -600,7 +600,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ! Phase diagram coefficents
            type(magma_phase_diagram) :: magma_phase_coefficients
            logical :: assemble_collapsed_to_one_phase
-           logical :: boussinesq
+
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
            else
@@ -642,16 +642,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !Since we solve for enthalpy the density and CP are included within the enthalpy, this terms are only required for the RHS  and the diffusion terms
            !In order to solve the enthalpy equation we make the
            !a) density in the equation 1
-           boussinesq =  have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
-           if (boussinesq) then
-               den_all = 1
-               denold_all =1
-           else
-              den_all2 => extract_tensor_field( packed_state, "PackedDensity" )
-              denold_all2 => extract_tensor_field( packed_state, "PackedOldDensity" )
-              den_all    = den_all2 % val ( 1, :, : )
-              denold_all = denold_all2 % val ( 1, :, : )
-           endif
+           den_all    = 1.0; denold_all = 1.0
            !b)The diffusivity term to include rho and Cp
            TDIFFUSION=0.0
            !Obtain diffusion coefficient for temperature
@@ -659,6 +650,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR SALT
            !OR WE NEED A PROGNOSTIC TEMPERATURE FIELD, WHICH IS "FINE" BUT STRANGE FOR THE USER
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, divide_by_rho_CP = .true.)
+           print *, TDIFFUSION(133,1,1,1)
            !WE NEED SOMETHING SPECIAL FOR THIS AND LATENTHEAT*RHO IF WE HAVE COMPONENTS!
            ! call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TODO: REMOVE SUBROUTINE
            !SOMETHING LIKE THIS, OR THIS FOR COMPOSITIONAL
