@@ -124,6 +124,7 @@ contains
         if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant')) then
           call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
         end if
+
         do icomp = 1, ncomp
            do iphase = 1, nphase
               sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
@@ -247,7 +248,7 @@ contains
            end if
         end do ! iphase
 
-        boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
+        ! boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         !if ( boussinesq ) field2 % val = 1.0
         deallocate( Rho, dRhodP, Component_l)
         if (allocated(drhodp_porous)) deallocate(drhodp_porous)
@@ -1490,7 +1491,9 @@ contains
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
+      logical :: boussinesq
 
+      boussinesq =  is_magma ! temperol setting
       ScalarAdvectionField_Diffusion = 0.0
       if ( Mdims%ncomp > 1 ) then
         do icomp = 1, Mdims%ncomp
@@ -1667,22 +1670,39 @@ contains
       end do
 
       !If we want to normlise the equation by rho CP we can return the diffusion coefficient divided by rho Cp
+
       if (present_and_true(divide_by_rho_CP)) then
-        tfield => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
-        do iphase = 1, Mdims%nphase
-          do ele = 1, Mdims%totele
-            do iloc = 1, Mdims%mat_nloc
-              mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
-              cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
-              do idim = 1, Mdims%ndim
-                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
-                ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )/tfield%val(1, iphase, cv_inod)
+        if (boussinesq) then
+          do iphase = 1, Mdims%nphase
+            sfield=>extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
+            do ele = 1, Mdims%totele
+              do iloc = 1, Mdims%mat_nloc
+                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                cv_inod=min(size(sfield%val), cv_inod)
+                do idim = 1, Mdims%ndim
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )/sfield%val(cv_inod)
+                end do
               end do
             end do
           end do
-        end do
+      else
+          tfield => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
+          do iphase = 1, Mdims%nphase
+            do ele = 1, Mdims%totele
+              do iloc = 1, Mdims%mat_nloc
+                mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
+                do idim = 1, Mdims%ndim
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )/tfield%val(1, iphase, cv_inod)
+                end do
+              end do
+            end do
+          end do
+        end if
       end if
-
       return
     end subroutine calculate_diffusivity
 
