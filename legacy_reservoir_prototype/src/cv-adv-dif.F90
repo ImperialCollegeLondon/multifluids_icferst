@@ -1718,18 +1718,18 @@ contains
                                       if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
-                                            Latent_heat * SdevFuns%DETWEI(GI) &!density%val(1, 1, CV_NODI)*
+                                            Latent_heat * density%val(1, 1, CV_NODI) * SdevFuns%DETWEI(GI) &!
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_DEN_J(1) * LOC_T2_J(2)*LOC_T2_J(1) - LOC_DEN_I(1) * LOC_T2_I(2)*LOC_T2_I(1))&
+                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
                                         !Advection term solid
                                             +  (1. + LIMT2(2)) * NDOTQNEW(1) * LOC_T2_I(1) )
                                         !Liquid phase
                                         LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
-                                            Latent_heat * LIMD(2)*SdevFuns%DETWEI(GI) &!density%val(1, 2, CV_NODI)
+                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) &
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -DIFF_COEF_DIVDX(2) * ( LOC_DEN_J(2) *LOC_T2_J(2)**2. - LOC_DEN_I(2) *LOC_T2_I(2)**2.) &
+                                             * ( -DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
                                         !Advection term fluid
-                                            +   NDOTQNEW(2) * LIMD(1) * LOC_T2_I(2)**2. )
+                                            +   NDOTQNEW(2) * LOC_T2_I(2)**2. )
                                       end if
 
                                   if(integrate_other_side_and_not_boundary) then
@@ -1753,18 +1753,18 @@ contains
                                       if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
-                                            Latent_heat * SdevFuns%DETWEI(GI) &!density%val(1, 1, CV_NODJ)
+                                            Latent_heat * density%val(1, 1, CV_NODJ)*SdevFuns%DETWEI(GI) &
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_DEN_I(2) *LOC_T2_I(2)*LOC_T2_I(1) - LOC_DEN_J(2) *LOC_T2_J(2)*LOC_T2_J(1))&
+                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
                                         !Advection term solid
                                             -  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
-                                            Latent_heat * LIMD(2) *SdevFuns%DETWEI(GI) &!density%val(1, 2, CV_NODJ)
+                                            Latent_heat * density%val(1, 2, CV_NODJ) *SdevFuns%DETWEI(GI) &
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
                                              * ( -DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
                                         !Advection term fluid
-                                            -   NDOTQNEW(2) * LIMD(2) * LOC_T2_J(2)**2. )
+                                            -   NDOTQNEW(2) * LOC_T2_J(2)**2. )
                                       end if
                                   endif
                                   IF ( GET_GTHETA ) THEN
