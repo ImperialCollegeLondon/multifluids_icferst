@@ -674,9 +674,6 @@ contains
                   option_path = '/material_phase[0]/scalar_field::Enthalpy', &
                   thermal = .false.,saturation=saturation_field, nonlinear_iteration = its, &
                   Courant_number = Courant_number, magma_phase_coefficients=  magma_phase_coef)
-
-                  ! ! Update the temperature field
-                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   !Recalculate densities
                   call Calculate_All_Rhos( state, packed_state, Mdims )
                 END IF Conditional_ScalarAdvectionField
@@ -717,6 +714,8 @@ contains
 
                   !Here we  Calculate melt fraction from phase diagram
                   call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
+                  ! ! Update the temperature field
+                  call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   ! ! Update the composition
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term

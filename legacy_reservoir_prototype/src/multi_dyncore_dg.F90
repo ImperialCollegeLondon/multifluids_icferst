@@ -647,19 +647,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            TDIFFUSION=0.0
            !Obtain diffusion coefficient for temperature
 
-           !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR SALT
-           !OR WE NEED A PROGNOSTIC TEMPERATURE FIELD, WHICH IS "FINE" BUT STRANGE FOR THE USER
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, divide_by_rho_CP = .true.)
-           print *, TDIFFUSION(133,1,1,1)
-           !WE NEED SOMETHING SPECIAL FOR THIS AND LATENTHEAT*RHO IF WE HAVE COMPONENTS!
-           ! call calculate_enthalpy_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, tracer)!TODO: REMOVE SUBROUTINE
-           !SOMETHING LIKE THIS, OR THIS FOR COMPOSITIONAL
-           ! call Calculate_ComponentDiffusionTerm( packed_state, &
-           !    Mdims, CV_GIdims, CV_funs, &
-           !    ndgln%mat, ndgln%u, ndgln%x, &
-           !    ncomp_diff_coef, comp_diffusion_opt, &
-           !    Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
-           !    TDiffusion )
            ! Check for a python-set absorption field when solving for Enthalpy/internal energy
            python_tfield => extract_tensor_field( state(1), "TAbsorB", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_ABSORB = python_tfield%val
