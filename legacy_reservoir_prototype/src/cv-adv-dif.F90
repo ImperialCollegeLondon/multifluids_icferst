@@ -414,7 +414,7 @@ contains
           real, dimension( max(Mdims%nphase, 100) *6 ) :: memory_limiters, XI_LIMIT!Get biggest between maximum nunber of fields (100), or phases
           !! femdem
           type( vector_field ), pointer :: delta_u_all, us_all
-          type( scalar_field ), pointer :: solid_vol_fra
+          type( scalar_field ), pointer :: solid_vol_fra, cp_f
           real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
@@ -564,6 +564,8 @@ contains
           !! Get boundary conditions from field
           call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
           call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
+          cp_f => extract_scalar_field(state(final_phase),"TemperatureHeatCapacity")
+          WIC_D_BC_ALL = WIC_D_BC_ALL*cp_f%val(1)
           if (present(saturation))&
               call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
           call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
