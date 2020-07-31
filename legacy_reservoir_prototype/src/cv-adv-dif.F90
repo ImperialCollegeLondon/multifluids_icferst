@@ -564,8 +564,10 @@ contains
           !! Get boundary conditions from field
           call get_entire_boundary_condition(tracer,['weakdirichlet','robin        '],tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
           call get_entire_boundary_condition(density,['weakdirichlet'],density_BCs,WIC_D_BC_ALL)
-          cp_f => extract_scalar_field(state(final_phase),"TemperatureHeatCapacity")
-          WIC_D_BC_ALL = WIC_D_BC_ALL*cp_f%val(1)
+          if (has_temperature) then
+            cp_f => extract_scalar_field(state(final_phase),"TemperatureHeatCapacity")
+            WIC_D_BC_ALL = WIC_D_BC_ALL*cp_f%val(1)
+          end if
           if (present(saturation))&
               call get_entire_boundary_condition(saturation,['weakdirichlet','robin        '],saturation_BCs,WIC_T2_BC_ALL,boundary_second_value=saturation_BCs_robin2)
           call get_entire_boundary_condition(velocity,['weakdirichlet'],velocity_BCs,WIC_U_BC_ALL)
