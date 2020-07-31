@@ -765,6 +765,7 @@ contains
           !Do we need the user to create a HydrostaticPressure scalar field? maybe not
         end if
 
+
         !#########GEOMETRY AND PRECISION OPTIONS#################
 
 !Sprint_to_do
@@ -939,7 +940,8 @@ contains
               end if
             end if
 
-            if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
+            if ((have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .or. &
+                have_option("/porous_media/Self_Potential")) .and. i == 1) then !If self potential we need the hydrostatic mesh,the fastest is to have HydrostaticPressure
               !Add a prognostic field named HydrostaticPressure (do we need BCs or initial conditions for this?)
               !This is only required for the first phase
               option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::HydrostaticPressure"
@@ -963,6 +965,16 @@ contains
 
             end if
 
+            !Include a scalar_field to output the self_potential if required only
+            if (have_option("/porous_media/Self_Potential") .and. i == 1) then
+              call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::HydrostaticPressure",&
+                                "/material_phase["// int2str( i - 1 )//"]/scalar_field::SelfPotential")
+              !Not very proud of this, but the rest of the code is cleaner if we have HydrostaticPressure when we solve for SelfPotential
+              if (.not. have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) &
+              call copy_option("simulation_name", &
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::HydrostaticPressure/prognostic/output/exclude_from_vtu")
+
+             end if
 
             ! SCALAR_FIELD(PRESSURE) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic"

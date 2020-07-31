@@ -57,7 +57,7 @@ module multiphase_1D_engine
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
     public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE
+    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Self_Potential_system
 
 contains
   !---------------------------------------------------------------------------
@@ -8634,7 +8634,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine get_diagonal_mass_matrix
 
 
-    !>@brief: In this method we assemble and solve the Laplacia system using at least P1 elements
+    !>@brief: In this method we assemble and solve the Laplacian system using at least P1 elements
     subroutine generate_and_solve_Self_Potential_system( Mdims, ndgln, state, packed_state )
           implicit none
 
@@ -8651,7 +8651,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           real :: volume
           real, dimension(:,:,:), allocatable :: phfenx_all, ufenx_all
           real :: nxnx, rhs_conc
-          type( scalar_field ) :: rhs, ph_sol
+          type( scalar_field ) :: rhs
+          type( scalar_field ), pointer :: SelfPotential
           type( petsc_csr_matrix ) :: matrix
           type( csr_sparsity ), pointer :: sparsity
           type( multi_GI_dimensions ) :: phGIdims
@@ -8662,7 +8663,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           type(tensor_field), pointer :: SoluteMassFraction, Temperature, FluidPotential, Rock_conductivity, Coupling_temp, Coupling_conc, Coupling_pot
 
           !Retrieve fields
-          ! Rock_conductivity => extract_scalar_field(state(1), "Rock_Conductivity")
+          Rock_conductivity => extract_scalar_field(state(1), "Rock_Conductivity")
 
           SoluteMassFraction=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
           enabled_SoluteMassFraction = (stat == 0)
@@ -8683,6 +8684,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           end if
 
           ! SP Solver elements
+          SelfPotential => extract_scalar_field(state(1),"SelfPotential", stat)
+
           call get_option("/geometry/mesh::HydrostaticPressure/from_mesh/mesh_shape/polynomial_degree", i)
           if ( i == 1) then
             ! Same degree as the CV mesh!
@@ -8712,7 +8715,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
           call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
           call allocate( rhs, CVmesh, "rhs" ); call zero ( rhs )
-          call allocate( ph_sol, CVmesh, "ph_sol" ); call zero( ph_sol )
+          call zero( SelfPotential )
 
           do  ele = 1, Mdims%totele
             ! calculate detwei,ra,nx,ny,nz for element ele
@@ -8731,7 +8734,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 nxnx = 0.0
                 do iphase = 1, Mdims%n_in_pres
                   do idim = 1, Mdims%ndim!Laplacian
-                    nxnx = nxnx + sum( phfenx_all( idim, cv_iloc, : ) * Rock_conductivity%val(1, iphase, cv_inod) &
+                    nxnx = nxnx + sum( phfenx_all( idim, cv_iloc, : ) * Rock_conductivity%val(1, iphase, cv_inod) &!need to add harmonic average?
                     * phfenx_all( idim, cv_jloc, : ) * detwei )
                   end do
                 end do
@@ -8759,19 +8762,18 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
           !Add remove null_space if not bcs specified for the field since we always have natural BCs
           call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
-          call zero(ph_sol) !; call zero_non_owned(rhs)
-          call petsc_solve( ph_sol, matrix, rhs, option_path = trim(solver_option_path) )
+          call zero(SelfPotential) !; call zero_non_owned(rhs)
+          call petsc_solve( SelfPotential, matrix, rhs, option_path = trim(solver_option_path) )
 
           ! call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, iphase)
           ! read*
           !Remove remove_null_space
           call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
-          if (IsParallel()) call halo_update(ph_sol)
+          if (IsParallel()) call halo_update(SelfPotential)
 
           ! deallocate
           call deallocate_multi_shape_funs( ph_funs )
           call deallocate( rhs )
-          call deallocate( ph_sol )
           call deallocate( matrix )
           deallocate( phfenx_all, ufenx_all, detwei, ra )
           return

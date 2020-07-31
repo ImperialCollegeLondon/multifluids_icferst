@@ -156,7 +156,7 @@ contains
             Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
             Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
         end if
-        if( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
+        if( have_option( "/geometry/mesh::HydrostaticPressure/" ) ) then
             ph_mesh => extract_mesh( state( 1 ), 'HydrostaticPressure', stat )
             if ( stat == 0 ) then
                 Mdims%ph_nloc = ele_loc( ph_mesh, 1 )

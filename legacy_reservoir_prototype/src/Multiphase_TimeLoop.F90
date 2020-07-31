@@ -788,6 +788,11 @@ contains
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
+            !Time to compute the self-potential if required
+            if (have_option("/porous_media/Self_Potential")) then
+              call generate_and_solve_Self_Potential_system( Mdims, ndgln, state, packed_state )
+            end if
+
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file
 
             if (is_porous_media .and. getprocno() == 1) then
