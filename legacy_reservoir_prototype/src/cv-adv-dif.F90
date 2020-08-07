@@ -458,6 +458,8 @@ contains
           REAL, DIMENSION( :,:,: ), allocatable, target:: SUF_T2_BC_value, SUF_T_BC_ROB2_value
           !Variables for Enthalpy
           logical :: asssembling_enthalpy = .false.
+          real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
+
           !Logical to identify if we are assembling for enthalpy, which requires an special RHS
           asssembling_enthalpy = present(Latent_heat)
 
@@ -744,6 +746,11 @@ contains
                   end do
               end do
           ENDIF
+
+          !Here we prepare the diffusion term for the RHS of the enthalpy equation
+          if (asssembling_enthalpy) allocate(ENTH_RHS_DIFF_COEF_DIVDX (final_phase))
+
+
           ndotq = 0. ! ;         ndotqold = 0.
           ! variables for get_int_tden********************
 
@@ -1444,6 +1451,18 @@ contains
                               ELSE
                                   CAP_DIFF_COEF_DIVDX = 0.0
                               END IF If_GOT_CAPDIFFUS
+
+                              if (asssembling_enthalpy) then
+                                IF(on_domain_boundary) THEN
+                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.0!This imposes grad = 0 at the boundary
+                                ELSE
+                                  !Average of the coefficient in shared CVs between elements
+                                  ENTH_RHS_DIFF_COEF_DIVDX = 0.5* ( TDIFFUSION(MAT_NODJ, 1, 1, :)  + TDIFFUSION(MAT_NODI, 1, 1, :)) /HDC
+                                ENDIF
+                              end if
+
+
+
                               ! Pack ndotq information:
                               call PACK_LOC_ALL( F_INCOME, INCOME, &
                                   INCOMEOLD, INCOME, INCOMEOLD, & !Tracer, density and T2
@@ -1715,21 +1734,21 @@ contains
                                       if (on_domain_boundary) LOC_CV_RHS_I =  LOC_CV_RHS_I &
                                           + SdevFuns%DETWEI( GI ) * ROBIN2
 
-                                      if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
+                                      if (asssembling_enthalpy ) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_I(1) = LOC_CV_RHS_I(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODI) * SdevFuns%DETWEI(GI) &!
+                                            Latent_heat * density%val(1, 1, CV_NODI) *SdevFuns%DETWEI(GI) * LIMT2(1) * &
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_T2_J(2)*LOC_T2_J(1) - LOC_T2_I(2)*LOC_T2_I(1))&
+                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term solid
-                                            +  (1. + LIMT2(2)) * NDOTQNEW(1) * LOC_T2_I(1) )
+                                            +  NDOTQNEW(1) * (1 + LOC_T2_I(2)) )
                                         !Liquid phase
                                         LOC_CV_RHS_I(2) = LOC_CV_RHS_I(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) &
+                                            Latent_heat * density%val(1, 2, CV_NODI)*SdevFuns%DETWEI(GI) * LIMT2(2) * &
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -DIFF_COEF_DIVDX(2) * ( LOC_T2_J(2)**2. - LOC_T2_I(2)**2.) &
+                                              ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_J(2) - LOC_T2_I(2))&
                                         !Advection term fluid
-                                            +   NDOTQNEW(2) * LOC_T2_I(2)**2. )
+                                            +  NDOTQNEW(2) * LOC_T2_I(2))
                                       end if
 
                                   if(integrate_other_side_and_not_boundary) then
@@ -1753,18 +1772,18 @@ contains
                                       if (asssembling_enthalpy) then!TODO: sprint_to_do Currently only for two phases
                                         !Solid phase
                                         LOC_CV_RHS_J(1) = LOC_CV_RHS_J(1) + &
-                                            Latent_heat * density%val(1, 1, CV_NODJ)*SdevFuns%DETWEI(GI) &
+                                            Latent_heat * density%val(1, 1, CV_NODJ) *SdevFuns%DETWEI(GI)* LIMT2(1) * &
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -DIFF_COEF_DIVDX(1) * ( LOC_T2_I(2)*LOC_T2_I(1) - LOC_T2_J(2)*LOC_T2_J(1))&
+                                             ( -ENTH_RHS_DIFF_COEF_DIVDX(1) * (LOC_T2_I(2) - LOC_T2_J(2))&
                                         !Advection term solid
-                                            -  (1. + LOC_T2_J(2)) * NDOTQNEW(1) * LOC_T2_J(1) )
+                                            -  (1. + LOC_T2_J(2)) * NDOTQNEW(1)  )
                                         !Liquid phase
                                         LOC_CV_RHS_J(2) = LOC_CV_RHS_J(2) + &
-                                            Latent_heat * density%val(1, 2, CV_NODJ) *SdevFuns%DETWEI(GI) &
+                                            Latent_heat * density%val(1, 2, CV_NODJ) *SdevFuns%DETWEI(GI) * LIMT2(2) * &
                                         !Diffusion term (here phi == Saturation of phase 2); 1- phi == Saturation phase 1
-                                             * ( -DIFF_COEF_DIVDX(2) * ( LOC_T2_I(2)**2. - LOC_T2_J(2)**2.) &
+                                             ( -ENTH_RHS_DIFF_COEF_DIVDX(2) * (LOC_T2_I(2) - LOC_T2_J(2)) &
                                         !Advection term fluid
-                                            -   NDOTQNEW(2) * LOC_T2_J(2)**2. )
+                                            -   NDOTQNEW(2) * LOC_T2_J(2) )
                                       end if
                                   endif
                                   IF ( GET_GTHETA ) THEN
@@ -2003,6 +2022,7 @@ contains
           !These three variables are allocated simultaneously so only one need to be checked
           if (allocated(suf_t_bc)) deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2)
           if (VAD_activated) deallocate(CAP_DIFFUSION)
+          if (allocated(ENTH_RHS_DIFF_COEF_DIVDX)) deallocate(ENTH_RHS_DIFF_COEF_DIVDX)
           ewrite(3,*) 'Leaving CV_ASSEMB'
           if (allocated(bcs_outfluxes)) deallocate(bcs_outfluxes)
 
@@ -4852,7 +4872,6 @@ end if
                 COEF = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI( :, :, IPHASE ), CVNORMX_ALL ) )
                 DIFF_STAND_DIVDX_ALL( IPHASE ) = COEF / HDC
             END DO
-
             Conditional_MAT_DISOPT_ELE2: IF ( between_elements ) THEN
                 DTDX_GI2_ALL = 0.0 ; DTOLDDX_GI2_ALL = 0.0
                 DO CV_SKLOC=1,CV_SNLOC

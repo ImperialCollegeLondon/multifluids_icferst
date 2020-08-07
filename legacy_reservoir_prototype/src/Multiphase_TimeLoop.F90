@@ -456,7 +456,7 @@ contains
 
         !HH Initialize all the magma simulation related coefficients
         if (is_magma) then
-          c_phi_length=1e7  !> the number of items of the coupling term coefficients stored in the system
+          c_phi_length=Mdims%cv_nonods*10 !SPRINT_TO_DO: We need a proper number here!1e7  !> the number of items of the coupling term coefficients stored in the system
           allocate(c_phi_series(c_phi_length))
           call C_generate (c_phi_series, c_phi_length, state, coupling)
           call initialize_magma_parameters(magma_phase_coef,  coupling)
