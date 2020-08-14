@@ -590,30 +590,30 @@ contains
                 !# Andreas. I added a flag in the Conditional_ForceBalanceEquation to eiher enter or not.
                 !#    TODO. This has to be updated with adaptivity as well.
                 !#=================================================================================================================
-                !!$ Now solving the Momentum Equation ( = Force Balance Equation )
-                ! Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
-                !     !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
-                !     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                !         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
-                !         Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
-                !         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
-                !         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
-                !         calculate_mass_delta, outfluxes, pres_its_taken, its)
-                ! end if Conditional_ForceBalanceEquation
+                !$ Now solving the Momentum Equation ( = Force Balance Equation )
+                Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
+                    !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
+                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat,multi_absorp, upwnd, eles_with_pipe, pipes_aux, velocity_field, pressure_field, &
+                        dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
+                        igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
+                        calculate_mass_delta, outfluxes, pres_its_taken, its)
+                end if Conditional_ForceBalanceEquation
 
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
 
-                ! Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
-                !
-                !     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
-                !         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
-                !         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                !         ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
-                !         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-                !
-                ! end if Conditional_PhaseVolumeFraction
+                Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction .and. (.not. is_magma) ) then
+
+                    call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
+                        Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
+                        sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
+
+                end if Conditional_PhaseVolumeFraction
 
                 !#=================================================================================================================
                 !# End Saturation -> Move to -> Velocity Update
@@ -683,27 +683,27 @@ contains
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
 
-               !!$ Solve advection of the scalar 'SoluteMassFraction':
-               ! Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
-               !     have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
-               !     ewrite(3,*)'Now advecting SoluteMassFraction Field'
-               !     call set_nu_to_u( packed_state )
-               !     tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
-               !     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-               !     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-               !     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-               !     call SOLUTE_ASSEM_SOLVE( state, packed_state, &
-               !         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
-               !         tracer_field,velocity_field,density_field, multi_absorp, dt, &
-               !         suf_sig_diagten_bc, Porosity_field%val, &
-               !         !!$
-               !         0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-               !         THETA_GDIFF, eles_with_pipe, pipes_aux, &
-               !         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-               !
-               !     nullify(tracer_field)
-               !
-               !  end if Conditional_ScalarAdvectionField2
+               !$ Solve advection of the scalar 'SoluteMassFraction':
+               Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
+                   have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
+                   ewrite(3,*)'Now advecting SoluteMassFraction Field'
+                   call set_nu_to_u( packed_state )
+                   tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                   call SOLUTE_ASSEM_SOLVE( state, packed_state, &
+                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
+                       suf_sig_diagten_bc, Porosity_field%val, &
+                       !!$
+                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
+                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
+
+                   nullify(tracer_field)
+
+                end if Conditional_ScalarAdvectionField2
 
                 !#=================================================================================================================
 
