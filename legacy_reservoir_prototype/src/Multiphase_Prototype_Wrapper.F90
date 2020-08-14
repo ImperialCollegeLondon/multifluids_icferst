@@ -1092,7 +1092,6 @@ contains
         is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
-        !Arash
         has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
 
         ! Check if Porous media model initialisation

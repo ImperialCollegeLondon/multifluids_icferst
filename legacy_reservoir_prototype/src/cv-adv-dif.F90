@@ -418,7 +418,7 @@ contains
           real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field !Arash
+          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field
 
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
           Real, dimension(:), pointer :: MASS_CV
@@ -554,7 +554,6 @@ contains
                   temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
                   if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0.0
               end if
-              !Arash
               if (has_salt) then
                   salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
                   if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
@@ -3681,7 +3680,6 @@ end if
                                 do iphase = 1, Mdims%nphase
                                     call allsum(outfluxes%totout(1, iphase, k))
                                     if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
-                                    !Arash
                                     if (has_salt) call allsum(outfluxes%totout(3, iphase, k))
                                 end do
                             end do
@@ -6128,7 +6126,6 @@ end if
                                 if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
                                     !Only in the boundaries with a defined pressure it needs to be added into
                                     !the matrix and into the RHS
-                                    !Arash
                                     if (hydrostatic_bc) then!not compatible with hydrostatic presure solver
                                         Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &

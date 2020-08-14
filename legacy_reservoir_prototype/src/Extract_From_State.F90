@@ -846,7 +846,6 @@ contains
             call deallocate(element_shape)
             element_mesh=>extract_mesh(packed_state,'P0DG')
         end if
-        !Arash
         if(has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
             ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
             element_mesh=>ldfield%mesh
@@ -951,7 +950,6 @@ contains
             call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
         end if
 
-        !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
@@ -1101,7 +1099,6 @@ contains
             call assign_val(vfield%val(2,:),sfield%val)
         end if
 
-        !Arash
         if (has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
           call allocate(Longitudinal_Dispersivity,npres,element_mesh,"Longitudinal_Dispersivity")
           do ipres = 1, npres
@@ -1256,7 +1253,6 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
 
-                !! Arash
                 if(have_option(trim(state(i)%option_path)&
                     //'/scalar_field::SoluteMassFraction')) then
                     call unpack_sfield(state(i),packed_state,"OldSoluteMassFraction",1,iphase,&
@@ -1316,7 +1312,6 @@ contains
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
         end if
 
-        !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"SoluteMassFraction")
         end if
@@ -3038,7 +3033,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         IteratedFEEnthalpy =>  tfield%val(1,:,:)
     end if
 
-    !Arash
     if (present(SoluteMassFraction)) then
         tfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
         SoluteMassFraction =>  tfield%val(1,:,:)
@@ -3531,7 +3525,6 @@ end subroutine get_DarcyVelocity
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
-                !Arash
                 if (has_salt) then
                     do iphase = 1, size(outfluxes%intflux,1)
                         write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum solutemassfraction"
@@ -3560,7 +3553,6 @@ end subroutine get_DarcyVelocity
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
             end if
-            !Arash
             if (has_salt) then
                 do iphase = 1, size(outfluxes%intflux,1)
                     write(tempstring(iphase),'(E17.11)') outfluxes%totout(3, iphase,ioutlet)

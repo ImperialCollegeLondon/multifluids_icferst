@@ -157,7 +157,6 @@ contains
             temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
             if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0
         end if
-        !Arash
         if (has_salt) then
             salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
             if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0

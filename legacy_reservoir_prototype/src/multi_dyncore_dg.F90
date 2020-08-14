@@ -57,7 +57,7 @@ module multiphase_1D_engine
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
     public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Self_Potential_system
+    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system
 
 contains
   !---------------------------------------------------------------------------
@@ -783,7 +783,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   END SUBROUTINE ENTHALPY_ASSEM_SOLVE
 
 
-  !! Arash
   !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
   !> @brief Calls to generate and solve the transport equation for the concentration field.
   !---------------------------------------------------------------------------
@@ -8635,15 +8634,26 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
 
     !>@brief: In this method we assemble and solve the Laplacian system using at least P1 elements
-    subroutine generate_and_solve_Self_Potential_system( Mdims, ndgln, state, packed_state )
+    !> The equation solved is the following: Div sigma Grad X = - SUM (Div K Grad F) with Neuman BCs = 0
+    !> where K and F are passed down as a vector. Therefore for n entries the SUM will be performed over n fields
+    !> Example: F = (3, nphase, cv_nonods) would include three terms in the RHS and the same for K
+    !> If harmonic average then we perform the harmonic average of sigma and K
+    !> IMPORTANT: This subroutine requires the PHsparsity to be generated
+    !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
+    subroutine generate_and_solve_Laplacian_system( Mdims, ndgln, state, packed_state, Sigma_field, Solution, K_fields, F_fields, harmonic_average, solver_path)
           implicit none
 
           type(multi_dimensions), intent( in ) :: Mdims
           type( state_type ), dimension( : ), intent( inout ) :: state
           type( state_type ), intent( inout ) :: packed_state
           type(multi_ndgln), intent(in) :: ndgln
+          logical, intent(in) :: harmonic_average
+          real, dimension(:,:), intent(in) :: Sigma_field
+          real, dimension(:,:,:), intent(in) :: K_fields, F_fields
+          type( scalar_field ), intent(inout) :: Solution
+          character(len=option_path_len), optional, intent(in) :: solver_path
           ! local variables...
-          integer :: ph_nloc, ph_snloc, stat ,ele, i,&
+          integer :: ph_nloc, ph_snloc, stat ,ele, i, local_phases, &
                     ph_ele_type, cv_iloc, cv_jloc, cv_inod, cv_jnod, idim, iphase
           type( vector_field ), pointer :: x
           type( mesh_type ), pointer :: CVmesh
@@ -8652,39 +8662,18 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           real, dimension(:,:,:), allocatable :: phfenx_all, ufenx_all
           real :: nxnx, rhs_conc
           type( scalar_field ) :: rhs
-          type( scalar_field ), pointer :: SelfPotential
           type( petsc_csr_matrix ) :: matrix
           type( csr_sparsity ), pointer :: sparsity
           type( multi_GI_dimensions ) :: phGIdims
           type( multi_shape_funs ) :: ph_funs
           character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
-          !Porous fields and fields for the RHS
-          logical :: enabled_FluidPotential, enabled_SoluteMassFraction, enabled_FluidTemperature
-          type(tensor_field), pointer :: SoluteMassFraction, Temperature, FluidPotential, Rock_conductivity, Coupling_temp, Coupling_conc, Coupling_pot
 
-          !Retrieve fields
-          Rock_conductivity => extract_scalar_field(state(1), "Rock_Conductivity")
-
-          SoluteMassFraction=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
-          enabled_SoluteMassFraction = (stat == 0)
-          ! if (enabled_SoluteMassFraction) Coupling_conc => extract_scalar_field(state(1), "Coupling_concentration")
-
-          Temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
-          enabled_FluidTemperature = (stat == 0)
-          ! if (enabled_FluidTemperature) Coupling_temp => extract_scalar_field(state(1), "Coupling_temperature")
-
-          FluidPotential=>extract_tensor_field(packed_state,"PackedFluidPotential", stat)
-          enabled_FluidPotential = (stat == 0)
-          ! if (enabled_FluidPotential) Coupling_pot => extract_scalar_field(state(1), "Coupling_fluid_potential")
-
+          !Set the number of phases from F_fields
+          local_phases = size(F_fields,2)
           !Solver options, if specified
           solver_option_path = "/solver_options/Linear_solver"
-          if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver')) then
-            solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver'
-          end if
+          if (present(solver_path)) solver_option_path = solver_path
 
-          ! SP Solver elements
-          SelfPotential => extract_scalar_field(state(1),"SelfPotential", stat)
 
           call get_option("/geometry/mesh::HydrostaticPressure/from_mesh/mesh_shape/polynomial_degree", i)
           if ( i == 1) then
@@ -8715,7 +8704,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
           call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
           call allocate( rhs, CVmesh, "rhs" ); call zero ( rhs )
-          call zero( SelfPotential )
 
           do  ele = 1, Mdims%totele
             ! calculate detwei,ra,nx,ny,nz for element ele
@@ -8732,52 +8720,61 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
               do cv_jloc = 1, Mdims%cv_nloc
                 cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
                 nxnx = 0.0
-                do iphase = 1, Mdims%n_in_pres
+                do iphase = 1, local_phases
                   do idim = 1, Mdims%ndim!Laplacian
-                    nxnx = nxnx + sum( phfenx_all( idim, cv_iloc, : ) * Rock_conductivity%val(1, iphase, cv_inod) &!need to add harmonic average?
-                    * phfenx_all( idim, cv_jloc, : ) * detwei )
+                    nxnx = nxnx + sum( phfenx_all( idim, cv_iloc, : )&
+                      * effective_value(Sigma_field(iphase, cv_inod), Sigma_field(iphase, cv_jnod))&
+                      * phfenx_all( idim, cv_jloc, : ) * detwei )
                   end do
                 end do
                 call addto( matrix, 1, 1, cv_inod, cv_jnod, nxnx)
               end do
 
-!ALSO WILL NEED TO ADD THE INTERFACE STUFF AS THE PARAMETERS ARE BASED ON SATURATION?
-
               !RHS
               rhs_conc = 0.0
-              do cv_jloc = 1, Mdims%cv_nloc
-                cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
-                do iphase = 1, Mdims%n_in_pres
-                  do idim = 1, Mdims%ndim!Laplacian (DOUBLE CHECK HAT FOR THE RHS THIS IS DOING WHAT I WANT IT TO DO)
-                    if (enabled_SoluteMassFraction) then!ALSO THE COUPLING TERMS, MAY NEED TO USE A MODIFIED HARMONIC AVERAGE...
-                      rhs_conc = rhs_conc + sum( phfenx_all( idim, cv_iloc, : ) * Coupling_conc%val(1, iphase, cv_inod)  * &
-                      phfenx_all( idim, cv_jloc, : ) * SoluteMassFraction%val(1, iphase, cv_jnod) * detwei )
-                    end if
+                do cv_jloc = 1, Mdims%cv_nloc
+                  cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+                  do iphase = 1, local_phases
+                    do idim = 1, Mdims%ndim
+                      do i = 1, size(F_fields,1)!Loop over all the fields defined for the RHS terms
+                      rhs_conc = rhs_conc - sum( phfenx_all( idim, cv_iloc, : ) * &
+                                  effective_value(K_fields(i, iphase, cv_inod), K_fields(i, iphase, cv_jnod))* &
+                                  phfenx_all( idim, cv_jloc, : ) * (F_fields(i, iphase, cv_jnod) - F_fields(i, iphase, cv_inod)) * detwei )
+                    end do
                   end do
                 end do
               end do
-              call addto( rhs, cv_inod, - rhs_conc )
+              call addto( rhs, cv_inod, rhs_conc )
             end do
           end do
 
           !Add remove null_space if not bcs specified for the field since we always have natural BCs
           call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
-          call zero(SelfPotential) !; call zero_non_owned(rhs)
-          call petsc_solve( SelfPotential, matrix, rhs, option_path = trim(solver_option_path) )
+          call zero(Solution) !; call zero_non_owned(rhs)
+          call petsc_solve( Solution, matrix, rhs, option_path = trim(solver_option_path) )
 
-          ! call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, iphase)
-          ! read*
           !Remove remove_null_space
           call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
-          if (IsParallel()) call halo_update(SelfPotential)
+          if (IsParallel()) call halo_update(Solution)
 
           ! deallocate
-          call deallocate_multi_shape_funs( ph_funs )
-          call deallocate( rhs )
+          call deallocate_multi_shape_funs( ph_funs ); call deallocate( rhs )
           call deallocate( matrix )
           deallocate( phfenx_all, ufenx_all, detwei, ra )
           return
-        end subroutine generate_and_solve_Self_Potential_system
+          contains
+            !>@brief: Computes the effective value of K or sigma.
+            !> If harmonic average then return the harmnic, otherwise Value_i is returned
+            real function effective_value(Value_i, Value_j)
+              implicit none
+              real, intent(in) :: Value_i, Value_j
+              if (harmonic_average) then
+                effective_value = 2.* Value_i * Value_j / (Value_i + Value_j)
+              else
+                effective_value = Value_i
+              end if
+            end function
+        end subroutine generate_and_solve_Laplacian_system
 
 
  end module multiphase_1D_engine

@@ -1332,7 +1332,6 @@ contains
              call allocate_and_insert_tensor_field('/porous_media/tensor_field::Permeability', &
                states(i))
           end if
-          !Arash
           if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
              call allocate_and_insert_scalar_field('/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity', &
                states(i), field_name='Longitudinal_Dispersivity')
@@ -1746,7 +1745,6 @@ contains
           call insert(states(i+1), sfield, 'Porosity')
        end do
 
-       !Arash
        if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
          ldfield=extract_scalar_field(states(1), 'Longitudinal_Dispersivity')
          ldfield%aliased = .true.

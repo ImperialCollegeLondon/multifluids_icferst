@@ -212,7 +212,6 @@ contains
                  if ( stat == 0 .and. compute_rhoCP) then
                    call assign_val(Cp,Cp_s % val)
                    DensityCp_Bulk( sp : ep ) = Rho * Cp
-                   !Arash
                    if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
                    DensityCp_Bulk( sp : ep ) = Rho
                  end if
@@ -385,7 +384,6 @@ contains
         character( len = python_func_len ) :: pycode
         logical, save :: initialised = .false.
         logical :: have_temperature_field
-        !! Arash
         logical :: have_salt_field
         real, parameter :: toler = 1.e-10
         real, dimension( : ), allocatable, save :: reference_pressure
@@ -409,7 +407,6 @@ contains
 
         temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
         have_temperature_field = ( stat == 0 )
-        !! Arash
         salt_concentration => extract_scalar_field( state( iphase ), 'SoluteMassFraction', stat )
         have_salt_field = ( stat == 0 )
 
@@ -526,7 +523,6 @@ contains
              dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( eos_coefs )
 
-            !!$ Arash
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
               !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
 
@@ -1686,7 +1682,6 @@ contains
       return
     end subroutine calculate_diffusivity
 
-    !! Arash
     !>@brief: Dispersion for isotropic porous media
     subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion, tracer)
       type(state_type), dimension(:), intent(in) :: state
