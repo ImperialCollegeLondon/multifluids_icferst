@@ -1231,7 +1231,9 @@ Each file has to describe a continuous well touching an external boundary.
           <optional>
             <element name="Self_Potential">
               <a:documentation>Activates the Self_potential solver. 
-Specify here the water conductivity (S/m) to calculate the saturated rock conductivity using Archie’s equation (Tiab and Donaldson, 2004 and Sen and Goode, 1992).</a:documentation>
+Specify here the water conductivity (S/m) to calculate the saturated rock conductivity using Archie’s equation (Tiab and Donaldson, 2004 and Sen and Goode, 1992).
+
+&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.</a:documentation>
               <ref name="real"/>
             </element>
           </optional>
