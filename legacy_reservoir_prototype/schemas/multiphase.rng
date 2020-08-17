@@ -1228,15 +1228,21 @@ Each file has to describe a continuous well touching an external boundary.
               </zeroOrMore>
             </element>
           </optional>
-          <optional>
-            <element name="Self_Potential">
-              <a:documentation>Activates the Self_potential solver. 
+          <element name="scalar_field">
+            <a:documentation>Activates the Self_potential solver. 
 Specify here the water conductivity (S/m) to calculate the saturated rock conductivity using Archie’s equation (Tiab and Donaldson, 2004 and Sen and Goode, 1992).
 
 &lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.</a:documentation>
-              <ref name="real"/>
+            <attribute name="name">
+              <value>Self_Potential</value>
+            </attribute>
+            <element name="diagnostic">
+              <ref name="pressure_mesh_choice"/>
+              <ref name="internal_algorithm"/>
+              <ref name="diagnostic_scalar_field"/>
+              <ref name="output_options"/>
             </element>
-          </optional>
+          </element>
           <optional>
             <element name="FWL">
               <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.

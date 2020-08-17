@@ -1318,7 +1318,7 @@ contains
     !    end do
     ! end if
     ! insert porous media fields
-    if (have_option('/porous_media')) then
+    if (have_option('/porous_media')) then!SPRINT_TO_D I DON'T THINK WE NEED TO LOOP OVER NSTATES IN ALL THESE CASES
        do i=1, nstates
           call allocate_and_insert_scalar_field('/porous_media/scalar_field::Porosity', &
              states(i), field_name='Porosity')
@@ -1364,6 +1364,10 @@ contains
                    states(i))
               end if
            end do
+        end if
+        if (have_option("/porous_media/scalar_field::Self_Potential")) then
+          call allocate_and_insert_scalar_field('/porous_media/scalar_field::Self_Potential', &
+             states(1), field_name='Self_Potential')
         end if
     end if
 

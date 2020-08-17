@@ -787,7 +787,7 @@ contains
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
 
             !Time to compute the self-potential if required
-            if (have_option("/porous_media/Self_Potential")) then
+            if (have_option("/porous_media/scalar_field::Self_Potential")) then
               call Assemble_and_solve_SP(Mdims, ndgln, state, packed_state)
             end if
 
