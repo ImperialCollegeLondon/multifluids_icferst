@@ -1010,9 +1010,9 @@ start =
                 }*
              }?,
           ## Activates the Self_potential solver. 
-          ## Specify here the water conductivity (S/m) to calculate the saturated rock conductivity using Archie’s equation (Tiab and Donaldson, 2004 and Sen and Goode, 1992).
           ##
-          ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
+          ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, 
+          ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
           element scalar_field {
              attribute name { "Self_Potential" },
              (
@@ -1023,7 +1023,7 @@ start =
                 output_options
                 }
              )
-          },
+          }?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
 	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
