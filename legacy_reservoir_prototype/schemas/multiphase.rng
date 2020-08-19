@@ -1229,20 +1229,33 @@ Each file has to describe a continuous well touching an external boundary.
             </element>
           </optional>
           <optional>
-            <element name="scalar_field">
+            <element name="Self_Potential">
               <a:documentation>Activates the Self_potential solver. 
 
 &lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, 
 temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.</a:documentation>
-              <attribute name="name">
-                <value>Self_Potential</value>
-              </attribute>
-              <element name="diagnostic">
-                <ref name="pressure_mesh_choice"/>
-                <ref name="internal_algorithm"/>
-                <ref name="diagnostic_scalar_field"/>
-                <ref name="output_options"/>
+              <element name="scalar_field">
+                <attribute name="name">
+                  <value>Self_Potential</value>
+                </attribute>
+                <element name="diagnostic">
+                  <ref name="pressure_mesh_choice"/>
+                  <ref name="internal_algorithm"/>
+                  <ref name="diagnostic_scalar_field"/>
+                  <ref name="output_options"/>
+                </element>
               </element>
+              <element name="reference_coordinates">
+                <a:documentation>&lt;b&gt;Input coordinates of desired reference node (voltage = 0), this would be normally the top of the well&lt;/b&gt;. If a node does not exist at these
+coordinates, the nearest vertex will be selected.</a:documentation>
+                <ref name="real_dim_vector"/>
+              </element>
+              <optional>
+                <element name="Reservoir_temperature">
+                  <a:documentation>&lt;b&gt;If not solving for temperature&lt;/b&gt;: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
           </optional>
           <optional>

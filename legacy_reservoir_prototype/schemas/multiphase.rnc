@@ -1013,17 +1013,29 @@ start =
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, 
           ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
-          element scalar_field {
-             attribute name { "Self_Potential" },
-             (
-              element diagnostic {
-                pressure_mesh_choice,
-                internal_algorithm,
-                diagnostic_scalar_field,
-                output_options
-                }
-             )
-          }?,
+          element Self_Potential{(
+            element scalar_field {
+               attribute name { "Self_Potential" },
+               (
+                element diagnostic {
+                  pressure_mesh_choice,
+                  internal_algorithm,
+                  diagnostic_scalar_field,
+                  output_options
+                  }
+               )
+            },
+           ## <b>Input coordinates of desired reference node (voltage = 0), this would be normally the top of the well</b>. If a node does not exist at these
+           ## coordinates, the nearest vertex will be selected.
+           element reference_coordinates {
+              real_dim_vector
+           }, 
+           ## <b>If not solving for temperature</b>: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.
+	         element Reservoir_temperature {
+	         	real
+		        }?          
+          
+          )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
 	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.

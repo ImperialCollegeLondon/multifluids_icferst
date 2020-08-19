@@ -8655,7 +8655,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           ! local variables...
           integer :: ph_nloc, ph_snloc, stat ,ele, i, local_phases, &
                     ph_ele_type, cv_iloc, cv_jloc, cv_inod, cv_jnod, idim, iphase
-          type( vector_field ), pointer :: x
+          type( vector_field ), pointer :: x, MASS_CV, XC_CV_ALL
           type( mesh_type ), pointer :: CVmesh
           real, dimension( : ), allocatable, target :: detwei, ra
           real :: volume
@@ -8696,6 +8696,10 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           call cv_fem_shape_funs( ph_funs, Mdims, phGIdims, ph_ele_type, quad_over_whole_ele = .true. )
 
           x => extract_vector_field( packed_state, "PressureCoordinate" )
+          !Retrieve CV volume and CV centres
+          MASS_CV=>extract_vector_field(packed_state,"CVIntegral")
+          XC_CV_ALL=>extract_vector_field(packed_state,"CVBarycentre")
+
           CVmesh => extract_mesh( state( 1 ), "PressureMesh" )
           allocate(phfenx_all(Mdims%ndim, size(ph_funs%cvfenlx_all,2), phGIdims%cv_ngi))
           allocate(ufenx_all(Mdims%ndim, size(ph_funs%ufenlx_all,2) ,phGIdims%cv_ngi))
@@ -8723,7 +8727,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 do iphase = 1, local_phases
                   do idim = 1, Mdims%ndim!Laplacian
                     nxnx = nxnx + sum( phfenx_all( idim, cv_iloc, : )&
-                      * effective_value(Sigma_field(iphase, cv_inod), Sigma_field(iphase, cv_jnod))&
+                      * effective_value(Sigma_field(iphase, cv_inod), Sigma_field(iphase, cv_jnod), &
+                                        MASS_CV%val(1, cv_inod), MASS_CV%val(1, cv_jnod))&
                       * phfenx_all( idim, cv_jloc, : ) * detwei )
                   end do
                 end do
@@ -8738,7 +8743,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                     do idim = 1, Mdims%ndim
                       do i = 1, size(F_fields,1)!Loop over all the fields defined for the RHS terms
                       rhs_conc = rhs_conc - sum( phfenx_all( idim, cv_iloc, : ) * &
-                                  effective_value(K_fields(i, iphase, cv_inod), K_fields(i, iphase, cv_jnod))* &
+                                  effective_value(K_fields(i, iphase, cv_inod), K_fields(i, iphase, cv_jnod), &
+                                                    MASS_CV%val(1, cv_inod), MASS_CV%val(1, cv_jnod))* &
                                   phfenx_all( idim, cv_jloc, : ) * (F_fields(i, iphase, cv_jnod) - F_fields(i, iphase, cv_inod)) * detwei )
                     end do
                   end do
@@ -8765,11 +8771,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           contains
             !>@brief: Computes the effective value of K or sigma.
             !> If harmonic average then return the harmnic, otherwise Value_i is returned
-            real function effective_value(Value_i, Value_j)
+            real function effective_value(Value_i, Value_j, Vol_i, Vol_j)
               implicit none
-              real, intent(in) :: Value_i, Value_j
+              real, intent(in) :: Value_i, Value_j, Vol_i, Vol_j
               if (harmonic_average) then
-                effective_value = 2.* Value_i * Value_j / (Value_i + Value_j)
+                effective_value = Value_i * Value_j * (Vol_i + Vol_j)/(Value_i *Vol_j + Value_j*Vol_i )
+! if (abs(Value_i - effective_value) > 1e-8)print *,  Value_i, Value_j, Vol_i, Vol_j, effective_value
               else
                 effective_value = Value_i
               end if
