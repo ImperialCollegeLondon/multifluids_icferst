@@ -110,7 +110,7 @@ module multi_SP
         !Share the value between all the processors
         call allsum(reference_value)
         !Apply the reference to ensure that the reference node is zero
-        ! SelfPotential%val = SelfPotential%val - reference_value
+        SelfPotential%val = SelfPotential%val - reference_value
 
         deallocate(rock_sat_conductivity, F_fields, K_fields)
       end subroutine Assemble_and_solve_SP

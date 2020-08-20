@@ -8758,15 +8758,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
           call zero(Solution) !; call zero_non_owned(rhs)
           call petsc_solve( Solution, matrix, rhs, option_path = trim(solver_option_path) )
-print *, "##############################################"
-print *, "size of kfields", size(K_fields,1)
-call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, i)
-print *, rhs%val
-print *, "----------------------------------------------"
-print *, K_fields(1, 1, :)
-print *, "----------------------------------------------"
-print *, K_fields(2, 1, :)
-print *, "##############################################"
+
           !Remove remove_null_space
           call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
           if (IsParallel()) call halo_update(Solution)
