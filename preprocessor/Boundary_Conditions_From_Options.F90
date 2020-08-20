@@ -2555,8 +2555,8 @@ contains
           allocate(ele_local_vertices(ele_vertices(mesh,ele)))
           ! List vertices of element incorporating desired coordinates:
           ele_local_vertices = local_vertices(ele_shape(mesh,ele))
-          ! Find nearest vertex:
-          local_vertex = maxloc(local_coord,dim=1)
+          ! Find nearest vertex:                !Mask included as it may return values bigger than the number of nodes 
+          local_vertex = maxloc(local_coord,dim=1, MASK=local_coord <= size(ele_local_vertices))
           ! List of nodes in element:
           nodes => ele_nodes(mesh,ele)
           ! Reference node:

@@ -8758,7 +8758,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
           call zero(Solution) !; call zero_non_owned(rhs)
           call petsc_solve( Solution, matrix, rhs, option_path = trim(solver_option_path) )
-
+print *, "##############################################"
+print *, "size of kfields", size(K_fields,1)
+call MatView(matrix%M,   PETSC_VIEWER_STDOUT_SELF, i)
+print *, rhs%val
+print *, "----------------------------------------------"
+print *, K_fields(1, 1, :)
+print *, "----------------------------------------------"
+print *, K_fields(2, 1, :)
+print *, "##############################################"
           !Remove remove_null_space
           call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
           if (IsParallel()) call halo_update(Solution)
@@ -8767,18 +8775,21 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
           call deallocate_multi_shape_funs( ph_funs ); call deallocate( rhs )
           call deallocate( matrix )
           deallocate( phfenx_all, ufenx_all, detwei, ra )
+
           return
+
           contains
             !>@brief: Computes the effective value of K or sigma.
             !> If harmonic average then return the harmnic, otherwise Value_i is returned
             real function effective_value(Value_i, Value_j, Vol_i, Vol_j)
               implicit none
               real, intent(in) :: Value_i, Value_j, Vol_i, Vol_j
-              if (harmonic_average) then
-                effective_value = Value_i * Value_j * (Vol_i + Vol_j)/(Value_i *Vol_j + Value_j*Vol_i )
-! if (abs(Value_i - effective_value) > 1e-8)print *,  Value_i, Value_j, Vol_i, Vol_j, effective_value
-              else
+              if (.not. harmonic_average) then
                 effective_value = Value_i
+              else if (abs(Value_i *Vol_j + Value_j*Vol_i) > 1e-8) then
+                effective_value = Value_i * Value_j * (Vol_i + Vol_j)/(Value_i *Vol_j + Value_j*Vol_i )
+              else !Normal average
+                effective_value = 0.5*(Value_i *Vol_j + Value_j*Vol_i)/ (Vol_i + Vol_j)
               end if
             end function
         end subroutine generate_and_solve_Laplacian_system
