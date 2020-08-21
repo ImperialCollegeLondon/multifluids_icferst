@@ -8640,151 +8640,60 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> If harmonic average then we perform the harmonic average of sigma and K
     !> IMPORTANT: This subroutine requires the PHsparsity to be generated
     !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
-    subroutine generate_and_solve_Laplacian_system( Mdims, ndgln, state, packed_state, Sigma_field, Solution, K_fields, F_fields, harmonic_average, solver_path)
-          implicit none
+    subroutine generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
+                                                    field_name, K_fields, F_fields, harmonic_average, solver_path)
+      implicit none
 
-          type(multi_dimensions), intent( in ) :: Mdims
-          type( state_type ), dimension( : ), intent( inout ) :: state
-          type( state_type ), intent( inout ) :: packed_state
-          type(multi_ndgln), intent(in) :: ndgln
-          logical, intent(in) :: harmonic_average
-          real, dimension(:,:), intent(in) :: Sigma_field
-          real, dimension(:,:,:), intent(in) :: K_fields, F_fields
-          type( scalar_field ), intent(inout) :: Solution
-          character(len=option_path_len), optional, intent(in) :: solver_path
-          ! local variables...
-          integer :: ph_nloc, ph_snloc, stat ,ele, i, local_phases, &
-                    ph_ele_type, cv_iloc, cv_jloc, cv_inod, cv_jnod, idim, iphase
-          type( vector_field ), pointer :: x, MASS_CV, XC_CV_ALL
-          type( mesh_type ), pointer :: CVmesh
-          real, dimension( : ), allocatable, target :: detwei, ra
-          real :: volume
-          real, dimension(:,:,:), allocatable :: phfenx_all, ufenx_all
-          real :: nxnx, rhs_conc
-          type( scalar_field ) :: rhs
-          type( petsc_csr_matrix ) :: matrix
-          type( csr_sparsity ), pointer :: sparsity
-          type( multi_GI_dimensions ) :: phGIdims
-          type( multi_shape_funs ) :: ph_funs
-          character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+      type(multi_dimensions), intent( in ) :: Mdims
+      type( state_type ), dimension(:), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_ndgln), intent(in) :: ndgln
+      logical, intent(in) :: harmonic_average
+      real, dimension(:,:), intent(in) :: Sigma_field
+      real, dimension(:,:,:), intent(in) :: K_fields, F_fields
+      type(multi_shape_funs), intent(inout) :: CV_funs
+      type(multi_sparsities), intent(in) :: Mspars
+      type (multi_matrices), intent(inout) :: Mmat
+      type(multi_GI_dimensions), intent(in) :: CV_GIdims
+      character( len = * ), intent( in ), optional :: field_name
+      character(len=option_path_len), optional, intent(in) :: solver_path
+      !Local variables
+      integer :: i, stat, local_phases
+      character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+      type(scalar_field), pointer  :: solution
+      type(vector_field)  :: v_solution
 
-          !Set the number of phases from F_fields
-          local_phases = size(F_fields,2)
-          !Solver options, if specified
-          solver_option_path = "/solver_options/Linear_solver"
-          if (present(solver_path)) solver_option_path = solver_path
+      local_phases = size(F_fields,2)
+      !Solver options, if specified
+      solver_option_path = "/solver_options/Linear_solver"
+      if (present(solver_path)) solver_option_path = solver_path
 
+      !Retrieve the field f interest to have access to the mesh type
+      do i = 1, size(state)
+        solution => extract_scalar_field(state(i),trim(field_name), stat)
+        if (stat == 0) exit
+      end do
 
-          call get_option("/geometry/mesh::HydrostaticPressure/from_mesh/mesh_shape/polynomial_degree", i)
-          if ( i == 1) then
-            ! Same degree as the CV mesh!
-            if ( Mdims%ndim == 2 ) then
-               ph_ele_type = 3; ph_nloc = 3 ; ph_snloc = 3
-            else
-               ph_ele_type = 7; ph_nloc = 4 ; ph_snloc = 4
-            end if
-          else
-            if ( Mdims%ndim == 2 ) then
-              ph_ele_type = 4; ph_nloc = 6 ; ph_snloc = 3
-            else
-              ph_ele_type = 8; ph_nloc = 10 ; ph_snloc = 6
-            end if
-          end if
+      !Generate system
+      call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
+                                          Solution, K_fields, F_fields, harmonic_average)
+      !Solve system
+      call allocate(v_solution,local_phases,Solution%mesh,"v_solution")
+      !Add remove null_space if not bcs specified for the field since we always have natural BCs
+      call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
+      call zero(v_solution) !; call zero_non_owned(rhs)
+      call petsc_solve( v_solution, Mmat%petsc_ACV, Mmat%CV_RHS, option_path = trim(solver_option_path) )
+      if (IsParallel()) call halo_update(v_solution)
 
-          call retrieve_ngi( phGIdims, Mdims, ph_ele_type, quad_over_whole_ele = .true. )
-          call allocate_multi_shape_funs( ph_funs, Mdims, phGIdims )
-          call cv_fem_shape_funs( ph_funs, Mdims, phGIdims, ph_ele_type, quad_over_whole_ele = .true. )
-
-          x => extract_vector_field( packed_state, "PressureCoordinate" )
-          !Retrieve CV volume and CV centres
-          MASS_CV=>extract_vector_field(packed_state,"CVIntegral")
-          XC_CV_ALL=>extract_vector_field(packed_state,"CVBarycentre")
-
-          CVmesh => extract_mesh( state( 1 ), "PressureMesh" )
-          allocate(phfenx_all(Mdims%ndim, size(ph_funs%cvfenlx_all,2), phGIdims%cv_ngi))
-          allocate(ufenx_all(Mdims%ndim, size(ph_funs%ufenlx_all,2) ,phGIdims%cv_ngi))
-          allocate(detwei(phGIdims%cv_ngi)); allocate(ra(phGIdims%cv_ngi))
-
-          sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
-          call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
-          call allocate( rhs, CVmesh, "rhs" ); call zero ( rhs )
-
-          do  ele = 1, Mdims%totele
-            ! calculate detwei,ra,nx,ny,nz for element ele
-            call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
-            ndgln%x, Mdims%totele, Mdims%x_nonods, Mdims%x_nloc, ph_nloc, phGIdims%cv_ngi, &
-            ph_funs%cvfen, ph_funs%cvfenlx_all(1,:,:), ph_funs%cvfenlx_all(2,:,:), ph_funs%cvfenlx_all(3,:,:), &
-            ph_funs%cvweight, detwei, ra, volume, Mdims%ndim == 1, Mdims%ndim == 3, .false., phfenx_all, &
-            Mdims%u_nloc, ph_funs%ufenlx_all(1,:,:), ph_funs%ufenlx_all(2,:,:), ph_funs%ufenlx_all(3,:,:), &
-            ufenx_all)
-
-            ! form the system
-            do cv_iloc = 1, Mdims%cv_nloc
-              cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-              do cv_jloc = 1, Mdims%cv_nloc
-                cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
-                nxnx = 0.0
-                do iphase = 1, local_phases
-                  do idim = 1, Mdims%ndim!Laplacian
-                    nxnx = nxnx + sum( phfenx_all( idim, cv_iloc, : )&
-                      * effective_value(Sigma_field(iphase, cv_inod), Sigma_field(iphase, cv_jnod), &
-                                        MASS_CV%val(1, cv_inod), MASS_CV%val(1, cv_jnod))&
-                      * phfenx_all( idim, cv_jloc, : ) * detwei )
-                  end do
-                end do
-                call addto( matrix, 1, 1, cv_inod, cv_jnod, nxnx)
-              end do
-
-              !RHS
-              rhs_conc = 0.0
-                do cv_jloc = 1, Mdims%cv_nloc
-                  cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
-                  do iphase = 1, local_phases
-                    do idim = 1, Mdims%ndim
-                      do i = 1, size(F_fields,1)!Loop over all the fields defined for the RHS terms
-                      rhs_conc = rhs_conc - sum( phfenx_all( idim, cv_iloc, : ) * &
-                                  effective_value(K_fields(i, iphase, cv_inod), K_fields(i, iphase, cv_jnod), &
-                                                    MASS_CV%val(1, cv_inod), MASS_CV%val(1, cv_jnod))* &
-                                  phfenx_all( idim, cv_jloc, : ) * (F_fields(i, iphase, cv_jnod) - F_fields(i, iphase, cv_inod)) * detwei )
-                    end do
-                  end do
-                end do
-              end do
-              call addto( rhs, cv_inod, rhs_conc )
-            end do
-          end do
-
-          !Add remove null_space if not bcs specified for the field since we always have natural BCs
-          call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
-          call zero(Solution) !; call zero_non_owned(rhs)
-          call petsc_solve( Solution, matrix, rhs, option_path = trim(solver_option_path) )
-
-          !Remove remove_null_space
-          call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
-          if (IsParallel()) call halo_update(Solution)
-
-          ! deallocate
-          call deallocate_multi_shape_funs( ph_funs ); call deallocate( rhs )
-          call deallocate( matrix )
-          deallocate( phfenx_all, ufenx_all, detwei, ra )
-
-          return
-
-          contains
-            !>@brief: Computes the effective value of K or sigma.
-            !> If harmonic average then return the harmnic, otherwise Value_i is returned
-            real function effective_value(Value_i, Value_j, Vol_i, Vol_j)
-              implicit none
-              real, intent(in) :: Value_i, Value_j, Vol_i, Vol_j
-              if (.not. harmonic_average) then
-                effective_value = Value_i
-              else if (abs(Value_i *Vol_j + Value_j*Vol_i) > 1e-8) then
-                effective_value = Value_i * Value_j * (Vol_i + Vol_j)/(Value_i *Vol_j + Value_j*Vol_i )
-              else !Normal average
-                effective_value = 0.5*(Value_i *Vol_j + Value_j*Vol_i)/ (Vol_i + Vol_j)
-              end if
-            end function
-        end subroutine generate_and_solve_Laplacian_system
-
+      !Copy now back to the existing fields
+      do i = 1, size(state)
+        solution => extract_scalar_field(state(i),trim(field_name), stat)
+        if (stat == 0) solution%val = v_solution%val(i,:)
+      end do
+      !Remove remove_null_space
+      call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
+      call deallocate(v_solution)
+      call deallocate( Mmat%CV_RHS ); call deallocate( Mmat%petsc_ACV )
+    end subroutine generate_and_solve_Laplacian_system
 
  end module multiphase_1D_engine

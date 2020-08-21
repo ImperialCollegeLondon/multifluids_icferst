@@ -785,10 +785,9 @@ contains
             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )!sprint_to_do it used to zerod the pressure
-if (itime ==5) print *, "#####################################AQUI################################################################ "
             !Time to compute the self-potential if required
             if (have_option("/porous_media/Self_Potential")) then
-              call Assemble_and_solve_SP(Mdims, ndgln, state, packed_state)
+              call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
             end if
 
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime , non_linear_iterations = FPI_eq_taken) ! Write stat file

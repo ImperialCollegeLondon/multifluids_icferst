@@ -744,8 +744,7 @@ contains
           end if
         end do
 
-        if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .or. &
-            have_option("/porous_media/Self_Potential")) then!For the self potential we solve a Laplacian equation as well so we re-use the sparsity
+        if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver")) then
           !Introduce the HydrostaticPressure mesh, quadratic and continuous
           option_path = "/geometry/mesh::HydrostaticPressure/"
           call add_option(trim(option_path)//"from_mesh", stat=stat)
@@ -940,8 +939,7 @@ contains
               end if
             end if
 
-            if ((have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .or. &
-                have_option("/porous_media/Self_Potential")) .and. i == 1) then !If self potential we need the hydrostatic mesh,the fastest is to have HydrostaticPressure
+            if ((have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") ) .and. i == 1) then
               !Add a prognostic field named HydrostaticPressure (do we need BCs or initial conditions for this?)
               !This is only required for the first phase
               option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::HydrostaticPressure"

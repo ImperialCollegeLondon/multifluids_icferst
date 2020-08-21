@@ -41,17 +41,21 @@ module multi_SP
       !> and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992
       !> IMPORTANT: Water needs to be phase 1! TODO Maybe add a REMINDER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases
       !> TODO include the option to project to FE using PROJ_CV_TO_FEM
-      subroutine Assemble_and_solve_SP(Mdims, ndgln, state, packed_state)
+      subroutine Assemble_and_solve_SP( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
         implicit none
 
         type(multi_dimensions), intent( in ) :: Mdims
-        type( state_type ), dimension( : ), intent( inout ) :: state
+        type( state_type ), dimension(:), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_ndgln), intent(in) :: ndgln
+        type(multi_shape_funs), intent(inout) :: CV_funs
+        type(multi_sparsities), intent(in) :: Mspars
+        type (multi_matrices), intent(inout) :: Mmat
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims
         !Local variables
         integer :: k, cv_inod, nfields, stat
         type( scalar_field ), pointer :: Solution
-        type( tensor_field ), pointer :: Temperature, Concentration, Saturation
+        type( tensor_field ), pointer :: Temperature, Concentration, Saturation, density
         real, dimension(:,:,:), allocatable :: F_fields, K_fields
         real, dimension(:,:), allocatable ::rock_sat_conductivity
         character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
@@ -60,11 +64,14 @@ module multi_SP
         integer :: reference_nod
         logical :: reference_node_owned
         real :: reference_value
-        ! !IF FOLLOWING THIS APPROACH, PROBBALY FIELDS NEED TO BE CONVERTED TO FE, OR ACCEPT A MINOR ERROR
+        !Because we solve for Concentration the Solute mass fraction, we need to convert to Moles/litre
+        !M/l = Concentration * density / Molar mass
+        real, parameter :: NaCl_g_mol = 58.44!g/mol
 
       !     !Retrieve fields
         Pres_coordinates => extract_vector_field( packed_state, "PressureCoordinate" )
         Saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+        density =>extract_tensor_field(packed_state,"PackedDensity")
         nfields = 1
         Concentration=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
         Temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
@@ -76,17 +83,24 @@ module multi_SP
         do cv_inod = 1, Mdims%cv_nonods
           F_fields(1, 1, cv_inod) = Saturation%val(1, 1, cv_inod); k = 1
           if (has_salt) then
-            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod); k = 2
+            !Convert to Moles/Litre
+            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) * density%val(1, 1, cv_inod)/ NaCl_g_mol
+            k = 2
           end if
+          !Here the temperature can be in Kelvin or Celsius as we are lokking at gradients
           if (has_temperature) F_fields(k+1, 1, cv_inod) = Temperature%val(1, 1, cv_inod)
         end do
+
+
+      !##################SHOULD ALLOW TO SPECIFY THESE FUNCTIONS FROM DIAMOND###############################
         !Obtain the conductivity of the saturated rock
-        call get_rock_sat_conductivity(packed_state, Mdims, ndgln, rock_sat_conductivity(1,:) )
+        call get_rock_sat_conductivity(packed_state, Mdims, ndgln, Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
         !Compute K_fields
         do k = 1, nfields
-          call get_SP_coupling_coefficients(packed_state, Mdims, ndgln, rock_sat_conductivity(1,:), K_fields(k,1,:), flag = k )
+          call get_SP_coupling_coefficients(packed_state, Mdims, ndgln, rock_sat_conductivity(1,:), K_fields(k,1,:), &
+                      Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), flag = k )
         end do
-
+print *, rock_sat_conductivity
         !Solver options
         solver_option_path = "/solver_options/Linear_solver"
         if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver')) then
@@ -95,7 +109,8 @@ module multi_SP
 
         ! SP Solver elements
         SelfPotential => extract_scalar_field(state(1),"Self_Potential", stat)
-        call generate_and_solve_Laplacian_system( Mdims, ndgln, state, packed_state, rock_sat_conductivity, SelfPotential, K_fields, F_fields, .true., solver_option_path)
+        call generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, &
+                                      rock_sat_conductivity, "Self_Potential", K_fields, F_fields, .true., solver_option_path)
 
         !##########Now we normalise the SP result to have the reference node with voltage = 0. We do this because is better to remove the null space###########
         !##Retrieve the coordinates of the reference position##
@@ -110,7 +125,7 @@ module multi_SP
         !Share the value between all the processors
         call allsum(reference_value)
         !Apply the reference to ensure that the reference node is zero
-        SelfPotential%val = SelfPotential%val - reference_value
+        SelfPotential%val = (SelfPotential%val - reference_value)*1e3!to show in mVolts
 
         deallocate(rock_sat_conductivity, F_fields, K_fields)
       end subroutine Assemble_and_solve_SP
@@ -119,18 +134,18 @@ module multi_SP
       !>@brief: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula.
       !> and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992
       !> IMPORTANT: Water needs to be phase 1! TODO Maybe add a REMINDER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases
-      subroutine get_rock_sat_conductivity(packed_state, Mdims, ndgln, rock_sat_conductivity )
+      subroutine get_rock_sat_conductivity(packed_state, Mdims, ndgln, Saturation, Concentration, Temperature, rock_sat_conductivity )
         implicit none
 
         type(multi_dimensions), intent( in ) :: Mdims
         type( state_type ), intent( in ) :: packed_state
         type(multi_ndgln), intent(in) :: ndgln
         real, dimension(:), intent(out) :: rock_sat_conductivity!output of the subroutine.
+        real, dimension(:), intent(in) :: Concentration, Saturation, Temperature!Here Concentration needs to be in mol/litre
         !Local varibales
         integer:: cv_inod, ele, cv_iloc, stat, ele_pore
         real :: auxR, temp_in_C
         type(vector_field), pointer :: porosity
-        type(tensor_field), pointer :: Temperature, Concentration, Saturation
         real, parameter :: cementation_exp = 1. !This I presume should be assigned from diamond?
         real, parameter :: sat_exp = 1. !Saturation exponent, again I presume should be assigned from diamond?
         real, parameter :: Kelv_conv = 273.15
@@ -138,12 +153,10 @@ module multi_SP
         logical, save :: show_msg = .true.
         real, parameter :: tol = 1e-8 !Minumun allowed concentration to ensure that the field exists
         !Retrieve fields from state/packed_state
-        Concentration=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
         !Check the situation with the temperature field/value
         if (has_temperature) then
-          Temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
           if (show_msg) then
-            if (any(Temperature%val - Kelv_conv < 0.)) then
+            if (any(Temperature - Kelv_conv < 0.)) then
               ewrite(0, *) "REMINDER: The S.I. units for TEMPERATURE are Kelvin not Celsius."
             end if
           end if
@@ -165,11 +178,7 @@ module multi_SP
               end if
             end if
         end if
-
-        Saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction", stat)
         porosity=>extract_vector_field(packed_state,"Porosity")
-
-
         if (.not. has_salt) then
           if (GetProcNo() == 1) then
             ewrite(0, *) "ERROR: For Self Potential calculation a concentration field is required."
@@ -178,9 +187,9 @@ module multi_SP
           end if
         else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
           do cv_inod = 1, Mdims%cv_nonods
-            if (has_temperature) temp_in_C = Temperature%val(1,1,cv_inod) - Kelv_conv                           !Water salt concentration
-            water_conductivity(cv_inod) = (5.6 + 0.27 * temp_in_C - 1.5e-4 * temp_in_C**2.)*(Concentration%val(1,1,cv_inod)+tol) &
-            - Concentration%val(1,1,cv_inod)**1.5 * ( 2.36 + 0.099 * temp_in_C) / (1 + 0.214 * Concentration%val(1,1,cv_inod)**0.5)
+            if (has_temperature) temp_in_C = Temperature(cv_inod) - Kelv_conv                           !Water salt concentration
+            water_conductivity(cv_inod) = (5.6 + 0.27 * temp_in_C - 1.5e-4 * temp_in_C**2.)*(Concentration(cv_inod)+tol) &
+            - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp_in_C) / (1 + 0.214 * Concentration(cv_inod)**0.5)
           end do
         end if
 
@@ -189,7 +198,7 @@ module multi_SP
         do  ele = 1, Mdims%totele
           do cv_iloc = 1, Mdims%cv_nloc
             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )                                       !Only the water phase
-            rock_sat_conductivity(cv_inod) = rock_sat_conductivity(cv_inod) + porosity%val(1,ele) ** cementation_exp * water_conductivity(cv_inod) * Saturation%val(1,1,cv_inod) ** sat_exp
+            rock_sat_conductivity(cv_inod) = rock_sat_conductivity(cv_inod) + porosity%val(1,ele) ** -cementation_exp * water_conductivity(cv_inod) * (Saturation(cv_inod)+tol) ** -sat_exp
             cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
           end do
         end do
@@ -200,7 +209,7 @@ module multi_SP
 
       !>@brief: This subroutine computes the coupling coefficients required to compute the self potential using Jackson et al. (2012)
       !>1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
-      subroutine get_SP_coupling_coefficients(packed_state, Mdims, ndgln, rock_sat_conductivity, coupling_term, flag )
+      subroutine get_SP_coupling_coefficients(packed_state, Mdims, ndgln, rock_sat_conductivity, coupling_term, Saturation, Concentration, Temperature, flag )
         implicit none
 
         type(multi_dimensions), intent( in ) :: Mdims
@@ -208,21 +217,18 @@ module multi_SP
         real, dimension(:), intent(in) :: rock_sat_conductivity
         type(multi_ndgln), intent(in) :: ndgln
         real, dimension(:), intent(inout) ::  coupling_term!>output of the subroutine.
+        real, dimension(:), intent(in) :: Concentration, Saturation, Temperature!Here Concentration needs to be in mol/litre
         integer, intent(in) :: flag !>1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
         !Local variables
         real :: norm_water_sat, Cf, Tna, AuxR
         integer :: cv_inod, ele, cv_iloc, stat
-        type(tensor_field), pointer :: Concentration, Saturation, Temperature
         real, dimension(:, :), pointer :: Immobile_fraction
         real, dimension(Mdims%cv_nonods) :: cv_counter, coupling_coef, coupling_coef_ee, coupling_coef_ed
         real, parameter :: EK_exp = 0.6 !From Jackson et al 2012
         real, parameter :: Tol = 1e-8!Not sure about 1e-10, maybe more or maybe less?
         !Retrieve fields from state/packed_state
 
-        Saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
-        Concentration=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
-        Temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
 
         coupling_coef = 0.
         cv_counter = 0.
@@ -232,25 +238,26 @@ module multi_SP
             do cv_iloc = 1, Mdims%cv_nloc
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
               !Obtain normalised saturation
-              norm_water_sat = (Saturation%val(1,1,cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
-              coupling_coef(cv_inod) = coupling_coef(cv_inod) + norm_water_sat ** EK_exp
+              norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
+              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do
           end do
           coupling_coef = coupling_coef/cv_counter
+print *,      coupling_coef
         case (2)!Thermal coupling coefficient
           do cv_inod = 1, Mdims%cv_nonods
-            Tna = get_Hittorf_transport_number(Concentration%val(1,1,cv_inod))
-            AuxR = LOG(Concentration%val(1,1,cv_inod) + Tol )!To avoid reaching zero
+            Tna = get_Hittorf_transport_number(Concentration(cv_inod))
+            AuxR = LOG(Concentration(cv_inod) + Tol )!To avoid reaching zero
             coupling_coef_ed(cv_inod) = - 1.984e-1*(2.*Tna - 1.) * AuxR + 1.059 * Tna - 5.673e-1
             coupling_coef_ee(cv_inod) = - 1.984e-1 * AuxR + 5.953e-1
           end do
         case (3)!Exclusion diffusion coefficient
           do cv_inod = 1, Mdims%cv_nonods
-            Tna = get_Hittorf_transport_number(Concentration%val(1,1,cv_inod))
-            Cf = Concentration%val(1,1,cv_inod) + Tol!To avoid divisions by zero
-            coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * Temperature%val(1,1,cv_inod)/Cf
-            coupling_coef_ee(cv_inod) = - 8.61e-2 * Temperature%val(1,1,cv_inod)/Cf
+            Tna = get_Hittorf_transport_number(Concentration(cv_inod))
+            Cf = Concentration(cv_inod) + Tol!To avoid divisions by zero
+            coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * Temperature(cv_inod)/Cf
+            coupling_coef_ee(cv_inod) = - 8.61e-2 * Temperature(cv_inod)/Cf
           end do
         case default
           FLAbort("Only three flags allowed to compute SP coefficients. 1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion ")
@@ -258,10 +265,12 @@ module multi_SP
 
         !For thermal and diffusion-exclusion we need to combine them based on the normalised saturation
         if (flag>1) then
+          !coupling_coef_ed and coupling_coef_ee are in mV, need to convert them to volts
+          coupling_coef_ed = 1e-3 * coupling_coef_ed; coupling_coef_ee = 1e-3 * coupling_coef_ee
           do ele = 1, Mdims%totele
             do cv_iloc = 1, Mdims%cv_nloc
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-              norm_water_sat = (Saturation%val(1,1,cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
+              norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
               coupling_coef(cv_inod) = coupling_coef(cv_inod) + (1 - (1- norm_water_sat)**3.) * (coupling_coef_ed(cv_inod) - coupling_coef_ee(cv_inod)) + coupling_coef_ee(cv_inod)
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do

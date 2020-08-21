@@ -3323,18 +3323,18 @@ end if
 
         END FUNCTION FACE_THETA_MANY
 
+        !>     ---------------------------------------------------------------
+        !>     - this subroutine computed the surface area at the Gi point (SCVDETWEI)
+        !>     - this subroutine calculates the control volume (CV)
+        !>     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
+        !>     - integration points GI. NODI = the current global
+        !>     - node number for the co-ordinates.
+        !>     - (XC,YC,ZC) is the centre of CV NODI
+        !>
+        !>     ---------------------------------------------------------------
+        !>    - date last modified : 18/10/2018
+        !>     ---------------------------------------------------------------
         SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
-           !     ---------------------------------------------------------------
-           !
-           !     - this subroutine calculates the control volume (CV)
-           !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
-           !     - integration points GI. NODI = the current global
-           !     - node number for the co-ordinates.
-           !     - (XC,YC,ZC) is the centre of CV NODI
-           !
-           !     ---------------------------------------------------------------
-           !     - date last modified : 18/10/2018
-           !     ---------------------------------------------------------------
            IMPLICIT NONE
            INTEGER, intent( in ) :: ELE, GI, X_NOD, X_NODJ
            REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
@@ -7218,5 +7218,367 @@ end if
         shock_front_in_ele = minival < tol .and. (maxival-minival) > tol
 
     end function shock_front_in_ele
+
+
+    !>@brief: In this method we assemble and solve the Laplacian system using at least P1 elements
+    !> The equation solved is the following: Div sigma Grad X = - SUM (Div K Grad F) with Neuman BCs = 0
+    !> where K and F are passed down as a vector. Therefore for n entries the SUM will be performed over n fields
+    !> Example: F = (3, nphase, cv_nonods) would include three terms in the RHS and the same for K
+    !> If harmonic average then we perform the harmonic average of sigma and K
+    !> IMPORTANT: This subroutine requires the PHsparsity to be generated
+    !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
+    subroutine generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
+                                                    Solution, K_fields, F_fields, harmonic_average)
+      implicit none
+
+      type(multi_dimensions), intent( in ) :: Mdims
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_ndgln), intent(in) :: ndgln
+      logical, intent(in) :: harmonic_average
+      real, dimension(:,:), intent(in) :: Sigma_field
+      real, dimension(:,:,:), intent(in) :: K_fields, F_fields
+      type( scalar_field ), intent(inout) :: Solution
+      type(multi_shape_funs), intent(inout) :: CV_funs
+      type(multi_sparsities), intent(in) :: Mspars
+      type (multi_matrices), intent(inout) :: Mmat
+      type(multi_GI_dimensions), intent(in) :: CV_GIdims
+      ! local variables...
+      logical :: INTEGRAT_AT_GI, skip, on_domain_boundary
+      logical :: DISTCONTINUOUS_METHOD = .false.!For the time being this subroutine only works for continuous fields
+      integer :: stat ,nb, ele, ele2, ele3, sele, cv_siloc, i, local_phases, CV_NODK, cv_kloc,&
+                cv_iloc, cv_jloc, cv_nodi, cv_nodj, idim, iphase, GCOUNT, GI, x_nodi, x_nodj
+      real :: HDC, HDLi, HDLj
+      type( vector_field ), pointer :: X_ALL, MASS_CV, XC_CV_ALL
+      LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
+      integer, dimension (Mdims%cv_nloc) ::CV_OTHER_LOC
+      integer, dimension (Mdims%cv_snloc) :: CV_SLOC2LOC
+      integer, dimension (Mdims%u_nloc) ::U_OTHER_LOC
+      integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
+      integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
+      type(csr_sparsity), pointer :: sparsity
+      integer, dimension(:), pointer :: neighbours
+      REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
+      INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
+      !Variables to reduce communications with PETSc when assembling the matrix
+      real, dimension(size(F_fields,2)) :: LOC_CV_RHS_I, LOC_CV_RHS_J, LOC_MAT_II, LOC_MAT_JJ, LOC_MAT_IJ, LOC_MAT_JI
+      !###Variables for shape function calculation###
+      type (multi_dev_shape_funs) :: SdevFuns
+      !Local diffusion coefficients
+      real, dimension(size(F_fields,2)):: SIGMA_DIFF_COEF_DIVDX
+      real, dimension(size(F_fields,1), size(F_fields,2)):: DIFF_COEF_DIVDX
+      !Set the number of phases from F_fields
+      local_phases = size(F_fields,2)
+      !Retrieve node coordinates
+      X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
+      !Retrieve CV volume and CV centres
+      ! MASS_CV=>extract_vector_field(packed_state,"CVIntegral")
+      XC_CV_ALL=>extract_vector_field(packed_state,"CVBarycentre")
+      !Allocate matrix and RHS
+      sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+      call allocate(Mmat%CV_RHS,local_phases,Solution%mesh,"RHS")
+      call allocate(Mmat%petsc_ACV,sparsity,[local_phases,local_phases],"ACV_INTENERGE")
+      call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
+
+      !Allocate derivatives of the shape functions
+      call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
+
+      !Obtain elements surrounding an element (FACE_ELE)
+      FACE_ELE = 0.
+      CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
+          Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+          CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+
+      Loop_Elements: do ele = 1, Mdims%totele
+        if (IsParallel()) then
+          if (.not. assemble_ele(solution,ele)) then
+            skip=.true.
+            neighbours=>ele_neigh(solution,ele)
+            do nb=1,size(neighbours)
+              if (neighbours(nb)<=0) cycle
+              if (assemble_ele(solution,neighbours(nb))) then
+                skip=.false.
+                exit
+              end if
+            end do
+            if (skip) cycle
+          end if
+        end if
+
+        DO CV_KLOC = 1, Mdims%cv_nloc
+          CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
+          Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
+            ! Global node number of the local node
+            CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
+            ! MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+            ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
+            Loop_GCOUNT: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
+              ! CV_funs%colgpts stores the local Gauss-point number in the ELE
+              GI = CV_funs%colgpts( GCOUNT )
+              ! Get the neighbouring node for node ILOC and Gauss point GI
+              CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
+              ELE2 = 0; SELE = 0; CV_SILOC=0
+              INTEGRAT_AT_GI = .TRUE.
+              U_OTHER_LOC=0; CV_OTHER_LOC=0
+              Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
+                ! We are on the boundary or next to another element.  Determine CV_OTHER_LOC
+                ! CV_funs%cvfem_on_face(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
+                ! Look for these nodes on the other elements.
+                CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, U_OTHER_LOC, Mdims%u_nloc, &
+                MAT_OTHER_LOC, INTEGRAT_AT_GI, &
+                Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%xu, &
+                Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, ELE, ELE2,  &
+                Mspars%ELE%fin, Mspars%ELE%col, DISTCONTINUOUS_METHOD )
+
+                IF ( INTEGRAT_AT_GI ) THEN
+                  CV_JLOC = CV_OTHER_LOC( CV_ILOC )
+                  SELE = 0
+                  ELE3=0
+                  IF ( CV_JLOC == 0 ) THEN ! We are on the boundary of the domain or subdomain
+                    CV_JLOC = CV_ILOC
+                    ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
+                    CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
+                    FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
+                    ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
+                  END IF
+                  INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
+                END IF
+              END IF Conditional_CheckingNeighbourhood
+              !Avoid integrating across the middle of a CV on the boundaries of elements
+              !For disconditnuous pressure this is always true
+              Conditional_integration: IF ( INTEGRAT_AT_GI ) THEN
+                on_domain_boundary = ( SELE /= 0 )
+                CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+
+                if(CV_NODJ > CV_NODI) then
+                  !Compute SdevFuns%DETWEI and CVNORMX_ALL (this latter is not necessary here)
+                  CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
+
+                  ! Obtain the CV discretised advection/diffusion equations
+                  IF(.not. on_domain_boundary) THEN
+                      !Distance from i node to edge
+                      HDLi = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-X_ALL%val(:,X_NODI))**2) )
+                      ! Compute the distance HDC between the nodes either side of the CV face
+                      HDC = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-XC_CV_ALL%val(:,CV_NODJ))**2) )
+                      !Distance from j node to edge
+                      HDLj = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODJ)-X_ALL%val(:,X_NODJ))**2) )
+                      do iphase = 1, local_phases
+                        do i = 1, size(K_fields,1)
+                          DIFF_COEF_DIVDX(i, iphase) = get_DIFF_COEF_DIVDX(HDC, HDLi, HDLj, K_fields(i, iphase, cv_nodi), K_fields(i, iphase, cv_nodj))
+                        end do
+                        SIGMA_DIFF_COEF_DIVDX(iphase) = get_DIFF_COEF_DIVDX(HDC, HDLi, HDLj, Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
+                      end do
+                    else
+                      DIFF_COEF_DIVDX = 0
+                      SIGMA_DIFF_COEF_DIVDX = 0.
+                  ENDIF
+
+                  LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
+                  LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
+                  LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
+                  !Assemble off-diagonal cv_nodi-cv_nodj
+                  do iphase = 1, local_phases
+                    LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    !Assemble off-diagonal
+                    LOC_MAT_JI(iphase) = LOC_MAT_JI(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    !Assemble diagonal of the matrix of node cv_nodi
+                    LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    !Assemble diagonal of the matrix of node cv_nodj
+                    LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    do i = 1, size(K_fields,1)
+                  ! Fill up RHS
+                      LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
+                                                          (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
+                      LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
+                                                          (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
+                    end do
+                  end do
+
+                  do iphase = 1, local_phases
+                    !For the RHS collapsing to assemble into phase 1 can be done just here
+                    call addto(Mmat%CV_RHS,iphase, CV_NODI,LOC_CV_RHS_I(iphase))
+                    call addto(Mmat%CV_RHS,iphase, CV_NODJ,LOC_CV_RHS_J(iphase))
+                    !Introduce the information into the petsc_ACV matrix
+                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodi, LOC_MAT_II(iphase) )
+                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodj, LOC_MAT_JJ(iphase) )
+                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodi,cv_nodj, LOC_MAT_IJ(iphase) )
+                    call addto(Mmat%petsc_ACV,iphase,iphase,cv_nodj,cv_nodi, LOC_MAT_JI(iphase) )
+                  end do
+                END IF
+              END IF Conditional_integration
+            END DO Loop_GCOUNT
+          END DO Loop_CV_ILOC
+        end do
+      END DO Loop_Elements
+
+
+      call deallocate_multi_dev_shape_funs(SdevFuns)
+
+    contains
+
+
+
+      !>@brief: Computes the effective value of K or sigma.
+      !> If harmonic average then return the harmnic, otherwise Value_i is returned
+      real function get_DIFF_COEF_DIVDX(HDC,  W_i, W_j, Value_i, Value_j)
+        implicit none
+        real, intent(in) :: Value_i, Value_j, W_i, W_j, HDC
+
+        if (.not. harmonic_average) then
+          get_DIFF_COEF_DIVDX = Value_i
+        else if (abs(Value_i *W_j + Value_j*W_i) > 1e-8) then
+          get_DIFF_COEF_DIVDX = Value_i * Value_j * (W_i + W_j)/(Value_i *W_j + Value_j*W_i )
+        else !Normal average
+          get_DIFF_COEF_DIVDX = 0.5*(Value_i *W_j + Value_j*W_i)/ (W_i + W_j)
+        end if
+        !Divide now by the distance between nodes
+        get_DIFF_COEF_DIVDX = get_DIFF_COEF_DIVDX/HDC
+      end function get_DIFF_COEF_DIVDX
+
+      SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
+         IMPLICIT NONE
+         INTEGER, intent( in ) :: ELE, GI, X_NOD, X_NODJ
+         REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
+         REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
+         REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
+         !     - Local variables
+         INTEGER :: NODJ,  JLOC
+         REAL :: A, B, C
+         REAL :: DETJ
+         REAL :: DXDLX, DXDLY, DYDLX
+         REAL :: DYDLY, DZDLX, DZDLY
+         REAL :: TWOPI
+         REAL, PARAMETER :: PI = 3.14159265
+         REAL :: RGI, RDUM
+         real, dimension(3) :: POSVGI, BAK
+         !ewrite(3,*)' In SCVDETNX'
+         POSVGI = 0.0
+         Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
+
+             DXDLX = 0.0;DXDLY = 0.0
+             DYDLX = 0.0;DYDLY = 0.0
+             DZDLX = 0.0;DZDLY = 0.0
+             do  JLOC = 1, Mdims%x_nloc
+
+                 NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                 DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(1,NODJ)
+                 DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL%val(1,NODJ)
+                 DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(2,NODJ)
+                 DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL%val(2,NODJ)
+                 DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(3,NODJ)
+                 DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL%val(3,NODJ)
+
+                 POSVGI = POSVGI + CV_funs%scvfen(JLOC,GI)*X_ALL%val(:,NODJ)
+             end do
+
+             !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
+             !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
+             !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
+             IF ( on_domain_boundary) then!sprint_to_do between elements use both barycentres?
+               POSVGI = POSVGI - (0.8*X_ALL%val(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
+             else !Use centres of the continuous control volumes, i.e. corners of the elements
+               POSVGI = X_ALL%val(1:Mdims%ndim, X_NODJ) - X_ALL%val(1:Mdims%ndim, X_NOD)
+             end if
+
+             CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
+                 DXDLX,       DYDLX,       DZDLX, &
+                 DXDLY,       DYDLY,       DZDLY,&
+                 POSVGI(1),     POSVGI(2),     POSVGI(3) )
+
+             A = DYDLX*DZDLY - DYDLY*DZDLX
+             B = DXDLX*DZDLY - DXDLY*DZDLX
+             C = DXDLX*DYDLY - DXDLY*DYDLX
+             !
+             !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+             !
+             DETJ = SQRT( A**2 + B**2 + C**2 )
+             !
+             !     - Calculate the determinant times the surface weight at Gauss pnt GI.
+             !
+             SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
+             !
+             !     - Calculate the normal at the Gauss pts
+             !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+             !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+             !     - Perform cross-product. N = T1 x T2
+             !
+
+
+
+         ELSE IF(Mdims%ndim == 2) THEN
+
+             TWOPI = 1.0
+
+             RGI   = 0.0
+             DXDLX = 0.0;DXDLY = 0.0
+             DYDLX = 0.0;DYDLY = 0.0
+             DZDLX = 0.0
+             !
+             !     - Note that we set the derivative wrt to y of coordinate z to 1.0
+             !
+             DZDLY = 1.0
+
+             do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+                 NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                 DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(1,NODJ)
+                 DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(2,NODJ)
+
+                 POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) + CV_funs%scvfen(JLOC,GI)*X_ALL%val(1:Mdims%ndim,NODJ)
+
+                 RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL%val(2,NODJ)
+
+             end do ! Was loop 300
+             !To calculate the sign of the normal an average between the center of the COntinuous CV and the center of mass is used
+             POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) - (0.8*X_ALL%val(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
+
+             RGI = 1.0
+
+             DETJ = SQRT( DXDLX**2 + DYDLX**2 )
+             SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
+             !
+             !     - Calculate the normal at the Gauss pts
+             !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+             !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+             !     - Perform cross-product. N = T1 x T2
+             !
+             CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
+                 DXDLX,       DYDLX,       DZDLX, &
+                 DXDLY,       DYDLY,       DZDLY,&
+                 POSVGI(1),     POSVGI(2),     POSVGI(3) )
+
+         ELSE
+             ! For 1D...
+             do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+                 NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                 POSVGI(1) = POSVGI(1) + CV_funs%scvfen(JLOC,GI)*X_ALL%val(1,NODJ)
+
+             end do ! Was loop 300
+             !
+             !     - Note that POSVGIX and POSVGIY can be considered as the components
+             !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
+             !     - current control volume NODI.
+             !
+             POSVGI(1) = POSVGI(1) - XC_ALL(1)
+             ! SIGN(A,B) sign of B times A.
+             CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGI(1) )
+
+             DETJ = 1.0
+             SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
+
+
+         ENDIF Conditional_Dimension
+
+     END SUBROUTINE SCVDETNX_new
+
+  end subroutine generate_Laplacian_system
+
+
+
 
 end module cv_advection
