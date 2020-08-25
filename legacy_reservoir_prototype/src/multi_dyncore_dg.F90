@@ -8641,14 +8641,14 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     !> IMPORTANT: This subroutine requires the PHsparsity to be generated
     !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
     subroutine generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
-                                                    field_name, K_fields, F_fields, harmonic_average, solver_path)
+                                                    field_name, K_fields, F_fields, intface_val_type, solver_path)
       implicit none
 
       type(multi_dimensions), intent( in ) :: Mdims
       type( state_type ), dimension(:), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
-      logical, intent(in) :: harmonic_average
+      integer, intent(in) :: intface_val_type
       real, dimension(:,:), intent(in) :: Sigma_field
       real, dimension(:,:,:), intent(in) :: K_fields, F_fields
       type(multi_shape_funs), intent(inout) :: CV_funs
@@ -8676,15 +8676,18 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       !Generate system
       call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
-                                          Solution, K_fields, F_fields, harmonic_average)
+                                          Solution, K_fields, F_fields, intface_val_type)
       !Solve system
-      call allocate(v_solution,local_phases,Solution%mesh,"v_solution")
+      call allocate(v_solution,local_phases,Solution%mesh,"Laplacian_system")
       !Add remove null_space if not bcs specified for the field since we always have natural BCs
       call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
       call zero(v_solution) !; call zero_non_owned(rhs)
       call petsc_solve( v_solution, Mmat%petsc_ACV, Mmat%CV_RHS, option_path = trim(solver_option_path) )
       if (IsParallel()) call halo_update(v_solution)
 
+
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, i)
+! print *, Mmat%CV_RHS%val
       !Copy now back to the existing fields
       do i = 1, size(state)
         solution => extract_scalar_field(state(i),trim(field_name), stat)

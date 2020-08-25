@@ -55,22 +55,23 @@ module multi_SP
         !Local variables
         integer :: k, cv_inod, nfields, stat
         type( scalar_field ), pointer :: Solution
-        type( tensor_field ), pointer :: Temperature, Concentration, Saturation, density
+        type( tensor_field ), pointer :: Temperature, Concentration, Saturation, density, pressure
         real, dimension(:,:,:), allocatable :: F_fields, K_fields
         real, dimension(:,:), allocatable ::rock_sat_conductivity
         character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
         type(scalar_field), pointer :: SelfPotential
-        type( vector_field ), pointer :: Pres_coordinates
+        type( vector_field ), pointer :: X_ALL
         integer :: reference_nod
         logical :: reference_node_owned
-        real :: reference_value
+        real :: reference_value, top_coordinate, gravity_magnitude, conversor_to_miliVolts
         !Because we solve for Concentration the Solute mass fraction, we need to convert to Moles/litre
         !M/l = Concentration * density / Molar mass
         real, parameter :: NaCl_g_mol = 58.44!g/mol
 
       !     !Retrieve fields
-        Pres_coordinates => extract_vector_field( packed_state, "PressureCoordinate" )
+        X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
         Saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+        Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
         density =>extract_tensor_field(packed_state,"PackedDensity")
         nfields = 1
         Concentration=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
@@ -79,15 +80,21 @@ module multi_SP
         if (has_temperature) nfields = nfields + 1
         allocate(F_fields(nfields, 1, Mdims%cv_nonods), K_fields(nfields, 1, Mdims%cv_nonods))
         allocate(rock_sat_conductivity(1, Mdims%cv_nonods))
-        !Fill up F_fields
+        !#############Fill up F_fields#######################
+        !First obtain the highest point of the model (either y in 2D or Z in 3D are the vertical coordinates)
+        top_coordinate = maxval(X_ALL%val(Mdims%ndim,:)); call allmax(top_coordinate)
+        call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, default = 0. )
         do cv_inod = 1, Mdims%cv_nonods
-          F_fields(1, 1, cv_inod) = Saturation%val(1, 1, cv_inod); k = 1
+          !Water potential, i.e. = P - rho * g * h
+          F_fields(1, 1, cv_inod) = Pressure%val(1,1,cv_inod) - gravity_magnitude * density%val(1,1,cv_inod) * (top_coordinate - X_ALL%val(Mdims%ndim,cv_inod))
+          k = 1
+          ! F_fields(1, 1, cv_inod) = Saturation%val(1, 1, cv_inod); k = 1
           if (has_salt) then
             !Convert to Moles/Litre
             F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) * density%val(1, 1, cv_inod)/ NaCl_g_mol
             k = 2
           end if
-          !Here the temperature can be in Kelvin or Celsius as we are lokking at gradients
+          !Here the temperature can be in Kelvin or Celsius as we are looking at gradients
           if (has_temperature) F_fields(k+1, 1, cv_inod) = Temperature%val(1, 1, cv_inod)
         end do
 
@@ -100,22 +107,21 @@ module multi_SP
           call get_SP_coupling_coefficients(packed_state, Mdims, ndgln, rock_sat_conductivity(1,:), K_fields(k,1,:), &
                       Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), flag = k )
         end do
-print *, rock_sat_conductivity
+
         !Solver options
         solver_option_path = "/solver_options/Linear_solver"
         if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver')) then
           solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::SPSolver'
         end if
-
         ! SP Solver elements
         SelfPotential => extract_scalar_field(state(1),"Self_Potential", stat)
         call generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, &
-                                      rock_sat_conductivity, "Self_Potential", K_fields, F_fields, .true., solver_option_path)
+                                      rock_sat_conductivity, "Self_Potential", K_fields, F_fields, 20, solver_option_path)
 
         !##########Now we normalise the SP result to have the reference node with voltage = 0. We do this because is better to remove the null space###########
         !##Retrieve the coordinates of the reference position##
         reference_value = 0.
-        call find_reference_node_from_coordinates(Pres_coordinates, Saturation%mesh,"/porous_media/Self_Potential",reference_nod,reference_node_owned)
+        call find_reference_node_from_coordinates(X_ALL, Saturation%mesh,"/porous_media/Self_Potential",reference_nod,reference_node_owned)
         !The processor that owns the node retrieves the value
         if (IsParallel()) then
           if (reference_node_owned) reference_value = SelfPotential%val(reference_nod)
@@ -125,7 +131,9 @@ print *, rock_sat_conductivity
         !Share the value between all the processors
         call allsum(reference_value)
         !Apply the reference to ensure that the reference node is zero
-        SelfPotential%val = (SelfPotential%val - reference_value)*1e3!to show in mVolts
+        conversor_to_miliVolts = 1e3
+        if (have_option("/porous_media/Self_Potential/Results_in_Volts") ) conversor_to_miliVolts = 1.0!Leave as Volts
+        SelfPotential%val = (SelfPotential%val - reference_value)*conversor_to_miliVolts!to show in mVolts
 
         deallocate(rock_sat_conductivity, F_fields, K_fields)
       end subroutine Assemble_and_solve_SP
@@ -146,12 +154,12 @@ print *, rock_sat_conductivity
         integer:: cv_inod, ele, cv_iloc, stat, ele_pore
         real :: auxR, temp_in_C
         type(vector_field), pointer :: porosity
-        real, parameter :: cementation_exp = 1. !This I presume should be assigned from diamond?
-        real, parameter :: sat_exp = 1. !Saturation exponent, again I presume should be assigned from diamond?
+        real :: cementation_exp !This I presume should be assigned from diamond?
+        real :: sat_exp !Saturation exponent, again I presume should be assigned from diamond?
         real, parameter :: Kelv_conv = 273.15
         real, dimension(Mdims%cv_nonods) :: water_conductivity, cv_counter
         logical, save :: show_msg = .true.
-        real, parameter :: tol = 1e-8 !Minumun allowed concentration to ensure that the field exists
+        real, parameter :: tol = 1e-8
         !Retrieve fields from state/packed_state
         !Check the situation with the temperature field/value
         if (has_temperature) then
@@ -178,6 +186,10 @@ print *, rock_sat_conductivity
               end if
             end if
         end if
+        !Retrieve exponents
+        call get_option("/porous_media/Self_Potential/Cementation_exp",cementation_exp, default = 1.8 )
+        call get_option("/porous_media/Self_Potential/Sat_exponent",sat_exp, default = 2.0 )
+
         porosity=>extract_vector_field(packed_state,"Porosity")
         if (.not. has_salt) then
           if (GetProcNo() == 1) then
@@ -186,8 +198,8 @@ print *, rock_sat_conductivity
             return
           end if
         else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
-          do cv_inod = 1, Mdims%cv_nonods
-            if (has_temperature) temp_in_C = Temperature(cv_inod) - Kelv_conv                           !Water salt concentration
+          do cv_inod = 1, Mdims%cv_nonods                           !Here temperature needs to be in Celsius
+            if (has_temperature) temp_in_C = Temperature(cv_inod)- Kelv_conv                   !Water salt concentration
             water_conductivity(cv_inod) = (5.6 + 0.27 * temp_in_C - 1.5e-4 * temp_in_C**2.)*(Concentration(cv_inod)+tol) &
             - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp_in_C) / (1 + 0.214 * Concentration(cv_inod)**0.5)
           end do
@@ -198,7 +210,7 @@ print *, rock_sat_conductivity
         do  ele = 1, Mdims%totele
           do cv_iloc = 1, Mdims%cv_nloc
             cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )                                       !Only the water phase
-            rock_sat_conductivity(cv_inod) = rock_sat_conductivity(cv_inod) + porosity%val(1,ele) ** -cementation_exp * water_conductivity(cv_inod) * (Saturation(cv_inod)+tol) ** -sat_exp
+            rock_sat_conductivity(cv_inod) = rock_sat_conductivity(cv_inod) + porosity%val(1,ele) ** cementation_exp * water_conductivity(cv_inod) * (Saturation(cv_inod)+tol) ** sat_exp
             cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
           end do
         end do
@@ -225,7 +237,7 @@ print *, rock_sat_conductivity
         real, dimension(:, :), pointer :: Immobile_fraction
         real, dimension(Mdims%cv_nonods) :: cv_counter, coupling_coef, coupling_coef_ee, coupling_coef_ed
         real, parameter :: EK_exp = 0.6 !From Jackson et al 2012
-        real, parameter :: Tol = 1e-8!Not sure about 1e-10, maybe more or maybe less?
+        real, parameter :: Tol = 1e-8
         !Retrieve fields from state/packed_state
 
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
@@ -239,12 +251,11 @@ print *, rock_sat_conductivity
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
               !Obtain normalised saturation
               norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
-              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp
+              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do
           end do
           coupling_coef = coupling_coef/cv_counter
-print *,      coupling_coef
         case (2)!Thermal coupling coefficient
           do cv_inod = 1, Mdims%cv_nonods
             Tna = get_Hittorf_transport_number(Concentration(cv_inod))
@@ -266,7 +277,7 @@ print *,      coupling_coef
         !For thermal and diffusion-exclusion we need to combine them based on the normalised saturation
         if (flag>1) then
           !coupling_coef_ed and coupling_coef_ee are in mV, need to convert them to volts
-          coupling_coef_ed = 1e-3 * coupling_coef_ed; coupling_coef_ee = 1e-3 * coupling_coef_ee
+          ! coupling_coef_ed = 1e-3 * coupling_coef_ed; coupling_coef_ee = 1e-3 * coupling_coef_ee
           do ele = 1, Mdims%totele
             do cv_iloc = 1, Mdims%cv_nloc
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
@@ -276,10 +287,10 @@ print *,      coupling_coef
             end do
           end do
           !Obtain the average since we have overlooped cv nodes
-          coupling_coef = coupling_coef/cv_counter
+          coupling_coef = coupling_coef/cv_counter * 1e-3!To convert from mV to Volts only flags 2 and 3
         end if
         !Finally obtain the coupling coefficient
-        coupling_term = coupling_coef * rock_sat_conductivity !I think this is in mV, so may need to rescale
+        coupling_term = coupling_coef * rock_sat_conductivity
 
       contains
         !>@brief: Compute the macroscopic Hittorf transport number for the positive Sodium ions

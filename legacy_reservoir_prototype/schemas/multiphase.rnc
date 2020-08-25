@@ -1033,8 +1033,19 @@ start =
            ## <b>If not solving for temperature</b>: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.
 	         element Reservoir_temperature {
 	         	real
-		        }?          
-          
+		        }?,
+		       ## Cementation exponent, by default 1.8, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
+	         element Cementation_exp {
+	         	real
+		        }?,        
+		       ## Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
+	         element Sat_exponent {
+	         	real
+		        }?,
+		       ## By default the results are shown in miliVolts, select this to show the results in Volts. 
+	         element Results_in_Volts {
+	         	empty
+		        }?            
           )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##

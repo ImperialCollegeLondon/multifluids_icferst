@@ -1157,7 +1157,8 @@ contains
                               GLOBAL_FACE = GLOBAL_FACE + 1
                               JMID = Mspars%small_acv%mid(CV_NODJ)
                               ! Calculate the control volume normals at the Gauss pts.
-                              CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
+                              CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, &
+                                    ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
                               !Obtain the list of neighbouring nodes
                               IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
                                                               C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
@@ -3322,158 +3323,6 @@ end if
             RETURN
 
         END FUNCTION FACE_THETA_MANY
-
-        !>     ---------------------------------------------------------------
-        !>     - this subroutine computed the surface area at the Gi point (SCVDETWEI)
-        !>     - this subroutine calculates the control volume (CV)
-        !>     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
-        !>     - integration points GI. NODI = the current global
-        !>     - node number for the co-ordinates.
-        !>     - (XC,YC,ZC) is the centre of CV NODI
-        !>
-        !>     ---------------------------------------------------------------
-        !>    - date last modified : 18/10/2018
-        !>     ---------------------------------------------------------------
-        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
-           IMPLICIT NONE
-           INTEGER, intent( in ) :: ELE, GI, X_NOD, X_NODJ
-           REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
-           REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
-           REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-           !     - Local variables
-           INTEGER :: NODJ,  JLOC
-           REAL :: A, B, C
-           REAL :: DETJ
-           REAL :: DXDLX, DXDLY, DYDLX
-           REAL :: DYDLY, DZDLX, DZDLY
-           REAL :: TWOPI
-           REAL, PARAMETER :: PI = 3.14159265
-           REAL :: RGI, RDUM
-           real, dimension(3) :: POSVGI, BAK
-           !ewrite(3,*)' In SCVDETNX'
-           POSVGI = 0.0
-           Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
-
-               DXDLX = 0.0;DXDLY = 0.0
-               DYDLX = 0.0;DYDLY = 0.0
-               DZDLX = 0.0;DZDLY = 0.0
-               do  JLOC = 1, Mdims%x_nloc
-
-                   NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-                   DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
-                   DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(1,NODJ)
-                   DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
-                   DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(2,NODJ)
-                   DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
-                   DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
-
-                   POSVGI = POSVGI + CV_funs%scvfen(JLOC,GI)*X_ALL(:,NODJ)
-               end do
-
-               !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
-               !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
-               !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
-               IF ( on_domain_boundary .or. between_elements) then!sprint_to_do between elements use both barycentres?
-                 POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
-               else !Use centres of the continuous control volumes, i.e. corners of the elements
-                 POSVGI = X_ALL(1:Mdims%ndim, X_NODJ) - X_ALL(1:Mdims%ndim, X_NOD)
-               end if
-               ! POSVGI = POSVGI - (0.898*X_ALL(1:Mdims%ndim, X_NOD) + 0.102*XC_ALL(1:Mdims%ndim))!Magic weights...
-
-               CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
-                   DXDLX,       DYDLX,       DZDLX, &
-                   DXDLY,       DYDLY,       DZDLY,&
-                   POSVGI(1),     POSVGI(2),     POSVGI(3) )
-
-               A = DYDLX*DZDLY - DYDLY*DZDLX
-               B = DXDLX*DZDLY - DXDLY*DZDLX
-               C = DXDLX*DYDLY - DXDLY*DYDLX
-               !
-               !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
-               !
-               DETJ = SQRT( A**2 + B**2 + C**2 )
-               !
-               !     - Calculate the determinant times the surface weight at Gauss pnt GI.
-               !
-               SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
-               !
-               !     - Calculate the normal at the Gauss pts
-               !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-               !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-               !     - Perform cross-product. N = T1 x T2
-               !
-
-
-
-           ELSE IF(Mdims%ndim == 2) THEN
-
-               TWOPI = 1.0
-
-               RGI   = 0.0
-               DXDLX = 0.0;DXDLY = 0.0
-               DYDLX = 0.0;DYDLY = 0.0
-               DZDLX = 0.0
-               !
-               !     - Note that we set the derivative wrt to y of coordinate z to 1.0
-               !
-               DZDLY = 1.0
-
-               do  JLOC = 1, Mdims%x_nloc! Was loop 300
-
-                   NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-                   DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
-                   DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
-
-                   POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) + CV_funs%scvfen(JLOC,GI)*X_ALL(1:Mdims%ndim,NODJ)
-
-                   RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
-
-               end do ! Was loop 300
-               !To calculate the sign of the normal an average between the center of the COntinuous CV and the center of mass is used
-               POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
-
-               RGI = 1.0
-
-               DETJ = SQRT( DXDLX**2 + DYDLX**2 )
-               SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
-               !
-               !     - Calculate the normal at the Gauss pts
-               !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-               !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-               !     - Perform cross-product. N = T1 x T2
-               !
-               CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
-                   DXDLX,       DYDLX,       DZDLX, &
-                   DXDLY,       DYDLY,       DZDLY,&
-                   POSVGI(1),     POSVGI(2),     POSVGI(3) )
-
-           ELSE
-               ! For 1D...
-               do  JLOC = 1, Mdims%x_nloc! Was loop 300
-
-                   NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-                   POSVGI(1) = POSVGI(1) + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
-
-               end do ! Was loop 300
-               !
-               !     - Note that POSVGIX and POSVGIY can be considered as the components
-               !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-               !     - current control volume NODI.
-               !
-               POSVGI(1) = POSVGI(1) - XC_ALL(1)
-               ! SIGN(A,B) sign of B times A.
-               CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGI(1) )
-
-               DETJ = 1.0
-               SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
-
-
-           ENDIF Conditional_Dimension
-
-       END SUBROUTINE SCVDETNX_new
 
         subroutine get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
                                         C_JCOUNT_KLOC, C_ICOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC2 )
@@ -7219,6 +7068,163 @@ end if
 
     end function shock_front_in_ele
 
+    !>     ---------------------------------------------------------------
+    !>     - this subroutine computed the surface area at the Gi point (SCVDETWEI)
+    !>     - this subroutine calculates the control volume (CV)
+    !>     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
+    !>     - integration points GI. NODI = the current global
+    !>     - node number for the co-ordinates.
+    !>     - (XC,YC,ZC) is the centre of CV NODI
+    !>
+    !>     ---------------------------------------------------------------
+    !>    - date last modified : 25/08/2020
+    !>     ---------------------------------------------------------------
+    SUBROUTINE SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, ELE, GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
+      IMPLICIT NONE
+      type(multi_dimensions), intent( in ) :: Mdims
+      type(multi_ndgln), intent(in) :: ndgln
+      real, dimension(:,:) :: X_ALL
+      type(multi_shape_funs), intent(in) :: CV_funs
+      type(multi_GI_dimensions), intent(in) :: CV_GIdims
+      INTEGER, intent( in ) :: ELE, GI, X_NOD, X_NODJ
+      REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
+      REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
+      REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
+      logical, intent(in) :: on_domain_boundary
+      !     - Local variables
+      INTEGER :: NODJ,  JLOC
+      REAL :: A, B, C
+      REAL :: DETJ
+      REAL :: DXDLX, DXDLY, DYDLX
+      REAL :: DYDLY, DZDLX, DZDLY
+      REAL :: TWOPI
+      REAL, PARAMETER :: PI = 3.14159265
+      REAL :: RGI, RDUM
+      real, dimension(3) :: POSVGI, BAK
+      !ewrite(3,*)' In SCVDETNX'
+      POSVGI = 0.0
+      Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
+
+        DXDLX = 0.0;DXDLY = 0.0
+        DYDLX = 0.0;DYDLY = 0.0
+        DZDLX = 0.0;DZDLY = 0.0
+        do  JLOC = 1, Mdims%x_nloc
+
+          NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+          DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+          DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(1,NODJ)
+          DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+          DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(2,NODJ)
+          DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
+          DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
+
+          POSVGI = POSVGI + CV_funs%scvfen(JLOC,GI)*X_ALL(:,NODJ)
+        end do
+
+        !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
+        !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
+        !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
+        IF ( on_domain_boundary) then!sprint_to_do between elements use both barycentres?
+          POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
+        else !Use centres of the continuous control volumes, i.e. corners of the elements
+          POSVGI = X_ALL(1:Mdims%ndim, X_NODJ) - X_ALL(1:Mdims%ndim, X_NOD)
+        end if
+
+        CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
+        DXDLX,       DYDLX,       DZDLX, &
+        DXDLY,       DYDLY,       DZDLY,&
+        POSVGI(1),     POSVGI(2),     POSVGI(3) )
+
+        A = DYDLX*DZDLY - DYDLY*DZDLX
+        B = DXDLX*DZDLY - DXDLY*DZDLX
+        C = DXDLX*DYDLY - DXDLY*DYDLX
+        !
+        !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+        !
+        DETJ = SQRT( A**2 + B**2 + C**2 )
+        !
+        !     - Calculate the determinant times the surface weight at Gauss pnt GI.
+        !
+        SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
+        !
+        !     - Calculate the normal at the Gauss pts
+        !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+        !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+        !     - Perform cross-product. N = T1 x T2
+        !
+
+
+
+      ELSE IF(Mdims%ndim == 2) THEN
+
+        TWOPI = 1.0
+
+        RGI   = 0.0
+        DXDLX = 0.0;DXDLY = 0.0
+        DYDLX = 0.0;DYDLY = 0.0
+        DZDLX = 0.0
+        !
+        !     - Note that we set the derivative wrt to y of coordinate z to 1.0
+        !
+        DZDLY = 1.0
+
+        do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+          NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+          DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+          DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+
+          POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) + CV_funs%scvfen(JLOC,GI)*X_ALL(1:Mdims%ndim,NODJ)
+
+          RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+
+        end do ! Was loop 300
+        !To calculate the sign of the normal an average between the center of the COntinuous CV and the center of mass is used
+        POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
+
+        RGI = 1.0
+
+        DETJ = SQRT( DXDLX**2 + DYDLX**2 )
+        SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
+        !
+        !     - Calculate the normal at the Gauss pts
+        !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+        !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+        !     - Perform cross-product. N = T1 x T2
+        !
+        CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
+        DXDLX,       DYDLX,       DZDLX, &
+        DXDLY,       DYDLY,       DZDLY,&
+        POSVGI(1),     POSVGI(2),     POSVGI(3) )
+
+      ELSE
+        ! For 1D...
+        do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+          NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+          POSVGI(1) = POSVGI(1) + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+
+        end do ! Was loop 300
+        !
+        !     - Note that POSVGIX and POSVGIY can be considered as the components
+        !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
+        !     - current control volume NODI.
+        !
+        POSVGI(1) = POSVGI(1) - XC_ALL(1)
+        ! SIGN(A,B) sign of B times A.
+        CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGI(1) )
+
+        DETJ = 1.0
+        SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
+
+
+      ENDIF Conditional_Dimension
+
+    END SUBROUTINE SCVDETNX
+
 
     !>@brief: In this method we assemble and solve the Laplacian system using at least P1 elements
     !> The equation solved is the following: Div sigma Grad X = - SUM (Div K Grad F) with Neuman BCs = 0
@@ -7228,13 +7234,13 @@ end if
     !> IMPORTANT: This subroutine requires the PHsparsity to be generated
     !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
     subroutine generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
-                                                    Solution, K_fields, F_fields, harmonic_average)
+      Solution, K_fields, F_fields, intface_val_type)
       implicit none
 
       type(multi_dimensions), intent( in ) :: Mdims
       type( state_type ), intent( inout ) :: packed_state
       type(multi_ndgln), intent(in) :: ndgln
-      logical, intent(in) :: harmonic_average
+      integer, intent(in) :: intface_val_type!> 0 = no interpolation; 1 Harmonic mean; !20 for SP solver, harmonic mean considering charge; negative normal mean
       real, dimension(:,:), intent(in) :: Sigma_field
       real, dimension(:,:,:), intent(in) :: K_fields, F_fields
       type( scalar_field ), intent(inout) :: Solution
@@ -7246,7 +7252,7 @@ end if
       logical :: INTEGRAT_AT_GI, skip, on_domain_boundary
       logical :: DISTCONTINUOUS_METHOD = .false.!For the time being this subroutine only works for continuous fields
       integer :: stat ,nb, ele, ele2, ele3, sele, cv_siloc, i, local_phases, CV_NODK, cv_kloc,&
-                cv_iloc, cv_jloc, cv_nodi, cv_nodj, idim, iphase, GCOUNT, GI, x_nodi, x_nodj
+      cv_iloc, cv_jloc, cv_nodi, cv_nodj, idim, iphase, GCOUNT, GI, x_nodi, x_nodj, cv_xloc
       real :: HDC, HDLi, HDLj
       type( vector_field ), pointer :: X_ALL, MASS_CV, XC_CV_ALL
       LOGICAL, DIMENSION( Mdims%x_nonods ) :: X_SHARE
@@ -7256,6 +7262,7 @@ end if
       integer, dimension (Mdims%u_snloc) :: U_SLOC2LOC
       integer, dimension (Mdims%mat_nloc) ::MAT_OTHER_LOC
       type(csr_sparsity), pointer :: sparsity
+      real, dimension(Mdims%ndim) :: GI_coordinate
       integer, dimension(:), pointer :: neighbours
       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ) :: CVNORMX_ALL
       INTEGER, DIMENSION( CV_GIdims%nface, Mdims%totele ) :: FACE_ELE
@@ -7285,8 +7292,8 @@ end if
       !Obtain elements surrounding an element (FACE_ELE)
       FACE_ELE = 0.
       CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-          Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
-          CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+      Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+      CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
       Loop_Elements: do ele = 1, Mdims%totele
         if (IsParallel()) then
@@ -7352,28 +7359,34 @@ end if
                 X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
 
                 if(CV_NODJ > CV_NODI) then
-                  !Compute SdevFuns%DETWEI and CVNORMX_ALL (this latter is not necessary here)
-                  CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
+                  !Compute SdevFuns%DETWEI and CVNORMX_ALL
+                  CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, &
+                  ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
 
                   ! Obtain the CV discretised advection/diffusion equations
                   IF(.not. on_domain_boundary) THEN
-                      !Distance from i node to edge
-                      HDLi = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-X_ALL%val(:,X_NODI))**2) )
-                      ! Compute the distance HDC between the nodes either side of the CV face
-                      HDC = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-XC_CV_ALL%val(:,CV_NODJ))**2) )
-                      !Distance from j node to edge
-                      HDLj = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODJ)-X_ALL%val(:,X_NODJ))**2) )
-                      do iphase = 1, local_phases
-                        do i = 1, size(K_fields,1)
-                          DIFF_COEF_DIVDX(i, iphase) = get_DIFF_COEF_DIVDX(HDC, HDLi, HDLj, K_fields(i, iphase, cv_nodi), K_fields(i, iphase, cv_nodj))
-                        end do
-                        SIGMA_DIFF_COEF_DIVDX(iphase) = get_DIFF_COEF_DIVDX(HDC, HDLi, HDLj, Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
+                    GI_coordinate = 0.
+                    !Obtain the coordinate at the edge between both CVs using shape functions
+                    do cv_xloc = 1, Mdims%cv_nloc
+                      GI_coordinate = GI_coordinate + CV_funs%scvfen( cv_xloc , GI ) * X_ALL%val(:,ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + cv_xloc ))
+                    end do
+                    !Distance from i node to edge!
+                    HDLi = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-GI_coordinate)**2) )
+                    ! Compute the distance HDC between the nodes either side of the CV face
+                    HDC = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-XC_CV_ALL%val(:,CV_NODJ))**2) )
+                    !Distance from j node to edge
+                    HDLj = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODJ)-GI_coordinate)**2) )
+                    do iphase = 1, local_phases
+                      do i = 1, size(K_fields,1)
+                        DIFF_COEF_DIVDX(i, iphase) = get_DIFF_COEF_DIVDX(2*intface_val_type, HDC, HDLi, HDLj, K_fields(i, iphase, cv_nodi), K_fields(i, iphase, cv_nodj)&
+                        ,Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
                       end do
-                    else
-                      DIFF_COEF_DIVDX = 0
-                      SIGMA_DIFF_COEF_DIVDX = 0.
+                      SIGMA_DIFF_COEF_DIVDX(iphase) = get_DIFF_COEF_DIVDX(intface_val_type, HDC, HDLi, HDLj, Sigma_field(iphase, cv_nodi), Sigma_field(iphase, cv_nodj))
+                    end do
+                  else
+                    DIFF_COEF_DIVDX = 0
+                    SIGMA_DIFF_COEF_DIVDX = 0.
                   ENDIF
-
                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                   LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
                   LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
@@ -7386,12 +7399,12 @@ end if
                     LOC_MAT_II(iphase) = LOC_MAT_II(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
                     !Assemble diagonal of the matrix of node cv_nodj
                     LOC_MAT_JJ(iphase) = LOC_MAT_JJ(iphase) + SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
+                    ! Fill up RHS
                     do i = 1, size(K_fields,1)
-                  ! Fill up RHS
                       LOC_CV_RHS_I(iphase) =  LOC_CV_RHS_I(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
-                                                          (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
+                      (F_fields(i, iphase, cv_nodj) - F_fields(i, iphase, cv_nodi))
                       LOC_CV_RHS_J(iphase) =  LOC_CV_RHS_J(iphase) - SdevFuns%DETWEI(GI) * DIFF_COEF_DIVDX(i, iphase) * &
-                                                          (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
+                      (F_fields(i, iphase, cv_nodi) - F_fields(i, iphase, cv_nodj))
                     end do
                   end do
 
@@ -7411,174 +7424,40 @@ end if
           END DO Loop_CV_ILOC
         end do
       END DO Loop_Elements
-
-
       call deallocate_multi_dev_shape_funs(SdevFuns)
 
     contains
-
-
-
-      !>@brief: Computes the effective value of K or sigma.
-      !> If harmonic average then return the harmnic, otherwise Value_i is returned
-      real function get_DIFF_COEF_DIVDX(HDC,  W_i, W_j, Value_i, Value_j)
+      !>@brief: Computes the effective value of K or sigma. at the interface between CVs
+      !> Based on the intface_type integer:
+      !> 0 = no interpolation; 1 Harmonic mean; !20 for Self_potential solver, harmonic mean considering charge; negative normal mean
+      real function get_DIFF_COEF_DIVDX(intface_type, HDC,  W_i, W_j, Value_i, Value_j, sigma_i, sigma_j)
         implicit none
+        integer, intent(in) :: intface_type
         real, intent(in) :: Value_i, Value_j, W_i, W_j, HDC
+        real, optional, intent(in) :: sigma_i, sigma_j
+        !Local variable
+        logical :: div_by_zero
 
-        if (.not. harmonic_average) then
+        div_by_zero =  abs(Value_i + Value_j) < 1e-8
+        if (intface_type == 0 ) then!No mean
           get_DIFF_COEF_DIVDX = Value_i
-        else if (abs(Value_i *W_j + Value_j*W_i) > 1e-8) then
-          get_DIFF_COEF_DIVDX = Value_i * Value_j * (W_i + W_j)/(Value_i *W_j + Value_j*W_i )
-        else !Normal average
+          !Harmonic mean
+        else if ((intface_type <= 10 .and. intface_type > 0) .and. .not. div_by_zero) then
+          get_DIFF_COEF_DIVDX = Value_i * Value_j * HDC/(Value_i *W_j + Value_j*W_i )
+        else if (intface_type == 20 .and. .not. div_by_zero) then
+          !20 is for the mean of the Rock saturated conductivity
+          get_DIFF_COEF_DIVDX = Value_i * Value_j *HDC/(Value_i *W_j + Value_j*W_i )
+          !40 is for the mean of the coupling terms
+        else if (intface_type > 20 .and. .not. (abs(Sigma_i + Sigma_j) < 1e-8) ) then
+          get_DIFF_COEF_DIVDX = (Value_i * Sigma_j * W_i + Sigma_i * Value_j *W_j) / &
+          (W_j*Sigma_i + W_i*Sigma_j)
+        else !Normal mean
           get_DIFF_COEF_DIVDX = 0.5*(Value_i *W_j + Value_j*W_i)/ (W_i + W_j)
         end if
         !Divide now by the distance between nodes
         get_DIFF_COEF_DIVDX = get_DIFF_COEF_DIVDX/HDC
       end function get_DIFF_COEF_DIVDX
 
-      SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
-         IMPLICIT NONE
-         INTEGER, intent( in ) :: ELE, GI, X_NOD, X_NODJ
-         REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
-         REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
-         REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-         !     - Local variables
-         INTEGER :: NODJ,  JLOC
-         REAL :: A, B, C
-         REAL :: DETJ
-         REAL :: DXDLX, DXDLY, DYDLX
-         REAL :: DYDLY, DZDLX, DZDLY
-         REAL :: TWOPI
-         REAL, PARAMETER :: PI = 3.14159265
-         REAL :: RGI, RDUM
-         real, dimension(3) :: POSVGI, BAK
-         !ewrite(3,*)' In SCVDETNX'
-         POSVGI = 0.0
-         Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
-
-             DXDLX = 0.0;DXDLY = 0.0
-             DYDLX = 0.0;DYDLY = 0.0
-             DZDLX = 0.0;DZDLY = 0.0
-             do  JLOC = 1, Mdims%x_nloc
-
-                 NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-                 DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(1,NODJ)
-                 DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL%val(1,NODJ)
-                 DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(2,NODJ)
-                 DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL%val(2,NODJ)
-                 DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(3,NODJ)
-                 DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL%val(3,NODJ)
-
-                 POSVGI = POSVGI + CV_funs%scvfen(JLOC,GI)*X_ALL%val(:,NODJ)
-             end do
-
-             !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
-             !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
-             !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
-             IF ( on_domain_boundary) then!sprint_to_do between elements use both barycentres?
-               POSVGI = POSVGI - (0.8*X_ALL%val(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
-             else !Use centres of the continuous control volumes, i.e. corners of the elements
-               POSVGI = X_ALL%val(1:Mdims%ndim, X_NODJ) - X_ALL%val(1:Mdims%ndim, X_NOD)
-             end if
-
-             CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
-                 DXDLX,       DYDLX,       DZDLX, &
-                 DXDLY,       DYDLY,       DZDLY,&
-                 POSVGI(1),     POSVGI(2),     POSVGI(3) )
-
-             A = DYDLX*DZDLY - DYDLY*DZDLX
-             B = DXDLX*DZDLY - DXDLY*DZDLX
-             C = DXDLX*DYDLY - DXDLY*DYDLX
-             !
-             !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
-             !
-             DETJ = SQRT( A**2 + B**2 + C**2 )
-             !
-             !     - Calculate the determinant times the surface weight at Gauss pnt GI.
-             !
-             SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
-             !
-             !     - Calculate the normal at the Gauss pts
-             !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-             !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-             !     - Perform cross-product. N = T1 x T2
-             !
-
-
-
-         ELSE IF(Mdims%ndim == 2) THEN
-
-             TWOPI = 1.0
-
-             RGI   = 0.0
-             DXDLX = 0.0;DXDLY = 0.0
-             DYDLX = 0.0;DYDLY = 0.0
-             DZDLX = 0.0
-             !
-             !     - Note that we set the derivative wrt to y of coordinate z to 1.0
-             !
-             DZDLY = 1.0
-
-             do  JLOC = 1, Mdims%x_nloc! Was loop 300
-
-                 NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-                 DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(1,NODJ)
-                 DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL%val(2,NODJ)
-
-                 POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) + CV_funs%scvfen(JLOC,GI)*X_ALL%val(1:Mdims%ndim,NODJ)
-
-                 RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL%val(2,NODJ)
-
-             end do ! Was loop 300
-             !To calculate the sign of the normal an average between the center of the COntinuous CV and the center of mass is used
-             POSVGI(1:Mdims%ndim) = POSVGI(1:Mdims%ndim) - (0.8*X_ALL%val(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
-
-             RGI = 1.0
-
-             DETJ = SQRT( DXDLX**2 + DYDLX**2 )
-             SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
-             !
-             !     - Calculate the normal at the Gauss pts
-             !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-             !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-             !     - Perform cross-product. N = T1 x T2
-             !
-             CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
-                 DXDLX,       DYDLX,       DZDLX, &
-                 DXDLY,       DYDLY,       DZDLY,&
-                 POSVGI(1),     POSVGI(2),     POSVGI(3) )
-
-         ELSE
-             ! For 1D...
-             do  JLOC = 1, Mdims%x_nloc! Was loop 300
-
-                 NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-                 POSVGI(1) = POSVGI(1) + CV_funs%scvfen(JLOC,GI)*X_ALL%val(1,NODJ)
-
-             end do ! Was loop 300
-             !
-             !     - Note that POSVGIX and POSVGIY can be considered as the components
-             !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-             !     - current control volume NODI.
-             !
-             POSVGI(1) = POSVGI(1) - XC_ALL(1)
-             ! SIGN(A,B) sign of B times A.
-             CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGI(1) )
-
-             DETJ = 1.0
-             SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
-
-
-         ENDIF Conditional_Dimension
-
-     END SUBROUTINE SCVDETNX_new
-
-  end subroutine generate_Laplacian_system
-
-
-
+    end subroutine generate_Laplacian_system
 
 end module cv_advection
