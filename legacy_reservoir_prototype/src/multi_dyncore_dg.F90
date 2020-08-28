@@ -1868,11 +1868,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         ENDIF
         allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
         if (is_magma) then !We need to allocate for the bulk viscosity
-          ALLOCATE(UDIFFUSION_VOL_ALL%val(Mdims%nphase,1,1, Mdims%mat_nonods )) ; UDIFFUSION_VOL_ALL%val=0.
+          call allocate_multi_field( Mdims, UDIFFUSION_VOL_ALL, Mdims%mat_nonods, mem_type = 1)
         end if
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
         call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL )
-        !UDIFFUSION_VOL_ALL = 0.
 
         allocate(velocity_absorption(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
         ! define velocity_absorption here...
@@ -2149,7 +2148,6 @@ end if
 
         if (rescale_mom_matrices)  call deallocate(diagonal_CMC)
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
-
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
@@ -3863,7 +3861,8 @@ end if
             GOT_UDEN = .false.!Disable inertia terms
             PIVIT_ON_VISC= .false.!This is to add viscosity terms into the Mu matrix
             STAB_VISC_WITH_ABS = .false.!Adds diffusion terms into Mu also in the RHS
-            zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
+            !For magma it seems that we need this term
+            if (.not. is_magma) zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -3900,11 +3899,11 @@ end if
                     UDIFFUSION_ALL=UDIFFUSION + LES_UDIFFUSION
                 ENDIF
                 !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
-                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
+                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(1,1,:,:)
                 UDIFFUSION_VOL_ALL = UDIFFUSION_VOL_ALL + LES_UDIFFUSION_VOL
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
-                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
+                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(1,1,:,:)
             ENDIF
         ENDIF
         if( RETRIEVE_SOLID_CTY ) THEN

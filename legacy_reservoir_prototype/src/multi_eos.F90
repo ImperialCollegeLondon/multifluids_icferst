@@ -1907,7 +1907,7 @@ contains
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                         !Currently only magma uses momentum_diffusion2
                         if (iphase==1 .and. is_magma) then !only the solid phase has bulk viscosity
-                          momentum_diffusion2%val(iphase, 1, 1, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))*0 !now turned off
+                          momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
                         end if
                         if(cg_mesh) then
                           mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
@@ -1927,12 +1927,6 @@ contains
             deallocate( component_tmp, mu_tmp )
          end if
       end if
-
-
-      !!! NEW CODE HERE !!!
-      !!! deal with Momentum_Diffusion2
-
-
 
       return
     Contains

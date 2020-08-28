@@ -336,7 +336,7 @@ contains
         return
     end subroutine allocate_multi_field1
 
-    subroutine allocate_multi_field2( Mdims, mfield, nonods_in, field_name)
+    subroutine allocate_multi_field2( Mdims, mfield, nonods_in, field_name, mem_type)
         !*********UNTESTED*********
         !PorousMedia_AbsorptionTerm tested
         implicit none
@@ -344,6 +344,7 @@ contains
         type( multi_dimensions ), intent(in) :: Mdims
         type( multi_field ), intent( inout ) :: mfield
         character( len = * ), optional, intent( in ) :: field_name
+        integer, optional, intent(in) :: mem_type
         !Local variables
         integer :: ndim, nphase, nonods
 
@@ -355,6 +356,9 @@ contains
         nonods = nonods_in
         !Decide whether the field is constant throught the domain or not
         mfield%is_constant = (nonods == 1)
+
+        if (present(mem_type))  mfield%memory_type = mem_type
+
 
         if (present(field_name)) then
             !Depending on the field, different possibilities
