@@ -259,7 +259,7 @@ module multi_SP
         case (2)!Thermal coupling coefficient
           do cv_inod = 1, Mdims%cv_nonods
             Tna = get_Hittorf_transport_number(Concentration(cv_inod))
-            AuxR = LOG(Concentration(cv_inod) + Tol )!To avoid reaching zero
+            AuxR = LOG10(Concentration(cv_inod) + Tol )!To avoid reaching zero
             coupling_coef_ed(cv_inod) = - 1.984e-1*(2.*Tna - 1.) * AuxR + 1.059 * Tna - 5.673e-1
             coupling_coef_ee(cv_inod) = - 1.984e-1 * AuxR + 5.953e-1
           end do
@@ -282,7 +282,7 @@ module multi_SP
             do cv_iloc = 1, Mdims%cv_nloc
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
               norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
-              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (1 - (1- norm_water_sat)**3.) * (coupling_coef_ed(cv_inod) - coupling_coef_ee(cv_inod)) + coupling_coef_ee(cv_inod)
+              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (1- norm_water_sat)**3. * (coupling_coef_ed(cv_inod) - coupling_coef_ee(cv_inod)) + coupling_coef_ee(cv_inod)
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do
           end do

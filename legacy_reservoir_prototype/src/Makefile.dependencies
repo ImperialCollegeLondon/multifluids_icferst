@@ -239,12 +239,12 @@ multi_pipes.o ../include/multi_pipes.mod: multi_pipes.F90 \
 	@true
 
 multi_self_potential.o ../include/multi_sp.mod: multi_self_potential.F90 \
-   ../../include/confdefs.h ../../include/fdebug.h ../../include/fields.mod \
-   ../../include/fldebug.mod ../../include/futils.mod \
-   ../../include/global_parameters.mod ../../include/spud.mod \
-   ../../include/state_module.mod ../../include/vector_tools.mod \
-   ../include/copy_outof_state.mod ../include/multi_data_types.mod \
-   ../include/multiphase_1d_engine.mod
+   ../../include/boundary_conditions_from_options.mod ../../include/confdefs.h \
+   ../../include/fdebug.h ../../include/fields.mod ../../include/fldebug.mod \
+   ../../include/futils.mod ../../include/global_parameters.mod \
+   ../../include/spud.mod ../../include/state_module.mod \
+   ../../include/vector_tools.mod ../include/copy_outof_state.mod \
+   ../include/multi_data_types.mod ../include/multiphase_1d_engine.mod
 
 ../include/shape_functions_prototype.mod: multi_shape_fct.o
 	@true
