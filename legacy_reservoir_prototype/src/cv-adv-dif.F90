@@ -7362,13 +7362,12 @@ end if
                   !Compute SdevFuns%DETWEI and CVNORMX_ALL
                   CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, &
                   ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
-
                   ! Obtain the CV discretised advection/diffusion equations
                   IF(.not. on_domain_boundary) THEN
                     GI_coordinate = 0.
                     !Obtain the coordinate at the edge between both CVs using shape functions
-                    do cv_xloc = 1, Mdims%cv_nloc
-                      GI_coordinate = GI_coordinate + CV_funs%scvfen( cv_xloc , GI ) * X_ALL%val(:,ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + cv_xloc ))
+                    do cv_xloc = 1, Mdims%x_nloc
+                      GI_coordinate = GI_coordinate + CV_funs%scvfen( cv_xloc , GI ) * X_ALL%val(:,ndgln%x((ELE-1) * Mdims%x_nloc  + cv_xloc ))
                     end do
                     !Distance from i node to edge!
                     HDLi = SQRT( SUM( (XC_CV_ALL%val(:,CV_NODI)-GI_coordinate)**2) )
@@ -7438,23 +7437,20 @@ end if
         !Local variable
         logical :: div_by_zero
 
-        div_by_zero =  abs(Value_i + Value_j) < 1e-8
+        div_by_zero =  abs(Value_i + Value_j) < 1e-15
         if (intface_type == 0 ) then!No mean
           get_DIFF_COEF_DIVDX = Value_i
-          !Harmonic mean
-        else if ((intface_type <= 10 .and. intface_type > 0) .and. .not. div_by_zero) then
-          get_DIFF_COEF_DIVDX = Value_i * Value_j * HDC/(Value_i *W_j + Value_j*W_i )
-        else if (intface_type == 20 .and. .not. div_by_zero) then
-          !20 is for the mean of the Rock saturated conductivity
-          get_DIFF_COEF_DIVDX = Value_i * Value_j *HDC/(Value_i *W_j + Value_j*W_i )
+          !Harmonic mean, also used for Rock saturated conductivity
+        else if ((intface_type <= 20 .and. intface_type > 0) .and. .not. div_by_zero) then
+          get_DIFF_COEF_DIVDX = Value_i * Value_j * (W_j + W_i)/(Value_i *W_j + Value_j*W_i )
           !40 is for the mean of the coupling terms
-        else if (intface_type > 20 .and. .not. (abs(Sigma_i + Sigma_j) < 1e-8) ) then
+        else if (intface_type > 20 .and.  (abs(Sigma_i + Sigma_j) > 1e-15) ) then
           get_DIFF_COEF_DIVDX = (Value_i * Sigma_j * W_i + Sigma_i * Value_j *W_j) / &
           (W_j*Sigma_i + W_i*Sigma_j)
         else !Normal mean
-          get_DIFF_COEF_DIVDX = 0.5*(Value_i *W_j + Value_j*W_i)/ (W_i + W_j)
+          get_DIFF_COEF_DIVDX = (Value_i * W_i + Value_j *W_j) / (W_j + W_i)
         end if
-        !Divide now by the distance between nodes
+        !Divide now by the distance between nodes so it is a diffusion coefficient
         get_DIFF_COEF_DIVDX = get_DIFF_COEF_DIVDX/HDC
       end function get_DIFF_COEF_DIVDX
 
