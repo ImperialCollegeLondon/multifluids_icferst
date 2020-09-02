@@ -134,7 +134,6 @@ module multi_SP
         conversor_to_miliVolts = 1e3
         if (have_option("/porous_media/Self_Potential/Results_in_Volts") ) conversor_to_miliVolts = 1.0!Leave as Volts
         SelfPotential%val = (SelfPotential%val - reference_value)*conversor_to_miliVolts!to show in mVolts
-
         deallocate(rock_sat_conductivity, F_fields, K_fields)
       end subroutine Assemble_and_solve_SP
 
@@ -152,7 +151,7 @@ module multi_SP
         real, dimension(:), intent(in) :: Concentration, Saturation, Temperature!Here Concentration needs to be in mol/litre
         !Local varibales
         integer:: cv_inod, ele, cv_iloc, stat, ele_pore
-        real :: auxR, temp_in_C
+        real :: auxR, temp
         type(vector_field), pointer :: porosity
         real :: cementation_exp !This I presume should be assigned from diamond?
         real :: sat_exp !Saturation exponent, again I presume should be assigned from diamond?
@@ -171,9 +170,9 @@ module multi_SP
           show_msg = .false.
         else
             if (have_option("/porous_media/Self_Potential/Reservoir_temperature")) then
-              call get_option( '/porous_media/Self_Potential/Reservoir_temperature', temp_in_C )
+              call get_option( '/porous_media/Self_Potential/Reservoir_temperature', temp )
               if (show_msg) then
-                if (GetProcNo() == 1 .and. temp_in_C - Kelv_conv < 0.) then
+                if (GetProcNo() == 1 .and. temp - Kelv_conv < 0.) then
                   ewrite(0, *) "REMINDER: The S.I. units for TEMPERATURE are Kelvin not Celsius."
                 end if
               end if
@@ -198,10 +197,10 @@ module multi_SP
             return
           end if
         else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
-          do cv_inod = 1, Mdims%cv_nonods                           !Here temperature needs to be in Celsius
-            if (has_temperature) temp_in_C = Temperature(cv_inod)- Kelv_conv                   !Water salt concentration
-            water_conductivity(cv_inod) = (5.6 + 0.27 * temp_in_C - 1.5e-4 * temp_in_C**2.)*(Concentration(cv_inod)+tol) &
-            - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp_in_C) / (1 + 0.214 * Concentration(cv_inod)**0.5)
+          do cv_inod = 1, Mdims%cv_nonods
+            if (has_temperature) temp = Temperature(cv_inod)                   !Water salt concentration
+            water_conductivity(cv_inod) = (5.6 + 0.27 * temp - 1.5e-4 * temp**2.)*(Concentration(cv_inod)+tol) &
+            - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp) / (1 + 0.214 * Concentration(cv_inod)**0.5)
           end do
         end if
 
@@ -232,13 +231,17 @@ module multi_SP
         real, dimension(:), intent(in) :: Concentration, Saturation, Temperature!Here Concentration needs to be in mol/litre
         integer, intent(in) :: flag !>1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
         !Local variables
-        real :: norm_water_sat, Cf, Tna, AuxR
+        real :: norm_water_sat, Cf, Tna, AuxR, temp
         integer :: cv_inod, ele, cv_iloc, stat
         real, dimension(:, :), pointer :: Immobile_fraction
         real, dimension(Mdims%cv_nonods) :: cv_counter, coupling_coef, coupling_coef_ee, coupling_coef_ed
         real, parameter :: EK_exp = 0.6 !From Jackson et al 2012
         real, parameter :: Tol = 1e-8
+
         !Retrieve fields from state/packed_state
+        if (have_option("/porous_media/Self_Potential/Reservoir_temperature")) then
+          call get_option( '/porous_media/Self_Potential/Reservoir_temperature', temp )
+        end if
 
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
@@ -252,23 +255,25 @@ module multi_SP
               !Obtain normalised saturation
               norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
               coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
+              ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do
           end do
           coupling_coef = coupling_coef/cv_counter
-        case (2)!Thermal coupling coefficient
+        case (2)!Exclusion diffusion coefficient
+          do cv_inod = 1, Mdims%cv_nonods
+            Tna = get_Hittorf_transport_number(Concentration(cv_inod))
+            Cf = Concentration(cv_inod) + Tol!To avoid divisions by zero
+            if (has_temperature) temp = Temperature(cv_inod)
+            coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * temp/Cf
+            coupling_coef_ee(cv_inod) = - 8.61e-2 * temp/Cf
+          end do
+        case (3)!Thermal coupling coefficient
           do cv_inod = 1, Mdims%cv_nonods
             Tna = get_Hittorf_transport_number(Concentration(cv_inod))
             AuxR = LOG10(Concentration(cv_inod) + Tol )!To avoid reaching zero
             coupling_coef_ed(cv_inod) = - 1.984e-1*(2.*Tna - 1.) * AuxR + 1.059 * Tna - 5.673e-1
             coupling_coef_ee(cv_inod) = - 1.984e-1 * AuxR + 5.953e-1
-          end do
-        case (3)!Exclusion diffusion coefficient
-          do cv_inod = 1, Mdims%cv_nonods
-            Tna = get_Hittorf_transport_number(Concentration(cv_inod))
-            Cf = Concentration(cv_inod) + Tol!To avoid divisions by zero
-            coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * Temperature(cv_inod)/Cf
-            coupling_coef_ee(cv_inod) = - 8.61e-2 * Temperature(cv_inod)/Cf
           end do
         case default
           FLAbort("Only three flags allowed to compute SP coefficients. 1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion ")
@@ -276,13 +281,11 @@ module multi_SP
 
         !For thermal and diffusion-exclusion we need to combine them based on the normalised saturation
         if (flag>1) then
-          !coupling_coef_ed and coupling_coef_ee are in mV, need to convert them to volts
-          ! coupling_coef_ed = 1e-3 * coupling_coef_ed; coupling_coef_ee = 1e-3 * coupling_coef_ee
           do ele = 1, Mdims%totele
             do cv_iloc = 1, Mdims%cv_nloc
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
               norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
-              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (1- norm_water_sat)**3. * (coupling_coef_ed(cv_inod) - coupling_coef_ee(cv_inod)) + coupling_coef_ee(cv_inod)
+              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (1 - norm_water_sat)**3. * (coupling_coef_ee(cv_inod) - coupling_coef_ed(cv_inod)) + coupling_coef_ed(cv_inod)
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do
           end do
@@ -291,7 +294,6 @@ module multi_SP
         end if
         !Finally obtain the coupling coefficient
         coupling_term = coupling_coef * rock_sat_conductivity
-
       contains
         !>@brief: Compute the macroscopic Hittorf transport number for the positive Sodium ions
         real function get_Hittorf_transport_number(Concentration_water)
