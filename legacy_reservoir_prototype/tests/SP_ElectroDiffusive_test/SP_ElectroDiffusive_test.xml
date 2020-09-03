@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>SP_EK_test</name>
+  <name>SP_ED_test</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml SelfPotential</tags>
   <problem_definition length="short" nprocs="1">
@@ -8,15 +8,15 @@
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="SP_EK_test" language="python">SP_EK_test = False
+    <test name="SP_ED_test" language="python">SP_ED_test = False
 with open("log", "rb") as f:
     linelist = f.readlines()      # Read the first line.
     last = linelist[len(linelist)-1] # The last line
 f.close 
 
-if 'OK' in last: SP_EK_test = True
+if 'OK' in last: SP_ED_test = True
 
-assert(SP_EK_test)</test>
+assert(SP_ED_test)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
