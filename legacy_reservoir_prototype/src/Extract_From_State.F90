@@ -522,6 +522,7 @@ contains
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####
 
         !!$ Solving Advection Field: Volume fraction
+        Mdisopt%compopt=.false.
         option_path2 = trim(option_path)//'Space_Discretisation::PhaseVolumeFraction/advection_scheme'
         Mdisopt%v_disopt = default_flux_scheme
         if( have_option( trim( option_path2 ) ) ) then
