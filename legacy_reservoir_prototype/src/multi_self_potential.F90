@@ -255,7 +255,7 @@ module multi_SP
               !Obtain normalised saturation
               norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
               coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
-              ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9
+              ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9!<=I think this was used for Mutlaq et al 2019
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do
           end do
@@ -271,7 +271,7 @@ module multi_SP
         case (3)!Thermal coupling coefficient
           do cv_inod = 1, Mdims%cv_nonods
             Tna = get_Hittorf_transport_number(Concentration(cv_inod))
-            AuxR = LOG10(Concentration(cv_inod) + Tol )!To avoid reaching zero
+            AuxR = LOG(Concentration(cv_inod) + Tol )!To avoid reaching zero
             coupling_coef_ed(cv_inod) = - 1.984e-1*(2.*Tna - 1.) * AuxR + 1.059 * Tna - 5.673e-1
             coupling_coef_ee(cv_inod) = - 1.984e-1 * AuxR + 5.953e-1
           end do
