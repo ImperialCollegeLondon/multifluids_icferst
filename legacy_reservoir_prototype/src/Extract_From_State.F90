@@ -498,6 +498,7 @@ contains
         option_path = "/geometry/Advance_options/"
         option_path2 = trim(option_path)//'Space_Discretisation::Tracer/advection_scheme'
         Mdisopt%t_disopt = default_flux_scheme
+        Mdisopt%compopt=.false.
         if( have_option( trim( option_path2 ) ) ) then
             if( have_option( trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection') ) then
                 Mdisopt%t_disopt = 9
@@ -509,9 +510,6 @@ contains
                 if (have_option( trim(option_path2)// '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive')) then
                     Mdisopt%compopt=.true.
                     call get_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive/value', Mdisopt%compoptval, default=0.0)
-                else
-                    Mdisopt%compopt=.false.
-                end if
             else
                 if( have_option( trim( option_path2 ) // 'upwind' ) ) &
                     Mdisopt%t_disopt = 1
@@ -537,9 +535,6 @@ contains
                 if (have_option( trim(option_path2)// '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive')) then
                     Mdisopt%compopt=.true.
                     call get_option(trim( option_path2 ) // '/High_order/Limiter_options/limiter::CompressiveAdvection/ultra_compressive/value', Mdisopt%compoptval, default=0.0)
-                else
-                    Mdisopt%compopt=.false.
-                end if
 
             else
                 if( have_option( trim( option_path2 ) // 'upwind' ) ) &
