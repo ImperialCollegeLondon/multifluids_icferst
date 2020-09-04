@@ -24,8 +24,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
 
 #TOLERANCE OF THE CHECKING
-Tolerance_L1_NORM = 0.05
-Tolerance_L2_NORM = 0.002
+Tolerance_L1_NORM = 0.02
 
 
 
@@ -190,7 +189,6 @@ Infinite_Norm = 0.0
 for i in range(len(Experimental_X)):
     if (i==0):#The first position is exact, so no need to interpolate
         L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
-        L2_sum = L2_sum + (Analytical_Y[i] - Experimental_Y[i])**2
         continue
     
     position = Experimental_X[i]
@@ -203,22 +201,16 @@ for i in range(len(Experimental_X)):
     if (abs(x - Experimental_Y[i])> Infinite_Norm):
         Infinite_Norm = abs(x - Experimental_Y[i])
     L1_sum = L1_sum + abs(x - Experimental_Y[i])
-    L2_sum = L2_sum + (x - Experimental_Y[i])**2
-    if (abs(x - Experimental_Y[i])>1/100000000):
-        N_shock = N_shock + 1
-        L1_sum_shock_front = L1_sum_shock_front + abs(x - Experimental_Y[i])
-        L2_sum_shock_front = L2_sum_shock_front + (x - Experimental_Y[i])**2      
+   
         
         
 L1_norm= L1_sum / len(Experimental_X) 
-L2_norm = L2_sum**0.5 / len(Experimental_X) 
   
 Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
-if (L2_norm > Tolerance_L2_NORM): Passed = False
 #Check the experiment has finished
-if (AutoNumber < 9): Passed = False
+if (AutoNumber < 32): Passed = False
 
 #print L1_norm, L2_norm
 
