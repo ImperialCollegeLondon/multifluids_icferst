@@ -134,6 +134,15 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call get_option("/timestepping/current_time", current_time)
     call get_option("/timestepping/finish_time", finish_time)
 
+    !Check if initial dt is bigger than finish_time
+    if (current_time + dt > finish_time) then
+      if (GetProcNo() == 1) then
+        ewrite(0, *) "WARNING: The time-step is bigger than the finish time, adjusted to the finish time."
+      end if
+      dt = finish_time - current_time
+      call set_option("/timestepping/timestep", dt)
+    end if
+
     call get_option('/simulation_name',simulation_name)
     call initialise_diagnostics(trim(simulation_name),state, ICFERST = .true.)
 
@@ -930,6 +939,10 @@ contains
               if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
                   "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+              else
+                call get_option("/material_phase["// int2str( i - 1 )//"]/name", option_name)
+                ewrite(0, *) "ERROR: Solute_Diffusivity specified for phase: "// trim(option_name)// " but SoluteMassFraction is not defined."
+                stop
               end if
             end if
 
