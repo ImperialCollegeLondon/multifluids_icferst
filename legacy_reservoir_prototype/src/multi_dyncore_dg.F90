@@ -56,11 +56,929 @@ module multiphase_1D_engine
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
-    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE
+    public  :: all_diffusion_ug_solve, INTENERGE_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, &
+            VolumeFraction_Assemble_Solve, FORCE_BAL_CTY_ASSEM_SOLVE
 
 contains
-  !---------------------------------------------------------------------------
+
+     SUBROUTINE all_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+! *************************************************************************************************
+! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
+! *************************************************************************************************
+! sigma(ele)= 1.0 if in a solid and 0.0 else for element ele.
+! c(Mdims%nconc, cv_nonods) contains the concentration fields to try and move the mesh with and improve accuracy.
+! Mdims%nconc
+! u_lambda(idim) = weight to put on fixing the mesh to move with the velocities idim.
+! c_lamba(ic)= weight to put on fixing the mesh to move with the field (e.g. concentration) ic.
+! CV_SNDGLN = list of gobal node numbers for the surface elements
+! dt = time step size.
+
+      implicit none
+      type(multi_dimensions), intent( in ) :: Mdims
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_ndgln), intent(in) :: ndgln
+      type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
+
+      ! local variables...
+        Logical:: diffusion_solid_implicit
+
+        diffusion_solid_implicit= have_option( '/solid_implicit')
+        diffusion_solid_implicit=.FALSE.
+        if(diffusion_solid_implicit) then ! the 3 diffusion eqns for the grid velocities...
+           call diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+        else
+           call one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+        endif
+
+
+      return
+
+     END SUBROUTINE all_diffusion_ug_solve
+
+
+
+     SUBROUTINE diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+! *************************************************************************************************
+! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
+! *************************************************************************************************
+! sigma(ele)= 1.0 if in a solid and 0.0 else for element ele.
+! c(Mdims%nconc, cv_nonods) contains the concentration fields to try and move the mesh with and improve accuracy.
+! Mdims%nconc
+! u_lambda(idim) = weight to put on fixing the mesh to move with the velocities idim.
+! c_lamba(ic)= weight to put on fixing the mesh to move with the field (e.g. concentration) ic.
+! CV_SNDGLN = list of gobal node numbers for the surface elements
+! dt = time step size.
+
+      implicit none
+      logical, parameter :: interpolation_error = .false. ! use interpolation theory and a Hessian to form variational principle
+      logical, parameter :: curve_squared = .false. ! use interpolation theory but with a Hessian squared in variational principle
+      type(multi_dimensions), intent( in ) :: Mdims
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_ndgln), intent(in) :: ndgln
+      type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
+
+      ! local variables...
+
+      integer :: ic, nconc, number_fields,number_fields2, ndim_nphase
+      integer :: its, nits_ug, nits_ug2,  u_jnod
+      integer :: ele,sele, cv_siloc, cv_iloc,cv_jloc, cv_inod, cv_jnod
+      integer :: idim,jdim, icomp, iphase, u_inod, ierr
+      integer :: kphase, kdim, kc
+      type( vector_field ), pointer :: x_all, xold_all
+      type( tensor_field ), pointer :: u_all, ComponentMassFraction
+      type( scalar_field ), pointer :: sigma0
+
+! Can put a lot of memory on the stack these days.
+      real, dimension(:), allocatable :: sigma
+      real, dimension(:,:), allocatable :: rhs, cv_ug_all
+      real, dimension(:,:,:), allocatable :: h_abs_mat, cc_x
+      real, dimension(:,:,:,:), allocatable :: cc_xx
+      real, dimension(:,:,:), allocatable :: u_all_cvmesh, u_all_solid
+      real, dimension(:), allocatable :: sigma_plus_bc,ml, matrix_diag,uvwg
+      real, dimension(:), allocatable :: vel_count, vel_count_solid
+      real, dimension(:,:), allocatable :: ident_cv
+      real, dimension(:), allocatable :: u_lambda
+
+      real, dimension(:), allocatable :: c_lambda, lambda, lambda_xx
+      real, dimension(:,:), allocatable :: c_field, cc
+      real aa(Mdims%ndim,Mdims%ndim), aaa(Mdims%ndim,Mdims%ndim), a_temp(Mdims%ndim,Mdims%ndim), &
+                v(Mdims%ndim,Mdims%ndim), d(Mdims%ndim)
+!      logical :: priscr
+
+      real :: nxnx,nn,rhs_r, dt, nxnx_mat
+      real :: nnx(Mdims%ndim), nxnx_all(Mdims%ndim,Mdims%ndim)
+      type( mesh_type ), pointer :: pressure_mesh
+      type( tensor_field ), pointer :: Temperature
+
+      type( scalar_field ) :: rhs_xyz_pet, uvwg_pet
+      type( petsc_csr_matrix ) :: matrix_pet1,matrix_pet2,matrix_pet3
+      type (multi_dev_shape_funs) :: DevFuns
+      character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+      LOGICAL :: solid_implicit, has_Temperature
+      type(csr_sparsity), pointer :: sparsity
+
+      type( vector_field ), pointer :: UG_ALL
+      integer :: u_nodi, x_nodi, u_iloc
+
+
+      allocate( sigma( Mdims%totele) )
+      allocate( rhs(Mdims%ndim,Mdims%cv_nonods), cv_ug_all(Mdims%ndim,Mdims%cv_nonods) )
+      allocate( h_abs_mat(Mdims%ndim,Mdims%ndim,Mdims%cv_nonods) )
+      allocate( u_all_cvmesh(Mdims%ndim,Mdims%nphase,Mdims%cv_nonods),&
+              u_all_solid(Mdims%ndim,Mdims%nphase,Mdims%cv_nonods) )
+      allocate( sigma_plus_bc(Mdims%cv_nonods),ml(Mdims%cv_nonods),&
+              matrix_diag(Mdims%cv_nonods),uvwg(Mdims%cv_nonods) )
+      ! JXiang matrix_diag(Mdims%cv_nonods)
+      allocate( vel_count(Mdims%cv_nonods), vel_count_solid(Mdims%cv_nonods) )
+      allocate( ident_cv(Mdims%cv_nloc,Mdims%cv_nloc) )
+!JXiang c_lambda has allocated twice
+
+!      call allocate( u_lambda(Mdims%ndim), c_lambda(Mdims%ndim) )
+      allocate( u_lambda(Mdims%ndim))
+
+! JXiang add below line
+
+      call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
+
+!      call allocate_multi_dev_shape_funs(CV_funs)  !JXiang CV_funs is input
+
+      call get_option( '/timestepping/timestep', dt )
+
+      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/Pressure')) then
+          solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/Pressure'
+      end if
+      solid_implicit = have_option( '/solid_implicit')
+      has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
+      has_Temperature=.false.
+
+      !      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity')) then
+!      if (have_grid_velocity) then
+!        solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity'
+!      end if
+!      if(max_allowed_its < 0)  then
+!          call get_option( trim(solver_option_path)//"max_iterations",&
+!           max_allowed_its, default = 500)
+!      end if
+! define here so we can use for problems without solids as well
+      x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+      xold_all => extract_vector_field( state(1), "SolidOldCoordinate" )
+      u_all => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
+      UG_ALL=>extract_vector_field(state (1 ),"GridSolidVelocity")
+
+      if(solid_implicit) then ! a global vriable
+!     x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+!      xold_all => extract_vector_field( packed_state, "SolidOldCoordinate" )
+!      u_all => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
+
+         sigma0=>extract_scalar_field( state(1), "Sigma_Solid")
+         sigma = sigma0%val
+       else
+         sigma = 0.0
+      end if
+
+
+      pressure_mesh => extract_mesh( state( 1 ), "PressureMesh" )
+! PETSC: MatSetValue or - use INSERT_VAUES or ADD_VALUES
+! look at multi_matirx_operations
+
+      sparsity => extract_csr_sparsity(packed_state,'CMCSparsity') ! use CMC matrix for sparcity.  PABLO
+      call allocate( matrix_pet1, sparsity, [ 1, 1 ], "matrix_grid_vel", .false. )
+      call zero( matrix_pet1 )
+      call allocate( matrix_pet2, sparsity, [ 1, 1 ], "matrix_grid_vel", .false. )
+      call zero( matrix_pet2 )
+      call allocate( matrix_pet3, sparsity, [ 1, 1 ], "matrix_grid_vel", .false. )
+      call zero( matrix_pet3 )
+!      call allocate( matrix_pet, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix_pet )
+!        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
+      call allocate( rhs_xyz_pet, pressure_mesh, "rhs" )
+      call allocate( uvwg_pet, pressure_mesh, "rhs" ) !; call zero ( uvwg_pet )
+
+
+      ic=0
+      if(has_Temperature) then
+         ic=ic+1
+      end if
+      if(Mdims%ncomp>1) then
+        do icomp=1,Mdims%ncomp
+!        do iphase=1,max(Mdims%n_in_pres,1)
+           do iphase=1,Mdims%nphase
+              ic=ic+1
+           end do
+        end do
+      end if
+      nconc=ic
+      ndim_nphase = Mdims%ndim * Mdims%nphase
+!      ndim_nphase=0
+      number_fields = ndim_nphase + nconc
+
+      if(nconc>0) then
+         allocate(c_field(nconc,Mdims%cv_nonods),c_lambda(nconc) )
+      endif
+      if(number_fields>0) then
+         allocate(cc(number_fields,Mdims%cv_nonods))
+         allocate(lambda(number_fields),cc_x(Mdims%ndim,number_fields,Mdims%cv_nonods))
+         allocate(lambda_xx(number_fields),cc_xx(Mdims%ndim,Mdims%ndim,number_fields,Mdims%cv_nonods))
+         cc=0
+         cc_x=0
+         cc_xx=0
+       endif
+
+!      allocate(c_field(max(nconc,1),Mdims%cv_nonods),cc(max(number_fields,1),Mdims%cv_nonods))
+!      allocate(c_lambda(max(nconc,1)),lambda(max(number_fields,1)),cc_x(Mdims%ndim,max(number_fields,1),Mdims%cv_nonods))
+!      allocate(lambda_xx(max(number_fields,1)),cc_xx(Mdims%ndim,Mdims%ndim,max(number_fields,1),Mdims%cv_nonods))
+
+!      if(ndim_nphase>0) u_lambda = 1.0
+!      if(number_fields>0) c_lambda = 10.0
+!      if(ndim_nphase>0) u_lambda = 1.0
+!      if(number_fields>0) c_lambda = 1.0
+ !     u_lambda = 0.0
+ !     c_lambda = 0.0
+       u_lambda = 1.0
+      c_lambda = 0.0
+      if(ndim_nphase/=0) lambda(1:ndim_nphase)=u_lambda(1:ndim_nphase)
+      if(nconc/=0) lambda(ndim_nphase+1:ndim_nphase+nconc)=c_lambda(1:nconc)
+      if(interpolation_error) then ! use interpolation theory and a Hessian to form variational principle
+         if(number_fields>0) lambda_xx(:)=lambda(:)
+         if(number_fields>0) lambda(:)=0.0
+      else
+         if(number_fields>0) lambda_xx(:)=0.0
+      endif
+
+      ic=0
+! has_Temperature is defined by JXiang but no value.
+
+      if(has_Temperature) then
+         Temperature => extract_tensor_field( packed_state, "PackedTemperature" )
+         ic=ic+1
+         c_field(ic,:) = Temperature%val(1,1,:)
+      end if
+!      ic=0
+      if((Mdims%ncomp>1).and.(nconc>0)) then
+        ComponentMassFraction  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+        do icomp=1,Mdims%ncomp
+!        do iphase=1,max(Mdims%n_in_pres,1)
+           do iphase=1,Mdims%nphase
+              ic=ic+1
+              c_field(ic,:) = ComponentMassFraction%val(icomp,iphase,:)
+           end do
+        end do
+      end if
+
+
+      ident_cv=0.0
+      do cv_iloc=1,Mdims%cv_nloc
+         ident_cv(cv_iloc,cv_iloc)=1.0
+      end do
+      sigma_plus_bc=0.0
+      vel_count=0.0
+      vel_count_solid=0.0
+     if(number_fields>0) cc=0.0
+      u_all_cvmesh=0.0
+      u_all_solid=0.0
+      do ele=1,Mdims%totele
+         do cv_iloc=1,Mdims%cv_nloc
+            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            sigma_plus_bc(cv_inod) = sigma_plus_bc(cv_inod) + sigma(ele)
+            vel_count(cv_inod)=vel_count(cv_inod)+1.0
+            vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma(ele)
+            ic=0
+            do iphase=1,Mdims%nphase
+               do idim=1,Mdims%ndim
+                  if(ndim_nphase>0) then
+                     ic=ic+1
+                     cc(ic,cv_inod) = cc(ic,cv_inod) + u_all%val(idim,iphase,u_inod)
+                  endif
+                  u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                          + u_all%val(idim,iphase,u_inod)
+                  u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                          + u_all%val(idim,iphase,u_inod) * sigma(ele)
+               end do
+            end do
+         end do
+      end do
+
+      do cv_inod=1,Mdims%cv_nonods
+         if(ndim_nphase>0) cc(1:ndim_nphase, cv_inod) = cc(1:ndim_nphase, cv_inod)/vel_count(cv_inod)
+         u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
+         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) )
+      end do
+!JXiang comment the below line temporarily
+      if(nconc/=0) cc(ndim_nphase+1:ndim_nphase+nconc, :) = c_field(1:nconc,:)
+
+      sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
+! Set the boundary condtions on all surface elements around the domain to zero.
+ !     IPHASE=1
+ !     DO SELE=1,Mdims%stotel
+ !        DO CV_SILOC=1,Mdims%cv_snloc
+ !           CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+ !           SIGMA_PLUS_BC(CV_INOD) = 1.0
+ !        END DO
+ !     END DO
+      ml=0.0
+      if(number_fields>0) cc_x=0.0
+      matrix_diag=0.0
+      rhs=0.0
+
+ewrite(3,*) "before loop"
+
+      do ele = 1, Mdims%totele
+      ! calculate detwei,ra,nx,ny,nz for element ele
+      ! calculate detwei,RA,NX,NY,NZ for the ith element
+      call DETNLXR(ele, X_ALL%val, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+
+
+         ! form the hydrostatic pressure eqn...
+         do cv_iloc = 1, Mdims%cv_nloc
+            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            do cv_jloc = 1, Mdims%cv_nloc
+               cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+               u_jnod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+               nxnx = 0.0
+               do idim = 1, Mdims%ndim
+                  nxnx = nxnx + sum( DevFuns%nx_all( idim, cv_iloc, : ) * &
+                       DevFuns%nx_all( idim, cv_jloc, : ) * DevFuns%detwei(:)  )
+                  nnx(idim) = sum( CV_funs%CVFEN( cv_iloc, : ) * &
+                       DevFuns%nx_all( idim, cv_jloc, : ) * DevFuns%detwei(:)  )
+                  do jdim = 1, Mdims%ndim
+                     nxnx_all(idim,jdim) = sum( DevFuns%nx_all( idim, cv_jloc, : ) * &
+                       DevFuns%nx_all( jdim, cv_jloc, : ) * DevFuns%detwei(:)  )
+                  end do
+               end do
+               nn = sum( CV_funs%CVFEN( cv_iloc, : ) * CV_funs%CVFEN( cv_jloc, : ) * DevFuns%detwei(:)) ! form the hydrostatic pressure eqn...detwei(:)  )
+
+! use a lifting scheme and form 3 different rhs vectors.
+!               rhs_r= nxnx*ident_cv(cv_iloc,cv_jloc)*sigma_plus_bc(cv_inod)
+               rhs_r= nxnx*ident_cv(cv_iloc,cv_jloc)*sigma_plus_bc(cv_inod)
+               matrix_diag(cv_inod)=matrix_diag(cv_inod) + nxnx*ident_cv(cv_iloc,cv_jloc)
+               nxnx_mat= nxnx*(1.0-sigma_plus_bc(cv_inod))  + rhs_r
+
+  !             ewrite(3,*) "rhs_r",rhs_r
+  !             ewrite(3,*) "nxnx",nxnx
+  !             ewrite(3,*) "sigma_plus_bc",sigma_plus_bc(cv_inod)
+  !             ewrite(3,*) "matrix_diag",matrix_diag(cv_inod)
+  !             ewrite(3,*) "nnx",nnx
+  !             ewrite(3,*) "nxnx_all",nxnx_all
+               rhs(:,cv_inod)=rhs(:,cv_inod) + rhs_r * u_all_solid(:,1,cv_jnod) ! assume solid is in phase 1 if it exists.
+
+               ml(cv_inod)=ml(cv_inod)+nn
+               do idim = 1, Mdims%ndim
+! JXiang add iphase loop and change : to iphase
+!                  do iphase = 1, number_fields
+                   if(ndim_nphase+nconc>0) then
+                      cc_x(idim,:,cv_inod) = cc_x(idim,:,cv_inod) + nnx(idim)*cc(:,cv_inod)
+                      do jdim = 1, Mdims%ndim ! Hessian matrix:
+ !                    ewrite(3,*) "cc_xx",cc_xx(idim,jdim,:,cv_inod)
+                         cc_xx(idim,jdim,:,cv_inod) = cc_xx(idim,jdim,:,cv_inod) + nxnx_all(idim,jdim)*cc(:,cv_inod)
+! ewrite(3,*) "cc_xx,nxnx_all,cc",Mdims%cv_nonods,cc_xx(idim,jdim,:,cv_inod),nxnx_all(idim,jdim),cc(:,cv_inod),cv_inod,idim,jdim
+                         end do
+                   endif
+!                  end do
+               end do
+!ewrite(3,*) "nxnx_mat",nxnx_mat
+               call addto( matrix_pet1, 1, 1, cv_inod, cv_jnod, nxnx_mat )
+               call addto( matrix_pet2, 1, 1, cv_inod, cv_jnod, nxnx_mat )
+               call addto( matrix_pet3, 1, 1, cv_inod, cv_jnod, nxnx_mat )
+            end do ! do cv_jloc = 1, Mdims%cv_nloc
+
+         end do ! do cv_iloc = 1, Mdims%cv_nloc
+
+      end do ! do ele = 1, Mdims%totele
+
+      if(ndim_nphase+nconc>0) then
+!ewrite(3,*) "cc_x", cc_x
+! ewrite(3,*) "cc_xx", cc_xx
+      endif
+
+
+      if(ndim_nphase+nconc>0) then
+         do cv_inod=1,Mdims%cv_nonods
+            cc_x(:,:,cv_inod)=cc_x(:,:,cv_inod)/ml(cv_inod)
+            cc_xx(:,:,:,cv_inod)=cc_xx(:,:,:,cv_inod)/ml(cv_inod)  ! Hessian's
+         end do
+      endif
+
+! make all the Hessian matrices positive def...
+!      allocate( aa(Mdims%ndim,Mdims%ndim), aaa(Mdims%ndim,Mdims%ndim), a_temp(Mdims%ndim,Mdims%ndim), &
+!                v(Mdims%ndim,Mdims%ndim), d(Mdims%ndim) )
+      do cv_inod=1,Mdims%cv_nonods
+         do ic=1,number_fields
+            aa(:,:) = cc_xx(:,:,ic,cv_inod)
+            if(curve_squared) then ! use Hessian squared  aaa=H^T H
+               do idim=1,Mdims%ndim
+                  do jdim=1,Mdims%ndim
+                     aaa(idim,jdim) = sum(aa(:,idim) * aa(:,jdim))
+                  end do
+               end do
+            else
+! This sub performs Jacobi rotations of a symmetric matrix in order to
+! find the eigen-vectors V and the eigen values A so
+! that AA=V^T D V & D is diagonal.
+               call JACDIA(AA,V,D,Mdims%ndim, A_temp)
+
+               do idim=1,Mdims%ndim
+                  aa(idim,:) = abs(d(idim))*v(idim,:)
+               end do
+               do idim=1,Mdims%ndim
+                  do jdim=1,Mdims%ndim
+                     aaa(idim,jdim) = sum(v(idim,:) * aa(:,jdim))
+                  end do
+               end do
+            endif
+            cc_xx(:,:,ic,cv_inod)=aaa(:,:)
+         end do
+      end do
+!
+      if(ndim_nphase+nconc>0) then
+!ewrite(3,*) "cc_xx, aaa", cc_xx,aaa
+      endif
+
+! get halo...
+!            do ic=1,number_fields
+!               do idim=1,Mdims%ndim
+!                  call gethalo(cc_x(idim,ic,:))
+!               end do
+!            end do
+
+! This is a block Gauss-Siedel iteration.
+!      cv_ug_all(:,:)=(x_all%val(:,:)-xold_all%val(:,:))/dt ! find a good guess - ASK JASON
+      cv_ug_all=(x_all%val-xold_all%val)/dt ! find a good guess - ASK JASON
+      number_fields2=number_fields
+      number_fields2=0
+      nits_ug2=1
+      if(number_fields>0) then
+      if(sum(lambda(1:number_fields)).ne.0.0) then
+         nits_ug=3
+         nits_ug2=nits_ug
+      endif
+      endif
+! store the absorptions block diagonals:
+      h_abs_mat=0.0
+      do cv_inod=1,Mdims%cv_nonods
+      do idim=1,Mdims%ndim
+         do jdim=1,Mdims%ndim
+            do kc=1,number_fields2
+              h_abs_mat(idim, jdim, cv_inod) =  h_abs_mat(idim, jdim, cv_inod) + lambda(kc)*cc_x(idim,kc,cv_inod)*ml(cv_inod)*cc_x(jdim,kc,cv_inod) &
+                                                                               + lambda_xx(kc)*cc_xx(idim,jdim,kc,cv_inod)*ml(cv_inod)
+            end do
+            h_abs_mat(idim, jdim, cv_inod) =  h_abs_mat(idim, jdim, cv_inod) * (1.0 - sigma_plus_bc(cv_inod) ) ! only apply where we dont have a constraint.
+            if(number_fields>0) then
+               do kphase=1,Mdims%nphase ! put the H matricies in the rhs...
+                  do kdim=1,Mdims%ndim ! put the H matricies in the rhs...
+                     kc = (kdim-1)*Mdims%nphase + kphase
+! Chris - suspect look carefully at this...
+                     rhs(idim,cv_inod) = rhs(idim,cv_inod) + (  lambda(kc)*cc_x(idim,kc,cv_inod)*ml(cv_inod)*cc_x(jdim,kc,cv_inod) &
+                                                               +lambda_xx(kc)*cc_xx(idim,jdim,kc,cv_inod)*ml(cv_inod)  ) &
+                                    * (1.0 - sigma_plus_bc(cv_inod) ) * u_all_cvmesh(jdim,iphase,cv_inod)
+                  end do
+               end do
+            endif
+!            rhs(idim,cv_inod) = rhs(idim,cv_inod) + h_abs_mat(idim, jdim, cv_inod) * u_all_cvmesh(jdim,1,cv_inod)
+         end do
+      end do
+      end do
+
+! ewrite(3,*) "rhs", rhs, h_abs_mat
+if(number_fields>0) then
+  !      ewrite(3,*) "lambda",lambda,lambda_xx
+end if
+!ewrite(3,*) "sigma_plus_bc",sigma_plus_bc
+      do its=1,nits_ug2
+         do idim=1,Mdims%ndim
+            uvwg_pet%val(:)=cv_ug_all(idim,:) ! find a good guess
+
+                  !      uvwg_pet%val(:)=0.0
+            do cv_inod=1,Mdims%cv_nonods
+               rhs_xyz_pet%val(cv_inod) =  rhs(idim,cv_inod) + sum( h_abs_mat(idim, :, cv_inod)*cv_ug_all(:,cv_inod) )  &
+                                - h_abs_mat(idim, idim, cv_inod)*cv_ug_all(idim,cv_inod)  ! subtract out the digonal
+!               matrix(cv_inod,cv_inod)=diag(cv_inod) + h_abs_mat(idim, idim, cv_inod)
+!               call MatSetValue(matrix_pet, cv_inod,cv_inod, matrix_diag(cv_inod) + h_abs_mat(idim, idim, cv_inod),  INSERT_VALUES, ierr)
+            if(its.eq.1) then
+
+              if(idim.eq.1) call addto( matrix_pet1, 1, 1, cv_inod, cv_inod, matrix_diag(cv_inod) + h_abs_mat(idim, idim, cv_inod))
+              if(idim.eq.2) call addto( matrix_pet2, 1, 1, cv_inod, cv_inod, matrix_diag(cv_inod) + h_abs_mat(idim, idim, cv_inod))
+              if(idim.eq.3) call addto( matrix_pet3, 1, 1, cv_inod, cv_inod, matrix_diag(cv_inod) + h_abs_mat(idim, idim, cv_inod))
+            end if
+   !           ewrite(3,*)"nits_ug2, idim",idim,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
+
+            end do
+!            ewrite(3,*)"nits_ug2, idim",matrix_pet1,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
+!            ewrite(3,*)"nits_ug2, idim",matrix_pet2,rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
+   !         ewrite(3,*)"nits_ug2, idim",rhs_xyz_pet%val(cv_inod),h_abs_mat(idim, idim, cv_inod)
+            if(idim.eq.1) call petsc_solve( uvwg_pet, matrix_pet1, rhs_xyz_pet, option_path = trim(solver_option_path) )
+            if(idim.eq.2) call petsc_solve( uvwg_pet, matrix_pet2, rhs_xyz_pet, option_path = trim(solver_option_path) )
+            if(idim.eq.3) call petsc_solve( uvwg_pet, matrix_pet3, rhs_xyz_pet, option_path = trim(solver_option_path) )
+
+            cv_ug_all(idim,:) = uvwg_pet%val(:) ! find a good guess
+         end do
+      end do
+
+      ! force CV_UG_all equal to solid velcoity within solid, else zero
+    !        cv_ug_all=0.0
+     !             do ele = 1, Mdims%totele
+      !                    do cv_iloc = 1, Mdims%cv_nloc
+       !                               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+        !                                         cv_ug_all(:,cv_inod)=u_all_solid(:,1,cv_inod)* sigma(ele)
+
+         !                                                 end do ! do cv_iloc = 1, Mdims%cv_nloc
+
+          !                                                      end do ! do ele = 1, Mdims%totele
+
+       ewrite(3,*) "after loop"
+!       ewrite(3,*) "cv_ug_all", cv_ug_all
+      x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
+
+      do ele=1,Mdims%totele
+         do u_iloc=1,Mdims%u_nloc
+                  u_nodi=ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                  x_nodi=ndgln%x((ele-1)*Mdims%cv_nloc+u_iloc)
+                   ug_all%val(:,u_nodi)= cv_ug_all(:,x_nodi)
+ !                  ewrite(3,*) "velocity, coordinate are ", u_nodi, x_nodi, cv_ug_all(2,x_nodi)
+         end do
+       end do
+
+      ewrite(3,*) "leaving diffusion grid velocity solvefffffffvvvvvvv"
+
+! jxiang add deallocate
+
+      if(nconc>0) deallocate(c_field,c_lambda)
+      if(number_fields>0) deallocate(cc,lambda,cc_x,lambda_xx,cc_xx)
+      deallocate(u_lambda)
+
+      deallocate(sigma, rhs, h_abs_mat, u_all_cvmesh, sigma_plus_bc, vel_count, cv_ug_all, u_all_solid)
+      deallocate(ml,matrix_diag,uvwg, vel_count_solid,  ident_cv)
+      call deallocate(matrix_pet1)
+      call deallocate(matrix_pet2)
+      call deallocate(matrix_pet3)
+      call deallocate(rhs_xyz_pet)
+      call deallocate(uvwg_pet)
+      call deallocate_multi_dev_shape_funs(DevFuns)
+
+
+      return
+
+  END SUBROUTINE diffusion_ug_solve
+
+
+
+     SUBROUTINE one_eqn_diffusion_ug_solve( Mdims, ndgln, state, packed_state, CV_funs )
+! *************************************************************************************************
+! This subroutine cacluates the new grid velocities and defines the new coordinates X_ALL. ********
+! *************************************************************************************************
+! sigma(ele)= 1.0 if in a solid and 0.0 else for element ele.
+! c(Mdims%nconc, cv_nonods) contains the concentration fields to try and move the mesh with and improve accuracy.
+! Mdims%nconc
+! u_lambda(idim) = weight to put on fixing the mesh to move with the velocities idim.
+! c_lamba(ic)= weight to put on fixing the mesh to move with the field (e.g. concentration) ic.
+! CV_SNDGLN = list of gobal node numbers for the surface elements
+! dt = time step size.
+
+      implicit none
+      type(multi_dimensions), intent( in ) :: Mdims
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_ndgln), intent(in) :: ndgln
+      type(multi_shape_funs), intent(in) :: CV_funs                    ! control volume shape function data
+
+      ! local variables...
+
+      integer :: u_jnod
+      integer :: ele,sele, cv_siloc, cv_iloc,cv_jloc, cv_inod, cv_jnod
+      integer :: idim,jdim, icomp, iphase, u_inod, ierr
+      integer :: kphase
+      type( vector_field ), pointer :: x_all, xold_all,XV_ALL,xp0dg_all
+      type( tensor_field ), pointer :: u_all, ComponentMassFraction
+      type( scalar_field ), pointer :: sigma0
+
+! Can put a lot of memory on the stack these days.
+      real, dimension(:), allocatable :: sigma
+      real, dimension(:,:), allocatable :: cv_ug_all, rhs
+      real, dimension(:,:,:), allocatable :: u_all_cvmesh, u_all_solid
+      real, dimension(:), allocatable :: sigma_plus_bc,ml, matrix_diag,uvwg
+      real, dimension(:), allocatable :: vel_count, vel_count_solid
+      real, dimension(:,:), allocatable :: ident_cv
+
+      REAL, DIMENSION( Mdims%ndim, Mdims%ndim) :: ident
+      real aa(Mdims%ndim,Mdims%ndim), aaa(Mdims%ndim,Mdims%ndim)
+
+      real :: nxnx,nn,rhs_r, dt, nxnx_mat
+      real :: nnx(Mdims%ndim), nxnx_all(Mdims%ndim,Mdims%ndim)
+      type( mesh_type ), pointer :: pressure_mesh
+
+      type( scalar_field ) :: rhs_xyz_pet, uvwg_pet
+      type( petsc_csr_matrix ) :: matrix_pet
+      type (multi_dev_shape_funs) :: DevFuns
+      character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+      LOGICAL :: solid_implicit, has_Temperature
+      type(csr_sparsity), pointer :: sparsity
+      type( vector_field ), pointer :: UG_ALL,UC_ALL
+      integer :: u_nodi, x_nodi, u_iloc,nod0,nod1,nod2,nod3
+      real, dimension(:), allocatable :: a, b
+      real :: x0, y0, z0, x1, y1, z1, x2,y2, z2, x3, y3, z3
+
+      allocate( sigma( Mdims%totele) )
+      allocate( rhs(Mdims%ndim,Mdims%cv_nonods), cv_ug_all(Mdims%ndim,Mdims%cv_nonods) )
+      allocate( u_all_cvmesh(Mdims%ndim,Mdims%nphase,Mdims%cv_nonods),&
+              u_all_solid(Mdims%ndim,Mdims%nphase,Mdims%cv_nonods) )
+      allocate( sigma_plus_bc(Mdims%cv_nonods),ml(Mdims%cv_nonods),&
+              uvwg(Mdims%cv_nonods) )
+      allocate( a(Mdims%totele),b(Mdims%totele) )
+      ! JXiang matrix_diag(Mdims%cv_nonods)
+      allocate( vel_count(Mdims%cv_nonods), vel_count_solid(Mdims%cv_nonods) )
+      allocate( ident_cv(Mdims%ndim,Mdims%ndim) )
+      ewrite(3,*) "in one equation diffusion grid velocity solve"
+
+      !JXiang c_lambda has allocated twice
+
+! JXiang add below line
+
+      call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
+
+!      call allocate_multi_dev_shape_funs(CV_funs)  !JXiang CV_funs is input
+
+      call get_option( '/timestepping/timestep', dt )
+
+      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/Pressure')) then
+          solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/Pressure'
+      end if
+      solid_implicit = have_option( '/solid_implicit')
+
+      !      if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity')) then
+!      if (have_grid_velocity) then
+!        solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::GridVelocity'
+!      end if
+!      if(max_allowed_its < 0)  then
+!          call get_option( trim(solver_option_path)//"max_iterations",&
+!           max_allowed_its, default = 500)
+!      end if
+! define here so we can use for problems without solids as well
+      x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+      xold_all => extract_vector_field( state (1), "SolidOldCoordinate" )
+      u_all => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
+      UG_ALL=>extract_vector_field(state (1 ),"GridSolidVelocity")
+      XV_ALL=> extract_vector_field( packed_state, "VelocityCoordinate" )
+      XP0DG_ALL=> extract_vector_field( packed_state, "MaterialCoordinate" )
+
+!ewrite(3,*)"X_all",x_all%val
+!ewrite(3,*)"xold_all",xold_all%val
+!ewrite(3,*)"U_all",u_all%val
+!ewrite(3,*)"ug_all",ug_all%val
+
+!      UC_ALL=>extract_vector_field(state (1 ),"GridContinVelocity")
+
+      if(solid_implicit) then ! a global vriable
+!     x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+!      xold_all => extract_vector_field( packed_state, "SolidOldCoordinate" )
+!      u_all => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
+
+         sigma0=>extract_scalar_field( state(1), "Sigma_Solid")
+         sigma = sigma0%val
+       else
+         sigma = 0.0
+      end if
+
+!      allocate(a(Mdims%totele),b(Mdims%totele))
+
+!      a=sigma*1.e+4 + (1.0-sigma)*1.e-4 ! adjust this
+!      b=sigma*0.0 + (1.0-sigma)*1.e+4  ! adjust this
+
+!      a=sigma*1.e+2 + (1.0-sigma)*1.e-2 ! adjust this
+!      b=sigma*0.0 + (1.0-sigma)*1.e+2  ! adjust this
+
+!      a=sigma*1.+ (1.0-sigma)*1. ! adjust this
+!      b=sigma*0.0 + (1.0-sigma)*1.  ! adjust this
+
+
+!b2      a=sigma*1.0e+06+ (1.0-sigma)*1.0e+06 ! adjust this
+!      b=sigma*0.0 + (1.0-sigma)*1.0e-04  ! adjust this
+
+!b3
+      a=sigma*1.0e+06+ (1.0-sigma)*1.0e-06 ! adjust this
+      b=sigma*0.0 + (1.0-sigma)*1.0e-04  ! adjust this
+
+ !     write(3,*) "a is , b is", a, b
+
+      pressure_mesh => extract_mesh( state( 1 ), "PressureMesh" )
+! PETSC: MatSetValue or - use INSERT_VAUES or ADD_VALUES
+! look at multi_matirx_operations
+
+      sparsity => extract_csr_sparsity(packed_state,'CMCSparsity') ! use CMC matrix for sparcity.  PABLO
+      call allocate( matrix_pet, sparsity, [ 1, 1 ], "matrix_grid_vel", .false. )
+      call zero( matrix_pet )
+!      call allocate( matrix_pet, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix_pet )
+!        call allocate(CMC_petsc,sparsity,[Mdims%npres,Mdims%npres],"CMC_petsc",diag)
+      call allocate( rhs_xyz_pet, pressure_mesh, "rhs" )
+      call allocate( uvwg_pet, pressure_mesh, "rhs" ) !; call zero ( uvwg_pet )
+
+
+      ident_cv=0.0
+      do idim=1,Mdims%ndim
+         ident(idim,idim)=1.0
+      end do
+      sigma_plus_bc=0.0
+      vel_count=0.0
+      vel_count_solid=0.0
+      u_all_cvmesh=0.0
+      u_all_solid=0.0
+
+
+!      do ele=1,Mdims%totele
+!      DO U_ILOC = 1, Mdims%u_nloc
+!                U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+!                DO IPHASE = 1, Mdims%nphase
+!                    DO IDIM = 1, Mdims%ndim
+!                    u_all%val( IDIM, IPHASE, U_INOD ) = 0.0
+!                    if(sigma(ele).GT.0.5) THEN
+!                         u_all%val( 2, IPHASE, U_INOD ) = 10.0
+!                        ENDIF
+!                    END DO
+!                END DO
+!            END DO
+!            END DO
+
+      do cv_inod=1,Mdims%u_nonods
+!         ewrite(3,*) "velocity_all",u_all%val(:,1,cv_inod)
+!         uc_all%val(:,cv_inod)=cv_ug_all(:,cv_inod)
+      end do
+
+      do ele=1,Mdims%totele
+         do cv_iloc=1,Mdims%cv_nloc
+            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            sigma_plus_bc(cv_inod) = sigma_plus_bc(cv_inod) + sigma(ele)
+            vel_count(cv_inod)=vel_count(cv_inod)+1.0
+            vel_count_solid(cv_inod)=vel_count_solid(cv_inod)+1.0*sigma(ele)
+            do iphase=1,Mdims%nphase
+               do idim=1,Mdims%ndim
+                  u_all_cvmesh(idim,iphase,cv_inod) = u_all_cvmesh(idim,iphase,cv_inod) &
+                          + u_all%val(idim,iphase,u_inod)
+                  u_all_solid(idim,iphase,cv_inod) = u_all_solid(idim,iphase,cv_inod) &
+                          + u_all%val(idim,iphase,u_inod) * sigma(ele)
+!                  ewrite(3,*)"solid all  velocity",u_all_solid(idim,iphase,cv_inod), u_all%val(idim,iphase,u_inod),sigma(ele)
+               end do
+            end do
+         end do
+      end do
+
+      do cv_inod=1,Mdims%cv_nonods
+         u_all_cvmesh(:,:,cv_inod) = u_all_cvmesh(:,:,cv_inod)/vel_count(cv_inod)
+ !        ewrite(3,*)"solid velocity", u_all_solid(:,:,cv_inod), vel_count_solid(cv_inod)
+         u_all_solid(:,:,cv_inod) = u_all_solid(:,:,cv_inod)/max(0.01, vel_count_solid(cv_inod) )
+      end do
+
+      sigma_plus_bc(:) = min(1.0, 1000.0 * sigma_plus_bc(:)) ! if we have a non-zero value then def assume is a solid.
+! Set the boundary condtions on all surface elements around the domain to zero.
+!      IPHASE=1
+!      DO SELE=1,Mdims%stotel
+!         DO CV_SILOC=1,Mdims%cv_snloc
+!            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+!            SIGMA_PLUS_BC(CV_INOD) = 1.0
+!         END DO
+!      END DO
+
+      ml=0.0
+      rhs_xyz_pet%val(:)=0.0
+
+      do ele = 1, Mdims%totele
+      ! calculate detwei,ra,nx,ny,nz for element ele
+      ! calculate detwei,RA,NX,NY,NZ for the ith element
+         call DETNLXR(ele, X_ALL%val, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+
+         ! form the hydrostatic pressure eqn...
+         do cv_iloc = 1, Mdims%cv_nloc
+            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            do cv_jloc = 1, Mdims%cv_nloc
+               cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+               u_jnod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+               nxnx = 0.0
+               do idim = 1, Mdims%ndim
+                  nxnx = nxnx + sum( DevFuns%nx_all( idim, cv_iloc, : ) * &
+                       DevFuns%nx_all( idim, cv_jloc, : ) * DevFuns%detwei(:)  )
+                  nnx(idim) = sum( CV_funs%CVFEN( cv_iloc, : ) * &
+                       DevFuns%nx_all( idim, cv_jloc, : ) * DevFuns%detwei(:)  )
+               end do
+               nn = sum( CV_funs%CVFEN( cv_iloc, : ) * CV_funs%CVFEN( cv_jloc, : ) * DevFuns%detwei(:)) ! form the hydrostatic pressure eqn...detwei(:)  )
+               nxnx_mat = nxnx/a(ele) + b(ele)*nn
+
+               rhs_xyz_pet%val(cv_inod)=rhs_xyz_pet%val(cv_inod) - sum( nnx(:) * u_all%val(:,1,u_jnod) * sigma(ele) ) ! assume solid is in phase 1 if it exists.
+
+               ml(cv_inod)=ml(cv_inod)+nn
+
+               call addto( matrix_pet, 1, 1, cv_inod, cv_jnod, nxnx_mat )
+            end do ! do cv_jloc = 1, Mdims%cv_nloc
+
+         end do ! do cv_iloc = 1, Mdims%cv_nloc
+
+      end do ! do ele = 1, Mdims%totele
+
+      uvwg_pet%val(:)=0.0 ! no initial guess
+      call petsc_solve( uvwg_pet, matrix_pet, rhs_xyz_pet, option_path = trim(solver_option_path) )
+
+      cv_ug_all(:,:)=0.0
+
+! Now calc grid velocities cv_ug_all...
+      do ele = 1, Mdims%totele
+      ! calculate detwei,ra,nx,ny,nz for element ele
+      ! calculate detwei,RA,NX,NY,NZ for the ith element
+         call DETNLXR(ele, X_ALL%val, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+
+         do cv_iloc = 1, Mdims%cv_nloc
+            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+            do cv_jloc = 1, Mdims%cv_nloc
+               cv_jnod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_jloc )
+               do idim = 1, Mdims%ndim
+                  nnx(idim) = sum( CV_funs%CVFEN( cv_iloc, : ) * &
+                       DevFuns%nx_all( idim, cv_jloc, : ) * DevFuns%detwei(:)  )
+               end do
+
+               cv_ug_all(:,cv_inod)=cv_ug_all(:,cv_inod) + nnx(:) * uvwg_pet%val(cv_jnod) / a(ele)
+            end do ! do cv_jloc = 1, Mdims%cv_nloc
+
+         end do ! do cv_iloc = 1, Mdims%cv_nloc
+
+      end do ! do ele = 1, Mdims%totele
+
+      do idim = 1, Mdims%ndim
+         cv_ug_all(idim,:) = cv_ug_all(idim,:)/ml(:)  + u_all_solid(idim,1,:) ! actual eqn
+      end do
+
+
+      ! force CV_UG_all equal to solid velcoity within solid, else zero
+ !     cv_ug_all=0.0
+ !     do ele = 1, Mdims%totele
+ !       do cv_iloc = 1, Mdims%cv_nloc
+ !           cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+ !          cv_ug_all(:,cv_inod)=u_all_solid(:,1,cv_inod)* sigma(ele)
+ !        end do ! do cv_iloc = 1, Mdims%cv_nloc
+ !     end do ! do ele = 1, Mdims%totele
+
+
+
+
+! exactly enforce the solid velocity equals the grid velocity:
+      do cv_inod=1,Mdims%cv_nonods
+         cv_ug_all(:,cv_inod) = u_all_solid(:,1,cv_inod)*SIGMA_PLUS_BC(CV_INOD) + cv_ug_all(:,cv_inod)*(1.0-SIGMA_PLUS_BC(CV_INOD))
+!         ewrite(3,*) "cv_ug_all",u_all_solid(:,1,cv_inod),SIGMA_PLUS_BC(CV_INOD), cv_ug_all(:,cv_inod)
+!         uc_all%val(:,cv_inod)=cv_ug_all(:,cv_inod)
+      end do
+      do cv_inod=1,Mdims%cv_nonods
+!      ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
+      end do
+            IPHASE=1
+      DO SELE=1,Mdims%stotel
+         DO CV_SILOC=1,Mdims%cv_snloc
+            CV_INOD=ndgln%suf_cv((SELE-1)*Mdims%cv_snloc+CV_SILOC)
+!            SIGMA_PLUS_BC(CV_INOD) = 1.0
+           cv_ug_all(:,cv_INOD)=0.0
+       END DO
+      END DO
+
+      x_all%val = xold_all%val + dt * cv_ug_all! get new grid positions
+ !     xv_all%val=x_all%val
+      do cv_inod=1,Mdims%cv_nonods
+!      ewrite(3,*) "X_ALL, coordinate are ",x_all%val(1,cv_inod),x_all%val(2,cv_inod), x_all%val(3,cv_inod)
+!      ewrite(3,*) "XOLD_ALL, coordinate are ",xold_all%val(1,cv_inod),xold_all%val(2,cv_inod),xold_all%val(3,cv_inod)
+      end do
+
+      do ele=1,Mdims%totele
+
+      nod0=ndgln%x((ele-1)*Mdims%cv_nloc+1)
+      nod1=ndgln%x((ele-1)*Mdims%cv_nloc+2)
+      nod2=ndgln%x((ele-1)*Mdims%cv_nloc+3)
+      nod3=ndgln%x((ele-1)*Mdims%cv_nloc+4)
+
+      x0=X_ALL%val(1,nod0)
+      y0=X_ALL%val(2,nod0)
+      z0=X_ALL%val(3,nod0)
+      x1=X_ALL%val(1,nod1)
+      y1=X_ALL%val(2,nod1)
+      z1=X_ALL%val(3,nod1)
+      x2=X_ALL%val(1,nod2)
+      y2=X_ALL%val(2,nod2)
+      z2=X_ALL%val(3,nod2)
+      x3=X_ALL%val(1,nod3)
+      y3=X_ALL%val(2,nod3)
+      z3=X_ALL%val(3,nod3)
+
+!      XP0DG_ALL%val(1,ele)=(x0+x1+x2+x3)/4.0
+!      XP0DG_ALL%val(2,ele)=(y0+y1+y2+y3)/4.0
+!      XP0DG_ALL%val(3,ele)=(z0+z1+z2+z3)/4.0
+
+
+!      ewrite(3,*)"XP0DG",XP0DG_ALL%val(1,ele),XP0DG_ALL%val(2,ele),XP0DG_ALL%val(3,ele)
+         do u_iloc=1,Mdims%u_nloc
+                  u_nodi=ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+                  x_nodi=ndgln%x((ele-1)*Mdims%cv_nloc+u_iloc)
+                   ug_all%val(:,u_nodi)= cv_ug_all(:,x_nodi)
+!                   ewrite(3,*) "velocity, coordinate are ", u_nodi, x_nodi, cv_ug_all(2,x_nodi)
+!ewrite(3,*)"XV_ALL,X_ALL",u_nodi,XV_ALL%val(:,u_nodi)
+!                   XV_ALL%val(:,u_nodi)=X_ALL%val(:,x_nodi)
+!ewrite(3,*)"XV_ALL,X_ALL",u_nodi,XV_ALL%val(:,u_nodi),x_nodi,X_ALL%val(:,x_nodi)
+         end do
+       end do
+
+
+      ewrite(3,*) "leaving one equation diffusion grid velocity solvefffffffvvvvvvv"
+
+! jxiang add deallocate
+
+      deallocate(sigma, u_all_cvmesh, sigma_plus_bc, vel_count, cv_ug_all, u_all_solid)
+      deallocate(ml, vel_count_solid, ident_cv,a,b,uvwg,rhs )
+      call deallocate(matrix_pet)
+      call deallocate(rhs_xyz_pet)
+      call deallocate(uvwg_pet)
+      call deallocate_multi_dev_shape_funs(DevFuns)
+
+      return
+
+  END SUBROUTINE one_eqn_diffusion_ug_solve
+
+!
+!
+!
+ !---------------------------------------------------------------------------
   !> @author Chris Pain, Pablo Salinas
   !> @brief Calls to generate the transport equation for the transport of energy/temperature and to solve the transport of components
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
@@ -2126,7 +3044,6 @@ end if
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
         end if
-
         !######################## CORRECTION VELOCITY STEP####################################
         !Ensure that the velocity fulfils the continuity equation before moving on
         call project_velocity_to_affine_space(Mdims, Mmat, Mspars, ndgln, velocity, deltap, cdp_tensor)
@@ -2138,7 +3055,6 @@ end if
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         !Ensure that prior to comming here the halos have been updated
         if (.not. is_porous_media) call calc_CVPres_from_FEPres()!No need for porous media
-!
         DEALLOCATE( Mmat%CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
         DEALLOCATE( Mmat%U_RHS )
@@ -2148,7 +3064,6 @@ end if
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-
         !Using associate doesn't seem to be stable enough
         if (((solve_stokes .or. solve_mom_iteratively) &
              .and. .not. have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/advance_preconditioner"))  .or. &
@@ -2158,7 +3073,6 @@ end if
 
         if (rescale_mom_matrices)  call deallocate(diagonal_CMC)
         if (associated(UDIFFUSION_VOL_ALL%val)) call deallocate_multi_field(UDIFFUSION_VOL_ALL)
-
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
       contains
@@ -2784,6 +3698,27 @@ end if
         type(tensor_field), pointer :: tracer, density
         REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
 
+        INTEGER :: nod0,nod1,nod2,nod3, u_nodi,x_nodi ! added by JXiang
+        type(tensor_field) :: cdp_tensor   ! added by JXiang
+        type( tensor_field ), pointer :: t_all ! added by JXiang
+        REAL, DIMENSION( :,:, : ), allocatable :: NU_ALL, NUOLd_ALL  ! added by JXiang
+!        REAL, DIMENSION( :,:, : ), allocatable :: UG_ALL
+!       type(vector_field), pointer :: XS_ALL, XSOLd_ALL   ! added by JXiang
+        type( vector_field ), pointer :: UG_ALL
+
+
+        LOGICAL:: solid_implicit
+
+        !JXiang
+        solid_implicit = have_option( '/solid_implicit')
+! JXiang WITH CP RESOLVE THIS LATER
+
+!          allocate(NU_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
+!          allocate(NUOLD_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
+         allocate(NU_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
+         allocate(NUOLD_ALL(Mdims%ndim,Mdims%nphase,Mdims%u_nonods))
+!        solid_implicit = .FALSE.
+
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
@@ -2796,13 +3731,48 @@ end if
             CALL porous_assemb_force_cty( packed_state, pressure, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, X_ALL, U_SOURCE_CV_ALL)
         else !Normal and more general method
+! JXiang WITH CP RESOLVE THIS LATER
+
+          if(solid_implicit) then
+!           allocate(UG_ALL(Mdims%ndim,Mdims%nphase,size(U_ALL,3)))
+           UG_ALL=>extract_vector_field(state( 1 ),"GridSolidVelocity")
+!           xs_all => extract_vector_field( packed_state, "PressureCoordinate" )
+!           xsold_all => extract_vector_field( packed_state, "SolidOldCoordinate" )
+!               do ele=1,Mdims%totele
+!                  do u_iloc=1,Mdims%u_nloc
+!                     u_nodi=ndgln%u((ele-1)*Mdims%u_nloc+u_iloc)
+!                     x_nodi=ndgln%x((ele-1)*Mdims%cv_nloc+u_iloc)
+!                     ug_all(:,1,u_nodi)= (xs_all%val(:,x_nodi)-xsold_all%val(:,x_nodi))/dt
+!                  end do
+!               end do
+               !JXiang need change this later
+!           if (isParallel())  call halo_update(ug_all)
+!               UG_ALL=(X_ALL-XOLD_ALL)/DT
+ !              UGOLD_ALL=UG_ALL
+
+               DO IDIM=1,Mdims%ndim
+                  DO IPHASE = 1, Mdims%nphase
+                     DO U_ILOC=1,Mdims%u_nonods
+                  NU_ALL(IDIM,IPHASE,U_ILOC)= U_ALL(IDIM,IPHASE,U_ILOC)-UG_ALL%val(IDIM,U_ILOC)
+                  NUOLD_ALL(IDIM,IPHASE,U_ILOC)= UOLD_ALL(IDIM,IPHASE,U_ILOC)-UG_ALL%val(IDIM,U_ILOC)
+!                  ewrite(3,*)'In CV_ASSEMB_FORCE_CTY', size(U_ALL,3),IDIM,U_ILOC, U_ALL(IDIM,IPHASE,U_ILOC),UG_ALL%val(IDIM,U_ILOC)
+                  END DO
+                  END DO
+               END DO
+!               NU_ALL= U_ALL
+!               NUOLD_ALL= UOLD_ALL
+
+            else
+               NU_ALL= U_ALL
+               NUOLD_ALL= UOLD_ALL
+            endif
 
             CALL ASSEMB_FORCE_CTY( state, packed_state, &
                 Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
                 velocity, pressure, &
                 X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
                 U_ALL, UOLD_ALL, &
-                U_ALL, UOLD_ALL, &    ! This is nu...
+                NU_ALL, NUOLD_ALL, &    ! JXiang This is nu...
                 UDEN_ALL, UDENOLD_ALL, DERIV, &
                 DT, &
                 JUST_BL_DIAG_MAT, &
@@ -2852,6 +3822,8 @@ end if
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         DEALLOCATE( THETA_GDIFF )
         DEALLOCATE( MEAN_PORE_CV )
+        DEALLOCATE( NU_ALL) !JXiang
+        DEALLOCATE( NUOLD_ALL) !JXiang
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
       contains
@@ -3151,7 +4123,7 @@ end if
         NU_ALL, NUOLD_ALL, &
         UDEN, UDENOLD, DERIV, &
         DT, JUST_BL_DIAG_MAT,  &
-        UDIFFUSION, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &
+        UDIFFUSION_temp, UDIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &    !JXiang
         IPLIKE_GRAD_SOU,  DIAG_BIGM_CON, BIGM_CON,&
         got_free_surf, mass_suf, FEM_continuity_equation, MASS_ELE )
         implicit none
@@ -3176,7 +4148,7 @@ end if
         REAL, DIMENSION ( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL, NU_ALL, NUOLD_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD, DERIV
         REAL, intent( in ) :: DT
-        REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION_temp   !JXiang
         type( multi_field ), intent( in ) :: UDIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
@@ -3233,7 +4205,9 @@ end if
         DIF_STAB_U, U_GRAD_NORM2, U_GRAD_NORM, A_DOT_U, STAR_U_COEF, P_STAR_U
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: UDIFF_SUF_STAB
         !###Shape function calculation###
-        type(multi_dev_shape_funs) :: Devfuns
+        type(multi_dev_shape_funs) :: Devfuns, Devfuns0    ! Devfuns0 added by JXiang
+        type(vector_field), pointer :: X0_ALL   ! added by JXiang
+
 
 ! Local variables...
 !            INTEGER, PARAMETER :: LES_DISOPT=0
@@ -3271,6 +4245,7 @@ end if
         !INTEGER, DIMENSION ( :, :, : ), allocatable :: WIC_U_BC_ALL
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_RHS
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U, LOC_UOLD, LOC_US, LOC_U_ABS_STAB_SOLID_RHS
+        REAL, DIMENSION ( :, :, : ), allocatable :: LOC_D   !added by JXiang
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_NU, LOC_NUOLD
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_ABSORB, LOC_U_ABS_STAB
         REAL, DIMENSION ( :, :, :, : ), allocatable :: LOC_UDIFFUSION, U_DX_ALL, UOLD_DX_ALL, DIFF_FOR_BETWEEN_U
@@ -3316,6 +4291,10 @@ end if
         REAL, DIMENSION ( :, : ), allocatable :: SLOC_UDEN, SLOC2_UDEN, SLOC_UDENOLD, SLOC2_UDENOLD
         REAL, DIMENSION ( :, :, :, : ), allocatable :: SLOC_UDIFFUSION, SLOC2_UDIFFUSION
         REAL, DIMENSION ( :, : ), allocatable :: SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION_VOL
+
+        REAL, DIMENSION ( :, :, :, : ), allocatable :: SLOC_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_SOLID    !JXiang
+        REAL, DIMENSION ( :, : ), allocatable :: SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_VOL_SOLID   !JXiang
+
         REAL, DIMENSION ( :, :, : ), allocatable :: SLOC_DIFF_FOR_BETWEEN_U, SLOC2_DIFF_FOR_BETWEEN_U
         REAL, DIMENSION ( :, :, : ), allocatable :: U_NODI_SGI_IPHASE_ALL, U_NODJ_SGI_IPHASE_ALL, UOLD_NODI_SGI_IPHASE_ALL, UOLD_NODJ_SGI_IPHASE_ALL
         REAL, DIMENSION ( :, :, : ), allocatable :: CENT_RELAX, CENT_RELAX_OLD
@@ -3355,7 +4334,9 @@ end if
         !Variables to improve Mmat%PIVIT_MAT creation speed
         REAL, DIMENSION ( :, :, :, : ), allocatable :: NN_SIGMAGI_ELE, NN_SIGMAGI_STAB_ELE, NN_SIGMAGI_STAB_SOLID_RHS_ELE, NN_MASS_ELE, NN_MASSOLD_ELE
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_ELE, DUX_ELE_ALL, DUOLDX_ELE_ALL
+        REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_SOLID_ELE    !JXiang
         REAL, DIMENSION ( :, :, : ), allocatable :: VLK_ELE
+        REAL, DIMENSION ( :, :, :, : ), allocatable :: UDIFFUSION   !JXiang
         REAL, DIMENSION ( :, :, :, : ), allocatable :: UDIFFUSION_ALL, LES_UDIFFUSION
         REAL, DIMENSION ( :, : ), allocatable :: UDIFFUSION_VOL_ALL, LES_UDIFFUSION_VOL
         logical :: Porous_media_PIVIT_not_stored_yet
@@ -3365,6 +4346,7 @@ end if
         logical :: use_simple_lumped_homogenenous_mass_matrix
         ! memory for linear high order viscocity calculation...
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_ELE_EXT
+        REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_SOLID_ELE_EXT   !JXiang
         REAL, DIMENSION ( :, :, : ), allocatable :: S_INV_NNX_MAT12
         REAL, DIMENSION ( :, :, :, : ), allocatable :: NNX_MAT_ELE
         REAL, DIMENSION ( :, :, : ), allocatable :: NN_MAT_ELE
@@ -3379,6 +4361,7 @@ end if
         REAL, DIMENSION ( :, : ), allocatable :: SLOC_VOL_FRA, SLOC2_VOL_FRA,  SVOL_FRA, SVOL_FRA2, VOL_FRA_NMX_ALL
         ! revere ordering of shape functions used to get optimized code...
         REAL, DIMENSION ( :, :, : ), allocatable ::  CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED
+        REAL, DIMENSION ( :, :, : ), allocatable ::  CVFENX0_ALL_REVERSED, UFENX0_ALL_REVERSED  !JXiang
         REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
         !Capillary pressure variables
@@ -3420,8 +4403,51 @@ end if
         ! gradU
         logical :: get_gradU
         type(tensor_field), pointer :: gradU
+!JXiang
+        LOGICAL:: solid_implicit
+        real, dimension( : ), allocatable :: UDEN_temp,UDENOLD_temp
+        integer :: n0,n1,n2,n3,cv_nodi,u_nodi
+        real :: x0, x1,x2,x3,y0,y1,y2,y3,z0, z1,z2,z3,cv_mass,sum_udif,sum_udif_temp
+        type( scalar_field ), pointer  :: density_solid, sigma
+        type( tensor_field ), pointer  :: vis
 
-
+        !JXiang
+        ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+        solid_implicit = have_option( '/solid_implicit')
+        if(solid_implicit) then
+        density_solid=>extract_scalar_field( state(1), "Density_Solid" )
+        sigma=>extract_scalar_field( state(1), "Sigma_Solid")
+        vis=>extract_tensor_field( state(1), "Viscosity_Solid", stat)
+        ewrite(3,*) ' vis',vis%val(:,:,1)
+        sum_udif=0.0
+        sum_udif_temp=0.0
+        do ele = 1, Mdims%totele
+            do MAT_iloc = 1, Mdims%MAT_nloc
+                MAT_Inod = ndgln%mat( ( ele - 1 ) * Mdims%MAT_nloc + MAT_iloc )
+                u_nodi=ndgln%u((ele-1)*Mdims%u_nloc + MAT_iloc)
+!                ewrite(3,*) 'MAT_inod, U_nodi',MAT_Inod,U_nodi
+                do idim = 1, Mdims%ndim
+                   do jdim = 1, Mdims%ndim
+                UDIFFUSION(idim,jdim,:,MAT_Inod)=UDIFFUSION_temp(idim,jdim,:,MAT_Inod)*(1.-sigma%val(ele))+&
+                     vis%val(idim,jdim,1)*sigma%val(ele)
+!                UDIFFUSION(idim,jdim,:,MAT_Inod)=UDIFFUSION_temp(idim,jdim,:,MAT_Inod)*(1.-sigma%val(ele))+&
+!                     20000.0*sigma%val(ele)
+             sum_udif=UDIFFUSION(idim,jdim,1,MAT_Inod)*UDIFFUSION(idim,jdim,1,MAT_Inod)+sum_udif
+             sum_udif_temp=UDIFFUSION_temp(idim,jdim,1,MAT_Inod)*UDIFFUSION_temp(idim,jdim,1,MAT_Inod)+sum_udif_temp
+!                 ewrite(3,*) 'UDIFFUSION, UDIFFUSION_temp',MAT_Inod,UDIFFUSION(idim,jdim,:,MAT_Inod),&
+!                         UDIFFUSION_temp(idim,jdim,:,MAT_Inod),vis%val(idim,jdim,1),sigma%val(ele)
+               END DO
+             END DO
+            END DO
+        END DO
+  !      UDIFFUSION=UDIFFUSION_temp
+        ELSE
+                UDIFFUSION=UDIFFUSION_temp
+        end if
+ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSION,Mdims%mat_nonods * Mdims%ndim * Mdims%ndim *Mdims%nphase),&
+        R2NORM(UDIFFUSION_temp,Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase)
+!        solid_implicit= .false.
+! end JXiang
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction", stat )
         if (stat/=0) fem_vol_frac_f => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction", stat )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
@@ -3740,6 +4766,20 @@ end if
         ALLOCATE( SLOC2_UDIFFUSION_VOL( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC2_UDIFFUSION_VOL=0.0
         ! Derivatives...
         call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
+        !JXiang
+        ALLOCATE( STRESS_IJ_solid_ELE( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc,Mdims%u_nloc )); STRESS_IJ_solid_ELE = 0.
+        ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
+        STRESS_IJ_SOLID_ELE_EXT=0.0
+        !JXiang end
+        IF(solid_implicit) THEN
+        ALLOCATE( SLOC_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
+        ALLOCATE( SLOC2_UDIFFUSION_SOLID(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
+        ALLOCATE( SLOC_UDIFFUSION_VOL_SOLID( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC_UDIFFUSION_VOL_SOLID=0.0
+        ALLOCATE( SLOC2_UDIFFUSION_VOL_SOLID( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC2_UDIFFUSION_VOL_SOLID=0.0
+        call allocate_multi_dev_shape_funs(FE_funs, Devfuns0)  !JXiang CP
+        ALLOCATE( LOC_D(Mdims%ndim, Mdims%nphase, Mdims%u_nloc))
+        LOC_D=0.0
+        END IF
         ALLOCATE( NMX_ALL(Mdims%ndim) )
         ALLOCATE( VNMX_ALL(Mdims%ndim) )
         ALLOCATE( U_NODI_SGI_IPHASE_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
@@ -3828,6 +4868,10 @@ end if
         quad_over_whole_ele = .true.
         ! ALLOCATE reversed ordering for computational speed****************
         ALLOCATE( CVFENX_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%cv_nloc), UFENX_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%u_nloc) ) ! NOT CALCULATED IN SUB cv_fem_shape_funs_plus_storage
+      ! added by JXiang
+     if(solid_implicit) then
+        ALLOCATE( CVFENX0_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%cv_nloc), UFENX0_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%u_nloc) ) ! NOT CALCULATED IN SUB cv_fem_shape_funs_plus_storage
+     endif ! if(solids_implicit) then
         ALLOCATE( UFEN_REVERSED(FE_GIdims%cv_ngi,Mdims%u_nloc))
         ALLOCATE( CVN_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc), CVFEN_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc) )
         ALLOCATE( SBCVFEN_REVERSED(FE_GIdims%sbcvngi,Mdims%cv_snloc), SBUFEN_REVERSED(FE_GIdims%sbcvngi,Mdims%u_snloc) )
@@ -3963,8 +5007,33 @@ end if
                 PLIKE_GRAD_SOU_GRAD(1,2,:) = P_s_hat%val ; PLIKE_GRAD_SOU_COEF(1,2,:) = a_s%val(1,1,:)
             END IF
         END IF
+        ! added by JXiang
+        if(solid_implicit) then
+        x0_all => extract_vector_field( state (1), "SolidOriginalCoordinate" )
 
 
+        sum_udif=0.0
+        sum_udif_temp=0.0
+         allocate(UDEN_temp(Mdims%u_nonods), UDENOLD_temp(Mdims%u_nonods))
+              do ele=1,Mdims%totele
+                 do cv_iloc=1,Mdims%cv_nloc
+                    cv_nodi=ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+                    u_nodi=ndgln%u((ele-1)*Mdims%cv_nloc + cv_iloc)
+
+                   UDEN_temp(u_nodi) = UDEN(1,cv_nodi)*(1.-sigma%val(ele))  + &
+                           density_solid%val(ele)*sigma%val(ele)
+                   UDENOLD_temp(u_nodi) = UDENOLD(1,cv_nodi)*(1.-sigma%val(ele))  + &
+                           density_solid%val(ele)*sigma%val(ele)
+                   sum_udif=sum_udif+UDEN_temp(u_nodi)*UDEN_temp(u_nodi)
+                   sum_udif_temp=sum_udif_temp+UDENOLD_temp(u_nodi)*UDENOLD_temp(u_nodi)
+!                   ewrite(3,*) "UDEN_TEMP, sigma, density_solid", UDEN_temp(u_nodi),UDEN(1,cv_nodi), sigma%val(ele),&
+!                                      density_solid%val(ele)
+                 end do
+              end do
+              ewrite(3,*)"UDEN_TEMP, UDENOLD_TEMP",sum_udif,sum_udif_temp
+
+       end if
+       ! JXiang end
         Loop_Elements: DO ELE = 1, Mdims%totele ! VOLUME integral
             ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
              call DETNLXR_PLUS_U(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
@@ -3973,6 +5042,27 @@ end if
                 CVFENX_ALL_REVERSED(:,GI,:) = DevFuns%CVFENX_ALL(:,:,GI)
                 UFENX_ALL_REVERSED(:,GI,:) = DevFuns%UFENX_ALL(:,:,GI)
             END DO
+      ! JXiang
+      if(solid_implicit) then
+        ! !Simplify the Navier-Stokes equations to Stokes
+        if (sigma%val(ele) > 1d-8) then!0 for fluids, else is solids
+            !For solids, stokes flow
+            GOT_UDEN = .false.;zero_or_two_thirds = 0.
+        else !for fluids, inertia flow
+          GOT_UDEN = .true.;zero_or_two_thirds = 2./3.
+        end if
+ !         nod0=ndgln%x((ele-1)*Mdims%cv_nloc+1); nod1=ndgln%x((ele-1)*Mdims%cv_nloc+2);nod2=ndgln%x((ele-1)*Mdims%cv_nloc+3);nod3=ndgln%x((ele-1)*Mdims%cv_nloc+4)
+ !                 rvol_div = (1./real(Mdims%cv_nloc)) *tetvolume(X_ALL(1,nod0),X_ALL(2,nod0),X_ALL(3,nod0),X_ALL(1,nod1),X_ALL(2,nod1),X_ALL(3,nod1),X_ALL(1,nod2),X_ALL(2,nod2),X_ALL(3,nod2),X_ALL(1,nod3),X_ALL(2,nod3),X_ALL(3,nod3))
+
+      ! JXiang need X0_ALL the orginal system...
+            call DETNLXR_PLUS_U(ELE, X0_ALL%val, ndgln%x, FE_funs%cvweight, &
+                FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns0)
+            DO GI = 1, FE_GIdims%CV_NGI
+                CVFENX0_ALL_REVERSED(:,GI,:) = DevFuns0%CVFENX_ALL(:,:,GI)
+                UFENX0_ALL_REVERSED(:,GI,:) = DevFuns0%UFENX_ALL(:,:,GI)
+            END DO
+      end if
+      ! Jxiang
             ! Adjust the DevFuns%VOLUME according to the number of levels.
             MASS_ELE( ELE ) = DevFuns%VOLUME
             if (IsParallel()) then
@@ -4023,8 +5113,16 @@ end if
                     LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
                     LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
                 ELSE
-                    LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD )
-                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
+                ! added by JXiang
+                        IF(solid_implicit) THEN
+                          U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                          LOC_UDEN( :, CV_ILOC ) = UDEN_TEMP( U_INOD )
+                          LOC_UDENOLD( :, CV_ILOC) = UDENOLD_TEMP( U_INOD )
+                        ELSE
+                          LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD )
+                          LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
+                        ENDIF
+                 ! Jxiang end
                 ENDIF
                 IF(GOT_VIRTUAL_MASS) THEN
                     LOC_VIRTUAL_MASS( :,:, CV_ILOC )         = VIRTUAL_MASS( :,:, CV_INOD )
@@ -4216,6 +5314,7 @@ end if
             end if
             VLK_ELE = 0.0
             STRESS_IJ_ELE = 0.0
+            STRESS_IJ_solid_ELE=0.0   !JXiang
             !Prepare data
             IF ( GOT_DIFFUS ) THEN
                 DO U_JLOC = 1, Mdims%u_nloc
@@ -4227,6 +5326,12 @@ end if
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                             ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:Mdims%ndim,IPHASE,GI) + UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ELSE
+                                     ! JXiang
+                                  !     if(solids_implicit) then
+     !                                   CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+      !                                      UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns0%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+                                 !      endif
+                                     !JXiang end
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                             UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ENDIF
@@ -4302,7 +5407,8 @@ end if
                                     IF ( STRESS_FORM ) THEN
                                         NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )
+                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) ) &
+                                            + MAX( 0.0, STRESS_IJ_SOLID_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )  !JXiang
                                     ELSE
                                         NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
@@ -4506,16 +5612,30 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                             IF ( Mmat%NO_MATRIX_STORE ) THEN
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                     - STRESS_IJ_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                             ! JXiang
+                                             IF(SOLID_IMPLICIT) then
+                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                    - STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) *LOC_U( JDIM, IPHASE, U_JLOC )
+                                            END IF
+
                                             ELSE
+                                                    !JXiang need calculate LOC_D
+                      !                      IF(SOLID_IMPLICIT) then
+                      !                          LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                      !                              - STRESS_IJ_SOLID_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) &
+                      !                                 * (LOC_D( JDIM, IPHASE, U_JLOC )-DT*LOC_U( JDIM, IPHASE, U_JLOC ))
+                      !                      END IF
 
                                               IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
                                                 DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON(1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
-                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
+                                                    + STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added JXiang
                                               ELSE
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                                    + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
+                                                    + STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
                                               ENDIF
 
                                             END IF
@@ -4524,10 +5644,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                                 Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     = Mmat%PIVIT_MAT( I,J, ELE ) &
-                                                    +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                                    +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
+                                                    +  w * STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
                                             END IF
                                             RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )+ &
+                                                STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * DT*LOC_U( JDIM, IPHASE, U_JLOC ) ! JXiang
                                         END DO
                                     END DO
                                 END DO
@@ -4821,6 +5943,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                             ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:Mdims%ndim,IPHASE,GI) + UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                     ELSE
+                                    ! JXiang
+                           !        if(solids_implicit) then
+  !                                      CALL CALC_STRESS_TEN_SOLID( STRESS_IJ_SOLID_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
+   !                                         UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX0_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns0%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
+                              !     endif
+                                   ! JXiang end
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
                                             UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                     ENDIF
@@ -4833,17 +5961,20 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                       IF(LUMP_DIAG_MOM) THEN
                                         DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
                                         = DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
-                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
+                                        + DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
                                       ELSE
                                         DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                         = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                        + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )&
+                                        + DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
                                       END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                             J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                             Mmat%PIVIT_MAT( I,J, ELE )  &
-                                                = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
+                                                = Mmat%PIVIT_MAT( I,J, ELE ) + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
+                                                             +DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
                                         ENDIF
                                     END DO
                                 END DO
@@ -4979,6 +6110,16 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     if (skip) cycle
                 end if
             end if
+
+            if(solid_implicit) then
+              !Simplify the Navier-Stokes equations to Stokes
+              if (sigma%val(ele) > 1d-8) then!0 for fluids, else is solids
+                  !For solids, stokes flow
+                  GOT_UDEN = .false.;zero_or_two_thirds = 0.
+              else !for fluids, inertia flow
+                GOT_UDEN = .true.;zero_or_two_thirds = 2./3.
+              end if
+            end if
             ! for copy local memory copying...
             LOC_U_RHS = 0.0
             Between_Elements_And_Boundary: DO IFACE = 1, FE_GIdims%nface
@@ -5098,10 +6239,26 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                         SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
                         SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 ) * FEM_VOL_FRAC( :, CV_INOD2 )
                     ELSE
-                        SLOC_UDEN( :, CV_SILOC )  = UDEN( :, CV_INOD )
-                        SLOC2_UDEN( :, CV_SILOC ) = UDEN( :, CV_INOD2 )
-                        SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD )
-                        SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 )
+                    ! JXiang
+                            IF(solid_implicit) THEN
+                              U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                              IF ( ELE2 /= 0) THEN
+                                U_INOD2 = ndgln%u( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_ILOC2 )
+                              ELSE
+                                U_INOD2 = U_INOD
+                              END IF
+                              SLOC_UDEN( :, CV_SILOC )  = UDEN_temp( U_INOD )
+                              SLOC2_UDEN( :, CV_SILOC ) = UDEN_temp( U_INOD2 )
+                              SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD_temp( U_INOD )
+                              SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD_temp( U_INOD2 )
+                            ELSE
+                              SLOC_UDEN( :, CV_SILOC )  = UDEN( :, CV_INOD )
+                              SLOC2_UDEN( :, CV_SILOC ) = UDEN( :, CV_INOD2 )
+                              SLOC_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD )
+                              SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 )
+                            ENDIF
+                     ! JXiang end
+
                     ENDIF
                     IF(GOT_VIRTUAL_MASS) THEN
                         SLOC_VIRTUAL_MASS( :,:, CV_SILOC )   = VIRTUAL_MASS( :,:, CV_INOD )
@@ -5579,6 +6736,16 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
                             SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, UDIFF_SUF_STAB, &
                             (ELE2.LE.0), SNORMXN_ALL  )
+             ! added by JXiang
+             IF(SOLID_IMPLICIT) THEN
+                        CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_SOLID_ELE_EXT, S_INV_NNX_MAT12,  &
+                            STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
+                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
+                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
+                            (ELE2.LE.0), SNORMXN_ALL  )
+            STRESS_IJ_SOLID_ELE_EXT=0.0
+            ENDIF
+            ! JXiang end
                         !                        STRESS_IJ_ELE_EXT=0.0
                         DIFF_COEF_DIVDX   =0.0
                         DIFF_COEFOLD_DIVDX=0.0
@@ -5692,11 +6859,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         IF(LUMP_DIAG_MOM) THEN
                                           DO IDIM=1,Mdims%ndim
                                             DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE)  &
-                                                =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )
+                                                =DIAG_BIGM_CON(1,:,1,JPHASE,1,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC ) &
+                                               +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC )  ! JXiang
                                           END DO
                                         ELSE
-                                          DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                              =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
+                                        DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
+                                            =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE) + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC ) &
+                                             +DT*STRESS_IJ_SOLID_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )   ! JXiang
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             DO IDIM=1,Mdims%ndim
@@ -5704,7 +6873,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                     I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                                     Mmat%PIVIT_MAT(I,J,ELE) &
-                                                        =Mmat%PIVIT_MAT(I,J,ELE) + ws * STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )
+                                                        =Mmat%PIVIT_MAT(I,J,ELE) + ws * STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
+                                                         + ws * DT*STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )    ! JXiang
                                                 END DO
                                             END DO
                                         ENDIF
@@ -5712,11 +6882,13 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                         IF(LUMP_DIAG_MOM) THEN
                                           DO IDIM=1,Mdims%ndim
                                             BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)  &
-                                            =BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
+                                            =BIGM_CON( 1,:, IPHASE,JPHASE,1,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
+                                             +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )   ! JXiang
                                           END DO
                                         ELSE
                                           BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
-                                          =BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )
+                                          =BIGM_CON( :,:, IPHASE,JPHASE,U_ILOC,U_JLOC2,COUNT_ELE)+ STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) &
+                                           +DT*STRESS_IJ_SOLID_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc )  !JXiang
                                         END IF
                                     END DO
                                 END DO
@@ -5735,16 +6907,19 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 DO IDIM=1,Mdims%ndim
                                                     IF(LUMP_DIAG_MOM) THEN
                                                       DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)  &
-                                                          =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )
+                                                          =DIAG_BIGM_CON(1,JDIM,1,JPHASE,1,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC ) &
+                                                                                              +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )  ! JXiang
                                                     ELSE
                                                     DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
-                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )
+                                                        =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)+ STRESS_IJ_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC ) &
+                                                                     +DT*STRESS_IJ_SOLID_ELE_EXT( IDIM,JDIM, IPHASE, U_SILOC, U_JLOC )    ! JXiang
                                                     END IF
                                                     IF(PIVIT_ON_VISC) THEN
                                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                                         J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                                                         Mmat%PIVIT_MAT(I,J,ELE) &
-                                                            =Mmat%PIVIT_MAT(I,J,ELE) + ws * STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )
+                                                            =Mmat%PIVIT_MAT(I,J,ELE) + ws * STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC ) &
+                                                                            + ws * DT* STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC )   ! JXiang
                                                     ENDIF
                                                 END DO
                                             END DO
@@ -5765,7 +6940,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 DO IDIM=1,Mdims%ndim
                                                     ! ADD DIRICHLET BC'S FOR VISCOCITY...
                                                     LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
-                                                        - STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) * SUF_U_BC_ALL_VISC( JDIM,IPHASE,U_SJLOC + Mdims%u_snloc*(SELE2-1) )
+                                                        - STRESS_IJ_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) * SUF_U_BC_ALL_VISC( JDIM,IPHASE,U_SJLOC + Mdims%u_snloc*(SELE2-1) ) &
+                                                        - STRESS_IJ_SOLID_ELE_EXT( IDIM, JDIM, IPHASE, U_SILOC, U_JLOC + Mdims%u_nloc ) * SUF_U_BC_ALL_VISC( JDIM,IPHASE,U_SJLOC + Mdims%u_snloc*(SELE2-1) )   ! JXiang
                                                 END DO
                                             END DO
                                         END DO
@@ -6197,7 +7373,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         DEALLOCATE( UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED )
         DEALLOCATE( SBCVFEN_REVERSED, SBUFEN_REVERSED )
 
-
+!! JXiang
+       DEALLOCATE(UDIFFUSION)
 !! -ao these are also allocated here but not dealloacted
         IF ( GOT_DIFFUS ) THEN
           DEALLOCATE(UDIFFUSION_ALL)
@@ -6229,6 +7406,22 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         call deallocate(momentum_BCs)
         call deallocate(pressure_BCs)
         call deallocate_multi_dev_shape_funs(Devfuns)
+!! JXiang
+        DEALLOCATE( STRESS_IJ_SOLID_ELE )
+        DEALLOCATE( STRESS_IJ_SOLID_ELE_EXT )
+        IF(SOLID_IMPLICIT) then
+        DEALLOCATE( CVFENX0_ALL_REVERSED )
+        DEALLOCATE( UFENX0_ALL_REVERSED )
+        DEALLOCATE( LOC_D )
+        DEALLOCATE( SLOC_UDIFFUSION_SOLID )
+        DEALLOCATE( SLOC2_UDIFFUSION_SOLID )
+        DEALLOCATE( SLOC_UDIFFUSION_VOL_SOLID )
+        DEALLOCATE( SLOC2_UDIFFUSION_VOL_SOLID )
+        call deallocate_multi_dev_shape_funs(Devfuns0 )
+        DEALLOCATE( UDEN_temp )
+        DEALLOCATE( UDENOLD_temp )
+        END IF
+!! JXiang end
         ewrite(3,*)'Leaving assemb_force_cty'
         RETURN
     contains
@@ -6825,6 +8018,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                 RETURN
             END SUBROUTINE ONEELETENS_ALL
 
+
+    END SUBROUTINE VISCOCITY_TENSOR_LES_CALC
+
             !
             !!>@brief:This sub performs Jacobi rotations of a symmetric matrix in order to
             !> find the eigen-vectors V and the eigen values A so
@@ -6987,7 +8183,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
             RETURN
         END SUBROUTINE JACPOS
 
-    END SUBROUTINE VISCOCITY_TENSOR_LES_CALC
 
 
 
@@ -7679,8 +8874,21 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       type( multi_dimensions ) :: phdims
       type( multi_shape_funs ) :: ph_funs
       character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+!! JXiang
+      real, dimension( :,: ), allocatable :: rho_temp
+      LOGICAL:: solid_implicit
+      real, dimension( : ), allocatable :: ml,vol
+      integer :: n0,n1,n2,n3,cv_nodi,u_nodi
+      real :: x0, x1,x2_1,x3,y0,y1,y2,y3,z0, z1,z2,z3,cv_mass
+      type( scalar_field ), pointer  :: density_solid, sigma
 
+      solid_implicit = have_option( '/solid_implicit')
+      if(solid_implicit) then
 
+      density_solid=>extract_scalar_field( state(1), "Density_Solid" )
+      sigma=>extract_scalar_field( state(1), "Sigma_Solid" )
+      end if
+!! Jxiang end
       solver_option_path = "/solver_options/Linear_solver"
       if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure')) then
         solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::HydrostaticPressure'
@@ -7792,11 +9000,36 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
       gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
+! Jxiang
+      if(solid_implicit) then
+              allocate(rho_temp(Mdims%nphase,Mdims%u_nonods))
+              do ele=1,Mdims%totele
+                 do cv_iloc=1,Mdims%cv_nloc
+                    cv_nodi=ndgln%cv((ele-1)*Mdims%cv_nloc + cv_iloc)
+                    u_nodi=ndgln%u((ele-1)*Mdims%cv_nloc + cv_iloc)
+                    rho_temp(:,u_nodi) = rho % val(1,:,cv_nodi)*(1.-sigma%val(ele))  + &
+!                   rho_temp(:,u_nodi) = density_solid%val(ele)*(1.-sigma%val(ele))  + &
+                           density_solid%val(ele)*sigma%val(ele)
+!                 ewrite(3,*) "rho, sigma, density_solid, rho_temp", rho % val(1,:,cv_nodi), sigma%val(ele),&
+!                            density_solid%val(ele), rho_temp(:,u_nodi)
+                 end do
+              end do
+      endif
+! Jxiang end
 
       do iphase = 1, nphase
          do idim = 1, Mdims%ndim
-            u_ph_source_cv( idim, iphase, : ) = rho % val( 1, iphase, : ) * &
+
+! JXiang modified
+            if(solid_implicit) then
+               u_ph_source_vel( idim, iphase, : ) = rho_temp( iphase, : ) * &
                  gravity_magnitude * gravity_direction % val( idim, 1 )
+!         ewrite(3,*)"u_ph_source_vel( idim, iphase, : )  rho_temp( iphase, : )", u_ph_source_vel( idim, iphase, : ), rho_temp( iphase, : )
+            else
+               u_ph_source_cv( idim, iphase, : ) = rho % val( 1, iphase, : ) * &
+                 gravity_magnitude * gravity_direction % val( idim, 1 )
+            end if
+! Jxiang end
          end do
       end do
 
@@ -7862,8 +9095,18 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   if ( boussinesq ) then
                      den_gi( :, iphase ) = 1.0
                   else
-                     den_gi( :, iphase ) = den_gi( :, iphase ) + &
-                          tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                 ! JXiang modified
+                     if(solid_implicit) then
+                          u_inod = ndgln%u( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                          den_gi( :, iphase ) = den_gi( :, iphase ) + &
+                              tmp_cvfen( cv_iloc, : ) * rho_temp( iphase, u_inod )
+ !                     ewrite(3,*)"den_gi", den_gi( :, iphase ), tmp_cvfen( cv_iloc, : ), rho_temp( iphase, u_inod )
+                     else
+                          den_gi( :, iphase ) = den_gi( :, iphase ) + &
+                              tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                     end if
+                 ! JXiang end
+
                   end if
 
                   sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
@@ -8038,6 +9281,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, &
                   sigma_gi, volfra_gi, &
                   tmp_cvfenx_all, other_fenx_all, detwei, ra )
+      if(solid_implicit) deallocate(rho_temp)   ! JXiang
+
       ewrite(3,*) "leaving high_order_pressure_solve"
 
       return
