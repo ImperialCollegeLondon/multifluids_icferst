@@ -98,8 +98,6 @@ module multi_SP
           if (has_temperature) F_fields(k+1, 1, cv_inod) = Temperature%val(1, 1, cv_inod)
         end do
 
-
-      !##################SHOULD ALLOW TO SPECIFY THESE FUNCTIONS FROM DIAMOND###############################
         !Obtain the conductivity of the saturated rock
         call get_rock_sat_conductivity(packed_state, Mdims, ndgln, Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
         !Compute K_fields

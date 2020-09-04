@@ -1251,6 +1251,7 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
 
+                !! Arash
                 if(have_option(trim(state(i)%option_path)&
                     //'/scalar_field::SoluteMassFraction')) then
                     call unpack_sfield(state(i),packed_state,"OldSoluteMassFraction",1,iphase,&
@@ -3031,6 +3032,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         IteratedFEEnthalpy =>  tfield%val(1,:,:)
     end if
 
+    !Arash
     if (present(SoluteMassFraction)) then
         tfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
         SoluteMassFraction =>  tfield%val(1,:,:)
