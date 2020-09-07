@@ -252,8 +252,8 @@ module multi_SP
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
               !Obtain normalised saturation
               norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
-              coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
-              ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9!<=I think this was used for Mutlaq et al 2019
+              ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
+              coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9!<=I think this was used for Mutlaq et al 2019
               cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
             end do
           end do
