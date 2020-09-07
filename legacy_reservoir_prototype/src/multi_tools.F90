@@ -18,6 +18,8 @@
 
 
 module multi_tools
+    use python_state
+    use state_module
     use fldebug
     use futils
     use spud
@@ -902,5 +904,42 @@ END subroutine RotationMatrix
           B(:,J) = WORK(1:ldb)
       end do
     end subroutine Least_squares_solver
+
+
+    !> @brief: This subroutine uses python run string to run the python_scalar_diagnostic to read a field
+    !> the only difference with the normal approach is that here the Dummy field is used and the returned field is an array.
+    !> IMPORTANT: state is used here, NOT packed_state
+    subroutine compute_python_scalar_field(state, option_path_python, scalar_result)
+      implicit none
+      type( state_type ), dimension(:), intent( inout ) :: state
+      character( len = * ), intent(in) :: option_path_python
+      real, dimension(:), intent(inout) :: scalar_result
+      !Local variables
+      type (scalar_field), pointer :: sfield
+      character( len = python_func_len ) :: pycode
+
+      if (.not.have_option("/material_phase[0]/scalar_field::Dummy")) then
+          ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the first phase."
+        stop 657483
+      end if
+
+
+      call python_reset()
+      call python_add_state( state(1) )
+      sfield => extract_scalar_field(state(1), "Dummy")
+      sfield%val = 0.
+      call python_run_string("field = state.scalar_fields['Dummy']")
+      ! call get_option("/timestepping/current_time", current_time)
+      ! write(buffer,*) current_time
+      ! call python_run_string("time="//trim(buffer))
+      ! call get_option("/timestepping/timestep", dt)
+      ! write(buffer,*) dt
+      ! call python_run_string("dt="//trim(buffer))
+      ! Get the code
+      call get_option( trim( option_path_python ) // '/algorithm', pycode )
+      ! Run the code
+      call python_run_string( trim( pycode ) )
+      scalar_result = sfield%val
+    end subroutine
 
 end module multi_tools

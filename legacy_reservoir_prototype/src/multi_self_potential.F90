@@ -27,6 +27,7 @@ module multi_SP
     use state_module
     use fields
     use multi_data_types
+    use multi_tools
     use Copy_Outof_State
     use multiphase_1D_engine
     use boundary_conditions_from_options
@@ -95,14 +96,14 @@ module multi_SP
             k = 2
           end if
           !Here the temperature can be in Kelvin or Celsius as we are looking at gradients
-          if (has_temperature) F_fields(k+1, 1, cv_inod) = Temperature%val(1, 1, cv_inod)
+          if (has_temperature) F_fields(k+1, 1, cv_inod) =  Temperature%val(1, 1, cv_inod)
         end do
 
         !Obtain the conductivity of the saturated rock
-        call get_rock_sat_conductivity(packed_state, Mdims, ndgln, Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
+        call get_rock_sat_conductivity(state, packed_state, Mdims, ndgln, Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
         !Compute K_fields
         do k = 1, nfields
-          call get_SP_coupling_coefficients(packed_state, Mdims, ndgln, rock_sat_conductivity(1,:), K_fields(k,1,:), &
+          call get_SP_coupling_coefficients(state, packed_state, Mdims, ndgln, rock_sat_conductivity(1,:), K_fields(k,1,:), &
                       Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), flag = k )
         end do
 
@@ -139,9 +140,9 @@ module multi_SP
       !>@brief: This subroutine computes the saturated rock conductivity based on Tiab and Donaldson, 2004 formula.
       !> and also includes the temperature/concentration dependency detailed in Sen and Goode, 1992
       !> IMPORTANT: Water needs to be phase 1! TODO Maybe add a REMINDER when running with SP solver and to run with Kelvin, maybe this for all the temperature cases
-      subroutine get_rock_sat_conductivity(packed_state, Mdims, ndgln, Saturation, Concentration, Temperature, rock_sat_conductivity )
+      subroutine get_rock_sat_conductivity(state, packed_state, Mdims, ndgln, Saturation, Concentration, Temperature, rock_sat_conductivity )
         implicit none
-
+        type( state_type ), dimension(:), intent( inout ) :: state
         type(multi_dimensions), intent( in ) :: Mdims
         type( state_type ), intent( in ) :: packed_state
         type(multi_ndgln), intent(in) :: ndgln
@@ -157,16 +158,21 @@ module multi_SP
         real, dimension(Mdims%cv_nonods) :: water_conductivity, cv_counter
         logical, save :: show_msg = .true.
         real, parameter :: tol = 1e-8
-        !Retrieve fields from state/packed_state
-        !Check the situation with the temperature field/value
-        if (has_temperature) then
-          if (show_msg) then
-            if (any(Temperature - Kelv_conv < 0.)) then
-              ewrite(0, *) "REMINDER: The S.I. units for TEMPERATURE are Kelvin not Celsius."
-            end if
-          end if
-          show_msg = .false.
+
+        !If using python code all the problem are the users
+        if (have_option("/porous_media/Self_Potential/python_Rock_sat_conductivity_code")) then
+          call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_Rock_sat_conductivity_code", rock_sat_conductivity)
         else
+          !Retrieve fields from state/packed_state
+          !Check the situation with the temperature field/value
+          if (has_temperature) then
+            if (show_msg) then
+              if (any(Temperature - Kelv_conv < 0.)) then
+                ewrite(0, *) "REMINDER: The S.I. units for TEMPERATURE are Kelvin not Celsius."
+              end if
+            end if
+            show_msg = .false.
+          else
             if (have_option("/porous_media/Self_Potential/Reservoir_temperature")) then
               call get_option( '/porous_media/Self_Potential/Reservoir_temperature', temp )
               if (show_msg) then
@@ -182,45 +188,46 @@ module multi_SP
                 return
               end if
             end if
-        end if
-        !Retrieve exponents
-        call get_option("/porous_media/Self_Potential/Cementation_exp",cementation_exp, default = 1.8 )
-        call get_option("/porous_media/Self_Potential/Sat_exponent",sat_exp, default = 2.0 )
-
-        porosity=>extract_vector_field(packed_state,"Porosity")
-        if (.not. has_salt) then
-          if (GetProcNo() == 1) then
-            ewrite(0, *) "ERROR: For Self Potential calculation a concentration field is required."
-            ewrite(0, *) "Self_potential will NOT be computed."
-            return
           end if
-        else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
-          do cv_inod = 1, Mdims%cv_nonods
-            if (has_temperature) temp = Temperature(cv_inod)                   !Water salt concentration
-            water_conductivity(cv_inod) = (5.6 + 0.27 * temp - 1.5e-4 * temp**2.)*(Concentration(cv_inod)+tol) &
-            - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp) / (1 + 0.214 * Concentration(cv_inod)**0.5)
-          end do
-        end if
+          !Retrieve exponents
+          call get_option("/porous_media/Self_Potential/Cementation_exp",cementation_exp, default = 1.8 )
+          call get_option("/porous_media/Self_Potential/Sat_exponent",sat_exp, default = 2.0 )
 
-        cv_counter = 0.; rock_sat_conductivity = 0.
-        !Now compute rock_saturated conductivity
-        do  ele = 1, Mdims%totele
-          do cv_iloc = 1, Mdims%cv_nloc
-            cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )                                       !Only the water phase
-            rock_sat_conductivity(cv_inod) = rock_sat_conductivity(cv_inod) + porosity%val(1,ele) ** cementation_exp * water_conductivity(cv_inod) * (Saturation(cv_inod)+tol) ** sat_exp
-            cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
+          porosity=>extract_vector_field(packed_state,"Porosity")
+          if (.not. has_salt) then
+            if (GetProcNo() == 1) then
+              ewrite(0, *) "ERROR: For Self Potential calculation a concentration field is required."
+              ewrite(0, *) "Self_potential will NOT be computed."
+              return
+            end if
+          else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
+            do cv_inod = 1, Mdims%cv_nonods
+              if (has_temperature) temp = Temperature(cv_inod)                   !Water salt concentration
+              water_conductivity(cv_inod) = (5.6 + 0.27 * temp - 1.5e-4 * temp**2.)*(Concentration(cv_inod)+tol) &
+              - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp) / (1 + 0.214 * Concentration(cv_inod)**0.5)
+            end do
+          end if
+
+          cv_counter = 0.; rock_sat_conductivity = 0.
+          !Now compute rock_saturated conductivity
+          do  ele = 1, Mdims%totele
+            do cv_iloc = 1, Mdims%cv_nloc
+              cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )                                       !Only the water phase
+              rock_sat_conductivity(cv_inod) = rock_sat_conductivity(cv_inod) + porosity%val(1,ele) ** cementation_exp * water_conductivity(cv_inod) * (Saturation(cv_inod)+tol) ** sat_exp
+              cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
+            end do
           end do
-        end do
-        !Average of rock_sat_conductivity
-        rock_sat_conductivity = rock_sat_conductivity/cv_counter
+          !Average of rock_sat_conductivity
+          rock_sat_conductivity = rock_sat_conductivity/cv_counter
+        end if
 
       end subroutine get_rock_sat_conductivity
 
       !>@brief: This subroutine computes the coupling coefficients required to compute the self potential using Jackson et al. (2012)
       !>1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion
-      subroutine get_SP_coupling_coefficients(packed_state, Mdims, ndgln, rock_sat_conductivity, coupling_term, Saturation, Concentration, Temperature, flag )
+      subroutine get_SP_coupling_coefficients(state, packed_state, Mdims, ndgln, rock_sat_conductivity, coupling_term, Saturation, Concentration, Temperature, flag )
         implicit none
-
+        type( state_type ), dimension(:), intent( inout ) :: state
         type(multi_dimensions), intent( in ) :: Mdims
         type( state_type ), intent( inout ) :: packed_state
         real, dimension(:), intent(in) :: rock_sat_conductivity
@@ -235,6 +242,7 @@ module multi_SP
         real, dimension(Mdims%cv_nonods) :: cv_counter, coupling_coef, coupling_coef_ee, coupling_coef_ed
         real, parameter :: EK_exp = 0.6 !From Jackson et al 2012
         real, parameter :: Tol = 1e-8
+        logical :: post_process
 
         !Retrieve fields from state/packed_state
         if (have_option("/porous_media/Self_Potential/Reservoir_temperature")) then
@@ -242,43 +250,50 @@ module multi_SP
         end if
 
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
-
+        post_process = .false.
         coupling_coef = 0.
         cv_counter = 0.
-        select case (flag)
-        case (1)!Electrokinetic coupling coefficient
-          do  ele = 1, Mdims%totele
-            do cv_iloc = 1, Mdims%cv_nloc
-              cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
-              !Obtain normalised saturation
-              norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
-              ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
-              coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9!<=I think this was used for Mutlaq et al 2019
-              cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
+        !Electrokinetic coupling coefficient
+        if (flag == 1) then
+          if (have_option("/porous_media/Self_Potential/python_ElectroKinetic_code")) then
+            call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_ElectroKinetic_code", coupling_coef)
+          else
+            do  ele = 1, Mdims%totele
+              do cv_iloc = 1, Mdims%cv_nloc
+                cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
+                !Obtain normalised saturation
+                norm_water_sat = (Saturation(cv_inod) - Immobile_fraction(1, ele)) / (1.0 - sum(Immobile_fraction(1:Mdims%n_in_pres, ele)))
+                coupling_coef(cv_inod) = coupling_coef(cv_inod) + (-1.36 * (Concentration(cv_inod)+tol)**-0.9123 * 1e-9 ) * norm_water_sat ** EK_exp!Not sure if exponent or times...
+                ! coupling_coef(cv_inod) = coupling_coef(cv_inod) + 2.5e-9!<=I think this was used for Mutlaq et al 2019
+                cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
+              end do
             end do
-          end do
-          coupling_coef = coupling_coef/cv_counter
-        case (2)!Exclusion diffusion coefficient
-          do cv_inod = 1, Mdims%cv_nonods
-            Tna = get_Hittorf_transport_number(Concentration(cv_inod))
-            Cf = Concentration(cv_inod) + Tol!To avoid divisions by zero
-            if (has_temperature) temp = Temperature(cv_inod)
-            coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * temp/Cf
-            coupling_coef_ee(cv_inod) = - 8.61e-2 * temp/Cf
-          end do
-        case (3)!Thermal coupling coefficient
+            coupling_coef = coupling_coef/cv_counter
+          end if
+        end if
+        !Exclusion diffusion coefficient
+        if (flag == 2 .and. .not. have_option("/porous_media/Self_Potential/python_Electrodiffusive_code")) then
+          post_process = .true.
+            do cv_inod = 1, Mdims%cv_nonods
+              Tna = get_Hittorf_transport_number(Concentration(cv_inod))
+              Cf = Concentration(cv_inod) + Tol!To avoid divisions by zero
+              if (has_temperature) temp = Temperature(cv_inod)
+              coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * temp/Cf
+              coupling_coef_ee(cv_inod) = - 8.61e-2 * temp/Cf
+            end do
+        end if
+        !Thermal coupling coefficient
+        if (flag == 3 .and. .not. have_option("/porous_media/Self_Potential/python_Thermoelectric_code")) then
+          post_process = .true.
           do cv_inod = 1, Mdims%cv_nonods
             Tna = get_Hittorf_transport_number(Concentration(cv_inod))
             AuxR = LOG(Concentration(cv_inod) + Tol )!To avoid reaching zero
             coupling_coef_ed(cv_inod) = - 1.984e-1*(2.*Tna - 1.) * AuxR + 1.059 * Tna - 5.673e-1
             coupling_coef_ee(cv_inod) = - 1.984e-1 * AuxR + 5.953e-1
           end do
-        case default
-          FLAbort("Only three flags allowed to compute SP coefficients. 1 => Electrokinetic; 2=> Thermal; 3=> Exclusion diffusion ")
-        end select
-
+        end if
         !For thermal and diffusion-exclusion we need to combine them based on the normalised saturation
-        if (flag>1) then
+        if (post_process) then
           do ele = 1, Mdims%totele
             do cv_iloc = 1, Mdims%cv_nloc
               cv_inod = ndgln%cv( ( ele - 1 ) * Mdims%cv_nloc + cv_iloc )
@@ -289,6 +304,15 @@ module multi_SP
           end do
           !Obtain the average since we have overlooped cv nodes
           coupling_coef = coupling_coef/cv_counter * 1e-3!To convert from mV to Volts only flags 2 and 3
+        end if
+
+        !#############Using python######################
+        !Thermal coupling coefficient
+        if (flag == 2 .and. have_option("/porous_media/Self_Potential/python_Electrodiffusive_code")) then
+          call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_Electrodiffusive_code", coupling_coef)
+        end if
+        if (flag == 3 .and. have_option("/porous_media/Self_Potential/python_Thermoelectric_code")) then
+          call compute_python_scalar_field(state, "/porous_media/Self_Potential/python_Thermoelectric_code", coupling_coef)
         end if
         !Finally obtain the coupling coefficient
         coupling_term = coupling_coef * rock_sat_conductivity

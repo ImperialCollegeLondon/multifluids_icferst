@@ -1233,7 +1233,9 @@ Each file has to describe a continuous well touching an external boundary.
               <a:documentation>Activates the Self_potential solver. 
 
 &lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, 
-temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.</a:documentation>
+temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.
+
+Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
               <element name="scalar_field">
                 <attribute name="name">
                   <value>Self_Potential</value>
@@ -1272,6 +1274,34 @@ coordinates, the nearest vertex will be selected.</a:documentation>
                 <element name="Results_in_Volts">
                   <a:documentation>By default the results are shown in miliVolts, select this to show the results in Volts. </a:documentation>
                   <empty/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Rock_sat_conductivity_code">
+                  <a:documentation>Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_ElectroKinetic_code">
+                  <a:documentation>Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Electrodiffusive_code">
+                  <a:documentation>Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Thermoelectric_code">
+                  <a:documentation>Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
                 </element>
               </optional>
             </element>
@@ -3345,7 +3375,7 @@ Adapting to this field is not recommended</a:documentation>
         <choice>
           <element name="diagnostic">
             <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="diagnostic_scalar_field"/>
           </element>
           <element name="aliased">

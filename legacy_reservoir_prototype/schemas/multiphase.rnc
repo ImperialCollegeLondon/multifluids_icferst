@@ -1013,6 +1013,8 @@ start =
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, 
           ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
+          ##
+          ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
           element Self_Potential{(
             element scalar_field {
                attribute name { "Self_Potential" },
@@ -1045,7 +1047,27 @@ start =
 		       ## By default the results are shown in miliVolts, select this to show the results in Volts. 
 	         element Results_in_Volts {
 	         	empty
-		        }?            
+		        }? ,
+           ## Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_Rock_sat_conductivity_code{
+             scalar_python_diagnostic_algorithm
+               }?,   
+           ## Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_ElectroKinetic_code{
+             scalar_python_diagnostic_algorithm
+               }?, 
+           ## Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_Electrodiffusive_code{
+             scalar_python_diagnostic_algorithm
+               }?,  
+           ## Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_Thermoelectric_code{
+             scalar_python_diagnostic_algorithm
+               }?                  
           )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
@@ -2795,7 +2817,7 @@ scalar_field_choice =
              (
                 element diagnostic {
                    internal_algorithm,
-                   velocity_mesh_choice,
+                   pressure_mesh_choice,
                    diagnostic_scalar_field
                 }|
                 element aliased {
