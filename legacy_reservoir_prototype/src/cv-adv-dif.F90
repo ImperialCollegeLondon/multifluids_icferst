@@ -1157,7 +1157,7 @@ contains
                               GLOBAL_FACE = GLOBAL_FACE + 1
                               JMID = Mspars%small_acv%mid(CV_NODJ)
                               ! Calculate the control volume normals at the Gauss pts.
-                              CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, &
+                              CALL SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, between_elements, &
                                     ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), X_NODI, X_NODJ)
                               !Obtain the list of neighbouring nodes
                               IF( GETCT ) call get_neigbouring_lists(JCOUNT_KLOC, ICOUNT_KLOC, JCOUNT_KLOC2 ,ICOUNT_KLOC2,&
@@ -7079,7 +7079,7 @@ end if
     !>     ---------------------------------------------------------------
     !>    - date last modified : 25/08/2020
     !>     ---------------------------------------------------------------
-    SUBROUTINE SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, ELE, GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
+    SUBROUTINE SCVDETNX( Mdims, ndgln, X_ALL, CV_funs, CV_GIdims, on_domain_boundary, between_elements, ELE, GI,SCVDETWEI, CVNORMX_ALL,XC_ALL, X_NOD, X_NODJ)
       IMPLICIT NONE
       type(multi_dimensions), intent( in ) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
@@ -7090,7 +7090,7 @@ end if
       REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
       REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
       REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-      logical, intent(in) :: on_domain_boundary
+      logical, intent(in) :: on_domain_boundary, between_elements
       !     - Local variables
       INTEGER :: NODJ,  JLOC
       REAL :: A, B, C
@@ -7125,7 +7125,7 @@ end if
         !To calculate the sign of the normal an average between the center of the continuous CV and the center of mass is used
         !this is required as the center of mass has shown not to be reliable and the center of the continuous CV is a particular point that can lead
         !to failures to obtain the sign (perpendicular vectors in a flat boundary); For discontinuous and boundaries we use the old method
-        IF ( on_domain_boundary) then!sprint_to_do between elements use both barycentres?
+        IF ( on_domain_boundary .or. between_elements) then!sprint_to_do between elements use both barycentres?
           POSVGI = POSVGI - (0.8*X_ALL(1:Mdims%ndim, X_NOD) + 0.2*XC_ALL(1:Mdims%ndim))
         else !Use centres of the continuous control volumes, i.e. corners of the elements
           POSVGI = X_ALL(1:Mdims%ndim, X_NODJ) - X_ALL(1:Mdims%ndim, X_NOD)
@@ -7360,7 +7360,7 @@ end if
 
                 if(CV_NODJ > CV_NODI) then
                   !Compute SdevFuns%DETWEI and CVNORMX_ALL
-                  CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, &
+                  CALL SCVDETNX( Mdims, ndgln, X_ALL%val, CV_funs, CV_GIdims, on_domain_boundary, .false., &!NOT FULLY DG FOR THIS METHOD
                   ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL, XC_CV_ALL%val( :, CV_NODI ), X_NODI, X_NODJ)
                   ! Obtain the CV discretised advection/diffusion equations
                   IF(.not. on_domain_boundary) THEN
