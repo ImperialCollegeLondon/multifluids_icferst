@@ -57,7 +57,7 @@ module multiphase_1D_engine
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
     public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE
+    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system
 
 contains
   !---------------------------------------------------------------------------
@@ -783,7 +783,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   END SUBROUTINE ENTHALPY_ASSEM_SOLVE
 
 
-  !! Arash
   !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
   !> @brief Calls to generate and solve the transport equation for the concentration field.
   !---------------------------------------------------------------------------
@@ -8634,6 +8633,70 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine get_diagonal_mass_matrix
 
 
+    !>@brief: In this method we assemble and solve the Laplacian system using at least P1 elements
+    !> The equation solved is the following: Div sigma Grad X = - SUM (Div K Grad F) with Neuman BCs = 0
+    !> where K and F are passed down as a vector. Therefore for n entries the SUM will be performed over n fields
+    !> Example: F = (3, nphase, cv_nonods) would include three terms in the RHS and the same for K
+    !> If harmonic average then we perform the harmonic average of sigma and K
+    !> IMPORTANT: This subroutine requires the PHsparsity to be generated
+    !> Note that this method solves considering FE fields. If using CV you may incur in an small error.
+    subroutine generate_and_solve_Laplacian_system( Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
+                                                    field_name, K_fields, F_fields, intface_val_type, solver_path)
+      implicit none
 
+      type(multi_dimensions), intent( in ) :: Mdims
+      type( state_type ), dimension(:), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type(multi_ndgln), intent(in) :: ndgln
+      integer, intent(in) :: intface_val_type
+      real, dimension(:,:), intent(in) :: Sigma_field
+      real, dimension(:,:,:), intent(in) :: K_fields, F_fields
+      type(multi_shape_funs), intent(inout) :: CV_funs
+      type(multi_sparsities), intent(in) :: Mspars
+      type (multi_matrices), intent(inout) :: Mmat
+      type(multi_GI_dimensions), intent(in) :: CV_GIdims
+      character( len = * ), intent( in ), optional :: field_name
+      character(len=option_path_len), optional, intent(in) :: solver_path
+      !Local variables
+      integer :: i, stat, local_phases
+      character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
+      type(scalar_field), pointer  :: solution
+      type(vector_field)  :: v_solution
+
+      local_phases = size(F_fields,2)
+      !Solver options, if specified
+      solver_option_path = "/solver_options/Linear_solver"
+      if (present(solver_path)) solver_option_path = solver_path
+
+      !Retrieve the field f interest to have access to the mesh type
+      do i = 1, size(state)
+        solution => extract_scalar_field(state(i),trim(field_name), stat)
+        if (stat == 0) exit
+      end do
+
+      !Generate system
+      call generate_Laplacian_system( Mdims, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims, Sigma_field, &
+                                          Solution, K_fields, F_fields, intface_val_type)
+      !Solve system
+      call allocate(v_solution,local_phases,Solution%mesh,"Laplacian_system")
+      !Add remove null_space if not bcs specified for the field since we always have natural BCs
+      call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
+      call zero(v_solution) !; call zero_non_owned(rhs)
+      call petsc_solve( v_solution, Mmat%petsc_ACV, Mmat%CV_RHS, option_path = trim(solver_option_path) )
+      if (IsParallel()) call halo_update(v_solution)
+
+
+! call MatView(Mmat%petsc_ACV%M,   PETSC_VIEWER_STDOUT_SELF, i)
+! print *, Mmat%CV_RHS%val
+      !Copy now back to the existing fields
+      do i = 1, size(state)
+        solution => extract_scalar_field(state(i),trim(field_name), stat)
+        if (stat == 0) solution%val = v_solution%val(i,:)
+      end do
+      !Remove remove_null_space
+      call delete_option( trim( solver_option_path ) // "/remove_null_space", stat )
+      call deallocate(v_solution)
+      call deallocate( Mmat%CV_RHS ); call deallocate( Mmat%petsc_ACV )
+    end subroutine generate_and_solve_Laplacian_system
 
  end module multiphase_1D_engine

@@ -185,7 +185,6 @@ module global_parameters
   logical :: has_temperature = .false.
   !! Mutliphase prototype, solve Stokes equations for momentum
   logical :: solve_stokes
-  !! Arash
   !! Multiphase prototype, models salt concentration
   logical :: has_salt = .false.
   !! Checking if using the P0DG for velocity,

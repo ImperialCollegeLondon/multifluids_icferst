@@ -62,6 +62,7 @@ module multiphase_time_loop
     use multi_interpolation
     use multi_pipes
     use multi_magma
+    use multi_SP
     use momentum_diagnostic_fields, only: calculate_densities
 
 #ifdef HAVE_ZOLTAN
@@ -114,7 +115,6 @@ contains
             NonLinearIteration, NonLinearIteration_Components, itimeflag
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
-        !! Arash
         logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
         !!$ Shape function related fields:
@@ -358,7 +358,6 @@ contains
         do istate = 1, Mdims%nstate
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::Temperature' ) ) &
                 have_temperature_field = .true.
-            !! Arash
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::SoluteMassFraction' ) ) &
                 have_salt_field = .true.
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
@@ -591,7 +590,7 @@ contains
                 !# Andreas. I added a flag in the Conditional_ForceBalanceEquation to eiher enter or not.
                 !#    TODO. This has to be updated with adaptivity as well.
                 !#=================================================================================================================
-                !!$ Now solving the Momentum Equation ( = Force Balance Equation )
+                !$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance .and. EnterSolve ) then
                     !if (getprocno() == 1 .and. its==1) print*, "Time step is:", itime
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
@@ -684,8 +683,7 @@ contains
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
 
-               !!$ Arash
-               !!$ Solve advection of the scalar 'SoluteMassFraction':
+               !$ Solve advection of the scalar 'SoluteMassFraction':
                Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
                    have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
                    ewrite(3,*)'Now advecting SoluteMassFraction Field'
@@ -1126,7 +1124,8 @@ contains
                     call get_option( '/timestepping/current_time', current_time ) ! Find the current time
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
-
+                    !Time to compute the self-potential if required
+                    if (have_option("/porous_media/Self_Potential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
@@ -1140,6 +1139,8 @@ contains
                     end if
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
+                    !Time to compute the self-potential if required
+                    if (have_option("/porous_media/Self_Potential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
             end if
@@ -1166,7 +1167,6 @@ contains
                 min_max_limits_before(1) = minval(tempfield%val); call allmin(min_max_limits_before(1))
                 min_max_limits_before(2) = maxval(tempfield%val); call allmax(min_max_limits_before(2))
             end if
-            !Arash
             if (has_salt) then
                 saltfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
                 solute_min_max_limits_before(1) = minval(saltfield%val); call allmin(solute_min_max_limits_before(1))

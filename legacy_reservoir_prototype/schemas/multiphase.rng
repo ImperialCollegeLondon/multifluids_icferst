@@ -1229,6 +1229,84 @@ Each file has to describe a continuous well touching an external boundary.
             </element>
           </optional>
           <optional>
+            <element name="Self_Potential">
+              <a:documentation>Activates the Self_potential solver. 
+
+&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, 
+temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.
+
+Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
+              <element name="scalar_field">
+                <attribute name="name">
+                  <value>Self_Potential</value>
+                </attribute>
+                <element name="diagnostic">
+                  <ref name="pressure_mesh_choice"/>
+                  <ref name="internal_algorithm"/>
+                  <ref name="diagnostic_scalar_field"/>
+                  <ref name="output_options"/>
+                </element>
+              </element>
+              <element name="reference_coordinates">
+                <a:documentation>&lt;b&gt;Input coordinates of desired reference node (voltage = 0), this would be normally the top of the well&lt;/b&gt;. If a node does not exist at these
+coordinates, the nearest vertex will be selected.</a:documentation>
+                <ref name="real_dim_vector"/>
+              </element>
+              <optional>
+                <element name="Reservoir_temperature">
+                  <a:documentation>&lt;b&gt;If not solving for temperature&lt;/b&gt;: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Cementation_exp">
+                  <a:documentation>Cementation exponent, by default 1.8, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Sat_exponent">
+                  <a:documentation>Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="Results_in_Volts">
+                  <a:documentation>By default the results are shown in miliVolts, select this to show the results in Volts. </a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Rock_sat_conductivity_code">
+                  <a:documentation>Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_ElectroKinetic_code">
+                  <a:documentation>Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Electrodiffusive_code">
+                  <a:documentation>Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="python_Thermoelectric_code">
+                  <a:documentation>Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
+&lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>
+                  <ref name="scalar_python_diagnostic_algorithm"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+          <optional>
             <element name="FWL">
               <a:documentation>Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 
@@ -3297,7 +3375,7 @@ Adapting to this field is not recommended</a:documentation>
         <choice>
           <element name="diagnostic">
             <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
+            <ref name="pressure_mesh_choice"/>
             <ref name="diagnostic_scalar_field"/>
           </element>
           <element name="aliased">

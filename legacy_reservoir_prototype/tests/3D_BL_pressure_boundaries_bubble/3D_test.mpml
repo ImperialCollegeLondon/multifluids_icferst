@@ -30,6 +30,7 @@
         <integer_value rank="0">1</integer_value>
       </constant>
     </dump_period_in_timesteps>
+    <Show_Convergence/>
   </io>
   <timestepping>
     <current_time>
@@ -97,7 +98,11 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
         <no_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -133,7 +138,11 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -155,6 +164,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -238,7 +250,11 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -260,6 +276,9 @@
             </constant>
           </type>
         </boundary_conditions>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
@@ -295,6 +314,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <scalar_field name="Permeability">
@@ -309,6 +329,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
   </porous_media>
