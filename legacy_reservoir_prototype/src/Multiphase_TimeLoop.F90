@@ -138,7 +138,7 @@ contains
         type( tensor_field ) :: metric_tensor
 
         PetscErrorCode :: ierrr !!-ao
-        PetscLogStage,dimension(0:2) :: stages
+        PetscLogStage,dimension(0:4) :: stages
 
 
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -488,8 +488,10 @@ contains
 
 #else
   call PetscLogStagePop(ierrr)
-  call PetscLogStageRegister("Second Solve",stages(0),ierr)
-  call PetscLogStagePush(stages(0),ierrr)
+  call PetscLogStageRegister("Pre-Solve",stages(1),ierr)
+  call PetscLogStageRegister("Force Solve",stages(2),ierr)
+  call PetscLogStageRegister("Rest Solve",stages(3),ierr)
+  call PetscLogStagePush(stages(1),ierrr)
 #endif
 #endif
 
@@ -610,7 +612,16 @@ contains
 
                 !#=================================================================================================================
 
+!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
 
+#else
+  call PetscLogStagePop(ierr)
+  ! call PetscLogStageRegister("Second Solve",stages(1),ierr)
+  call PetscLogStagePush(stages(2),ierr)
+#endif
+#endif
                 !#=================================================================================================================
                 !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
                 !#=================================================================================================================
@@ -634,6 +645,15 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken, its)
                 end if Conditional_ForceBalanceEquation
 
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+
+#else
+  call PetscLogStagePop(ierr)
+  call PetscLogStagePush(stages(3),ierr)
+#endif
+#endif
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
