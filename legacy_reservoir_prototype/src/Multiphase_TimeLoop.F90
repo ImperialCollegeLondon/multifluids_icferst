@@ -136,7 +136,7 @@ contains
         type( tensor_field ) :: metric_tensor
 
         PetscErrorCode :: ierrr
-        PetscLogStage,dimension(0:7) :: stages
+        PetscLogStage,dimension(0:9) :: stages
 
 
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -491,7 +491,9 @@ contains
   call PetscLogStageRegister("Saturation Solve",stages(3),ierr)
   call PetscLogStageRegister("Temp Solve",stages(4),ierr)
   call PetscLogStageRegister("Component Solve",stages(5),ierr)
-  call PetscLogStageRegister("Rest",stages(6),ierr)
+  call PetscLogStageRegister("dt and VTU",stages(6),ierr)
+  call PetscLogStageRegister("Adaptivity",stages(7),ierr)
+  call PetscLogStageRegister("Rest",stages(8),ierr)
   call PetscLogStagePush(stages(1),ierrr)
 #endif
 #endif
@@ -881,6 +883,16 @@ contains
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
 
+
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+
+#else
+  call PetscLogStagePop(ierr)
+  call PetscLogStagePush(stages(7),ierr)
+#endif
+#endif
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
@@ -888,6 +900,15 @@ contains
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
 
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+
+#else
+  call PetscLogStagePop(ierr)
+  call PetscLogStagePush(stages(8),ierr)
+#endif
+#endif
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
