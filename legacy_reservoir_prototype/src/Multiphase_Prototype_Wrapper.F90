@@ -19,6 +19,10 @@
 
 subroutine multiphase_prototype_wrapper() bind(C)
 
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+
     use fldebug
     use elements
     use fields
@@ -57,6 +61,8 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use tictoc
     implicit none
 
+#include "petsc_legacy.h"
+
     !Local variables
     type(state_type), dimension(:), pointer :: state
 
@@ -67,6 +73,10 @@ subroutine multiphase_prototype_wrapper() bind(C)
     character(len = option_path_len) :: simulation_name, dump_format
 
     real :: finish_time, nonlinear_iteration_tolerance, auxR, dump_period
+
+    PetscErrorCode :: ierr
+    PetscLogStage,dimension(0:1) :: stages
+
 
     ! Establish signal handlers
     call initialise_signals()
@@ -200,10 +210,30 @@ subroutine multiphase_prototype_wrapper() bind(C)
     !call multiphase_prototype(state, dt, &
     !                          nonlinear_iterations, nonlinear_iteration_tolerance, &
     !                          dump_no)
+
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+
+#else
+  call PetscLogStageRegister("Original Solve",stages(0),ierr)
+  call PetscLogStagePush(stages(0),ierr)
+#endif
+#endif
+
+
     call MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
 
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
 
+#else
+  call PetscLogStagePop(ierr)
+  call PetscLogStagePush(stages(0),ierr)
+#endif
+#endif
 
 
     call close_diagnostic_files()
