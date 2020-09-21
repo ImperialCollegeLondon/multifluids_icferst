@@ -136,7 +136,7 @@ contains
         type( tensor_field ) :: metric_tensor
 
         PetscErrorCode :: ierrr
-        PetscLogStage,dimension(0:5) :: stages
+        PetscLogStage,dimension(0:7) :: stages
 
 
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -486,10 +486,12 @@ contains
 
 #else
   call PetscLogStagePop(ierrr)
-  call PetscLogStageRegister("Pre-Solve",stages(1),ierr)
+  call PetscLogStageRegister("TL Prelim",stages(1),ierr)
   call PetscLogStageRegister("Force Solve",stages(2),ierr)
   call PetscLogStageRegister("Saturation Solve",stages(3),ierr)
-  call PetscLogStageRegister("Rest Solve",stages(4),ierr)
+  call PetscLogStageRegister("Temp Solve",stages(4),ierr)
+  call PetscLogStageRegister("Component Solve",stages(5),ierr)
+  call PetscLogStageRegister("Rest",stages(6),ierr)
   call PetscLogStagePush(stages(1),ierrr)
 #endif
 #endif
@@ -768,8 +770,15 @@ contains
 
                 !#=================================================================================================================
 
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
 
-
+#else
+  call PetscLogStagePop(ierr)
+  call PetscLogStagePush(stages(5),ierr)
+#endif
+#endif
                 !Solve for components here
                 if (have_component_field) then
 
@@ -784,6 +793,17 @@ contains
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
+
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+
+#else
+  call PetscLogStagePop(ierr)
+  call PetscLogStagePush(stages(6),ierr)
+#endif
+#endif
+
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
