@@ -76,8 +76,6 @@ module multiphase_time_loop
 #endif
 
 
-!!-ao
-
     !use matrix_operations
     !use shape_functions
     implicit none
@@ -137,7 +135,7 @@ contains
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
 
-        PetscErrorCode :: ierrr !!-ao
+        PetscErrorCode :: ierrr
         PetscLogStage,dimension(0:5) :: stages
 
 
@@ -955,17 +953,6 @@ contains
             first_time_step = .false.
 
         end do Loop_Time
-
-
-! !!! -ao PETSC_DEBUG testing of staged logging
-! #ifdef HAVE_PETSC_DBUG
-! #if PETSC_VERSION_MINOR<8
-!
-! #else
-!   call PetscLogStagePop(ierr)
-! #endif
-! #endif
-
 
 
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
