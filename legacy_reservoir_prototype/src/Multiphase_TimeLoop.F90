@@ -16,6 +16,12 @@
 !    USA
 #include "fdebug.h"
 module multiphase_time_loop
+
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+
+
     use field_options
     use write_state_module
     use diagnostic_variables
@@ -68,9 +74,16 @@ module multiphase_time_loop
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
+
+
+!!-ao
+
     !use matrix_operations
     !use shape_functions
     implicit none
+
+#include "petsc_legacy.h"
+
     private
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
@@ -85,6 +98,8 @@ contains
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
         implicit none
+
+
         type( state_type ), dimension( : ), intent( inout ) :: state
         integer, intent( inout ) :: dump_no, nonlinear_iterations
         real, intent( inout ) :: dt
@@ -121,6 +136,11 @@ contains
         integer :: scvngi_theta, igot_t2, igot_theta_flux
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
+
+        PetscErrorCode :: ierrr !!-ao
+        PetscLogStage,dimension(0:2) :: stages
+
+
         type( state_type ), dimension( : ), pointer :: sub_state => null()
         integer :: nonlinear_iterations_adapt
         logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false.
@@ -198,6 +218,7 @@ contains
       ierr = Zoltan_Initialize(ver)
       assert(ierr == ZOLTAN_OK)
 #endif
+
 
 
         ! Check wether we are using the CV_Galerkin method
@@ -461,6 +482,17 @@ contains
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
         end if
 
+!!! -ao PETSC_DEBUG testing of staged logging
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+
+#else
+  call PetscLogStagePop(ierrr)
+  call PetscLogStageRegister("Second Solve",stages(0),ierr)
+  call PetscLogStagePush(stages(0),ierrr)
+#endif
+#endif
+
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
@@ -577,6 +609,7 @@ contains
                   call EnterForceBalanceEquation(EnterSolve, its, itime, acctim, t_adapt_threshold, after_adapt, after_adapt_itime, Courant_number(1))
 
                 !#=================================================================================================================
+
 
                 !#=================================================================================================================
                 !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
@@ -893,6 +926,18 @@ contains
 
         end do Loop_Time
 
+
+! !!! -ao PETSC_DEBUG testing of staged logging
+! #ifdef HAVE_PETSC_DBUG
+! #if PETSC_VERSION_MINOR<8
+!
+! #else
+!   call PetscLogStagePop(ierr)
+! #endif
+! #endif
+
+
+
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &
@@ -930,6 +975,9 @@ contains
         endif
         !***************************************
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
+
+
+
         return
     contains
         !> routine puts various CSR sparsities into packed_state
