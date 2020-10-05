@@ -998,7 +998,6 @@ contains
           Matrix(j,i) = (stored_residuals(j, i+1) - stored_residuals(j, i))
         end do
       end do
-
       !For parallel it is easier to solve the system A'*A = A'*b because the system is tiny so each processor can solve it separately
       start = 1
       !If stored matrix, we re-use that matrix
@@ -1020,6 +1019,7 @@ contains
           Small_matrix(i,j) = Small_matrix(j,i)
         end do
       end do
+
       !Now the RHS
       do i = 1, M
         Small_b(i,1) = dot_product(Matrix(:,i), stored_residuals(:,m+1))
@@ -1029,6 +1029,7 @@ contains
       !Now solve the least squares optimisation problem
       Q_rank = m
       if (M > 1) call Least_squares_solver(Small_matrix,Small_b, Q_rank)
+
       if (Q_rank < m) then
         !If the least squares matrix is not full rank, then perform normal update
         !and restart the cycle

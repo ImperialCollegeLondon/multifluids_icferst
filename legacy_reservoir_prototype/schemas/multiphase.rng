@@ -1946,7 +1946,7 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
                 <optional>
                   <element name="restart_its">
                     <a:documentation>Maximum restart iteration allowed. The default value is 15.</a:documentation>
-                    <ref name="real"/>
+                    <ref name="integer"/>
                   </element>
                 </optional>
                 <optional>

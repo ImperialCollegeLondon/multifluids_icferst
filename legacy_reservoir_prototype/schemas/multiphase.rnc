@@ -1583,7 +1583,7 @@ solver_options =
         (
         ## Maximum restart iteration allowed. The default value is 15.
          element restart_its {
-           real}?,
+           integer}?,
         ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
          element Max_restarts {
            real}?,  
