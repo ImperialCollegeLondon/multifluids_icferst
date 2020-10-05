@@ -1534,6 +1534,11 @@ contains
                                       NDOTQ_HAT =SUM(LIMT_HAT*NDOTQNEW)
                                   endif
                               ENDIF
+
+                              ! constraint needed for porous media stable flow solution
+                              call sum_saturation_to_unity(mdims, packed_state, LIMT)
+                              call sum_saturation_to_unity(mdims, packed_state, LIMTOLD) 
+
                               LIMDT=LIMD*LIMT
                               LIMDTOLD=LIMDOLD*LIMTOLD
                               LIMDTT2=LIMD*LIMT*LIMT2
@@ -7455,5 +7460,44 @@ end if
       end function get_DIFF_COEF_DIVDX
 
     end subroutine generate_Laplacian_system
+
+    subroutine sum_saturation_to_unity(mdims, packed_state, saturation)
+
+        real, dimension(:) :: saturation
+        type( multi_dimensions ), intent( in ) :: Mdims
+        type( state_type ), intent(inout) :: packed_state
+        real, dimension(:, :), pointer :: Immobile_fraction
+        real, dimension(Mdims%nphase) :: Normalized_sat
+        real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
+        integer :: iphase
+
+        !print *,'Mdims%nphase: ', Mdims%nphase
+        !return
+
+        call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
+
+        ! assume immobile fraction in the model is the same, use ele = 1
+        moveable_sat = 1.0 - sum(Immobile_fraction(:, 1))
+
+        !Work in normalized saturation here
+        Normalized_sat = (saturation - Immobile_fraction(:, 1))/moveable_sat
+        sum_of_phases = sum(Normalized_sat)
+        correction = (1.0 - sum_of_phases)
+
+        !Spread the error to all the phases weighted by their moveable presence in that CV
+        !Increase the range to look for solutions by allowing oscillations below 0.01 percent
+        if (abs(correction) > 1d-8) saturation = (Normalized_sat * &
+            (1.0 + correction/sum_of_phases))* moveable_sat + Immobile_fraction(:, 1)
+
+        !Make sure saturation is between bounds after the modification
+        do iphase = 1, Mdims%nphase
+            minsat = Immobile_fraction(iphase, 1)
+            maxsat = moveable_sat + minsat
+            saturation(iphase) =  min(max(minsat, saturation(iphase)),maxsat)
+        end do
+
+        return
+    end subroutine sum_saturation_to_unity
+
 
 end module cv_advection
