@@ -942,4 +942,82 @@ END subroutine RotationMatrix
       scalar_result = sfield%val
     end subroutine
 
+
+    !---------------------------------------------------------------------------
+    !> @author Asiri Obeysekara
+    !> @brief
+    !---------------------------------------------------------------------------
+    subroutine petsc_logging( N , ierr,default)
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+    integer, intent(in) :: N
+    PetscErrorCode :: ierr
+    PetscLogStage,dimension(0:N) :: stages
+
+    implicit none
+#include "petsc_legacy.h"
+
+    integer :: x
+    logical, parameter, intent(in) :: default =.true.
+    character(len=*), dimension(N), parameter :: stage_name
+    character(len=*), dimension(8), parameter ::
+         & stage_name_def
+                                = (/ &
+         "PRELIM                ", &
+         "FORCE                 ", &
+         "SATURATION            ", &
+         "TEMP                  ", &
+         "COMP                  ", &
+         "DT+VTU                ", &
+         "ADAPT                 ", &
+         "REST                  "/)
+
+         if (default) N=8 .and. stage_name=stage_name_def
+
+#ifdef HAVE_PETSC_DBUG
+#if PETSC_VERSION_MINOR<8
+#else
+   do x=1, N
+   call petsc_log_init(stage_name(x),stages(x),ierr)
+  end do
+#endif
+#endif
+    contains
+
+      !> @brief: This routine registers the stage for PETSC logging
+      !> IMPORTANT:
+      subroutine petsc_log_init(stage_name,stage,ierr)
+        implicit none
+        character( len = * ), intent( in ) :: stage_name
+        integer, intent(in) ::  x
+        PetscLogStage, intent(in) :: stage
+
+        call PetscLogStageRegister(stage_name,stage,ierr)
+      end subroutine petsc_log_init
+
+      !> @brief: This routine starts the current stage registered
+      !> for PETSc profiling
+      !> IMPORTANT:
+      subroutine petsc_log_start(N,x,ierr)
+        implicit none
+        integer, intent(in) :: x
+        call PetscLogStagePop(ierr)
+        call PetscLogStagePush(stage(x),ierr)
+      end subroutine petsc_log_start
+
+      !> @brief: This routine ends the current stage registered
+      !> for PETSc profiling
+      !> IMPORTANT:
+      subroutine petsc_log_end(N,x,ierr)
+        implicit none
+        integer, intent(in) :: x
+        call PetscLogStagePop(ierr)
+        call PetscLogStagePush(stage(x+1),ierr)
+
+      end subroutine petsc_log_end
+
+      return
+    end subroutine petsc_logging
+
 end module multi_tools
