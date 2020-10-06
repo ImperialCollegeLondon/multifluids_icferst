@@ -955,7 +955,7 @@ END subroutine RotationMatrix
     !> @author Asiri Obeysekara
     !> @brief
     !---------------------------------------------------------------------------
-    subroutine petsc_logging(func,ierr,default)
+    subroutine petsc_logging(func,ierr,default,stage_name)
 
     implicit none
     integer, intent(in) :: func
@@ -965,7 +965,7 @@ END subroutine RotationMatrix
     PetscErrorCode, intent(inout) :: ierr
     PetscLogStage,dimension(0:N+1) :: stage
 
-    character(len=*), dimension(1), parameter :: stage_name = "CUSTOM STAGE "
+    character(len=*), dimension(1), optional, parameter :: stage_name = "CUSTOM STAGE "
     character(len=*), dimension(8), parameter ::  stage_name_def &
                                 = (/ &
          "PRELIM                ", &
@@ -992,9 +992,7 @@ END subroutine RotationMatrix
                   call petsc_log_init(stage_name_def(x),stage(x),ierr)
                 end do
               else
-                do i=N+1, N+2
-                  call petsc_log_init(stage_name(x),stage(x),ierr)
-                end do
+                call petsc_log_init(stage_name,stage(N+1),ierr)
               end if
             case(2)
                 !this is to push
