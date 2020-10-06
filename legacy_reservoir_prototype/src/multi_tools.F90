@@ -18,6 +18,11 @@
 
 
 module multi_tools
+
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+
     use python_state
     use state_module
     use fldebug
@@ -28,6 +33,9 @@ module multi_tools
     use vector_tools
 
     implicit none
+
+#include "petsc_legacy.h"
+
 
     !>@brief: Type to keep an eye on the quality of the elements
     !>@DEPRECATED
@@ -947,22 +955,23 @@ END subroutine RotationMatrix
     !> @author Asiri Obeysekara
     !> @brief
     !---------------------------------------------------------------------------
-    subroutine petsc_logging( N , ierr,default)
-#ifdef HAVE_PETSC_MODULES
-  use petsc
-#endif
-    integer, intent(in) :: N
-    PetscErrorCode :: ierr
-    PetscLogStage,dimension(0:N) :: stages
+    subroutine petsc_logging(ierr,default)
 
     implicit none
-#include "petsc_legacy.h"
+    integer, parameter  :: N = 8
+    integer :: x, i
+    logical, optional, intent(in) :: default
+    PetscErrorCode, intent(inout) :: ierr
+    PetscLogStage,dimension(0:N+1) :: stage
 
-    integer :: x
-    logical, parameter, intent(in) :: default =.true.
-    character(len=*), dimension(N), parameter :: stage_name
-    character(len=*), dimension(8), parameter ::
-         & stage_name_def
+    ! if(default) then
+    !   N=8
+    ! else
+    !   N=1
+    ! end if
+
+    character(len=*), dimension(1), parameter :: stage_name = "CUSTOM STAGE "
+    character(len=*), dimension(8), parameter ::  stage_name_def &
                                 = (/ &
          "PRELIM                ", &
          "FORCE                 ", &
@@ -973,51 +982,71 @@ END subroutine RotationMatrix
          "ADAPT                 ", &
          "REST                  "/)
 
-         if (default) N=8 .and. stage_name=stage_name_def
-
 #ifdef HAVE_PETSC_DBUG
+ print*,"***WARNING: there is an issue with your PETSc version and using &
+ profiling, please configure WITHOUT 'petscdebug'"
 #if PETSC_VERSION_MINOR<8
 #else
-   do x=1, N
-   call petsc_log_init(stage_name(x),stages(x),ierr)
-  end do
-#endif
-#endif
-    contains
 
+         !! default is for the main time-loop
+          if (default) then
+            do x=1, N
+              call petsc_log_init(stage_name_def(x),stage(x),ierr)
+            end do
+          else
+            do i=N+1, N+2
+              call petsc_log_init(stage_name(x),stage(x),ierr)
+            end do
+          end if
+
+
+#endif
+#endif
+    return
+    contains
       !> @brief: This routine registers the stage for PETSC logging
       !> IMPORTANT:
       subroutine petsc_log_init(stage_name,stage,ierr)
         implicit none
+        PetscErrorCode, intent(inout) :: ierr
+        PetscLogStage, intent(inout) :: stage
         character( len = * ), intent( in ) :: stage_name
-        integer, intent(in) ::  x
-        PetscLogStage, intent(in) :: stage
+
 
         call PetscLogStageRegister(stage_name,stage,ierr)
+
       end subroutine petsc_log_init
 
       !> @brief: This routine starts the current stage registered
       !> for PETSc profiling
       !> IMPORTANT:
-      subroutine petsc_log_start(N,x,ierr)
+      subroutine petsc_log_start(stage,x,ierr)
         implicit none
+        PetscErrorCode, intent(inout) :: ierr
+        PetscLogStage, intent(inout) :: stage
         integer, intent(in) :: x
+
         call PetscLogStagePop(ierr)
-        call PetscLogStagePush(stage(x),ierr)
+        call PetscLogStagePush(stage,ierr)
+
       end subroutine petsc_log_start
 
       !> @brief: This routine ends the current stage registered
       !> for PETSc profiling
       !> IMPORTANT:
-      subroutine petsc_log_end(N,x,ierr)
+      subroutine petsc_log_end(stage,x,ierr)
         implicit none
+        PetscErrorCode, intent(inout) :: ierr
+        PetscLogStage, intent(inout) :: stage
         integer, intent(in) :: x
+
         call PetscLogStagePop(ierr)
-        call PetscLogStagePush(stage(x+1),ierr)
+        call PetscLogStagePush(stage,ierr)
 
       end subroutine petsc_log_end
 
-      return
     end subroutine petsc_logging
+
+
 
 end module multi_tools
