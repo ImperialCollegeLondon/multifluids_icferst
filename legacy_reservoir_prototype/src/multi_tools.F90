@@ -959,13 +959,13 @@ END subroutine RotationMatrix
 
     implicit none
     integer, intent(in) :: func
-    integer, parameter  :: N = 8
+    integer, parameter  :: N = 8 !!this is the default for the time_loop
     integer :: x, i
     logical, optional, intent(in) :: default
     PetscErrorCode, intent(inout) :: ierr
     PetscLogStage,dimension(0:N+1) :: stage
 
-    character(len=*), dimension(1), optional, parameter :: stage_name = "CUSTOM STAGE "
+    character(len=*), dimension(1), optional :: stage_name
     character(len=*), dimension(8), parameter ::  stage_name_def &
                                 = (/ &
          "PRELIM                ", &
@@ -992,7 +992,7 @@ END subroutine RotationMatrix
                   call petsc_log_init(stage_name_def(x),stage(x),ierr)
                 end do
               else
-                call petsc_log_init(stage_name,stage(N+1),ierr)
+                call petsc_log_init(stage_name(1),stage(N+1),ierr)
               end if
             case(2) !!-PUSH
                 !this is to initialise
@@ -1041,7 +1041,6 @@ END subroutine RotationMatrix
         implicit none
         PetscErrorCode, intent(inout) :: ierr
         PetscLogStage, intent(inout) :: stage
-        integer, intent(in) :: x
 
         call PetscLogStagePush(stage,ierr)
 
@@ -1053,8 +1052,6 @@ END subroutine RotationMatrix
       subroutine petsc_log_pop(ierr)
         implicit none
         PetscErrorCode, intent(inout) :: ierr
-        PetscLogStage, intent(inout) :: stage
-        integer, intent(in) :: x
 
         call PetscLogStagePop(ierr)
 
