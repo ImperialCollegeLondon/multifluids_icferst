@@ -430,7 +430,6 @@ contains
           !Variable to decide if we are introducing the sum of phases = 1 in Ct or elsewhere
           logical :: Solve_all_phases
           !Variables for get_int_vel_porous_vel
-          logical :: anisotropic_perm
           real, dimension(final_phase):: rsum_nodi, rsum_nodj
           integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
           REAL :: MM_GRAVTY
@@ -630,7 +629,6 @@ contains
               perm=>extract_tensor_field(packed_state,"Permeability")
               end if
               !Check if the permeability is not isotropic and the method is DG
-              anisotropic_perm = .not.have_option('/porous_media/scalar_field::Permeability') .and. DISTCONTINUOUS_METHOD
           end if
           !Initialize Courant number for porous media
           if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
@@ -1527,13 +1525,13 @@ contains
                                       NDOTQ_HAT =SUM(LIMT_HAT*NDOTQNEW)
                                   endif
                               ENDIF
-                              
+
                               ! constraint needed for porous media stable flow solution
                               if (BETWEEN_ELEMENTS) then
                                   call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMT)
                                   call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMTOLD)
                               endif
-                              
+
                               LIMDT=LIMD*LIMT
                               LIMDTOLD=LIMDOLD*LIMTOLD
                               LIMDTT2=LIMD*LIMT*LIMT2
@@ -2994,7 +2992,7 @@ end if
                         UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + matmul(I_inv_adv_coef(:,:,iv_iphase),UDGI_ALL_FOR_INV(:, iv_iphase))
                     END IF
                 END DO ! PHASE LOOP
-            ELSE IF( .not. between_elements) THEN!same element
+            ELSE IF( .not. DISTCONTINUOUS_METHOD) THEN!Only for same element/Continuous formulation
                 !vel(GI) = (vel * shape_functions)/sigma
                 do iv_iphase = 1,final_phase
                     UDGI_ALL(:, iv_iphase) = matmul(I_inv_adv_coef(:,:,iv_iphase),&
@@ -3058,7 +3056,7 @@ end if
                             +ROW_SUM_INV_VJ(:,iv_iphase)* INCOME(iv_iphase), DIM=2, NCOPIES=Mdims%u_nloc)
                     END DO
                 end if
-            ELSE !For between elements. Does not use a TVD limiter but a weighting method
+            ELSE !For discontinuous formulation (between elements but also can be used within). Does not use a TVD limiter but a weighting method
                 !vel(GI) = (vel * shape_functions)/sigma
                 do iv_iphase = 1,final_phase
                     !Velocity including sigma
@@ -7397,7 +7395,7 @@ end if
       end function get_DIFF_COEF_DIVDX
 
     end subroutine generate_Laplacian_system
-    
+
     subroutine sum_saturation_to_unity(nphase, Imble_frac, saturation)
 
         integer :: nphase
@@ -7407,7 +7405,7 @@ end if
         real, dimension(nphase) :: Normalized_sat
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         integer :: iphase
-        
+
         ! assume immobile fraction in the model is the same, use ele = 1
         moveable_sat = 1.0 - sum(Imble_frac(:,1))
 
