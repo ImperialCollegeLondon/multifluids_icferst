@@ -994,32 +994,26 @@ END subroutine RotationMatrix
               else
                 call petsc_log_init(stage_name,stage(N+1),ierr)
               end if
-            case(2)
-                !this is to push
+            case(2) !!-PUSH
                 !this is to initialise
                 if (default) then
                 !default is for the main time-loop
                   do x=1, N
-                    call petsc_log_start(stage(x),x,ierr)
+                    call petsc_log_push(stage(x),ierr)
                   end do
                 else
-                  do i=N+1, N+2
-                    call petsc_log_start(stage(x),x,ierr)
-                  end do
+                    call petsc_log_push(stage(N+1),ierr)
                 end if
 
-            case(3)
-              !this is to pop
+            case(3) !! - POP
               !this is to initialise
               if (default) then
               !default is for the main time-loop
                 do x=1, N
-                  call petsc_log_end(stage(x),x,ierr)
+                  call petsc_log_pop(ierr)
                 end do
               else
-                do i=N+1, N+2
-                  call petsc_log_end(stage(x),i,ierr)
-                end do
+                  call petsc_log_pop(ierr)
               end if
           end select
 
@@ -1043,30 +1037,28 @@ END subroutine RotationMatrix
       !> @brief: This routine starts the current stage registered
       !> for PETSc profiling
       !> IMPORTANT:
-      subroutine petsc_log_start(stage,x,ierr)
+      subroutine petsc_log_push(stage,ierr)
         implicit none
         PetscErrorCode, intent(inout) :: ierr
         PetscLogStage, intent(inout) :: stage
         integer, intent(in) :: x
 
-        call PetscLogStagePop(ierr)
         call PetscLogStagePush(stage,ierr)
 
-      end subroutine petsc_log_start
+      end subroutine petsc_log_push
 
       !> @brief: This routine ends the current stage registered
       !> for PETSc profiling
       !> IMPORTANT:
-      subroutine petsc_log_end(stage,x,ierr)
+      subroutine petsc_log_pop(ierr)
         implicit none
         PetscErrorCode, intent(inout) :: ierr
         PetscLogStage, intent(inout) :: stage
         integer, intent(in) :: x
 
         call PetscLogStagePop(ierr)
-        call PetscLogStagePush(stage,ierr)
 
-      end subroutine petsc_log_end
+      end subroutine petsc_log_pop
 
     end subroutine petsc_logging
 
