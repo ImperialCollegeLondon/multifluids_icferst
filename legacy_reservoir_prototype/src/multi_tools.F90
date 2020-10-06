@@ -955,20 +955,15 @@ END subroutine RotationMatrix
     !> @author Asiri Obeysekara
     !> @brief
     !---------------------------------------------------------------------------
-    subroutine petsc_logging(ierr,default)
+    subroutine petsc_logging(func,ierr,default)
 
     implicit none
+    integer, intent(in) :: func
     integer, parameter  :: N = 8
     integer :: x, i
     logical, optional, intent(in) :: default
     PetscErrorCode, intent(inout) :: ierr
     PetscLogStage,dimension(0:N+1) :: stage
-
-    ! if(default) then
-    !   N=8
-    ! else
-    !   N=1
-    ! end if
 
     character(len=*), dimension(1), parameter :: stage_name = "CUSTOM STAGE "
     character(len=*), dimension(8), parameter ::  stage_name_def &
@@ -988,17 +983,47 @@ END subroutine RotationMatrix
 #if PETSC_VERSION_MINOR<8
 #else
 
-         !! default is for the main time-loop
-          if (default) then
-            do x=1, N
-              call petsc_log_init(stage_name_def(x),stage(x),ierr)
-            end do
-          else
-            do i=N+1, N+2
-              call petsc_log_init(stage_name(x),stage(x),ierr)
-            end do
-          end if
+          select case(func)
+            case(1)
+              !this is to initialise
+              if (default) then
+              !default is for the main time-loop
+                do x=1, N
+                  call petsc_log_init(stage_name_def(x),stage(x),ierr)
+                end do
+              else
+                do i=N+1, N+2
+                  call petsc_log_init(stage_name(x),stage(x),ierr)
+                end do
+              end if
+            case(2)
+                !this is to push
+                !this is to initialise
+                if (default) then
+                !default is for the main time-loop
+                  do x=1, N
+                    call petsc_log_start(stage(x),x,ierr)
+                  end do
+                else
+                  do i=N+1, N+2
+                    call petsc_log_start(stage(x),x,ierr)
+                  end do
+                end if
 
+            case(3)
+              !this is to pop
+              !this is to initialise
+              if (default) then
+              !default is for the main time-loop
+                do x=1, N
+                  call petsc_log_end(stage(x),x,ierr)
+                end do
+              else
+                do i=N+1, N+2
+                  call petsc_log_end(stage(x),i,ierr)
+                end do
+              end if
+          end select
 
 #endif
 #endif
