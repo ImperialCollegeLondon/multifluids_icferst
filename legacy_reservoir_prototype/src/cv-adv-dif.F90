@@ -1529,8 +1529,10 @@ contains
                               ENDIF
                               
                               ! constraint needed for porous media stable flow solution
-                              call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMT)
-                              call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMTOLD)
+                              if (BETWEEN_ELEMENTS) then
+                                  call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMT)
+                                  call sum_saturation_to_unity(mdims%nphase, Imble_frac, LIMTOLD)
+                              endif
                               
                               LIMDT=LIMD*LIMT
                               LIMDTOLD=LIMDOLD*LIMTOLD
