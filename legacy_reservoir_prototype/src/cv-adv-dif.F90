@@ -7471,9 +7471,6 @@ end if
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         integer :: iphase
 
-        !print *,'Mdims%nphase: ', Mdims%nphase
-        !return
-
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
         ! assume immobile fraction in the model is the same, use ele = 1
