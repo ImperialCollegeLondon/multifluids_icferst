@@ -3087,14 +3087,26 @@ end if
                 do iv_idim = 1, Mdims%ndim
                   iv_ones(iv_idim, iv_idim) = 1.0
                 end do
+
+                    ! ************NEW LIMITER**************************
+                    XI_LIMIT = 2.0
+                     !Call the limiter to obtain the limited saturation value at the interface
+                    CALL ONVDLIM_ANO_MANY( final_phase, LIMT3, FEMTGI_IPHA, INCOME, &
+                        LOC_T_I, LOC_T_J,XI_LIMIT, TUPWIND_IN, TUPWIND_OUT, &
+                        memory_limiters(1:NFIELD), memory_limiters(NFIELD + 1:NFIELD*2),&
+                        memory_limiters(2*NFIELD + 1:NFIELD*3), memory_limiters(3*NFIELD + 1:NFIELD*4),&
+                        memory_limiters(4*NFIELD + 1:NFIELD*5), memory_limiters(5*NFIELD + 1:NFIELD*6) )
+
                 !Sigma averaged with the mass to be used as divisor
                 iv_sigma_aver = I_adv_coef*MASS_CV_I+J_adv_coef*MASS_CV_J
                 do iv_iphase = 1,final_phase
+                  iv_aux_tensor(:,:,iv_iphase) =0.5 * (I_adv_coef(:,:,iv_iphase)  + ( LIMT3(iv_iphase)  - LOC_T_I(iv_iphase)  ) * I_adv_coef_grad(:,:,iv_iphase) +&
+                  J_adv_coef(:,:,iv_iphase)  + ( LIMT3(iv_iphase)  - LOC_T_J(iv_iphase)  ) * J_adv_coef_grad(:,:,iv_iphase)  )
                   call invert(iv_sigma_aver(:,:, iv_iphase))
                   !Calculate the contribution of each side, considering sigma and the volume of the CVs
                   if ( ( NDOTQ(iv_iphase) + NDOTQ2(iv_iphase) ) > 0.0 ) then
                     !We redefine sigma so that it detects oscillations using first order taylor series
-                    iv_aux_tensor(:,:,iv_iphase) =  I_adv_coef(:,:,iv_iphase) + LOC_T_I(iv_iphase) * I_adv_coef_grad(:,:,iv_iphase)
+                    ! iv_aux_tensor(:,:,iv_iphase) =  I_adv_coef(:,:,iv_iphase) + LOC_T_I(iv_iphase) * I_adv_coef_grad(:,:,iv_iphase)
                     !We limit the value
                     iv_aux_tensor(:,:,iv_iphase) = min(1000.*max(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), &
                     max(0.001*min(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), iv_aux_tensor(:,:,iv_iphase) ))
@@ -3105,7 +3117,7 @@ end if
                     iv_aux_tensor(:,:,iv_iphase) = (iv_ones(:,:)-iv_aux_tensor(:,:,iv_iphase)) + matmul(iv_aux_tensor(:,:,iv_iphase),matmul(iv_sigma_aver(:,:,iv_iphase), J_adv_coef(:,:,iv_iphase)*MASS_CV_J))
                   else
                     !We redefine sigma so that it detects oscillations using first order taylor series
-                    iv_aux_tensor(:,:,iv_iphase) =  J_adv_coef(:,:,iv_iphase) + ( LOC_T_J(iv_iphase)) * J_adv_coef_grad(:,:,iv_iphase)
+                    ! iv_aux_tensor(:,:,iv_iphase) =  J_adv_coef(:,:,iv_iphase) + ( LOC_T_J(iv_iphase)) * J_adv_coef_grad(:,:,iv_iphase)
                     !We limit the value
                     iv_aux_tensor(:,:,iv_iphase) = min(1000.*max(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), &
                     max(0.001*min(I_adv_coef(:,:,iv_iphase),  J_adv_coef(:,:,iv_iphase)), iv_aux_tensor(:,:,iv_iphase) ))

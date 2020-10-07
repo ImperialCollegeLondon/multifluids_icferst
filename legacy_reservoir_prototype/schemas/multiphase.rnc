@@ -357,7 +357,10 @@ start =
                ## number. Timestep adapts occur at the end of each
                ## timestep and after a mesh adapt.
                element requested_cfl {
-                  real
+                  real,(
+                  ## For porous media use the shock-front CFL instead.
+                  element Shock_front_CFL {empty}
+                  )
                },
                ## Multiplier of the requested CFL based on which the pressure and velocity fields
                ## will be recalculated. Otherwise, the pressure will not be updated.
