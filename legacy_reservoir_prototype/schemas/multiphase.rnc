@@ -359,7 +359,7 @@ start =
                element requested_cfl {
                   real,(
                   ## For porous media use the shock-front CFL instead.
-                  element Shock_front_CFL {empty}
+                  element Shock_front_CFL {empty}?
                   )
                },
                ## Multiplier of the requested CFL based on which the pressure and velocity fields
