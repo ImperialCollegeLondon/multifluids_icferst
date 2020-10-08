@@ -414,6 +414,12 @@ and bounds specified) to target this courant
 number. Timestep adapts occur at the end of each
 timestep and after a mesh adapt.</a:documentation>
               <ref name="real"/>
+              <optional>
+                <element name="Shock_front_CFL">
+                  <a:documentation>For porous media use the shock-front CFL instead.</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
             </element>
             <optional>
               <element name="cfl_pressure">
@@ -1946,7 +1952,7 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
                 <optional>
                   <element name="restart_its">
                     <a:documentation>Maximum restart iteration allowed. The default value is 15.</a:documentation>
-                    <ref name="real"/>
+                    <ref name="integer"/>
                   </element>
                 </optional>
                 <optional>

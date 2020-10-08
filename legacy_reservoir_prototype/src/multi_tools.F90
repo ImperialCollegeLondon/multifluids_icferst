@@ -794,20 +794,20 @@ END subroutine RotationMatrix
       integer, dimension(size(A,1)) :: jpvt
       real, parameter :: tolerance_rank = 1d-12
 
-      interface
-        !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
-          subroutine dgeqrf(m, n, MAT, lda, tau, work, lwork, info)
-            implicit none
-            integer :: m!>Rows of MAT
-            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
-            integer :: lda !>The first dimension of MAT
-            integer :: lwork!> The size of the work array; 0 == best performance
-            integer :: info!>If info = -i, the i-th parameter had an illegal value
-            real, dimension(lda,n) :: MAT!>input/output matrix
-            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-          end subroutine dgeqrf
-      end interface
+      ! interface
+      !   !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
+      !     subroutine dgeqrf(m, n, MAT, lda, tau, work, lwork, info)
+      !       implicit none
+      !       integer :: m!>Rows of MAT
+      !       integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
+      !       integer :: lda !>The first dimension of MAT
+      !       integer :: lwork!> The size of the work array; 0 == best performance
+      !       integer :: info!>If info = -i, the i-th parameter had an illegal value
+      !       real, dimension(lda,n) :: MAT!>input/output matrix
+      !       real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+      !       real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      !     end subroutine dgeqrf
+      ! end interface
 
       interface
         !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
@@ -825,20 +825,20 @@ END subroutine RotationMatrix
           end subroutine dgeqp3
       end interface
 
-      interface
-          !> @brief Interface to Lapack to show a Q matrix computed using dgeqp3
-          subroutine dorgqr(m, n, k, mat, lda, tau, work, lwork, info)
-            implicit none
-            integer :: m,n !>Rows and colums respectively
-            integer :: lda !>The first dimension of a
-            integer :: lwork!> The size of the work array; 0 == best performance
-            integer :: info!>If info = -i, the i-th parameter had an illegal value
-            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
-            real, dimension(m,n) :: MAT!>input/output matrix
-            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-          end subroutine dorgqr
-      end interface
+      ! interface
+      !     !> @brief Interface to Lapack to show a Q matrix computed using dgeqp3
+      !     subroutine dorgqr(m, n, k, mat, lda, tau, work, lwork, info)
+      !       implicit none
+      !       integer :: m,n !>Rows and colums respectively
+      !       integer :: lda !>The first dimension of a
+      !       integer :: lwork!> The size of the work array; 0 == best performance
+      !       integer :: info!>If info = -i, the i-th parameter had an illegal value
+      !       integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+      !       real, dimension(m,n) :: MAT!>input/output matrix
+      !       real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+      !       real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      !     end subroutine dorgqr
+      ! end interface
 
       interface
           !> @brief LAPACK subroutine to perform Q times C, Q obtained using dgeqp3

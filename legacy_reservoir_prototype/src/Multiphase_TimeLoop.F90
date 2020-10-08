@@ -815,7 +815,10 @@ contains
                 call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat, default = 1.1)
                 !For porous media we need to use the Courant number obtained in cv_assemb
                 if (is_porous_media) then
-                    c = max ( c, Courant_number(1) )
+                  !We use stat here as a normal integer
+                  stat = 1
+                  if (have_option("/timestepping/adaptive_timestep/requested_cfl/Shock_front_CFL")) stat = 2
+                  c = max ( c, Courant_number(stat) )
                     ! ewrite(1,*) "maximum cfl number at", current_time, "s =", c
                 else
                     do iphase = 1, Mdims%nphase
