@@ -1460,6 +1460,14 @@ This option is useful if your field is suddenly changing after adapting the mesh
             </element>
           </optional>
           <optional>
+            <element name="shock_front_tolerance">
+              <a:documentation>Use this parameter to help identifiying moving fronts.
+This is the value above which the field is considered to be a shock-front.
+Necessary to avoid, parts of the domain that are static but may have a higher velocity than the shock-front. The default value is 0.05. If it does not identify it, try increasing it for example to 0.5</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+          <optional>
             <element name="lump_mass_matrix">
               <a:documentation>Use the row-sum method to create a lumped mass matrix.
 For porous media this will not have an effect.

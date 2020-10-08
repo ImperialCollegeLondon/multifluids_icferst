@@ -1195,6 +1195,12 @@ start =
             element use_reflect_method {
                empty
             }?,
+            ## Use this parameter to help identifiying moving fronts.
+            ## This is the value above which the field is considered to be a shock-front.
+            ## Necessary to avoid, parts of the domain that are static but may have a higher velocity than the shock-front. The default value is 0.05. If it does not identify it, try increasing it for example to 0.5
+            element shock_front_tolerance {
+               real
+            }?,           
             ## Use the row-sum method to create a lumped mass matrix.
             ## For porous media this will not have an effect.
             ## Also options to convert P1DG into P0DG and introduce the temporal terms into the mass matrix
