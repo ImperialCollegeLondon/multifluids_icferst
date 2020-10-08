@@ -145,6 +145,7 @@ contains
         integer :: ncv_faces
         !Courant number for porous media
         real, dimension(2) :: Courant_number = -1!Stored like this[Courant_number, Shock-front Courant number]
+        real, dimension(2) :: local_Courant_number !To be used in saturation and concentration and then use the maximum as Courant number
         !Variables for adapting the mesh within the FPI solver
         logical :: adapt_mesh_in_FPI
         real :: Accum_Courant = 0., Courant_tol
@@ -610,9 +611,9 @@ contains
                     call VolumeFraction_Assemble_Solve( state, packed_state, multicomponent_state,&
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, &
                         Mmat, multi_absorp, upwnd, eles_with_pipe, pipes_aux, dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, Courant_number, &
+                        ScalarField_Source_Store, Porosity_field%val, igot_theta_flux, mass_ele, its, SFPI_taken, local_Courant_number, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
-
+                    Courant_number = max(Courant_number, local_Courant_number)
                 end if Conditional_PhaseVolumeFraction
 
                 !#=================================================================================================================
@@ -646,8 +647,8 @@ contains
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = .true.,&
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
+                        saturation=saturation_field, nonlinear_iteration = its, Courant_number = local_Courant_number)
+                    Courant_number = max(Courant_number, local_Courant_number)
                     call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 else IF (is_magma) then !... in which case we solve for enthalpy instead
@@ -699,8 +700,8 @@ contains
                        !!$
                        0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                        THETA_GDIFF, eles_with_pipe, pipes_aux, &
-                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
-
+                       saturation=saturation_field, nonlinear_iteration = its, Courant_number = local_Courant_number)
+                  Courant_number = max(Courant_number, local_Courant_number)
                    nullify(tracer_field)
 
                 end if Conditional_ScalarAdvectionField2
