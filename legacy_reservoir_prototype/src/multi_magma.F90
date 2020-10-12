@@ -111,7 +111,7 @@ contains
     real :: mu !liquid viscosity needs to be build later
     real :: low,high !transition points
     real :: H,s !value of the smoothing function and the smoothing factor
-    logical :: Test=.true. ! set to true to have uniform Darcy-like c coefficient
+    logical :: Test=.false. ! set to true to have uniform Darcy-like c coefficient
     type( tensor_field ), pointer :: t_field !liquid viscosity
     type(coupling_term_coef), intent(in) :: coupling
 
@@ -130,17 +130,17 @@ contains
 
     if (Test) then
       do i=2, N
-        series(i)= 1/coupling%a/d**2*mu*phi(i)**(2-coupling%b)
+        series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)
       end do
     else
       do i=2, N
         if (phi(i)<=low) then
-          series(i)= 1/coupling%a/d**2*mu*phi(i)**(2-coupling%b)
+          series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)
         else if (phi(i)>=high) then
           series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))
         else
           H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
-          series(i)=1/coupling%a/d**2*mu*phi(i)**(2-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
+          series(i)=coupling%a/d**2*mu*phi(i)**(2-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
         end if
       end do
     end if
@@ -327,10 +327,11 @@ contains
     saturation=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
     !Calculate temperature using the generic formula H = T_alpha * rho_alpha * Cp_alpha * Saturation_alpha + Lf * phi (phi = Saturation_2)
+    enthalpy%val=0.0
     do cv_nodi = 1, Mdims%cv_nonods
       do iphase = 1, Mdims%nphase
         !First enthalpy stored in each phase
-        enthalpy%val(1,1,cv_nodi)= temperature%val(1,1,cv_nodi) * rhoCp%val(1,iphase, cv_nodi) * saturation%val(1,iphase,cv_nodi) ! sprint_to_do Need to fix for variable heat capacity.
+        enthalpy%val(1,1,cv_nodi)=enthalpy%val(1,1,cv_nodi)+ temperature%val(1,1,cv_nodi) * rhoCp%val(1,iphase, cv_nodi) * saturation%val(1,iphase,cv_nodi) ! sprint_to_do Need to fix for variable heat capacity.
       end do
       !Now consider the latent heat
       enthalpy%val(1,1,cv_nodi)= enthalpy%val(1,1,cv_nodi) + phase_coef%Lf*saturation%val(1,2,cv_nodi)
@@ -457,7 +458,7 @@ contains
             mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
             cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
             DO IPHASE = 1, Mdims%nphase
-              magma_coupling = c_value(saturation%val(1,2, cv_inod))   ! now turned off
+              magma_coupling = c_value(saturation%val(1,2, cv_inod))
               do jphase = 1, Mdims%nphase
                 if (jphase == iphase) then
                   Magma_absorp%val(1, iphase, jphase, mat_nod ) = -magma_coupling
