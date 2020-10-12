@@ -458,8 +458,8 @@ contains
         if (is_magma) then
           c_phi_length=Mdims%cv_nonods*10 !SPRINT_TO_DO: We need a proper number here!1e7  !> the number of items of the coupling term coefficients stored in the system
           allocate(c_phi_series(c_phi_length))
-          call C_generate (c_phi_series, c_phi_length, state, coupling)
           call initialize_magma_parameters(magma_phase_coef,  coupling)
+          call C_generate (c_phi_series, c_phi_length, state, coupling)
           !This is important to specify EnthalpyOld based on the temperature which is easier for the user
           !WHAT ABOUT THE BCS? FOR THE TIME BEING WE NEED ENTHALPY BCs...
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
@@ -712,10 +712,10 @@ contains
                   allocate(Compostion_temp(Mdims%cv_nonods), melt_temp(Mdims%cv_nonods))
                   Compostion_temp= tracer_field%val(1,2,:); melt_temp = saturation_field%val(1,2,:)! second phase is the melt!
 
-                  !Here we  Calculate melt fraction from phase diagram
-                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   ! ! Update the temperature field
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
+                  !Here we  Calculate melt fraction from phase diagram
+                  call porossolve(state,packed_state, Mdims, ndgln, magma_phase_coef)
                   ! ! Update the composition
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
                   ! Calulate the composition source term
