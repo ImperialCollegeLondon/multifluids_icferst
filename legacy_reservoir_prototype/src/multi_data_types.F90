@@ -223,7 +223,6 @@ module multi_data_types
                                           !>    Memory_type = 6-> Isotropic Symmetric tensors
         type (multi_field) :: Components
         type (multi_field) :: Temperature
-        !>! Arash
         type (multi_field) :: SaltConcentration
         type (multi_field) :: Velocity
         !>Magma absorption
@@ -1413,7 +1412,6 @@ contains
         !(field -saturation, temperature-, Mdims%nphase, size(outfluxes%outlet_id))
         ! allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
 
-        !Arash
         ! if (has_salt) k = k + 2
         allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
 

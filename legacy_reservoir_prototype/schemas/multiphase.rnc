@@ -357,7 +357,10 @@ start =
                ## number. Timestep adapts occur at the end of each
                ## timestep and after a mesh adapt.
                element requested_cfl {
-                  real
+                  real,(
+                  ## For porous media use the shock-front CFL instead.
+                  element Shock_front_CFL {empty}?
+                  )
                },
                ## Multiplier of the requested CFL based on which the pressure and velocity fields
                ## will be recalculated. Otherwise, the pressure will not be updated.
@@ -1009,6 +1012,66 @@ start =
                  attribute file_path { string }
                 }*
              }?,
+          ## Activates the Self_potential solver. 
+          ##
+          ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, 
+          ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
+          ##
+          ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
+          element Self_Potential{(
+            element scalar_field {
+               attribute name { "Self_Potential" },
+               (
+                element diagnostic {
+                  pressure_mesh_choice,
+                  internal_algorithm,
+                  diagnostic_scalar_field,
+                  output_options
+                  }
+               )
+            },
+           ## <b>Input coordinates of desired reference node (voltage = 0), this would be normally the top of the well</b>. If a node does not exist at these
+           ## coordinates, the nearest vertex will be selected.
+           element reference_coordinates {
+              real_dim_vector
+           }, 
+           ## <b>If not solving for temperature</b>: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.
+	         element Reservoir_temperature {
+	         	real
+		        }?,
+		       ## Cementation exponent, by default 1.8, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
+	         element Cementation_exp {
+	         	real
+		        }?,        
+		       ## Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
+	         element Sat_exponent {
+	         	real
+		        }?,
+		       ## By default the results are shown in miliVolts, select this to show the results in Volts. 
+	         element Results_in_Volts {
+	         	empty
+		        }? ,
+           ## Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_Rock_sat_conductivity_code{
+             scalar_python_diagnostic_algorithm
+               }?,   
+           ## Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_ElectroKinetic_code{
+             scalar_python_diagnostic_algorithm
+               }?, 
+           ## Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_Electrodiffusive_code{
+             scalar_python_diagnostic_algorithm
+               }?,  
+           ## Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
+           ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
+           element python_Thermoelectric_code{
+             scalar_python_diagnostic_algorithm
+               }?                  
+          )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
 	        ## This is used to initialise the porous media model, defining the initial saturation and pressure. Currently for two-phase models.
@@ -1523,7 +1586,7 @@ solver_options =
         (
         ## Maximum restart iteration allowed. The default value is 15.
          element restart_its {
-           real}?,
+           integer}?,
         ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
          element Max_restarts {
            real}?,  
@@ -2757,7 +2820,7 @@ scalar_field_choice =
              (
                 element diagnostic {
                    internal_algorithm,
-                   velocity_mesh_choice,
+                   pressure_mesh_choice,
                    diagnostic_scalar_field
                 }|
                 element aliased {

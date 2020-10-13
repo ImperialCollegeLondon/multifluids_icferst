@@ -156,7 +156,7 @@ contains
             Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
             Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
         end if
-        if( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
+        if( have_option( "/geometry/mesh::HydrostaticPressure/" ) ) then
             ph_mesh => extract_mesh( state( 1 ), 'HydrostaticPressure', stat )
             if ( stat == 0 ) then
                 Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
@@ -844,7 +844,6 @@ contains
             call deallocate(element_shape)
             element_mesh=>extract_mesh(packed_state,'P0DG')
         end if
-        !Arash
         if(has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
             ldfield=>extract_scalar_field(state(1),"Longitudinal_Dispersivity")
             element_mesh=>ldfield%mesh
@@ -949,7 +948,6 @@ contains
             call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
         end if
 
-        !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
@@ -1099,7 +1097,6 @@ contains
             call assign_val(vfield%val(2,:),sfield%val)
         end if
 
-        !Arash
         if (has_scalar_field(state(1),"Longitudinal_Dispersivity")) then
           call allocate(Longitudinal_Dispersivity,npres,element_mesh,"Longitudinal_Dispersivity")
           do ipres = 1, npres
@@ -1314,7 +1311,6 @@ contains
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
         end if
 
-        !! Arash
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"SoluteMassFraction")
         end if
@@ -3529,7 +3525,6 @@ end subroutine get_DarcyVelocity
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
-                !Arash
                 if (has_salt) then
                     do iphase = 1, size(outfluxes%intflux,1)
                         write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum solutemassfraction"
@@ -3558,7 +3553,6 @@ end subroutine get_DarcyVelocity
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
             end if
-            !Arash
             if (has_salt) then
                 do iphase = 1, size(outfluxes%intflux,1)
                     write(tempstring(iphase),'(E17.11)') outfluxes%totout(3, iphase,ioutlet)

@@ -18,6 +18,8 @@
 
 
 module multi_tools
+    use python_state
+    use state_module
     use fldebug
     use futils
     use spud
@@ -792,20 +794,20 @@ END subroutine RotationMatrix
       integer, dimension(size(A,1)) :: jpvt
       real, parameter :: tolerance_rank = 1d-12
 
-      interface
-        !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
-          subroutine dgeqrf(m, n, MAT, lda, tau, work, lwork, info)
-            implicit none
-            integer :: m!>Rows of MAT
-            integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
-            integer :: lda !>The first dimension of MAT
-            integer :: lwork!> The size of the work array; 0 == best performance
-            integer :: info!>If info = -i, the i-th parameter had an illegal value
-            real, dimension(lda,n) :: MAT!>input/output matrix
-            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-          end subroutine dgeqrf
-      end interface
+      ! interface
+      !   !> @brief QR decomposition, returned in A, Q and R mixed, no pivoting!
+      !     subroutine dgeqrf(m, n, MAT, lda, tau, work, lwork, info)
+      !       implicit none
+      !       integer :: m!>Rows of MAT
+      !       integer :: n !>Columns of MAT; Constraint: m >= n > = 0.
+      !       integer :: lda !>The first dimension of MAT
+      !       integer :: lwork!> The size of the work array; 0 == best performance
+      !       integer :: info!>If info = -i, the i-th parameter had an illegal value
+      !       real, dimension(lda,n) :: MAT!>input/output matrix
+      !       real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+      !       real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      !     end subroutine dgeqrf
+      ! end interface
 
       interface
         !> @brief QR decomposition, returned in A, Q and R mixed, with pivoting! (PREFERRED, obviously!)
@@ -823,20 +825,20 @@ END subroutine RotationMatrix
           end subroutine dgeqp3
       end interface
 
-      interface
-          !> @brief Interface to Lapack to show a Q matrix computed using dgeqp3
-          subroutine dorgqr(m, n, k, mat, lda, tau, work, lwork, info)
-            implicit none
-            integer :: m,n !>Rows and colums respectively
-            integer :: lda !>The first dimension of a
-            integer :: lwork!> The size of the work array; 0 == best performance
-            integer :: info!>If info = -i, the i-th parameter had an illegal value
-            integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
-            real, dimension(m,n) :: MAT!>input/output matrix
-            real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
-            real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
-          end subroutine dorgqr
-      end interface
+      ! interface
+      !     !> @brief Interface to Lapack to show a Q matrix computed using dgeqp3
+      !     subroutine dorgqr(m, n, k, mat, lda, tau, work, lwork, info)
+      !       implicit none
+      !       integer :: m,n !>Rows and colums respectively
+      !       integer :: lda !>The first dimension of a
+      !       integer :: lwork!> The size of the work array; 0 == best performance
+      !       integer :: info!>If info = -i, the i-th parameter had an illegal value
+      !       integer :: k !>The number of elementary reflectors whose product defines the matrix Q. Constraint 0 ≤k≤m if side='L'; 0 ≤k≤n if side='R'.
+      !       real, dimension(m,n) :: MAT!>input/output matrix
+      !       real, dimension(N) :: tau!>Contains scalar factors of the elementary reflectors for the matrix Q.
+      !       real, dimension(3*n+1) :: work!>work is a workspace array, its dimension max(1, lwork).
+      !     end subroutine dorgqr
+      ! end interface
 
       interface
           !> @brief LAPACK subroutine to perform Q times C, Q obtained using dgeqp3
@@ -902,5 +904,42 @@ END subroutine RotationMatrix
           B(:,J) = WORK(1:ldb)
       end do
     end subroutine Least_squares_solver
+
+
+    !> @brief: This subroutine uses python run string to run the python_scalar_diagnostic to read a field
+    !> the only difference with the normal approach is that here the Dummy field is used and the returned field is an array.
+    !> IMPORTANT: state is used here, NOT packed_state
+    subroutine compute_python_scalar_field(state, option_path_python, scalar_result)
+      implicit none
+      type( state_type ), dimension(:), intent( inout ) :: state
+      character( len = * ), intent(in) :: option_path_python
+      real, dimension(:), intent(inout) :: scalar_result
+      !Local variables
+      type (scalar_field), pointer :: sfield
+      character( len = python_func_len ) :: pycode
+
+      if (.not.have_option("/material_phase[0]/scalar_field::Dummy")) then
+          ewrite(0, *) "ERROR: Trying to compute a python scalar_field without enabling the Dummy field in the first phase."
+        stop 657483
+      end if
+
+
+      call python_reset()
+      call python_add_state( state(1) )
+      sfield => extract_scalar_field(state(1), "Dummy")
+      sfield%val = 0.
+      call python_run_string("field = state.scalar_fields['Dummy']")
+      ! call get_option("/timestepping/current_time", current_time)
+      ! write(buffer,*) current_time
+      ! call python_run_string("time="//trim(buffer))
+      ! call get_option("/timestepping/timestep", dt)
+      ! write(buffer,*) dt
+      ! call python_run_string("dt="//trim(buffer))
+      ! Get the code
+      call get_option( trim( option_path_python ) // '/algorithm', pycode )
+      ! Run the code
+      call python_run_string( trim( pycode ) )
+      scalar_result = sfield%val
+    end subroutine
 
 end module multi_tools

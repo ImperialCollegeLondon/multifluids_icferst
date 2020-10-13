@@ -763,7 +763,7 @@ contains
           call set_option(trim(option_path)//"from_mesh/mesh_shape/element_type", "lagrangian")
           call add_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", stat=stat)
           call get_option( '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/polynomial_degree', k )
-          if (k == 0) then !For P0DG we use a hydrostatic pressure solver of order one. sprint_to_do => this is because it is unfinished but I am not sure if it is worth it
+          if (k == 0) then !For P0DG we use a hydrostatic pressure solver of order one.
             call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 1)
           else
             call set_option(trim(option_path)//"from_mesh/mesh_shape/polynomial_degree", 2)
@@ -771,6 +771,7 @@ contains
           call add_option(trim(option_path)//"from_mesh/stat/exclude_from_stat", stat=stat)
           !Do we need the user to create a HydrostaticPressure scalar field? maybe not
         end if
+
 
         !#########GEOMETRY AND PRECISION OPTIONS#################
 
@@ -946,7 +947,7 @@ contains
               end if
             end if
 
-            if (have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") .and. i == 1) then
+            if ((have_option("/physical_parameters/gravity/hydrostatic_pressure_solver") ) .and. i == 1) then
               !Add a prognostic field named HydrostaticPressure (do we need BCs or initial conditions for this?)
               !This is only required for the first phase
               option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::HydrostaticPressure"
@@ -969,8 +970,6 @@ contains
               end if
 
             end if
-
-
             ! SCALAR_FIELD(PRESSURE) OPTIONS ADDED AUTOMATICALLY
             option_path = "/material_phase["// int2str( i - 1)//"]/scalar_field::Pressure/prognostic"
             if (have_option(trim(option_path))) then
@@ -1087,7 +1086,6 @@ contains
         is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
-        !Arash
         has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
 
         ! Check if Porous media model initialisation
