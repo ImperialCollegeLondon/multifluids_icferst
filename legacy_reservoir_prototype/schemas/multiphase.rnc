@@ -983,9 +983,9 @@ start =
                       element phase_exclude{ integer }
                    }?,
                     ## If when using mesh adaptivity the well path is disappearing, this tolerance can probably solve the problem.
-                    ## .bdf files have only 6 digits precision, therefore for coordinates bigger than 1000 this values might need to be reduced and
+                    ## .bdf files have only 6 digits precision, therefore for coordinates bigger than kilometres this value might need to be increased and
                     ## the other way round for values below 100.
-                    ## The default value is 1e-2.
+                    ## The default value is 1e-2. If the domain size is below 10m it is automatically set to 1e-4
                     element wells_bdf_tolerance {
                       real
                      }?
