@@ -770,6 +770,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   END SUBROUTINE ENTHALPY_ASSEM_SOLVE
 
 
+  !! Arash
   !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
   !> @brief Calls to generate and solve the transport equation for the concentration field.
   !---------------------------------------------------------------------------
@@ -8628,7 +8629,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
     end subroutine get_diagonal_mass_matrix
 
 
-    !>@brief: In this method we assemble and solve the Laplacian system using at least P1 elements
+
     !> The equation solved is the following: Div sigma Grad X = - SUM (Div K Grad F) with Neuman BCs = 0
     !> where K and F are passed down as a vector. Therefore for n entries the SUM will be performed over n fields
     !> Example: F = (3, nphase, cv_nonods) would include three terms in the RHS and the same for K
