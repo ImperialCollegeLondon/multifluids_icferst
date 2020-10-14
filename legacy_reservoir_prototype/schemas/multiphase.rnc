@@ -998,6 +998,10 @@ start =
                 element well_volume_ids {
                   integer_vector,
                       (
+                        ## Lock nodes within the well volumes/sleeves.
+                        ## <b> Very useful to reduce oscillations in the system when using mesh adaptivity</b>. 
+                        ## Very recommended. ONLY WORKS FOR 3D.
+                        element Lock_well_volumes{comment}?,
                         ## Output the ids of the wells
                         element Show_well_volumes_ids{comment}?
                       )

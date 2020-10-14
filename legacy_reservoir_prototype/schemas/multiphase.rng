@@ -1209,12 +1209,22 @@ that the well trajectories are preserved.
 
 &lt;b&gt;This is MANDATORY when using files to define wells&lt;/b&gt;</a:documentation>
                   <ref name="integer_vector"/>
-                  <optional>
-                    <element name="Show_well_volumes_ids">
-                      <a:documentation>Output the ids of the wells</a:documentation>
-                      <ref name="comment"/>
-                    </element>
-                  </optional>
+                  <group>
+                    <optional>
+                      <element name="Lock_well_volumes">
+                        <a:documentation>Lock nodes within the well volumes/sleeves.
+&lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;. 
+Very recommended. ONLY WORKS FOR 3D.</a:documentation>
+                        <ref name="comment"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="Show_well_volumes_ids">
+                        <a:documentation>Output the ids of the wells</a:documentation>
+                        <ref name="comment"/>
+                      </element>
+                    </optional>
+                  </group>
                 </element>
               </optional>
               <zeroOrMore>
