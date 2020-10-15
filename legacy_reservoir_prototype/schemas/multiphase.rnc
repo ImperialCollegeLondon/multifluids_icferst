@@ -1001,11 +1001,11 @@ start =
                         ## Lock nodes within the well volumes/sleeves.
                         ## <b> Very useful to reduce oscillations in the system when using mesh adaptivity</b>. 
                         ## Very recommended. ONLY WORKS FOR 3D.
-                        element Lock_well_volumes{comment}?,
+                        element Lock_sleeve_nodes{comment}?,
                         ## Output the ids of the wells
                         element Show_well_volumes_ids{comment}?
                       )
-                 }?,
+                 },
                  ## Introduce here the relative path to the file defining a 1D well
                  ## Note: <b>the only accepted file format is NASTRAN, i.e. .bdf.</b>
                  ## Each file has to describe a continuous well touching an external boundary.

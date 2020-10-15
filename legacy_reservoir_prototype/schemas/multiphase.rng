@@ -1202,31 +1202,29 @@ The default value is 1e-2. If the domain size is below 10m it is automatically s
                   </optional>
                 </element>
               </optional>
-              <optional>
-                <element name="well_volume_ids">
-                  <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
+              <element name="well_volume_ids">
+                <a:documentation>When using mesh adaptivity, introduce here the ids of the prisms of the wells to ensure
 that the well trajectories are preserved.
 
 &lt;b&gt;This is MANDATORY when using files to define wells&lt;/b&gt;</a:documentation>
-                  <ref name="integer_vector"/>
-                  <group>
-                    <optional>
-                      <element name="Lock_well_volumes">
-                        <a:documentation>Lock nodes within the well volumes/sleeves.
+                <ref name="integer_vector"/>
+                <group>
+                  <optional>
+                    <element name="Lock_sleeve_nodes">
+                      <a:documentation>Lock nodes within the well volumes/sleeves.
 &lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;. 
 Very recommended. ONLY WORKS FOR 3D.</a:documentation>
-                        <ref name="comment"/>
-                      </element>
-                    </optional>
-                    <optional>
-                      <element name="Show_well_volumes_ids">
-                        <a:documentation>Output the ids of the wells</a:documentation>
-                        <ref name="comment"/>
-                      </element>
-                    </optional>
-                  </group>
-                </element>
-              </optional>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="Show_well_volumes_ids">
+                      <a:documentation>Output the ids of the wells</a:documentation>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
+                </group>
+              </element>
               <zeroOrMore>
                 <element name="well_from_file">
                   <a:documentation>Introduce here the relative path to the file defining a 1D well

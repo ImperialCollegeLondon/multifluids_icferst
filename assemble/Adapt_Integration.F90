@@ -381,7 +381,7 @@ contains
     call interleave_surface_ids(input_positions%mesh, surfid, max_coplanar_id)
 
     !We may want to lock the nodes within the sleeves of the wells
-    if (have_option("/porous_media/wells_and_pipes/well_volume_ids/Lock_well_volumes")) then
+    if (have_option("/porous_media/wells_and_pipes/well_volume_ids/Lock_sleeve_nodes")) then
       shape = option_shape('/porous_media/wells_and_pipes/well_volume_ids')
       assert(shape(1) >= 0)
       allocate(well_ids(shape(1)))
