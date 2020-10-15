@@ -1421,7 +1421,6 @@ contains
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   !and the shock-front Courant number
-
                                   if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
                                       !ndotq = velocity * normal
                                       Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
@@ -6996,14 +6995,16 @@ end if
         integer :: iphase, cv_iloc
         real :: minival, maxival, aux
         real, parameter :: tol = 0.05!Shock fronts smaller than this are unlikely to require extra handling
-        minival = 1e6; maxival = -1e6
+
+        minival = 10.; maxival = 0.
         do cv_iloc = 1, Mdims%cv_nloc
-            do iphase = 1, size(sat,1)
+            do iphase = 1, mdims%nphase - 1
                 aux = sat(iphase, ndgln%cv((ELE-1)*Mdims%cv_nloc+cv_iloc)) - Imble_frac(iphase)
                 minival = min(aux, minival)
                 maxival = max(aux, maxival)
             end do
         end do
+
         shock_front_in_ele = minival < tol .and. (maxival-minival) > tol
 
     end function shock_front_in_ele

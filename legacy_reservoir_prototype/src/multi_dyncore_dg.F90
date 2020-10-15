@@ -993,12 +993,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    eles_with_pipe =eles_with_pipe, pipes_aux = pipes_aux,&
                    solving_compositional = lcomp > 0, &
                    VAD_parameter = OvRelax_param, Phase_with_Pc = Phase_with_Ovrel, Courant_number=Courant_number)
-
-                   !Make the inf norm of the Courant number across cpus
-                   if (IsParallel()) then
-                      call allmax(Courant_number(1)); call allmax(Courant_number(2))
-                   end if
-
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
