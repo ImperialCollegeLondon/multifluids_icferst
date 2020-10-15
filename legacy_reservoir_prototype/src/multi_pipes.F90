@@ -2191,6 +2191,7 @@ contains
             logical :: found
             integer :: i, j, l, count
             integer :: sele, siloc, sinod, ele, iloc, inod
+            real :: max_dim, min_dim
             real, dimension(Mdims%stotel) :: aux_pipe_seeds
             aux_pipe_seeds = -1
             !Initialise tolerancePipe just once per simulation
@@ -2198,6 +2199,10 @@ contains
                 first_time = .false.
                 if (have_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance')) then
                     call get_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
+                else !Check roughly if the domain size is around meters then change the tolerancePipe from 1e-2 to 1e-4
+                  max_dim = maxval(X); call allmax(max_dim)
+                  min_dim = minval(X); call allmin(min_dim)
+                  if (abs(max_dim-min_dim)< 10.) tolerancePipe = 1e-4
                 end if
             end if
 
