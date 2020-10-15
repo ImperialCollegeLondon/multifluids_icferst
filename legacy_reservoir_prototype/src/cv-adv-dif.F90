@@ -459,11 +459,6 @@ contains
           logical :: asssembling_enthalpy = .false.
           real, dimension(:), allocatable :: ENTH_RHS_DIFF_COEF_DIVDX
           real, dimension(:,:), allocatable :: ENTH_RHS_DIFFUSION
-          !Tolerance to identify shock_fronts
-          real :: shock_front_tolerance
-
-          !Retrieve the value if it different to the default one
-          call get_option("/numerical_methods/shock_front_tolerance", shock_front_tolerance, default= 0.05)
           !Logical to identify if we are assembling for enthalpy, which requires an special RHS
           asssembling_enthalpy = present(Latent_heat)
 
@@ -1427,7 +1422,7 @@ contains
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   !and the shock-front Courant number
 
-                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE), shock_front_tolerance)) then
+                                  if (shock_front_in_ele(ele, Mdims, T_ALL, ndgln, Imble_frac(:, ELE))) then
                                       !ndotq = velocity * normal
                                       Courant_number(2) = max(Courant_number(2), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
                                   end if
@@ -6989,7 +6984,7 @@ end if
     end subroutine triloccords2d
 
 
-    logical function shock_front_in_ele(ele, Mdims, sat, ndgln, Imble_frac, tolerance)
+    logical function shock_front_in_ele(ele, Mdims, sat, ndgln, Imble_frac)
         !Detects whether the element has a shockfront or not
         implicit none
         integer :: ele
@@ -6997,11 +6992,10 @@ end if
         real, dimension(:,:), intent(in) :: sat !(saturations of an element)
         real, dimension(:), intent(in) ::Imble_frac
         type(multi_ndgln), intent(in) :: ndgln
-        real, intent(in) :: tolerance
         !Local variables
         integer :: iphase, cv_iloc
         real :: minival, maxival, aux
-        real, parameter :: tol = 0.5!Shock fronts smaller than this are unlikely to require extra handling
+        real, parameter :: tol = 0.05!Shock fronts smaller than this are unlikely to require extra handling
         minival = 1e6; maxival = -1e6
         do cv_iloc = 1, Mdims%cv_nloc
             do iphase = 1, size(sat,1)
@@ -7010,7 +7004,7 @@ end if
                 maxival = max(aux, maxival)
             end do
         end do
-        shock_front_in_ele = minival < tolerance .and. (maxival-minival) > tolerance
+        shock_front_in_ele = minival < tol .and. (maxival-minival) > tol
 
     end function shock_front_in_ele
 
