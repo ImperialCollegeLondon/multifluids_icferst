@@ -2,7 +2,7 @@
 <testproblem>
   <name>SP_ED_test</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml SelfPotentialED</tags>
+  <tags>porous mpml SelfPotential</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst ./*.mpml</command_line>
   </problem_definition>
