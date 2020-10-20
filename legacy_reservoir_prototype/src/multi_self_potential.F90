@@ -278,7 +278,7 @@ module multi_SP
               Tna = get_Hittorf_transport_number(Concentration(cv_inod))
               Cf = Concentration(cv_inod) + Tol!To avoid divisions by zero
               if (has_temperature) temp = Temperature(cv_inod)
-              coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * temp/Cf
+              coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * temp/Cf            
               coupling_coef_ee(cv_inod) = - 8.61e-2 * temp/Cf
             end do
         end if
@@ -303,7 +303,7 @@ module multi_SP
             end do
           end do
           !Obtain the average since we have overlooped cv nodes
-          coupling_coef = coupling_coef/cv_counter * 1e-3!To convert from mV to Volts only flags 2 and 3
+          coupling_coef = coupling_coef/cv_counter *1e-3 !To convert from mV to Volts only flags 2 and 3
         end if
 
         !#############Using python######################

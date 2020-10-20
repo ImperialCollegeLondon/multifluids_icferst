@@ -7330,7 +7330,7 @@ end if
                   LOC_CV_RHS_I=0.0; LOC_MAT_II =0.
                   LOC_CV_RHS_J=0.0; LOC_MAT_JJ =0.
                   LOC_MAT_IJ = 0.0; LOC_MAT_JI =0.
-                  !Assemble off-diagonal cv_nodi-cv_nodj
+                  !Assemble
                   do iphase = 1, local_phases
                     LOC_MAT_IJ(iphase) = LOC_MAT_IJ(iphase) - SdevFuns%DETWEI( GI ) * SIGMA_DIFF_COEF_DIVDX(iphase)
                     !Assemble off-diagonal
@@ -7384,7 +7384,7 @@ end if
           !Harmonic mean, also used for Rock saturated conductivity
         else if ((intface_type <= 20 .and. intface_type > 0) .and. .not. div_by_zero) then
           get_DIFF_COEF_DIVDX = Value_i * Value_j * (W_j + W_i)/(Value_i *W_j + Value_j*W_i )
-          !40 is for the mean of the coupling terms
+        !   !40 is for the mean of the coupling terms
         else if (intface_type > 20 .and.  (abs(Sigma_i + Sigma_j) > 1e-15) ) then
           get_DIFF_COEF_DIVDX = (Value_i * Sigma_j * W_i + Sigma_i * Value_j *W_j) / &
           (W_j*Sigma_i + W_i*Sigma_j)
