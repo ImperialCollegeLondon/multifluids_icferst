@@ -211,29 +211,13 @@ subroutine multiphase_prototype_wrapper() bind(C)
     !                          nonlinear_iterations, nonlinear_iteration_tolerance, &
     !                          dump_no)
 
-!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
-
-#else
-  call PetscLogStageRegister("Prelim",stages(0),ierr)
-  ! call PetscLogStageRegister("Second Solve",stages(1),ierr)
-  call PetscLogStagePush(stages(0),ierr)
-#endif
-#endif
-
+call petsc_logging(1,stages,ierr,default=.false., push_no=0, stage_name="WRAP")
+call petsc_logging(2,stages,ierr,default=.true., push_no=0)
 
     call MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
-
-#else
-  call PetscLogStagePop(ierr)
-#endif
-#endif
+call petsc_logging(3,stages,ierr,default=.true.)
 
 
     call close_diagnostic_files()

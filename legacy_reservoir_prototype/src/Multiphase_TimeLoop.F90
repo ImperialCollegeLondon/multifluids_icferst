@@ -69,6 +69,7 @@ module multiphase_time_loop
     use multi_pipes
     use multi_magma
     use multi_SP
+    use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
 
 #ifdef HAVE_ZOLTAN
@@ -480,23 +481,18 @@ contains
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
         end if
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
 
-#else
-  call PetscLogStagePop(ierrr)
-  call PetscLogStageRegister("TL Prelim",stages(1),ierr)
-  call PetscLogStageRegister("Force Solve",stages(2),ierr)
-  call PetscLogStageRegister("Saturation Solve",stages(3),ierr)
-  call PetscLogStageRegister("Temp Solve",stages(4),ierr)
-  call PetscLogStageRegister("Component Solve",stages(5),ierr)
-  call PetscLogStageRegister("dt and VTU",stages(6),ierr)
-  call PetscLogStageRegister("Adaptivity",stages(7),ierr)
-  call PetscLogStageRegister("Rest",stages(8),ierr)
-  call PetscLogStagePush(stages(1),ierrr)
-#endif
-#endif
+        call petsc_logging(3,stages,ierrr,default=.true.)
+        !call petsc_logging(1,stages,ierrr,default=.true.)
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=1, stage_name="PRELIM")
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=2, stage_name="FORCE")
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=3, stage_name="SATURATION")
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=4, stage_name="TEMP")
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=5, stage_name="COMP")
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=6, stage_name="DT+VTU ")
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=7, stage_name="ADAPT")
+        call petsc_logging(1,stages,ierrr,default=.false., push_no=8, stage_name="REST")
+        call petsc_logging(2,stages,ierrr,default=.true., push_no=1)
 
         !!$ Time loop
         Loop_Time: do
@@ -615,15 +611,9 @@ contains
 
                 !#=================================================================================================================
 
-!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
+                call petsc_logging(3,stages,ierrr,default=.true.)
+                call petsc_logging(2,stages,ierrr,default=.true., push_no=2)
 
-#else
-  call PetscLogStagePop(ierr)
-  call PetscLogStagePush(stages(2),ierr)
-#endif
-#endif
                 !#=================================================================================================================
                 !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
                 !#=================================================================================================================
@@ -647,15 +637,8 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken, its)
                 end if Conditional_ForceBalanceEquation
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
-
-#else
-  call PetscLogStagePop(ierr)
-  call PetscLogStagePush(stages(3),ierr)
-#endif
-#endif
+                call petsc_logging(3,stages,ierrr,default=.true.)
+                call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
@@ -670,15 +653,8 @@ contains
 
                 end if Conditional_PhaseVolumeFraction
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
-
-#else
-  call PetscLogStagePop(ierr)
-  call PetscLogStagePush(stages(4),ierr)
-#endif
-#endif
+              call petsc_logging(3,stages,ierrr,default=.true.)
+              call petsc_logging(2,stages,ierrr,default=.true., push_no=4)
                 !#=================================================================================================================
                 !# End Saturation -> Move to -> Velocity Update
                 !#=================================================================================================================
@@ -771,15 +747,9 @@ contains
 
                 !#=================================================================================================================
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
+                  call petsc_logging(3,stages,ierrr,default=.true.)
+                  call petsc_logging(2,stages,ierrr,default=.true., push_no=5)
 
-#else
-  call PetscLogStagePop(ierr)
-  call PetscLogStagePush(stages(5),ierr)
-#endif
-#endif
                 !Solve for components here
                 if (have_component_field) then
 
@@ -795,15 +765,8 @@ contains
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
-
-#else
-  call PetscLogStagePop(ierr)
-  call PetscLogStagePush(stages(6),ierr)
-#endif
-#endif
+                  call petsc_logging(3,stages,ierrr,default=.true.)
+                  call petsc_logging(2,stages,ierrr,default=.true., push_no=6)
 
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
@@ -883,15 +846,8 @@ contains
             call create_dump_vtu_and_checkpoints()
 
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
-
-#else
-  call PetscLogStagePop(ierr)
-  call PetscLogStagePush(stages(7),ierr)
-#endif
-#endif
+            call petsc_logging(3,stages,ierrr,default=.true.)
+            call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
@@ -899,15 +855,9 @@ contains
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
 
-!!! -ao PETSC_DEBUG testing of staged logging
-#ifdef HAVE_PETSC_DBUG
-#if PETSC_VERSION_MINOR<8
+            call petsc_logging(3,stages,ierrr,default=.true.)
+            call petsc_logging(2,stages,ierrr,default=.true., push_no=8)
 
-#else
-  call PetscLogStagePop(ierr)
-  call PetscLogStagePush(stages(8),ierr)
-#endif
-#endif
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
                 call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
