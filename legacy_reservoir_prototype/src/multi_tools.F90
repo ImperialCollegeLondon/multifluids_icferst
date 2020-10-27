@@ -953,13 +953,15 @@ END subroutine RotationMatrix
 
     !---------------------------------------------------------------------------
     !> @author Asiri Obeysekara
-    !> @brief
+    !> @brief Subroutines that can initialise, register and start/end a petsc
+    !> performance profiling routin. The defauly behaviour is initiliased for
+    !> time-loop profiling
     !---------------------------------------------------------------------------
     subroutine petsc_logging(func,ierr,default,stage_name)
 
     implicit none
     integer, intent(in) :: func
-    integer, parameter  :: N = 8 !!this is the default for the time_loop
+    integer, parameter  :: N = 8 !this is the default for the time_loop
     integer :: x, i
     logical, optional, intent(in) :: default
     PetscErrorCode, intent(inout) :: ierr
@@ -978,11 +980,10 @@ END subroutine RotationMatrix
          "REST                  "/)
 
 #ifdef HAVE_PETSC_DBUG
- print*,"***WARNING: there is an issue with your PETSc version and using &
- profiling, please configure WITHOUT 'petscdebug'"
+ print*,"***WARNING: there will be compaitbility issue with your older PETSc &
+ version and using & profiling, please configure WITHOUT 'petscdebug'"
 #if PETSC_VERSION_MINOR<8
 #else
-
           select case(func)
             case(1)
               !this is to initialise
@@ -998,9 +999,7 @@ END subroutine RotationMatrix
                 !this is to initialise
                 if (default) then
                 !default is for the main time-loop
-                  do x=1, N
                     call petsc_log_push(stage(x),ierr)
-                  end do
                 else
                     call petsc_log_push(stage(N+1),ierr)
                 end if
@@ -1009,14 +1008,11 @@ END subroutine RotationMatrix
               !this is to initialise
               if (default) then
               !default is for the main time-loop
-                do x=1, N
                   call petsc_log_pop(ierr)
-                end do
               else
                   call petsc_log_pop(ierr)
               end if
           end select
-
 #endif
 #endif
     return
@@ -1043,7 +1039,6 @@ END subroutine RotationMatrix
         PetscLogStage, intent(inout) :: stage
 
         call PetscLogStagePush(stage,ierr)
-
       end subroutine petsc_log_push
 
       !> @brief: This routine ends the current stage registered
@@ -1054,11 +1049,8 @@ END subroutine RotationMatrix
         PetscErrorCode, intent(inout) :: ierr
 
         call PetscLogStagePop(ierr)
-
       end subroutine petsc_log_pop
 
     end subroutine petsc_logging
-
-
 
 end module multi_tools

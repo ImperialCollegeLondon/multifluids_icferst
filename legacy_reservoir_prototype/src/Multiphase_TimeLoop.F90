@@ -621,7 +621,6 @@ contains
 
 #else
   call PetscLogStagePop(ierr)
-  ! call PetscLogStageRegister("Second Solve",stages(1),ierr)
   call PetscLogStagePush(stages(2),ierr)
 #endif
 #endif
