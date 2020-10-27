@@ -3905,7 +3905,12 @@ end if
                 IF ( STRESS_FORM ) THEN ! put into viscocity in stress form
                     DO IDIM=1,Mdims%ndim
                         DO JDIM=1,Mdims%ndim
-                            UDIFFUSION_ALL(IDIM,JDIM,:,:) = UDIFFUSION(IDIM,JDIM,:,:) + SQRT( LES_UDIFFUSION(IDIM,IDIM,:,:) * LES_UDIFFUSION(JDIM,JDIM,:,:) )
+                          DO IPHASE=1, Mdims%nphase !!-ao1
+                            DO MAT_INOD =1, Mdims%mat_nonods !!-ao2
+                        !    UDIFFUSION_ALL(IDIM,JDIM,:,:) = UDIFFUSION(IDIM,JDIM,:,:) + SQRT( LES_UDIFFUSION(IDIM,IDIM,:,:) * LES_UDIFFUSION(JDIM,JDIM,:,:) )
+                            UDIFFUSION_ALL(IDIM,JDIM,IPHASE,MAT_INOD) = UDIFFUSION(IDIM,JDIM,IPHASE,MAT_INOD) + SQRT( LES_UDIFFUSION(IDIM,IDIM,IPHASE,MAT_INOD) * LES_UDIFFUSION(JDIM,JDIM,IPHASE,MAT_INOD) )
+                            END DO
+                          END DO
                         END DO
                     END DO
                 ELSE
@@ -4088,11 +4093,35 @@ end if
                     END DO
                 ENDIF
                 IF ( GOT_DIFFUS ) THEN
-                    LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
-                    LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
+
+                  ! LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
+                  ! LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
+
+                  DO IDIM=1,Mdims%ndim !!-ao do1
+                      DO JDIM=1,Mdims%ndim
+                        DO IPHASE=1, Mdims%nphase !!-ao
+                      LOC_UDIFFUSION(IDIM,JDIM,IPHASE, MAT_ILOC ) = UDIFFUSION_ALL(IDIM,JDIM,IPHASE, MAT_INOD )
+                      END DO
+                    END DO
+                  END do
+                  DO IPHASE=1, Mdims%nphase !!-ao do1
+                      LOC_UDIFFUSION_VOL( iphase, MAT_ILOC ) = UDIFFUSION_VOL_ALL( iphase, MAT_INOD )
+                  END DO
+
                 ELSE
-                    LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = 0.0
-                    LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = 0.0
+                    ! LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = 0.0
+                    ! LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = 0.0
+                    DO IDIM=1,Mdims%ndim !!-ao do1
+                        DO JDIM=1,Mdims%ndim
+                          DO IPHASE=1, Mdims%nphase !!-ao
+                        LOC_UDIFFUSION(IDIM,JDIM,IPHASE, MAT_ILOC ) = 0.0
+                        END DO
+                      END DO
+                    END do
+                    DO IPHASE=1, Mdims%nphase !!-ao do1
+                        LOC_UDIFFUSION_VOL( iphase, MAT_ILOC ) = 0.0
+                    END DO
+
                 ENDIF
             END DO
             ! *********subroutine Determine local vectors...
@@ -4179,8 +4208,19 @@ end if
                                     + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                             END DO
                         END DO
-                        TEN_XX( :, :, :, GI ) = TEN_XX( :, :, :, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( :, :, :, MAT_ILOC )
-                        TEN_VOL( :, GI )      = TEN_VOL(  :, GI )     + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION_VOL( :, MAT_ILOC )
+
+                        DO IDIM=1,Mdims%ndim !!-ao do1
+                            DO JDIM=1,Mdims%ndim
+                              DO IPHASE=1, Mdims%nphase !!-ao
+                                TEN_XX( IDIM,JDIM,IPHASE, GI ) = TEN_XX( IDIM,JDIM,IPHASE, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( IDIM,JDIM,IPHASE, MAT_ILOC )
+                            END DO
+                          END DO
+                        END do
+                        DO IPHASE=1, Mdims%nphase !!-ao do1
+                            TEN_VOL( iphase, GI )      = TEN_VOL(  iphase, GI )     + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION_VOL( iphase, MAT_ILOC )
+                        END DO
+                        ! TEN_XX( :, :, :, GI ) = TEN_XX( :, :, :, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( :, :, :, MAT_ILOC )
+                        ! TEN_VOL( :, GI )      = TEN_VOL(  :, GI )     + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION_VOL( :, MAT_ILOC )
                     END DO
                 END DO
                 IF ( RETRIEVE_SOLID_CTY ) THEN
@@ -8393,8 +8433,16 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 DO U_SKLOC = 1, U_SNLOC
                     DO SGI=1,SBCVNGI
                         ! U, V & W:
-                        DUDX_ALL_GI(:,:,:,SGI)    = DUDX_ALL_GI(:,:,:,SGI)    + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUX_ELE_ALL(:,:,:,U_SKLOC)
-                        DUOLDDX_ALL_GI(:,:,:,SGI) = DUOLDDX_ALL_GI(:,:,:,SGI) + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUOLDX_ELE_ALL(:,:,:,U_SKLOC)
+                        DO IDIM_VEL=1,NDIM_VEL!!-ao1
+                            DO IDIM=1,NDIM
+                                DO IPHASE=1, NPHASE
+                        ! DUDX_ALL_GI(:,:,:,SGI)    = DUDX_ALL_GI(:,:,:,SGI)    + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUX_ELE_ALL(:,:,:,U_SKLOC)
+                        ! DUOLDDX_ALL_GI(:,:,:,SGI) = DUOLDDX_ALL_GI(:,:,:,SGI) + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUOLDX_ELE_ALL(:,:,:,U_SKLOC)
+                        DUDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI)    = DUDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI)    + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUX_ELE_ALL(IDIM_VEL,IDIM,IPHASE,U_SKLOC)
+                        DUOLDDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI) = DUOLDDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUOLDX_ELE_ALL(IDIM_VEL,IDIM,IPHASE,U_SKLOC)
+                            END DO
+                          END DO
+                        END DO
                     END DO
                 END DO
 
@@ -8428,8 +8476,15 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                     IF(STRESS_FORM_STAB) THEN
                         DO JDIM=1,NDIM
                             DO IDIM=1,NDIM
-                                DIFF_GI_BOTH(IDIM, JDIM, :, :) = DIFF_GI_BOTH(IDIM, JDIM, :, :) &
-                                    + SQRT( DIFF_GI_ADDED(IDIM, 1,1, :, :) * DIFF_GI_ADDED(JDIM, 1,1, :, :) )
+
+                              DO SGI=1,SBCVNGI !!-ao1
+                                  DO IPHASE=1, NPHASE
+                                    DIFF_GI_BOTH(IDIM, JDIM, IPHASE, SGI) = DIFF_GI_BOTH(IDIM, JDIM, IPHASE, SGI) &
+                                        + SQRT( DIFF_GI_ADDED(IDIM, 1,1, IPHASE, SGI) * DIFF_GI_ADDED(JDIM, 1,1, IPHASE, SGI) )
+                                ! DIFF_GI_BOTH(IDIM, JDIM, :, :) = DIFF_GI_BOTH(IDIM, JDIM, :, :) &
+                                !     + SQRT( DIFF_GI_ADDED(IDIM, 1,1, :, :) * DIFF_GI_ADDED(JDIM, 1,1, :, :) )
+                                END do
+                              END DO
                             END DO
                         END DO
                     ELSE ! Tensor form
