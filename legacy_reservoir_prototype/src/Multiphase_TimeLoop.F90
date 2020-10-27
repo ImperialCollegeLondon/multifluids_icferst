@@ -16,6 +16,12 @@
 !    USA
 #include "fdebug.h"
 module multiphase_time_loop
+
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
+
+
     use field_options
     use write_state_module
     use diagnostic_variables
@@ -63,14 +69,20 @@ module multiphase_time_loop
     use multi_pipes
     use multi_magma
     use multi_SP
+    use multi_tools
     use momentum_diagnostic_fields, only: calculate_densities
 
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
+
+
     !use matrix_operations
     !use shape_functions
     implicit none
+
+#include "petsc_legacy.h"
+
     private
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
@@ -85,6 +97,8 @@ contains
     subroutine MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
         implicit none
+
+
         type( state_type ), dimension( : ), intent( inout ) :: state
         integer, intent( inout ) :: dump_no, nonlinear_iterations
         real, intent( inout ) :: dt
@@ -121,6 +135,11 @@ contains
         integer :: scvngi_theta, igot_t2, igot_theta_flux
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
+
+        PetscErrorCode :: ierrr
+        PetscLogStage,dimension(0:9) :: stages
+
+
         type( state_type ), dimension( : ), pointer :: sub_state => null()
         integer :: nonlinear_iterations_adapt
         logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false.
@@ -198,6 +217,7 @@ contains
       ierr = Zoltan_Initialize(ver)
       assert(ierr == ZOLTAN_OK)
 #endif
+
 
 
         ! Check wether we are using the CV_Galerkin method
@@ -461,6 +481,19 @@ contains
           call temperature_to_enthalpy(Mdims, state, packed_state, magma_phase_coef)
         end if
 
+
+        call petsc_logging(3,stages,ierrr,default=.true.)
+        call petsc_logging(1,stages,ierrr,default=.true.)
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=1, stage_name="PRELIM")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=2, stage_name="FORCE")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=3, stage_name="SATURATION")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=4, stage_name="TEMP")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=5, stage_name="COMP")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=6, stage_name="DT+VTU ")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=7, stage_name="ADAPT")
+        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=8, stage_name="REST")
+        call petsc_logging(2,stages,ierrr,default=.true., push_no=1)
+
         !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
@@ -578,6 +611,9 @@ contains
 
                 !#=================================================================================================================
 
+                call petsc_logging(3,stages,ierrr,default=.true.)
+                call petsc_logging(2,stages,ierrr,default=.true., push_no=2)
+
                 !#=================================================================================================================
                 !# Andreas. I took the velocity and pressure_fields out of the Conditional_ForceBalanceEquation, to always update
                 !#=================================================================================================================
@@ -601,6 +637,8 @@ contains
                         calculate_mass_delta, outfluxes, pres_its_taken, its)
                 end if Conditional_ForceBalanceEquation
 
+                call petsc_logging(3,stages,ierrr,default=.true.)
+                call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
                 !#=================================================================================================================
                 !# End Pressure Solve -> Move to -> Saturation
                 !#=================================================================================================================
@@ -615,6 +653,8 @@ contains
 
                 end if Conditional_PhaseVolumeFraction
 
+              call petsc_logging(3,stages,ierrr,default=.true.)
+              call petsc_logging(2,stages,ierrr,default=.true., push_no=4)
                 !#=================================================================================================================
                 !# End Saturation -> Move to -> Velocity Update
                 !#=================================================================================================================
@@ -707,7 +747,8 @@ contains
 
                 !#=================================================================================================================
 
-
+                  call petsc_logging(3,stages,ierrr,default=.true.)
+                  call petsc_logging(2,stages,ierrr,default=.true., push_no=5)
 
                 !Solve for components here
                 if (have_component_field) then
@@ -723,6 +764,10 @@ contains
                      theta_gdiff, eles_with_pipe, pipes_aux, mass_ele, &
                      sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j)
                 end if
+
+                  call petsc_logging(3,stages,ierrr,default=.true.)
+                  call petsc_logging(2,stages,ierrr,default=.true., push_no=6)
+
                 !# End Compositional transport -> Move to -> Analysis of the non-linear convergence
                 !#=================================================================================================================
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
@@ -800,12 +845,18 @@ contains
             !Call to create the output vtu files, if required and also checkpoint
             call create_dump_vtu_and_checkpoints()
 
+
+            call petsc_logging(3,stages,ierrr,default=.true.)
+            call petsc_logging(2,stages,ierrr,default=.true., push_no=7)
             ! Call to adapt the mesh if required! If adapting within the FPI then the adaption is controlled elsewhere
             if(acctim >= t_adapt_threshold .and. .not. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
               call adapt_mesh_mp()
             end if
             ! ####Packing this section inside a internal subroutine breaks the code for non-debugging####
             !!$ Simple adaptive time stepping algorithm
+
+            call petsc_logging(3,stages,ierrr,default=.true.)
+            call petsc_logging(2,stages,ierrr,default=.true., push_no=8)
 
             if ( have_option( '/timestepping/adaptive_timestep' ) ) then
                 c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
@@ -896,6 +947,7 @@ contains
 
         end do Loop_Time
 
+
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &
@@ -933,6 +985,9 @@ contains
         endif
         !***************************************
         if (outfluxes%calculate_flux) call destroy_multi_outfluxes(outfluxes)
+
+
+
         return
     contains
         !> routine puts various CSR sparsities into packed_state
