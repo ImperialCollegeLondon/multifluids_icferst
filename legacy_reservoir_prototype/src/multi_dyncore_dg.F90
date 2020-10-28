@@ -4028,18 +4028,19 @@ end if
             END DO
             DO CV_ILOC = 1, Mdims%cv_nloc
                 CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                DO IPHASE = 1, Mdims%nphase
                 IF(IGOT_VOL_X_PRESSURE==1) THEN
-                    LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
-                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD ) * FEM_VOL_FRAC( :, CV_INOD )
+                    LOC_UDEN( IPHASE, CV_ILOC ) = UDEN( IPHASE, CV_INOD ) * FEM_VOL_FRAC( IPHASE, CV_INOD )
+                    LOC_UDENOLD( IPHASE, CV_ILOC) = UDENOLD( IPHASE, CV_INOD ) * FEM_VOL_FRAC( IPHASE, CV_INOD )
                 ELSE
-                    LOC_UDEN( :, CV_ILOC ) = UDEN( :, CV_INOD )
-                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
+                    LOC_UDEN( IPHASE, CV_ILOC ) = UDEN( IPHASE, CV_INOD )
+                    LOC_UDENOLD( IPHASE, CV_ILOC) = UDENOLD( IPHASE, CV_INOD )
                 ENDIF
                 IF(GOT_VIRTUAL_MASS) THEN
-                    LOC_VIRTUAL_MASS( :,:, CV_ILOC )         = VIRTUAL_MASS( :,:, CV_INOD )
-                    LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )     = VIRTUAL_MASS_OLD( :,:, CV_INOD )
+                    LOC_VIRTUAL_MASS( :,IPHASE, CV_ILOC )         = VIRTUAL_MASS( :,IPHASE, CV_INOD )
+                    LOC_VIRTUAL_MASS_OLD( :,IPHASE, CV_ILOC )     = VIRTUAL_MASS_OLD( :,IPHASE, CV_INOD )
                 ENDIF
-                DO IPHASE = 1, Mdims%nphase
+
                     IF ( IPLIKE_GRAD_SOU >= 1) THEN
                         LOC_PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_INOD )
                         LOC_PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_INOD )
@@ -4062,18 +4063,26 @@ end if
                         LOC_U_ABSORB( I, I, MAT_ILOC ) = 1.0
                     END DO
                 ELSE
-                    LOC_U_ABSORB( :, :, MAT_ILOC ) = U_ABSORB( :, :, MAT_INOD )
+                  DO JDIM=1,Mdims%ndim
+                    DO IPHASE=1,Mdims%nphase
+                      J=JDIM + (IPHASE-1)*Mdims%ndim
+                      DO IDIM=1,Mdims%ndim
+                        I=IDIM + (IPHASE-1)*Mdims%ndim
+                        LOC_U_ABSORB( I, J, MAT_ILOC ) = U_ABSORB( I, J, MAT_INOD )
+                      END DO
+                    END DO
+                  END DO
                     ! Switch on for solid fluid-coupling...
                     IF(RETRIEVE_SOLID_CTY) THEN
                         CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%mat_nloc + MAT_ILOC )
                         ! Add in the viscocity contribution...
                         IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN
                             ! Assume visc. is isotropic (can be variable)...
-                            DO IDIM=1,Mdims%ndim
+                            DO JDIM=1,Mdims%ndim
                                 DO IPHASE=1,Mdims%nphase
-                                    I=IDIM + (IPHASE-1)*Mdims%ndim
-                                    DO JDIM=1,Mdims%ndim
-                                        J=JDIM + (IPHASE-1)*Mdims%ndim
+                                    J=JDIM + (IPHASE-1)*Mdims%ndim
+                                    DO IDIM=1,Mdims%ndim
+                                        I=IDIM + (IPHASE-1)*Mdims%ndim
                                         LOC_U_ABSORB( I, J, MAT_ILOC ) = LOC_U_ABSORB( I, J, MAT_ILOC ) &
                                             + ABS_SOLID_FLUID_COUP(IDIM, JDIM, IPHASE, CV_INOD)* UDIFFUSION_ALL( 1, 1, IPHASE, MAT_INOD )
                                     END DO
@@ -4128,22 +4137,32 @@ end if
             UD_ND = 0.0 ; UDOLD_ND = 0.0
             DO U_ILOC = 1, Mdims%u_nloc
                 DO GI = 1, FE_GIdims%CV_NGI
-                    UD( :, :, GI ) = UD( :, :, GI ) + UFEN_REVERSED( GI, U_ILOC ) * LOC_NU( :, :, U_ILOC )
-                    UDOLD( :, :, GI ) = UDOLD( :, :, GI ) + UFEN_REVERSED( GI, U_ILOC ) * LOC_NUOLD( :, :, U_ILOC )
+                  DO IPHASE=1, Mdims%nphase
+                    DO IDIM=1,Mdims%ndim
+                    UD( IDIM, IPHASE, GI ) = UD(IDIM, IPHASE, GI ) + UFEN_REVERSED( GI, U_ILOC ) * LOC_NU( IDIM, IPHASE, U_ILOC )
+                    UDOLD( IDIM, IPHASE, GI ) = UDOLD(IDIM, IPHASE, GI ) + UFEN_REVERSED( GI, U_ILOC ) * LOC_NUOLD( IDIM, IPHASE, U_ILOC )
+                  END DO
+                END DO
                 END DO
             END DO
-            UD_ND( 1:Mdims%ndim, :, : ) = UD
-            UDOLD_ND( 1:Mdims%ndim, :, : ) = UDOLD
+            DO GI = 1, FE_GIdims%CV_NGI
+              DO IPHASE=1, Mdims%nphase
+                DO IDIM=1,Mdims%ndim
+                  UD_ND(IDIM, IPHASE, GI)= UD(IDIM, IPHASE, GI)
+                  UDOLD_ND(IDIM, IPHASE, GI) = UDOLD(IDIM, IPHASE, GI)
+              END DO
+              END DO
+            END DO
             IF(IDIVID_BY_VOL_FRAC+IGOT_VOL_X_PRESSURE.GE.1) THEN
                 VOL_FRA_GI_DX_ALL=0.0
                 VOL_FRA_GI=0.0
                 DO CV_ILOC = 1, Mdims%cv_nloc
                     CV_INOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
                     DO GI = 1, FE_GIdims%CV_NGI
-                        DO IPHASE=1,Mdims%nphase
-                            VOL_FRA_GI( IPHASE, GI )           = VOL_FRA_GI( IPHASE,GI )            + CVFEN_REVERSED( GI, CV_ILOC )       * FEM_VOL_FRAC( IPHASE, CV_INOD )
-                            VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) = VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) + CVFENX_ALL_REVERSED( 1:Mdims%ndim, GI, CV_ILOC )* FEM_VOL_FRAC( IPHASE, CV_INOD )
-                        END DO
+                      DO IPHASE=1,Mdims%nphase
+                          VOL_FRA_GI( IPHASE, GI )           = VOL_FRA_GI( IPHASE,GI )            + CVFEN_REVERSED( GI, CV_ILOC )       * FEM_VOL_FRAC( IPHASE, CV_INOD )
+                          VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) = VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) + CVFENX_ALL_REVERSED( 1:Mdims%ndim, GI, CV_ILOC )* FEM_VOL_FRAC( IPHASE, CV_INOD )
+                      END DO
                     END DO
                 END DO
                 VOL_FRA_GI=MAX(VOL_FRA_GI, 0.0)
@@ -4156,32 +4175,36 @@ end if
             ENDIF
             DO CV_ILOC = 1, Mdims%cv_nloc
                 DO GI = 1, FE_GIdims%CV_NGI
+                  DO IPHASE=1,Mdims%nphase
                     IF ( FEM_DEN ) then ! FEM DEN...
-                        DENGI( :, GI ) = DENGI( :, GI ) + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
-                        DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
-                            + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
+                        DENGI( IPHASE, GI ) = DENGI( IPHASE, GI ) + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_UDEN( IPHASE, CV_ILOC )
+                        DENGIOLD( IPHASE, GI ) = DENGIOLD( IPHASE, GI ) &
+                            + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( IPHASE, CV_ILOC )
                     ELSE ! CV DEN...
-                        DENGI( :, GI ) = DENGI( :, GI ) + CVN_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
-                        DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
-                            + CVN_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
+                        DENGI( IPHASE, GI ) = DENGI( IPHASE, GI ) + CVN_REVERSED( GI, CV_ILOC ) * LOC_UDEN( IPHASE, CV_ILOC )
+                        DENGIOLD( IPHASE, GI ) = DENGIOLD( IPHASE, GI ) &
+                            + CVN_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( IPHASE, CV_ILOC )
                     END IF
+                    DO IDIM=1,Mdims%ndim
                     IF(GOT_VIRTUAL_MASS) THEN
                         IF ( FEM_DEN ) then ! FEM DEN...
-                            VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
-                            VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                            VIRTUAL_MASS_GI( IDIM,IPHASE, GI )         = VIRTUAL_MASS_GI( IDIM,IPHASE, GI )         + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( IDIM,IPHASE, CV_ILOC )
+                            VIRTUAL_MASS_OLD_GI( IDIM,IPHASE, GI )     = VIRTUAL_MASS_OLD_GI( IDIM,IPHASE, GI )     + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( IDIM,IPHASE, CV_ILOC )
                         ELSE
-                            VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
-                            VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                            VIRTUAL_MASS_GI( IDIM,IPHASE, GI )         = VIRTUAL_MASS_GI( IDIM,IPHASE, GI )         + CVN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( IDIM,IPHASE, CV_ILOC )
+                            VIRTUAL_MASS_OLD_GI( IDIM,IPHASE, GI )     = VIRTUAL_MASS_OLD_GI( IDIM,IPHASE, GI )     + CVN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( IDIM,IPHASE, CV_ILOC )
                         ENDIF
                     ENDIF
                     IF ( IPLIKE_GRAD_SOU >= 1 ) THEN
-                        GRAD_SOU_GI( :, :, GI ) = GRAD_SOU_GI( :, :, GI ) &
-                            + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( :, :, CV_ILOC )
+                        GRAD_SOU_GI( IDIM,IPHASE, GI ) = GRAD_SOU_GI( IDIM,IPHASE, GI ) &
+                            + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( IDIM,IPHASE, CV_ILOC )
                         IF ( IPLIKE_GRAD_SOU == 2 ) then
-                           GRAD_SOU2_GI( :, :, GI ) = GRAD_SOU2_GI( :, :, GI ) &
-                            + 2.*CVFEN_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_GRAD( :, :, CV_ILOC )
+                           GRAD_SOU2_GI( IDIM,IPHASE, GI ) = GRAD_SOU2_GI( IDIM,IPHASE, GI ) &
+                            + 2.*CVFEN_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_GRAD( IDIM,IPHASE, CV_ILOC )
                         END IF
                     END IF
+                  END DO
+                  END DO
                 END DO
             END DO
             ! Start filtering density
@@ -4193,9 +4216,11 @@ end if
             !FILT_DEN = 2 ! best option to use
             !Don't remove the code comment below!!!
             if (is_porous_media) then
+              DO GI = 1, FE_GIdims%CV_NGI
                 DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
-                    SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
+                    SIGMAGI( IPHA_IDIM, IPHA_IDIM, GI ) = 1.0
                 end do
+              END DO
             else
                 DO MAT_ILOC = 1, Mdims%mat_nloc
                     DO GI = 1, FE_GIdims%cv_ngi
