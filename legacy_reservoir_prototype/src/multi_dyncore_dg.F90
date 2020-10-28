@@ -1738,7 +1738,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Stokes variables
         integer :: stokes_max_its !> Maximum number of iterations allowed to the AA stokes solver
         real, dimension(Mdims%totele) :: MASS_ELE
-        integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc
+        integer :: j, jdim, u_jnod, IPHA_IDIM, JPHA_JDIM, ele, u_jloc, CV_INOD
         logical :: solve_mom_iteratively = .false.
         type( vector_field ) :: diagonal_A, diagonal_CMC!> Variables to perform rescaling D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
         !Variables to re-scale PETSc matrices
@@ -1842,8 +1842,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
               call linearise_field( DEN_ALL2, UDEN_ALL )
               call linearise_field( DENOLD_ALL2, UDENOLD_ALL )
            else
-              UDEN_ALL = DEN_ALL2%VAL( 1, :, : )
-              UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
+            DO CV_INOD = 1, Mdims%cv_nonods
+               DO IPHASE = 1 , Mdims%nphase
+                UDEN_ALL(IPHASE, CV_INOD) = DEN_ALL2%VAL( 1, IPHASE, CV_INOD )
+                UDENOLD_ALL(IPHASE, CV_INOD) = DENOLD_ALL2%VAL( 1, IPHASE, CV_INOD )
+              END DO
+            END DO
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
                 call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
@@ -1868,10 +1872,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            sf => EXTRACT_SCALAR_FIELD( PACKED_STATE, "SolidConcentration" )
            soldf => EXTRACT_SCALAR_FIELD( PACKED_STATE, "OldSolidConcentration" )
            IF(SOLID_FLUID_MODEL_B) THEN ! Gidaspow model B - can use conservative from of momentum
+             DO CV_INOD = 1, Mdims%cv_nonods
               DO IPHASE=1,Mdims%nphase
-                 UDEN_ALL(IPHASE,:) = UDEN_ALL(IPHASE,:) * ( 1. - sf%val )
-                 UDENOLD_ALL(IPHASE,:) = UDENOLD_ALL(IPHASE,:) * ( 1. - soldf%val )
+                 UDEN_ALL(IPHASE,CV_INOD) = UDEN_ALL(IPHASE,CV_INOD) * ( 1. - sf%val )
+                 UDENOLD_ALL(IPHASE,CV_INOD) = UDENOLD_ALL(IPHASE,CV_INOD) * ( 1. - soldf%val )
               END DO
+            END DO
            ENDIF
         ENDIF
         allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
@@ -2722,7 +2728,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
+        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON)
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -3903,16 +3909,15 @@ end if
                     X_ALL, ndgln%x,  Mdims%mat_nonods, Mdims%mat_nloc, ndgln%mat, LES_DISOPT, LES_CS, UDEN, Mdims%cv_nonods, ndgln%cv, &
                     ndgln%u, Mdims%u_nonods, LES_THETA*U_ALL + (1.-LES_THETA)*UOLD_ALL, DERIV )
                 IF ( STRESS_FORM ) THEN ! put into viscocity in stress form
-                    DO IDIM=1,Mdims%ndim
-                        DO JDIM=1,Mdims%ndim
-                          DO IPHASE=1, Mdims%nphase !!-ao1
-                            DO MAT_INOD =1, Mdims%mat_nonods !!-ao2
-                        !    UDIFFUSION_ALL(IDIM,JDIM,:,:) = UDIFFUSION(IDIM,JDIM,:,:) + SQRT( LES_UDIFFUSION(IDIM,IDIM,:,:) * LES_UDIFFUSION(JDIM,JDIM,:,:) )
-                            UDIFFUSION_ALL(IDIM,JDIM,IPHASE,MAT_INOD) = UDIFFUSION(IDIM,JDIM,IPHASE,MAT_INOD) + SQRT( LES_UDIFFUSION(IDIM,IDIM,IPHASE,MAT_INOD) * LES_UDIFFUSION(JDIM,JDIM,IPHASE,MAT_INOD) )
-                            END DO
-                          END DO
+                  DO MAT_INOD =1, Mdims%mat_nonods
+                    DO IPHASE=1, Mdims%nphase
+                      DO JDIM=1,Mdims%ndim
+                        DO IDIM=1,Mdims%ndim
+                          UDIFFUSION_ALL(IDIM,JDIM,IPHASE,MAT_INOD) = UDIFFUSION(IDIM,JDIM,IPHASE,MAT_INOD) + SQRT( LES_UDIFFUSION(IDIM,IDIM,IPHASE,MAT_INOD) * LES_UDIFFUSION(JDIM,JDIM,IPHASE,MAT_INOD) )
                         END DO
+                      END DO
                     END DO
+                  END DO
                 ELSE
                     UDIFFUSION_ALL=UDIFFUSION + LES_UDIFFUSION
                 ENDIF
@@ -4093,14 +4098,10 @@ end if
                     END DO
                 ENDIF
                 IF ( GOT_DIFFUS ) THEN
-
-                  ! LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = UDIFFUSION_ALL( :, :, :, MAT_INOD )
-                  ! LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = UDIFFUSION_VOL_ALL( :, MAT_INOD )
-
-                  DO IDIM=1,Mdims%ndim !!-ao do1
-                      DO JDIM=1,Mdims%ndim
-                        DO IPHASE=1, Mdims%nphase !!-ao
-                      LOC_UDIFFUSION(IDIM,JDIM,IPHASE, MAT_ILOC ) = UDIFFUSION_ALL(IDIM,JDIM,IPHASE, MAT_INOD )
+                  DO IPHASE=1, Mdims%nphase
+                    DO JDIM=1,Mdims%ndim
+                      DO IDIM=1,Mdims%ndim
+                        LOC_UDIFFUSION(IDIM,JDIM,IPHASE, MAT_ILOC ) = UDIFFUSION_ALL(IDIM,JDIM,IPHASE, MAT_INOD )
                       END DO
                     END DO
                   END do
@@ -4109,16 +4110,14 @@ end if
                   END DO
 
                 ELSE
-                    ! LOC_UDIFFUSION( :, :, :, MAT_ILOC ) = 0.0
-                    ! LOC_UDIFFUSION_VOL( :, MAT_ILOC ) = 0.0
-                    DO IDIM=1,Mdims%ndim !!-ao do1
-                        DO JDIM=1,Mdims%ndim
-                          DO IPHASE=1, Mdims%nphase !!-ao
-                        LOC_UDIFFUSION(IDIM,JDIM,IPHASE, MAT_ILOC ) = 0.0
+                    DO IPHASE=1, Mdims%nphase
+                      DO JDIM=1,Mdims%ndim
+                        DO IDIM=1,Mdims%ndim
+                          LOC_UDIFFUSION(IDIM,JDIM,IPHASE, MAT_ILOC ) = 0.0
                         END DO
                       END DO
                     END do
-                    DO IPHASE=1, Mdims%nphase !!-ao do1
+                    DO IPHASE=1, Mdims%nphase
                         LOC_UDIFFUSION_VOL( iphase, MAT_ILOC ) = 0.0
                     END DO
 
@@ -4208,19 +4207,17 @@ end if
                                     + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                             END DO
                         END DO
+                        DO IPHASE=1, Mdims%nphase
+                          DO JDIM=1,Mdims%ndim
+                            DO IDIM=1,Mdims%ndim
 
-                        DO IDIM=1,Mdims%ndim !!-ao do1
-                            DO JDIM=1,Mdims%ndim
-                              DO IPHASE=1, Mdims%nphase !!-ao
-                                TEN_XX( IDIM,JDIM,IPHASE, GI ) = TEN_XX( IDIM,JDIM,IPHASE, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( IDIM,JDIM,IPHASE, MAT_ILOC )
+                              TEN_XX( IDIM,JDIM,IPHASE, GI ) = TEN_XX( IDIM,JDIM,IPHASE, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( IDIM,JDIM,IPHASE, MAT_ILOC )
                             END DO
                           END DO
                         END do
-                        DO IPHASE=1, Mdims%nphase !!-ao do1
-                            TEN_VOL( iphase, GI )      = TEN_VOL(  iphase, GI )     + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION_VOL( iphase, MAT_ILOC )
+                        DO IPHASE=1, Mdims%nphase
+                            TEN_VOL( iphase, GI ) = TEN_VOL(  iphase, GI )     + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION_VOL( iphase, MAT_ILOC )
                         END DO
-                        ! TEN_XX( :, :, :, GI ) = TEN_XX( :, :, :, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( :, :, :, MAT_ILOC )
-                        ! TEN_VOL( :, GI )      = TEN_VOL(  :, GI )     + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION_VOL( :, MAT_ILOC )
                     END DO
                 END DO
                 IF ( RETRIEVE_SOLID_CTY ) THEN
@@ -6246,9 +6243,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
               DEALLOCATE(LES_UDIFFUSION_VOL)
           end if
         END IF
-!! -ao surface tension specific deallocations ( IPLIKE_GRAD_SOU >= 0)
+
         DEALLOCATE(GRAD_SOU2_GI_NMX)
-        DEALLOCATE(LOC_U_RHS) !!????
+        DEALLOCATE(LOC_U_RHS)
         DEALLOCATE(GRAD_SOU2_GI)
 
         DEALLOCATE(LOC_U_SOURCE_CV)
@@ -6259,7 +6256,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
           DEALLOCATE( PLIKE_GRAD_SOU_GRAD)
           DEALLOCATE( PLIKE_GRAD_SOU_COEF)
         END IF
-!!-ao
 
         call deallocate(velocity_BCs)
         call deallocate(velocity_BCs_visc)
@@ -8433,11 +8429,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                 DO U_SKLOC = 1, U_SNLOC
                     DO SGI=1,SBCVNGI
                         ! U, V & W:
-                        DO IDIM_VEL=1,NDIM_VEL!!-ao1
-                            DO IDIM=1,NDIM
-                                DO IPHASE=1, NPHASE
-                        ! DUDX_ALL_GI(:,:,:,SGI)    = DUDX_ALL_GI(:,:,:,SGI)    + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUX_ELE_ALL(:,:,:,U_SKLOC)
-                        ! DUOLDDX_ALL_GI(:,:,:,SGI) = DUOLDDX_ALL_GI(:,:,:,SGI) + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUOLDX_ELE_ALL(:,:,:,U_SKLOC)
+                      DO IPHASE=1, NPHASE
+                        DO IDIM=1,NDIM
+                          DO IDIM_VEL=1,NDIM_VEL
                         DUDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI)    = DUDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI)    + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUX_ELE_ALL(IDIM_VEL,IDIM,IPHASE,U_SKLOC)
                         DUOLDDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI) = DUOLDDX_ALL_GI(IDIM_VEL,IDIM,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUOLDX_ELE_ALL(IDIM_VEL,IDIM,IPHASE,U_SKLOC)
                             END DO
@@ -8474,15 +8468,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                     DIFF_VOL_GI_BOTH = DIFF_VOL_GI
 
                     IF(STRESS_FORM_STAB) THEN
-                        DO JDIM=1,NDIM
-                            DO IDIM=1,NDIM
-
-                              DO SGI=1,SBCVNGI !!-ao1
+                              DO SGI=1,SBCVNGI
                                   DO IPHASE=1, NPHASE
+                                    DO JDIM=1,NDIM
+                                        DO IDIM=1,NDIM
                                     DIFF_GI_BOTH(IDIM, JDIM, IPHASE, SGI) = DIFF_GI_BOTH(IDIM, JDIM, IPHASE, SGI) &
                                         + SQRT( DIFF_GI_ADDED(IDIM, 1,1, IPHASE, SGI) * DIFF_GI_ADDED(JDIM, 1,1, IPHASE, SGI) )
-                                ! DIFF_GI_BOTH(IDIM, JDIM, :, :) = DIFF_GI_BOTH(IDIM, JDIM, :, :) &
-                                !     + SQRT( DIFF_GI_ADDED(IDIM, 1,1, :, :) * DIFF_GI_ADDED(JDIM, 1,1, :, :) )
                                 END do
                               END DO
                             END DO
@@ -8520,6 +8511,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                             END DO
 
                             DO IDIM_VEL=1,NDIM_VEL
+
                                 ! Stress form...
                                 N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   =  N_DOT_DKDU(IDIM_VEL,IPHASE,SGI) &
                                     + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )  &
