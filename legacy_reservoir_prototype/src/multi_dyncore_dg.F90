@@ -1872,12 +1872,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            sf => EXTRACT_SCALAR_FIELD( PACKED_STATE, "SolidConcentration" )
            soldf => EXTRACT_SCALAR_FIELD( PACKED_STATE, "OldSolidConcentration" )
            IF(SOLID_FLUID_MODEL_B) THEN ! Gidaspow model B - can use conservative from of momentum
-             DO CV_INOD = 1, Mdims%cv_nonods
+!             DO CV_INOD = 1, Mdims%cv_nonods
               DO IPHASE=1,Mdims%nphase
-                 UDEN_ALL(IPHASE,CV_INOD) = UDEN_ALL(IPHASE,CV_INOD) * ( 1. - sf%val )
-                 UDENOLD_ALL(IPHASE,CV_INOD) = UDENOLD_ALL(IPHASE,CV_INOD) * ( 1. - soldf%val )
+                 UDEN_ALL(IPHASE,:) = UDEN_ALL(IPHASE,:) * ( 1. - sf%val )
+                 UDENOLD_ALL(IPHASE,:) = UDENOLD_ALL(IPHASE,:) * ( 1. - soldf%val )
               END DO
-            END DO
+!            END DO
            ENDIF
         ENDIF
         allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
