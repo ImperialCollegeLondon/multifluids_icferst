@@ -831,41 +831,22 @@ contains
        type (porous_adv_coefs), intent(inout) :: upwnd
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
        !Local variables
-       real, save :: kv_kh_ratio = -1
        type( tensor_field ), pointer :: perm, state_viscosity
-       real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
        real, dimension(:,:), allocatable :: viscosities
        integer :: i, j, ele, n_in_pres
        real :: Angle, bad_element_perm_mult, Max_aspect_ratio, height ! the height of an isosceles triangle for the top angle to be equal to the trigger angle
        real, dimension(Mdims%ndim,Mdims%ndim) :: trans_matrix, rot_trans_matrix ! for bad_element permeability transformation matrix
-       logical :: kv_kh_ratio_log = .False. ! check if we use the kv_kh ratio or Aspect_ratio for the bad elements. Aspect ratio is the default
        real, parameter :: pi = acos(0.0) * 2.0 ! Define pi
 
        perm => extract_tensor_field( packed_state, "Permeability" )
        !Define n_in_pres based on the local version of nphase
        n_in_pres = nphase/Mdims%npres
 
-        if (kv_kh_ratio < 0) then
-            if (have_option('/numerical_methods/Bad_element_fix/') ) then
-                call get_option('/numerical_methods/Bad_element_fix/KvKh_ratio', kv_kh_ratio, default = 0.01)
-            else
-                kv_kh_ratio = 0.
-            end if
-            kv_kh_ratio = abs(kv_kh_ratio)
-       end if
-
-       if (PorousMedia_absorp%memory_type<2) then!The permeability is isotropic
-           inv_perm = 0.
-           do i = 1, size(perm%val,3)
-               do j = 1, size(perm%val,1)
-                   inv_perm( j, j, i)=1.0/perm%val( j, j, i)
-               end do
-           end do
-       else
-           do i = 1, size(perm%val,3)
-               inv_perm( :, :, i)=inverse(perm%val( :, :, i))
-           end do
-       end if
+       !Obtain inverse of permeability and store it
+       !SPRINT_TO_DO THIS COULD BE DONE FASTER IF WE KNOW IF IT HAS OFF DIAGONALS OR NOT
+       do i = 1, size(perm%val,3)
+           upwnd%inv_permeability( :, :, i)=inverse(perm%val( :, :, i))
+       end do
 
        !For simple Black-Oil modelling the viscosity is calculated using the PVT tables
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
@@ -882,19 +863,19 @@ contains
             call set_viscosity(nphase, Mdims, state, viscosities(:,1))
        end if
        call Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-              upwnd, inv_perm, viscosities)
+              upwnd, viscosities)
 
        ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
        ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
        ! is diagonal
        call calculate_SUF_SIG_DIAGTEN_BC( nphase, packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-                              Mspars, ndgln, PorousMedia_absorp, state, inv_perm, viscosities)
+                              Mspars, ndgln, PorousMedia_absorp, state, upwnd%inv_permeability, viscosities)
 
        deallocate(viscosities)
        contains
           !>@brief: Computes the absorption and its derivatives against the saturation
            subroutine Calculate_PorousMedia_adv_terms( nphase, state, packed_state, PorousMedia_absorp, Mdims, ndgln, &
-               upwnd, inv_perm, viscosities )
+               upwnd, viscosities )
 
                implicit none
                integer, intent(in) :: nphase
@@ -904,7 +885,6 @@ contains
                type( multi_dimensions ), intent( in ) :: Mdims
                type( multi_ndgln ), intent( in ) :: ndgln
                type (porous_adv_coefs), intent(inout) :: upwnd
-               real, dimension(:, :, :), target, intent(in):: inv_perm
                real, dimension(:,:), intent(in) :: viscosities
                !!$ Local variables:
                integer :: ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, loc, n_in_pres, &
@@ -928,11 +908,10 @@ contains
                    OldPhaseVolumeFraction = OldSatura, Immobile_fraction = Immobile_fraction)
                perm=>extract_tensor_field(packed_state,"Permeability")
 
-
                allocate( satura2( nphase, size(SATURA,2) ) );satura2 = 0.
 
                CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
-                   PERM%val, viscosities, inv_perm1=inv_perm)
+                   viscosities)
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
@@ -954,16 +933,13 @@ contains
 
 
                call allocate_multi_field( Mdims, PorousMedia_absorp2, size(PorousMedia_absorp%val,4), field_name="PorousMedia_AbsorptionTerm")
-               CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, &
-                   PERM%val, viscosities, inv_perm1=inv_perm)
+               CALL calculate_absorption2( nphase, packed_state, PorousMedia_absorp2, Mdims, ndgln, SATURA2, viscosities)
 
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma" )
                    do iphase = 1, n_in_pres
-                       do idim = 1, Mdims%ndim
-                           ! set \sigma for the pipes here
-                           call assign_val(PorousMedia_absorp%val(idim, idim, iphase + (ipres - 1)*Mdims%n_in_pres, :),Spipe%val)
-                       end do
+                     ! set \sigma for the pipes here
+                     call assign_val(PorousMedia_absorp%val(1, 1, iphase + (ipres - 1)*Mdims%n_in_pres, :),Spipe%val)
                    end do
                end do
 
@@ -972,28 +948,24 @@ contains
                upwnd%adv_coef => PorousMedia_absorp%val
 
                DO ELE = 1, Mdims%totele
-                   DO CV_ILOC = 1, Mdims%cv_nloc
-                       IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
-                       ICV = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                       do ipres = 1, Mdims%npres
-                         DO IPHASE = 1, n_in_pres
-                             global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
-                             compact_phase = iphase + (ipres - 1)*n_in_pres
-                             DO JDIM = 1, Mdims%ndim
-                                 DO IDIM = 1, Mdims%ndim
-                                     if ( global_phase <= Mdims%n_in_pres ) then
-                                         ! This is the gradient
-                                         ! Assume d\sigma / dS = 0.0 for the pipes for now
-                                         upwnd%adv_coef_grad(IDIM, JDIM, global_phase, IMAT) = (PorousMedia_absorp2%val( idim,jdim, global_phase ,IMAT) -&
-                                             PorousMedia_absorp%val( idim,jdim, global_phase ,IMAT)) / ( SATURA2(compact_phase, ICV ) - SATURA(compact_phase, ICV))
-                                     end if
-                                 END DO
-                             !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
-                             upwnd%inv_adv_coef(:, :, global_phase, IMAT) = inverse(upwnd%adv_coef(:, :, global_phase, IMAT))!sprint_to_do: use
-                           END DO
-                         end do                                                                           !get_multi_field_inverse or think of a faster method
-                       END DO
-                   END DO
+                 DO CV_ILOC = 1, Mdims%cv_nloc
+                   IMAT = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
+                   ICV = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                   do ipres = 1, Mdims%npres
+                     DO IPHASE = 1, n_in_pres
+                       global_phase = iphase + (ipres - 1)*Mdims%n_in_pres
+                       compact_phase = iphase + (ipres - 1)*n_in_pres
+                       if ( global_phase <= Mdims%n_in_pres ) then
+                         ! This is the gradient
+                         ! Assume d\sigma / dS = 0.0 for the pipes for now
+                         upwnd%adv_coef_grad(1, 1, global_phase, IMAT) = (PorousMedia_absorp2%val( 1,1, global_phase ,IMAT) -&
+                         PorousMedia_absorp%val( 1,1, global_phase ,IMAT)) / ( SATURA2(compact_phase, ICV ) - SATURA(compact_phase, ICV))
+                       end if
+                       !Obtaining the inverse the "old way" since if you obtain it directly, some problems appear
+                       upwnd%inv_adv_coef(1, 1, global_phase, IMAT) = 1./upwnd%adv_coef(1, 1, global_phase, IMAT)!sprint_to_do maybe we dont need to store the inverse anymore
+                     END DO
+                   end do
+                 END DO
                END DO
 
                deallocate( satura2, Max_sat)
@@ -1022,7 +994,8 @@ contains
                real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
                integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
                    ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
-               real, dimension( Mdims%ndim, Mdims%ndim ) :: sigma_out, sigma_in, mat, mat_inv
+               real :: sigma_out!, mat, mat_inv
+               ! real, dimension( Mdims%ndim, Mdims%ndim ) :: mat_ones, mat, mat_inv
                integer, dimension( CV_GIdims%nface, Mdims%totele) :: face_ele
                integer, dimension( Mdims%cv_snloc ) :: cv_sloc2loc
                integer, dimension( :, :, : ),  allocatable :: wic_u_bc, wic_vol_bc
@@ -1080,19 +1053,14 @@ contains
                                            visc_node = (cv_nodi-1)*one_or_zero + 1
                                            cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
-                                           do idim = 1, Mdims%ndim
-                                               do jdim = 1, Mdims%ndim
-                                                   call get_material_absorption(Mdims%n_in_pres, iphase, sigma_out( idim, jdim ),&
-                                                       ! this is the boundary condition
-                                                       volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node), inv_perm( idim, jdim, ele ),&
-                                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
-                                               end do
-                                           end do
+                                           call get_material_absorption(Mdims%n_in_pres, iphase, sigma_out,&
+                                               ! this is the boundary condition
+                                               volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node),&
+                                               Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                            ! Adjust suf_sig_diagten_bc based on the internal absorption
-                                           mat = sigma_out  +  matmul(  PorousMedia_absorp%val(:,:,iphase, mat_nod),  &
-                                                    matmul( inverse( sigma_out ), PorousMedia_absorp%val(:,:,iphase, mat_nod) ) )
-                                           mat_inv = matmul( inverse( PorousMedia_absorp%val(:,:,iphase, mat_nod)+sigma_out ), mat )
-                                           suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = (/ (mat_inv(i, i), i = 1, Mdims%ndim) /)
+                                            suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) =  &
+                                                  (sigma_out  +  PorousMedia_absorp%val(1,1,iphase, mat_nod)**2./sigma_out )&
+                                                  /(sigma_out  +  PorousMedia_absorp%val(1,1,iphase, mat_nod))
                                        end do
                                    end if
                                end do
@@ -1137,7 +1105,7 @@ contains
 
     !>@brief: Subroutine where the absorption for the porous media is actually computed
     SUBROUTINE calculate_absorption2( nphase, packed_state, PorousMedia_absorp, Mdims, ndgln, SATURA, &
-        PERM, viscosities, inv_mat_absorp, inv_perm1)
+        viscosities, inv_PorousMedia_absorp)
         ! Calculate absorption for momentum eqns
         implicit none
         integer, intent(in) :: nphase
@@ -1146,17 +1114,14 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_ndgln), intent(in) :: ndgln
         REAL, DIMENSION( :, : ), intent( in ) :: SATURA
-        REAL, DIMENSION( :, :, : ), intent( in ) :: PERM
         real, intent(in), dimension(:,:) :: viscosities
-        REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: inv_mat_absorp
-        real, dimension(:,:,:), target, optional ::inv_perm1
+        real, dimension(:,:,:), INTENT(INOUT), optional :: inv_PorousMedia_absorp
         ! Local variable
         type (tensor_field), pointer :: RockFluidProp
         real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
         REAL, PARAMETER :: TOLER = 1.E-10
         INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
             IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg, n_in_pres
-        REAL, DIMENSION( :, :, :), pointer :: INV_PERM
         integer :: one_or_zero, visc_node
         !Prepapre index for viscosity
         one_or_zero = (size(viscosities,2)==Mdims%cv_nonods)
@@ -1167,14 +1132,6 @@ contains
         RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         ewrite(3,*) 'In calculate_absorption2'
 
-        if (present(inv_perm1)) then
-            INV_PERM => inv_perm1
-        else
-            ALLOCATE( INV_PERM(  Mdims%ndim, Mdims%ndim, Mdims%totele ))
-            do id_reg = 1, size(perm,3)
-                inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
-            end do
-        end if
         DO ELE = 1, Mdims%totele
             !Get properties from packed state
             Immobile_fraction => RockFluidProp%val(1, :, ELE)
@@ -1186,40 +1143,23 @@ contains
                 visc_node = (CV_NOD-1)*one_or_zero + 1
                 DO IPHASE = 1, n_in_pres
                     CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
-                    DO IDIM = 1, Mdims%ndim
-                        IPHA_IDIM = ( IPHASE - 1 ) * Mdims%ndim + IDIM
-                        DO JDIM = 1, Mdims%ndim
-                            JPHA_JDIM = ( IPHASE - 1 ) * Mdims%ndim + JDIM
-                            if (present(inv_mat_absorp)) then
-                                call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
-                                    SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
-                                    Immobile_fraction, Corey_exponent, Endpoint_relperm, perm( IDIM, JDIM, ELE), inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ))
-                            else
-                                call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(idim, jdim, iphase, mat_nod),&
-                                    SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
-                                    Immobile_fraction, Corey_exponent, Endpoint_relperm)
-                            end if
-                        END DO
-                    END DO
+                    call get_material_absorption(Mdims%n_in_pres, iphase, PorousMedia_absorp%val(1, 1, iphase, mat_nod),&
+                        SATURA(:, CV_NOD), viscosities(:,visc_node),Immobile_fraction, Corey_exponent, Endpoint_relperm)
                 END DO
             END DO
         END DO
-        if (.not. present(inv_perm1)) DEALLOCATE( INV_PERM )
         ewrite(3,*) 'Leaving calculate_absorption2'
         RETURN
     END SUBROUTINE calculate_absorption2
 
 
     !>@brief:Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
-    subroutine get_material_absorption(nphase, iphase, material_absorption, sat, visc, INV_PERM, Immobile_fraction, &
-            Corey_exponent, Endpoint_relperm, PERM, inv_mat_absorp )
+    subroutine get_material_absorption(nphase, iphase, material_absorption, sat, visc, Immobile_fraction, &
+            Corey_exponent, Endpoint_relperm )
         implicit none
         real, intent(inout) :: material_absorption
-        real, intent(in) :: INV_PERM
         real, dimension(:), intent(in) :: sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase, nphase
-        real, optional, intent(inout) :: inv_mat_absorp
-        real, optional, intent(in) :: PERM
         !local variables
         real :: Kr
         !Local parameters
@@ -1227,10 +1167,11 @@ contains
 
         call get_relperm(nphase, iphase, sat, Immobile_fraction, Corey_exponent, Endpoint_relperm, Kr )
 
-        material_absorption = INV_PERM * (visc(iphase) * max(eps, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+        material_absorption = (visc(iphase) * max(eps, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
 
-        if (present(inv_mat_absorp).and.present(PERM)) &!This part is to ensure that the flow is stopped
-        inv_mat_absorp = (perm * max(0.0,Kr))/(VISC(iphase) * max(eps,sat(iphase)))
+        !Not needed anymore?
+        ! if (present(inv_mat_absorp)) &!This part is to ensure that the flow is stopped
+        ! inv_mat_absorp = (max(0.0,Kr))/(VISC(iphase) * max(eps,sat(iphase)))
         !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
       end subroutine get_material_absorption
 
