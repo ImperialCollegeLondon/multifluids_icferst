@@ -2999,7 +2999,7 @@ end if
                         UDGI_ALL(:, iv_iphase) = UDGI_ALL(:, iv_iphase)  + I_inv_adv_coef (iv_iphase) * matmul(perm%val(:,:,ele),UDGI_ALL_FOR_INV(:, iv_iphase))
                     END IF
                 END DO ! PHASE LOOP
-            ELSE IF( .not. permeability_jump) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
+            ELSE IF( .not. between_elements) THEN!Only for same element/Continuous formulation !old flag: DISTCONTINUOUS_METHOD
                 !vel(GI) = (vel * shape_functions)/sigma
                 do iv_iphase = 1,final_phase
                     UDGI_ALL(:, iv_iphase) = I_inv_adv_coef(iv_iphase)*&
@@ -3170,7 +3170,7 @@ end if
                     NDOTQNEW(iv_iphase) = NDOTQ(iv_iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iv_iphase,:)*&
                         ( LOC_U(:,iv_iphase,:)-LOC_NU(:,iv_iphase,:))), CV_funs%sufen( :, GI ))
                 end do
-                IF( permeability_jump) THEN
+                IF( between_elements) THEN
                     ! We have a discontinuity between elements so integrate along the face...
                     DO iv_u_skloc = 1, Mdims%u_snloc
                         iv_u_kloc = U_SLOC2LOC(iv_u_skloc)
