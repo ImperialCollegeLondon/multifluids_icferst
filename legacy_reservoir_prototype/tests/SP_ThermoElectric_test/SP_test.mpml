@@ -484,6 +484,13 @@
  field.set( i, val )</string_value>
         </algorithm>
       </python_Electrodiffusive_code>
+      <python_Thermoelectric_code>
+        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
+          <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
+ val = -0.000188 #We disable ED for this test case as well
+ field.set( i, val )</string_value>
+        </algorithm>
+      </python_Thermoelectric_code>
     </Self_Potential>
   </porous_media>
 </icferst_options>
