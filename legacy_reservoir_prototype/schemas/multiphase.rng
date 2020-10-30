@@ -1921,14 +1921,42 @@ By default 2.0</a:documentation>
                       <element name="max_timestep">
                         <a:documentation>Maximum timestep. Beyond this value the timestep will not be increased.
 By default unlimmited.</a:documentation>
-                        <ref name="real"/>
+                        <choice>
+                          <element name="constant">
+                            <ref name="real"/>
+                          </element>
+                          <element name="python">
+                            <a:documentation>Python function prescribing real input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                            <ref name="python_code"/>
+                          </element>
+                        </choice>
                       </element>
                     </optional>
                     <optional>
                       <element name="min_timestep">
                         <a:documentation>Minimum timestep. Beyond this value the timestep will not be decreased.
 By default dt*1e-3.</a:documentation>
-                        <ref name="real"/>
+                        <choice>
+                          <element name="constant">
+                            <ref name="real"/>
+                          </element>
+                          <element name="python">
+                            <a:documentation>Python function prescribing real input. Functions should be of the form:
+
+ def val(t):
+    # Function code
+    return # Return value
+
+</a:documentation>
+                            <ref name="python_code"/>
+                          </element>
+                        </choice>
                       </element>
                     </optional>
                   </group>

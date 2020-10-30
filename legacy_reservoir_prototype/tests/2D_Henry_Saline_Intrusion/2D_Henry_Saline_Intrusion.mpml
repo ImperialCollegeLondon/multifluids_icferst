@@ -49,10 +49,14 @@
             </Aim_num_FPI>
           </PID_controller>
           <max_timestep>
-            <real_value rank="0">300</real_value>
+            <constant>
+              <real_value rank="0">300</real_value>
+            </constant>
           </max_timestep>
           <min_timestep>
-            <real_value rank="0">1</real_value>
+            <constant>
+              <real_value rank="0">1</real_value>
+            </constant>
           </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>
@@ -169,6 +173,7 @@
           <exclude_from_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <vector_field name="Velocity" rank="1">
@@ -223,6 +228,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </vector_field>
     <scalar_field name="Density" rank="0">
@@ -248,6 +254,7 @@
           <include_in_detectors/>
         </detectors>
         <consistent_interpolation/>
+        <output/>
       </prognostic>
     </scalar_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -404,6 +411,7 @@
         <detectors>
           <exclude_from_detectors/>
         </detectors>
+        <output/>
       </prescribed>
     </scalar_field>
     <tensor_field name="Permeability">
@@ -416,6 +424,7 @@
             </constant>
           </isotropic>
         </value>
+        <output/>
       </prescribed>
     </tensor_field>
     <Dispersion>
@@ -431,6 +440,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
       <scalar_field name="Transverse_Dispersivity">
@@ -445,6 +455,7 @@
           <detectors>
             <exclude_from_detectors/>
           </detectors>
+          <output/>
         </prescribed>
       </scalar_field>
     </Dispersion>

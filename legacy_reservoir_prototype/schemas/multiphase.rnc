@@ -1562,12 +1562,40 @@ solver_options =
                     ## Maximum timestep. Beyond this value the timestep will not be increased.
                     ## By default unlimmited.
                     element max_timestep{
-                    real
+                    (
+                       element constant {
+                       real
+                     }|
+                     ## Python function prescribing real input. Functions should be of the form:
+                     ##
+                     ##  def val(t):
+                     ##     # Function code
+                     ##     return # Return value
+                     ##
+                     ##
+                     element python {
+                       python_code
+                     }
+                  )
                     }?,
                     ## Minimum timestep. Beyond this value the timestep will not be decreased.
                     ## By default dt*1e-3.
                     element min_timestep{
-                    real
+                    (
+                         element constant {
+                         real
+                       }|
+                       ## Python function prescribing real input. Functions should be of the form:
+                       ##
+                       ##  def val(t):
+                       ##     # Function code
+                       ##     return # Return value
+                       ##
+                       ##
+                       element python {
+                         python_code
+                       }
+                    )
                     }?
                   )
                 }?

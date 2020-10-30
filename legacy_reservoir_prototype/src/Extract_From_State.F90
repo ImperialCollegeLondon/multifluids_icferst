@@ -45,6 +45,7 @@ module Copy_Outof_State
     use memory_diagnostics
     use initialise_fields_module, only: initialise_field_over_regions
     use halos
+    use embed_python
     ! Need to use surface integrals since a function from here is called in the calculate_outflux() subroutine
     use surface_integrals
 
@@ -2154,7 +2155,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     integer :: variable_selection, NonLinearIteration
     !Variables to convert output time into days if it is very big
     real, save :: conversor = 1.0 !> Variables to convert output time into days if it is very big
-    character (len = OPTION_PATH_LEN), save :: output_units =' '
+    character (len = OPTION_PATH_LEN), save :: output_units =' ', option_path
+    character(len=PYTHON_FUNC_LEN) :: pyfunc
 
     !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
     !consider less iterations of the total ones if adapting time using PID
@@ -2194,11 +2196,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
         increaseFactor, default = 1.1 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
         decreaseFactor, default = 2.0 )
-    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
-        max_ts, default = huge(min_ts) )
-    if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
-    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
-        min_ts, default = dt_by_user*1d-3 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/io/Show_Convergence')
@@ -2207,9 +2204,25 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 1d-2)
     PID_controller = have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
+
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
     call get_option( '/timestepping/finish_time', finish_time )
+
+    !Obtain minimum and maximum timestep allowed
+    option_path = "/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear"
+    call get_option( trim(option_path)//"/max_timestep/constant", max_ts, default = huge(max_ts) )
+    if (have_option(trim(option_path)//"/max_timestep/python")) then
+      call get_option(trim(option_path)//"/max_timestep/python", pyfunc)
+      call real_from_python(pyfunc, acctim, max_ts)
+    end if
+    !Now minimum time-step default three orders of magnitude smaller than the time-step
+    if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
+    call get_option( trim(option_path)//"/min_timestep/constant", min_ts, default = dt_by_user*1d-3 )
+    if (have_option(trim(option_path)//"/min_timestep/python")) then
+      call get_option(trim(option_path)//"/min_timestep/python", pyfunc)
+      call real_from_python(pyfunc, acctim, min_ts)
+    end if
     !Ensure that even adapting the time, the final time is matched
     max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
     if (stored_dt<0) then!for the first time only
