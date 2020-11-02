@@ -89,7 +89,9 @@
         </tensor_field>
         <viscosity_scheme>
           <tensor_form/>
-          <linear_scheme/>
+          <linear_scheme>
+            <high_order/>
+          </linear_scheme>
         </viscosity_scheme>
       </Viscosity>
     </phase_properties>
