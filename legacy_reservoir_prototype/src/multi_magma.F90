@@ -115,6 +115,9 @@ contains
     type( tensor_field ), pointer :: t_field !liquid viscosity
     type(coupling_term_coef), intent(in) :: coupling
 
+    real :: scaling ! a temporal fix for the scaling difference between the viscosity in ICFERST and the models
+    scaling=2.0/3    ! the viscosity difference between ICFERST and the model
+
     s= -2 !> transition coefficient of the linking function
     ! d=35e-6
     d=coupling%grain_size
@@ -130,17 +133,17 @@ contains
 
     if (Test) then
       do i=2, N
-        series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)
+        series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)*scaling
       end do
     else
       do i=2, N
         if (phi(i)<=low) then
-          series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)
+          series(i)= coupling%a/d**2*mu*phi(i)**(2-coupling%b)*scaling
         else if (phi(i)>=high) then
-          series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))
+          series(i)= 1/d**2*mu*phi(i)**(-5)*(1-phi(i))*scaling
         else
           H=exp(s/((phi(i)-low)/(high-low)))/(exp(s/((phi(i)-low)/(high-low)))+exp(s/(1-(phi(i)-low)/(high-low))))
-          series(i)=coupling%a/d**2*mu*phi(i)**(2-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H
+          series(i)=(coupling%a/d**2*mu*phi(i)**(2-coupling%b)*(1-H)+1/d**2*mu*phi(i)**(-5)*(1-phi(i))*H)*scaling
         end if
       end do
     end if
@@ -444,7 +447,8 @@ contains
     type(multi_ndgln), intent(in) :: ndgln
     real, dimension(:), intent(in) :: c_phi_series !generated c coefficients
     !Local variables
-    integer :: mat_nod, ele, CV_ILOC, cv_inod, magma_coupling, iphase, jphase
+    integer :: mat_nod, ele, CV_ILOC, cv_inod, iphase, jphase
+    real :: magma_coupling
     type(tensor_field), pointer :: saturation
     integer:: c_phi_size ! length of c_phi_series
     real, dimension(4):: test
@@ -479,9 +483,9 @@ contains
         if (pos==c_phi_size) then
           c_value=c_phi_series(c_phi_size)
         else
-          ! portion=(phi-c_phi_series(pos))*c_phi_size
-          ! c_value=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
-          c_value=c_phi_series(pos)
+          portion=(phi-(pos-1.0)/(c_phi_size-1.0))*c_phi_size
+          c_value=c_phi_series(pos)*(1-portion)+c_phi_series(pos+1)*portion
+          ! c_value=c_phi_series(pos)
         end if
       end function c_value
   end subroutine calculate_Magma_absorption
