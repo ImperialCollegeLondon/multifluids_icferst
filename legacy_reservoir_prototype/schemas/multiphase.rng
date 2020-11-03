@@ -3213,6 +3213,54 @@ mass fraction with a particular phase</a:documentation>
           </element>
         </choice>
       </element>
+      <element name="scalar_field">
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>PassiveTracer</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <a:documentation>PassiveTracer. &lt;b&gt;You can add as many passive Tracers as you want as long as the name starts with PassiveTracer&lt;/b&gt;
+Passive Tracers do not have diffusion and the boussinesq approximation for this field is imposed.
+
+This is just an example of how it works.</a:documentation>
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>PassiveTracer_Example2</value>
+        </attribute>
+        <choice>
+          <element name="prognostic">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prognostic_scalar_field"/>
+          </element>
+          <element name="prescribed">
+            <ref name="pressure_mesh_choice"/>
+            <ref name="prescribed_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
       <!--
         Insert new prognostic scalar fields here using the template:
                element scalar_field {
