@@ -741,9 +741,10 @@ contains
         type(element_type) :: element_shape
         integer, dimension( : ), pointer :: element_nodes
         logical :: has_density, has_phase_volume_fraction
-        integer :: i, iphase, icomp, idim, iele, ipres
+        integer :: i, iphase, icomp, idim, iele, ipres, fields, k
         integer :: nphase,ncomp,ndim,stat,n_in_pres
         real :: auxR
+        character( len = option_path_len ) :: option_name
 #ifdef USING_FEMDEM
         if(have_option('/blasting')) then
             sfield=>extract_scalar_field(state(1),"SolidConcentration" )
@@ -954,6 +955,19 @@ contains
                 add_source=.true.,add_absorption=.true.)
         if (.not. is_porous_media) call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
         end if
+
+        !Here we add iteratively all the fields named Passive_Tracer_NUMBER
+        fields = option_count("/material_phase[0]/scalar_field")
+        do k = 1, fields
+          call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+          if (option_name(1:14)=="Passive_Tracer") then
+            if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then          
+              call insert_sfield(packed_state,trim(option_name),1,nphase,&
+              add_source=.true.,add_absorption=.true.)!MAYBE NO NEED FOR ABSORPTION??
+              if (.not. is_porous_media) call insert_sfield(packed_state,"FE"//trim(option_name),1,nphase)
+            end if
+          end if
+        end do
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
             call insert_sfield(packed_state,"Bathymetry",1,nphase,&
@@ -1252,7 +1266,7 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
 
-                !! Arash
+                !! Solute Mass fraction
                 if(have_option(trim(state(i)%option_path)&
                     //'/scalar_field::SoluteMassFraction')) then
                     call unpack_sfield(state(i),packed_state,"OldSoluteMassFraction",1,iphase,&
@@ -1266,6 +1280,28 @@ contains
                     call unpack_sfield(state(i),packed_state,"SoluteMassFraction",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"SoluteMassFraction"),"SoluteMassFraction")
                 end if
+
+
+                !Passive Tracers
+                fields = option_count("/material_phase[0]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  if (option_name(1:14)=="Passive_Tracer") then
+                    if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
+                      call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
+                      check_paired(extract_scalar_field(state(i),trim(option_name)),&
+                      extract_scalar_field(state(i),"Old"//trim(option_name))))
+                      call unpack_sfield(state(i),packed_state,"Iterated"//trim(option_name),1,iphase,&
+                      check_paired(extract_scalar_field(state(i),trim(option_name)),&
+                      extract_scalar_field(state(i),"Iterated"//trim(option_name))))
+                      call unpack_sfield(state(i),packed_state,trim(option_name)//"Source",1,iphase)!Diagnostic fields do not get along with this...
+                      call unpack_sfield(state(i),packed_state,trim(option_name)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
+                      call unpack_sfield(state(i),packed_state,trim(option_name),1,iphase)
+                      call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(option_name)),trim(option_name))
+                    end if
+                  end if
+                end do
+
 
                 if(has_phase_volume_fraction) then
                     call unpack_sfield(state(i),packed_state,"OldPhaseVolumeFraction",1,iphase,&
