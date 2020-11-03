@@ -192,7 +192,7 @@ contains
         type(magma_phase_diagram) :: magma_phase_coef
         real :: bulk_power
         !Variables for passive tracers
-        logical :: have_passive_tracers = .true.
+        logical :: have_Passive_Tracers = .true.
         integer :: fields
         character( len = option_path_len ) :: option_name
 #ifdef HAVE_ZOLTAN
@@ -709,15 +709,10 @@ contains
                 end if Conditional_ScalarAdvectionField2
 
                 !#=================================================================================================================
-
-
-
                 !Solve for components here
                 if (have_component_field) then
-
                      !!$ Calculate Density_Component for compositional
                      if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
-
                      sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
                      call Compositional_Assemble_Solve(state, packed_state, multicomponent_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
@@ -730,9 +725,9 @@ contains
                 !#=================================================================================================================
 
 
-                if (have_passive_tracers) then
+                if (have_Passive_Tracers) then
                   !We make sure to only enter here once if there are no passive tracers
-                  have_passive_tracers = .false.
+                  have_Passive_Tracers = .false.
                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -740,11 +735,11 @@ contains
                   !Passive fields taken from phase 1, automatically should detect internally if other phases need it
                   fields = option_count("/material_phase[0]/scalar_field")
                   do k = 1, fields
-                    call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                    if (option_name(1:14)=="Passive_Tracer") then
-                      have_passive_tracers = .true.!OK there are passive tracers so remember for next time
+                    call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                    if (option_name(1:13)=="PassiveTracer") then
+                      have_Passive_Tracers = .true.!OK there are passive tracers so remember for next time
                       tracer_field=>extract_tensor_field(packed_state,"Packed"//trim(option_name))
-                      call Passive_tracer_Assemble_Solve( trim(option_name), state, packed_state, &
+                      call Passive_Tracer_Assemble_Solve( trim(option_name), state, packed_state, &
                       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                       tracer_field,velocity_field,density_field, multi_absorp, dt, &
                       suf_sig_diagten_bc, Porosity_field%val, &
@@ -752,7 +747,6 @@ contains
                       0, igot_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                       THETA_GDIFF, eles_with_pipe, pipes_aux, &
                       saturation=saturation_field, nonlinear_iteration = its)
-
                       nullify(tracer_field)
                     end if
                   end do

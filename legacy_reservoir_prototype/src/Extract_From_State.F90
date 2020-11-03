@@ -956,12 +956,12 @@ contains
         if (.not. is_porous_media) call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
         end if
 
-        !Here we add iteratively all the fields named Passive_Tracer_NUMBER
+        !Here we add iteratively all the fields named PassiveTracer_NUMBER
         fields = option_count("/material_phase[0]/scalar_field")
         do k = 1, fields
-          call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-          if (option_name(1:14)=="Passive_Tracer") then
-            if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then          
+          call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+          if (option_name(1:13)=="PassiveTracer") then
+            if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
               call insert_sfield(packed_state,trim(option_name),1,nphase,&
               add_source=.true.,add_absorption=.true.)!MAYBE NO NEED FOR ABSORPTION??
               if (.not. is_porous_media) call insert_sfield(packed_state,"FE"//trim(option_name),1,nphase)
@@ -1285,8 +1285,8 @@ contains
                 !Passive Tracers
                 fields = option_count("/material_phase[0]/scalar_field")
                 do k = 1, fields
-                  call get_option("/material_phase["// int2str( iphase - 1 )//"]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
-                  if (option_name(1:14)=="Passive_Tracer") then
+                  call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  if (option_name(1:13)=="PassiveTracer") then
                     if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
                       call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
                       check_paired(extract_scalar_field(state(i),trim(option_name)),&
@@ -1351,6 +1351,14 @@ contains
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"SoluteMassFraction")
         end if
+
+        fields = option_count("/material_phase[0]/scalar_field")
+        do k = 1, fields
+          call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+          if (option_name(1:13)=="PassiveTracer") then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(option_name))
+          end if
+        end do
 
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"PhaseVolumeFraction")

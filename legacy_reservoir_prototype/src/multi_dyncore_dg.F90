@@ -57,7 +57,7 @@ module multiphase_1D_engine
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
     public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
-    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Passive_tracer_Assemble_Solve
+    FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Passive_Tracer_Assemble_Solve
 
 contains
   !---------------------------------------------------------------------------
@@ -1000,7 +1000,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   !> A boussinesq approximation is enforced on these tracers as the are totally INERT
   !> CURRENTLY NO DIFFUSION
   !---------------------------------------------------------------------------
-  SUBROUTINE Passive_tracer_Assemble_Solve( Passive_tracer_name, state, packed_state, &
+  SUBROUTINE Passive_Tracer_Assemble_Solve( Passive_Tracer_name, state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
@@ -1011,7 +1011,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
        icomp, saturation, Permeability_tensor_field, nonlinear_iteration )
 
            implicit none
-           character(len=*), intent(in) :: Passive_tracer_name
+           character(len=*), intent(in) :: Passive_Tracer_name
            type( state_type ), dimension( : ), intent( inout ) :: state
            type( state_type ), intent( inout ) :: packed_state
            type(multi_dimensions), intent(in) :: Mdims
@@ -1085,11 +1085,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            type(vector_field) :: solution
            !Retrieve the number of phases that have soluteMass fraction, and then if they are concecutive and start from the first one
            if (nconc < 0) then
-             nconc = option_count("/material_phase/scalar_field::"//trim(Passive_tracer_name))
+             nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
              nconc_in_pres = nconc
              if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
              do iphase = 1, nconc_in_pres
-               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_tracer_name))) then
+               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_Tracer_name))) then
                  FLAbort('SoluteMassFraction must either be defined in all the phases or to start from the first one and consecutively from that one.')
                end if
              end do
@@ -1125,7 +1125,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
 
           !Retrieve source term
-           Q => extract_tensor_field( packed_state, "Packed"//trim(Passive_tracer_name)//"Source" )
+           Q => extract_tensor_field( packed_state, "Packed"//trim(Passive_Tracer_name)//"Source" )
            T_source( :, : ) = Q % val( 1, :, : )
            !sprint to do, just pass down the other values...
            cv_disopt = Mdisopt%t_disopt; cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
@@ -1161,7 +1161,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end if
 
                !Solves a PETSC warning saying that we are storing information out of range
-               call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_PASSIVE_TRACER")
+               call allocate(Mmat%petsc_ACV,sparsity,[nconc,nconc],"ACV_Passive_Tracer")
                call zero(Mmat%petsc_ACV); Mmat%CV_RHS%val = 0.0
 
                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
@@ -1190,7 +1190,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                    !Ensure concentration is between 1 and sligthly above 0
-
                    solution%val = min(1., max(solution%val,min_val))
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
@@ -1217,7 +1216,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            call deallocate(solution); nullify(solution%val)
            ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
 
-  END SUBROUTINE Passive_tracer_Assemble_Solve
+  END SUBROUTINE Passive_Tracer_Assemble_Solve
 
 
     !---------------------------------------------------------------------------
