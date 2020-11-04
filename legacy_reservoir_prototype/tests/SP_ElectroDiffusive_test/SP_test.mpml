@@ -245,6 +245,22 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
+    <scalar_field name="Dummy" rank="0">
+      <diagnostic>
+        <algorithm name="Internal" material_phase_support="multiple"/>
+        <mesh name="PressureMesh"/>
+        <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
+        <steady_state>
+          <include_in_steady_state/>
+        </steady_state>
+      </diagnostic>
+    </scalar_field>
     <multiphase_properties>
       <Relperm_Corey>
         <scalar_field name="relperm_max">
@@ -347,6 +363,20 @@
       <Reservoir_temperature>
         <real_value rank="0">343</real_value>
       </Reservoir_temperature>
+      <python_Rock_sat_conductivity_code>
+        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
+          <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
+ val = 1.#We disable rock sat conductivity
+ field.set( i, val )</string_value>
+        </algorithm>
+      </python_Rock_sat_conductivity_code>
+      <python_ElectroKinetic_code>
+        <algorithm name="scalar_python_diagnostic" material_phase_support="single">
+          <string_value lines="20" type="code" language="python">for i in range( field.node_count ):
+ val = 0.#We disable EK for this test case
+ field.set( i, val )</string_value>
+        </algorithm>
+      </python_ElectroKinetic_code>
     </Self_Potential>
   </porous_media>
 </icferst_options>

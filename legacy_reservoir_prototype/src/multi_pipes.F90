@@ -67,7 +67,7 @@ contains
   !>@brief: This sub modifies either Mmat%CT or the Advection-diffusion equation for 1D pipe modelling
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                   getcv_disc, getct, Mmat, Mspars, DT, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                  INV_SIGMA, OPT_VEL_UPWIND_COEFS_NEW, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
+                  INV_SIGMA, upwnd, eles_with_pipe, thermal, CV_BETA, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase )
       type(state_type), intent(inout) :: packed_state
       type(state_type), dimension(:), intent(in) :: state
       type(multi_dimensions), intent(in) :: Mdims
@@ -76,7 +76,7 @@ contains
       type (multi_sparsities), intent(in) :: Mspars
       integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
       real, dimension(:,:,:), intent( in ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL
-      real, dimension(:,:,:,:), intent( in ) :: OPT_VEL_UPWIND_COEFS_NEW
+      type (porous_adv_coefs), intent(inout) :: upwnd
       real, dimension(:,:),intent( inout ) :: INV_SIGMA
       real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
       real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length Mdims%cv_nonods
@@ -510,10 +510,10 @@ contains
                   CV_NODI = CV_GL_GL(CV_LILOC)
                   DO IPHASE = 1, final_phase
                       if (is_porous_media) then
-                              TT1 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1 )
+                              TT1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T1 )
                               T1TT1 = SUM(T1*TT1)
                           IF ( Mdims%ndim==3 ) THEN
-                              TT2 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2 )
+                              TT2 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele) , T2 )
                               T1TT2 = SUM( T1*TT2 )
                               T2TT1 = SUM( T2*TT1 )
                               T2TT2 = SUM( T2*TT2 )
@@ -539,7 +539,7 @@ contains
                       INV_SIGMA(IPHASE,CV_NODI) = INV_SIGMA(IPHASE,CV_NODI) + INV_SIGMA_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                       ! For the nano laterals...
                       if (is_porous_media) then
-                          NN1 = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION )
+                          NN1 = upwnd%adv_coef(1,1,IPHASE, MAT_NODI)* MATMUL(upwnd%inv_permeability(:,:,ele), DIRECTION )
                           N1NN1 = SUM( DIRECTION*NN1 )
                       else
                           N1NN1 = SUM( DIRECTION )
@@ -1049,10 +1049,8 @@ contains
                 RSUM_VEC = 0.0
                 do ipres = 1, Mdims%npres
                   do iphase = 1, final_phase
-                    DO IDIM = 1, Mdims%ndim
-                        RSUM_VEC(iphase + (ipres - 1)*final_phase) = RSUM_VEC(iphase + (ipres - 1)*final_phase) +&
-                            upwnd%adv_coef( IDIM, IDIM, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
-                    END DO
+                      RSUM_VEC(iphase + (ipres - 1)*final_phase) = RSUM_VEC(iphase + (ipres - 1)*final_phase) +&
+                          upwnd%adv_coef( 1, 1, iphase + (ipres - 1)*Mdims%n_in_pres, MAT_NODI ) / REAL( Mdims%ndim )
                   end do
               end do
             else
@@ -1077,7 +1075,7 @@ contains
       MASS_PIPE_FOR_COUP = 0.
       CALL MOD_1D_CT_AND_ADV( state, packed_state, final_phase, wells_first_phase, Mdims, ndgln, WIC_T_BC_ALL,WIC_D_BC_ALL, WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
           getcv_disc, getct, Mmat, Mspars, DT, pipes_aux%MASS_CVFEM2PIPE, pipes_aux%MASS_PIPE2CVFEM, pipes_aux%MASS_CVFEM2PIPE_TRUE, pipes_aux%MASS_PIPE, MASS_PIPE_FOR_COUP, &
-          SIGMA_INV_APPROX, upwnd%adv_coef, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
+          SIGMA_INV_APPROX, upwnd, eles_with_pipe, THERMAL, cv_beta, bcs_outfluxes, outfluxes, assemble_collapsed_to_one_phase)
 
       GAMMA_PRES_ABS2 = 0.0
       !A_GAMMA_PRES_ABS only for compressible flow? sprint_to_do DO WE NEED TO DO THIS FOR Incompressible FLOW??
@@ -2191,6 +2189,7 @@ contains
             logical :: found
             integer :: i, j, l, count
             integer :: sele, siloc, sinod, ele, iloc, inod
+            real :: max_dim, min_dim
             real, dimension(Mdims%stotel) :: aux_pipe_seeds
             aux_pipe_seeds = -1
             !Initialise tolerancePipe just once per simulation
@@ -2198,6 +2197,10 @@ contains
                 first_time = .false.
                 if (have_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance')) then
                     call get_option('/porous_media/wells_and_pipes/well_options/wells_bdf_tolerance', tolerancePipe)
+                else !Check roughly if the domain size is around meters then change the tolerancePipe from 1e-2 to 1e-4
+                  max_dim = maxval(X); call allmax(max_dim)
+                  min_dim = minval(X); call allmin(min_dim)
+                  if (abs(max_dim-min_dim)< 10.) tolerancePipe = 1e-4
                 end if
             end if
 

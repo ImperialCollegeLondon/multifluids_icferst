@@ -4,19 +4,17 @@
   <owner userid="pablo.salinas"/>
   <tags>porous mpml SelfPotential</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>python ./Check_SP.py &gt; log</command_line>
+    <command_line>../../../bin/icferst ./*.mpml</command_line>
   </problem_definition>
-  <variables/>
+  <variables>
+      <variable name="min_SP" language="python">from fluidity_tools import stat_parser as stat
+min_SP = stat("SP_test.stat")["phase1"]["Self_Potential"]["min"][-1]</variable>
+      <variable name="max_SP" language="python">from fluidity_tools import stat_parser as stat
+max_SP = stat("SP_test.stat")["phase1"]["Self_Potential"]["max"][-1]</variable>
+  </variables>
   <pass_tests>
-    <test name="SP_ED_test" language="python">SP_ED_test = False
-with open("log", "rb") as f:
-    linelist = f.readlines()      # Read the first line.
-    last = linelist[len(linelist)-1] # The last line
-f.close 
-
-if 'OK' in last: SP_ED_test = True
-
-assert(SP_ED_test)</test>
+    <test name="Assert final min Self Potential" language="python">assert(abs((min_SP - -5.34)/5.34) &lt; 0.01)</test>
+    <test name="Assert final max Self Potential" language="python">assert(max_SP &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

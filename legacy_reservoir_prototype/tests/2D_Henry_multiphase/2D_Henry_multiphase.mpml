@@ -53,10 +53,14 @@
             </Aim_num_FPI>
           </PID_controller>
           <max_timestep>
-            <real_value rank="0">300</real_value>
+            <constant>
+              <real_value rank="0">300</real_value>
+            </constant>
           </max_timestep>
           <min_timestep>
-            <real_value rank="0">1</real_value>
+            <constant>
+              <real_value rank="0">1</real_value>
+            </constant>
           </min_timestep>
         </adaptive_timestep_nonlinear>
       </Fixed_Point_Iteration>

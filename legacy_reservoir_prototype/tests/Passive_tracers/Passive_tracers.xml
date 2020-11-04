@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Passive_tracers</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml tracers</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst ./*.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_tracer1" language="python">from fluidity_tools import stat_parser as stat
+max_tracer1 = stat("QuickTest_DG.stat")["phase1"]["PassiveTracer"]["max"][-1]</variable>
+    <variable name="max_tracer2" language="python">from fluidity_tools import stat_parser as stat
+max_tracer2 = stat("QuickTest_DG.stat")["phase1"]["PassiveTracerVapour"]["max"][-1]</variable>
+
+  </variables>
+  <pass_tests>
+    <test name="Assert final max tracer 1" language="python">assert(abs(max_tracer1 - 1) &lt; 0.01)</test>
+    <test name="Assert final max tracer 2" language="python">assert(abs(max_tracer2 - 1) &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

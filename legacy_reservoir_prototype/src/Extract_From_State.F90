@@ -45,6 +45,7 @@ module Copy_Outof_State
     use memory_diagnostics
     use initialise_fields_module, only: initialise_field_over_regions
     use halos
+    use embed_python
     ! Need to use surface integrals since a function from here is called in the calculate_outflux() subroutine
     use surface_integrals
 
@@ -740,9 +741,10 @@ contains
         type(element_type) :: element_shape
         integer, dimension( : ), pointer :: element_nodes
         logical :: has_density, has_phase_volume_fraction
-        integer :: i, iphase, icomp, idim, iele, ipres
+        integer :: i, iphase, icomp, idim, iele, ipres, fields, k
         integer :: nphase,ncomp,ndim,stat,n_in_pres
         real :: auxR
+        character( len = option_path_len ) :: option_name
 #ifdef USING_FEMDEM
         if(have_option('/blasting')) then
             sfield=>extract_scalar_field(state(1),"SolidConcentration" )
@@ -953,6 +955,19 @@ contains
                 add_source=.true.,add_absorption=.true.)
         if (.not. is_porous_media) call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
         end if
+
+        !Here we add iteratively all the fields named PassiveTracer_NUMBER
+        fields = option_count("/material_phase[0]/scalar_field")
+        do k = 1, fields
+          call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+          if (option_name(1:13)=="PassiveTracer") then
+            if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
+              call insert_sfield(packed_state,trim(option_name),1,nphase,&
+              add_source=.true.,add_absorption=.true.)!MAYBE NO NEED FOR ABSORPTION??
+              if (.not. is_porous_media) call insert_sfield(packed_state,"FE"//trim(option_name),1,nphase)
+            end if
+          end if
+        end do
 
         if (option_count("/material_phase/scalar_field::Bathymetry")>0) then
             call insert_sfield(packed_state,"Bathymetry",1,nphase,&
@@ -1251,7 +1266,7 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
 
-                !! Arash
+                !! Solute Mass fraction
                 if(have_option(trim(state(i)%option_path)&
                     //'/scalar_field::SoluteMassFraction')) then
                     call unpack_sfield(state(i),packed_state,"OldSoluteMassFraction",1,iphase,&
@@ -1265,6 +1280,28 @@ contains
                     call unpack_sfield(state(i),packed_state,"SoluteMassFraction",1,iphase)
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"SoluteMassFraction"),"SoluteMassFraction")
                 end if
+
+
+                !Passive Tracers
+                fields = option_count("/material_phase[0]/scalar_field")
+                do k = 1, fields
+                  call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+                  if (option_name(1:13)=="PassiveTracer") then
+                    if (option_count("/material_phase/scalar_field::"//trim(option_name))>0) then
+                      call unpack_sfield(state(i),packed_state,"Old"//trim(option_name),1,iphase,&
+                      check_paired(extract_scalar_field(state(i),trim(option_name)),&
+                      extract_scalar_field(state(i),"Old"//trim(option_name))))
+                      call unpack_sfield(state(i),packed_state,"Iterated"//trim(option_name),1,iphase,&
+                      check_paired(extract_scalar_field(state(i),trim(option_name)),&
+                      extract_scalar_field(state(i),"Iterated"//trim(option_name))))
+                      call unpack_sfield(state(i),packed_state,trim(option_name)//"Source",1,iphase)!Diagnostic fields do not get along with this...
+                      call unpack_sfield(state(i),packed_state,trim(option_name)//"Absorption",1,iphase)!Diagnostic fields do not get along with this...
+                      call unpack_sfield(state(i),packed_state,trim(option_name),1,iphase)
+                      call insert(multi_state(1,iphase),extract_scalar_field(state(i),trim(option_name)),trim(option_name))
+                    end if
+                  end if
+                end do
+
 
                 if(has_phase_volume_fraction) then
                     call unpack_sfield(state(i),packed_state,"OldPhaseVolumeFraction",1,iphase,&
@@ -1314,6 +1351,14 @@ contains
         if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"SoluteMassFraction")
         end if
+
+        fields = option_count("/material_phase[0]/scalar_field")
+        do k = 1, fields
+          call get_option("/material_phase[0]/scalar_field["// int2str( k - 1 )//"]/name",option_name)
+          if (option_name(1:13)=="PassiveTracer") then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,trim(option_name))
+          end if
+        end do
 
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"PhaseVolumeFraction")
@@ -2154,7 +2199,8 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     integer :: variable_selection, NonLinearIteration
     !Variables to convert output time into days if it is very big
     real, save :: conversor = 1.0 !> Variables to convert output time into days if it is very big
-    character (len = OPTION_PATH_LEN), save :: output_units =' '
+    character (len = OPTION_PATH_LEN), save :: output_units =' ', option_path
+    character(len=PYTHON_FUNC_LEN) :: pyfunc
 
     !We need an acumulative nonlinear_its if adapting within the FPI we don't want to restart the reference field neither
     !consider less iterations of the total ones if adapting time using PID
@@ -2194,11 +2240,6 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
         increaseFactor, default = 1.1 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
         decreaseFactor, default = 2.0 )
-    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
-        max_ts, default = huge(min_ts) )
-    if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
-    call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
-        min_ts, default = dt_by_user*1d-3 )
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_threshold', &
         incr_threshold, default = int(0.25 * NonLinearIteration) )
     show_FPI_conv = .not.have_option( '/io/Show_Convergence')
@@ -2207,9 +2248,25 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     call get_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Test_mass_consv', &
             calculate_mass_tol, default = 1d-2)
     PID_controller = have_option( '/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear/PID_controller')
+
     !Retrieve current time and final time
     call get_option( '/timestepping/current_time', acctim )
     call get_option( '/timestepping/finish_time', finish_time )
+
+    !Obtain minimum and maximum timestep allowed
+    option_path = "/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/adaptive_timestep_nonlinear"
+    call get_option( trim(option_path)//"/max_timestep/constant", max_ts, default = huge(max_ts) )
+    if (have_option(trim(option_path)//"/max_timestep/python")) then
+      call get_option(trim(option_path)//"/max_timestep/python", pyfunc)
+      call real_from_python(pyfunc, acctim, max_ts)
+    end if
+    !Now minimum time-step default three orders of magnitude smaller than the time-step
+    if (dt_by_user < 0) call get_option( '/timestepping/timestep', dt_by_user )
+    call get_option( trim(option_path)//"/min_timestep/constant", min_ts, default = dt_by_user*1d-3 )
+    if (have_option(trim(option_path)//"/min_timestep/python")) then
+      call get_option(trim(option_path)//"/min_timestep/python", pyfunc)
+      call real_from_python(pyfunc, acctim, min_ts)
+    end if
     !Ensure that even adapting the time, the final time is matched
     max_ts = max(min(max_ts, abs(finish_time - acctim)), 1e-8)
     if (stored_dt<0) then!for the first time only
@@ -3388,7 +3445,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
 
     ! Local variables
     type (vector_field_pointer), dimension(Mdims%nphase) ::darcy_velocity
-    type(tensor_field), pointer :: velocity, saturation
+    type(tensor_field), pointer :: velocity, saturation, perm
     real, dimension(Mdims%nphase*Mdims%ndim,Mdims%nphase*Mdims%ndim) :: loc_absorp_matrix
     real, dimension(Mdims%ndim) :: sat_weight_velocity
     real :: auxR
@@ -3401,8 +3458,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
     !darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
     velocity => extract_tensor_field(packed_state,"PackedVelocity")
     saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-
-
+    perm=>extract_tensor_field(packed_state,"Permeability")
     ! Calculation
     do ele = 1, Mdims%totele
         do u_iloc = 1, Mdims%u_nloc
@@ -3411,7 +3467,7 @@ subroutine get_DarcyVelocity(Mdims, ndgln, state, packed_state, upwnd)
                 imat = ndgln%mat((ele-1)*Mdims%mat_nloc+cv_iloc)
                 cv_loc = ndgln%cv((ele-1)*Mdims%cv_nloc+cv_iloc)
                 do iphase = 1, Mdims%n_in_pres
-                    sat_weight_velocity = matmul(upwnd%inv_adv_coef(:,:,iphase,imat), velocity%val(:,iphase,u_inod))
+                    sat_weight_velocity = upwnd%inv_adv_coef(1,1,iphase,imat) * matmul(perm%val(:,:,ele), velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
                     darcy_velocity(iphase)%ptr%val(:,u_inod)= darcy_velocity(iphase)%ptr%val(:,u_inod)+ &
                         sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(Mdims%cv_nloc)

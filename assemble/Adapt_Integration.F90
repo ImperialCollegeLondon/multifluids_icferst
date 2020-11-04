@@ -246,9 +246,9 @@ contains
     integer :: ngath, nhalo, pnod
     integer, dimension(:), allocatable :: atosen, atorec
     integer :: nproc, debug_level
-    logical :: dbg, chcnsy
+    logical :: dbg, chcnsy, found_now
 
-    integer :: i, max_coplanar_id, nhalos
+    integer :: i,j, k, max_coplanar_id, nhalos
     integer, dimension(:), allocatable :: boundary_ids, coplanar_ids
     real :: mestp1
     type(halo_type), pointer :: old_halo
@@ -271,6 +271,12 @@ contains
     !we want only the processor that failed to obtain a mesh to try with more conservative settings
     logical, save :: use_conservative_settings = .false.
     logical, save :: second_try = .false.
+
+    !We may want to lock the nodes in the sleeves around the wells
+    integer, dimension(:), allocatable :: sleeve_nodes_to_lock
+    integer, dimension(:), allocatable :: well_ids
+    integer, dimension(2) :: shape
+
     ewrite(1, *) "In adapt_mesh"
 
 #ifdef DDEBUG
@@ -374,13 +380,34 @@ contains
     allocate(surfid(nselm))
     call interleave_surface_ids(input_positions%mesh, surfid, max_coplanar_id)
 
+    !We may want to lock the nodes within the sleeves of the wells
+    if (have_option("/porous_media/wells_and_pipes/well_volume_ids/Lock_sleeve_nodes")) then
+      shape = option_shape('/porous_media/wells_and_pipes/well_volume_ids')
+      assert(shape(1) >= 0)
+      allocate(well_ids(shape(1)))
+      call get_option( '/porous_media/wells_and_pipes/well_volume_ids', well_ids)
+
+      allocate(sleeve_nodes_to_lock(node_count(input_positions))) ; sleeve_nodes_to_lock = 0
+      do i = 1, size(input_positions%mesh%region_ids)
+        !Make non-zero the nodes that have a region id matching one of the wells
+        found_now = any(input_positions%mesh%region_ids(i) == well_ids)
+        if (found_now) then
+          do j = 1, nloc
+            sleeve_nodes_to_lock(input_positions%mesh%ndglno((i-1)*nloc + j )) = 1
+          end do
+        end if
+      end do
+      deallocate(well_ids)
+    end if
+
     ! Node locking
     if(present(lock_faces)) then
-      call get_locked_nodes_and_faces(input_positions, lock_faces, prdnds)
+      call get_locked_nodes_and_faces(input_positions, lock_faces, prdnds, nodes_to_lock = sleeve_nodes_to_lock)
     else
-      call get_locked_nodes(input_positions, prdnds)
+      call get_locked_nodes(input_positions, prdnds, nodes_to_lock = sleeve_nodes_to_lock)
     end if
     nprdnd = size(prdnds)
+    if(allocated(sleeve_nodes_to_lock)) deallocate(sleeve_nodes_to_lock)
 
     ! Coordinates
     nodx => input_positions%val(1,:)
@@ -751,17 +778,18 @@ contains
 
   end function max_nodes
 
-  subroutine get_locked_nodes_and_faces(positions, lock_faces, locked_nodes)
+  subroutine get_locked_nodes_and_faces(positions, lock_faces, locked_nodes, nodes_to_lock)
     type(vector_field), intent(in) :: positions
     type(integer_set), intent(in) :: lock_faces
     integer, dimension(:), allocatable, intent(out) :: locked_nodes
+    integer, dimension(:), optional, intent(in) :: nodes_to_lock
 
     integer :: i, snloc
     integer, dimension(:), allocatable :: llocked_nodes
 
     snloc = face_loc(positions, 1)
 
-    call get_locked_nodes(positions, llocked_nodes)
+    call get_locked_nodes(positions, llocked_nodes, nodes_to_lock = nodes_to_lock)
     allocate(locked_nodes(size(llocked_nodes) + key_count(lock_faces) * snloc))
     locked_nodes(:size(llocked_nodes)) = llocked_nodes
     do i = 1, key_count(lock_faces)
