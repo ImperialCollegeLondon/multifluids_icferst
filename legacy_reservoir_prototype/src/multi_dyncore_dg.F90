@@ -1914,14 +1914,12 @@ if (associated(multi_absorp%PorousMedia%val))then!sprint_to_do AVOID THESE CONVE
         call add_multi_field_to_array(multi_absorp%PorousMedia, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
 end if
-
 !Temporary conversion
 if (associated(multi_absorp%Magma%val))then!sprint_to_do AVOID THESE CONVERSIONS...
     do cv_nod = 1, size(multi_absorp%Magma%val,4)
         call add_multi_field_to_array(multi_absorp%Magma, velocity_absorption(:,:,cv_nod), 1, 1, cv_nod, 1.0)
     end do
 end if
-
 
         !Check if as well the Mass matrix
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
@@ -3872,6 +3870,8 @@ end if
             STAB_VISC_WITH_ABS = .false.!Adds diffusion terms into Mu also in the RHS
             !For magma it seems that we need this term
             if (.not. is_magma) zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
+            !Lumps the absorption terms and RHS; More consistent with the lumping of the mass matrix
+            lump_mass = .true. ;lump_absorption = .true.
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -4308,11 +4308,8 @@ end if
                         END DO
                     END DO
                 END IF
-
                 DO U_JLOC = 1, Mdims%u_nloc
-
 if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of this section is required, but the only way I found to not break up everything is this (nonsensical...)
-
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO JPHASE = 1, Mdims%nphase
                             DO JDIM = 1, Mdims%ndim
@@ -4340,7 +4337,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
                                         END IF
-
                                         IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
                                           IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
                                             IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
@@ -4381,6 +4377,35 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                     END DO
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
+
+            !For the stokes equations we need to introduce the absorption terms into the Momentum matrix
+            if (solve_stokes) then
+              DO U_JLOC = 1, Mdims%u_nloc
+                DO U_ILOC = 1, Mdims%u_nloc
+                  DO JPHASE = 1, Mdims%nphase
+                    DO JDIM = 1, Mdims%ndim
+                      JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                      DO IPHASE = 1, Mdims%nphase
+                        DO IDIM = 1, Mdims%ndim
+                          IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
+                          IF ( LUMP_MASS ) THEN
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
+                            + NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                          ELSE
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
+                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                            + NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                          END IF
+                        end do
+                      end do
+                    end do
+                  end do
+                end do
+              end do
+            end if
+
+
             if (.not.is_porous_media) then!sprint_to_do; internal subroutine for this?
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc

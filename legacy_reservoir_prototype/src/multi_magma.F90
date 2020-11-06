@@ -465,9 +465,9 @@ contains
               magma_coupling = c_value(saturation%val(1,2, cv_inod))
               do jphase = 1, Mdims%nphase
                 if (jphase == iphase) then
-                  Magma_absorp%val(1, iphase, jphase, mat_nod ) = -magma_coupling
-                else
                   Magma_absorp%val(1, iphase, jphase, mat_nod ) = magma_coupling
+                else
+                  Magma_absorp%val(1, iphase, jphase, mat_nod ) = - magma_coupling
                 end if
               end do
             end do
