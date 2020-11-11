@@ -214,6 +214,7 @@ contains
         logical :: have_Passive_Tracers = .true.
         integer :: fields
         character( len = option_path_len ) :: option_name
+        logical :: block_mom !Flag for using a block momentum matrix
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -283,6 +284,16 @@ contains
         call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         call put_CSR_spars_into_packed_state()
+
+        block_mom=.false.
+        block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
+        if(block_mom) then
+          call Get_block_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, &
+                  mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
+          call put_CSR_block_into_packed_state()
+        end if
+
+
         !!$ Allocating space for various arrays:
         allocate( &
             !!$
@@ -1108,6 +1119,23 @@ contains
             sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
             call insert(packed_state,sparsity,"ElementConnectivity")
         end subroutine put_CSR_spars_into_packed_state
+
+
+
+        subroutine put_CSR_block_into_packed_state
+          use sparse_tools
+          type(block_csr_matrix), pointer :: blocks !!this is new (AO)
+
+
+          if (associated(halo)) then
+              blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
+                  name='MomentumSparsity',row_halo=halo,column_halo=halo)
+          else
+              blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumSparsity")
+          end if
+          call insert(packed_state,blocks,"MomentumSparsity")
+          call deallocate(blocks)
+        end subroutine put_CSR_block_into_packed_state
 
 
 

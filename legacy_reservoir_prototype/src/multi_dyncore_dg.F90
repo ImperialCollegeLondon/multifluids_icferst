@@ -1897,6 +1897,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
+        type(block_csr_matrix), pointer:: blockM !!-ao
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
@@ -1922,7 +1923,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
-        logical :: LUMP_DIAG_MOM, lump_mass
+        logical :: LUMP_DIAG_MOM, lump_mass, block_mom
 
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
@@ -2184,20 +2185,33 @@ end if
         if (u_source_all%have_field) call deallocate_multi_field(U_SOURCE_ALL, .true.)
 
 
+        !######################## block momentum matrix optional ###############
+        block_mom=.false.
+        block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
         !##################allocate DGM petsc just before the momentum solve####
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
+          if(block_mom) then
+            blockM => extract_block_csr_matrix(packed_state, "MomentumBlock")
+            Mmat%DGM_PETSC_BLOCK = allocate_momentum_block_matrix(blockM,velocity)
+          else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
+          end if
         end IF
         ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
         lump_diag_mom=.false.
         lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media))
+
         if(.not.mmat%no_matrix_store) then
           if(lump_diag_mom)then
             call comb_vel_matrix_diag_dist_lump(diag_bigm_con, bigm_con, &
             mmat%dgm_petsc, &
             mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
+          elseif (block_mom)then
+            call comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
+            mmat%dgm_petsc, &
+            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure, Mmat)  ! element connectivity.
           else
             call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
             mmat%dgm_petsc, &

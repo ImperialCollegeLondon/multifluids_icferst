@@ -1626,5 +1626,208 @@ contains
 
     end function allocate_momentum_matrix
 
+    !---------------------------------------------------------------------------
+    !> @author Asiri Obeysekara
+    !> @brief Subroutines to handle Block matrices
+    !---------------------------------------------------------------------------
+    function allocate_momentum_block_matrix(blocks,velocity) result(matrix)
+        type(block_csr_matrix), intent (inout) :: blocks
+        type(tensor_field), intent (inout) :: velocity
+        type(halo_type), pointer:: halo
+        type(petsc_csr_matrix) :: matrix
+        integer :: ierr
+
+        if (associated(velocity%mesh%halos)) then
+            halo => velocity%mesh%halos(2)
+        else
+            nullify(halo)
+        end if
+
+        matrix%name="BlockMomentumMatrix"
+
+        if (associated(halo)) then
+            allocate(matrix%row_halo)
+            matrix%row_halo = halo
+            call incref(matrix%row_halo)
+            allocate(matrix%column_halo)
+            matrix%column_halo = halo
+            call incref(matrix%column_halo)
+        else
+            nullify(matrix%row_halo)
+            nullify(matrix%column_halo)
+        end if
+
+        call allocate(matrix%row_numbering,node_count(velocity),&
+            product(velocity%dim),halo = halo)
+        call allocate(matrix%column_numbering,node_count(velocity),&
+            product(velocity%dim),halo = halo)
+
+        !!!########## BLOCK matrix creation
+        if (.not. IsParallel()) then
+            matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
+                matrix%column_numbering,.false.)
+        else
+            matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
+                matrix%column_numbering,.false.)
+        end if
+
+        call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
+        nullify(matrix%refcount)
+        !call addref_petsc_csr_matrix(matrix)!Removed with last fluidity merge
+
+        allocate(matrix%ksp)
+        matrix%ksp = PETSC_NULL_KSP
+
+    end function allocate_momentum_block_matrix
+
+    !---------------------------------------------------------------------------
+    !> @author Asiri Obeysekara
+    !> @brief Subroutines to create Block csr matrices for serial
+    !---------------------------------------------------------------------------
+    function full_CreateSeqBAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
+      !!< Creates a parallel PETSc Mat of size corresponding with
+      !!< row_numbering and col_numbering.
+      type(block_csr_sparsity), intent(in):: sparsity
+      type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
+      logical, intent(in):: only_diagonal_blocks
+      !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
+      !! that's why we default to not use them
+      logical, intent(in), optional:: use_inodes
+      Mat M
+
+      integer, dimension(:), allocatable:: nnz
+      integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
+      integer row, len
+      integer bv, i, ierr
+
+      ! total number of rows and cols:
+      nrows=row_numbering%universal_length
+      ncols=col_numbering%universal_length
+      ! rows and cols per block:
+      nbrows=size(row_numbering%gnn2unn, 1)
+      nbcols=size(col_numbering%gnn2unn, 1)
+      ! number of vertical and horizontal blocks:
+      nblocksv=size(row_numbering%gnn2unn, 2)
+      nblocksh=size(col_numbering%gnn2unn, 2)
+
+
+      allocate(nnz(0:nrows-1))
+      ! loop over complete horizontal rows within a block of rows
+      nnz=1
+      ! loop over complete horizontal rows within a block of rows
+      do i=1, nbrows
+        do bv=1, nblocksv
+          ! this is a full row
+          len = row_length(sparsity, bv+(i-1)*nblocksv)
+
+          row=row_numbering%gnn2unn(i,bv)
+          if (row/=-1) then
+            nnz(row)=len
+          end if
+        end do
+      end do
+
+#if PETSC_VERSION_MINOR>=8
+    call MatCreateSeqBAIJ(MPI_COMM_SELF, nrows, ncols, &
+    PETSC_NULL_INTEGER(1), nnz, M, ierr)
+#else
+    call MatCreateSeqBAIJ(MPI_COMM_SELF, nrows, ncols, &
+    PETSC_NULL_INTEGER, nnz, M, ierr)
+#endif
+
+      if (.not. present_and_true(use_inodes)) then
+        call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
+      end if
+
+      deallocate(nnz)
+
+    end function full_CreateSeqBAIJ
+
+      !---------------------------------------------------------------------------
+      !> @author Asiri Obeysekara
+      !> @brief Subroutines to create Block csr matrices for parallel
+      !---------------------------------------------------------------------------
+       function full_CreateMPIBAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
+            !!< Creates a parallel PETSc Mat of size corresponding with
+            !!< row_numbering and col_numbering.
+            type(block_csr_sparsity), intent(in):: sparsity
+            type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
+            logical, intent(in):: only_diagonal_blocks
+            !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
+            !! that's why we default to not use them
+            logical, intent(in), optional:: use_inodes
+            Mat M
+
+            integer, dimension(:), pointer:: cols
+            integer, dimension(:), allocatable:: d_nnz, o_nnz
+            integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
+            integer nrowsp, ncolsp, nbrowsp, nbcolsp, row_offset
+            integer row, len, private_len, ghost_len
+            integer bv, i, ierr
+
+            ! total number of rows and cols:
+            nrows=row_numbering%universal_length
+            ncols=col_numbering%universal_length
+            ! rows and cols per block:
+            nbrows=size(row_numbering%gnn2unn, 1)
+            nbcols=size(col_numbering%gnn2unn, 1)
+            ! number of vertical and horizontal blocks:
+            nblocksv=size(row_numbering%gnn2unn, 2)
+            nblocksh=size(col_numbering%gnn2unn, 2)
+
+            ! number of private rows and cols in each block
+            nbrowsp=row_numbering%nprivatenodes
+            nbcolsp=col_numbering%nprivatenodes
+
+            ! number of private rows and cols in total
+            ! (this will be the number of local rows and cols for petsc)
+            nrowsp=nbrowsp*nblocksv
+            ncolsp=nbcolsp*nblocksh
+
+            ! the universal numbers used by petsc for private nodes are in the range
+            ! row_offset:row_offset+nrowsp-1
+            row_offset=row_numbering%offset
+
+            ! for each private row we have to count the number of column indices
+            ! refering to private nodes and refering to ghost/halos nodes
+            allocate(d_nnz(row_offset:row_offset+nrowsp-1), &
+                 o_nnz(row_offset:row_offset+nrowsp-1))
+            ! ghost rows are skipped below, and only have a diagonal
+            d_nnz=1
+            o_nnz=0
+            ! loop over complete horizontal rows within a block of rows
+            do i=1, nbrowsp
+               do bv=1, nblocksv
+               ! this is a full row
+                  cols => row_m_ptr(sparsity, bv+(i-1)*nblocksv)
+               ! the row length over all blocks from left to right
+                  len=size(cols)
+               ! number of entries refering to private nodes:
+                  private_len=count(cols<=ncolsp)
+          ! the rest refers to ghost/halo nodes:
+                  ghost_len=len-private_len
+
+                  row=row_numbering%gnn2unn(i,bv)
+                  if (row/=-1) then
+                     ASSERT(row>=row_offset .and. row<row_offset+nrowsp)
+                     d_nnz(row)=private_len
+                     o_nnz(row)=ghost_len
+                  end if
+               end do
+            end do
+
+            call MatCreateBAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
+                 PETSC_NULL_INTEGER, d_nnz, PETSC_NULL_INTEGER, o_nnz, M, ierr)
+
+            if (.not. present_and_true(use_inodes)) then
+               call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
+            end if
+
+            deallocate(d_nnz, o_nnz)
+
+          end function full_CreateMPIAIJ
+
 
 end module matrix_operations
