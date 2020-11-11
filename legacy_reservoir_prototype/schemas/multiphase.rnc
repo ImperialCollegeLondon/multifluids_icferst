@@ -575,7 +575,7 @@ start =
                   ## For imbibition swith the formula is:
                   ##
                   ## ## Pc = c * ( ((S_w-Swir)/(1-Swirr-Sor)) ** -a ) - B; here c - B is the entry pressure
-                 
+
                   element type_Brooks_Corey {
                     ## Entry pressure of the formula
                     element scalar_field {
@@ -999,7 +999,7 @@ start =
                   integer_vector,
                       (
                         ## Lock nodes within the well volumes/sleeves.
-                        ## <b> Very useful to reduce oscillations in the system when using mesh adaptivity</b>. 
+                        ## <b> Very useful to reduce oscillations in the system when using mesh adaptivity</b>.
                         ## Very recommended. ONLY WORKS FOR 3D.
                         element Lock_sleeve_nodes{comment}?,
                         ## Output the ids of the wells
@@ -1016,9 +1016,9 @@ start =
                  attribute file_path { string }
                 }*
              }?,
-          ## Activates the Self_potential solver. 
+          ## Activates the Self_potential solver.
           ##
-          ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, 
+          ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
           ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
           ##
           ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
@@ -1038,7 +1038,7 @@ start =
            ## coordinates, the nearest vertex will be selected.
            element reference_coordinates {
               real_dim_vector
-           }, 
+           },
            ## <b>If not solving for temperature</b>: here it MUST be specified the reservoir temperature (Kelvin) to compute the rock saturated conductivity.
 	         element Reservoir_temperature {
 	         	real
@@ -1046,12 +1046,12 @@ start =
 		       ## Cementation exponent, by default 1.8, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
 	         element Cementation_exp {
 	         	real
-		        }?,        
+		        }?,
 		       ## Saturation exponent, by default 2.0, of the rock conductivity equation. sigma_s = porosity^Cementation_exp * sigma_w * Saturation^Sat_exponent
 	         element Sat_exponent {
 	         	real
 		        }?,
-		       ## By default the results are shown in miliVolts, select this to show the results in Volts. 
+		       ## By default the results are shown in miliVolts, select this to show the results in Volts.
 	         element Results_in_Volts {
 	         	empty
 		        }? ,
@@ -1059,22 +1059,22 @@ start =
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Rock_sat_conductivity_code{
              scalar_python_diagnostic_algorithm
-               }?,   
+               }?,
            ## Electrokinetic (Cek) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_ElectroKinetic_code{
              scalar_python_diagnostic_algorithm
-               }?, 
+               }?,
            ## Electrodiffusive (Ced) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Electrodiffusive_code{
              scalar_python_diagnostic_algorithm
-               }?,  
+               }?,
            ## Thermoelectric (Cte) coupling term. If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Thermoelectric_code{
              scalar_python_diagnostic_algorithm
-               }?                  
+               }?
           )}?,
 	        ## Multiphase Initialisation: Free water level is the height (m) where Pc=0, water saturation below this will be at residual oil.
 	        ##
@@ -1096,7 +1096,7 @@ start =
          element magma_parameters {
          (
            ## Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.
-            element Phase_diagram_coefficients {		
+            element Phase_diagram_coefficients {
 		(
 		## A1
             	element A1 {
@@ -1122,7 +1122,7 @@ start =
             	element C2 {
                real
             	}?,
-	       ## Eutectic point	
+	       ## Eutectic point
 	       element ae {
                real
             	},
@@ -1150,15 +1150,15 @@ start =
 		## Grain size
             	element grain_size {
                real
-            	},     
+            	},
 		## the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
             	element cut_a {
                real
-            	},  
-		## the range above which the coupling terms follow the Hindered settling 
+            	},
+		## the range above which the coupling terms follow the Hindered settling
             	element cut_b {
                real
-            	}              
+            	}
 	    )
             }
             )
@@ -1218,6 +1218,9 @@ start =
             element lump_momentum_inertia {
               empty
             }?,
+            element block_momentum_solve {
+              empty
+            }?,            
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {
@@ -1518,8 +1521,8 @@ solver_options =
                 ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
                 ##
                 ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature</b>
-                
-                
+
+
                 element adaptive_timestep_nonlinear{
                     integer,
                   (
@@ -1611,31 +1614,31 @@ solver_options =
         element rescale_mom_matrices {
            empty
         }?,
-        ## Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped. 
+        ## Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped.
         ##
         ## This is ACTIVATED by default for Stokes/Magma flow. <b>Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.</b>
-        element solve_mom_iteratively {real, 
+        element solve_mom_iteratively {real,
         (
         ## Maximum restart iteration allowed. The default value is 15.
          element restart_its {
            integer}?,
         ## Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.
          element Max_restarts {
-           real}?,  
+           real}?,
            ## Instead of using the mass matrix as preconditioner, use the diagonal of the Momemtum matrix, <b>unstable</b> but potentially faster.
             element Momentum_preconditioner {
            empty}?,
            ## Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
-           ## but it is more efficient that the simple preconditioner (<b>This option disables this feature, NOT RECOMMENDED</b>). 
-           ## 
-           ## By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 
+           ## but it is more efficient that the simple preconditioner (<b>This option disables this feature, NOT RECOMMENDED</b>).
+           ##
+           ## By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1
            ##
            ## If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (<b>Unstable</b>)
-           
+
             element Disable_advance_preconditioner {
-           empty}?               
+           empty}?
         )}?
-       )}?           
+       )}?
       )}
    )
 
