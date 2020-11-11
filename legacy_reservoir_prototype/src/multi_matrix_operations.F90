@@ -1730,11 +1730,11 @@ contains
       end do
 
 #if PETSC_VERSION_MINOR>=8
-    call MatCreateSeqBAIJ(MPI_COMM_SELF, nrows, ncols, &
-    PETSC_NULL_INTEGER(1), nnz, M, ierr)
+    call MatCreateSeqBAIJ(MPI_COMM_SELF, nbrows, nrows, ncols, &
+    nblocksh, nnz, M, ierr)
 #else
-    call MatCreateSeqBAIJ(MPI_COMM_SELF, nrows, ncols, &
-    PETSC_NULL_INTEGER, nnz, M, ierr)
+    call MatCreateSeqBAIJ(MPI_COMM_SELF,nbrows, nrows, ncols, &
+    nblocksh, nnz, M, ierr)
 #endif
 
       if (.not. present_and_true(use_inodes)) then
