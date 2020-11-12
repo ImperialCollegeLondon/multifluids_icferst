@@ -285,14 +285,14 @@ contains
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         call put_CSR_spars_into_packed_state()
 
-        !!!> AO allocate and calcualte the block patter for the momentum matrix
-        block_mom=.false.
-        block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
-        if(block_mom) then
-          call Get_block_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, &
-                  mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
-          call put_CSR_block_into_packed_state()
-        end if
+        ! !!!> AO allocate and calcualte the block patter for the momentum matrix
+        ! block_mom=.false.
+        ! block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
+        ! if(block_mom) then
+        !   call Get_block_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, &
+        !           mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
+        !   call put_CSR_block_into_packed_state()
+        ! end if
 
 
         !!$ Allocating space for various arrays:
@@ -1123,19 +1123,19 @@ contains
 
 
 
-        subroutine put_CSR_block_into_packed_state
-          use sparse_tools
-          type(block_csr_matrix), pointer :: blocks !!this is new (AO)
-
-          if (associated(halo)) then
-              blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
-                  name='MomentumBlock',row_halo=halo,column_halo=halo)
-          else
-              blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumBlock")
-          end if
-          call insert(packed_state,blocks,"MomentumBlock")
-          call deallocate(blocks)
-        end subroutine put_CSR_block_into_packed_state
+        ! subroutine put_CSR_block_into_packed_state
+        !   use sparse_tools
+        !   type(block_csr_matrix), pointer :: blocks !!this is new (AO)
+        !
+        !   if (associated(halo)) then
+        !       blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
+        !           name='MomentumBlock',row_halo=halo,column_halo=halo)
+        !   else
+        !       blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumBlock")
+        !   end if
+        !   call insert(packed_state,blocks,"MomentumBlock")
+        !   call deallocate(blocks)
+        ! end subroutine put_CSR_block_into_packed_state
 
 
 

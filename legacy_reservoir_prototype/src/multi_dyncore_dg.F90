@@ -2192,8 +2192,9 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            blockM => extract_block_csr_matrix(packed_state, "MomentumBlock")
-            Mmat%DGM_PETSC_BLOCK = allocate_momentum_block_matrix(blockM,velocity)
+            blockM => extract_block_csr_matrix(packed_state,"MomentumSparsity") ! "MomentumBlock")
+            ! Mmat%DGM_PETSC_BLOCK = allocate_momentum_block_matrix(blockM,velocity)
+            Mmat%DGM_PETSC = allocate_momentum_block_matrix(blockM,velocity)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
@@ -2208,10 +2209,10 @@ end if
             call comb_vel_matrix_diag_dist_lump(diag_bigm_con, bigm_con, &
             mmat%dgm_petsc, &
             mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
-          elseif (block_mom)then
-            call comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
-            mmat%dgm_petsc, &
-            mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure, Mmat)  ! element connectivity.
+          ELSEIF (BLOCK_MOM)THEN
+            CALL COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
+            MMAT%DGM_PETSC, &
+            MSPARS%ELE%FIN, MSPARS%ELE%COL, MDIMS%NDIM, MDIMS%NPHASE, MDIMS%U_NLOC, MDIMS%TOTELE, VELOCITY, PRESSURE, MMAT)  ! ELEMENT CONNECTIVITY.
           else
             call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
             mmat%dgm_petsc, &
@@ -7346,7 +7347,124 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  END SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump
 
 
+ !>@brief: This subroutine combines the distributed and block diagonal for an element
+ !> into the BLOCK matrix DGM_PHA_BLOCK.
+SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
+  DGM_PETSC, &
+  FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat)  ! Element connectivity.
+  IMPLICIT NONE
+  INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
+  !
+  REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
+  REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
+  type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
+  INTEGER, DIMENSION(: ), intent( in ) :: FINELE
+  INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+  type(multi_matrices), intent(inout) :: Mmat
+  type( tensor_field ) :: velocity
+  type( tensor_field ) :: pressure
+  !Local variables
+  INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
+  INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
+  INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
+  real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
+  integer, dimension(:), pointer :: neighbours
+  integer :: nb
+  logical :: skip
 
+  ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
+  Loop_Elements20: DO ELE = 1, TOTELE
+      if (IsParallel()) then
+          if (.not. assemble_ele(pressure,ele)) then
+              skip=.true.
+              neighbours=>ele_neigh(pressure,ele)
+              do nb=1,size(neighbours)
+                  if (neighbours(nb)<=0) cycle
+                  if (assemble_ele(pressure,neighbours(nb))) then
+                      skip=.false.
+                      exit
+                  end if
+              end do
+              if (skip) cycle
+          end if
+      end if
+      ELE_ROW_START=FINELE(ELE)
+      ELE_ROW_START_NEXT=FINELE(ELE+1)
+      ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
+      ! Block diagonal and off diagonal terms...
+      Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
+          JCOLELE=COLELE(COUNT_ELE)
+
+
+        IF(JCOLELE==ELE) THEN
+            ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+            LOC_DGM_PHA(:,:,:, :,:,:) = DIAG_BIGM_CON(:,:,:, :,:,:, ELE) + BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
+        ELSE
+            LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
+        ENDIF
+
+
+
+          DO U_JLOC=1,U_NLOC
+              DO U_ILOC=1,U_NLOC
+                  DO JPHASE=1,NPHASE
+                      DO IPHASE=1,NPHASE
+                          DO JDIM=1,NDIM
+                              DO IDIM=1,NDIM
+                                  ! New for rapid code ordering of variables...
+                                  I=IDIM + (IPHASE-1)*NDIM
+                                  J=JDIM + (JPHASE-1)*NDIM
+                                  GLOBI=(ELE-1)*U_NLOC + U_ILOC
+                                  GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+
+                                  if (.not. node_owned(velocity,globi)) cycle
+                                  call addto(dgm_petsc, blocki= I , blockj= J , i=globi , j=globj , &
+                                      val=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
+
+                                  ! DO JB=1, NBLOCKI !!!!! ****** i think this goes outside
+                                  !   DO IB=1, NBLOCKI !!!!! ****** i think this goes outside
+                                  !     if (.not. node_owned(velocity,globi)) cycle
+                                  !     call addto(dgm_petsc, blocki= IB , blockj= JB, I , J , globi , globj , &
+                                  !         LOC_DGM_PHA(IB, JB, IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
+                                  !   END DO
+                                  ! END DO
+                              END DO
+                          END DO
+                      END DO
+                  END DO
+              END DO
+          END DO
+
+
+          ! IF(Mdims%npres > 1) THEN
+          !         DO CV_NOD = 1, Mdims%cv_nonods
+          !             if ( mass_pipe(cv_nod) <= 1e-16 ) cycle!Only for well nodes
+          !             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+          !                 CV_JNOD = Mspars%CMC%col( COUNT )
+          !                 DO IPRES = 1, Mdims%npres
+          !                     DO JPRES = 1, Mdims%npres
+          !                       call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+          !                       val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
+          !                       IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+          !                         CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+          !                         + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
+          !                         MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+          !                       END IF
+          !                     END DO
+          !                 END DO
+          !             END DO
+          !         END DO
+          !     END IF ! ENDOF IF(Mdims%npres > 1) THEN
+          !     !If we have a reference node with pressure zero we impose that here.
+
+
+      END DO Between_Elements_And_Boundary20
+  END DO Loop_Elements20
+
+  deallocate(LOC_DGM_PHA)
+
+  RETURN
+END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK
 
 
 
