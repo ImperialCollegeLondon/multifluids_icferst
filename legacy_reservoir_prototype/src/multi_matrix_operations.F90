@@ -1727,10 +1727,7 @@ contains
       !   end do
       ! end do
 
-    print*, nbrows,nblocksv,nrows, ncols, size(nnz)
-
     bs=nbrows*nbrows
-
 
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF, nbrows, nrows, ncols, &
