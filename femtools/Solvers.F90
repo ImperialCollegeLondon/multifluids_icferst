@@ -2052,6 +2052,11 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        ewrite(1,*) "Returned from setup_ksp_from_options for the preconditioner solve, "//&
           &"now setting options for the outer solve"
 
+        else if (pctype==PCPBJACOBI) then
+
+          call PCSetType(pc, pctype, ierr)
+
+
     else if (pctype==PCASM .or. pctype==PCBJACOBI) then
 
       call PCSetType(pc, pctype, ierr)
