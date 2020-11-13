@@ -1631,7 +1631,8 @@ contains
     !> @brief Subroutines to handle Block matrices
     !---------------------------------------------------------------------------
     function allocate_momentum_block_matrix(blocks,velocity) result(matrix)
-        type(block_csr_matrix), intent (inout) :: blocks
+      !  type(block_csr_matrix), intent (inout) :: blocks
+        type(csr_sparsity), intent (inout) :: blocks
         type(tensor_field), intent (inout) :: velocity
         type(halo_type), pointer:: halo
         type(petsc_csr_matrix) :: matrix
@@ -1671,11 +1672,8 @@ contains
                 matrix%column_numbering,.false.)
         end if
 
-        call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
-        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
-        call MatSetOption(matrix%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
+        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
         nullify(matrix%refcount)
-        !call addref_petsc_csr_matrix(matrix)!Removed with last fluidity merge
 
         allocate(matrix%ksp)
         matrix%ksp = PETSC_NULL_KSP
@@ -1689,7 +1687,8 @@ contains
     function full_CreateSeqBAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
       !!< Creates a parallel PETSc Mat of size corresponding with
       !!< row_numbering and col_numbering.
-      type(block_csr_matrix), intent(in):: sparsity
+    !  type(block_csr_matrix), intent(in):: sparsity
+      type(csr_sparsity), intent(in):: sparsity
       type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
       logical, intent(in):: only_diagonal_blocks
       !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
@@ -1701,7 +1700,7 @@ contains
       integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
       integer row, len
       integer bv, i, ierr
-
+      integer bs
       ! total number of rows and cols:
       nrows=row_numbering%universal_length
       ncols=col_numbering%universal_length
@@ -1713,32 +1712,33 @@ contains
       nblocksh=size(col_numbering%gnn2unn, 2)
 
 
-      allocate(nnz(0:nrows-1))
+      allocate(nnz(0:nbrows-1))
+      !!! nz 	- number of nonzero blocks per block row (same for all rows)
+      !nnz=1
       ! loop over complete horizontal rows within a block of rows
-      nnz=1
-      ! loop over complete horizontal rows within a block of rows
-      do i=1, nbrows
-        do bv=1, nblocksv
-          ! this is a full row
-          len = row_length(sparsity, bv+(i-1)*nblocksv)
-          row=row_numbering%gnn2unn(i,bv)
-          if (row/=-1) then
-            nnz(row)=len
-          end if
-        end do
-      end do
+      ! do i=1, nbrows
+      !   do bv=1, nblocksv
+      !     ! this is a full row
+      !     len = row_length(sparsity, bv+(i-1)*nblocksv)
+      !     row=row_numbering%gnn2unn(i,bv)
+      !     if (row/=-1) then
+      !       nnz(row)=len   ! array containing the number of nonzero blocks in the various block rows
+      !     end if
+      !   end do
+      ! end do
+
+    print*, nbrows,nblocksv,nrows, ncols, size(nnz)
+
+    bs=nbrows*nbrows
+
 
 #if PETSC_VERSION_MINOR>=8
-    call MatCreateSeqBAIJ(MPI_COMM_SELF, nbrows*nbrows, nrows, ncols, &
-    PETSC_NULL_INTEGER(1), nnz, M, ierr)
+    call MatCreateSeqBAIJ(MPI_COMM_SELF, nbrows, nrows, ncols, &
+    PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #else
-    call MatCreateSeqBAIJ(MPI_COMM_SELF,nbrows*nbrows, nrows, ncols, &
-    PETSC_NULL_INTEGER, nnz, M, ierr)
+    call MatCreateSeqBAIJ(MPI_COMM_SELF,nbrows, nrows, ncols, &
+    PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #endif
-
-      if (.not. present_and_true(use_inodes)) then
-        call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
-      end if
 
       deallocate(nnz)
 
@@ -1751,7 +1751,8 @@ contains
    function full_CreateMPIBAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
         !!< Creates a parallel PETSc Mat of size corresponding with
         !!< row_numbering and col_numbering.
-        type(block_csr_matrix), intent(in):: sparsity
+        !type(block_csr_matrix), intent(in):: sparsity
+        type(csr_sparsity), intent(in):: sparsity
         type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
         logical, intent(in):: only_diagonal_blocks
         !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
@@ -1819,10 +1820,10 @@ contains
 
 #if PETSC_VERSION_MINOR>=8
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, nbrows*nbrows, nrowsp, ncolsp, nrows, ncols, &
-    PETSC_NULL_INTEGER(1), d_nnz, PETSC_NULL_INTEGER(1), o_nnz, M, ierr)
+    PETSC_NULL_INTEGER(1), d_nnz, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #else
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, nbrows*nbrows, nrowsp, ncolsp, nrows, ncols, &
-    PETSC_NULL_INTEGER, d_nnz, PETSC_NULL_INTEGER, o_nnz, M, ierr)
+    PETSC_NULL_INTEGER, d_nnz, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #endif
 
         if (.not. present_and_true(use_inodes)) then

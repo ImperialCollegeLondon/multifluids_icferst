@@ -285,7 +285,7 @@ contains
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         call put_CSR_spars_into_packed_state()
 
-        ! !!!> AO allocate and calcualte the block patter for the momentum matrix
+        ! !!!> AO allocate and calcualte the block pattern for the momentum matrix
         ! block_mom=.false.
         ! block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
         ! if(block_mom) then
@@ -1036,6 +1036,7 @@ contains
 
             use sparse_tools
             type(csr_sparsity), pointer :: sparsity
+            ! type(block_csr_matrix), pointer :: bsparsity
             type(tensor_field), pointer :: tfield
             type(scalar_field), pointer :: sfield
             integer ic, stat
@@ -1089,20 +1090,43 @@ contains
             end if
             call insert(packed_state,sparsity,"ACVSparsity")
             call deallocate(sparsity)
-            tfield=>extract_tensor_field(packed_state,"PackedVelocity")
-            if (associated(tfield%mesh%halos)) then
-                halo => tfield%mesh%halos(2)
+
+            !######################## block momentum matrix optional ###############
+            block_mom=.false.
+            block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
+            if(block_mom) then
+              tfield=>extract_tensor_field(packed_state,"PackedVelocity")
+              if (associated(tfield%mesh%halos)) then
+                  halo => tfield%mesh%halos(2)
+              else
+                  nullify(halo)
+              end if
+              if (associated(halo)) then
+                  sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
+                      name='MomentumSparsity',row_halo=halo,column_halo=halo)
+              else
+                  sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumSparsity")
+              end if
+              call insert(packed_state,sparsity,"MomentumSparsity")
+              call deallocate(sparsity)
+            !######################## sparse momentum matrix optional ###############
             else
-                nullify(halo)
+              tfield=>extract_tensor_field(packed_state,"PackedVelocity")
+              if (associated(tfield%mesh%halos)) then
+                  halo => tfield%mesh%halos(2)
+              else
+                  nullify(halo)
+              end if
+              if (associated(halo)) then
+                  sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
+                      name='MomentumSparsity',row_halo=halo,column_halo=halo)
+              else
+                  sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumSparsity")
+              end if
+              call insert(packed_state,sparsity,"MomentumSparsity")
+              call deallocate(sparsity)
             end if
-            if (associated(halo)) then
-                sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
-                    name='MomentumSparsity',row_halo=halo,column_halo=halo)
-            else
-                sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumSparsity")
-            end if
-            call insert(packed_state,sparsity,"MomentumSparsity")
-            call deallocate(sparsity)
+
             tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
             sparsity=make_sparsity(tfield%mesh,tfield%mesh,&
                 "PressureMassMatrixSparsity")
@@ -1120,23 +1144,6 @@ contains
             sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
             call insert(packed_state,sparsity,"ElementConnectivity")
         end subroutine put_CSR_spars_into_packed_state
-
-
-
-        ! subroutine put_CSR_block_into_packed_state
-        !   use sparse_tools
-        !   type(block_csr_matrix), pointer :: blocks !!this is new (AO)
-        !
-        !   if (associated(halo)) then
-        !       blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
-        !           name='MomentumBlock',row_halo=halo,column_halo=halo)
-        !   else
-        !       blocks =wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumBlock")
-        !   end if
-        !   call insert(packed_state,blocks,"MomentumBlock")
-        !   call deallocate(blocks)
-        ! end subroutine put_CSR_block_into_packed_state
-
 
 
         subroutine linearise_components()

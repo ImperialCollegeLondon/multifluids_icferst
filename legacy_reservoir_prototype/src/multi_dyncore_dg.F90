@@ -27,7 +27,6 @@ module multiphase_1D_engine
 
     use Fields_Allocates, only : allocate
     use sparse_tools_petsc
-
     use solvers_module
     use cv_advection
     use matrix_operations
@@ -51,8 +50,11 @@ module multiphase_1D_engine
     use parallel_tools, only : allmax, allmin, isparallel
     use ieee_arithmetic
     use multi_magma
-
+#ifdef HAVE_PETSC_MODULES
+  use petsc
+#endif
     implicit none
+#include "petsc_legacy.h"
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
@@ -1897,7 +1899,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
-        type(block_csr_matrix), pointer:: blockM !!-ao
+        ! type(block_csr_matrix), pointer:: blockM !!-ao
         logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
@@ -2192,9 +2194,9 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            blockM => extract_block_csr_matrix(packed_state,"MomentumSparsity") ! "MomentumBlock")
-            ! Mmat%DGM_PETSC_BLOCK = allocate_momentum_block_matrix(blockM,velocity)
-            Mmat%DGM_PETSC = allocate_momentum_block_matrix(blockM,velocity)
+            ! blockM => extract_block_csr_matrix(packed_state,"MomentumBlockSparsity") ! "MomentumBlock")
+            sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
+            Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
@@ -7364,6 +7366,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   type( tensor_field ) :: velocity
   type( tensor_field ) :: pressure
   !Local variables
+
+  PetscErrorCode:: ierr
+  integer:: row, col
+
   INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
   INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
   INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
@@ -7373,6 +7379,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   logical :: skip
 
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
+
   Loop_Elements20: DO ELE = 1, TOTELE
       if (IsParallel()) then
           if (.not. assemble_ele(pressure,ele)) then
@@ -7403,8 +7410,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
-
-
           DO U_JLOC=1,U_NLOC
               DO U_ILOC=1,U_NLOC
                   DO JPHASE=1,NPHASE
@@ -7416,18 +7421,14 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                                   J=JDIM + (JPHASE-1)*NDIM
                                   GLOBI=(ELE-1)*U_NLOC + U_ILOC
                                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-
                                   if (.not. node_owned(velocity,globi)) cycle
-                                  call addto(dgm_petsc, blocki= I , blockj= J , i=globi , j=globj , &
-                                      val=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
+                                  ! call addto(matrix=dgm_petsc, blocki= I , blockj= J , i=globi , j=globj , &
+                                  !      val=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
 
-                                  ! DO JB=1, NBLOCKI !!!!! ****** i think this goes outside
-                                  !   DO IB=1, NBLOCKI !!!!! ****** i think this goes outside
-                                  !     if (.not. node_owned(velocity,globi)) cycle
-                                  !     call addto(dgm_petsc, blocki= IB , blockj= JB, I , J , globi , globj , &
-                                  !         LOC_DGM_PHA(IB, JB, IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
-                                  !   END DO
-                                  ! END DO
+                                 row=dgm_petsc%row_numbering%gnn2unn(globi,I)
+                                 col=dgm_petsc%column_numbering%gnn2unn(globj,J)
+                                 call MatSetValue(dgm_petsc%M, row, col, &
+                                 LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC),INSERT_VALUES, ierr)
                               END DO
                           END DO
                       END DO
