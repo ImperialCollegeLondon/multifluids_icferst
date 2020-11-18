@@ -2194,7 +2194,9 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            ! blockM => extract_block_csr_matrix(packed_state,"MomentumBlockSparsity") ! "MomentumBlock")
+
+            print*, size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL)
+            STOP 606
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity)
           else
@@ -7410,6 +7412,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
+          !!uing sequential insertions/add
           DO U_JLOC=1,U_NLOC
               DO U_ILOC=1,U_NLOC
                   DO JPHASE=1,NPHASE
@@ -7421,10 +7424,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                                   J=JDIM + (JPHASE-1)*NDIM
                                   GLOBI=(ELE-1)*U_NLOC + U_ILOC
                                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                                  if (.not. node_owned(velocity,globi)) cycle
-                                  ! call addto(matrix=dgm_petsc, blocki= I , blockj= J , i=globi , j=globj , &
-                                  !      val=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
 
+                                  if (.not. node_owned(velocity,globi)) cycle
                                  row=dgm_petsc%row_numbering%gnn2unn(globi,I)
                                  col=dgm_petsc%column_numbering%gnn2unn(globj,J)
                                  call MatSetValue(dgm_petsc%M, row, col, &
@@ -7436,28 +7437,24 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               END DO
           END DO
 
-
-          ! IF(Mdims%npres > 1) THEN
-          !         DO CV_NOD = 1, Mdims%cv_nonods
-          !             if ( mass_pipe(cv_nod) <= 1e-16 ) cycle!Only for well nodes
-          !             DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-          !                 CV_JNOD = Mspars%CMC%col( COUNT )
-          !                 DO IPRES = 1, Mdims%npres
-          !                     DO JPRES = 1, Mdims%npres
-          !                       call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-          !                       val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
-          !                       IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-          !                         CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
-          !                         + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
-          !                         MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
-          !                       END IF
-          !                     END DO
-          !                 END DO
+          ! !! using block insertions/add
+          ! !insert LOC_DGM_PHA as a block t DGM_PETSC using MatSetValuesBlocked()
+          ! !MatSetValuesBlocked(Mat mat,PetscInt m,const PetscInt idxm[],PetscInt n,const PetscInt idxn[],const PetscScalar v[],InsertMode addv)
+          ! !NCOELE -> non-zero blocks  (Mspars%ELE%ncol)
+          ! DO JPHASE=1,NPHASE
+          !     DO IPHASE=1,NPHASE
+          !         DO JDIM=1,NDIM
+          !             DO IDIM=1,NDIM
+          !                 !cyling through block rows and columns
+          !                 I=IDIM + (IPHASE-1)*NDIM
+          !                 J=JDIM + (JPHASE-1)*NDIM
+          !                call MatSetValueBlocked(dgm_petsc%M, I, J, &
+          !                LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,:,:),ADD_VALUES, ierr)
+          !
           !             END DO
           !         END DO
-          !     END IF ! ENDOF IF(Mdims%npres > 1) THEN
-          !     !If we have a reference node with pressure zero we impose that here.
-
+          !     END DO
+          ! END DO
 
       END DO Between_Elements_And_Boundary20
   END DO Loop_Elements20

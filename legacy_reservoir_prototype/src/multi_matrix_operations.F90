@@ -1711,7 +1711,7 @@ contains
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
 
-
+      
       !allocate(nnz(0:nbrows-1))
       !!! nz 	- number of nonzero blocks per block row (same for all rows)
       !nnz=1
