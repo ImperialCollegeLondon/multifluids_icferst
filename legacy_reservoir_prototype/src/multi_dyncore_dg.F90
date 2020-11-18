@@ -7405,6 +7405,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ELE_ROW_START=FINELE(ELE)
       ELE_ROW_START_NEXT=FINELE(ELE+1)
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
+
       ! Block diagonal and off diagonal terms...
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
           JCOLELE=COLELE(COUNT_ELE)
@@ -7442,24 +7443,22 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
           !     END DO
           ! END DO
 
-          ! ! using block insertions/add
-          ! insert LOC_DGM_PHA as a block t DGM_PETSC using MatSetValuesBlocked()
-          ! MatSetValuesBlocked(Mat mat,PetscInt m,const PetscInt idxm[],PetscInt n,const PetscInt idxn[],const PetscScalar v[],InsertMode addv)
-          ! NCOELE -> non-zero blocks  (Mspars%ELE%ncol)
-          DO JPHASE=1,NPHASE
-              DO IPHASE=1,NPHASE
-                  DO JDIM=1,NDIM
-                      DO IDIM=1,NDIM
-                          !cyling through block rows and columns
-                          I=IDIM + (IPHASE-1)*NDIM
-                          J=JDIM + (JPHASE-1)*NDIM
-                         idxn=dgm_petsc%row_numbering%gnn2unn(:,I)
-                         jdxn=dgm_petsc%column_numbering%gnn2unn(:,J)
-                         call MatSetValuesBlocked(dgm_petsc%M, I, row, J, col, LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,:,:),ADD_VALUES, ierr)
-                      END DO
-                  END DO
+          !!uing sequential insertions/add
+          DO U_JLOC=1,U_NLOC
+              DO U_ILOC=1,U_NLOC
+                                  GLOBI=(ELE-1)*U_NLOC + U_ILOC
+                                  GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+
+                                  if (.not. node_owned(velocity,globi)) cycle
+
+                                 row=dgm_petsc%row_numbering%gnn2unn(globi,:)
+                                 col=dgm_petsc%column_numbering%gnn2unn(globj,:)
+                                 call MatSetValueBlocked(dgm_petsc%M, GLOBI,row, GLOBJ,col, &
+                                 LOC_DGM_PHA(:,:,:,:,U_ILOC,U_JLOC),ADD_VALUES, ierr)
               END DO
           END DO
+
+
 
       END DO Between_Elements_And_Boundary20
   END DO Loop_Elements20
