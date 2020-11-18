@@ -7428,7 +7428,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                                  row=dgm_petsc%row_numbering%gnn2unn(globi,I)
                                  col=dgm_petsc%column_numbering%gnn2unn(globj,J)
                                  call MatSetValue(dgm_petsc%M, row, col, &
-                                 LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC),INSERT_VALUES, ierr)
+                                 LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC),ADD_VALUES, ierr)
                               END DO
                           END DO
                       END DO
