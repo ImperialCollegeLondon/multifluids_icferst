@@ -2195,9 +2195,11 @@ end if
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
 
-            print*, size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL)
-            STOP 606
+            print*, "before", size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL)
+            !STOP 606
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
+            print*, "after", size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL)
+
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
@@ -7358,7 +7360,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat)  ! Element connectivity.
   IMPLICIT NONE
   INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
-  !
+
   REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
   REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
   type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC

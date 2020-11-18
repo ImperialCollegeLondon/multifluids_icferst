@@ -1700,7 +1700,6 @@ contains
       integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
       integer row, len
       integer bv, i, ierr
-      integer bs
       ! total number of rows and cols:
       nrows=row_numbering%universal_length
       ncols=col_numbering%universal_length
@@ -1711,23 +1710,26 @@ contains
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
 
-      
-      !allocate(nnz(0:nbrows-1))
-      !!! nz 	- number of nonzero blocks per block row (same for all rows)
-      !nnz=1
-      ! loop over complete horizontal rows within a block of rows
-      ! do i=1, nbrows
-      !   do bv=1, nblocksv
-      !     ! this is a full row
-      !     len = row_length(sparsity, bv+(i-1)*nblocksv)
-      !     row=row_numbering%gnn2unn(i,bv)
-      !     if (row/=-1) then
-      !       nnz(row)=len   ! array containing the number of nonzero blocks in the various block rows
-      !     end if
-      !   end do
-      ! end do
 
-    bs=nbrows*nbrows
+      allocate(nnz(0:nrows-1))
+      !! nz 	- number of nonzero blocks per block row (same for all rows)
+      nnz=1
+      !!! loop over complete horizontal rows within a block of rows
+      do i=1, nbrows
+        do bv=1, nblocksv
+          ! this is a full row
+           len = row_length(sparsity, bv+(i-1)*nblocksv)
+           row=row_numbering%gnn2unn(i,bv)
+          if (row/=-1) then
+            nnz(row)=len   ! array containing the number of nonzero blocks in the various block rows
+          end if
+        end do
+      end do
+
+      !!
+      print*, nbrows, nblocksv, size(nnz)
+      print*, size(sparsity%findrm), size(sparsity%colm)
+      STOP 606
 
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF, nbrows, nrows, ncols, &
