@@ -7383,8 +7383,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   integer :: nb
   logical :: skip
 
-  allocate(idxn(size(dgm_petsc%row_numbering%gnn2unn, 1)))
-  allocate(jdxn(size(dgm_petsc%row_numbering%gnn2unn, 1)))
+  allocate(idxn(size(dgm_petsc%row_numbering%gnn2unn, 2)))
+  allocate(jdxn(size(dgm_petsc%row_numbering%gnn2unn, 2)))
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
 
   Loop_Elements20: DO ELE = 1, TOTELE
@@ -7451,9 +7451,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
                                   if (.not. node_owned(velocity,globi)) cycle
 
-                                 row=dgm_petsc%row_numbering%gnn2unn(globi,:)
-                                 col=dgm_petsc%column_numbering%gnn2unn(globj,:)
-                                 call MatSetValueBlocked(dgm_petsc%M, GLOBI,row, GLOBJ,col, &
+                                 idxn=dgm_petsc%row_numbering%gnn2unn(globi,:)
+                                 jdxn=dgm_petsc%column_numbering%gnn2unn(globj,:)
+                                 call MatSetValueBlocked(dgm_petsc%M, GLOBI,idxn, GLOBJ,jdxn, &
                                  LOC_DGM_PHA(:,:,:,:,U_ILOC,U_JLOC),ADD_VALUES, ierr)
               END DO
           END DO
