@@ -2199,7 +2199,7 @@ end if
             !STOP 606
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             print*, "after", size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL)
-
+            print*, size(sparsity%findrm), size(sparsity%colm),Mdims%totele, Mdims%nphase*Mdims%ndim*mdims%u_nloc
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
@@ -7379,6 +7379,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
   real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
   integer, dimension(:), pointer :: neighbours
+  integer, dimension(:) :: idxn, jdxn
   integer :: nb
   logical :: skip
 
@@ -7414,49 +7415,49 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
-          !!uing sequential insertions/add
-          DO U_JLOC=1,U_NLOC
-              DO U_ILOC=1,U_NLOC
-                  DO JPHASE=1,NPHASE
-                      DO IPHASE=1,NPHASE
-                          DO JDIM=1,NDIM
-                              DO IDIM=1,NDIM
-                                  ! New for rapid code ordering of variables...
-                                  I=IDIM + (IPHASE-1)*NDIM
-                                  J=JDIM + (JPHASE-1)*NDIM
-                                  GLOBI=(ELE-1)*U_NLOC + U_ILOC
-                                  GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-
-                                  if (.not. node_owned(velocity,globi)) cycle
-                                 row=dgm_petsc%row_numbering%gnn2unn(globi,I)
-                                 col=dgm_petsc%column_numbering%gnn2unn(globj,J)
-                                 call MatSetValue(dgm_petsc%M, row, col, &
-                                 LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC),ADD_VALUES, ierr)
-                              END DO
-                          END DO
-                      END DO
-                  END DO
-              END DO
-          END DO
-
-          ! !! using block insertions/add
-          ! !insert LOC_DGM_PHA as a block t DGM_PETSC using MatSetValuesBlocked()
-          ! !MatSetValuesBlocked(Mat mat,PetscInt m,const PetscInt idxm[],PetscInt n,const PetscInt idxn[],const PetscScalar v[],InsertMode addv)
-          ! !NCOELE -> non-zero blocks  (Mspars%ELE%ncol)
-          ! DO JPHASE=1,NPHASE
-          !     DO IPHASE=1,NPHASE
-          !         DO JDIM=1,NDIM
-          !             DO IDIM=1,NDIM
-          !                 !cyling through block rows and columns
-          !                 I=IDIM + (IPHASE-1)*NDIM
-          !                 J=JDIM + (JPHASE-1)*NDIM
-          !                call MatSetValueBlocked(dgm_petsc%M, I, J, &
-          !                LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,:,:),ADD_VALUES, ierr)
+          ! !!uing sequential insertions/add
+          ! DO U_JLOC=1,U_NLOC
+          !     DO U_ILOC=1,U_NLOC
+          !         DO JPHASE=1,NPHASE
+          !             DO IPHASE=1,NPHASE
+          !                 DO JDIM=1,NDIM
+          !                     DO IDIM=1,NDIM
+          !                         ! New for rapid code ordering of variables...
+          !                         I=IDIM + (IPHASE-1)*NDIM
+          !                         J=JDIM + (JPHASE-1)*NDIM
+          !                         GLOBI=(ELE-1)*U_NLOC + U_ILOC
+          !                         GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
           !
+          !                         if (.not. node_owned(velocity,globi)) cycle
+          !                        row=dgm_petsc%row_numbering%gnn2unn(globi,I)
+          !                        col=dgm_petsc%column_numbering%gnn2unn(globj,J)
+          !                        call MatSetValue(dgm_petsc%M, row, col, &
+          !                        LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC),ADD_VALUES, ierr)
+          !                     END DO
+          !                 END DO
           !             END DO
           !         END DO
           !     END DO
           ! END DO
+
+          ! ! using block insertions/add
+          ! insert LOC_DGM_PHA as a block t DGM_PETSC using MatSetValuesBlocked()
+          ! MatSetValuesBlocked(Mat mat,PetscInt m,const PetscInt idxm[],PetscInt n,const PetscInt idxn[],const PetscScalar v[],InsertMode addv)
+          ! NCOELE -> non-zero blocks  (Mspars%ELE%ncol)
+          DO JPHASE=1,NPHASE
+              DO IPHASE=1,NPHASE
+                  DO JDIM=1,NDIM
+                      DO IDIM=1,NDIM
+                          !cyling through block rows and columns
+                          I=IDIM + (IPHASE-1)*NDIM
+                          J=JDIM + (JPHASE-1)*NDIM
+                         idxn=dgm_petsc%row_numbering%gnn2unn(:,I)
+                         jdxn=dgm_petsc%column_numbering%gnn2unn(:,J)
+                         call MatSetValuesBlocked(dgm_petsc%M, I, row, J, col, LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,:,:),ADD_VALUES, ierr)
+                      END DO
+                  END DO
+              END DO
+          END DO
 
       END DO Between_Elements_And_Boundary20
   END DO Loop_Elements20

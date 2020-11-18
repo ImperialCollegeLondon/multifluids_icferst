@@ -1704,7 +1704,7 @@ contains
       nrows=row_numbering%universal_length
       ncols=col_numbering%universal_length
       ! rows and cols per block:
-      nbrows=size(row_numbering%gnn2unn, 1)
+      nbrows=size(row_numbering%gnn2unn, 1) !! = TOTELE * NLOC
       nbcols=size(col_numbering%gnn2unn, 1)
       ! number of vertical and horizontal blocks:
       nblocksv=size(row_numbering%gnn2unn, 2)
@@ -1729,7 +1729,7 @@ contains
       !!
       print*, nbrows, nblocksv, size(nnz)
       print*, size(sparsity%findrm), size(sparsity%colm)
-      STOP 606
+      !STOP 606
 
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF, nbrows, nrows, ncols, &
