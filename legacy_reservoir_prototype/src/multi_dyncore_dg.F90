@@ -7379,10 +7379,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
   real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
   integer, dimension(:), pointer :: neighbours
-  integer, dimension(:) :: idxn, jdxn
+  integer, dimension(:), allocatable :: idxn, jdxn
   integer :: nb
   logical :: skip
 
+  allocate(idxn(size(dgm_petsc%row_numbering%gnn2unn, 1)))
+  allocate(jdxn(size(dgm_petsc%row_numbering%gnn2unn, 1)))
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
 
   Loop_Elements20: DO ELE = 1, TOTELE
