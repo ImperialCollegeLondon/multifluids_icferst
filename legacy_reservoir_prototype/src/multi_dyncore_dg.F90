@@ -7453,7 +7453,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
                                  idxn=dgm_petsc%row_numbering%gnn2unn(globi,:)
                                  jdxn=dgm_petsc%column_numbering%gnn2unn(globj,:)
-                                 call MatSetValueBlocked(dgm_petsc%M, GLOBI,idxn, GLOBJ,jdxn, &
+                                 call MatSetValuesBlocked(dgm_petsc%M, GLOBI,idxn, GLOBJ,jdxn, &
                                  LOC_DGM_PHA(:,:,:,:,U_ILOC,U_JLOC),ADD_VALUES, ierr)
               END DO
           END DO
