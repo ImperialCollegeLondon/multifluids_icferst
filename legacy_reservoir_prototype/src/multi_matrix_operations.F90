@@ -1637,6 +1637,7 @@ contains
         type(halo_type), pointer:: halo
         type(petsc_csr_matrix) :: matrix
         integer :: ierr
+        integer :: nloc
 
         if (associated(velocity%mesh%halos)) then
             halo => velocity%mesh%halos(2)
@@ -1658,6 +1659,8 @@ contains
             nullify(matrix%column_halo)
         end if
 
+        nloc=node_count(velocity)/ele_count(velocity)
+
         call allocate(matrix%row_numbering,node_count(velocity),&
             product(velocity%dim),halo = halo)
         call allocate(matrix%column_numbering,node_count(velocity),&
@@ -1666,13 +1669,13 @@ contains
         !!!########## BLOCK matrix creation
         if (.not. IsParallel()) then
             matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
-                matrix%column_numbering,.false.)
+                matrix%column_numbering)
         else
             matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
-                matrix%column_numbering,.false.)
+                matrix%column_numbering)
         end if
 
-        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
+        !call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
         nullify(matrix%refcount)
 
         allocate(matrix%ksp)
@@ -1684,62 +1687,45 @@ contains
     !> @author Asiri Obeysekara
     !> @brief Subroutines to create Block csr matrices for serial
     !---------------------------------------------------------------------------
-    function full_CreateSeqBAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
+    function full_CreateSeqBAIJ(sparsity, row_numbering, col_numbering) result(M)
       !!< Creates a parallel PETSc Mat of size corresponding with
       !!< row_numbering and col_numbering.
     !  type(block_csr_matrix), intent(in):: sparsity
       type(csr_sparsity), intent(in):: sparsity
       type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
-      logical, intent(in):: only_diagonal_blocks
-      !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
-      !! that's why we default to not use them
-      logical, intent(in), optional:: use_inodes
       Mat M
 
       integer, dimension(:), allocatable:: nnz
-      integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
+      integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh, bs
       integer row, len
       integer bv, i, ierr
       ! total number of rows and cols:
       nrows=row_numbering%universal_length
       ncols=col_numbering%universal_length
       ! rows and cols per block:
-      nbrows=size(row_numbering%gnn2unn, 1) !! = TOTELE * NLOC
+      nbrows=size(row_numbering%gnn2unn, 1) !! = TOTELE * NLOC for node_count or  = TOTELE  for ele_count
       nbcols=size(col_numbering%gnn2unn, 1)
       ! number of vertical and horizontal blocks:
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
+      !bs=nbrows
+      bs=ncols/nbrows
 
-
-      allocate(nnz(0:nrows-1))
-      !! nz 	- number of nonzero blocks per block row (same for all rows)
-      nnz=1
-      !!! loop over complete horizontal rows within a block of rows
-      do i=1, nbrows
-        do bv=1, nblocksv
-          ! this is a full row
-           len = row_length(sparsity, bv+(i-1)*nblocksv)
-           row=row_numbering%gnn2unn(i,bv)
-          if (row/=-1) then
-            nnz(row)=len   ! array containing the number of nonzero blocks in the various block rows
-          end if
-        end do
-      end do
-
-      !!
-      print*, nbrows, nblocksv, size(nnz)
-      print*, size(sparsity%findrm), size(sparsity%colm)
-      !STOP 606
+      !MatCreateSeqBAIJ
+    	! bs 	- size of block, the blocks are ALWAYS square.
+    	! m 	- number of rows
+    	! n 	- number of columns
+    	! nz 	- number of nonzero blocks per block row (
+    	! nnz 	- array containing the number of nonzero blocks in the various block rows
 
 #if PETSC_VERSION_MINOR>=8
-    call MatCreateSeqBAIJ(MPI_COMM_SELF, nbrows, nrows, ncols, &
+    call MatCreateSeqBAIJ(MPI_COMM_SELF, bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #else
-    call MatCreateSeqBAIJ(MPI_COMM_SELF,nbrows, nrows, ncols, &
+    call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #endif
 
-      !deallocate(nnz)
 
     end function full_CreateSeqBAIJ
 
@@ -1747,16 +1733,12 @@ contains
   !> @author Asiri Obeysekara
   !> @brief Subroutines to create Block csr matrices for parallel
   !---------------------------------------------------------------------------
-   function full_CreateMPIBAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
+   function full_CreateMPIBAIJ(sparsity, row_numbering, col_numbering) result(M)
         !!< Creates a parallel PETSc Mat of size corresponding with
         !!< row_numbering and col_numbering.
         !type(block_csr_matrix), intent(in):: sparsity
         type(csr_sparsity), intent(in):: sparsity
         type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
-        logical, intent(in):: only_diagonal_blocks
-        !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
-        !! that's why we default to not use them
-        logical, intent(in), optional:: use_inodes
         Mat M
 
         integer, dimension(:), pointer:: cols
@@ -1764,7 +1746,7 @@ contains
         integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
         integer nrowsp, ncolsp, nbrowsp, nbcolsp, row_offset
         integer row, len, private_len, ghost_len
-        integer bv, i, ierr
+        integer bs,bv, i, ierr
 
         ! total number of rows and cols:
         nrows=row_numbering%universal_length
@@ -1785,39 +1767,11 @@ contains
         nrowsp=nbrowsp*nblocksv
         ncolsp=nbcolsp*nblocksh
 
-      !   ! the universal numbers used by petsc for private nodes are in the range
-      !   !row_offset:row_offset+nrowsp-1
-      !   row_offset=row_numbering%offset
-      !
-      !   ! for each private row we have to count the number of column indices
-      !   ! refering to private nodes and refering to ghost/halos nodes
-      !   allocate(d_nnz(row_offset:row_offset+nrowsp-1), &
-      !        o_nnz(row_offset:row_offset+nrowsp-1))
-      !   ! ghost rows are skipped below, and only have a diagonal
-      !   d_nnz=1
-      !   o_nnz=0
-      !   ! loop over complete horizontal rows within a block of rows
-      !   do i=1, nbrowsp
-      !      do bv=1, nblocksv
-      !      ! this is a full row
-      !         cols => row_m_ptr(sparsity, bv+(i-1)*nblocksv)
-      !      ! the row length over all blocks from left to right
-      !         len=size(cols)
-      !      ! number of entries refering to private nodes:
-      !         private_len=count(cols<=ncolsp)
-      ! ! the rest refers to ghost/halo nodes:
-      !         ghost_len=len-private_len
-      !
-      !         row=row_numbering%gnn2unn(i,bv)
-      !         if (row/=-1) then
-      !            ASSERT(row>=row_offset .and. row<row_offset+nrowsp)
-      !            d_nnz(row)=private_len
-      !            o_nnz(row)=ghost_len
-      !         end if
-      !      end do
-      !   end do
 
-print *, nrows, ncols, nbrows,nblocksv, nbrowsp, nrowsp
+        bs=ncols/nbrows
+
+
+        print *, nrows, nbrows, bs, nblocksv, nbrowsp, nrowsp
 !! issues (131120): nbrows is inconsisent
 #if PETSC_VERSION_MINOR>=8
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, nbrows, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &

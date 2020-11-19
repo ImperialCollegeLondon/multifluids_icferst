@@ -2195,11 +2195,14 @@ end if
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
 
-            print*, "before", size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL)
-            !STOP 606
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
-            print*, "after", size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL)
-            print*, size(sparsity%findrm), size(sparsity%colm),Mdims%totele, Mdims%nphase*Mdims%ndim*mdims%u_nloc
+            ! print*, "ndim, nphase, u_nloc, totele", MDIMS%NDIM, MDIMS%NPHASE,&
+            !  MDIMS%U_NLOC, MDIMS%TOTELE, size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL), Mspars%ele%fin(Mdims%TOTELE+1)-1
+            ! print*, size(sparsity%findrm), size(sparsity%colm),Mdims%totele, Mdims%nphase*Mdims%ndim*mdims%u_nloc
+
+            !!DGM_petsc_block: blocksize_row=nphase*ndim*nloc or nphase*ndim, no.of blocks= totele or totele*bnloc
+            !! create a block per element or per node? (issues: numbering)
+
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
@@ -2618,7 +2621,7 @@ end if
           packed_vel = as_packed_vector(Velocity)
           rhs = as_packed_vector(CDP_tensor)
 
-          !Compute - u_new = A^-1( - Gradient * P + RHS)
+              !Compute - u_new = A^-1( - Gradient * P + RHS)
           packed_vel%val = 0.
           rhs%val = rhs%val + U_RHS
           !Rescale RHS (it is given that the matrix has been already re-scaled)
@@ -7379,13 +7382,20 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
   real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
   integer, dimension(:), pointer :: neighbours
-  integer, dimension(:), allocatable :: idxn, jdxn
+
+  PetscScalar, dimension(NDIM*NPHASE,NDIM*NPHASE):: value
+  PetscInt, dimension(NDIM*NPHASE):: idxm
+  PetscInt, dimension(NDIM*NPHASE):: idxn
+  integer:: blocki, blockj
+
   integer :: nb
   logical :: skip
 
-  allocate(idxn(size(dgm_petsc%row_numbering%gnn2unn, 2)))
-  allocate(jdxn(size(dgm_petsc%row_numbering%gnn2unn, 2)))
+  ! allocate(idxn(NDIM*NPHASE*U_NLOC))
+  ! allocate(idxm(NDIM*NPHASE*U_NLOC))
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
+
+  !call MatSetOption(dgm_petsc%M,MAT_ROW_ORIENTED,PETSC_FALSE, ierr)
 
   Loop_Elements20: DO ELE = 1, TOTELE
       if (IsParallel()) then
@@ -7407,58 +7417,54 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
 
       ! Block diagonal and off diagonal terms...
+      !for ever block row
+
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
           JCOLELE=COLELE(COUNT_ELE)
 
 
         IF(JCOLELE==ELE) THEN
+            !print*, "CELE, JCOELE", COUNT_ELE, JCOLELE
             ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
             LOC_DGM_PHA(:,:,:, :,:,:) = DIAG_BIGM_CON(:,:,:, :,:,:, ELE) + BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ELSE
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
-          ! !!uing sequential insertions/add
-          ! DO U_JLOC=1,U_NLOC
-          !     DO U_ILOC=1,U_NLOC
-          !         DO JPHASE=1,NPHASE
-          !             DO IPHASE=1,NPHASE
-          !                 DO JDIM=1,NDIM
-          !                     DO IDIM=1,NDIM
-          !                         ! New for rapid code ordering of variables...
-          !                         I=IDIM + (IPHASE-1)*NDIM
-          !                         J=JDIM + (JPHASE-1)*NDIM
-          !                         GLOBI=(ELE-1)*U_NLOC + U_ILOC
-          !                         GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-          !
-          !                         if (.not. node_owned(velocity,globi)) cycle
-          !                        row=dgm_petsc%row_numbering%gnn2unn(globi,I)
-          !                        col=dgm_petsc%column_numbering%gnn2unn(globj,J)
-          !                        call MatSetValue(dgm_petsc%M, row, col, &
-          !                        LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC),ADD_VALUES, ierr)
-          !                     END DO
-          !                 END DO
-          !             END DO
-          !         END DO
-          !     END DO
-          ! END DO
-
-          !!uing sequential insertions/add
-          DO U_JLOC=1,U_NLOC
-              DO U_ILOC=1,U_NLOC
-                                  GLOBI=(ELE-1)*U_NLOC + U_ILOC
-                                  GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-
-                                  if (.not. node_owned(velocity,globi)) cycle
-
-                                 idxn=dgm_petsc%row_numbering%gnn2unn(globi,:)
-                                 jdxn=dgm_petsc%column_numbering%gnn2unn(globj,:)
-                                 call MatSetValuesBlocked(dgm_petsc%M, GLOBI,idxn, GLOBJ,jdxn, &
-                                 LOC_DGM_PHA(:,:,:,:,U_ILOC,U_JLOC),ADD_VALUES, ierr)
+        !!uing sequential insertions/add
+        DO U_JLOC=1,U_NLOC
+            DO U_ILOC=1,U_NLOC
+              !!uing sequential insertions/add
+              DO JPHASE=1,NPHASE
+                  DO IPHASE=1,NPHASE
+                      DO JDIM=1,NDIM
+                          DO IDIM=1,NDIM
+                             !  ! New for rapid code ordering of variables...
+                              I=IDIM + (IPHASE-1)*NDIM
+                              J=JDIM + (JPHASE-1)*NDIM
+                              value(I,J)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                          END DO
+                      END DO
+                  END DO
               END DO
-          END DO
+               GLOBI=(ELE-1)*U_NLOC + U_ILOC
+               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+               call addto(dgm_petsc, globi , globj, value)
+            END DO
+        END DO
 
 
+
+         ! idxn=dgm_petsc%row_numbering%gnn2unn(ELE,:)
+         ! idxm=dgm_petsc%column_numbering%gnn2unn(JCOLELE,:)
+
+          !! size(idxn) maybe should be 1 since we are inserting into each block here
+        !! idxn are the row indices of the blocks (ele)
+        ! value=LOC_DGM_PHA
+        ! call MatSetValuesBlocked(dgm_petsc%M, 1, ELE, 1, COLELE, &
+        !         LOC_DGM_PHA, ADD_VALUES, ierr)
+
+        ! STOP 12
 
       END DO Between_Elements_And_Boundary20
   END DO Loop_Elements20
