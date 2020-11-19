@@ -7383,9 +7383,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
   integer, dimension(:), pointer :: neighbours
 
-  PetscScalar, dimension(NDIM*NPHASE,NDIM*NPHASE):: value
-  PetscInt, dimension(NDIM*NPHASE):: idxm
-  PetscInt, dimension(NDIM*NPHASE):: idxn
+  PetscScalar, dimension(size(dgm_petsc%row_numbering%gnn2unn,2),size(dgm_petsc%column_numbering%gnn2unn,2)):: value
+  PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,2)):: idxm
+  PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,2)):: idxn
   integer:: blocki, blockj
 
   integer :: nb
@@ -7422,7 +7422,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
           JCOLELE=COLELE(COUNT_ELE)
 
-
         IF(JCOLELE==ELE) THEN
             !print*, "CELE, JCOELE", COUNT_ELE, JCOLELE
             ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
@@ -7449,12 +7448,17 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               END DO
                GLOBI=(ELE-1)*U_NLOC + U_ILOC
                GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-               call addto(dgm_petsc, globi , globj, value)
+               ! call addto(dgm_petsc, globi , globj, value)
+
+               idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
+               idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
+
+               call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
+                             value, INSERT_VALUES, ierr)
+
+               dgm_petsc%is_assembled=.false.
             END DO
         END DO
-
-
-
          ! idxn=dgm_petsc%row_numbering%gnn2unn(ELE,:)
          ! idxm=dgm_petsc%column_numbering%gnn2unn(JCOLELE,:)
 
@@ -7467,6 +7471,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ! STOP 12
 
       END DO Between_Elements_And_Boundary20
+
   END DO Loop_Elements20
 
   deallocate(LOC_DGM_PHA)

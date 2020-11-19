@@ -1675,7 +1675,7 @@ contains
                 matrix%column_numbering)
         end if
 
-        !call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
         nullify(matrix%refcount)
 
         allocate(matrix%ksp)
