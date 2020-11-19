@@ -7373,9 +7373,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   type( tensor_field ) :: velocity
   type( tensor_field ) :: pressure
   !Local variables
-
-  PetscErrorCode:: ierr
   integer:: row, col
+  PetscErrorCode:: ierr
 
   INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
   INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
@@ -7386,6 +7385,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   PetscScalar, dimension(size(dgm_petsc%row_numbering%gnn2unn,2),size(dgm_petsc%column_numbering%gnn2unn,2)):: value
   PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,2)):: idxm
   PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,2)):: idxn
+
+  ! PetscScalar, dimension(size(dgm_petsc%row_numbering%gnn2unn,1)*size(dgm_petsc%row_numbering%gnn2unn,2), &
+  !                       size(dgm_petsc%column_numbering%gnn2unn,1)*size(dgm_petsc%row_numbering%gnn2unn,2)):: bvalue
+  ! PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,1)):: idxmb
+  ! PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,1)):: idxnb
+  PetscInt :: m,n
   integer:: blocki, blockj
 
   integer :: nb
@@ -7418,7 +7423,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
       ! Block diagonal and off diagonal terms...
       !for ever block row
-
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
           JCOLELE=COLELE(COUNT_ELE)
 
@@ -7441,15 +7445,29 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                              !  ! New for rapid code ordering of variables...
                               I=IDIM + (IPHASE-1)*NDIM
                               J=JDIM + (JPHASE-1)*NDIM
+
                               value(I,J)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+
+                              ! GLOBI=(ELE-1)*U_NLOC + U_ILOC
+                              ! GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+                              !
+                              ! row=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)+1
+                              ! col=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)+1
+                              !
+                              ! idxmb(GLOBI)=row
+                              ! idxnb(GLOBJ)=col
+                              ! !! size has to be (dgm_petsc%column_numbering%gnn2unn,1)*(dgm_petsc%column_numbering%gnn2unn,2)
+                              ! bvalue(row,col)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                           END DO
                       END DO
                   END DO
               END DO
-               GLOBI=(ELE-1)*U_NLOC + U_ILOC
-               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-               ! call addto(dgm_petsc, globi , globj, value)
 
+
+              GLOBI=(ELE-1)*U_NLOC + U_ILOC
+              GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+
+               ! call addto(dgm_petsc, globi , globj, value)
                idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
                idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
 
@@ -7457,22 +7475,22 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                              value, INSERT_VALUES, ierr)
 
                dgm_petsc%is_assembled=.false.
+
+
             END DO
         END DO
-         ! idxn=dgm_petsc%row_numbering%gnn2unn(ELE,:)
-         ! idxm=dgm_petsc%column_numbering%gnn2unn(JCOLELE,:)
-
-          !! size(idxn) maybe should be 1 since we are inserting into each block here
-        !! idxn are the row indices of the blocks (ele)
-        ! value=LOC_DGM_PHA
-        ! call MatSetValuesBlocked(dgm_petsc%M, 1, ELE, 1, COLELE, &
-        !         LOC_DGM_PHA, ADD_VALUES, ierr)
-
-        ! STOP 12
-
       END DO Between_Elements_And_Boundary20
-
   END DO Loop_Elements20
+  !
+  !
+  !
+  ! print*, size(idxmb), size(idxnb), size(bvalue)
+  ! m=size(idxmb)
+  ! n=size(idxnb)
+  ! call MatSetValuesBlocked(dgm_petsc%M, m, idxmb,n, idxnb,real(bvalue, kind=PetscScalar_kind), ADD_VALUES, ierr)
+  ! dgm_petsc%is_assembled=.false.
+
+  ! STOP 1111
 
   deallocate(LOC_DGM_PHA)
 

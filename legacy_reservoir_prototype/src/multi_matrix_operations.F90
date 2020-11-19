@@ -1659,7 +1659,7 @@ contains
             nullify(matrix%column_halo)
         end if
 
-        nloc=node_count(velocity)/ele_count(velocity)
+        ! print*, matrix%column_halo, matrix%row_halo
 
         call allocate(matrix%row_numbering,node_count(velocity),&
             product(velocity%dim),halo = halo)
@@ -1693,12 +1693,13 @@ contains
     !  type(block_csr_matrix), intent(in):: sparsity
       type(csr_sparsity), intent(in):: sparsity
       type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
+
       Mat M
 
       integer, dimension(:), allocatable:: nnz
       integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh, bs
       integer row, len
-      integer bv, i, ierr
+      integer bv, i, nz, ierr
       ! total number of rows and cols:
       nrows=row_numbering%universal_length
       ncols=col_numbering%universal_length
@@ -1708,9 +1709,29 @@ contains
       ! number of vertical and horizontal blocks:
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
-      !bs=nbrows
-      bs=ncols/nbrows
 
+      !bs=nbrows
+       bs=ncols/nbrows
+      !bs=nbrows
+      allocate(nnz(0:nblocksv-1))
+      !!!loop over complete horizontal rows within a block of rows
+      ! nnz=1
+      ! ! loop over complete horizontal rows within a block of rows
+      ! do i=1, nbrows
+      !    do bv=1, nblocksv
+      !    ! this is a full row
+      !       !len = row_length(sparsity, bv+(i-1)*nblocksv)
+      !       len = nbcols
+      !       ! row=row_numbering%gnn2unn(i,bv)
+      !       ! print*, row
+      !       ! if (row/=-1) then
+      !          nnz(bv-1)=len
+      !       ! end if
+      !    end do
+      ! end do
+      ! ! STOP 111
+
+      nz=nbcols
       !MatCreateSeqBAIJ
     	! bs 	- size of block, the blocks are ALWAYS square.
     	! m 	- number of rows
@@ -1719,28 +1740,28 @@ contains
     	! nnz 	- array containing the number of nonzero blocks in the various block rows
 
 #if PETSC_VERSION_MINOR>=8
-    call MatCreateSeqBAIJ(MPI_COMM_SELF, bs, nrows, ncols, &
+    call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #else
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #endif
 
-
+    deallocate(nnz)
     end function full_CreateSeqBAIJ
 
   !---------------------------------------------------------------------------
   !> @author Asiri Obeysekara
   !> @brief Subroutines to create Block csr matrices for parallel
   !---------------------------------------------------------------------------
-   function full_CreateMPIBAIJ(sparsity, row_numbering, col_numbering) result(M)
+   function full_CreateMPIBAIJ(sparsity, row_numbering,col_numbering) result(M)
         !!< Creates a parallel PETSc Mat of size corresponding with
         !!< row_numbering and col_numbering.
-        !type(block_csr_matrix), intent(in):: sparsity
         type(csr_sparsity), intent(in):: sparsity
         type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
         Mat M
 
+        !local variables
         integer, dimension(:), pointer:: cols
         integer, dimension(:), allocatable:: d_nnz, o_nnz
         integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
@@ -1767,17 +1788,16 @@ contains
         nrowsp=nbrowsp*nblocksv
         ncolsp=nbcolsp*nblocksh
 
+        bs=nrows/nbrows
 
-        bs=ncols/nbrows
 
-
-        print *, nrows, nbrows, bs, nblocksv, nbrowsp, nrowsp
+        ! print *, nrows, nbrows, bs, nbrowsp, nrowsp
 !! issues (131120): nbrows is inconsisent
 #if PETSC_VERSION_MINOR>=8
-    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, nbrows, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
+    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #else
-    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, nbrows, nrowsp, ncolsp, nrows, ncols, &
+    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #endif
 
