@@ -497,13 +497,14 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   assert(x%dim==blocks(matrix,2))
   assert(rhs%dim==blocks(matrix,1))
 
+  print*, "in here 1"
   ! setup PETSc object and petsc_numbering from options and
   call petsc_solve_setup_petsc_csr(y, b, &
         solver_option_path, lstartfromzero, &
         matrix, vfield=x, option_path=option_path, &
         prolongators=prolongators, &
         positions=positions, rotation_matrix=rotation_matrix)
-
+  print*, "in here 2"
   ! copy array into PETSc vecs
   call petsc_solve_copy_vectors_from_vector_fields(y, b, x, rhs, &
      matrix%row_numbering, lstartfromzero)
@@ -512,7 +513,7 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   call petsc_solve_core(y, matrix%M, b, matrix%ksp, matrix%row_numbering, &
           solver_option_path, lstartfromzero, literations, &
           vfield=x, vector_x0=x)
-
+  print*, "in here 3"
   ! set the optional variable passed out of this procedure
   ! for the number of petsc iterations taken
   if (present(iterations_taken)) iterations_taken = literations
@@ -2055,7 +2056,12 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
         else if (pctype==PCPBJACOBI) then
 
           call PCSetType(pc, pctype, ierr)
-
+          print*, "in solvers", pctype
+          ! set options that may have been supplied via the
+          ! PETSC_OPTIONS env. variable for the preconditioner
+          call PCSetFromOptions(pc, ierr)
+          ! set pctype again to enforce flml choice
+          call PCSetType(pc, pctype, ierr)
 
     else if (pctype==PCASM .or. pctype==PCBJACOBI) then
 
