@@ -57,10 +57,10 @@ int main(int argc, char **argv){
 
 #ifdef HAVE_MPI
   // This must be called before we process any arguments
-  MPI::Init(argc,argv);
+  MPI_Init(&argc,&argv);
 
   // Undo some MPI init shenanigans
-  chdir(getenv("PWD"));
+  //chdir(getenv("PWD"));
 
 #endif
 
@@ -79,7 +79,12 @@ int main(int argc, char **argv){
   }
 
   // Initialise PETSc (this also parses PETSc command line arguments)
+#if PETSC_VERSION_MINOR>=14
+  PetscInitialize(&argc, &argv,(char*)0, NULL);
+  PetscInitializeFortran();
+#else
   PetscInit(argc, argv);
+#endif
 
 #ifdef HAVE_PETSC_DBUG
 // Initiliase PETSc logging
@@ -132,7 +137,7 @@ PetscViewer viewer;
   ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
   ierr=PetscLogView(viewer);
   ierr=PetscViewerDestroy(&viewer);
-#endif  
+#endif
 #endif
 
 #ifdef HAVE_PETSC
@@ -143,7 +148,7 @@ PetscViewer viewer;
   // flprofiler.print();
 
 #ifdef HAVE_MPI
-  MPI::Finalize();
+  MPI_Finalize();
 #endif
   return(0);
 }
