@@ -2058,12 +2058,15 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
       ! need to call this before the subpc can be retrieved:
       call PCSetup(pc, ierr)
 
+#ifdef PETSC_VERSION_MINOR >=9
+#else
+
       if (pctype==PCBJACOBI) then
-        call PCBJACOBIGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
+        call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       else
         call PCASMGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
       end if
-
+#endif
       call KSPGetPC(subksp, subpc, ierr)
       ! recursively call to setup the subpc
       ewrite(2,*) "Going into setup_pc_from_options for the subpc within the local domain."
@@ -2084,7 +2087,10 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        call PCSetType(pc, PCBJACOBI, ierr)
        ! need to call this before the subpc can be retrieved:
        call PCSetup(pc, ierr)
-       call PCBJACOBIGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
+#ifdef PETSC_VERSION_MINOR >=9
+#else
+       call PCBJacobiGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
+#endif
        call KSPGetPC(subksp, subpc, ierr)
        call PCSetType(subpc, pctype, ierr)
 
