@@ -446,7 +446,7 @@ module sparse_tools
        & addto_diag, set_diag,  set, val, ival, dense, dense_i, wrap, matmul, matmul_addto, matmul_T,&
        & matrix2file, mmwrite, mmread, transpose, sparsity_sort,&
        & sparsity_merge, scale, set_inactive, get_inactive_mask, &
-       & reset_inactive, has_solver_cache, destroy_solver_cache, is_symmetric, is_sorted, &
+       & reset_inactive, has_solver_cache, destroy_solver_cache, is_symmetric, fluidity_is_sorted, &
        & write_minmax
 
   public :: posinm
