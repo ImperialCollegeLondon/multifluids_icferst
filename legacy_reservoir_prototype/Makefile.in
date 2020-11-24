@@ -29,19 +29,21 @@ PACKAGE_NAME = @PACKAGE_NAME@
 
 FLUIDITY = $(PACKAGE_NAME)
 FC      = @FC@
-FCFLAGS = -I../include @CPPFLAGS@ @FCFLAGS@ -I/usr/local/include -I./
+FCFLAGS = -I../include @CPPFLAGS@ @FCFLAGS@ -I/usr/local/include -I./ -lmpi_cxx
 
 MPIF90  = @MPIF90@
+MPICC   = @MPICC@
+MPICXX  = @MPICXX@
 
 CC      = @CC@
 CFLAGS  = @CPPFLAGS@ @CFLAGS@ -I../include -I/usr/local/include
 
 CXX     = @CXX@
-CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I../include -I/usr/local/include
+CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I../include -I/usr/local/include -lmpi_cxx
 
-LINKER  = @LINKER@ @LDFLAGS@
+LINKER  = @LINKER@ @LDFLAGS@ $(CXXFLAGS)
 
-FLLINKER = @FLLINKER@ @FLFLAGS@
+FLLINKER = @FLLINKER@ @FLFLAGS@ @LDFLAGS@ $(FCFLAGS)
 
 MAKE    = @MAKE@
 AR  = @AR@
@@ -74,11 +76,11 @@ lib/libmphase.a: $(OBJS)
 	@echo "    MKDIR lib"
 	@mkdir -p lib
 	@echo "    MAKE src"
-	@cd src; 	 $(MAKE) 
+	@cd src; 	 $(MAKE)
 	@$(AR) $(ARFLAGS) lib/libmphase.a src/*.o
 
 clean:
-	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a 
+	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a
 	@rm -rf bin/
 	@cd src;   make clean
 	@cd tests; PYTHONPATH=../python ../tools/testharness_MultiphasePrototype.py --clean >/dev/null

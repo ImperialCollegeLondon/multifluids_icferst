@@ -45,7 +45,7 @@ module multi_pipes
     use write_state_module, only: write_state
 
     implicit none
-
+#include "petsc_legacy.h"
     private
 
     public  :: ASSEMBLE_PIPE_TRANSPORT_AND_CTY, MOD_1D_FORCE_BAL_C, retrieve_pipes_coords, pipe_coords, initialize_pipes_package_and_gamma
@@ -90,7 +90,7 @@ contains
       type (multi_outfluxes), intent(inout) :: outfluxes
       ! Local variables
       INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase, assembly_phase
-      INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
+      INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, ele, cv_gi, iloop, ICORNER, NPIPES, i
       integer, dimension(:), pointer :: cv_neigh_ptr
       integer, dimension(:), allocatable:: CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, u_GL_LOC, u_GL_GL
       integer, dimension(Mdims%ndim+1) :: CV_LOC_CORNER, U_LOC_CORNER!Allocate with number of corners; NCORNER
@@ -125,7 +125,7 @@ contains
       real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, MIN_DIAM
       real, dimension(1) :: R1, R2, RZ
       real, dimension(final_phase*2) :: TMAX, TMIN, DENMAX, DENMIN
-      integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
+      integer :: PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
           u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
           icorner1, icorner2, icorner3, icorner4, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
           U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES, k, iofluxes, compact_phase, global_phase
@@ -145,6 +145,9 @@ contains
       type(tensor_field), pointer ::temp_field, salt_field
       logical :: compute_outfluxes
 
+      PetscScalar,parameter :: one = 1.0
+      PetscErrorCode :: ierr
+      PetscInt :: i_indx, j_indx
 
       conservative_advection = abs(cv_beta) > 0.99
 
@@ -854,7 +857,14 @@ contains
                       cv_nodj = cv_nodi
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
-                      call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, 1.0, INSERT_VALUES, ierr )
+#ifdef PETSC_VERSION_MINOR >=9
+                      !call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, one, INSERT_VALUES, ierr)
+                      !call addto(Mmat%petsc_ACV, i_indx, j_indx, real(1.0, kind=PetscScalar_kind))
+                      print*, "ERROR: This does not currently work for petsc 3.14"
+                      STOP 9201
+#else
+                      call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, real(1.0, kind=PetscScalar_kind), INSERT_VALUES, ierr )
+#endif
                   end if
               end do
           end do
