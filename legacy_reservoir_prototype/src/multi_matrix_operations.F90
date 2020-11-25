@@ -1635,7 +1635,7 @@ contains
       !  type(block_csr_matrix), intent (inout) :: blocks
         type(csr_sparsity), intent (inout) :: blocks
         type(tensor_field), intent (inout) :: velocity
-        INTEGER, DIMENSION(: ), intent( in ) :: FINELE
+        INTEGER, DIMENSION(:), intent( inout) :: FINELE
         logical, intent(in) :: big_block
 
         !!local
@@ -1643,7 +1643,8 @@ contains
         type(petsc_csr_matrix) :: matrix
         integer :: ierr
         integer :: nloc, ele, i, iloc
-        integer, dimension(:), allocatable :: nnz
+        ! integer, dimension(:), allocatable :: nnz
+        PetscInt, dimension(size(matrix%column_numbering%gnn2unn,1)) :: nnz
 
         if (associated(velocity%mesh%halos)) then
             halo => velocity%mesh%halos(2)
@@ -1680,7 +1681,9 @@ contains
         !!!########## BLOCK matrix creation
         if (.not. IsParallel()) then
 
-          ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
+          !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
+          nnz=0.0
+
           DO ELE = 1, element_count(velocity)
             DO iloc=1, nloc
                 i=(ELE-1)*NLOC + ILOC
@@ -1693,8 +1696,7 @@ contains
           matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
             matrix%column_numbering, nnz)
 
-          deallocate(nnz)
-
+          !deallocate(nnz)
         else
             matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
                 matrix%column_numbering)
@@ -1722,7 +1724,9 @@ contains
 
       Mat M
 
-      integer, dimension(:), intent(inout):: nnz
+      ! integer, dimension(:), intent(inout):: nnz
+      PetscInt, dimension(:), intent(in):: nnz
+
       integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh, bs
       integer row, len
       integer ierr
