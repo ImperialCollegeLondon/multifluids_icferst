@@ -1693,7 +1693,7 @@ contains
                   nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
             end do
           END DO
-          print*, size(nnz),sum(nnz), maxval(nnz)
+          !print*, size(nnz),sum(nnz), maxval(nnz)
 
             matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
                 matrix%column_numbering, nnz)
@@ -1741,7 +1741,7 @@ contains
       nblocksh=size(col_numbering%gnn2unn, 2)
 
       bs=nblocksv
-      print*, bs, size(row_numbering%gnn2unn, 1)
+      !print*, bs, size(row_numbering%gnn2unn, 1)
       !MatCreateSeqBAIJ
     	! bs 	- size of block, the blocks are ALWAYS square.
     	! m 	- number of rows
@@ -1754,7 +1754,7 @@ contains
     PETSC_DEFAULT_INTEGER, nnz, M, ierr)
 #else
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
-    PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
+    PETSC_DEFAULT_INTEGER, nnz, M, ierr)
 #endif
 
     end function full_CreateSeqBAIJ
