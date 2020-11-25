@@ -2643,8 +2643,6 @@ end if
           rhs = as_packed_vector(CDP_tensor)
           rhs%val = rhs%val + U_RHS !!-ao need to re-shape RHS (ndim*nphase*nloc, ele)
         end if
-
-
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
