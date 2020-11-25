@@ -2195,7 +2195,7 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
+            big_block=.true. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity, big_block)
           else
@@ -2634,7 +2634,7 @@ end if
                 end do
               end do
             end do
-
+            !!petscsolve error -> i dont think the 3 vectors are being reshaped properly
           print*, size(rhs%val(1,:)),size(rhs%val(:,1)), size(U_RHS_BLOCK(1,:)), size(U_RHS_BLOCK(:,1))
           rhs%val = rhs%val + u_rhs_block !!-ao need to re-shape RHS (ndim*nphase*nloc, ele)
         else
@@ -2648,9 +2648,6 @@ end if
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
-
-           print *, size(packed_vel%val(1,:)), size(packed_vel%val(:,1)), block_size(Mmat%DGM_PETSC,1),  block_size(Mmat%DGM_PETSC,2)
-
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -7476,15 +7473,21 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                   DO IPHASE=1,NPHASE
                       DO JDIM=1,NDIM
                           DO IDIM=1,NDIM
-                             ! !  ! New for rapid code ordering of variables...
-                              I=IDIM + (IPHASE-1)*NDIM
-                              J=JDIM + (JPHASE-1)*NDIM
 
-                              ! I=IDIM + (IPHASE-1)*NDIM !!-ao these need to be modified
-                              ! J=JDIM + (JPHASE-1)*NDIM !! to include U_ILOC/U_Jloc
+
                             if(big_block) then
-                              I=I*U_ILOC
-                              J=J*U_JLOC
+                              !! is this correct??
+                              ! !  ! New for rapid code ordering of variables...
+                              !  I=IDIM + (IPHASE-1)*NDIM
+                              !  J=JDIM + (JPHASE-1)*NDIM
+                              ! I=I*U_ILOC
+                              ! J=J*U_JLOC
+                              I=u_ILOC*IPHASE*IDIM
+                              J=u_JLOC*JPHASE*JDIM
+                            else
+                              ! !  ! New for rapid code ordering of variables...
+                               I=IDIM + (IPHASE-1)*NDIM
+                               J=JDIM + (JPHASE-1)*NDIM
                             end if
 
                               value(I,J)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)

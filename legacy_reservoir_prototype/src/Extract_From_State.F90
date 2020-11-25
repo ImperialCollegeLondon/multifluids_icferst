@@ -2143,7 +2143,7 @@ function as_packed_vector_block(tfield) result(vfield)
     integer:: nn, bdim, nloc
 
     vfield%name=tfield%name
-    vfield%mesh=tfield%mesh
+    vfield%mesh=tfield%mesh !!need to re-shape this from nodes to elements
     vfield%option_path=tfield%option_path
 
     nloc=node_count(vfield)/element_count(vfield)
@@ -2159,14 +2159,6 @@ function as_packed_vector_block(tfield) result(vfield)
     vfield%val=reshape(tfield%val,[vfield%dim,&
         element_count(vfield)])
 #endif
-! #ifdef USING_GFORTRAN
-!       vfield%val(1:vfield%dim,1:node_count(vfield)) => tfield%val !%contiguous_val
-! #else
-!     allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))
-!     !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
-!     vfield%val=reshape(tfield%val,[vfield%dim,&
-!         node_count(vfield)])
-! #endif
 end function as_packed_vector_block
 
 
