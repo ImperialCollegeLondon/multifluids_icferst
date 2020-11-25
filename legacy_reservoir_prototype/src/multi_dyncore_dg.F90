@@ -2619,7 +2619,7 @@ end if
           !rhs = as_packed_vector_block(CDP_tensor)
           if(block) then
             !Pointers to convert from tensor data to vector data
-            packed_vel = as_packed_vector_block(Velocity)
+            packed_vel = as_packed_vector_block(Velocity) !! need to reshape properly
             rhs = as_packed_vector_block(CDP_tensor)
           allocate(u_rhs_block(Mdims%ndim*Mdims%nphase*Mdims%u_nloc, Mdims%totele))
           u_rhs_block=0.0 !!-ao
