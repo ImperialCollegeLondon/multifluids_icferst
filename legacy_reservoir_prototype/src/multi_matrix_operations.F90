@@ -1665,12 +1665,6 @@ contains
             nullify(matrix%column_halo)
         end if
 
-        ! print*, matrix%column_halo, matrix%row_halo
-
-        ! call allocate(matrix%row_numbering,node_count(velocity),&
-        !     product(velocity%dim),halo = halo)
-        ! call allocate(matrix%column_numbering,node_count(velocity),&
-        !     product(velocity%dim),halo = halo)
           nloc=node_count(velocity)/element_count(velocity)
           if(big_block) then
             call allocate(matrix%row_numbering,element_count(velocity),&
@@ -1693,12 +1687,14 @@ contains
                   nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
             end do
           END DO
-          !print*, size(nnz),sum(nnz), maxval(nnz)
 
-            matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
-                matrix%column_numbering, nnz)
+          print*, size(nnz), maxval(nnz), sum(nnz)
 
-            deallocate(nnz)
+          matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
+            matrix%column_numbering, nnz)
+
+          deallocate(nnz)
+
         else
             matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
                 matrix%column_numbering)
@@ -1726,7 +1722,7 @@ contains
 
       Mat M
 
-      integer, dimension(:), intent(in):: nnz
+      integer, dimension(:), intent(inout):: nnz
       integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh, bs
       integer row, len
       integer ierr
@@ -1741,7 +1737,7 @@ contains
       nblocksh=size(col_numbering%gnn2unn, 2)
 
       bs=nblocksv
-      !print*, bs, size(row_numbering%gnn2unn, 1)
+      print*, bs, size(row_numbering%gnn2unn, 1)
       !MatCreateSeqBAIJ
     	! bs 	- size of block, the blocks are ALWAYS square.
     	! m 	- number of rows

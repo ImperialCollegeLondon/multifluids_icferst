@@ -2195,7 +2195,7 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
+            big_block=.true. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, big_block)
           else
@@ -2615,14 +2615,15 @@ end if
           real, dimension(:,:), allocatable :: u_rhs_block
           integer:: u_iloc, u_inod, iphase, idim, ele
           !Pointers to convert from tensor data to vector data
-          !packed_vel = as_packed_vector_block(Velocity)
-          !rhs = as_packed_vector_block(CDP_tensor)
+
           if(block) then
             !Pointers to convert from tensor data to vector data
             packed_vel = as_packed_vector_block(Velocity) !! need to reshape properly
             rhs = as_packed_vector_block(CDP_tensor)
+
           allocate(u_rhs_block(Mdims%ndim*Mdims%nphase*Mdims%u_nloc, Mdims%totele))
-          u_rhs_block=0.0 !!-ao
+          u_rhs_block=0.0
+
           !converting U_RHS to U_RHS(ndim*nphase*nloc, ele) !!-ao
             do ele =1, Mdims%totele
               do u_iloc = 1, Mdims%u_nloc
@@ -2637,6 +2638,8 @@ end if
             !!petscsolve error -> i dont think the 3 vectors are being reshaped properly
           print*, size(rhs%val(1,:)),size(rhs%val(:,1)), size(U_RHS_BLOCK(1,:)), size(U_RHS_BLOCK(:,1))
           rhs%val = rhs%val + u_rhs_block !!-ao need to re-shape RHS (ndim*nphase*nloc, ele)
+
+          deallocate(u_rhs_block)
         else
           !Pointers to convert from tensor data to vector data
           packed_vel = as_packed_vector(Velocity)
@@ -2646,6 +2649,7 @@ end if
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+          print*, "enteringsolve"
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -2657,9 +2661,6 @@ end if
     Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods)
     call deallocate(packed_vel); call deallocate(rhs)
 #endif
-      if(block) then
-        deallocate(u_rhs_block)
-      endif
 
         end subroutine solve_and_update_velocity
         !---------------------------------------------------------------------------
@@ -7426,9 +7427,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
   ! allocate(idxn(NDIM*NPHASE*U_NLOC))
   ! allocate(idxm(NDIM*NPHASE*U_NLOC))
-  ! ALLOCATE(nnz(size(dgm_petsc%column_numbering%gnn2unn,1)))
+
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
-  ! nnz=0.0
+
 
   Loop_Elements20: DO ELE = 1, TOTELE
       if (IsParallel()) then
@@ -7504,8 +7505,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
                dgm_petsc%is_assembled=.false.
 
-               ! print*, TOTELE, (FINELE(ELE+1)-FINELE(ELE))
-               ! nnz(globi)=(FINELE(ELE+1)-FINELE(ELE))
 
             END DO
         END DO
@@ -7522,10 +7521,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ! dgm_petsc%is_assembled=.false.
 
   !******************** PROFILNG THE PETSC MAT ***************!
-  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  ! mal = info(MAT_INFO_BLOCK_SIZE)
-  ! nz_a = info(MAT_INFO_NZ_USED)
-  ! print*, mal, nz_a
+  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  mal = info(MAT_INFO_BLOCK_SIZE)
+  nz_a = info(MAT_INFO_NZ_USED)
+  print*, "MATGETINFO", mal, nz_a
   !!************************************************************
 
   deallocate(LOC_DGM_PHA)
