@@ -2195,9 +2195,10 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            big_block=.true. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
+            big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
+
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
-            Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity, big_block)
+            Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, big_block)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
@@ -7424,13 +7425,13 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
   integer :: nb
   logical :: skip
-  integer, dimension(:), allocatable :: nnz
+  ! integer, dimension(:), allocatable :: nnz
 
   ! allocate(idxn(NDIM*NPHASE*U_NLOC))
   ! allocate(idxm(NDIM*NPHASE*U_NLOC))
-  ALLOCATE(nnz(size(dgm_petsc%column_numbering%gnn2unn,1)))
+  ! ALLOCATE(nnz(size(dgm_petsc%column_numbering%gnn2unn,1)))
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
-  nnz=0.0
+  ! nnz=0.0
 
   Loop_Elements20: DO ELE = 1, TOTELE
       if (IsParallel()) then
@@ -7473,15 +7474,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                   DO IPHASE=1,NPHASE
                       DO JDIM=1,NDIM
                           DO IDIM=1,NDIM
-
-
                             if(big_block) then
                               !! is this correct??
-                              ! !  ! New for rapid code ordering of variables...
-                              !  I=IDIM + (IPHASE-1)*NDIM
-                              !  J=JDIM + (JPHASE-1)*NDIM
-                              ! I=I*U_ILOC
-                              ! J=J*U_JLOC
+                              ! New for rapid code ordering of variables...
                               I=u_ILOC*IPHASE*IDIM
                               J=u_JLOC*JPHASE*JDIM
                             else
@@ -7503,8 +7498,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               GLOBI=(ELE-1)*U_NLOC + U_ILOC
               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
             endif
-
-
                ! call addto(dgm_petsc, globi , globj, value)
                idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
                idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
@@ -7515,7 +7508,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                dgm_petsc%is_assembled=.false.
 
                ! print*, TOTELE, (FINELE(ELE+1)-FINELE(ELE))
-               nnz(globi)=(FINELE(ELE+1)-FINELE(ELE))
+               ! nnz(globi)=(FINELE(ELE+1)-FINELE(ELE))
 
             END DO
         END DO
@@ -7523,7 +7516,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 
   END DO Loop_Elements20
-
 
   !!to insert whole thing as a block??
   ! print*, size(idxmb), size(idxnb), size(bvalue)
@@ -7536,12 +7528,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
   mal = info(MAT_INFO_BLOCK_SIZE)
   nz_a = info(MAT_INFO_NZ_USED)
-
-  print*, mal, nz_a, sum(nnz)
-  ! STOP 1101
+  print*, mal, nz_a
 
   deallocate(LOC_DGM_PHA)
-  deallocate(nnz)
 
   RETURN
 END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK
