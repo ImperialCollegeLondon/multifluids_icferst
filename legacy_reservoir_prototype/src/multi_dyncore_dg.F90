@@ -2196,7 +2196,6 @@ end if
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
             big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
-
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, big_block)
           else
@@ -7524,11 +7523,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ! call MatSetValuesBlocked(dgm_petsc%M, m, idxmb,n, idxnb,real(bvalue, kind=PetscScalar_kind), ADD_VALUES, ierr)
   ! dgm_petsc%is_assembled=.false.
 
-
-  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  mal = info(MAT_INFO_BLOCK_SIZE)
-  nz_a = info(MAT_INFO_NZ_USED)
-  print*, mal, nz_a
+  !******************** PROFILNG THE PETSC MAT ***************!
+  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  ! mal = info(MAT_INFO_BLOCK_SIZE)
+  ! nz_a = info(MAT_INFO_NZ_USED)
+  ! print*, mal, nz_a
+  !!************************************************************
 
   deallocate(LOC_DGM_PHA)
 

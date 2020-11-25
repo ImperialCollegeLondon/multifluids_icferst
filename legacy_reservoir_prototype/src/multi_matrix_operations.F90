@@ -1799,9 +1799,20 @@ contains
 
         bs=nblocksv
 
-        ! print *, nrows, nbrows, bs, nbrowsp, nrowsp
+
+        ! bs 	- size of block
+      	! m 	- number of local rows (or PETSC_DECIDE to have calculated if M is given)
+      	! n 	- number of local columns (or PETSC_DECIDE to have calculated if N is given)
+      	! M 	- number of global rows (or PETSC_DETERMINE to have calculated if m is given)
+      	! N 	- number of global columns (or PETSC_DETERMINE to have calculated if n is given)
+      	! d_nz 	- number of nonzero blocks per block row in diagonal portion of local submatrix (same for all local rows)
+      	! d_nnz 	- array containing the number of nonzero blocks in the various block rows of the in diagonal portion of the local
+      	! o_nz 	- number of nonzero blocks per block row in the off-diagonal portion of local submatrix (same for all local rows).
+      	! o_nnz 	- array containing the number of nonzero blocks in the various block rows of the off-diagonal portion of the local submatrix
 !! issues (131120): nbrows is inconsisent and nlocal should be the same for all Procs
 #if PETSC_VERSION_MINOR>=8
+    ! call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
+    ! PETSC_DEFAULT_INTEGER, d_nnz, PETSC_DEFAULT_INTEGER, o_nnz, M, ierr)
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #else
