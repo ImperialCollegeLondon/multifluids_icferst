@@ -2190,7 +2190,7 @@ end if
         !######################## block momentum matrix optional ###############
         block_mom=.false.
         block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
-        big_block=.false. !! what type of block size
+        big_block=.false. !! what type of block size (15% faster for small, not sure for big)
         !##################allocate DGM petsc just before the momentum solve####
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
