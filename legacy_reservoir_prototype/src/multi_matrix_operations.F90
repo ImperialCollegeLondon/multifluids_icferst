@@ -1644,7 +1644,7 @@ contains
         integer :: ierr
         integer :: nloc, ele, i, iloc
         ! integer, dimension(:), allocatable :: nnz
-        PetscInt, dimension(size(matrix%column_numbering%gnn2unn,1)) :: nnz
+        PetscInt, dimension(0:size(matrix%column_numbering%gnn2unn,1)-1) :: nnz
 
         if (associated(velocity%mesh%halos)) then
             halo => velocity%mesh%halos(2)
@@ -1684,13 +1684,18 @@ contains
           !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
           nnz=0.0
 
-          DO ELE = 1, element_count(velocity)
-            DO iloc=1, nloc
-                i=(ELE-1)*NLOC + ILOC
-                  nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
-            end do
-          END DO
-
+          if(big_block) THEN
+            DO ELE = 1, element_count(velocity)
+              nnz(ELE-1)=(FINELE(ELE+1)-FINELE(ELE))
+            END DO
+          else
+            DO ELE = 1, element_count(velocity)
+              DO iloc=1, nloc
+                  i=(ELE-1)*NLOC + ILOC
+                    nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
+              end do
+            END DO
+          endif
           print*, size(nnz), maxval(nnz), sum(nnz)
 
           matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
@@ -1721,12 +1726,10 @@ contains
     !  type(block_csr_matrix), intent(in):: sparsity
       type(csr_sparsity), intent(in):: sparsity
       type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
-
-      Mat M
-
       ! integer, dimension(:), intent(inout):: nnz
       PetscInt, dimension(:), intent(in):: nnz
-
+      Mat M
+      !!local
       integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh, bs
       integer row, len
       integer ierr
