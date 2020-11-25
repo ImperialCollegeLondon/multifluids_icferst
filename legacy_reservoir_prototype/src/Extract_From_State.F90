@@ -63,7 +63,7 @@ module Copy_Outof_State
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         have_option_for_any_phase, Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
-        EnterForceBalanceEquation, update_outfluxes
+        EnterForceBalanceEquation, update_outfluxes, as_packed_vector_block
 
 
     !>@brief: Obtain the surface global to local conversor
@@ -2133,6 +2133,42 @@ function as_packed_vector(tfield) result(vfield)
 #endif
 
 end function as_packed_vector
+
+!> @brief: This function points a tensor field as a vector field type
+!> This is necessary when solving for tensor fields that are actually multiphase vector fields.
+function as_packed_vector_block(tfield) result(vfield)
+    type(tensor_field), intent(inout) :: tfield
+
+    type(vector_field) :: vfield
+    integer:: nn, bdim, nloc
+
+    vfield%name=tfield%name
+    vfield%mesh=tfield%mesh
+    vfield%option_path=tfield%option_path
+
+    nloc=node_count(vfield)/element_count(vfield)
+    bdim=product(tfield%dim)*nloc
+    ! vfield%dim=product(tfield%dim)
+    vfield%dim=bdim
+
+#ifdef USING_GFORTRAN
+      vfield%val(1:vfield%dim,1:element_count(vfield)) => tfield%val !%contiguous_val
+#else
+    allocate(vfield%val(1:vfield%dim,1:element_count(vfield)))
+    !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
+    vfield%val=reshape(tfield%val,[vfield%dim,&
+        element_count(vfield)])
+#endif
+! #ifdef USING_GFORTRAN
+!       vfield%val(1:vfield%dim,1:node_count(vfield)) => tfield%val !%contiguous_val
+! #else
+!     allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))
+!     !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
+!     vfield%val=reshape(tfield%val,[vfield%dim,&
+!         node_count(vfield)])
+! #endif
+end function as_packed_vector_block
+
 
 !> @brief: Destrys packed_state and the passed down states
 subroutine finalise_multistate(packed_state,multiphase_state,&

@@ -1925,7 +1925,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: DIAG_BIGM_CON
         REAL, DIMENSION ( :, :, :,:, :, :, :), allocatable :: BIGM_CON
-        logical :: LUMP_DIAG_MOM, lump_mass, block_mom
+        logical :: LUMP_DIAG_MOM, lump_mass, block_mom, big_block
 
         !For the time being, let the user decide whether to rescale the mom matrices
         rescale_mom_matrices = have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")
@@ -2190,20 +2190,14 @@ end if
         !######################## block momentum matrix optional ###############
         block_mom=.false.
         block_mom=(have_option("/numerical_methods/block_momentum_solve") .and. (.not. is_porous_media))
+        big_block=.false. !! what type of block size
         !##################allocate DGM petsc just before the momentum solve####
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-
+            big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
-            ! print*, "ndim, nphase, u_nloc, totele", MDIMS%NDIM, MDIMS%NPHASE,&
-            !  MDIMS%U_NLOC, MDIMS%TOTELE, size(MSPARS%ELE%FIN), size(MSPARS%ELE%COL), Mspars%ele%fin(Mdims%TOTELE+1)-1
-            ! print*, size(sparsity%findrm), size(sparsity%colm),Mdims%totele, Mdims%nphase*Mdims%ndim*mdims%u_nloc
-
-            !!DGM_petsc_block: blocksize_row=nphase*ndim*nloc or nphase*ndim, no.of blocks= totele or totele*bnloc
-            !! create a block per element or per node? (issues: numbering)
-
-            Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity)
+            Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity, big_block)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
@@ -2221,7 +2215,7 @@ end if
           ELSEIF (BLOCK_MOM)THEN
             CALL COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             MMAT%DGM_PETSC, &
-            MSPARS%ELE%FIN, MSPARS%ELE%COL, MDIMS%NDIM, MDIMS%NPHASE, MDIMS%U_NLOC, MDIMS%TOTELE, VELOCITY, PRESSURE, MMAT)  ! ELEMENT CONNECTIVITY.
+            MSPARS%ELE%FIN, MSPARS%ELE%COL, MDIMS%NDIM, MDIMS%NPHASE, MDIMS%U_NLOC, MDIMS%TOTELE, VELOCITY, PRESSURE, MMAT, big_block)  ! ELEMENT CONNECTIVITY.
           else
             call comb_vel_matrix_diag_dist(diag_bigm_con, bigm_con, &
             mmat%dgm_petsc, &
@@ -2274,7 +2268,7 @@ end if
             if ( .not. ( after_adapt .and. cty_proj_after_adapt )) then
               if (rescale_mom_matrices) call scale_PETSc_matrix(Mmat%DGM_PETSC)
               !For a velocity field the diagonal of A needs to be extracted using a vector field
-              call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+              call solve_and_update_velocity(Mmat,Velocity, CDP_tensor, Mmat%U_RHS, diagonal_A,big_block)
             end if
             if ( .not. (solve_stokes .or. solve_mom_iteratively) )  call deallocate(Mmat%DGM_PETSC)
         END IF
@@ -2480,7 +2474,7 @@ end if
             !##########################Now solve the equations##########################
             ! ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P (C is -Grad)
             call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
-            call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A)
+            call solve_and_update_velocity(Mmat,velocity, CDP_tensor, Mmat%U_RHS, diagonal_A,big_block)
             if (isParallel()) call halo_update(velocity)
             !Perform Div * U for the RHS of the pressure equation
             !If we end up using the residual, this call just below is unnecessary
@@ -2608,24 +2602,55 @@ end if
         !> @brief Update velocity by solving the momentum equation for a given pressure, the RHS is formed here
         !> If rescale_mom_matrices =  .true., here the RHS rescaled
         !---------------------------------------------------------------------------
-        subroutine solve_and_update_velocity(Mmat,Velocity, CDP_tensor, U_RHS, diagonal_A)
+        subroutine solve_and_update_velocity(Mmat,Velocity, CDP_tensor, U_RHS, diagonal_A,block)
 
           implicit none
           type (multi_matrices), intent(inout) :: Mmat
           real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
           type(tensor_field), intent(inout) :: Velocity, CDP_tensor
           type( vector_field ), intent(inout) :: diagonal_A
+          logical, intent(in) :: block
           !Local variables
           type( vector_field ) :: packed_vel, rhs
+          real, dimension(:,:), allocatable :: u_rhs_block
+          integer:: u_iloc, u_inod, iphase, idim, ele
+          !Pointers to convert from tensor data to vector data
+          !packed_vel = as_packed_vector_block(Velocity)
+          !rhs = as_packed_vector_block(CDP_tensor)
+          if(block) then
+            !Pointers to convert from tensor data to vector data
+            packed_vel = as_packed_vector_block(Velocity)
+            rhs = as_packed_vector_block(CDP_tensor)
+          allocate(u_rhs_block(Mdims%ndim*Mdims%nphase*Mdims%u_nloc, Mdims%totele))
+          u_rhs_block=0.0 !!-ao
+          !converting U_RHS to U_RHS(ndim*nphase*nloc, ele) !!-ao
+            do ele =1, Mdims%totele
+              do u_iloc = 1, Mdims%u_nloc
+               u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
+                do iphase = 1, Mdims%nphase
+                  do idim = 1, Mdims%ndim
+                     u_rhs_block(idim*iphase*u_iloc,ele) = u_rhs( idim*iphase, u_inod )
+                  end do
+                end do
+              end do
+            end do
+
+          print*, size(rhs%val(1,:)),size(rhs%val(:,1)), size(U_RHS_BLOCK(1,:)), size(U_RHS_BLOCK(:,1))
+          rhs%val = rhs%val + u_rhs_block !!-ao need to re-shape RHS (ndim*nphase*nloc, ele)
+        else
           !Pointers to convert from tensor data to vector data
           packed_vel = as_packed_vector(Velocity)
           rhs = as_packed_vector(CDP_tensor)
+          rhs%val = rhs%val + U_RHS !!-ao need to re-shape RHS (ndim*nphase*nloc, ele)
+        end if
 
-              !Compute - u_new = A^-1( - Gradient * P + RHS)
+
           packed_vel%val = 0.
-          rhs%val = rhs%val + U_RHS
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
+
+           print *, size(packed_vel%val(1,:)), size(packed_vel%val(:,1)), block_size(Mmat%DGM_PETSC,1),  block_size(Mmat%DGM_PETSC,2)
+
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -2637,7 +2662,9 @@ end if
     Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods)
     call deallocate(packed_vel); call deallocate(rhs)
 #endif
-
+      if(block) then
+        deallocate(u_rhs_block)
+      endif
 
         end subroutine solve_and_update_velocity
         !---------------------------------------------------------------------------
@@ -7360,7 +7387,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  !> into the BLOCK matrix DGM_PHA_BLOCK.
 SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   DGM_PETSC, &
-  FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat)  ! Element connectivity.
+  FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat,big_block)  ! Element connectivity.
   IMPLICIT NONE
   INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
 
@@ -7372,6 +7399,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   type(multi_matrices), intent(inout) :: Mmat
   type( tensor_field ) :: velocity
   type( tensor_field ) :: pressure
+  logical, intent(in) :: big_block
   !Local variables
   integer:: row, col
   PetscErrorCode:: ierr
@@ -7391,16 +7419,21 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ! PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,1)):: idxmb
   ! PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,1)):: idxnb
   PetscInt :: m,n
+
+  real :: info(MAT_INFO_SIZE)
+  real :: mal, nz_a
+
   integer:: blocki, blockj
 
   integer :: nb
   logical :: skip
+  integer, dimension(:), allocatable :: nnz
 
   ! allocate(idxn(NDIM*NPHASE*U_NLOC))
   ! allocate(idxm(NDIM*NPHASE*U_NLOC))
+  ALLOCATE(nnz(size(dgm_petsc%column_numbering%gnn2unn,1)))
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
-
-  !call MatSetOption(dgm_petsc%M,MAT_ROW_ORIENTED,PETSC_FALSE, ierr)
+  nnz=0.0
 
   Loop_Elements20: DO ELE = 1, TOTELE
       if (IsParallel()) then
@@ -7434,6 +7467,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
+
         !!uing sequential insertions/add
         DO U_JLOC=1,U_NLOC
             DO U_ILOC=1,U_NLOC
@@ -7442,57 +7476,69 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                   DO IPHASE=1,NPHASE
                       DO JDIM=1,NDIM
                           DO IDIM=1,NDIM
-                             !  ! New for rapid code ordering of variables...
+                             ! !  ! New for rapid code ordering of variables...
                               I=IDIM + (IPHASE-1)*NDIM
                               J=JDIM + (JPHASE-1)*NDIM
 
-                              value(I,J)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                              ! I=IDIM + (IPHASE-1)*NDIM !!-ao these need to be modified
+                              ! J=JDIM + (JPHASE-1)*NDIM !! to include U_ILOC/U_Jloc
+                            if(big_block) then
+                              I=I*U_ILOC
+                              J=J*U_JLOC
+                            end if
 
-                              ! GLOBI=(ELE-1)*U_NLOC + U_ILOC
-                              ! GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                              !
-                              ! row=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)+1
-                              ! col=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)+1
-                              !
-                              ! idxmb(GLOBI)=row
-                              ! idxnb(GLOBJ)=col
-                              ! !! size has to be (dgm_petsc%column_numbering%gnn2unn,1)*(dgm_petsc%column_numbering%gnn2unn,2)
-                              ! bvalue(row,col)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                              value(I,J)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                           END DO
                       END DO
                   END DO
               END DO
 
-
+            if(big_block) then
+              GLOBI=ELE
+              GLOBJ=JCOLELE
+            else
               GLOBI=(ELE-1)*U_NLOC + U_ILOC
               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+            endif
+
 
                ! call addto(dgm_petsc, globi , globj, value)
                idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
                idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
 
                call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-                             value, INSERT_VALUES, ierr)
+                             value, ADD_VALUES, ierr)
 
                dgm_petsc%is_assembled=.false.
 
+               ! print*, TOTELE, (FINELE(ELE+1)-FINELE(ELE))
+               nnz(globi)=(FINELE(ELE+1)-FINELE(ELE))
 
             END DO
         END DO
       END DO Between_Elements_And_Boundary20
+
+
   END DO Loop_Elements20
-  !
-  !
-  !
+
+
+  !!to insert whole thing as a block??
   ! print*, size(idxmb), size(idxnb), size(bvalue)
   ! m=size(idxmb)
   ! n=size(idxnb)
   ! call MatSetValuesBlocked(dgm_petsc%M, m, idxmb,n, idxnb,real(bvalue, kind=PetscScalar_kind), ADD_VALUES, ierr)
   ! dgm_petsc%is_assembled=.false.
 
-  ! STOP 1111
+
+  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  mal = info(MAT_INFO_BLOCK_SIZE)
+  nz_a = info(MAT_INFO_NZ_USED)
+
+  print*, mal, nz_a, sum(nnz)
+  ! STOP 1101
 
   deallocate(LOC_DGM_PHA)
+  deallocate(nnz)
 
   RETURN
 END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK

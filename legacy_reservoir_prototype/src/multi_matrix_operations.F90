@@ -1630,10 +1630,11 @@ contains
     !> @author Asiri Obeysekara
     !> @brief Subroutines to handle Block matrices
     !---------------------------------------------------------------------------
-    function allocate_momentum_block_matrix(blocks,velocity) result(matrix)
+    function allocate_momentum_block_matrix(blocks,velocity,big_block) result(matrix)
       !  type(block_csr_matrix), intent (inout) :: blocks
         type(csr_sparsity), intent (inout) :: blocks
         type(tensor_field), intent (inout) :: velocity
+        logical, intent(in) :: big_block
         type(halo_type), pointer:: halo
         type(petsc_csr_matrix) :: matrix
         integer :: ierr
@@ -1661,11 +1662,22 @@ contains
 
         ! print*, matrix%column_halo, matrix%row_halo
 
-        call allocate(matrix%row_numbering,node_count(velocity),&
-            product(velocity%dim),halo = halo)
-        call allocate(matrix%column_numbering,node_count(velocity),&
-            product(velocity%dim),halo = halo)
-
+        ! call allocate(matrix%row_numbering,node_count(velocity),&
+        !     product(velocity%dim),halo = halo)
+        ! call allocate(matrix%column_numbering,node_count(velocity),&
+        !     product(velocity%dim),halo = halo)
+          if(big_block) then
+            nloc=node_count(velocity)/element_count(velocity)
+            call allocate(matrix%row_numbering,element_count(velocity),&
+                product(velocity%dim)*nloc,halo = halo)
+            call allocate(matrix%column_numbering,element_count(velocity),&
+                product(velocity%dim)*nloc,halo = halo)
+          else
+            call allocate(matrix%row_numbering,node_count(velocity),&
+                product(velocity%dim),halo = halo)
+            call allocate(matrix%column_numbering,node_count(velocity),&
+                product(velocity%dim),halo = halo)
+          end if
         !!!########## BLOCK matrix creation
         if (.not. IsParallel()) then
             matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
@@ -1710,9 +1722,9 @@ contains
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
 
-      !bs=nbrows
-       bs=ncols/nbrows
-      !bs=nbrows
+
+       bs=nblocksv
+
       allocate(nnz(0:nblocksv-1))
       !!!loop over complete horizontal rows within a block of rows
       ! nnz=1
@@ -1788,11 +1800,10 @@ contains
         nrowsp=nbrowsp*nblocksv
         ncolsp=nbcolsp*nblocksh
 
-        bs=nrows/nbrows
-
+        bs=nblocksv
 
         ! print *, nrows, nbrows, bs, nbrowsp, nrowsp
-!! issues (131120): nbrows is inconsisent
+!! issues (131120): nbrows is inconsisent and nlocal should be the same for all Procs
 #if PETSC_VERSION_MINOR>=8
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
@@ -1802,7 +1813,6 @@ contains
 #endif
 
 
-        ! deallocate(d_nnz, o_nnz)
 
       end function full_CreateMPIBAIJ
 
