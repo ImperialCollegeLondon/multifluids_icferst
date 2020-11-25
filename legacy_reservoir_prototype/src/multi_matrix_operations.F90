@@ -1644,7 +1644,7 @@ contains
         integer :: ierr
         integer :: nloc, ele, i, iloc
         ! integer, dimension(:), allocatable :: nnz
-        PetscInt, dimension(size(matrix%column_numbering%gnn2unn,1)) :: nnz
+        PetscInt, dimension(element_count(velocity)) :: nnz
 
         if (associated(velocity%mesh%halos)) then
             halo => velocity%mesh%halos(2)
@@ -1684,7 +1684,7 @@ contains
           !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
           nnz=0.0
 
-          print*, element_count(velocity)
+          print*, element_count(velocity), size(matrix%column_numbering%gnn2unn,1)
           if(big_block) THEN
             DO ELE = 1, element_count(velocity)
               nnz(ELE)=(FINELE(ELE+1)-FINELE(ELE))
