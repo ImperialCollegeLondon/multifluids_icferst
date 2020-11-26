@@ -521,30 +521,30 @@ contains
 #ifdef HAVE_ADAPTIVITY
 
     !If this is the second try because there was an error, try with different parameters
-    if (present_and_true(adapt_error) .and. use_conservative_settings) then
+    !if (present_and_true(adapt_error) .and. use_conservative_settings) then
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
-        nsweep = 500!Increase drastically the number of sweeps, makes things slower but adaptivity seems to always work with this
+    !    nsweep = 500!Increase drastically the number of sweeps, makes things slower but adaptivity seems to always work with this
         !Disable all techniques but the very basics
         ! mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
-        if (second_try) then
+    !    if (second_try) then
           !Disable all techniques but the very basics
-          mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
-    			mshopt(1) = .false.! <= Leave only r-adaptivity
-          nsweep = 500!Increase even more the number of sweeps, should be cheaper every sweep since everything is disabled
+    !      mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+    !			mshopt(1) = .false.! <= Leave only r-adaptivity
+    !      nsweep = 500!Increase even more the number of sweeps, should be cheaper every sweep since everything is disabled
     			!Relax convergence
-    			dotop = dotop * 1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect
-  		  end if
+    !			dotop = dotop * 1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect
+  	!	  end if
         !Set this to true just in case we have to repeat one second time
-        second_try = .true.
+    !    second_try = .true.
         !Relax convergence
-        dotop = dotop *1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect
-    else
+    !    dotop = dotop *1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect
+    !else
         !Re-set second-try to false the first time we enter in this subroutine
-        second_try = .false.
-    end if
+    !    second_try = .false.
+    !end if
     !disable conservative settings flag, this has to be just above call adptvy
-    use_conservative_settings = .false.
+    !use_conservative_settings = .false.
     call adptvy(intarr, intsiz, rlarr,  rlsiz, &
       & geom3d, srfgmy, useq, &
       & nnod,   nelm,   nselm,  absolutemxnods, &
