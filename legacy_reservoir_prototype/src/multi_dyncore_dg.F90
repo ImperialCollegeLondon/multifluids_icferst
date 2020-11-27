@@ -2195,7 +2195,7 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
+            big_block=.true. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc) ***DOESNT WORK YET***
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, big_block)
           else
@@ -2213,7 +2213,7 @@ end if
             mmat%dgm_petsc, &
             mspars%ele%fin, mspars%ele%col, mdims%ndim, mdims%nphase, mdims%u_nloc, mdims%totele, velocity, pressure)  ! element connectivity.
           ELSEIF (BLOCK_MOM)THEN
-            CALL COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
+            call comb_vel_matrix_diag_dist_block(DIAG_BIGM_CON, BIGM_CON, &
             MMAT%DGM_PETSC, &
             MSPARS%ELE%FIN, MSPARS%ELE%COL, MDIMS%NDIM, MDIMS%NPHASE, MDIMS%U_NLOC, MDIMS%TOTELE, VELOCITY, PRESSURE, MMAT, big_block)  ! ELEMENT CONNECTIVITY.
           else
@@ -7300,7 +7300,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
  !>@brief: This subroutine combines the distributed and block diagonal for an element
  !> into the matrix DGM_PHA.
- SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump(DIAG_BIGM_CON, BIGM_CON, &
+ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_LUMP(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
      FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
      IMPLICIT NONE
@@ -7342,14 +7342,6 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
          ! Block diagonal and off diagonal terms...
          Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
              JCOLELE=COLELE(COUNT_ELE)
-
-            ! IF(JCOLELE==ELE) THEN
-            !      ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
-            !      LOC_DGM_PHA(1,:,1, :,1,:) = DIAG_BIGM_CON(1,:,1, :,1,:, ELE) + BIGM_CON(1,:,1, :,1,:, COUNT_ELE)
-            !  ELSE
-            !      LOC_DGM_PHA(1,:,1, :,1,:) = BIGM_CON(1,:,1, :,1,:, COUNT_ELE)
-            !  ENDIF
-
             DO U_JLOC=1,U_NLOC
               DO JPHASE=1,NPHASE
                 DO JDIM=1,NDIM
@@ -7376,11 +7368,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
      deallocate(LOC_DGM_PHA)
      RETURN
- END SUBROUTINE comb_VEL_MATRIX_DIAG_DIST_lump
+ END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_LUMP
 
 
+ !>@author: Asiri Obeysekara (27/11/2020), Chris Pain
  !>@brief: This subroutine combines the distributed and block diagonal for an element
- !> into the BLOCK matrix DGM_PHA_BLOCK.
+ !> and inserts into the block CSR petsc matrix in blocks of values
 SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   DGM_PETSC, &
   FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat,big_block)  ! Element connectivity.
@@ -7453,15 +7446,15 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ! Block diagonal and off diagonal terms...
       !for ever block row
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
-          JCOLELE=COLELE(COUNT_ELE)
+
+        JCOLELE=COLELE(COUNT_ELE)
+
         IF(JCOLELE==ELE) THEN
-            !print*, "CELE, JCOELE", COUNT_ELE, JCOLELE
             ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
             LOC_DGM_PHA(:,:,:, :,:,:) = DIAG_BIGM_CON(:,:,:, :,:,:, ELE) + BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ELSE
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
-
 
         !!uing sequential insertions/add
         DO U_JLOC=1,U_NLOC
@@ -7495,16 +7488,14 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               GLOBI=(ELE-1)*U_NLOC + U_ILOC
               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
             endif
-               ! call addto(dgm_petsc, globi , globj, value)
+
                idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
                idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
-
+               !! insert a block at a time to get efficiency
                call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
                              value, ADD_VALUES, ierr)
 
                dgm_petsc%is_assembled=.false.
-
-
             END DO
         END DO
       END DO Between_Elements_And_Boundary20
@@ -7512,19 +7503,24 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
   END DO Loop_Elements20
 
+!! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
+!! only works for petsc version >=3.14
+
+!#if PETSC_MINOR_VERSION >= 14
   !!to insert whole thing as a block??
   ! print*, size(idxmb), size(idxnb), size(bvalue)
   ! m=size(idxmb)
   ! n=size(idxnb)
   ! call MatSetValuesBlocked(dgm_petsc%M, m, idxmb,n, idxnb,real(bvalue, kind=PetscScalar_kind), ADD_VALUES, ierr)
   ! dgm_petsc%is_assembled=.false.
+!#endif
 
-  ! !******************** PROFILNG THE PETSC MAT ***************!
-  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  ! mal = info(MAT_INFO_BLOCK_SIZE)
-  ! nz_a = info(MAT_INFO_NZ_USED)
-  ! print*, "MATGETINFO", mal, nz_a
-  ! !!************************************************************
+  !******************** PROFILNG THE PETSC MAT ***************!
+  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  mal = info(MAT_INFO_BLOCK_SIZE)
+  nz_a = info(MAT_INFO_NZ_USED)
+  print*, "MATGETINFO", mal, nz_a
+  !!************************************************************
 
   deallocate(LOC_DGM_PHA)
 
