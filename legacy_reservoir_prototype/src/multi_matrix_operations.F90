@@ -1643,8 +1643,7 @@ contains
         type(petsc_csr_matrix) :: matrix
         integer :: ierr
         integer :: nloc, ele, i, iloc
-        ! integer, dimension(:), allocatable :: nnz
-        PetscInt, dimension(element_count(velocity)) :: nnz
+        PetscInt, dimension(:), allocatable :: nnz
 
         if (associated(velocity%mesh%halos)) then
             halo => velocity%mesh%halos(2)
@@ -1680,12 +1679,12 @@ contains
           end if
         !!!########## BLOCK matrix creation
         if (.not. IsParallel()) then
-
           !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
+          allocate(nnz(size(matrix%row_numbering%gnn2unn, 1)))
           nnz=0.0
-
-          print*, element_count(velocity), size(matrix%column_numbering%gnn2unn,1)
+          !!print*, element_count(velocity), size(matrix%column_numbering%gnn2unn,1)
           if(big_block) THEN
+            ! integer, dimension(:), allocatable :: nnz
             DO ELE = 1, element_count(velocity)
               nnz(ELE)=(FINELE(ELE+1)-FINELE(ELE))
             END DO
@@ -1697,12 +1696,12 @@ contains
               end do
             END DO
           endif
-          print*, size(nnz), maxval(nnz), sum(nnz)
-          STOP 1111
+
           matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
             matrix%column_numbering, nnz)
 
-          !deallocate(nnz)
+        deallocate(nnz)
+
         else
             matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
                 matrix%column_numbering)
@@ -1745,7 +1744,7 @@ contains
       nblocksh=size(col_numbering%gnn2unn, 2)
 
       bs=nblocksv
-      print*, bs, size(row_numbering%gnn2unn, 1)
+      !print*, bs, size(row_numbering%gnn2unn, 1)
       !MatCreateSeqBAIJ
     	! bs 	- size of block, the blocks are ALWAYS square.
     	! m 	- number of rows

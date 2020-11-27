@@ -2195,7 +2195,7 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            big_block=.true. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
+            big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc)
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, big_block)
           else
@@ -2649,7 +2649,7 @@ end if
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
-          print*, "enteringsolve"
+          ! print*, "enteringsolve"
           call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -7454,7 +7454,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       !for ever block row
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
           JCOLELE=COLELE(COUNT_ELE)
-
         IF(JCOLELE==ELE) THEN
             !print*, "CELE, JCOELE", COUNT_ELE, JCOLELE
             ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
@@ -7520,12 +7519,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ! call MatSetValuesBlocked(dgm_petsc%M, m, idxmb,n, idxnb,real(bvalue, kind=PetscScalar_kind), ADD_VALUES, ierr)
   ! dgm_petsc%is_assembled=.false.
 
-  !******************** PROFILNG THE PETSC MAT ***************!
-  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  mal = info(MAT_INFO_BLOCK_SIZE)
-  nz_a = info(MAT_INFO_NZ_USED)
-  print*, "MATGETINFO", mal, nz_a
-  !!************************************************************
+  ! !******************** PROFILNG THE PETSC MAT ***************!
+  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  ! mal = info(MAT_INFO_BLOCK_SIZE)
+  ! nz_a = info(MAT_INFO_NZ_USED)
+  ! print*, "MATGETINFO", mal, nz_a
+  ! !!************************************************************
 
   deallocate(LOC_DGM_PHA)
 
