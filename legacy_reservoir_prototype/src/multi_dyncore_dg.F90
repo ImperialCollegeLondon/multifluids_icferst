@@ -7400,8 +7400,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   integer, dimension(:), pointer :: neighbours
 
   PetscScalar, dimension(size(dgm_petsc%row_numbering%gnn2unn,2),size(dgm_petsc%column_numbering%gnn2unn,2)):: value
-  PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,2)):: idxm
-  PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,2)):: idxn
+  PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,1)):: idxm
+  PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,1)):: idxn
 
   ! PetscScalar, dimension(size(dgm_petsc%row_numbering%gnn2unn,1)*size(dgm_petsc%row_numbering%gnn2unn,2), &
   !                       size(dgm_petsc%column_numbering%gnn2unn,1)*size(dgm_petsc%row_numbering%gnn2unn,2)):: bvalue
@@ -7516,7 +7516,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
           dgm_petsc%is_assembled=.false.
         end if
-        print*, "ele, joclele", GLOBI, GLOBJ, COUNT_ELE
+
+        
+        print*, "ele, joclele", GLOBI, GLOBJ, COUNT_ELE, size(values)
       END DO Between_Elements_And_Boundary20
 
 
