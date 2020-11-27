@@ -1093,9 +1093,10 @@ start =
          }?,
 
         ## Magma options
+	## Parameters used for magma_simulator
          element magma_parameters {
          (
-           ## Set up phase diagram coefficients. For one branch, A1, B1, C1 and eutectic point ae must be set. For two-branch system, A1, B1, C1, A2, B2, C2 needs to be set and ae value will be overwritten.
+           ## Set up phase diagram coefficients. The phase behavious is set by the solidus and liquidus, which is given by, e.g. Tl=A1*Cb^2+B1*Cb+C1; For eutectic phase diagram, A1, B1, C1 is for the branch when the bulk composition is smaller than the eutectic point ae (Cb<=ae). and A2, B2, C2 is for when bulk composition is larger than ae. If only one branch is present in the system (ae=1), only A1, B1, C1 are used.
             element Phase_diagram_coefficients {		
 		(
 		## A1
@@ -1126,20 +1127,21 @@ start =
 	       element ae {
                real
             	},
-	       ## Latent heat
+	       ## Latent heat (Lf)
+	       ## The energy difference between liquid and solid, which is used in the relationship between enthalpy (H) and temperature (T): H= cp *T +Lf * phi, where phi is the melt fraction.
                element latent_heat {
                real
                 }
                )
             }?,
-           ## bulk viscosity is set to mu*phi^(-b), where mu is the shear viscosity. Here coefficient b is set.
+           ## bulk viscosity is set to follow the power law: xi=mu*phi^(-b), where mu is the reference bulk viscosity. Here coefficient b is set.
             element bulk_viscosity_exponential_coefficient{
                real
             },
-            ## The copling_term follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b) for lower meltfraction and hindled settling C=1/d^2*mu*phi^(-5)*(1-phi). Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.
+            ## The copling_term represents the strength of the solid/liquid interaction. At lower melt fraction, this coupling force follows the Darcy permeability law C=1/a/d^2*mu*phi^(2-b), which is obtained from the relationship C=mu phi*2/k, where k is the absolute permeability. At high melt fraction, coupling force follows hindled settling: C=1/d^2*mu*phi^(-5)*(1-phi). We define that when the melt fraction is less than certain value (cut_a) it follows Darcy's law; when it's higher than another chosen value(cut_b), it follows hindered settling and the values in between are interpolated. Here coefficients a, grain size d, coefficients b and the cutting between the two demains needs to be set.
             element coupling_term_coefficients{
 		(
-		## Power law coefficient a
+		## coefficient a
             	element coupling_power_coefficent_a {
                real
             	},
@@ -1151,7 +1153,7 @@ start =
             	element grain_size {
                real
             	},     
-		## the range below which the coupling terms follow the Darcy permeability, set this to 1 to make the entire domain Darcy like.
+		## the range below which the coupling terms follow the Darcy's law, set this to 1 to make the entire domain Darcy like.
             	element cut_a {
                real
             	},  
