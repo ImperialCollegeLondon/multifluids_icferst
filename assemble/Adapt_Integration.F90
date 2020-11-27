@@ -821,7 +821,7 @@ contains
       shape => ele_shape(positions, i)
       if(positions%dim == 3 .and. shape%loc == 4 .and. shape%degree == 1) then
         volume = simplex_volume(positions, i)
-        if(abs(volume) < epsilon(0.0)) then
+        if(abs(volume) < epsilon(0.0)*0.01) then
           ewrite(-1, "(a,i0)") "For element: ", i
           FLAbort("Degenerate tetrahedron encountered")
         end if
