@@ -7516,7 +7516,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
           dgm_petsc%is_assembled=.false.
         end if
-        print*, "ele, joclele". GLOBI, GLOBJ, COUNT_ELE
+        print*, "ele, joclele", GLOBI, GLOBJ, COUNT_ELE
       END DO Between_Elements_And_Boundary20
 
 
