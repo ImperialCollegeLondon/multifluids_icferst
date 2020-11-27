@@ -7424,6 +7424,15 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
 
 
+    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    mal = info(MAT_INFO_BLOCK_SIZE)
+    nz_a = info(MAT_INFO_NZ_ALLOCATED)
+
+    print*, "MATGETINFO1", mal, nz_a
+    !******************** PROFILNG THE PETSC MAT ***************!
+
+
   Loop_Elements20: DO ELE = 1, TOTELE
       if (IsParallel()) then
           if (.not. assemble_ele(pressure,ele)) then
@@ -7444,10 +7453,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
 
       ! Block diagonal and off diagonal terms...
-      !for ever block row
+      !!for ever block row
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
 
-        JCOLELE=COLELE(COUNT_ELE)
+        JCOLELE=COLELE(COUNT_ELE) !!(big block )for each block row this is the non-zero block column index
 
         IF(JCOLELE==ELE) THEN
             ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
@@ -7474,7 +7483,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                                I=IDIM + (IPHASE-1)*NDIM
                                J=JDIM + (JPHASE-1)*NDIM
                             end if
-
                               value(I,J)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                           END DO
                       END DO
@@ -7482,22 +7490,33 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               END DO
 
             if(big_block) then
-              GLOBI=ELE
-              GLOBJ=JCOLELE
+              !!DO IT AT THE END
             else
               GLOBI=(ELE-1)*U_NLOC + U_ILOC
               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+              idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
+              idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
+              !! insert a block at a time to get efficiency
+              call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
+                            value, ADD_VALUES, ierr)
+
+              dgm_petsc%is_assembled=.false.
             endif
-
-               idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
-               idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
-               !! insert a block at a time to get efficiency
-               call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-                             value, ADD_VALUES, ierr)
-
-               dgm_petsc%is_assembled=.false.
             END DO
-        END DO
+        END DO !UILOC loop
+
+        if(big_block) then
+          GLOBI=ELE
+          GLOBJ=JCOLELE
+          idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
+          idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
+          !! insert a block at a time to get efficiency
+          call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
+                        value, ADD_VALUES, ierr)
+
+          dgm_petsc%is_assembled=.false.
+        end if
+        print*, "ele, joclele". GLOBI, GLOBJ, COUNT_ELE
       END DO Between_Elements_And_Boundary20
 
 
@@ -7505,7 +7524,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 !! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
 !! only works for petsc version >=3.14
-
 !#if PETSC_MINOR_VERSION >= 14
   !!to insert whole thing as a block??
   ! print*, size(idxmb), size(idxnb), size(bvalue)
@@ -7519,8 +7537,11 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
   mal = info(MAT_INFO_BLOCK_SIZE)
   nz_a = info(MAT_INFO_NZ_USED)
-  print*, "MATGETINFO", mal, nz_a
+
+  print*, "MATGETINFO2", mal, nz_a
   !!************************************************************
+STOP 111
+
 
   deallocate(LOC_DGM_PHA)
 
