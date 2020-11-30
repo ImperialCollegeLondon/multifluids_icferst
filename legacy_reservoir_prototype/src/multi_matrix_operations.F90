@@ -1632,13 +1632,11 @@ contains
     !> @brief Subroutines to handle Block matrices
     !---------------------------------------------------------------------------
     function allocate_momentum_block_matrix(blocks,velocity, FINELE,big_block) result(matrix)
-      !  type(block_csr_matrix), intent (inout) :: blocks
         type(csr_sparsity), intent (inout) :: blocks
         type(tensor_field), intent (inout) :: velocity
         INTEGER, DIMENSION(:), intent( inout) :: FINELE
         logical, intent(in) :: big_block
-
-        !!local
+        !local variables
         type(halo_type), pointer:: halo
         type(petsc_csr_matrix) :: matrix
         integer :: ierr
@@ -1680,40 +1678,34 @@ contains
         !!!########## BLOCK matrix creation
         if (.not. IsParallel()) then
           !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
-          allocate(nnz(size(matrix%row_numbering%gnn2unn, 1)))
+          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
           nnz=0.0
-          !!print*, element_count(velocity), size(matrix%column_numbering%gnn2unn,1)
           if(big_block) THEN
-            ! integer, dimension(:), allocatable :: nnz
             DO ELE = 1, element_count(velocity)
-              nnz(ELE)=(FINELE(ELE+1)-FINELE(ELE))
+              nnz(ELE-1)=(FINELE(ELE+1)-FINELE(ELE))
             END DO
           else
             DO ELE = 1, element_count(velocity)
               DO iloc=1, nloc
                   i=(ELE-1)*NLOC + ILOC
-                    nnz(i)=(FINELE(ELE+1)-FINELE(ELE))
+                    nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
               end do
             END DO
           endif
-
           matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
             matrix%column_numbering, nnz)
-
-        deallocate(nnz)
-
+          deallocate(nnz)
         else
-            matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
-                matrix%column_numbering)
+          matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
+              matrix%column_numbering)
         end if
 
-        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_FALSE, ierr)
         call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr)
         nullify(matrix%refcount)
 
         allocate(matrix%ksp)
         matrix%ksp = PETSC_NULL_KSP
-
     end function allocate_momentum_block_matrix
 
     !---------------------------------------------------------------------------
@@ -1723,10 +1715,8 @@ contains
     function full_CreateSeqBAIJ(sparsity, row_numbering, col_numbering, nnz) result(M)
       !!< Creates a parallel PETSc Mat of size corresponding with
       !!< row_numbering and col_numbering.
-    !  type(block_csr_matrix), intent(in):: sparsity
       type(csr_sparsity), intent(in):: sparsity
       type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
-      ! integer, dimension(:), intent(inout):: nnz
       PetscInt, dimension(:), intent(in):: nnz
       Mat M
       !!local
@@ -1737,20 +1727,13 @@ contains
       nrows=row_numbering%universal_length
       ncols=col_numbering%universal_length
       ! rows and cols per block:
-      nbrows=size(row_numbering%gnn2unn, 1) !! = TOTELE * NLOC for node_count or  = TOTELE  for ele_count
+      nbrows=size(row_numbering%gnn2unn, 1)
       nbcols=size(col_numbering%gnn2unn, 1)
       ! number of vertical and horizontal blocks:
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
 
-      bs=nblocksv
-      !print*, bs, size(row_numbering%gnn2unn, 1)
-      !MatCreateSeqBAIJ
-    	! bs 	- size of block, the blocks are ALWAYS square.
-    	! m 	- number of rows
-    	! n 	- number of columns
-    	! nz 	- number of nonzero blocks per block row (
-    	! nnz 	- array containing the number of nonzero blocks in the various block rows
+      bs=nblocksv ! block size (block row size)
 
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
@@ -1767,52 +1750,40 @@ contains
   !> @brief Subroutines to create Block csr matrices for parallel
   !---------------------------------------------------------------------------
    function full_CreateMPIBAIJ(sparsity, row_numbering,col_numbering) result(M)
-        !!< Creates a parallel PETSc Mat of size corresponding with
-        !!< row_numbering and col_numbering.
+        !!< Creates a parallel PETSc Block Mat of size corresponding with
+        !!< block_size, row_numbering and col_numbering.
         type(csr_sparsity), intent(in):: sparsity
         type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
         Mat M
-
         !local variables
         integer, dimension(:), pointer:: cols
-        integer, dimension(:), allocatable:: d_nnz, o_nnz
         integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
         integer nrowsp, ncolsp, nbrowsp, nbcolsp, row_offset
         integer row, len, private_len, ghost_len
         integer bs,bv, i, ierr
+        PetscInt, dimension(:), allocatable:: d_nnz, o_nnz
 
         ! total number of rows and cols:
         nrows=row_numbering%universal_length
         ncols=col_numbering%universal_length
-        ! rows and cols per block:
+        ! number of vertical and horizontal blocks:
         nbrows=size(row_numbering%gnn2unn, 1)
         nbcols=size(col_numbering%gnn2unn, 1)
-        ! number of vertical and horizontal blocks:
+        ! rows and cols per block:
         nblocksv=size(row_numbering%gnn2unn, 2)
         nblocksh=size(col_numbering%gnn2unn, 2)
-
         ! number of private rows and cols in each block
         nbrowsp=row_numbering%nprivatenodes
         nbcolsp=col_numbering%nprivatenodes
-
         ! number of private rows and cols in total
         ! (this will be the number of local rows and cols for petsc)
         nrowsp=nbrowsp*nblocksv
         ncolsp=nbcolsp*nblocksh
 
         bs=nblocksv
-
-
-        ! bs 	- size of block
-      	! m 	- number of local rows (or PETSC_DECIDE to have calculated if M is given)
-      	! n 	- number of local columns (or PETSC_DECIDE to have calculated if N is given)
-      	! M 	- number of global rows (or PETSC_DETERMINE to have calculated if m is given)
-      	! N 	- number of global columns (or PETSC_DETERMINE to have calculated if n is given)
-      	! d_nz 	- number of nonzero blocks per block row in diagonal portion of local submatrix (same for all local rows)
-      	! d_nnz 	- array containing the number of nonzero blocks in the various block rows of the in diagonal portion of the local
-      	! o_nz 	- number of nonzero blocks per block row in the off-diagonal portion of local submatrix (same for all local rows).
-      	! o_nnz 	- array containing the number of nonzero blocks in the various block rows of the off-diagonal portion of the local submatrix
-!! issues (131120): nbrows is inconsisent and nlocal should be the same for all Procs
+        !!MatCreateBAIJ
+      	! d_nnz 	- array containing the number of nonzero blocks in diagonal portion of the local matrix
+      	! o_nnz 	- array containing the number of nonzero blocks in off-diagonal portion of the local matrix
 #if PETSC_VERSION_MINOR>=8
     ! call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
     ! PETSC_DEFAULT_INTEGER, d_nnz, PETSC_DEFAULT_INTEGER, o_nnz, M, ierr)
@@ -1822,9 +1793,6 @@ contains
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
 #endif
-
-
-
       end function full_CreateMPIBAIJ
 
 
