@@ -84,13 +84,13 @@ int main(int argc, char **argv){
   PetscInit(argc, argv);
 #endif
 
-// #ifdef HAVE_PETSC_DBUG
-// // Initiliase PETSc logging
-// #if PETSC_VERSION_MINOR<8
-// #else
-//   PetscErrorCode ierr = PetscLogDefaultBegin();
-// #endif
-// #endif
+#ifdef HAVE_PETSC_DBUG
+// Initiliase PETSc logging
+#if PETSC_VERSION_MINOR<8
+#else
+  PetscErrorCode ierr = PetscLogDefaultBegin();
+#endif
+#endif
 
 #ifdef HAVE_PYTHON
   // Initialize the Python Interpreter
@@ -106,18 +106,18 @@ int main(int argc, char **argv){
   }
 
 
-// #ifdef HAVE_PETSC_DBUG
-// PetscViewer viewer;
-// //Collecting PETSc default logging information
-// #if PETSC_VERSION_MINOR<8
-// #else
-//   //*default logging
-//   ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
-//   ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
-//   ierr=PetscLogView(viewer);
-//   ierr=PetscViewerDestroy(&viewer);
-// #endif
-// #endif
+#ifdef HAVE_PETSC_DBUG
+PetscViewer viewer;
+//Collecting PETSc default logging information
+#if PETSC_VERSION_MINOR<8
+#else
+  //*default logging
+  ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
+  ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
+  ierr=PetscLogView(viewer);
+  ierr=PetscViewerDestroy(&viewer);
+#endif
+#endif
 
 
 #ifdef HAVE_PYTHON
