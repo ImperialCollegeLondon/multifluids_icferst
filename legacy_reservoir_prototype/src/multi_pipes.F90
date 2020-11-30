@@ -17,20 +17,14 @@
 #include "fdebug.h"
 
 module multi_pipes
-
     use fldebug
-
     use fields
-
     use reference_counting
     use memory_diagnostics
-
     use global_parameters
-
     use Petsc_Tools
     use Sparse_tools
     use sparse_tools_petsc
-
     use surface_integrals, only :integrate_over_surface_element
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
@@ -38,12 +32,9 @@ module multi_pipes
     use matrix_operations
     use Copy_Outof_State
     use boundary_conditions
-
     use multi_tools
     use multi_data_types
-
     use write_state_module, only: write_state
-
     implicit none
 #include "petsc_legacy.h"
     private
@@ -857,13 +848,13 @@ contains
                       cv_nodj = cv_nodi
                       i_indx = Mmat%petsc_ACV%row_numbering%gnn2unn( cv_nodi, assembly_phase )
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
-#ifdef PETSC_VERSION_MINOR >=9
-                      !call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, one, INSERT_VALUES, ierr)
-                      !call addto(Mmat%petsc_ACV, i_indx, j_indx, real(1.0, kind=PetscScalar_kind))
-                      print*, "ERROR: This does not currently work for petsc 3.14"
-                      STOP 9201
+#if PETSC_VERSION_MINOR >=14
+                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, one, INSERT_VALUES, ierr)
+                      Mmat%petsc_ACV%is_assembled=.false.
+
 #else
-                      call MatSetValue( Mmat%petsc_ACV, i_indx, j_indx, real(1.0, kind=PetscScalar_kind), INSERT_VALUES, ierr )
+                      call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(1.0, kind=PetscScalar_kind), INSERT_VALUES, ierr)
+                      Mmat%petsc_ACV%is_assembled=.false.
 #endif
                   end if
               end do
