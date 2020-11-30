@@ -1,5 +1,5 @@
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -9,7 +9,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -35,13 +35,13 @@ subroutine test_block_csr_transpose_symmetric_sparsity
   type(csr_matrix) :: A, B
   type(block_csr_matrix) :: block_mat, block_mat_T, block_mat_TT
   integer :: i, j
-  
+
   call allocate(sparsity, 2, 2, nnz = (/ 2, 1 /), name="Sparsity")
   sparsity%colm = (/ 2, 1, 1 /)
   call report_test("[sparsity is symmetric]", .not. is_symmetric(sparsity), .false., "sparsity is not symmetric")
-  call report_test("[sparsity is not yet sorted]", is_sorted(sparsity), .false., "sparsity should be not sorted before calling sort(sparsity).")
+  call report_test("[sparsity is not yet sorted]", fluidity_is_sorted(sparsity), .false., "sparsity should be not sorted before calling sort(sparsity).")
   call sparsity_sort(sparsity)
-  call report_test("[sparsity is sorted]", .not. is_sorted(sparsity), .false., "sparsity is not sorted after calling sort(sparsity).")
+  call report_test("[sparsity is sorted]", .not. fluidity_is_sorted(sparsity), .false., "sparsity is not sorted after calling sort(sparsity).")
 
 
   sparsity%sorted_rows = .true.
@@ -69,4 +69,3 @@ subroutine test_block_csr_transpose_symmetric_sparsity
   call deallocate(block_mat)
 
 end subroutine test_block_csr_transpose_symmetric_sparsity
-
