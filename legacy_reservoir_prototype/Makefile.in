@@ -29,21 +29,21 @@ PACKAGE_NAME = @PACKAGE_NAME@
 
 FLUIDITY = $(PACKAGE_NAME)
 FC      = @FC@
-FCFLAGS = -I../include @CPPFLAGS@ @FCFLAGS@ -I/usr/local/include -I./ -lmpi_cxx
+FCFLAGS = @FCFLAGS@
 
 MPIF90  = @MPIF90@
 MPICC   = @MPICC@
 MPICXX  = @MPICXX@
 
-CC      = @CC@
-CFLAGS  = @CPPFLAGS@ @CFLAGS@ -I../include -I/usr/local/include
+CC	= @CC@
+CFLAGS	= @CPPFLAGS@ @CFLAGS@
 
-CXX     = @CXX@
-CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I../include -I/usr/local/include -lmpi_cxx
+CXX	= @CXX@
+CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I./include
 
 LINKER  = @LINKER@ @LDFLAGS@ $(CXXFLAGS)
 
-FLLINKER = @FLLINKER@ @FLFLAGS@ @LDFLAGS@ $(FCFLAGS)
+FLLINKER = @FLLINKER@ @LDFLAGS@ $(FCFLAGS)
 
 MAKE    = @MAKE@
 AR  = @AR@

@@ -58,10 +58,8 @@ int main(int argc, char **argv){
 #ifdef HAVE_MPI
   // This must be called before we process any arguments
   MPI_Init(&argc,&argv);
-
   // Undo some MPI init shenanigans
-  //chdir(getenv("PWD"));
-
+  chdir(getenv("PWD"));
 #endif
 
   flprofiler.tic("/fluidity");
@@ -86,18 +84,13 @@ int main(int argc, char **argv){
   PetscInit(argc, argv);
 #endif
 
-#ifdef HAVE_PETSC_DBUG
-// Initiliase PETSc logging
-////*default logging
-
-#if PETSC_VERSION_MINOR<8
-
-#else
-  PetscErrorCode ierr = PetscLogDefaultBegin();
-#endif
-  ////*nested logging
-//  PetscErrorCode ierr = PetscLogNestedBegin();
-#endif
+// #ifdef HAVE_PETSC_DBUG
+// // Initiliase PETSc logging
+// #if PETSC_VERSION_MINOR<8
+// #else
+//   PetscErrorCode ierr = PetscLogDefaultBegin();
+// #endif
+// #endif
 
 #ifdef HAVE_PYTHON
   // Initialize the Python Interpreter
@@ -112,32 +105,24 @@ int main(int argc, char **argv){
     exit(-1);
   }
 
+
+// #ifdef HAVE_PETSC_DBUG
+// PetscViewer viewer;
+// //Collecting PETSc default logging information
+// #if PETSC_VERSION_MINOR<8
+// #else
+//   //*default logging
+//   ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
+//   ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
+//   ierr=PetscLogView(viewer);
+//   ierr=PetscViewerDestroy(&viewer);
+// #endif
+// #endif
+
+
 #ifdef HAVE_PYTHON
   // Finalize the Python Interpreter
   python_end_();
-#endif
-
-#ifdef HAVE_PETSC_DBUG
-PetscViewer viewer;
-//Collecting PETSc default logging information
-
-////*nested logging
-//PetscMPIInt rank,size;
-//MPI_Comm_size(comm,&size);
-//MPI_Comm_rank(comm,&rank);
-//ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.xml",&viewer);
-//ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_XML);
-
-#if PETSC_VERSION_MINOR<8
-
-#else
-
-  //*default logging
-  ierr=PetscViewerASCIIOpen(PETSC_COMM_WORLD,"petsc.info",&viewer);
-  ierr=PetscViewerPushFormat(viewer,PETSC_VIEWER_DEFAULT);
-  ierr=PetscLogView(viewer);
-  ierr=PetscViewerDestroy(&viewer);
-#endif
 #endif
 
 #ifdef HAVE_PETSC
