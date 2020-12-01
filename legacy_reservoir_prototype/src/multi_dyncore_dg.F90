@@ -2195,7 +2195,7 @@ end if
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 ) .or. have_option('/numerical_methods/no_matrix_store')
         IF (.not. ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) ) then
           if(block_mom) then
-            big_block=.true. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc) ***DOESNT WORK YET***
+            big_block=.false. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc) ***DOESNT WORK YET***
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
             Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, big_block)
           else
@@ -7399,14 +7399,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
   integer, dimension(:), pointer :: neighbours
 
-  PetscScalar, dimension(size(dgm_petsc%row_numbering%gnn2unn,2),size(dgm_petsc%column_numbering%gnn2unn,2)):: value
-  PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,2)):: idxm
-  PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,2)):: idxn
+  PetscScalar, dimension(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1):: value
+  ! PetscInt, dimension(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1):: idxm
+  ! PetscInt, dimension(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1):: idxn
+  PetscInt, dimension(:), allocatable:: idxm
+  PetscInt, dimension(:), allocatable:: idxn
 
-  ! PetscScalar, dimension(size(dgm_petsc%row_numbering%gnn2unn,1)*size(dgm_petsc%row_numbering%gnn2unn,2), &
-  !                       size(dgm_petsc%column_numbering%gnn2unn,1)*size(dgm_petsc%row_numbering%gnn2unn,2)):: bvalue
-  ! PetscInt, dimension(size(dgm_petsc%row_numbering%gnn2unn,1)):: idxmb
-  ! PetscInt, dimension(size(dgm_petsc%column_numbering%gnn2unn,1)):: idxnb
   PetscInt :: m,n
 
   real :: info(MAT_INFO_SIZE)
@@ -7418,36 +7416,37 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   logical :: skip
   ! integer, dimension(:), allocatable :: nnz
 
-  ! allocate(idxn(NDIM*NPHASE*U_NLOC))
-  ! allocate(idxm(NDIM*NPHASE*U_NLOC))
+  allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
+  allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
 
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC))
 
+    !
+    ! !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    ! mal = info(MAT_INFO_BLOCK_SIZE)
+    ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
+    !
+    ! print*, "MATGETINFO1", mal, nz_a
+    ! !******************** PROFILNG THE PETSC MAT ***************!
 
-    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
-    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-    mal = info(MAT_INFO_BLOCK_SIZE)
-    nz_a = info(MAT_INFO_NZ_ALLOCATED)
-
-    print*, "MATGETINFO1", mal, nz_a
-    !******************** PROFILNG THE PETSC MAT ***************!
-
+    call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
   Loop_Elements20: DO ELE = 1, TOTELE
-      if (IsParallel()) then
-          if (.not. assemble_ele(pressure,ele)) then
-              skip=.true.
-              neighbours=>ele_neigh(pressure,ele)
-              do nb=1,size(neighbours)
-                  if (neighbours(nb)<=0) cycle
-                  if (assemble_ele(pressure,neighbours(nb))) then
-                      skip=.false.
-                      exit
-                  end if
-              end do
-              if (skip) cycle
-          end if
-      end if
+    if (IsParallel()) then
+        if (.not. assemble_ele(pressure,ele)) then
+            skip=.true.
+            neighbours=>ele_neigh(pressure,ele)
+            do nb=1,size(neighbours)
+                if (neighbours(nb)<=0) cycle
+                if (assemble_ele(pressure,neighbours(nb))) then
+                    skip=.false.
+                    exit
+                end if
+            end do
+            if (skip) cycle
+        end if
+    end if
       ELE_ROW_START=FINELE(ELE)
       ELE_ROW_START_NEXT=FINELE(ELE+1)
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
@@ -7465,7 +7464,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
-        !!uing sequential insertions/add
+        !uing sequential insertions/add
         DO U_JLOC=1,U_NLOC
             DO U_ILOC=1,U_NLOC
               !!uing sequential insertions/add
@@ -7478,14 +7477,25 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                               ! New for rapid code ordering of variables...
                               I=u_ILOC*IPHASE*IDIM
                               J=u_JLOC*JPHASE*JDIM
+                              GLOBI=ELE
+                              GLOBJ=JCOLELE
                             else
-                              ! !  ! New for rapid code ordering of variables...
+                              ! New for rapid code ordering of variables...
                                I=IDIM + (IPHASE-1)*NDIM
                                J=JDIM + (JPHASE-1)*NDIM
+                               GLOBI=(ELE-1)*U_NLOC + U_ILOC
+                               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
                             end if
+                              ! form block of values and their local row/column index arrays
+                              value(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                              idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
+                              idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
 
-                              value(I,J)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-
+                              ! m=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
+                              ! n=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
+                              ! call MatSetValue(dgm_petsc%M, m-1,n-1, &
+                              !               LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC), ADD_VALUES, ierr)
+                              ! dgm_petsc%is_assembled=.false.
 
                           END DO
                       END DO
@@ -7495,36 +7505,29 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             if(big_block) then
               !!DO IT AT THE END
             else
-              GLOBI=(ELE-1)*U_NLOC + U_ILOC
-              GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-              idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
-              idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
-              !! insert a block at a time to get efficiency
+              ! GLOBI=(ELE-1)*U_NLOC + U_ILOC
+              ! GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+              ! idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)-1
+              ! idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)-1
+              ! insert a block at a time to get efficiency
               call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-                            value, ADD_VALUES, ierr)
-
+                            value, INSERT_VALUES, ierr)
               dgm_petsc%is_assembled=.false.
             endif
-            END DO
+          END DO
         END DO !UILOC loop
 
         if(big_block) then
-          GLOBI=ELE
-          GLOBJ=JCOLELE
-          idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
-          idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
+          ! GLOBI=ELE
+          ! GLOBJ=JCOLELE
+          ! idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)-1
+          ! idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)-1
           !! insert a block at a time to get efficiency
           call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-                        value, ADD_VALUES, ierr)
-
+                        value, INSERT_VALUES, ierr)
           dgm_petsc%is_assembled=.false.
         end if
-
-
-        print*, "ele, joclele", GLOBI, GLOBJ, COUNT_ELE, size(value)
       END DO Between_Elements_And_Boundary20
-
-
   END DO Loop_Elements20
 
 !! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
@@ -7538,16 +7541,18 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ! dgm_petsc%is_assembled=.false.
 !#endif
 
-  !******************** PROFILNG THE PETSC MAT ***************!
-  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  mal = info(MAT_INFO_BLOCK_SIZE)
-  nz_a = info(MAT_INFO_NZ_USED)
+  ! !******************** PROFILNG THE PETSC MAT ***************!
+  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  ! mal = info(MAT_INFO_BLOCK_SIZE)
+  ! nz_a = info(MAT_INFO_NZ_USED)
+  !
+  ! print*, "MATGETINFO2", mal, nz_a
+  ! !!************************************************************
+! STOP 111
 
-  print*, "MATGETINFO2", mal, nz_a
-  !!************************************************************
-STOP 111
 
-
+  deallocate(idxm)
+  deallocate(idxn)
   deallocate(LOC_DGM_PHA)
 
   RETURN
