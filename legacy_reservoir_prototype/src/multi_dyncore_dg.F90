@@ -7413,10 +7413,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   integer :: nb
   logical :: skip
 
-#if PETSC_MINOR_VERSION >= 14
+#if PETSC_VERSION_MINOR >= 14
   allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn)-1,0:size(dgm_petsc%column_numbering%gnn2unn)-1))
-  allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn)-1))
-  allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn)-1))
+  allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,1)-1))
+  allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,1)-1))
 #else
   allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
   allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
@@ -7477,6 +7477,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                   DO IPHASE=1,NPHASE
                       DO JDIM=1,NDIM
                           DO IDIM=1,NDIM
+
+
                             if(big_block) then
                               !! is this correct??
                               ! New for rapid code ordering of variables...
@@ -7491,11 +7493,19 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                                GLOBI=(ELE-1)*U_NLOC + U_ILOC
                                GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
                             end if
+
+#if PETSC_VERSION_MINOR >= 14
+print*, "in block allocate"
+                              ! form block of values and their local row/column index arrays
+                              values(I*GLOBI-1,J*GLOBJ-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                              idxm(GLOBI-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I) !block row index
+                              idxn(GLOBJ-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J) !block col index
+#else
                               ! form block of values and their local row/column index arrays
                               values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                               idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
                               idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
-
+#endif
                               ! m=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
                               ! n=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
                               ! call MatSetValue(dgm_petsc%M, m-1,n-1, &
@@ -7506,7 +7516,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                       END DO
                   END DO
               END DO
-#if PETSC_MINOR_VERSION < 14
+#if PETSC_VERSION_MINOR < 14
             if(big_block) then
               !!DO IT AT THE END
             else
@@ -7518,7 +7528,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
           END DO
         END DO
 
-#if PETSC_MINOR_VERSION < 14
+#if PETSC_VERSION_MINOR < 14
         if(big_block) then
           call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
                         values, INSERT_VALUES, ierr)
@@ -7531,14 +7541,15 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 !! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
 !! only works for petsc version >=3.14
-#if PETSC_MINOR_VERSION >= 14
+#if PETSC_VERSION_MINOR >= 14
   !to insert whole thing as a block??
-  print*, size(idxmb), size(idxnb), size(bvalue)
-  m=size(idxmb)
-  n=size(idxnb)
-  call MatSetValuesBlocked(dgm_petsc%M, m, idxmb, n, idxnb, bvalue, ADD_VALUES, ierr)
+  print*, "in block 14 insert"
+  !! this is a hack to call the fortran specific function
+  call matsetvaluesblocked4(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
+                values, ADD_VALUES, ierr)
   dgm_petsc%is_assembled=.false.
 #endif
+
 
   ! !******************** PROFILNG THE PETSC MAT ***************!
   ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
