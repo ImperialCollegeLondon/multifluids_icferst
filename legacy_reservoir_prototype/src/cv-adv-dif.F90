@@ -5323,53 +5323,181 @@ end if
 
     END SUBROUTINE CALC_STRESS_TEN
 
-    SUBROUTINE CALC_STRESS_TEN_SOLIDS(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
-    UFENX0, TEN_XX, TEN_VOL )
+    SUBROUTINE CALC_STRESS_TEN_SOLID(CAUCHY_STRESS_IJ_SOLID_ELE,  NDIM, NLOC,   &
+    LOC_X_ALL,LOC_X0_ALL, TEN_VOL_RATIO_temp)
     ! determine stress form of viscocity...
     IMPLICIT NONE
-    INTEGER, intent( in )  :: NDIM
-    REAL, DIMENSION( :, :  ), intent( inOUT ) :: STRESS_IJ
-!    REAL, DIMENSION( : ), intent( in ) :: UFENX_ILOC
-    REAL, DIMENSION( :,: ), intent( in ) :: UFENX0
-    REAL, DIMENSION( :,: ), intent( in ) :: TEN_XX
-    ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
-    REAL, intent( in ) :: TEN_VOL
-!    REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
-    REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
-    ! Local variables...
-    REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM),PRESSURE
-    INTEGER :: IDIM,JDIM
-    REAL::DPEMU,DPELA
+    INTEGER, intent( in )  :: NDIM, NLOC
+    REAL, DIMENSION( :, :  ), intent( inOUT ) :: CAUCHY_STRESS_IJ_SOLID_ELE
+ !   REAL, DIMENSION( :, :  ), intent( inOUT ) :: PRESSURE
+    REAL, intent( in ) :: TEN_VOL_RATIO_temp
+    REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL
+    REAL, DIMENSION( :,: ), intent( in ) :: LOC_X0_ALL
+    REAL :: F0( NDIM,NDIM ),FX( NDIM,NDIM ),F0inv( NDIM,NDIM ),Fxinv( NDIM,NDIM )
+    REAL :: voli,volc
 
-    DPEMU=1.0e+09
-    DPELA=2.0e+09
-    DO JDIM=1,NDIM
+! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
+!    REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
+    ! Local variables...
+    REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM),UFENX(NDIM,NDIM)
+    INTEGER :: IDIM,JDIM,KDIM,ILOC,II
+    REAL::DPEMU,DPELA,TEN_VOL_RATIO, hydro_pressure
+   !     ewrite(3,*)"enter stress tensor calculation, TEN_VOL_RATIO", TEN_VOL_RATIO
+
+    DPEMU=1.0e+04
+    DPELA=1.0e+04
+
+    DO ILOC=2,NLOC
+       ii=ILOC-1
+        F0(1,ii)=LOC_X0_ALL(1,ILOC)-LOC_X0_ALL(1,1)
+        F0(2,ii)=LOC_X0_ALL(2,ILOC)-LOC_X0_ALL(2,1)
+        F0(3,ii)=LOC_X0_ALL(3,ILOC)-LOC_X0_ALL(3,1)
+        FX(1,ii)=LOC_X_ALL(1,ILOC)-LOC_X_ALL(1,1)
+        FX(2,ii)=LOC_X_ALL(2,ILOC)-LOC_X_ALL(2,1)
+        FX(3,ii)=LOC_X_ALL(3,ILOC)-LOC_X_ALL(3,1)
+    END DO
+
+voli=F0(1,1)*(F0(2,2)*F0(3,3)-F0(2,3)*F0(3,2))-    &
+      F0(1,2)*(F0(2,1)*F0(3,3)-F0(2,3)*F0(3,1))+   &
+      F0(1,3)*(F0(2,1)*F0(3,2)-F0(2,2)*F0(3,1))    
+  F0inv(1,1)=(F0(2,2)*F0(3,3)-F0(2,3)*F0(3,2))/voli
+  F0inv(2,1)=(F0(2,3)*F0(3,1)-F0(2,1)*F0(3,3))/voli
+  F0inv(3,1)=(F0(2,1)*F0(3,2)-F0(2,2)*F0(3,1))/voli
+  F0inv(1,2)=(F0(1,3)*F0(3,2)-F0(1,2)*F0(3,3))/voli
+  F0inv(2,2)=(F0(1,1)*F0(3,3)-F0(1,3)*F0(3,1))/voli
+  F0inv(3,2)=(F0(1,2)*F0(3,1)-F0(1,1)*F0(3,2))/voli 
+  F0inv(1,3)=(F0(1,2)*F0(2,3)-F0(1,3)*F0(2,2))/voli 
+  F0inv(2,3)=(F0(1,3)*F0(2,1)-F0(1,1)*F0(2,3))/voli 
+  F0inv(3,3)=(F0(1,1)*F0(2,2)-F0(1,2)*F0(2,1))/voli 
+
+volc=FX(1,1)*(FX(2,2)*FX(3,3)-FX(2,3)*FX(3,2))-    &
+      FX(1,2)*(FX(2,1)*FX(3,3)-FX(2,3)*FX(3,1))+    &
+      FX(1,3)*(FX(2,1)*FX(3,2)-FX(2,2)*FX(3,1))    
+  FXinv(1,1)=(FX(2,2)*FX(3,3)-FX(2,3)*FX(3,2))/volc
+  FXinv(2,1)=(FX(2,3)*FX(3,1)-FX(2,1)*FX(3,3))/volc
+  FXinv(3,1)=(FX(2,1)*FX(3,2)-FX(2,2)*FX(3,1))/volc
+  FXinv(1,2)=(FX(1,3)*FX(3,2)-FX(1,2)*FX(3,3))/volc
+  FXinv(2,2)=(FX(1,1)*FX(3,3)-FX(1,3)*FX(3,1))/volc
+  FXinv(3,2)=(FX(1,2)*FX(3,1)-FX(1,1)*FX(3,2))/volc
+  FXinv(1,3)=(FX(1,2)*FX(2,3)-FX(1,3)*FX(2,2))/volc
+  FXinv(2,3)=(FX(1,3)*FX(2,1)-FX(1,1)*FX(2,3))/volc
+  FXinv(3,3)=(FX(1,1)*FX(2,2)-FX(1,2)*FX(2,1))/volc
+TEN_VOL_RATIO=volc/voli
+
+    UFENX=0.0
         DO IDIM=1,NDIM
-    FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX0(IDIM,JDIM)*UFENX0(JDIM,IDIM)
+       DO JDIM=1,NDIM
+          DO KDIM=1,NDIM
+          UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+FX(IDIM,KDIM)*F0inv(KDIM,JDIM)
+          END DO
+       END DO
+    END DO
+!    DO JDIM=1,NDIM
+!       DO IDIM=1,NDIM
+!         UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+LOC_X_ALL(IDIM,JDIM)*UFENX0(JDIM,IDIM)
+!          DO ILOC=1,NLOC
+!          UFENX(IDIM,JDIM)=UFENX(IDIM,JDIM)+LOC_X_ALL(JDIM,ILOC)*UFENX0(JDIM,ILOC)
+!          END DO
+!       END DO
+!    END DO
+
+
+    FEN_TEN_XX=0.0
+    DO IDIM=1,NDIM
+        DO JDIM=1,NDIM
+           DO KDIM=1,NDIM
+           FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX(IDIM,KDIM)*UFENX(JDIM,KDIM)
 !    FEN_TEN_XX(IDIM,JDIM)=FEN_TEN_XX(IDIM,JDIM)+UFENX_ILOC(IDIM,JDIM)*UFENX0(JDIM,IDIM)
-        END DO
+           END DO
+       END DO
     END DO
 
 !    FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
 
     DO JDIM=1,NDIM
        DO IDIM=1,NDIM
-       STRESS_IJ(IDIM,IDIM ) = (DPEMU/TEN_VOL)*FEN_TEN_XX(IDIM,JDIM)
+          CAUCHY_STRESS_IJ_SOLID_ELE(IDIM,JDIM ) = (DPEMU/TEN_VOL_RATIO)*FEN_TEN_XX(IDIM,JDIM)
        END DO
-      STRESS_IJ( JDIM,JDIM ) = STRESS_IJ(JDIM,JDIM)+(DPELA*LOG(FEN_TEN_VOL(IDIM)-DPEMU))/FEN_TEN_VOL(IDIM)
+          CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE(JDIM,JDIM)+(DPELA*LOG(TEN_VOL_RATIO)-DPEMU)/TEN_VOL_RATIO
     END DO
 
-    DO JDIM=1,NDIM    
-            PRESSURE = PRESSURE+STRESS_IJ( JDIM,JDIM )/NDIM
-    END DO
+!    ewrite(3,*)"stress is", STRESS_IJ
+!    DO JDIM=1,NDIM
+!            PRESSURE = PRESSURE+STRESS_IJ( JDIM,JDIM )/NDIM
+!    END DO
+
+   hydro_pressure=DPELA*LOG(TEN_VOL_RATIO)/TEN_VOL_RATIO
+!   PRESSURE(:,:)=PRESSURE(:,:)+hydro_pressure
 
     DO JDIM=1,NDIM    
-             STRESS_IJ( JDIM,JDIM ) = STRESS_IJ( JDIM,JDIM )-PRESSURE
+        CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM ) = CAUCHY_STRESS_IJ_SOLID_ELE( JDIM,JDIM )-hydro_pressure
     END DO
+
+
+
+
+  !      ewrite(3,*)"leave stress tensor calculation"
 
     RETURN
 
-END SUBROUTINE CALC_STRESS_TEN_SOLIDS
+END SUBROUTINE CALC_STRESS_TEN_SOLID
+
+
+SUBROUTINE CALC_FORCE_SOLID( CAUCHY_STRESS_IJ_SOLID_ELE, NDIM, &
+NLOC,LOC_X_ALL, solid_force)
+IMPLICIT NONE
+INTEGER, intent( in )  :: NDIM, NLOC
+REAL, DIMENSION( :, :  ), intent( in ) :: CAUCHY_STRESS_IJ_SOLID_ELE
+REAL, DIMENSION( :,: ), intent( inOUT ) :: solid_force
+REAL, DIMENSION( :,: ), intent( in ) :: LOC_X_ALL
+REAL :: nx, ny ,nz, tx, ty, tz
+INTEGER :: ILOC, JLOC, KLOC, LLOC, IDIM,JDIM
+
+Do ILOC=1,NLOC
+    JLOC=ILOC+1
+    if(JLOC.GT.4)JLOC=1
+        KLOC=JLOC+1
+        if(KLOC.GT.4)KLOC=1
+            LLOC=KLOC+1
+            if(LLOC.GT.4)LLOC=1
+
+                nx=((LOC_X_ALL(2,KLOC)-LOC_X_ALL(2,JLOC))*     &
+                    (LOC_X_ALL(3,LLOC)-LOC_X_ALL(3,JLOC))-     &
+                    (LOC_X_ALL(2,LLOC)-LOC_X_ALL(2,JLOC))*     &
+                    (LOC_X_ALL(3,KLOC)-LOC_X_ALL(3,JLOC)))/6.0
+                ny=((LOC_X_ALL(3,KLOC)-LOC_X_ALL(3,JLOC))*     &
+                    (LOC_X_ALL(1,LLOC)-LOC_X_ALL(1,JLOC))-     &
+                    (LOC_X_ALL(1,KLOC)-LOC_X_ALL(1,JLOC))*     &
+                    (LOC_X_ALL(3,LLOC)-LOC_X_ALL(3,JLOC)))/6.0
+                nz=((LOC_X_ALL(1,KLOC)-LOC_X_ALL(1,JLOC))*     &
+                    (LOC_X_ALL(2,LLOC)-LOC_X_ALL(2,JLOC))-     &
+                    (LOC_X_ALL(2,KLOC)-LOC_X_ALL(2,JLOC))*     &
+                    (LOC_X_ALL(1,LLOC)-LOC_X_ALL(1,JLOC)))/6.0
+
+                tx=(CAUCHY_STRESS_IJ_SOLID_ELE(1,1)*nx+CAUCHY_STRESS_IJ_SOLID_ELE(1,2)*ny+&
+                    CAUCHY_STRESS_IJ_SOLID_ELE(1,3)*nz)
+                ty=(CAUCHY_STRESS_IJ_SOLID_ELE(2,1)*nx+CAUCHY_STRESS_IJ_SOLID_ELE(2,2)*ny+&
+                    CAUCHY_STRESS_IJ_SOLID_ELE(2,3)*nz)
+                tz=(CAUCHY_STRESS_IJ_SOLID_ELE(3,1)*nx+CAUCHY_STRESS_IJ_SOLID_ELE(3,2)*ny+&
+                    CAUCHY_STRESS_IJ_SOLID_ELE(3,3)*nz)
+
+                if((ILOC .EQ.1).or.(ILOC.EQ.3)) then
+
+                        solid_force(1,ILOC)=solid_force(1,ILOC)+tx
+                        solid_force(2,ILOC)=solid_force(2,ILOC)+ty
+                        solid_force(3,ILOC)=solid_force(3,ILOC)+tz
+                else
+
+                       solid_force(1,ILOC)=solid_force(1,ILOC)-tx
+                        solid_force(2,ILOC)=solid_force(2,ILOC)-ty
+                        solid_force(3,ILOC)=solid_force(3,ILOC)-tz
+               Endif
+
+              END DO
+
+RETURN
+
+END SUBROUTINE CALC_FORCE_SOLID
 
     SUBROUTINE CALC_STRESS_TEN_REDUCE(STRESS_IJ, ZERO_OR_TWO_THIRDS, NDIM,    &
         FEN_TEN_XX, FEN_TEN_VOL,  UFENX_JLOC  )

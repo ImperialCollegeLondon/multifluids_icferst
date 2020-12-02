@@ -4193,7 +4193,7 @@ end if
         REAL, DIMENSION ( : , : ), allocatable ::LOC_MASS_INV, LOC_MASS, P_DX
         REAL, DIMENSION ( : ), allocatable :: VLK_UVW, U_R2_COEF, U_GRAD_N_MAX2
         REAL, DIMENSION ( :, :, : ), allocatable :: &
-        MAT_ELE, DIFFGI_U, RHS_DIFF_U, DIFF_VEC_U, SOUGI_X, RESID_U, U_DT, &
+        MAT_ELE, DIFFGI_U, RHS_DIFF_U, force_solids, DIFF_VEC_U, SOUGI_X, RESID_U, U_DT, &
         DIF_STAB_U, U_GRAD_NORM2, U_GRAD_NORM, A_DOT_U, STAR_U_COEF, P_STAR_U
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: UDIFF_SUF_STAB
         !###Shape function calculation###
@@ -4339,6 +4339,8 @@ end if
         ! memory for linear high order viscocity calculation...
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_ELE_EXT
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_SOLID_ELE_EXT   !JXiang
+        REAL, DIMENSION ( :, : ), allocatable :: CAUCHY_STRESS_IJ_SOLID_ELE   !JXiang
+
         REAL, DIMENSION ( :, :, : ), allocatable :: S_INV_NNX_MAT12
         REAL, DIMENSION ( :, :, :, : ), allocatable :: NNX_MAT_ELE
         REAL, DIMENSION ( :, :, : ), allocatable :: NN_MAT_ELE
@@ -4397,10 +4399,12 @@ end if
 !JXiang
         LOGICAL:: solid_implicit
         real, dimension( : ), allocatable :: UDEN_temp,UDENOLD_temp
-        integer :: n0,n1,n2,n3,cv_nodi,u_nodi
+        integer :: n0,n1,n2,n3,cv_nodi,u_nodi,x_nodi,x_iloc
         real :: x0, x1,x2,x3,y0,y1,y2,y3,z0, z1,z2,z3,cv_mass,sum_udif,sum_udif_temp
         type( scalar_field ), pointer  :: density_solid, sigma
         type( tensor_field ), pointer  :: vis
+        real :: TEN_VOL_RATIO(FE_GIdims%CV_NGI)
+        REAL :: LOC_X_ALL(Mdims%ndim, Mdims%X_NLOC),LOC_X0_ALL(Mdims%ndim, Mdims%X_NLOC)
 
         !JXiang
         ALLOCATE(UDIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
@@ -4697,6 +4701,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
         ALLOCATE( LOC_MASS_INV(Mdims%u_nloc, Mdims%u_nloc) )
         ALLOCATE( LOC_MASS(Mdims%u_nloc, Mdims%u_nloc) )
         ALLOCATE( RHS_DIFF_U(Mdims%ndim,Mdims%nphase,Mdims%u_nloc) )
+        ALLOCATE( force_solids(Mdims%ndim,Mdims%nphase,Mdims%u_nloc) ); force_solids=0.0
         ALLOCATE( DIFF_VEC_U(Mdims%ndim,Mdims%nphase,Mdims%u_nloc) )
         ALLOCATE( DIFFGI_U(Mdims%ndim,Mdims%nphase,FE_GIdims%cv_ngi) )
         ALLOCATE( U_DT(Mdims%ndim, Mdims%nphase,FE_GIdims%cv_ngi) )
@@ -4758,6 +4763,8 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
         call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
         !JXiang
         ALLOCATE( STRESS_IJ_solid_ELE( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc,Mdims%u_nloc )); STRESS_IJ_solid_ELE = 0.
+        ALLOCATE( CAUCHY_STRESS_IJ_solid_ELE( Mdims%ndim, Mdims%ndim )); CAUCHY_STRESS_IJ_solid_ELE = 0.
+
         ALLOCATE( STRESS_IJ_SOLID_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
         STRESS_IJ_SOLID_ELE_EXT=0.0
         !JXiang end
@@ -4999,7 +5006,7 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
         END IF
         ! added by JXiang
         if(solid_implicit) then
-        x0_all => extract_vector_field( state (1), "SolidOriginalCoordinate" )
+        x0_all => extract_vector_field( state, "SolidOldCoordinate" )
 
 
         sum_udif=0.0
@@ -5034,6 +5041,11 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
             END DO
       ! JXiang
       if(solid_implicit) then
+           DO X_ILOC=1,Mdims%X_NLOC
+                X_NODI = NDGLN%X((ELE-1)*Mdims%X_NLOC+X_ILOC)
+                LOC_X_ALL(:,X_ILOC) = X_ALL(:,X_NODI)
+                LOC_X0_ALL(:,X_ILOC) = X0_ALL%val(:,X_NODI)
+            END DO
         ! !Simplify the Navier-Stokes equations to Stokes
         if (sigma%val(ele) > 1d-8) then!0 for fluids, else is solids
             !For solids, stokes flow
@@ -5050,7 +5062,10 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
             DO GI = 1, FE_GIdims%CV_NGI
                 CVFENX0_ALL_REVERSED(:,GI,:) = DevFuns0%CVFENX_ALL(:,:,GI)
                 UFENX0_ALL_REVERSED(:,GI,:) = DevFuns0%UFENX_ALL(:,:,GI)
-            END DO
+                TEN_VOL_RATIO(GI)=DevFuns%Detwei(GI)/DevFuns0%Detwei(GI)
+ !               ewrite(3,*)'TEN_VOL_RATIO',TEN_VOL_RATIO(GI), DevFuns%Detwei(GI), DevFuns0%Detwei(GI)
+                END DO
+
       end if
       ! Jxiang
             ! Adjust the DevFuns%VOLUME according to the number of levels.
@@ -5335,7 +5350,38 @@ ewrite(3,*) "UDIFFUSION, UDIFFUSION_temp",sum_udif,sum_udif_temp,R2NORM(UDIFFUSI
                         END DO
                     END DO
                 END DO
-            END IF
+! solid force:
+                                       if(solid_implicit) then ! add in the force from the solids.
+                                       if(sigma%val(ele).GT.0.5) then
+!                    DO U_ILOC = 1, Mdims%u_nloc
+                        DO GI = 1, FE_GIdims%cv_ngi
+                            DO IPHASE = 1, Mdims%nphase
+                                IF ( STRESS_FORM ) THEN ! stress form of viscosity...
+                                    IF(IDIVID_BY_VOL_FRAC.ne.1) THEN
+!                                        DO U_JLOC = 1, Mdims%u_nloc
+                                           CALL CALC_STRESS_TEN_SOLID( CAUCHY_STRESS_IJ_SOLID_ELE( :, :), Mdims%ndim, &
+                                             Mdims%x_nloc, LOC_X_ALL(:,:),LOC_X0_ALL(:,:), &
+                                             TEN_VOL_RATIO(GI) )
+                                            CALL CALC_FORCE_SOLID( CAUCHY_STRESS_IJ_SOLID_ELE( :, :),  Mdims%ndim, &
+                                                Mdims%x_nloc,LOC_X_ALL(:,:),force_solids(:,IPHASE,:))
+!                                           DO IDIM=1,Mdims%ndim
+!                                              force_solids(IDIM,IPHASE,U_ILOC) = force_solids(IDIM,IPHASE,U_ILOC) &
+!                                               - SUM( STRESS_IJ_solid_ELE( IDIM, :, IPHASE, U_ILOC, U_JLOC ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ))* DevFuns%DETWEI( GI )
+ !                                          END DO
+ !                                          STRESS_IJ_SOLID_ELE( :, :, IPHASE, :, : )=STRESS_IJ_ELE( :, :, IPHASE, :, : )
+ !                                          STRESS_IJ_ELE( :, :, IPHASE, :, : )=0.0
+                                    !    END DO
+                                    force_solids=0.0
+                                        rhs_diff_u( :, IPHASE, : )=rhs_diff_u( :, IPHASE, : ) - force_solids(:,iphase, :)
+                                        loc_u_rhs( :, IPHASE, : )=loc_u_rhs( :, IPHASE, : ) + force_solids(:,iphase, :)
+                                   endif
+                                ENDIF
+                            END DO
+                         END DO
+          !            END DO
+                                      endif ! if(sigma%val(ele).GT.0.5) then
+                                      endif ! if(solid_implicit) then
+            END IF ! IF ( GOT_DIFFUS ) THEN
 
             if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
               ! if (solve_stokes) exit !The pivit matrix is create elsewhere (this do not work see below )
@@ -5620,12 +5666,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 DIAG_BIGM_CON( 1, JDIM, 1, JPHASE, 1, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON(1, JDIM, 1, JPHASE, 1, U_JLOC, ELE ) &
                                                     + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added JXiang
+                                                    + 1.*DT*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added JXiang
                                               ELSE
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                                                     = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                                     + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    + STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
+                                                    + 1.0*DT*STRESS_IJ_solid_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) ! added by JXiang
                                               ENDIF
 
                                             END IF
@@ -5635,11 +5681,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     = Mmat%PIVIT_MAT( I,J, ELE ) &
                                                     +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) &
-                                                    +  w * STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
+                                                    +  1.0*w * DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )  ! JXiang
                                             END IF
                                             RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )+ &
-                                                STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * DT*LOC_U( JDIM, IPHASE, U_JLOC ) ! JXiang
+                                                STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )  + &
+                                                0.0*DT*STRESS_IJ_SOLID_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC ) ! JXiang
                                         END DO
                                     END DO
                                 END DO
@@ -6726,14 +6772,22 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
                             SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, UDIFF_SUF_STAB, &
                             (ELE2.LE.0), SNORMXN_ALL  )
-             ! added by JXiang
+                     STRESS_IJ_SOLID_ELE_EXT=0.0
+             ! added by JXiang 
              IF(SOLID_IMPLICIT) THEN
-                        CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_SOLID_ELE_EXT, S_INV_NNX_MAT12,  &
-                            STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
-                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
-                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
-                            (ELE2.LE.0), SNORMXN_ALL  )
-            STRESS_IJ_SOLID_ELE_EXT=0.0
+!               IF(ELE2>0) THEN
+ !                 if( (sigma%val(ele).GT.0.5).and.(sigma%val(ele2).GT.0.5) ) then ! between elements in the solid
+  !                   STRESS_IJ_SOLID_ELE_EXT = STRESS_IJ_ELE_EXT
+  !                   STRESS_IJ_ELE_EXT=0.0
+  !                endif
+  !             ENDIF 
+! here
+!                        CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_SOLID_ELE_EXT, S_INV_NNX_MAT12,  &
+!                            STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
+!                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
+!                            SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION_SOLID, SLOC_UDIFFUSION_VOL_SOLID, SLOC2_UDIFFUSION_SOLID, SLOC2_UDIFFUSION_VOL_SOLID, UDIFF_SUF_STAB, &
+!                            (ELE2.LE.0), SNORMXN_ALL  )
+! why (because continuous)...
             ENDIF
             ! JXiang end
                         !                        STRESS_IJ_ELE_EXT=0.0
@@ -7365,6 +7419,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
 
 !! JXiang
        DEALLOCATE(UDIFFUSION)
+!       DEALLOCATE(TEN_VOL_RATIO)
+       DEALLOCATE(force_solids)
 !! -ao these are also allocated here but not dealloacted
         IF ( GOT_DIFFUS ) THEN
           DEALLOCATE(UDIFFUSION_ALL)
@@ -7398,7 +7454,9 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
         call deallocate_multi_dev_shape_funs(Devfuns)
 !! JXiang
         DEALLOCATE( STRESS_IJ_SOLID_ELE )
-        DEALLOCATE( STRESS_IJ_SOLID_ELE_EXT )
+        DEALLOCATE( CAUCHY_STRESS_IJ_SOLID_ELE )
+
+        DEALLOCATE( STRESS_IJ_SOLID_ELE_EXT ) 
         IF(SOLID_IMPLICIT) then
         DEALLOCATE( CVFENX0_ALL_REVERSED )
         DEALLOCATE( UFENX0_ALL_REVERSED )
