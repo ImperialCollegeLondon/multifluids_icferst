@@ -2620,7 +2620,7 @@ end if
           !Local variables
           type( vector_field ) :: packed_vel, rhs
           real, dimension(:,:), allocatable :: u_rhs_block
-          integer:: u_iloc, u_inod, iphase, idim, ele
+          integer:: u_iloc, u_inod, iphase, idim, ele, nn
           !Pointers to convert from tensor data to vector data
 
           if(block) then
@@ -2633,11 +2633,13 @@ end if
 
             !converting U_RHS to U_RHS(ndim*nphase*nloc, ele) !!-ao
               do ele =1, Mdims%totele
+                nn=1
                 do u_iloc = 1, Mdims%u_nloc
                  u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
                   do iphase = 1, Mdims%nphase
                     do idim = 1, Mdims%ndim
-                       u_rhs_block(idim*iphase*u_iloc,ele) = u_rhs( idim*iphase, u_inod )
+                       u_rhs_block(nn,ele) = u_rhs( idim*iphase, u_inod )
+                       nn=nn+1
                     end do
                   end do
                 end do
@@ -7441,9 +7443,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     !******************** PROFILNG THE PETSC MAT ***************!
 
     nn=0
-
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
-
   Loop_Elements20: DO ELE = 1, TOTELE
     if (IsParallel()) then
         if (.not. assemble_ele(pressure,ele)) then
@@ -7496,7 +7496,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                               !!need to flatten this properly
                               I=U_ILOC*IPHASE*IDIM
                               J=U_JLOC*JPHASE*JDIM
-
                               ! values(nnn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                               values(I-1, J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                               print*, I, J
@@ -7528,7 +7527,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
           END DO
         END DO
 
-print*, ele, jcolele, count_ele
+!!print*, ele, jcolele, count_ele
 #if PETSC_VERSION_MINOR >=14
         idxm(count_ele-1)=GLOBI !!global bloc row index
         idxn(count_ele-1)=GLOBJ !!global block column index
@@ -7556,15 +7555,14 @@ print*, ele, jcolele, count_ele
                 valuesb, ADD_VALUES, ierr)
   dgm_petsc%is_assembled=.false.
 #endif
+
   !******************** PROFILNG THE PETSC MAT ***************!
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
   mal = info(MAT_INFO_BLOCK_SIZE)
   nz_a = info(MAT_INFO_NZ_USED)
-
   print*, "MATGETINFO2", mal, nz_a
-  print*, size(idxm)
   !!************************************************************
- STOP 989
+ !!STOP 989
 
 
 #if PETSC_VERSION_MINOR >=14
