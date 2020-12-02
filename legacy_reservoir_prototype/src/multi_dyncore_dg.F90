@@ -8126,6 +8126,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
             ! if free surface apply a boundary condition
             ! else don't forget to remove the null space
+            matrix%is_assembled = .false.
+            call assemble( matrix )
             if ( got_free_surf .and. same_mesh ) then
                findph => sparsity % findrm
                colph => sparsity % colm
@@ -8137,13 +8139,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                      if ( ph_jnod /= ph_inod ) then
                         i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
                         j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                        call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
+                        call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
                         do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
                            ph_jnod2 = colph( count2 )
                            if ( ph_jnod2 == ph_inod ) then
                               i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
                               j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                              call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
+                              call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
                            end if
                         end do
                      end if
@@ -8165,13 +8167,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         if ( ph_jnod /= ph_inod ) then
                            i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
                            j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                           call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
+                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
                            do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
                               ph_jnod2 = colph( count2 )
                               if ( ph_jnod2 == ph_inod ) then
                                  i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
                                  j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                                 call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
+                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
                               end if
                            end do
                         end if
@@ -8180,6 +8182,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                end do
             end if
 
+            matrix%is_assembled = .false.
+            call assemble( matrix )
 
             !Add remove null_space if not bcs specified for the field
             if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
