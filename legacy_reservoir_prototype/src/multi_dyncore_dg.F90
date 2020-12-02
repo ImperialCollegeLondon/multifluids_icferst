@@ -8137,13 +8137,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                      if ( ph_jnod /= ph_inod ) then
                         i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
                         j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                        call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                        call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
                         do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
                            ph_jnod2 = colph( count2 )
                            if ( ph_jnod2 == ph_inod ) then
                               i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
                               j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                              call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                              call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
                            end if
                         end do
                      end if
@@ -8165,13 +8165,13 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                         if ( ph_jnod /= ph_inod ) then
                            i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
                            j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                           call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
                            do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
                               ph_jnod2 = colph( count2 )
                               if ( ph_jnod2 == ph_inod ) then
                                  i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
                                  j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                                 call MatSetValue( matrix % m, i, j, 0.0, ADD_VALUES, ierr )
                               end if
                            end do
                         end if

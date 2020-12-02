@@ -468,7 +468,7 @@ contains
                         IF ( CV_JNOD /= CV_NOD ) THEN
                             do jpres = 1, Mdims%npres
                                 j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
-                                call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
+                                call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,ADD_VALUES, ierr) ! not the diagonal
                                 !CMC( COUNT ) = 0.0 ! not the diagonal
                                 IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
                                 DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
@@ -476,7 +476,7 @@ contains
                                     IF ( CV_JNOD2 == CV_NOD ) then
                                         i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
                                         j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
-                                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
+                                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, ADD_VALUES, ierr) ! not the diagonal
                                         IF ( IGOT_CMC_PRECON/=0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
                                     END IF
                                 END DO
@@ -495,7 +495,7 @@ contains
                             JPRES = IPRES
                             i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
                             j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
-                            call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
+                            call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, ADD_VALUES, ierr)
                         END DO
                     end if
                 END DO
@@ -732,7 +732,7 @@ contains
                         IF ( CV_JNOD /= CV_NOD ) THEN
                             do jpres = 1, Mdims%npres
                                 j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
-                                call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
+                                call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,ADD_VALUES, ierr) ! not the diagonal
                                 !CMC( COUNT ) = 0.0 ! not the diagonal
                                 IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
                                 DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
@@ -740,7 +740,7 @@ contains
                                     IF ( CV_JNOD2 /= CV_NOD ) then
                                         i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
                                         j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
-                                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
+                                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, ADD_VALUES, ierr) ! not the diagonal
                                         IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
                                     END IF
                                 END DO
@@ -759,7 +759,7 @@ contains
                             JPRES = IPRES
                             i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
                             j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
-                            call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
+                            call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, ADD_VALUES, ierr)
                         END DO
                     end if
                 END DO
