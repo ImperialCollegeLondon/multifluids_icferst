@@ -460,7 +460,7 @@ contains
             END IF ! ENDOF IF(Mdims%npres > 1) THEN
             !If we have a reference node with pressure zero we impose that here.
 
-
+            CMC_petsc%is_assembled = .false.
             call assemble( CMC_petsc )
 
             DO IPRES = 1, Mdims%npres
