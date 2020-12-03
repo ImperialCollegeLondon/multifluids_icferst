@@ -505,8 +505,8 @@ contains
                     end if
                 END DO
             end if
-            CMC_petsc%is_assembled=.false.
-            call assemble( CMC_petsc )
+            ! CMC_petsc%is_assembled=.false.
+            ! call assemble( CMC_petsc )
 
             DEALLOCATE( NEED_COLOR )
             DEALLOCATE( CMC_COLOR_VEC )
@@ -775,8 +775,8 @@ contains
             end if
 
             !Re-assemble
-            CMC_petsc%is_assembled=.false.
-            call assemble( CMC_petsc )
+            ! CMC_petsc%is_assembled=.false.
+            ! call assemble( CMC_petsc )
 
             IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
             nullify(DU_LONG_MANY)
