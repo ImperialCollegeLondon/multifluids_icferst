@@ -8126,8 +8126,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
             ! if free surface apply a boundary condition
             ! else don't forget to remove the null space
-            matrix%is_assembled = .false.
+            matrix%is_assembled =.false.
             call assemble( matrix )
+
             if ( got_free_surf .and. same_mesh ) then
                findph => sparsity % findrm
                colph => sparsity % colm
@@ -8182,8 +8183,9 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                end do
             end if
 
-            matrix%is_assembled = .false.
-            call assemble( matrix )
+            matrix%is_assembled =.false.
+
+            ! call assemble( matrix )
 
             !Add remove null_space if not bcs specified for the field
             if ( .not.got_free_surf ) call add_option( trim( solver_option_path ) // "/remove_null_space", stat )
