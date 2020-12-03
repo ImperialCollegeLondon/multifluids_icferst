@@ -850,11 +850,11 @@ contains
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
 #if PETSC_VERSION_MINOR >=14
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, one, ADD_VALUES, ierr)
-                      Mmat%petsc_ACV%is_assembled=.false.
+!                      Mmat%petsc_ACV%is_assembled=.false.
 
 #else
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(1.0, kind=PetscScalar_kind), ADD_VALUES, ierr)
-                      Mmat%petsc_ACV%is_assembled=.false.
+!                      Mmat%petsc_ACV%is_assembled=.false.
 #endif
                   end if
               end do
