@@ -840,7 +840,7 @@ contains
           INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
       END DO
 
-      matrix%is_assembled = .false.
+      Mmat%petsc_ACV%is_assembled = .false.
       call assemble( Mmat%petsc_ACV )
       IF ( GETCV_DISC ) THEN
           do iphase = wells_first_phase, final_phase*2
@@ -861,7 +861,7 @@ contains
               end do
           end do
        end if
-       matrix%is_assembled = .false.
+       Mmat%petsc_ACV%is_assembled = .false.
        call assemble( Mmat%petsc_ACV )
   CONTAINS
     !>@brief: This sub calculates the limited face values TDADJ(1...SNGI) from the central
