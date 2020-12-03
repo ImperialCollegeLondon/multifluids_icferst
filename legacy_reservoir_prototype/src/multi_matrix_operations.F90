@@ -460,7 +460,8 @@ contains
             END IF ! ENDOF IF(Mdims%npres > 1) THEN
             !If we have a reference node with pressure zero we impose that here.
 
-            CMC_petsc%is_assembled = .false.
+            !! we have to now assemble to matrix since we will be changing insert mode
+
             call assemble( CMC_petsc )
 
             DO IPRES = 1, Mdims%npres
@@ -504,8 +505,9 @@ contains
                     end if
                 END DO
             end if
-            CMC_petsc%is_assembled = .false.
+            CMC_petsc%is_assembled=.false.
             call assemble( CMC_petsc )
+
             DEALLOCATE( NEED_COLOR )
             DEALLOCATE( CMC_COLOR_VEC )
             DEALLOCATE( CMC_COLOR_VEC2 )
@@ -727,6 +729,9 @@ contains
                 END DO
             END IF ! ENDOF IF(Mdims%npres > 1) THEN
             !If we have a reference node with pressure zero we impose that here.
+
+            call assemble( CMC_petsc )
+
             DO IPRES = 1, Mdims%npres
                 IF ( NDPSET(IPRES) > 0 ) THEN
                     CV_NOD = NDPSET(IPRES)
@@ -772,6 +777,7 @@ contains
             !Re-assemble
             CMC_petsc%is_assembled=.false.
             call assemble( CMC_petsc )
+
             IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
             nullify(DU_LONG_MANY)
             RETURN
