@@ -461,8 +461,7 @@ contains
             !If we have a reference node with pressure zero we impose that here.
 
             !! we have to now assemble to matrix since we will be changing insert mode
-
-            call assemble( CMC_petsc )
+            !call assemble( CMC_petsc )
 
             DO IPRES = 1, Mdims%npres
                 IF ( NDPSET(IPRES) > 0 ) THEN
@@ -730,7 +729,7 @@ contains
             END IF ! ENDOF IF(Mdims%npres > 1) THEN
             !If we have a reference node with pressure zero we impose that here.
 
-            call assemble( CMC_petsc )
+            !call assemble( CMC_petsc )
 
             DO IPRES = 1, Mdims%npres
                 IF ( NDPSET(IPRES) > 0 ) THEN
@@ -761,6 +760,8 @@ contains
 
             if (Mdims%npres > 1) then
               !make diagonals == 1 for the wells domain without wells
+              !!-ao if we are inserting a non-zero value to a previous zero value
+              !! we need to ensure we turn MAT_NEW_NONZERO_ALLOCATION_ERR as false
                 DO CV_NOD = 1, Mdims%cv_nonods
                     if ( mass_pipe(cv_nod) <= 1e-16 ) then
                         CV_JNOD = CV_NOD
