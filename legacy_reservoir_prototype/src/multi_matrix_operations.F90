@@ -461,8 +461,9 @@ contains
             !If we have a reference node with pressure zero we impose that here.
 
             !! we have to now assemble to matrix since we will be changing insert mode
-            !call assemble( CMC_petsc )
-
+#if PETSC_VERSION_MINOR >= 14
+            call assemble( CMC_petsc )
+#endif
             DO IPRES = 1, Mdims%npres
                 IF ( NDPSET(IPRES) > 0 ) THEN
                     CV_NOD = NDPSET( IPRES )
@@ -729,8 +730,9 @@ contains
             END IF ! ENDOF IF(Mdims%npres > 1) THEN
             !If we have a reference node with pressure zero we impose that here.
 
-            !call assemble( CMC_petsc )
-
+#if PETSC_VERSION_MINOR >= 14
+            call assemble( CMC_petsc )
+#endif
             DO IPRES = 1, Mdims%npres
                 IF ( NDPSET(IPRES) > 0 ) THEN
                     CV_NOD = NDPSET(IPRES)
