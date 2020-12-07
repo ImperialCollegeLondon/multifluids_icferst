@@ -7500,6 +7500,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                               valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                               GLOBI=ELE
                               GLOBJ=JCOLELE
+
 #else
                               ! form block of values and their local row/column index arrays
                             if(big_block) then
@@ -7558,8 +7559,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 !! this is the version that will insert values a block row at a time
 #if PETSC_VERSION_MINOR >= 14
-  print*, "in block insert, block-row wise"
-  print*,nnn, nn, size(idxn(0:nnn-1)), size(valuesb(0:nn-1)), maxval(valuesb(0:nn-1)), minval(valuesb(0:nn-1))
+  ! print*, "in block insert, block-row wise"
+  ! print*,nnn, nn, size(idxn(0:nnn-1)), size(valuesb(0:nn-1)), maxval(valuesb(0:nn-1)), minval(valuesb(0:nn-1))
 
 
   !! this is a hack to call the fortran specific function
@@ -7571,7 +7572,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
   END DO Loop_Elements20
 
-  print*, idxn(0:nnn-1)
+  print*, idxn
 
 ! ! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
 ! ! only works for petsc version >=3.14
