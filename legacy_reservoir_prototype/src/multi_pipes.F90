@@ -839,6 +839,7 @@ contains
       DO IPHASE = 1, final_phase
           INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE, 1.E-15 )
       END DO
+
       IF ( GETCV_DISC ) THEN
           do iphase = wells_first_phase, final_phase*2
             assembly_phase = iphase
@@ -850,16 +851,15 @@ contains
                       j_indx = Mmat%petsc_ACV%column_numbering%gnn2unn( cv_nodj, assembly_phase )
 #if PETSC_VERSION_MINOR >=14
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, one, ADD_VALUES, ierr)
-                      Mmat%petsc_ACV%is_assembled=.false.
 
 #else
                       call MatSetValue(Mmat%petsc_ACV%M, i_indx, j_indx, real(1.0, kind=PetscScalar_kind), ADD_VALUES, ierr)
-                      Mmat%petsc_ACV%is_assembled=.false.
 #endif
                   end if
               end do
           end do
        end if
+      Mmat%petsc_ACV%is_assembled = .false.
   CONTAINS
     !>@brief: This sub calculates the limited face values TDADJ(1...SNGI) from the central
     !> difference face values TDCEN(1...SNGI) using a NVD shceme.

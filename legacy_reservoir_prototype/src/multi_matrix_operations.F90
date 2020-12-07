@@ -459,6 +459,11 @@ contains
                 END DO
             END IF ! ENDOF IF(Mdims%npres > 1) THEN
             !If we have a reference node with pressure zero we impose that here.
+
+            !! we have to now assemble to matrix since we will be changing insert mode
+#if PETSC_VERSION_MINOR >= 14
+            call assemble( CMC_petsc )
+#endif
             DO IPRES = 1, Mdims%npres
                 IF ( NDPSET(IPRES) > 0 ) THEN
                     CV_NOD = NDPSET( IPRES )
@@ -500,8 +505,9 @@ contains
                     end if
                 END DO
             end if
-            CMC_petsc%is_assembled = .false.
-            call assemble( CMC_petsc )
+            ! CMC_petsc%is_assembled=.false.
+            ! call assemble( CMC_petsc )
+
             DEALLOCATE( NEED_COLOR )
             DEALLOCATE( CMC_COLOR_VEC )
             DEALLOCATE( CMC_COLOR_VEC2 )
@@ -723,6 +729,10 @@ contains
                 END DO
             END IF ! ENDOF IF(Mdims%npres > 1) THEN
             !If we have a reference node with pressure zero we impose that here.
+
+#if PETSC_VERSION_MINOR >= 14
+            call assemble( CMC_petsc )
+#endif
             DO IPRES = 1, Mdims%npres
                 IF ( NDPSET(IPRES) > 0 ) THEN
                     CV_NOD = NDPSET(IPRES)
@@ -752,6 +762,8 @@ contains
 
             if (Mdims%npres > 1) then
               !make diagonals == 1 for the wells domain without wells
+              !!-ao if we are inserting a non-zero value to a previous zero value
+              !! we need to ensure we turn MAT_NEW_NONZERO_ALLOCATION_ERR as false
                 DO CV_NOD = 1, Mdims%cv_nonods
                     if ( mass_pipe(cv_nod) <= 1e-16 ) then
                         CV_JNOD = CV_NOD
@@ -766,8 +778,9 @@ contains
             end if
 
             !Re-assemble
-            CMC_petsc%is_assembled=.false.
-            call assemble( CMC_petsc )
+            ! CMC_petsc%is_assembled=.false.
+            ! call assemble( CMC_petsc )
+
             IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
             nullify(DU_LONG_MANY)
             RETURN
