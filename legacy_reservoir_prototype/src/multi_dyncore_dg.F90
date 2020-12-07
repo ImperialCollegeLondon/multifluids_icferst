@@ -7478,7 +7478,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ELSE
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
-        ! !uing sequential insertions/add
+
+        !! COLUMN ORIENTED uing sequential insertions/add
         ! DO U_JLOC=1,U_NLOC
         !     DO U_ILOC=1,U_NLOC
         !       !!uing sequential insertions/add
@@ -7486,18 +7487,19 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         !           DO IPHASE=1,NPHASE
         !               DO JDIM=1,NDIM
         !                   DO IDIM=1,NDIM
-      DO IDIM=1,NDIM
+
+        !!ROW ORIENTED VALUES sequential insertions/add
+        DO IDIM=1,NDIM
           DO JDIM=1,NDIM
-            !!uing sequential insertions/add
             DO IPHASE=1,NPHASE
-                DO JPHASE=1,NPHASE
-                !uing sequential insertions/add
+              DO JPHASE=1,NPHASE
                 DO U_ILOC=1,U_NLOC
-                    DO U_JLOC=1,U_NLOC
+                  DO U_JLOC=1,U_NLOC
 #if PETSC_VERSION_MINOR >= 14
                               !!!form an array values to insert as a whole block
                               valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-
+                              GLOBI=ELE
+                              GLOBJ=JCOLELE
 #else
                               ! form block of values and their local row/column index arrays
                             if(big_block) then
@@ -7520,11 +7522,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                                values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                             end if
 #endif
-                              nn=nn+1
+                            nn=nn+1
                           END DO
                       END DO
                   END DO
               END DO
+
 #if PETSC_VERSION_MINOR < 14
               if(.not.big_block) then
                 call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
@@ -7538,8 +7541,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 #if PETSC_VERSION_MINOR >=14
         idxm(ELE-1)=GLOBI-1 !!global bloc row index
-        idxn(COUNT_ELE-1)=GLOBJ-1 !!global block column index
-
+!!        idxn(COUNT_ELE-1)=GLOBJ-1 !!global block column index
+        idxn(nnn)=GLOBJ-1 !!global block column index
 #else
         if(big_block) then
           idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
@@ -7555,8 +7558,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 !! this is the version that will insert values a block row at a time
 #if PETSC_VERSION_MINOR >= 14
-  print*, "in block 14 insert"
+  print*, "in block insert, block-row wise"
   print*,nnn, nn, size(idxn(0:nnn-1)), size(valuesb(0:nn-1)), maxval(valuesb(0:nn-1)), minval(valuesb(0:nn-1))
+
+
   !! this is a hack to call the fortran specific function
   call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
                 valuesb(0:nn-1), INSERT_VALUES, ierr)
@@ -7565,6 +7570,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 
   END DO Loop_Elements20
+
+  print*, idxn(0:nnn-1)
 
 ! ! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
 ! ! only works for petsc version >=3.14
@@ -7577,6 +7584,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 !   dgm_petsc%is_assembled=.false.
 ! #endif
 
+  call assemble(dgm_petsc)
   !******************** PROFILNG THE PETSC MAT ***************!
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
   mal = info(MAT_INFO_BLOCK_SIZE)
