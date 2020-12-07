@@ -7556,11 +7556,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
       nnn=nnn+1
       END DO Between_Elements_And_Boundary20
-
+      
 !! this is the version that will insert values a block row at a time
 #if PETSC_VERSION_MINOR >= 14
-  ! print*, "in block insert, block-row wise"
-  ! print*,nnn, nn, size(idxn(0:nnn-1)), size(valuesb(0:nn-1)), maxval(valuesb(0:nn-1)), minval(valuesb(0:nn-1))
   !! this is a hack to call the fortran specific function
   call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
                 valuesb(0:nn-1), INSERT_VALUES, ierr)
@@ -7588,7 +7586,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   nz_a = info(MAT_INFO_NZ_USED)
   print*, "MATGETINFO2", mal, nz_a
   !!************************************************************
-  ! 
+  !
   ! STOP 989
   !
 
