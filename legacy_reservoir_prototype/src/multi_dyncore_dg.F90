@@ -7588,9 +7588,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   nz_a = info(MAT_INFO_NZ_USED)
   print*, "MATGETINFO2", mal, nz_a
   !!************************************************************
-
-  STOP 989
-
+  ! 
+  ! STOP 989
+  !
 
 #if PETSC_VERSION_MINOR >=14
   deallocate(valuesb)
