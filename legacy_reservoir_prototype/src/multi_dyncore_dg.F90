@@ -7443,7 +7443,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     !******************** PROFILNG THE PETSC MAT ***************!
 
     ! nn=0
-    call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+    call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_TRUE,ierr)
+
   Loop_Elements20: DO ELE = 1, TOTELE
     if (IsParallel()) then
         if (.not. assemble_ele(pressure,ele)) then
@@ -7477,14 +7478,22 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ELSE
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
-        !uing sequential insertions/add
-        DO U_JLOC=1,U_NLOC
-            DO U_ILOC=1,U_NLOC
-              !!uing sequential insertions/add
-              DO JPHASE=1,NPHASE
-                  DO IPHASE=1,NPHASE
-                      DO JDIM=1,NDIM
-                          DO IDIM=1,NDIM
+        ! !uing sequential insertions/add
+        ! DO U_JLOC=1,U_NLOC
+        !     DO U_ILOC=1,U_NLOC
+        !       !!uing sequential insertions/add
+        !       DO JPHASE=1,NPHASE
+        !           DO IPHASE=1,NPHASE
+        !               DO JDIM=1,NDIM
+        !                   DO IDIM=1,NDIM
+      DO IDIM=1,NDIM
+          DO JDIM=1,NDIM
+            !!uing sequential insertions/add
+            DO IPHASE=1,NPHASE
+                DO JPHASE=1,NPHASE
+                !uing sequential insertions/add
+                DO U_ILOC=1,U_NLOC
+                    DO U_JLOC=1,U_NLOC
 #if PETSC_VERSION_MINOR >= 14
                               !!!form an array values to insert as a whole block
                               valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
@@ -7512,8 +7521,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                             end if
 #endif
                               nn=nn+1
-
-
                           END DO
                       END DO
                   END DO
