@@ -7561,18 +7561,14 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 #if PETSC_VERSION_MINOR >= 14
   ! print*, "in block insert, block-row wise"
   ! print*,nnn, nn, size(idxn(0:nnn-1)), size(valuesb(0:nn-1)), maxval(valuesb(0:nn-1)), minval(valuesb(0:nn-1))
-
-
   !! this is a hack to call the fortran specific function
   call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
                 valuesb(0:nn-1), INSERT_VALUES, ierr)
   dgm_petsc%is_assembled=.false.
 #endif
 
-
   END DO Loop_Elements20
 
-  print*, idxn
 
 ! ! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
 ! ! only works for petsc version >=3.14
