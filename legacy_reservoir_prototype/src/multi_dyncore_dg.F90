@@ -2624,8 +2624,6 @@ end if
           !Pointers to convert from tensor data to vector data
 
           if(block) then
-
-            print*, "IN BLOXK"
             !Pointers to convert from tensor data to vector data
             packed_vel = as_packed_vector_block(Velocity) !! need to reshape properly
             rhs = as_packed_vector_block(CDP_tensor)
@@ -7446,7 +7444,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     ! print*, "MATGETINFO1", mal, nz_a
     ! !******************** PROFILNG THE PETSC MAT ***************!
 
-    call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_TRUE,ierr)
+    call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
   Loop_Elements20: DO ELE = 1, TOTELE
     if (IsParallel()) then
@@ -7483,21 +7481,13 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ENDIF
 
         !! COLUMN ORIENTED uing sequential insertions/add
-        ! DO U_JLOC=1,U_NLOC
-        !     DO U_ILOC=1,U_NLOC
-        !       !!uing sequential insertions/add
-        !       DO JPHASE=1,NPHASE
-        !           DO IPHASE=1,NPHASE
-        !               DO JDIM=1,NDIM
-        !                   DO IDIM=1,NDIM
-
-        !!ROW ORIENTED VALUES sequential insertions/add
-        DO IDIM=1,NDIM
-          DO JDIM=1,NDIM
-            DO IPHASE=1,NPHASE
+        DO U_JLOC=1,U_NLOC
+            DO U_ILOC=1,U_NLOC
+              !!uing sequential insertions/add
               DO JPHASE=1,NPHASE
-                DO U_ILOC=1,U_NLOC
-                  DO U_JLOC=1,U_NLOC
+                  DO IPHASE=1,NPHASE
+                      DO JDIM=1,NDIM
+                          DO IDIM=1,NDIM
 #if PETSC_VERSION_MINOR >= 14
                               !!!form an array values to insert as a whole block
                             if(big_block) then
@@ -7561,7 +7551,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 #if PETSC_VERSION_MINOR >= 14
     if(big_block) then
         call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
-                      valuesb(0:nn-1), INSERT_VALUES, ierr)
+                      valuesb(0:nn-1), ADD_VALUES, ierr)
         dgm_petsc%is_assembled=.false.
     end if
 #endif
