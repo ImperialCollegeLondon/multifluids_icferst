@@ -1701,7 +1701,7 @@ contains
         end if
 
         call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_FALSE, ierr)
-        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr)
+        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
         nullify(matrix%refcount)
 
         allocate(matrix%ksp)
