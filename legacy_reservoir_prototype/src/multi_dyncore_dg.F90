@@ -2624,13 +2624,14 @@ end if
           !Pointers to convert from tensor data to vector data
 
           if(block) then
+
+            print*, "IN BLOXK"
             !Pointers to convert from tensor data to vector data
             packed_vel = as_packed_vector_block(Velocity) !! need to reshape properly
             rhs = as_packed_vector_block(CDP_tensor)
 
             allocate(u_rhs_block(Mdims%ndim*Mdims%nphase*Mdims%u_nloc, Mdims%totele))
             u_rhs_block=0.0
-
             !converting U_RHS to U_RHS(ndim*nphase*nloc, ele) !!-ao
               do ele =1, Mdims%totele
                 nn=1
@@ -2638,22 +2639,25 @@ end if
                  u_inod = ndgln%u( ( ele - 1 ) * Mdims%u_nloc + u_iloc )
                   do iphase = 1, Mdims%nphase
                     do idim = 1, Mdims%ndim
-                       u_rhs_block(nn,ele) = u_rhs( idim*iphase, u_inod )
+                       u_rhs_block(nn,ele) = u_rhs( IDIM + (IPHASE-1)*NDIM, u_inod )
                        nn=nn+1
                     end do
                   end do
                 end do
               end do
                 !!petscsolve error -> i dont think the 3 vectors are being reshaped properly
-              print*, size(rhs%val(1,:)),size(rhs%val(:,1)), size(U_RHS_BLOCK(1,:)), size(U_RHS_BLOCK(:,1))
-              rhs%val = rhs%val + u_rhs_block !!-ao need to re-shape RHS (ndim*nphase*nloc, ele)
+              !print*, size(rhs%val(1,:)),size(rhs%val(:,1)), size(U_RHS_BLOCK(1,:)), size(U_RHS_BLOCK(:,1))
+
+              rhs%val = rhs%val + u_rhs_block
               deallocate(u_rhs_block)
-        else
-          !Pointers to convert from tensor data to vector data
-          packed_vel = as_packed_vector(Velocity)
-          rhs = as_packed_vector(CDP_tensor)
-          rhs%val = rhs%val + U_RHS !!-ao need to re-shape RHS (ndim*nphase*nloc, ele)
-        end if
+          else
+            !Pointers to convert from tensor data to vector data
+            packed_vel = as_packed_vector(Velocity)
+            rhs = as_packed_vector(CDP_tensor)
+            rhs%val = rhs%val + U_RHS
+          end if
+
+
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -2666,7 +2670,7 @@ end if
       !Nothing to do since we have pointers
 #else
     !For intel compilers we perform a direct reshaping of memory
-    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods)
+    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) !!this needs to be modified
     call deallocate(packed_vel); call deallocate(rhs)
 #endif
 
@@ -7434,15 +7438,14 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
   allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
 #endif
-    !
-    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
-    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-    mal = info(MAT_INFO_BLOCK_SIZE)
-    nz_a = info(MAT_INFO_NZ_ALLOCATED)
-    print*, "MATGETINFO1", mal, nz_a
-    !******************** PROFILNG THE PETSC MAT ***************!
 
-    ! nn=0
+    ! !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    ! mal = info(MAT_INFO_BLOCK_SIZE)
+    ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
+    ! print*, "MATGETINFO1", mal, nz_a
+    ! !******************** PROFILNG THE PETSC MAT ***************!
+
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_TRUE,ierr)
 
   Loop_Elements20: DO ELE = 1, TOTELE
@@ -7465,7 +7468,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
 
       ! Block diagonal and off diagonal terms...
-      !!for ever block row
+      !! starting the counters for contgious memory assignment
       nn=0
       nnn=0.0
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
@@ -7497,10 +7500,11 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                   DO U_JLOC=1,U_NLOC
 #if PETSC_VERSION_MINOR >= 14
                               !!!form an array values to insert as a whole block
+                            if(big_block) then
                               valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                               GLOBI=ELE
                               GLOBJ=JCOLELE
-
+                            end if
 #else
                               ! form block of values and their local row/column index arrays
                             if(big_block) then
@@ -7509,9 +7513,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                               !!need to flatten this properly
                               I=U_ILOC*IPHASE*IDIM
                               J=U_JLOC*JPHASE*JDIM
-                              ! values(nnn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                               values(I-1, J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                              !print*, I, J
+
                             else
                               ! New for rapid code ordering of variables...
                                I=IDIM + (IPHASE-1)*NDIM
@@ -7528,7 +7531,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                       END DO
                   END DO
               END DO
-
 #if PETSC_VERSION_MINOR < 14
               if(.not.big_block) then
                 call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
@@ -7541,28 +7543,27 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 
 #if PETSC_VERSION_MINOR >=14
-        idxm(ELE-1)=GLOBI-1 !!global bloc row index
+!!        idxm(ELE-1)=GLOBI-1 !!global bloc row index
 !!        idxn(COUNT_ELE-1)=GLOBJ-1 !!global block column index
         idxn(nnn)=GLOBJ-1 !!global block column index
 #else
-        if(big_block) then
+
           idxm=dgm_petsc%row_numbering%gnn2unn(GLOBI,:)
           idxn=dgm_petsc%column_numbering%gnn2unn(GLOBJ,:)
           call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
                         values, ADD_VALUES, ierr)
           dgm_petsc%is_assembled=.false.
-        end if
 #endif
-
       nnn=nnn+1
       END DO Between_Elements_And_Boundary20
-      
+
 !! this is the version that will insert values a block row at a time
 #if PETSC_VERSION_MINOR >= 14
-  !! this is a hack to call the fortran specific function
-  call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
-                valuesb(0:nn-1), INSERT_VALUES, ierr)
-  dgm_petsc%is_assembled=.false.
+    if(big_block) then
+        call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
+                      valuesb(0:nn-1), INSERT_VALUES, ierr)
+        dgm_petsc%is_assembled=.false.
+    end if
 #endif
 
   END DO Loop_Elements20
@@ -7573,28 +7574,25 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 ! #if PETSC_VERSION_MINOR >= 14
 !   print*, "in block 14 insert"
 !   print*, size(idxm), size(idxn), size(valuesb), maxval(valuesb), minval(valuesb)
-!   !! this is a hack to call the fortran specific function
 !   call MatSetValuesBlocked(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
 !                 valuesb, ADD_VALUES, ierr)
 !   dgm_petsc%is_assembled=.false.
 ! #endif
 
-  call assemble(dgm_petsc)
-  !******************** PROFILNG THE PETSC MAT ***************!
-  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  mal = info(MAT_INFO_BLOCK_SIZE)
-  nz_a = info(MAT_INFO_NZ_USED)
-  print*, "MATGETINFO2", mal, nz_a
-  !!************************************************************
-  !
-  ! STOP 989
-  !
+  ! call assemble(dgm_petsc)
+  ! !******************** PROFILNG THE PETSC MAT ***************!
+  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  ! mal = info(MAT_INFO_BLOCK_SIZE)
+  ! nz_a = info(MAT_INFO_NZ_USED)
+  ! print*, "MATGETINFO2", mal, nz_a
+  ! !!************************************************************
 
 #if PETSC_VERSION_MINOR >=14
   deallocate(valuesb)
 #else
   deallocate(values)
 #endif
+
   deallocate(idxm)
   deallocate(idxn)
   deallocate(LOC_DGM_PHA)

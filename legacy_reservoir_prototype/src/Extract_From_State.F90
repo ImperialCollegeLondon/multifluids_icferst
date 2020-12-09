@@ -2141,14 +2141,12 @@ function as_packed_vector_block(tfield) result(vfield)
 
     type(vector_field) :: vfield
     integer:: nn, bdim, nloc
-
     vfield%name=tfield%name
     vfield%mesh=tfield%mesh !!need to re-shape this from nodes to elements
     vfield%option_path=tfield%option_path
 
     nloc=node_count(vfield)/element_count(vfield)
     bdim=product(tfield%dim)*nloc
-    ! vfield%dim=product(tfield%dim)
     vfield%dim=bdim
 
 #ifdef USING_GFORTRAN
