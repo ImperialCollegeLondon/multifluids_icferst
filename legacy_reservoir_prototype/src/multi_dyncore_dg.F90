@@ -2655,7 +2655,6 @@ end if
             rhs%val = rhs%val + U_RHS
           end if
 
-
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -7477,35 +7476,42 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
-        !! COLUMN ORIENTED uing sequential insertions/add
+        ! !! COLUMN ORIENTED uing sequential insertions/add
         DO U_JLOC=1,U_NLOC
-            DO U_ILOC=1,U_NLOC
-              !!uing sequential insertions/add
-              DO JPHASE=1,NPHASE
-                  DO IPHASE=1,NPHASE
-                      DO JDIM=1,NDIM
-                          DO IDIM=1,NDIM
+          DO U_ILOC=1,U_NLOC
+            DO JPHASE=1,NPHASE
+              DO IPHASE=1,NPHASE
+                DO JDIM=1,NDIM
+                  DO IDIM=1,NDIM
 
-                            if(big_block) then
-                              valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                              GLOBI=ELE
-                              GLOBJ=JCOLELE
-                            else
-                              ! New for rapid code ordering of variables...
-                               I=IDIM + (IPHASE-1)*NDIM
-                               J=JDIM + (JPHASE-1)*NDIM
-                               GLOBI=(ELE-1)*U_NLOC + U_ILOC
-                               GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                               idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
-                               idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
-                               values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                            end if
+                    ! DO IDIM=1,NDIM
+                    !   DO JDIM=1,NDIM
+                    !     DO IPHASE=1,NPHASE
+                    !       DO JPHASE=1, NPHASE
+                    !         DO U_ILOC=1,U_NLOC
+                    !             DO U_JLOC=1,U_NLOC
 
-                            nn=nn+1
-                          END DO
-                      END DO
+                    if(big_block) then
+                      valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+
+                      GLOBI=ELE
+                      GLOBJ=JCOLELE
+                    else
+                      ! New for rapid code ordering of variables...
+                      I=IDIM + (IPHASE-1)*NDIM
+                      J=JDIM + (JPHASE-1)*NDIM
+                      GLOBI=(ELE-1)*U_NLOC + U_ILOC
+                      GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+                      idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
+                      idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
+                      values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                    end if
+
+                    nn=nn+1
                   END DO
+                END DO
               END DO
+            END DO
               !! enter values at a time for 'small' block matrix size
               if(.not.big_block) then
                 call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
@@ -7527,7 +7533,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     if(big_block) then
     !    print*, ele-1, nnn, idxn(0:nnn-1)
         call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
-                      valuesb(0:nn-1), ADD_VALUES, ierr)
+                      valuesb(0:nn-1), INSERT_VALUES, ierr)
         dgm_petsc%is_assembled=.false.
     end if
 
@@ -7546,7 +7552,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 !   dgm_petsc%is_assembled=.false.
 ! #endif
 
-  ! call assemble(dgm_petsc)
   !******************** PROFILNG THE PETSC MAT ***************!
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
   mal = info(MAT_INFO_BLOCK_SIZE)
