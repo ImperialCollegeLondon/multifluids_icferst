@@ -192,7 +192,8 @@ module global_parameters
   logical :: is_P0DGP1CV = .false.
   !! Multiphase prototype, blasting simulator
   logical :: is_blasting = .false.
-
+  !! Has boussinesq option on
+  logical :: has_boussinesq_aprox = .false.
 
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: backtrack_or_convergence

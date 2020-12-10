@@ -3761,8 +3761,9 @@ element Density{(
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
                         element Boussinesq_approximation { empty }?}|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
-                     element python_state{
-                       scalar_python_diagnostic_algorithm
+                     element python_state{(
+                       scalar_python_diagnostic_algorithm,
+                        element Boussinesq_approximation { empty }?)
                      }
                     ),
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations

@@ -4475,6 +4475,11 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
         <element name="python_state">
           <a:documentation>The "Dummy" diagnotic field on the pressure mesh is required for this option</a:documentation>
           <ref name="scalar_python_diagnostic_algorithm"/>
+          <optional>
+            <element name="Boussinesq_approximation">
+              <empty/>
+            </element>
+          </optional>
         </element>
       </choice>
       <optional>
