@@ -7435,12 +7435,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
  end if
 
-    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
-    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-    mal = info(MAT_INFO_BLOCK_SIZE)
-    nz_a = info(MAT_INFO_NZ_ALLOCATED)
-    print*, "MATGETINFO1", mal, nz_a
-    !******************** PROFILNG THE PETSC MAT ***************!
+    ! !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    ! mal = info(MAT_INFO_BLOCK_SIZE)
+    ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
+    ! print*, "MATGETINFO1", mal, nz_a
+    ! !******************** PROFILNG THE PETSC MAT ***************!
 
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
@@ -7465,7 +7465,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
       ! Block diagonal and off diagonal terms...
       !! starting the counters for contgious memory assignment
-      nn=0
+      ! nn=0
       nnn=0
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
         JCOLELE=COLELE(COUNT_ELE) !!(big block )for each block row this is the non-zero block column index
@@ -7476,20 +7476,17 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
 
-        ! !! COLUMN ORIENTED uing sequential insertions/add
-        DO U_JLOC=1,U_NLOC
-          DO U_ILOC=1,U_NLOC
-            DO JPHASE=1,NPHASE
-              DO IPHASE=1,NPHASE
-                DO JDIM=1,NDIM
-                  DO IDIM=1,NDIM
+        ! COLUMN ORIENTED uing sequential insertions/add
+        ! Contiguous memory assignment
+        nn=0
 
-                    ! DO IDIM=1,NDIM
-                    !   DO JDIM=1,NDIM
-                    !     DO IPHASE=1,NPHASE
-                    !       DO JPHASE=1, NPHASE
-                    !         DO U_ILOC=1,U_NLOC
-                    !             DO U_JLOC=1,U_NLOC
+        DO U_JLOC=1,U_NLOC
+          DO JPHASE=1,NPHASE
+            DO JDIM=1,NDIM
+
+              DO U_ILOC=1,U_NLOC
+                DO IPHASE=1,NPHASE
+                  DO IDIM=1,NDIM
 
                     if(big_block) then
                       valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
@@ -7525,17 +7522,25 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         if(big_block) then
           idxn(nnn)=GLOBJ-1 !!global block column index
         end if
-
         nnn=nnn+1
+
+
+        if(big_block) then
+        !    print*, ele-1, nnn, idxn(0:nnn-1)
+            call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, 1, JCOLELE-1, &
+                          valuesb(0:nn-1), ADD_VALUES, ierr)
+            dgm_petsc%is_assembled=.false.
+        end if
+
       END DO Between_Elements_And_Boundary20
 
 !! this is the version that will insert values a block row at a time
-    if(big_block) then
-    !    print*, ele-1, nnn, idxn(0:nnn-1)
-        call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
-                      valuesb(0:nn-1), INSERT_VALUES, ierr)
-        dgm_petsc%is_assembled=.false.
-    end if
+    ! if(big_block) then
+    ! !    print*, ele-1, nnn, idxn(0:nnn-1)
+    !     call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
+    !                   valuesb(0:nn-1), INSERT_VALUES, ierr)
+    !     dgm_petsc%is_assembled=.false.
+    ! end if
 
   END DO Loop_Elements20
 
@@ -7554,6 +7559,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
   !******************** PROFILNG THE PETSC MAT ***************!
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  print*, size(valuesb), maxval(valuesb), minval(valuesb)
   mal = info(MAT_INFO_BLOCK_SIZE)
   nz_a = info(MAT_INFO_NZ_USED)
   print*, "MATGETINFO2", mal, nz_a
@@ -8361,6 +8367,8 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
             ! if free surface apply a boundary condition
             ! else don't forget to remove the null space
+            call assemble(matrix)
+
             if ( got_free_surf .and. same_mesh ) then
                findph => sparsity % findrm
                colph => sparsity % colm
@@ -8407,6 +8415,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                                  i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
                                  j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
                                  call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                                 matrix%is_assembled=.false.
                               end if
                            end do
                         end if
