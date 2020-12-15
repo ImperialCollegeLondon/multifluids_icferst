@@ -1631,10 +1631,10 @@ contains
     !> @author Asiri Obeysekara
     !> @brief Subroutines to handle Block matrices
     !---------------------------------------------------------------------------
-    function allocate_momentum_block_matrix(blocks,velocity, FINELE, COLELE, big_block) result(matrix)
+    function allocate_momentum_block_matrix(blocks,velocity, finele, colele, big_block) result(matrix)
         type(csr_sparsity), intent (inout) :: blocks
         type(tensor_field), intent (inout) :: velocity
-        INTEGER, DIMENSION(:), intent( inout) :: FINELE, COLELE
+        INteger, dimension(:), intent( inout) :: finele, colele
         logical, intent(in) :: big_block
         !local variables
         type(halo_type), pointer:: halo
@@ -1687,9 +1687,8 @@ contains
           else
             DO ELE = 1, element_count(velocity)
               DO iloc=1, nloc
-                  i=(ELE-1dnn=0
-            onn=0)*NLOC + ILOC
-                    nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
+                  i=(ELE-1)*NLOC + ILOC
+                  nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
               end do
             END DO
           endif
@@ -1716,11 +1715,10 @@ contains
           dnnz(ele)=dnn
           onnz(ele)=onn
         END DO Loop_Elements
-        deallocate(dnnz)
-        deallocate(onnz)
-
           matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
               matrix%column_numbering, dnnz, onnz)
+          deallocate(dnnz)
+          deallocate(onnz)
         end if
 
         call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
@@ -1812,10 +1810,10 @@ contains
     ! call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
     ! PETSC_DEFAULT_INTEGER, d_nnz, PETSC_DEFAULT_INTEGER, o_nnz, M, ierr)
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
-    PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
+    PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
 #else
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
-    PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, PETSC_DEFAULT_INTEGER, PETSC_NULL_INTEGER, M, ierr)
+    PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
 #endif
       end function full_CreateMPIBAIJ
 
