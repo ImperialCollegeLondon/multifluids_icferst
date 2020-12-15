@@ -2034,9 +2034,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
           !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
           !By making uden =0. these terms will be effectively zeroed.
           UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
-        else if ( has_boussinesq_aprox ) then
-          !We do not consider variations of density for the continuity equation
-          UDEN_ALL=1.0; UDENOLD_ALL=1.0
         end if
 
         if ( have_option( '/blasting' ) ) then
@@ -2994,18 +2991,14 @@ end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
         ALLOCATE( DENOLD_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
-        IF ( Mdisopt%volfra_use_theta_flux ) THEN ! We have already put density in theta...
+        IF ( Mdisopt%volfra_use_theta_flux .or. has_boussinesq_aprox) THEN ! We have already put density in theta... or
+          !boussinesq so we do not consider variations of density for the continuity equation
            DEN_OR_ONE = 1.
            DENOLD_OR_ONE = 1.
         ELSE
            DEN_OR_ONE = DEN_ALL
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
-        if ( has_boussinesq_aprox ) then
-          !We do not consider variations of density for the continuity equation
-           DEN_OR_ONE = 1.0
-           DENOLD_OR_ONE = 1.0
-        end if
         ! no q scheme
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
@@ -7969,7 +7962,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       ! set the gravity term
       rho => extract_tensor_field( packed_state, "PackedDensity" )
       volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
       gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
 
@@ -7979,7 +7971,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                  gravity_magnitude * gravity_direction % val( idim, 1 )
          end do
       end do
-
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
 
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
@@ -8039,12 +8030,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  if ( has_boussinesq_aprox ) then
-                     den_gi( :, iphase ) = 1.0
-                  else
+                  ! if ( has_boussinesq_aprox ) then
+                  !    den_gi( :, iphase ) = 1.0
+                  ! else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
-                  end if
+                  ! end if
 
                   sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
                         tmp_cvfen( cv_iloc, : ) * u_absorbin(  1, iphase, mat_inod )
