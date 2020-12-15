@@ -2204,7 +2204,7 @@ end if
           if(block_mom) then
             big_block=.true. !! true -> use a block size of (nphase*ndim*n_uloc)*(nphase*ndim*n_uloc) ***DOESNT WORK YET***
             sparsity => extract_csr_sparsity(packed_state,"MomentumSparsity") ! "MomentumBlock")
-            Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, big_block)
+            Mmat%DGM_PETSC = allocate_momentum_block_matrix(sparsity,velocity,mspars%ele%fin, mspars%ele%col, big_block)
           else
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
@@ -2622,36 +2622,36 @@ end if
           real, dimension(:,:), allocatable :: u_rhs_block
           integer:: u_iloc, u_inod, iphase, idim, ele, nn
           !Pointers to convert from tensor data to vector data
-
           if(block) then
             !Pointers to convert from tensor data to vector data
             packed_vel = as_packed_vector_block(Velocity) !! need to reshape properly
             rhs = as_packed_vector_block(CDP_tensor)
-
             allocate(u_rhs_block(Mdims%ndim*Mdims%nphase*Mdims%u_nloc, Mdims%totele))
             u_rhs_block=0.0
             !converting U_RHS to U_RHS(ndim*nphase*nloc, ele) !!-ao
-              do ele =1, Mdims%totele
-                nn=1
-                do u_iloc = 1, Mdims%u_nloc
-                 u_inod = ndgln%u(( ele-1)*Mdims%u_nloc+u_iloc)
-                  do iphase = 1, Mdims%nphase
-                    do idim = 1, Mdims%ndim
-                       u_rhs_block(nn,ele) = u_rhs(IDIM+(IPHASE-1)*(Mdims%ndim), u_inod )
-                       nn=nn+1
-                    end do
+            do ele =1, Mdims%totele
+              nn=1
+              do u_iloc = 1, Mdims%u_nloc
+                u_inod = ndgln%u(( ele-1)*Mdims%u_nloc+u_iloc)
+                do iphase = 1, Mdims%nphase
+                  do idim = 1, Mdims%ndim
+                    u_rhs_block(nn,ele) = u_rhs(IDIM+(IPHASE-1)*(Mdims%ndim), u_inod )
+                    nn=nn+1
                   end do
                 end do
               end do
-                !!petscsolve error -> i dont think the 3 vectors are being reshaped properly
-              !print*, size(rhs%val(1,:)),size(rhs%val(:,1)), size(U_RHS_BLOCK(1,:)), size(U_RHS_BLOCK(:,1))
-
+            end do
               rhs%val = rhs%val + u_rhs_block
               deallocate(u_rhs_block)
           else
             !Pointers to convert from tensor data to vector data
             packed_vel = as_packed_vector(Velocity)
             rhs = as_packed_vector(CDP_tensor)
+            ! print*, u_rhs
+            ! print*, rhs%val
+            ! print*, CDP_tensor%val
+            ! print*, packed_vel%val
+            ! print*, Velocity%val
             rhs%val = rhs%val + U_RHS
           end if
 
@@ -2663,11 +2663,16 @@ end if
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
+
+          ! print*, "after"
+          ! print*, rhs%val
+          ! print*, packed_vel%val
+
 #ifdef USING_GFORTRAN
       !Nothing to do since we have pointers
 #else
     !For intel compilers we perform a direct reshaping of memory
-    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) !!this needs to be modified
+    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) !! for blocks, this assumes CONTIGUOUS memeory
     call deallocate(packed_vel); call deallocate(rhs)
 #endif
 
@@ -7426,9 +7431,11 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC)) !!a
 
  if (big_block) then
-  allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
+  ! allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
+  allocate(valuesb(0:size(loc_dgm_pha)-1))
   allocate(idxm(0:TOTELE-1))
   allocate(idxn(0:size(COLELE)-1))
+  valuesb=0.0
  else
   allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
   allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
@@ -7445,20 +7452,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
   Loop_Elements20: DO ELE = 1, TOTELE
-    if (IsParallel()) then
-        if (.not. assemble_ele(pressure,ele)) then
-            skip=.true.
-            neighbours=>ele_neigh(pressure,ele)
-            do nb=1,size(neighbours)
-                if (neighbours(nb)<=0) cycle
-                if (assemble_ele(pressure,neighbours(nb))) then
-                    skip=.false.
-                    exit
-                end if
-            end do
-            if (skip) cycle
-        end if
-    end if
+
       ELE_ROW_START=FINELE(ELE)
       ELE_ROW_START_NEXT=FINELE(ELE+1)
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
@@ -7479,7 +7473,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ! COLUMN ORIENTED uing sequential insertions/add
         ! Contiguous memory assignment
         nn=0
-
         DO U_JLOC=1,U_NLOC
           DO JPHASE=1,NPHASE
             DO JDIM=1,NDIM
@@ -7490,7 +7483,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
                     if(big_block) then
                       valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-
                       GLOBI=ELE
                       GLOBJ=JCOLELE
                     else
@@ -7505,6 +7497,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                     end if
 
                     nn=nn+1
+
                   END DO
                 END DO
               END DO
@@ -7512,58 +7505,34 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               !! enter values at a time for 'small' block matrix size
               if(.not.big_block) then
                 call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-                              values, ADD_VALUES, ierr)
+                              values, INSERT_VALUES, ierr)
                 dgm_petsc%is_assembled=.false.
               endif
 
           END DO
         END DO
-
-        if(big_block) then
-          idxn(nnn)=GLOBJ-1 !!global block column index
-        end if
-        nnn=nnn+1
-
-
+        ! if(big_block) then
+        !   idxn(nnn)=GLOBJ-1 !!global block column index
+        ! end if
         if(big_block) then
         !    print*, ele-1, nnn, idxn(0:nnn-1)
             call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, 1, JCOLELE-1, &
-                          valuesb(0:nn-1), ADD_VALUES, ierr)
+                          valuesb, INSERT_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
         end if
-
+      nnn=nnn+1
       END DO Between_Elements_And_Boundary20
-
-!! this is the version that will insert values a block row at a time
-    ! if(big_block) then
-    ! !    print*, ele-1, nnn, idxn(0:nnn-1)
-    !     call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, nnn, idxn(0:nnn-1), &
-    !                   valuesb(0:nn-1), INSERT_VALUES, ierr)
-    !     dgm_petsc%is_assembled=.false.
-    ! end if
-
   END DO Loop_Elements20
 
+  call assemble(dgm_petsc)
 
-    call assemble(dgm_petsc)
-
-! ! AO notes: Insert the whole of the values to the petsc matrix to gain even more efficiency
-! ! only works for petsc version >=3.14
-! #if PETSC_VERSION_MINOR >= 14
-!   print*, "in block 14 insert"
-!   print*, size(idxm), size(idxn), size(valuesb), maxval(valuesb), minval(valuesb)
-!   call MatSetValuesBlocked(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-!                 valuesb, ADD_VALUES, ierr)
-!   dgm_petsc%is_assembled=.false.
-! #endif
-
-  !******************** PROFILNG THE PETSC MAT ***************!
-  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  print*, size(valuesb), maxval(valuesb), minval(valuesb)
-  mal = info(MAT_INFO_BLOCK_SIZE)
-  nz_a = info(MAT_INFO_NZ_USED)
-  print*, "MATGETINFO2", mal, nz_a
-  !!************************************************************
+  !
+  ! !******************** PROFILNG THE PETSC MAT ***************!
+  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  ! mal = info(MAT_INFO_BLOCK_SIZE)
+  ! nz_a = info(MAT_INFO_NZ_USED)
+  ! print*, "MATGETINFO2", mal, nz_a
+  ! !!************************************************************
 
   if(big_block) then
     deallocate(valuesb)
