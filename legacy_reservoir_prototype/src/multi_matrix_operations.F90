@@ -1631,17 +1631,17 @@ contains
     !> @author Asiri Obeysekara
     !> @brief Subroutines to handle Block matrices
     !---------------------------------------------------------------------------
-    function allocate_momentum_block_matrix(blocks,velocity, FINELE,big_block) result(matrix)
+    function allocate_momentum_block_matrix(blocks,velocity, FINELE, COLELE, big_block) result(matrix)
         type(csr_sparsity), intent (inout) :: blocks
         type(tensor_field), intent (inout) :: velocity
-        INTEGER, DIMENSION(:), intent( inout) :: FINELE
+        INTEGER, DIMENSION(:), intent( inout) :: FINELE, COLELE
         logical, intent(in) :: big_block
         !local variables
         type(halo_type), pointer:: halo
         type(petsc_csr_matrix) :: matrix
         integer :: ierr
-        integer :: nloc, ele, i, iloc
-        PetscInt, dimension(:), allocatable :: nnz
+        integer :: nloc, ele, i, iloc, jcolele, count_ele, dnn, onn
+        PetscInt, dimension(:), allocatable :: nnz, dnnz, onnz
 
         if (associated(velocity%mesh%halos)) then
             halo => velocity%mesh%halos(2)
@@ -1687,7 +1687,8 @@ contains
           else
             DO ELE = 1, element_count(velocity)
               DO iloc=1, nloc
-                  i=(ELE-1)*NLOC + ILOC
+                  i=(ELE-1dnn=0
+            onn=0)*NLOC + ILOC
                     nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
               end do
             END DO
@@ -1695,12 +1696,34 @@ contains
           matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
             matrix%column_numbering, nnz)
           deallocate(nnz)
+
         else
+        !! - calculating the non-zero blocks in the diagonal and off-diagonal of the matrix
+        allocate(dnnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
+        allocate(onnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
+        Loop_Elements: DO ELE = 1, element_count(velocity)
+            dnn=0
+            onn=0
+            Between_Elements_And_Boundary: DO COUNT_ELE=FINELE(ELE), FINELE(ELE+1)-1
+              JCOLELE=COLELE(COUNT_ELE) !!(big block )for each block row this is the non-zero block column index
+              IF(JCOLELE==ELE) THEN
+                  ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+                  dnn=dnn+1
+              ELSE
+                  onn=onn+1
+              ENDIF
+            END DO Between_Elements_And_Boundary
+          dnnz(ele)=dnn
+          onnz(ele)=onn
+        END DO Loop_Elements
+        deallocate(dnnz)
+        deallocate(onnz)
+
           matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
-              matrix%column_numbering)
+              matrix%column_numbering, dnnz, onnz)
         end if
 
-        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_FALSE, ierr)
+        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
         call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
         nullify(matrix%refcount)
 
@@ -1749,11 +1772,12 @@ contains
   !> @author Asiri Obeysekara
   !> @brief Subroutines to create Block csr matrices for parallel
   !---------------------------------------------------------------------------
-   function full_CreateMPIBAIJ(sparsity, row_numbering,col_numbering) result(M)
+   function full_CreateMPIBAIJ(sparsity, row_numbering,col_numbering, dnnz, onnz) result(M)
         !!< Creates a parallel PETSc Block Mat of size corresponding with
         !!< block_size, row_numbering and col_numbering.
         type(csr_sparsity), intent(in):: sparsity
         type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
+        PetscInt, dimension(:), intent(in):: dnnz, onnz
         Mat M
         !local variables
         integer, dimension(:), pointer:: cols
