@@ -54,7 +54,7 @@
       <real_value rank="0">2592000</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">7884000000</real_value>
+      <real_value rank="0">78840000</real_value>
     </finish_time>
   </timestepping>
   <material_phase name="phase1">
