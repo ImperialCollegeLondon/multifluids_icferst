@@ -45,6 +45,7 @@ module matrix_operations
     use boundary_conditions
     use multi_data_types
     use multi_tools
+    use solvers
     implicit none
 
 #include "petsc_legacy.h"
@@ -1722,7 +1723,7 @@ contains
         end if
 
         call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
-        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr)
         nullify(matrix%refcount)
 
         allocate(matrix%ksp)
@@ -1747,10 +1748,11 @@ contains
       ! total number of rows and cols:
       nrows=row_numbering%universal_length
       ncols=col_numbering%universal_length
-      ! rows and cols per block:
+
+      ! number of vertical and horizontal blocks:
       nbrows=size(row_numbering%gnn2unn, 1)
       nbcols=size(col_numbering%gnn2unn, 1)
-      ! number of vertical and horizontal blocks:
+      ! rows and cols per block:
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
 
@@ -1816,6 +1818,5 @@ contains
     PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
 #endif
       end function full_CreateMPIBAIJ
-
 
 end module matrix_operations

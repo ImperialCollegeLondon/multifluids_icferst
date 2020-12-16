@@ -499,14 +499,6 @@ contains
 
         call petsc_logging(3,stages,ierrr,default=.true.)
         call petsc_logging(1,stages,ierrr,default=.true.)
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=1, stage_name="PRELIM")
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=2, stage_name="FORCE")
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=3, stage_name="SATURATION")
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=4, stage_name="TEMP")
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=5, stage_name="COMP")
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=6, stage_name="DT+VTU ")
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=7, stage_name="ADAPT")
-        ! call petsc_logging(1,stages,ierrr,default=.false., push_no=8, stage_name="REST")
         call petsc_logging(2,stages,ierrr,default=.true., push_no=1)
 
         !!$ Time loop
@@ -650,7 +642,8 @@ contains
                         dt, SUF_SIG_DIAGTEN_BC, ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j,&
                         calculate_mass_delta, outfluxes, pres_its_taken, its)
-                end if Conditional_ForceBalanceEquation
+
+                END IF Conditional_ForceBalanceEquation
 
                 call petsc_logging(3,stages,ierrr,default=.true.)
                 call petsc_logging(2,stages,ierrr,default=.true., push_no=3)
