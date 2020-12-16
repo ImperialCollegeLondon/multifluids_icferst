@@ -2621,7 +2621,7 @@ end if
           !Local variables
           type( vector_field ) :: packed_vel, rhs
           real, dimension(:,:), allocatable :: u_rhs_block
-          integer:: u_iloc, u_inod, iphase, idim, ele, nn
+          integer:: u_iloc, u_inod, iphase, idim, ele, nn, I
           !Pointers to convert from tensor data to vector data
           if(block) then
             !Pointers to convert from tensor data to vector data
@@ -2631,13 +2631,12 @@ end if
             u_rhs_block=0.0
             !converting U_RHS to U_RHS(ndim*nphase*nloc, ele)
             do ele =1, Mdims%totele
-              nn=1
               do u_iloc = 1, Mdims%u_nloc
                 u_inod = ndgln%u(( ele-1)*Mdims%u_nloc+u_iloc)
                 do iphase = 1, Mdims%nphase
                   do idim = 1, Mdims%ndim
-                    u_rhs_block(nn,ele) = u_rhs(IDIM+(IPHASE-1)*(Mdims%ndim), u_inod )
-                    nn=nn+1
+                    I = IDIM+(IPHASE-1)*mdims%ndim+(U_ILOC-1)*mdims%ndim*mdims%nphase
+                    u_rhs_block(I,ele) = u_rhs(IDIM+(IPHASE-1)*(Mdims%ndim), u_inod )
                   end do
                 end do
               end do
@@ -7431,6 +7430,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       allocate(idxn(0:size(COLELE)-1))
       valuesb=0.0
     else
+      allocate(valuesb(0:size(loc_dgm_pha)-1))
       allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
       allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
       allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
@@ -7470,36 +7470,36 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ! COLUMN ORIENTED uing sequential insertions/add
         ! Contiguous memory assignment
         nn=0
-        DO U_JLOC = 1, u_nloc
-          DO U_ILOC = 1, u_nloc
-            DO JPHASE = 1, nphase
-                DO JDIM = 1, ndim
-                  DO IPHASE = 1, nphase
-                    DO IDIM = 1, ndim
-        ! DO U_JLOC=1,U_NLOC
-        !   DO JPHASE=1,NPHASE
-        !     DO JDIM=1,NDIM
-        !       DO U_ILOC=1,U_NLOC
-        !         DO IPHASE=1,NPHASE
-        !           DO IDIM=1,NDIM
-
-
+        DO U_JLOC=1,U_NLOC
+          DO JPHASE=1,NPHASE
+            DO JDIM=1,NDIM
+              DO U_ILOC=1,U_NLOC
+                DO IPHASE=1,NPHASE
+                  DO IDIM=1,NDIM
+                    ! [big_blocks] are for block sizes based on ndim*nphase*u_nloc
+                    ! [not big_blocks] are for block sizes based on ndim*nphase
                     if(big_block) then
+                      ! [block_insert] this inserts the blocks either as a whole block (more efficient: DOESNT WORK)
+                      ! or
+                      ! [.not. block_inser] inserts as a set of values (less efficient due to the search algorithm: WORKS)
                         if(block_insert) then
                           valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                           GLOBI=ELE
                           GLOBJ=JCOLELE
                         else
+                          ! global index counters 1 (local rows/columns in a block)
                           I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
                           J = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
-                          GLOBI=ELE
-                          GLOBJ=JCOLELE
+                          ! global index counters 2 (block rows/columns)
+                          GLOBI=ELE       ! non-zero block row
+                          GLOBJ=JCOLELE   ! non-zero block column per block row
+                          !global index of each value in the non-zero block
                           idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
                           idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
+                          !rank-2 array of the non-zero block per non-zero block column (jcolele) per ele
                           values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                         end if
                     else
-                      ! New for rapid code ordering of variables...
                       I=IDIM + (IPHASE-1)*NDIM
                       J=JDIM + (JPHASE-1)*NDIM
                       GLOBI=(ELE-1)*U_NLOC + U_ILOC
@@ -7517,28 +7517,44 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               !! enter values at a time for 'small' block matrix size
               if(.not.big_block) then
                 call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-                              values, INSERT_VALUES, ierr)
+                              values, INSERT_VALUES,ierr)
                 dgm_petsc%is_assembled=.false.
               endif
           END DO
         END DO
+
         if(big_block) then
+          ! this nested loop creates the rank-1 array of values corresponding
+          ! to each non-zero block from the rank-2 array (contiguous memory)
+          nn=0
+          DO J=1, size(values,1)
+            DO I=1, size(values,2)
+              valuesb(nn)=values(I-1,J-1)
+              nn=nn+1
+            END DO
+          END DO
+          ! [block_insert] this inserts the blocks either as a whole block (more efficient: DOESNT WORK)
+          ! or
+          ! [.not. block_inser] inserts as a set of values (less efficient due to the search algorithm: WORKS)
           if(block_insert) then
-            call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, 1, JCOLELE-1, &
+            call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, INSERT_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
           else
-            call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-                          values, INSERT_VALUES, ierr)
+            print*, TOTELE, idxm(0), idxn(0), GLOBI, GLOBJ
+            print*, idxm
+            call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
+                          valuesb, ADD_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
+            ! call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
+            !               values, ADD_VALUES, ierr)
+            ! dgm_petsc%is_assembled=.false.
           end if
         end if
 
       nnn=nnn+1
       END DO Between_Elements_And_Boundary20
   END DO Loop_Elements20
-
-  call assemble(dgm_petsc)
 
   !!******************** PROFILNG THE PETSC MAT ***************!
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
@@ -7550,6 +7566,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   if(block_insert) then
     deallocate(valuesb)
   else
+    deallocate(valuesb)
     deallocate(values)
   end if
   deallocate(idxm)
