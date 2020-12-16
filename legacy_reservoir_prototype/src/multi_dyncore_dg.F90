@@ -2605,9 +2605,10 @@ end if
 
         end subroutine
         !---------------------------------------------------------------------------
-        !> @author Pablo Salinas
+        !> @author Pablo Salinas, Asiri Obeysekara
         !> @brief Update velocity by solving the momentum equation for a given pressure, the RHS is formed here
         !> If rescale_mom_matrices =  .true., here the RHS rescaled
+        !> If block = .true. here velocity is solved as a block petsc matrix
         !---------------------------------------------------------------------------
         subroutine solve_and_update_velocity(Mmat,Velocity, CDP_tensor, U_RHS, diagonal_A,block)
 
@@ -2624,11 +2625,11 @@ end if
           !Pointers to convert from tensor data to vector data
           if(block) then
             !Pointers to convert from tensor data to vector data
-            packed_vel = as_packed_vector_block(Velocity) !! need to reshape properly
+            packed_vel = as_packed_vector_block(Velocity)
             rhs = as_packed_vector_block(CDP_tensor)
             allocate(u_rhs_block(Mdims%ndim*Mdims%nphase*Mdims%u_nloc, Mdims%totele))
             u_rhs_block=0.0
-            !converting U_RHS to U_RHS(ndim*nphase*nloc, ele) !!-ao
+            !converting U_RHS to U_RHS(ndim*nphase*nloc, ele)
             do ele =1, Mdims%totele
               nn=1
               do u_iloc = 1, Mdims%u_nloc
@@ -2647,11 +2648,6 @@ end if
             !Pointers to convert from tensor data to vector data
             packed_vel = as_packed_vector(Velocity)
             rhs = as_packed_vector(CDP_tensor)
-            ! print*, u_rhs
-            ! print*, rhs%val
-            ! print*, CDP_tensor%val
-            ! print*, packed_vel%val
-            ! print*, Velocity%val
             rhs%val = rhs%val + U_RHS
           end if
 
@@ -2663,16 +2659,11 @@ end if
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
-
-          ! print*, "after"
-          ! print*, rhs%val
-          ! print*, packed_vel%val
-
 #ifdef USING_GFORTRAN
       !Nothing to do since we have pointers
 #else
     !For intel compilers we perform a direct reshaping of memory
-    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) !! for blocks, this assumes CONTIGUOUS memeory
+    Velocity%val = reshape(Mdims%ndim, Mdims%nphase, Mdims%u_nonods)
     call deallocate(packed_vel); call deallocate(rhs)
 #endif
 
@@ -7384,10 +7375,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      RETURN
  END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_LUMP
 
-
+ !---------------------------------------------------------------------------
  !>@author: Asiri Obeysekara (27/11/2020), Chris Pain
  !>@brief: This subroutine combines the distributed and block diagonal for an element
  !> and inserts into the block CSR petsc matrix in blocks of values
+ !---------------------------------------------------------------------------
 SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   DGM_PETSC, &
   FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat,big_block)  ! Element connectivity.
@@ -7417,37 +7409,44 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   PetscScalar, dimension(:,:), allocatable:: values
   PetscInt, dimension(:), allocatable:: idxm
   PetscInt, dimension(:), allocatable:: idxn
-
   PetscInt :: m,n
 
   real :: info(MAT_INFO_SIZE)
   real :: mal, nz_a
   integer:: blocki, blockj, nn, nnn
-
   integer :: nb
-  logical :: skip
+  logical :: skip, block_insert
 
 
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC)) !!a
 
- if (big_block) then
-  ! allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
-  allocate(valuesb(0:size(loc_dgm_pha)-1))
-  allocate(idxm(0:TOTELE-1))
-  allocate(idxn(0:size(COLELE)-1))
-  valuesb=0.0
- else
-  allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
-  allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
-  allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
- end if
+  !! if block_insert = true, then we use the more efficient block inserts into
+  !! PETSc
+  block_insert=.false.
+  if (big_block) then
+    if(block_insert) then
+      ! allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
+      allocate(valuesb(0:size(loc_dgm_pha)-1))
+      allocate(idxm(0:TOTELE-1))
+      allocate(idxn(0:size(COLELE)-1))
+      valuesb=0.0
+    else
+      allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
+      allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
+      allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
+    end if
+  else
+    allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
+    allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
+    allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
+  end if
 
-    ! !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
-    ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-    ! mal = info(MAT_INFO_BLOCK_SIZE)
-    ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
-    ! print*, "MATGETINFO1", mal, nz_a
-    ! !******************** PROFILNG THE PETSC MAT ***************!
+    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    mal = info(MAT_INFO_BLOCK_SIZE)
+    nz_a = info(MAT_INFO_NZ_ALLOCATED)
+    print*, "MATGETINFO1", mal, nz_a
+    !******************** PROFILNG THE PETSC MAT ***************!
 
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
@@ -7458,8 +7457,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
 
       ! Block diagonal and off diagonal terms...
-      !! starting the counters for contgious memory assignment
-      ! nn=0
+      !starting the counters for contgious memory assignment
       nnn=0
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
         JCOLELE=COLELE(COUNT_ELE) !!(big block )for each block row this is the non-zero block column index
@@ -7469,22 +7467,37 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ELSE
             LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
         ENDIF
-
         ! COLUMN ORIENTED uing sequential insertions/add
         ! Contiguous memory assignment
         nn=0
-        DO U_JLOC=1,U_NLOC
-          DO JPHASE=1,NPHASE
-            DO JDIM=1,NDIM
+        DO U_JLOC = 1, u_nloc
+          DO U_ILOC = 1, u_nloc
+            DO JPHASE = 1, nphase
+                DO JDIM = 1, ndim
+                  DO IPHASE = 1, nphase
+                    DO IDIM = 1, ndim
+        ! DO U_JLOC=1,U_NLOC
+        !   DO JPHASE=1,NPHASE
+        !     DO JDIM=1,NDIM
+        !       DO U_ILOC=1,U_NLOC
+        !         DO IPHASE=1,NPHASE
+        !           DO IDIM=1,NDIM
 
-              DO U_ILOC=1,U_NLOC
-                DO IPHASE=1,NPHASE
-                  DO IDIM=1,NDIM
 
                     if(big_block) then
-                      valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                      GLOBI=ELE
-                      GLOBJ=JCOLELE
+                        if(block_insert) then
+                          valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                          GLOBI=ELE
+                          GLOBJ=JCOLELE
+                        else
+                          I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
+                          J = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
+                          GLOBI=ELE
+                          GLOBJ=JCOLELE
+                          idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
+                          idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
+                          values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                        end if
                     else
                       ! New for rapid code ordering of variables...
                       I=IDIM + (IPHASE-1)*NDIM
@@ -7496,8 +7509,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                       values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                     end if
 
-                    nn=nn+1
-
+                  nn=nn+1
                   END DO
                 END DO
               END DO
@@ -7508,43 +7520,42 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                               values, INSERT_VALUES, ierr)
                 dgm_petsc%is_assembled=.false.
               endif
-
           END DO
         END DO
-        ! if(big_block) then
-        !   idxn(nnn)=GLOBJ-1 !!global block column index
-        ! end if
         if(big_block) then
-        !    print*, ele-1, nnn, idxn(0:nnn-1)
+          if(block_insert) then
             call MatSetValuesBlocked(dgm_petsc%M, 1, ELE-1, 1, JCOLELE-1, &
                           valuesb, INSERT_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
+          else
+            call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
+                          values, INSERT_VALUES, ierr)
+            dgm_petsc%is_assembled=.false.
+          end if
         end if
+
       nnn=nnn+1
       END DO Between_Elements_And_Boundary20
   END DO Loop_Elements20
 
   call assemble(dgm_petsc)
 
-  !
-  ! !******************** PROFILNG THE PETSC MAT ***************!
-  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  ! mal = info(MAT_INFO_BLOCK_SIZE)
-  ! nz_a = info(MAT_INFO_NZ_USED)
-  ! print*, "MATGETINFO2", mal, nz_a
-  ! !!************************************************************
+  !!******************** PROFILNG THE PETSC MAT ***************!
+  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  mal = info(MAT_INFO_BLOCK_SIZE)
+  nz_a = info(MAT_INFO_NZ_USED)
+  print*, "MATGETINFO2", mal, nz_a
+  !!**********************************************************!
 
-  if(big_block) then
+  if(block_insert) then
     deallocate(valuesb)
   else
     deallocate(values)
   end if
-
   deallocate(idxm)
   deallocate(idxn)
-  deallocate(LOC_DGM_PHA)
-
-  RETURN
+  deallocate(loc_dgm_pha)
+  return
 END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK
 
 
