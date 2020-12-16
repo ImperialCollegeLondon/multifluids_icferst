@@ -213,9 +213,24 @@ contains
 
            !Need to change this to use a reference density/rho_cp so for porous media the rock/fluid ratio is kept
            if (has_boussinesq_aprox) then
+             if (is_porous_media) then
+               do iphase = 1, Mdims%nphase
+                 !Retrieve CP (considered constant) to get rhoCp
+                 sfield => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
+                 !If compositional then component Cp
+                 if (lcomp > 0) then
+                   sfield => extract_scalar_field( state( Mdims%nphase + lcomp ), 'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                   den_all((lcomp - 1 ) * Mdims%nphase + iphase,:) = sfield%val(1) * retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                 else
+                   den_all(iphase,:) = sfield%val(1) * retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                 end if
+               end do
+              !Copy to old to ensure no time variation
+              denold_all = den_all
+             else
              !We do not consider variations of density nor CP in transport
-             den_all = 1.0
-             denold_all = 1.0
+             den_all = 1.0; denold_all = 1.0
+            end if
            end if
 
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model

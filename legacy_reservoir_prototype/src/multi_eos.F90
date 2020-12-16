@@ -2788,5 +2788,86 @@ contains
 
     end subroutine initialise_porous_media
 
+    !>@brief: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/Cp etc.
+    !!> In this subroutine we retrieve the value given a phase, component.
+    real function retrieve_reference_density(state, packed_state, iphase, icomp, nphase)
+      implicit none
+      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      integer, intent(in) :: iphase, icomp, nphase
+      !local variables
+      character( len = option_path_len ) :: eos_option_path
+      character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python
+      real :: ref_rho
+      type (scalar_field) :: sfield
+      type (scalar_field), pointer :: pnt_sfield
+      type (vector_field), pointer :: position
+      !Provide input to find out EOS used
+      if( icomp > 0 ) then
+          eos_option_path = &
+          trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+          ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+          '/prognostic/phase_properties/Density' )
+      else
+          eos_option_path = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/phase_properties/Density' )
+      end if
+      !Retrieve the equation of state path
+      call Assign_Equation_of_State( eos_option_path )
+      !Paths for comparison
+      if ( icomp > 0 ) then
+          option_path_comp = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+              ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+              '/prognostic/phase_properties/Density/compressible' )
+          option_path_incomp = trim( '/material_phase[' // int2str(nphase + icomp - 1 ) // &
+              ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+              '/prognostic/phase_properties/Density/incompressible' )
+          option_path_python = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+              ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+              '/prognostic/phase_properties/Density/python_state' )
+      else
+          option_path_comp = trim( '/material_phase[' // int2str( iphase - 1 ) // &
+              ']/phase_properties/Density/compressible' )
+          option_path_incomp = trim( '/material_phase[' // int2str( iphase - 1 ) // &
+              ']/phase_properties/Density/incompressible' )
+          option_path_python = trim( '/material_phase[' // int2str( iphase - 1 ) // &
+              ']/phase_properties/Density/python_state' )
+      end if
+
+      Conditional_EOS_Option: if( trim( eos_option_path ) == trim( option_path_incomp ) ) then
+        !!$ Constant representation
+        call get_option( trim( eos_option_path ), ref_rho )
+      else if( trim( eos_option_path ) == trim( option_path_comp ) // '/stiffened_gas' ) then
+        !!$ Den = C0 / T * ( P - C1 )
+        call get_option( trim( eos_option_path) // '/eos_option1' , ref_rho )
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
+        !!$ Den = C0 * P +C1
+
+        pnt_sfield => extract_scalar_field(state(1),1)
+        position => get_external_coordinate_field(packed_state, pnt_sfield%mesh)
+        call allocate (sfield, pnt_sfield%mesh, "Temporary_linear_Coefficient_B")
+        !Retrieve coefficients
+        call initialise_field(sfield, trim( option_path_comp )//"/linear_in_pressure/coefficient_B" , position)
+        ref_rho = sfield%val(1)
+        call deallocate(sfield)
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
+        !!$ Den = C0 * P/T +C1
+        call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', ref_rho )
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
+        call get_option( trim( eos_option_path ) // '/coefficient_A', ref_rho )
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
+        !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
+        call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
+      else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
+        call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', ref_rho)
+      elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
+        !Here the user has to specify by hand under the boussinesq option
+        if (.not.have_option(trim( option_path_python ) // '/Boussinesq_approximation/reference_density')) then
+          FLAbort("Porous media with boussinesq REQUIRES a reference density for all the phases.")
+        end if
+        call get_option( trim( option_path_python ) // '/Boussinesq_approximation/reference_density', ref_rho)
+      end if Conditional_EOS_Option
+      !Copy value to send out of the function
+      retrieve_reference_density = ref_rho
+    end function
 
 end module multiphase_EOS

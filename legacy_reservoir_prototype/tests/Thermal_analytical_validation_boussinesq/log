@@ -1,0 +1,3 @@
+ MESSAGE: Using default options for the linear solver: GMRES(30) + HYPRE
+Running the model
+3D BL works OK

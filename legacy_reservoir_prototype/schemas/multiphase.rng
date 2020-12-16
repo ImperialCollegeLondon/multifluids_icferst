@@ -4467,7 +4467,8 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
           </choice>
           <optional>
             <element name="Boussinesq_approximation">
-              <a:documentation>Use the boussinesq approximation. Useful for small variations of density.</a:documentation>
+              <a:documentation>Use the boussinesq approximation. Useful for small variations of density.
+For porous media only the formulate, including linear pressure, with a reference density work with this.</a:documentation>
               <empty/>
             </element>
           </optional>
@@ -4477,7 +4478,12 @@ NOTE: if temperature is not defined the temperature is defined as zero.</a:docum
           <ref name="scalar_python_diagnostic_algorithm"/>
           <optional>
             <element name="Boussinesq_approximation">
-              <empty/>
+              <optional>
+                <element name="reference_density">
+                  <a:documentation>For porous media a reference density is necessary when using the Boussinesq approximation</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
           </optional>
         </element>
