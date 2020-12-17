@@ -48,7 +48,7 @@ module multiphase_EOS
 contains
 
     !>@brief: Computes the density for the phases and the derivatives of the density
-    subroutine Calculate_All_Rhos( state, packed_state, Mdims )
+    subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp )
 
         implicit none
 
@@ -56,6 +56,8 @@ contains
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         type(multi_ndgln) :: ndgln
+        logical, optional, intent(in) :: get_RhoCp !This flags computes rhoCp instead of rho
+        !Local variables
         integer, dimension( : ), pointer :: cv_ndgln
         integer :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
         real, dimension( : ), allocatable :: Rho, dRhodP, rho_porous, drhodp_porous, &
@@ -79,8 +81,11 @@ contains
                 ewrite(1,*) "WARNING: Black-Oil model activated but three phases are not present and/or there are components"
             end if
         end if
-
-        compute_rhoCP = have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")
+        !Only obtain RhoCP if CP is defined and when solving for Temperature, else, return Rho
+        compute_rhoCP = .false.
+        if (present_and_true(get_RhoCp)) then
+          compute_rhoCP = have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")
+        end if
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
