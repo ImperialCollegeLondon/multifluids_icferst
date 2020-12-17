@@ -1665,11 +1665,18 @@ contains
         end if
 
           nloc=node_count(velocity)/element_count(velocity)
+
           if(big_block) then
-            call allocate(matrix%row_numbering,element_count(velocity),&
-                product(velocity%dim)*nloc,halo = halo)
-            call allocate(matrix%column_numbering,element_count(velocity),&
-                product(velocity%dim)*nloc,halo = halo)
+            ! call allocate(matrix%row_numbering,element_count(velocity),&
+            !     product(velocity%dim)*nloc,halo = halo)
+            ! call allocate(matrix%column_numbering,element_count(velocity),&
+            !     product(velocity%dim)*nloc,halo = halo)
+
+
+                call allocate(matrix%row_numbering, product(velocity%dim)*nloc ,&
+                    element_count(velocity),halo = halo)
+                call allocate(matrix%column_numbering,product(velocity%dim)*nloc,&
+                    element_count(velocity),halo = halo)
           else
             call allocate(matrix%row_numbering,node_count(velocity),&
                 product(velocity%dim),halo = halo)
@@ -1679,7 +1686,9 @@ contains
         !!!########## BLOCK matrix creation
         if (.not. IsParallel()) then
           !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
-          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
+          ! allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
+          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
+
           nnz=0.0
           if(big_block) THEN
             DO ELE = 1, element_count(velocity)
@@ -1722,7 +1731,7 @@ contains
           deallocate(onnz)
         end if
 
-        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_TRUE, ierr)
+        call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_FALSE, ierr)
         call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr)
         nullify(matrix%refcount)
 
@@ -1756,8 +1765,9 @@ contains
       nblocksv=size(row_numbering%gnn2unn, 2)
       nblocksh=size(col_numbering%gnn2unn, 2)
 
-      bs=nblocksv ! block size (block row size)
 
+      !bs=nblocksv ! block size (block row size)
+      bs=nbrows
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, nnz, M, ierr)
