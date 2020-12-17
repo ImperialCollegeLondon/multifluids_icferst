@@ -457,13 +457,13 @@ contains
 
     ! number of nodes owned by this process:
     nnodp=petsc_numbering%nprivatenodes
-
-    ! number of nodes on this process, including halo/ghost nodes
-    nnodes=size(petsc_numbering%gnn2unn, 1)
-
-    ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
-    nfields=size(petsc_numbering%gnn2unn, 2)
-    assert( nfields==sum(fields%dim) )
+    print*, nnodp
+    ! ! number of nodes on this process, including halo/ghost nodes
+    ! nnodes=size(petsc_numbering%gnn2unn, 1)
+    !
+    ! ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
+    ! nfields=size(petsc_numbering%gnn2unn, 2)
+    ! assert( nfields==sum(fields%dim) )
 
     if (associated(petsc_numbering%halo)) then
        if (.not. ((petsc_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
@@ -472,24 +472,42 @@ contains
        end if
     end if
 
-    b=1
-    do i=1, size(fields)
 
+
+
+    b=1
+
+    do i=1, size(fields)
        do j=1, fields(i)%dim
+! #ifdef DOUBLEP
+!          call VecSetValues(vec, nnodp, &
+!             petsc_numbering%gnn2unn( 1:nnodp, b ), &
+!             fields(i)%val(j, 1:nnodp ), INSERT_VALUES, ierr)
+! #else
+!          call VecSetValues(vec, nnodp, &
+!             petsc_numbering%gnn2unn( 1:nnodp, b ), &
+!             real(fields(i)%val(j, 1:nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
+! #endif
+
 #ifdef DOUBLEP
          call VecSetValues(vec, nnodp, &
-            petsc_numbering%gnn2unn( 1:nnodp, b ), &
+            petsc_numbering%gnn2unn( b, 1:nnodp), &
             fields(i)%val(j, 1:nnodp ), INSERT_VALUES, ierr)
 #else
          call VecSetValues(vec, nnodp, &
-            petsc_numbering%gnn2unn( 1:nnodp, b ), &
+            petsc_numbering%gnn2unn(b, 1:nnodp), &
             real(fields(i)%val(j, 1:nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
 #endif
         b=b+1
-
+      print*, "j", j
       end do
 
     end do
+
+    print*, "B", b
+
+
+    !STOP 456
 
     call VecAssemblyBegin(vec, ierr)
     call VecAssemblyEnd(vec, ierr)
@@ -519,7 +537,6 @@ contains
 
     ! number of nodes on this process, including halo/ghost nodes
     nnodes=size(petsc_numbering%gnn2unn, 1)
-
     ! number of fields:
     nfields=size(petsc_numbering%gnn2unn, 2)
     assert(nfields==size(fields))
@@ -578,7 +595,7 @@ contains
     nfields=size(petsc_numbering%gnn2unn, 2)
 
     ! length of local (private) vector
-    plength=nnodp*nfields
+    plength=nnodp*nfields !!this changes for blocks
 
     ! length of global (universal) vector
     ulength=petsc_numbering%universal_length
@@ -771,7 +788,7 @@ contains
   !! for ghost_nodes the value of the rhs gets copied into fields
   type(scalar_field), intent(in), optional :: rhs
 
-      type(scalar_field) fields(1), rhss(1)
+  type(scalar_field) fields(1), rhss(1)
 
       fields(1)=field
       if (present(rhs)) then
@@ -795,16 +812,13 @@ contains
 #ifndef DOUBLEP
     PetscScalar, dimension(:), allocatable :: vals
 #endif
-
-    ! number of nodes owned by this process:
+    !number of nodes owned by this process:
     nnodp=petsc_numbering%nprivatenodes
-
     ! number of nodes on this process, including halo/ghost nodes
-    nnodes=size(petsc_numbering%gnn2unn, 1)
-
-    ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
-    nfields=size(petsc_numbering%gnn2unn, 2)
-    assert( nfields==sum(fields%dim) )
+    ! nnodes=size(petsc_numbering%gnn2unn, 1)
+    ! ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
+    ! nfields=size(petsc_numbering%gnn2unn, 2)
+    ! assert( nfields==sum(fields%dim) )
 
 #ifdef DOUBLEP
     b=1
@@ -814,9 +828,12 @@ contains
       do j=1, fields(i)%dim
          ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
          if (nnodp>0) then
-           call VecGetValues(vec, nnodp, &
-             petsc_numbering%gnn2unn( 1:nnodp, b ), &
-             fields(i)%val(j, 1:nnodp ), ierr)
+           ! call VecGetValues(vec, nnodp, &
+           !   petsc_numbering%gnn2unn( 1:nnodp, b ), &
+           !   fields(i)%val(j, 1:nnodp ), ierr)
+             call VecGetValues(vec, nnodp, &
+               petsc_numbering%gnn2unn( b,  1:nnodp ), &
+               fields(i)%val(j, 1:nnodp ), ierr)
          end if
          b=b+1
       end do

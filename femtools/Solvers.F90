@@ -492,10 +492,10 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
 
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
-  assert(size(x%val(1,:))==block_size(matrix,2))
-  assert(size(rhs%val(1,:))==block_size(matrix,1))
-  assert(x%dim==blocks(matrix,2))
-  assert(rhs%dim==blocks(matrix,1))
+  ! assert(size(x%val(1,:))==block_size(matrix,2))
+  ! assert(size(rhs%val(1,:))==block_size(matrix,1))
+  ! assert(x%dim==blocks(matrix,2))
+  ! assert(rhs%dim==blocks(matrix,1))
 
   ! setup PETSc object and petsc_numbering from options and
   call petsc_solve_setup_petsc_csr(y, b, &
@@ -503,7 +503,7 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
         matrix, vfield=x, option_path=option_path, &
         prolongators=prolongators, &
         positions=positions, rotation_matrix=rotation_matrix)
-  ! copy array into PETSc vecs
+  ! copy array into PETSc vecs y (packed_vel/x), b (rhs)
   call petsc_solve_copy_vectors_from_vector_fields(y, b, x, rhs, &
      matrix%row_numbering, lstartfromzero)
 
@@ -1109,7 +1109,6 @@ Mat, intent(in), optional:: rotation_matrix
   ewrite(2, *) 'Using solver options defined at: ', trim(solver_option_path)
 
   if (matrix%ksp==PETSC_NULL_KSP) then
-
     call create_ksp_from_options(matrix%ksp, matrix%M, matrix%M, solver_option_path, parallel, &
       matrix%column_numbering, &
       startfromzero_in=startfromzero_in, &
@@ -2051,14 +2050,13 @@ subroutine create_ksp_from_options(ksp, mat, pmat, solver_option_path, parallel,
        ewrite(1,*) "Returned from setup_ksp_from_options for the preconditioner solve, "//&
           &"now setting options for the outer solve"
 
-        else if (pctype==PCPBJACOBI) then
-
-          call PCSetType(pc, pctype, ierr)
-          ! set options that may have been supplied via the
-          ! PETSC_OPTIONS env. variable for the preconditioner
-          call PCSetFromOptions(pc, ierr)
-          ! set pctype again to enforce flml choice
-          call PCSetType(pc, pctype, ierr)
+    else if (pctype==PCPBJACOBI) then
+      call PCSetType(pc, pctype, ierr)
+      ! set options that may have been supplied via the
+      ! PETSC_OPTIONS env. variable for the preconditioner
+      call PCSetFromOptions(pc, ierr)
+      ! set pctype again to enforce flml choice
+      call PCSetType(pc, pctype, ierr)
 
     else if (pctype==PCASM .or. pctype==PCBJACOBI) then
 

@@ -2645,6 +2645,10 @@ end if
 
             rhs%val = rhs%val + u_rhs_block
             deallocate(u_rhs_block)
+
+            Mmat%DGM_PETSC%row_numbering%nprivatenodes = element_count(packed_vel)
+            Mmat%DGM_PETSC%column_numbering%nprivatenodes = element_count(packed_vel)
+
           else
             !Pointers to convert from tensor data to vector data
             packed_vel = as_packed_vector(Velocity)
@@ -2657,6 +2661,7 @@ end if
           print*, rhs%val
           print*, packed_vel%val
 
+
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -2665,6 +2670,9 @@ end if
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
+
+          Mmat%DGM_PETSC%row_numbering%nprivatenodes = node_count(packed_vel)
+          Mmat%DGM_PETSC%column_numbering%nprivatenodes = node_count(packed_vel)
 
           print*, "After Solve"
           print*, rhs%val
