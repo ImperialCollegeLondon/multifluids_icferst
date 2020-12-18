@@ -310,7 +310,7 @@ subroutine petsc_solve_vector(x, matrix, rhs, option_path, deallocate_matrix)
             vfield=x, x0=xblock%val)
 
       ! Copy back the result using the petsc numbering:
-      call petscbaij2field(y, petsc_numbering, xblock, rhsblock)
+      call petsc2field(y, petsc_numbering, xblock, rhsblock)
 
       ! destroy all PETSc objects and the petsc_numbering
       call petsc_solve_destroy(y, A, b, ksp, petsc_numbering, &
@@ -574,7 +574,7 @@ subroutine petsc_solve_vector_petsc_blockcsr(x, matrix, rhs, block, option_path,
   ! for the number of petsc iterations taken
 
   ! Copy back the result using the petsc numbering:
-  call Petsc2VectorFieldsBaij(y, matrix%column_numbering, x)  !******* changed
+  call petscbaij2field(y, matrix%column_numbering, x)  !******* changed
 
   ! destroy all PETSc objects and the petsc_numbering
   call petsc_solve_destroy_petsc_csr(y, b, solver_option_path)

@@ -95,7 +95,7 @@ module Petsc_Tools
 
   interface allocatebaij
     module procedure allocate_petsc_numbering_baij
-  end interface    
+  end interface
 
   interface deallocate
     module procedure deallocate_petsc_numbering
@@ -132,6 +132,7 @@ module Petsc_Tools
   public csr2petsc_CreateSeqAIJ, csr2petsc_CreateMPIAIJ
   public full_CreateSeqAIJ, full_CreateMPIAIJ
   public addup_global_assembly
+  public field2petscbaij, petscbaij2field
   ! for petsc_numbering:
   public incref, decref, addref
   ! for unit-testing:

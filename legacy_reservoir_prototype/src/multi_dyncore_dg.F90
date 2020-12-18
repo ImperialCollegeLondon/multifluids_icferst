@@ -2652,12 +2652,6 @@ end if
             rhs%val = rhs%val + U_RHS
           end if
 
-          print*, "before solve"
-          print*, size(rhs%val)
-          print*, rhs%val
-          print*, packed_vel%val
-
-
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -2675,11 +2669,6 @@ end if
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
-
-  
-          print*, "After Solve"
-          print*, rhs%val
-          print*, packed_vel%val
 
 #ifdef USING_GFORTRAN
       !Nothing to do since we have pointers
@@ -7599,7 +7588,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   END DO Loop_Elements20
 
 
-  call assemble(dgm_petsc)
+!  call assemble(dgm_petsc)
 
   !!******************** PROFILNG THE PETSC MAT ***************!
   call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
