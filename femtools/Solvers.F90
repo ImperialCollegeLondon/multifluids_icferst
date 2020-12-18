@@ -95,8 +95,10 @@ interface petsc_solve
      petsc_solve_tensor_components, &
      petsc_solve_scalar_petsc_csr, &
      petsc_solve_vector_petsc_csr, &
-     petsc_solve_tensor_petsc_csr
+     petsc_solve_tensor_petsc_csr, &
+     petsc_solve_vector_petsc_blockcsr
 end interface
+
 
 interface set_solver_options
     module procedure set_solver_options_with_path, &
@@ -308,7 +310,7 @@ subroutine petsc_solve_vector(x, matrix, rhs, option_path, deallocate_matrix)
             vfield=x, x0=xblock%val)
 
       ! Copy back the result using the petsc numbering:
-      call petsc2field(y, petsc_numbering, xblock, rhsblock)
+      call petscbaij2field(y, petsc_numbering, xblock, rhsblock)
 
       ! destroy all PETSc objects and the petsc_numbering
       call petsc_solve_destroy(y, A, b, ksp, petsc_numbering, &
@@ -492,10 +494,10 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
 
   assert(x%dim==rhs%dim)
   assert(size(x%val(1,:))==size(rhs%val(1,:)))
-  ! assert(size(x%val(1,:))==block_size(matrix,2))
-  ! assert(size(rhs%val(1,:))==block_size(matrix,1))
-  ! assert(x%dim==blocks(matrix,2))
-  ! assert(rhs%dim==blocks(matrix,1))
+  assert(size(x%val(1,:))==block_size(matrix,2))
+  assert(size(rhs%val(1,:))==block_size(matrix,1))
+  assert(x%dim==blocks(matrix,2))
+  assert(rhs%dim==blocks(matrix,1))
 
   ! setup PETSc object and petsc_numbering from options and
   call petsc_solve_setup_petsc_csr(y, b, &
@@ -522,6 +524,63 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   call petsc_solve_destroy_petsc_csr(y, b, solver_option_path)
 
 end subroutine petsc_solve_vector_petsc_csr
+
+subroutine petsc_solve_vector_petsc_blockcsr(x, matrix, rhs, block, option_path, &
+  prolongators, positions, rotation_matrix)
+  !!< Solve a linear system the nice way. Options for this
+  !!< come via the options mechanism.
+  type(vector_field), intent(inout) :: x
+  type(vector_field), intent(in) :: rhs
+  type(petsc_csr_matrix), intent(inout) :: matrix
+  logical, intent(in) :: block
+  character(len=*), optional, intent(in) :: option_path
+  !! prolongators to be use at the first levels of 'mg'
+  type(petsc_csr_matrix), dimension(:), optional, intent(in) :: prolongators
+  !! positions field is only used with remove_null_space/ or multigrid_near_null_space/ with rotational components
+  type(vector_field), intent(in), optional :: positions
+  !! with rotated bcs: matrix to transform from x,y,z aligned vectors to boundary aligned
+  Mat, intent(in), optional:: rotation_matrix
+
+
+  KSP ksp
+  Vec y, b
+
+  character(len=OPTION_PATH_LEN) solver_option_path
+  integer literations
+  logical lstartfromzero
+
+  assert(x%dim==rhs%dim)
+  assert(size(x%val(1,:))==size(rhs%val(1,:)))
+  assert(size(x%val(1,:))==blocks(matrix,2))
+  assert(size(rhs%val(1,:))==blocks(matrix,1))
+  assert(x%dim==block_size(matrix,2))
+  assert(rhs%dim==block_size(matrix,1))
+
+  ! setup PETSc object and petsc_numbering from options and
+  call petsc_solve_setup_petsc_csr(y, b, &
+        solver_option_path, lstartfromzero, &
+        matrix, vfield=x, option_path=option_path, &
+        prolongators=prolongators, &
+        positions=positions, rotation_matrix=rotation_matrix)
+  ! copy array into PETSc vecs y (packed_vel/x), b (rhs)
+  call petsc_solve_copy_vectors_from_vector_fields_baij(y, b, x, rhs, &
+     matrix%row_numbering, lstartfromzero) !******* changed
+
+  ! the solve and convergence check
+  call petsc_solve_core(y, matrix%M, b, matrix%ksp, matrix%row_numbering, &
+          solver_option_path, lstartfromzero, literations, &
+          vfield=x, vector_x0=x)
+  ! set the optional variable passed out of this procedure
+  ! for the number of petsc iterations taken
+
+  ! Copy back the result using the petsc numbering:
+  call Petsc2VectorFieldsBaij(y, matrix%column_numbering, x)  !******* changed
+
+  ! destroy all PETSc objects and the petsc_numbering
+  call petsc_solve_destroy_petsc_csr(y, b, solver_option_path)
+
+end subroutine petsc_solve_vector_petsc_blockcsr
+
 
 subroutine petsc_solve_tensor_petsc_csr(x, matrix, rhs, option_path, &
   prolongators)
@@ -1242,6 +1301,35 @@ logical, intent(in):: startfromzero
   call profiler_toc(x, "field2petsc")
 
 end subroutine petsc_solve_copy_vectors_from_vector_fields
+
+subroutine petsc_solve_copy_vectors_from_vector_fields_baij(y, b,  x, rhs,  petsc_numbering, startfromzero)
+Vec, intent(inout):: y, b
+type(vector_field), intent(in):: x, rhs
+type(petsc_numbering_type), intent(in):: petsc_numbering
+logical, intent(in):: startfromzero
+
+  call profiler_tic(x, "field2petsc")
+  ewrite(1, *) 'Assembling RHS.'
+
+  ! create PETSc vec for rhs using above numbering:
+  call field2petscbaij(rhs, petsc_numbering, b)
+
+  ewrite(1, *) 'RHS assembly completed.'
+
+  if (.not. startfromzero) then
+
+    ewrite(1, *) 'Assembling initial guess.'
+
+    ! create PETSc vec for initial guess and result using above numbering:
+    call field2petscbaij(x, petsc_numbering, y)
+
+    ewrite(1, *) 'Initial guess assembly completed.'
+
+  end if
+  call profiler_toc(x, "field2petsc")
+
+end subroutine petsc_solve_copy_vectors_from_vector_fields_baij
+
 
 subroutine petsc_solve_core(y, A, b, ksp, petsc_numbering, &
   solver_option_path, startfromzero, &

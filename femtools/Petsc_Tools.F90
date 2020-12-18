@@ -93,6 +93,10 @@ module Petsc_Tools
     module procedure allocate_petsc_numbering
   end interface
 
+  interface allocatebaij
+    module procedure allocate_petsc_numbering_baij
+  end interface    
+
   interface deallocate
     module procedure deallocate_petsc_numbering
   end interface
@@ -107,6 +111,14 @@ module Petsc_Tools
 
   interface petsc_numbering_create_is
     module procedure petsc_numbering_create_is_dim
+  end interface
+
+  interface field2petscbaij
+    module procedure VectorFields2PetscBaij, VectorField2PetscBaij
+  end interface
+
+  interface petscbaij2field
+    module procedure Petsc2VectorFieldsBaij, Petsc2VectorFieldBaij
   end interface
 
 #include "Reference_count_interface_petsc_numbering_type.F90"
@@ -319,6 +331,176 @@ contains
 
   end subroutine allocate_petsc_numbering
 
+  subroutine allocate_petsc_numbering_baij(petsc_numbering, &
+       nnodes, nfields,block, group_size, halo, ghost_nodes)
+    !!< Set ups the 'universal'(what most people call global)
+    !!< numbering used in PETSc. In serial this is trivial
+    !!< but could still be used for reordering schemes.
+    !! the numbering object created:
+    type(petsc_numbering_type), intent(out):: petsc_numbering
+    !! number of nodes and fields:
+    !! (here nfields counts each scalar component of vector fields, so
+    !!  e.g. for nphases velocity fields in 3 dimensions nfields=3*nphases)
+    integer, intent(in):: nnodes, nfields
+    logical, intent(in) :: block
+    !! if present 'group_size' fields are grouped in the petsc numbering, i.e.
+    integer, intent(in), optional:: group_size
+    !! for parallel: halo information
+    type(halo_type), pointer, optional :: halo
+    !! If supplied number these as -1, so they'll be skipped by Petsc
+    integer, dimension(:), optional, intent(in):: ghost_nodes
+    integer, dimension(:), allocatable:: ghost_marker
+    integer i, g, f, start, offset, fpg
+    integer nuniversalnodes, ngroups, ierr
+
+    allocate( petsc_numbering%gnn2unn(1:nnodes, 1:nfields) )
+
+    if (present(halo)) then
+       if (associated(halo)) then
+
+          allocate(petsc_numbering%halo)
+          petsc_numbering%halo=halo
+          call incref(petsc_numbering%halo)
+
+       end if
+    end if
+
+    if (present(group_size)) then
+      fpg=group_size ! fields per group
+      ngroups=nfields/fpg
+      assert(nfields==fpg*ngroups)
+    else
+      fpg=1
+      ngroups=nfields
+    end if
+    petsc_numbering%group_size=fpg
+
+    ! first we set up the petsc numbering for the first entry of each group only:
+
+    if (.not.associated(petsc_numbering%halo)) then
+
+       ! *** Serial case *or* parallel without halo
+
+       ! standard, trivial numbering, starting at 0:
+       start=0 ! start of each group of fields
+       do g=0, ngroups-1
+          do f=0, fpg-1
+            petsc_numbering%gnn2unn(:, g*fpg+f+1 )= &
+               (/ ( start + fpg*i+f, i=0, nnodes-1 ) /)
+          end do
+          start=start+nnodes*fpg
+       end do
+
+       if (isParallel()) then
+
+          ! universal numbering can now be worked out trivially
+          ! by calculating the offset (start of the universal number
+          ! range for each process)
+          call mpi_scan(nnodes, offset, 1, MPI_INTEGER, &
+               MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
+          offset=offset-nnodes
+          petsc_numbering%gnn2unn=petsc_numbering%gnn2unn+offset*nfields
+
+       end if
+
+       petsc_numbering%nprivatenodes=nnodes
+
+       ! the offset is the first universal number assigned to this process
+       ! in the standard petsc numbering the universal number is equal to
+       ! offset+local number
+       petsc_numbering%offset=petsc_numbering%gnn2unn(1,1)
+
+    else
+
+       ! *** Parallel case with halo:
+
+       ! the hard work is done inside get_universal_numbering() for the case fpg=1
+       ! for fpg>1 we just ask for a numbering for the groups and pad it out afterwards
+       call get_universal_numbering(halo, petsc_numbering%gnn2unn(:,1:ngroups))
+       ! petsc uses base 0
+       petsc_numbering%gnn2unn(:,1:ngroups) = petsc_numbering%gnn2unn(:,1:ngroups)-1
+
+       if (fpg>1) then
+         ! the universal node number of the first node in each group is
+         ! simply the universal groups times fpg - as we know other processes
+         ! do the same we need no negotiation for the halo nodes
+         petsc_numbering%gnn2unn(:,1:nfields:fpg) = petsc_numbering%gnn2unn(:,1:ngroups)*fpg
+         ! as always the subsequent nodes in a group are number consequently:
+         do f=2, fpg
+           petsc_numbering%gnn2unn(:,f:nfields:fpg) = petsc_numbering%gnn2unn(:,1:nfields:fpg)+(f-1)
+         end do
+       end if
+
+       petsc_numbering%nprivatenodes=halo_nowned_nodes(halo)
+
+       petsc_numbering%offset=halo%my_owned_nodes_unn_base*nfields
+
+    end if
+
+    if (isParallel()) then
+       ! work out the length of global(universal) vector
+       call mpi_allreduce(petsc_numbering%nprivatenodes, nuniversalnodes, 1, MPI_INTEGER, &
+           MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
+
+       petsc_numbering%universal_length=nuniversalnodes*nfields
+    else
+       ! trivial in serial case:
+       petsc_numbering%universal_length=nnodes*nfields
+    end if
+
+    if (present(ghost_nodes)) then
+       if (associated(petsc_numbering%halo)) then
+          ! check whether any of the halo nodes have been marked as
+          ! ghost nodes by the owner of that node
+          allocate( ghost_marker( 1:nnodes ) )
+          ghost_marker = 0
+          ghost_marker( ghost_nodes ) = 1
+          call halo_update( petsc_numbering%halo, ghost_marker )
+
+          ! fill in ghost_nodes list, now including halo nodes
+          g=count(ghost_marker/=0)
+          allocate( petsc_numbering%ghost_nodes(1:g), &
+             petsc_numbering%ghost2unn(1:g, 1:nfields) )
+          g=0
+          do i=1, nnodes
+            if (ghost_marker(i)/=0) then
+              g=g+1
+              petsc_numbering%ghost_nodes(g)=i
+              ! store the original universal number seperately
+              petsc_numbering%ghost2unn(g,:)=petsc_numbering%gnn2unn(i,:)
+              ! mask it out with -1 in gnn2unn
+              petsc_numbering%gnn2unn(i,:)=-1
+            end if
+          end do
+          assert(g == size(petsc_numbering%ghost_nodes))
+       else
+          ! serial case, or no halo in parallel
+          g=size(ghost_nodes)
+          allocate( petsc_numbering%ghost_nodes(1:g), &
+             petsc_numbering%ghost2unn(1:g, 1:nfields) )
+          petsc_numbering%ghost_nodes=ghost_nodes
+          do g=1, size(ghost_nodes)
+             i=ghost_nodes(g)
+             ! store the original universal number seperately
+             petsc_numbering%ghost2unn(g,:)=petsc_numbering%gnn2unn(i,:)
+             ! mask it out with -1 in gnn2unn
+             petsc_numbering%gnn2unn(i,:)=-1
+          end do
+       end if
+
+    else
+       nullify( petsc_numbering%ghost_nodes )
+       nullify( petsc_numbering%ghost2unn )
+    end if
+
+    nullify(petsc_numbering%refcount) ! Hack for gfortran component initialisation
+    !                         bug.
+    call addref(petsc_numbering)
+
+  end subroutine allocate_petsc_numbering_baij
+
+
+
   subroutine deallocate_petsc_numbering(petsc_numbering)
   !!< Deallocate the petsc_numbering object
   type(petsc_numbering_type), intent(inout):: petsc_numbering
@@ -457,13 +639,12 @@ contains
 
     ! number of nodes owned by this process:
     nnodp=petsc_numbering%nprivatenodes
-    print*, nnodp
-    ! ! number of nodes on this process, including halo/ghost nodes
-    ! nnodes=size(petsc_numbering%gnn2unn, 1)
-    !
-    ! ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
-    ! nfields=size(petsc_numbering%gnn2unn, 2)
-    ! assert( nfields==sum(fields%dim) )
+    ! number of nodes on this process, including halo/ghost nodes
+    nnodes=size(petsc_numbering%gnn2unn, 1)
+
+    ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
+    nfields=size(petsc_numbering%gnn2unn, 2)
+    assert( nfields==sum(fields%dim) )
 
     if (associated(petsc_numbering%halo)) then
        if (.not. ((petsc_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
@@ -473,46 +654,28 @@ contains
     end if
 
 
-
-
     b=1
 
     do i=1, size(fields)
        do j=1, fields(i)%dim
-! #ifdef DOUBLEP
-!          call VecSetValues(vec, nnodp, &
-!             petsc_numbering%gnn2unn( 1:nnodp, b ), &
-!             fields(i)%val(j, 1:nnodp ), INSERT_VALUES, ierr)
-! #else
-!          call VecSetValues(vec, nnodp, &
-!             petsc_numbering%gnn2unn( 1:nnodp, b ), &
-!             real(fields(i)%val(j, 1:nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
-! #endif
-
 #ifdef DOUBLEP
          call VecSetValues(vec, nnodp, &
-            petsc_numbering%gnn2unn( b, 1:nnodp), &
+            petsc_numbering%gnn2unn( 1:nnodp, b ), &
             fields(i)%val(j, 1:nnodp ), INSERT_VALUES, ierr)
 #else
          call VecSetValues(vec, nnodp, &
-            petsc_numbering%gnn2unn(b, 1:nnodp), &
+            petsc_numbering%gnn2unn( 1:nnodp, b ), &
             real(fields(i)%val(j, 1:nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
 #endif
         b=b+1
-      print*, "j", j
-      end do
+        end do
 
     end do
 
-    print*, "B", b
-
-
-    !STOP 456
-
     call VecAssemblyBegin(vec, ierr)
     call VecAssemblyEnd(vec, ierr)
-
   end subroutine VectorFields2Petsc
+
 
   subroutine VectorField2Petsc(field, petsc_numbering, vec)
     !!< Assembles given field into (previously created) petsc Vec using petsc_numbering
@@ -523,6 +686,57 @@ contains
     call VectorFields2Petsc( (/ field /), petsc_numbering, vec)
 
   end subroutine VectorField2Petsc
+
+
+
+  subroutine VectorFields2PetscBaij(fields, petsc_numbering, vec)
+    !!< Assembles field into (previously created) petsc Vec using petsc_numbering for the DOFs of the fields combined
+    type(vector_field), dimension(:), intent(in):: fields
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec, intent(inout) :: vec
+
+    integer ierr, nnodp, b, nfields, nnodes
+    integer i, j
+
+    ! number of nodes owned by this process:
+    nnodp=petsc_numbering%nprivatenodes
+
+    if (associated(petsc_numbering%halo)) then
+       if (.not. ((petsc_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
+            .or. (petsc_numbering%halo%data_type .eq. HALO_TYPE_DG_NODE))) then
+          FLAbort("Matrices can only be assembled on the basis of node halos")
+       end if
+    end if
+    b=1
+    do i=1, size(fields)
+       do j=1, fields(i)%dim
+#ifdef DOUBLEP
+         call VecSetValues(vec, nnodp, &
+            petsc_numbering%gnn2unn( b, 1:nnodp), &
+            fields(i)%val(j, 1:nnodp ), INSERT_VALUES, ierr)
+#else
+         call VecSetValues(vec, nnodp, &
+            petsc_numbering%gnn2unn(b, 1:nnodp), &
+            real(fields(i)%val(j, 1:nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
+#endif
+        b=b+1
+        end do
+    end do
+    call VecAssemblyBegin(vec, ierr)
+    call VecAssemblyEnd(vec, ierr)
+
+  end subroutine VectorFields2PetscBaij
+
+
+  subroutine VectorField2PetscBaij(field, petsc_numbering, vec)
+    !!< Assembles given field into (previously created) petsc Vec using petsc_numbering
+    type(vector_field), intent(in):: field
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec, intent(inout) :: vec
+    call VectorFields2PetscBaij( (/ field /), petsc_numbering, vec)
+  end subroutine VectorField2PetscBaij
+
+
 
   subroutine ScalarFields2Petsc(fields, petsc_numbering, vec)
     !!< Assembles field into (previously created) petsc Vec using petsc_numbering for the DOFs of the fields combined
@@ -814,11 +1028,11 @@ contains
 #endif
     !number of nodes owned by this process:
     nnodp=petsc_numbering%nprivatenodes
-    ! number of nodes on this process, including halo/ghost nodes
-    ! nnodes=size(petsc_numbering%gnn2unn, 1)
-    ! ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
-    ! nfields=size(petsc_numbering%gnn2unn, 2)
-    ! assert( nfields==sum(fields%dim) )
+    !number of nodes on this process, including halo/ghost nodes
+    nnodes=size(petsc_numbering%gnn2unn, 1)
+    ! number of "component" fields: (i.e. n/o vector fields *times* n/o components per vector field)
+    nfields=size(petsc_numbering%gnn2unn, 2)
+    assert( nfields==sum(fields%dim) )
 
 #ifdef DOUBLEP
     b=1
@@ -828,12 +1042,10 @@ contains
       do j=1, fields(i)%dim
          ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
          if (nnodp>0) then
-           ! call VecGetValues(vec, nnodp, &
-           !   petsc_numbering%gnn2unn( 1:nnodp, b ), &
-           !   fields(i)%val(j, 1:nnodp ), ierr)
-             call VecGetValues(vec, nnodp, &
-               petsc_numbering%gnn2unn( b,  1:nnodp ), &
-               fields(i)%val(j, 1:nnodp ), ierr)
+           call VecGetValues(vec, nnodp, &
+             petsc_numbering%gnn2unn( 1:nnodp, b ), &
+             fields(i)%val(j, 1:nnodp ), ierr)
+
          end if
          b=b+1
       end do
@@ -875,6 +1087,7 @@ contains
 
   end subroutine Petsc2VectorFields
 
+
   subroutine Petsc2VectorField(vec, petsc_numbering, field)
   !!< Copies the values of a PETSc Vec into a vector field. The PETSc Vec
   !!< must have been assembled using the same petsc_numbering.
@@ -888,6 +1101,93 @@ contains
       call Petsc2VectorFields(vec, petsc_numbering, fields)
 
   end subroutine Petsc2VectorField
+
+
+
+  subroutine Petsc2VectorFieldsBaij(vec, petsc_numbering, fields)
+  !!< Copies the values of a PETSc Vec into vector fields. The PETSc Vec
+  !!< must have been assembled using the same petsc_numbering.
+  Vec, intent(in):: vec
+  type(petsc_numbering_type), intent(in):: petsc_numbering
+  type(vector_field), dimension(:), intent(inout) :: fields
+
+    integer ierr, nnodp, b, nfields, nnodes
+    integer i, j
+#ifndef DOUBLEP
+    PetscScalar, dimension(:), allocatable :: vals
+#endif
+    !number of nodes owned by this process:
+    nnodp=petsc_numbering%nprivatenodes
+
+#ifdef DOUBLEP
+  b=1
+  do i=1, size(fields)
+
+    call profiler_tic(fields(i), "petsc2field")
+    do j=1, fields(i)%dim
+       ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
+       if (nnodp>0) then
+         ! call VecGetValues(vec, nnodp, &
+         !   petsc_numbering%gnn2unn( 1:nnodp, b ), &
+         !   fields(i)%val(j, 1:nnodp ), ierr)
+           call VecGetValues(vec, nnodp, &
+             petsc_numbering%gnn2unn( b,  1:nnodp ), &
+             fields(i)%val(j, 1:nnodp ), ierr)
+       end if
+       b=b+1
+    end do
+    call profiler_toc(fields(i), "petsc2field")
+
+  end do
+#else
+  allocate(vals(nnodp))
+  b=1
+  do i=1, size(fields)
+
+    call profiler_tic(fields(i), "petsc2field")
+    do j=1, fields(i)%dim
+       if (nnodp>0) then
+         call VecGetValues(vec, nnodp, &
+           petsc_numbering%gnn2unn( b, 1:nnodp ), &
+           vals, ierr)
+       end if
+       fields(i)%val(j, 1:nnodp ) = vals
+       b=b+1
+    end do
+    call profiler_toc(fields(i), "petsc2field")
+
+  end do
+  deallocate(vals)
+#endif
+
+    ! Update the halo:
+    if (associated(petsc_numbering%halo)) then
+       ewrite(2, *) '*** Updating of halo of vector_fields needs to be improved.'
+       do i=1, size(fields)
+          ! Always update on the level 2 halo to ensure that the whole
+          ! field is well defined.
+          call profiler_tic(fields(i), "petsc2field")
+          call halo_update(fields(i), 2)
+          call profiler_toc(fields(i), "petsc2field")
+       end do
+    end if
+
+  end subroutine Petsc2VectorFieldsBaij
+
+  subroutine Petsc2VectorFieldBaij(vec, petsc_numbering, field)
+  !!< Copies the values of a PETSc Vec into a vector field. The PETSc Vec
+  !!< must have been assembled using the same petsc_numbering.
+  Vec, intent(in):: vec
+  type(petsc_numbering_type), intent(in):: petsc_numbering
+  type(vector_field), intent(inout) :: field
+
+      type(vector_field) fields(1)
+
+      fields(1)=field
+      call Petsc2VectorFieldsBaij(vec, petsc_numbering, fields)
+
+  end subroutine Petsc2VectorFieldBaij
+
 
   function csr2petsc(A, petsc_numbering, column_petsc_numbering, &
        use_inodes) result(M)
