@@ -7459,12 +7459,12 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
   end if
 
-    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
-    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-    mal = info(MAT_INFO_BLOCK_SIZE)
-    nz_a = info(MAT_INFO_NZ_ALLOCATED)
-    print*, "MATGETINFO1", mal, nz_a
-    !******************** PROFILNG THE PETSC MAT ***************!
+    ! !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    ! mal = info(MAT_INFO_BLOCK_SIZE)
+    ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
+    ! print*, "MATGETINFO1", mal, nz_a
+    ! !******************** PROFILNG THE PETSC MAT ***************!
 
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
@@ -7571,8 +7571,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             dgm_petsc%is_assembled=.false.
           else
             !!!********* remove once global index/block index issue is resolved ***
-            !print*, idxm
-            print*, valuesb
+
             call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, ADD_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
@@ -7589,13 +7588,13 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
 
 !  call assemble(dgm_petsc)
-
-  !!******************** PROFILNG THE PETSC MAT ***************!
-  call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-  mal = info(MAT_INFO_BLOCK_SIZE)
-  nz_a = info(MAT_INFO_NZ_USED)
-  print*, "MATGETINFO2", mal, nz_a
-  !!**********************************************************!
+  !
+  ! !!******************** PROFILNG THE PETSC MAT ***************!
+  ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+  ! mal = info(MAT_INFO_BLOCK_SIZE)
+  ! nz_a = info(MAT_INFO_NZ_USED)
+  ! print*, "MATGETINFO2", mal, nz_a
+  ! !!**********************************************************!
 
   if(block_insert) then
     deallocate(valuesb)
