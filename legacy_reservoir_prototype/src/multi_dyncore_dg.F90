@@ -2655,7 +2655,6 @@ end if
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
-          ! print*, "enteringsolve"
           if(block) then
             Mmat%DGM_PETSC%row_numbering%nprivatenodes = element_count(packed_vel)
             Mmat%DGM_PETSC%column_numbering%nprivatenodes = element_count(packed_vel)
