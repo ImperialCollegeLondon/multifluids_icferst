@@ -133,6 +133,7 @@ module Petsc_Tools
   public full_CreateSeqAIJ, full_CreateMPIAIJ
   public addup_global_assembly
   public field2petscbaij, petscbaij2field
+  public allocatebaij
   ! for petsc_numbering:
   public incref, decref, addref
   ! for unit-testing:
@@ -332,172 +333,91 @@ contains
 
   end subroutine allocate_petsc_numbering
 
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief wrapper for petsc_numbering assuming Block matrices
+  !---------------------------------------------------------------------------
   subroutine allocate_petsc_numbering_baij(petsc_numbering, &
-       nnodes, nfields,block, group_size, halo, ghost_nodes)
+       nnodes, blocks, halo)
     !!< Set ups the 'universal'(what most people call global)
     !!< numbering used in PETSc. In serial this is trivial
     !!< but could still be used for reordering schemes.
     !! the numbering object created:
     type(petsc_numbering_type), intent(out):: petsc_numbering
     !! number of nodes and fields:
-    !! (here nfields counts each scalar component of vector fields, so
-    !!  e.g. for nphases velocity fields in 3 dimensions nfields=3*nphases)
-    integer, intent(in):: nnodes, nfields
-    logical, intent(in) :: block
-    !! if present 'group_size' fields are grouped in the petsc numbering, i.e.
-    integer, intent(in), optional:: group_size
+    !! (here 'blocks' counts the number of blocks, so
+    !!  e.g. for nphases velocity fields in 3 dimensions with tet nfields=#of elements)
+    integer, intent(in):: nnodes, blocks
     !! for parallel: halo information
     type(halo_type), pointer, optional :: halo
     !! If supplied number these as -1, so they'll be skipped by Petsc
-    integer, dimension(:), optional, intent(in):: ghost_nodes
     integer, dimension(:), allocatable:: ghost_marker
     integer i, g, f, start, offset, fpg
     integer nuniversalnodes, ngroups, ierr
 
-    allocate( petsc_numbering%gnn2unn(1:nnodes, 1:nfields) )
+    allocate( petsc_numbering%gnn2unn(1:nnodes, 1:blocks) )
 
     if (present(halo)) then
        if (associated(halo)) then
-
           allocate(petsc_numbering%halo)
           petsc_numbering%halo=halo
           call incref(petsc_numbering%halo)
-
        end if
     end if
 
-    if (present(group_size)) then
-      fpg=group_size ! fields per group
-      ngroups=nfields/fpg
-      assert(nfields==fpg*ngroups)
-    else
-      fpg=1
-      ngroups=nfields
-    end if
-    petsc_numbering%group_size=fpg
-
+    fpg=1
+    ngroups=blocks
     ! first we set up the petsc numbering for the first entry of each group only:
-
     if (.not.associated(petsc_numbering%halo)) then
-
        ! *** Serial case *or* parallel without halo
-
        ! standard, trivial numbering, starting at 0:
-       start=0 ! start of each group of fields
+       start=0 ! start of blocks
        do g=0, ngroups-1
-          do f=0, fpg-1
-            petsc_numbering%gnn2unn(:, g*fpg+f+1 )= &
-               (/ ( start + fpg*i+f, i=0, nnodes-1 ) /)
-          end do
-          start=start+nnodes*fpg
+            petsc_numbering%gnn2unn(:, g+1)=(/(start + i, i=0, nnodes-1)/)
+            start=start+nnodes
        end do
 
        if (isParallel()) then
-
           ! universal numbering can now be worked out trivially
           ! by calculating the offset (start of the universal number
           ! range for each process)
           call mpi_scan(nnodes, offset, 1, MPI_INTEGER, &
                MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
           offset=offset-nnodes
-          petsc_numbering%gnn2unn=petsc_numbering%gnn2unn+offset*nfields
-
+          petsc_numbering%gnn2unn=petsc_numbering%gnn2unn+offset*blocks
        end if
-
        petsc_numbering%nprivatenodes=nnodes
-
        ! the offset is the first universal number assigned to this process
        ! in the standard petsc numbering the universal number is equal to
        ! offset+local number
        petsc_numbering%offset=petsc_numbering%gnn2unn(1,1)
-
     else
-
        ! *** Parallel case with halo:
-
        ! the hard work is done inside get_universal_numbering() for the case fpg=1
        ! for fpg>1 we just ask for a numbering for the groups and pad it out afterwards
        call get_universal_numbering(halo, petsc_numbering%gnn2unn(:,1:ngroups))
        ! petsc uses base 0
        petsc_numbering%gnn2unn(:,1:ngroups) = petsc_numbering%gnn2unn(:,1:ngroups)-1
-
-       if (fpg>1) then
-         ! the universal node number of the first node in each group is
-         ! simply the universal groups times fpg - as we know other processes
-         ! do the same we need no negotiation for the halo nodes
-         petsc_numbering%gnn2unn(:,1:nfields:fpg) = petsc_numbering%gnn2unn(:,1:ngroups)*fpg
-         ! as always the subsequent nodes in a group are number consequently:
-         do f=2, fpg
-           petsc_numbering%gnn2unn(:,f:nfields:fpg) = petsc_numbering%gnn2unn(:,1:nfields:fpg)+(f-1)
-         end do
-       end if
-
        petsc_numbering%nprivatenodes=halo_nowned_nodes(halo)
-
-       petsc_numbering%offset=halo%my_owned_nodes_unn_base*nfields
-
+       petsc_numbering%offset=halo%my_owned_nodes_unn_base*blocks
     end if
 
     if (isParallel()) then
        ! work out the length of global(universal) vector
        call mpi_allreduce(petsc_numbering%nprivatenodes, nuniversalnodes, 1, MPI_INTEGER, &
            MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
-
-       petsc_numbering%universal_length=nuniversalnodes*nfields
+       petsc_numbering%universal_length=nuniversalnodes*blocks
     else
        ! trivial in serial case:
-       petsc_numbering%universal_length=nnodes*nfields
+       petsc_numbering%universal_length=nnodes*blocks
     end if
 
-    if (present(ghost_nodes)) then
-       if (associated(petsc_numbering%halo)) then
-          ! check whether any of the halo nodes have been marked as
-          ! ghost nodes by the owner of that node
-          allocate( ghost_marker( 1:nnodes ) )
-          ghost_marker = 0
-          ghost_marker( ghost_nodes ) = 1
-          call halo_update( petsc_numbering%halo, ghost_marker )
 
-          ! fill in ghost_nodes list, now including halo nodes
-          g=count(ghost_marker/=0)
-          allocate( petsc_numbering%ghost_nodes(1:g), &
-             petsc_numbering%ghost2unn(1:g, 1:nfields) )
-          g=0
-          do i=1, nnodes
-            if (ghost_marker(i)/=0) then
-              g=g+1
-              petsc_numbering%ghost_nodes(g)=i
-              ! store the original universal number seperately
-              petsc_numbering%ghost2unn(g,:)=petsc_numbering%gnn2unn(i,:)
-              ! mask it out with -1 in gnn2unn
-              petsc_numbering%gnn2unn(i,:)=-1
-            end if
-          end do
-          assert(g == size(petsc_numbering%ghost_nodes))
-       else
-          ! serial case, or no halo in parallel
-          g=size(ghost_nodes)
-          allocate( petsc_numbering%ghost_nodes(1:g), &
-             petsc_numbering%ghost2unn(1:g, 1:nfields) )
-          petsc_numbering%ghost_nodes=ghost_nodes
-          do g=1, size(ghost_nodes)
-             i=ghost_nodes(g)
-             ! store the original universal number seperately
-             petsc_numbering%ghost2unn(g,:)=petsc_numbering%gnn2unn(i,:)
-             ! mask it out with -1 in gnn2unn
-             petsc_numbering%gnn2unn(i,:)=-1
-          end do
-       end if
-
-    else
-       nullify( petsc_numbering%ghost_nodes )
-       nullify( petsc_numbering%ghost2unn )
-    end if
-
+    nullify( petsc_numbering%ghost_nodes )
+    nullify( petsc_numbering%ghost2unn )
     nullify(petsc_numbering%refcount) ! Hack for gfortran component initialisation
-    !                         bug.
-    call addref(petsc_numbering)
 
+    call addref(petsc_numbering)
   end subroutine allocate_petsc_numbering_baij
 
 

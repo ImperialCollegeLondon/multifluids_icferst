@@ -1672,11 +1672,12 @@ contains
             ! call allocate(matrix%column_numbering,element_count(velocity),&
             !     product(velocity%dim)*nloc,halo = halo)
 
+          call allocatebaij(matrix%row_numbering, product(velocity%dim)*nloc ,&
+              element_count(velocity),halo = halo)
+          call allocatebaij(matrix%column_numbering,product(velocity%dim)*nloc,&
+              element_count(velocity),halo = halo)
 
-                call allocate(matrix%row_numbering, product(velocity%dim)*nloc ,&
-                    element_count(velocity),halo = halo)
-                call allocate(matrix%column_numbering,product(velocity%dim)*nloc,&
-                    element_count(velocity),halo = halo)
+
           else
             call allocate(matrix%row_numbering,node_count(velocity),&
                 product(velocity%dim),halo = halo)
@@ -1707,9 +1708,12 @@ contains
           deallocate(nnz)
 
         else
+
+          print*, " petsc MPI baij"
+
         !! - calculating the non-zero blocks in the diagonal and off-diagonal of the matrix
-        allocate(dnnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
-        allocate(onnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
+        allocate(dnnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
+        allocate(onnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
         Loop_Elements: DO ELE = 1, element_count(velocity)
             dnn=0
             onn=0
@@ -1724,7 +1728,12 @@ contains
             END DO Between_Elements_And_Boundary
           dnnz(ele)=dnn
           onnz(ele)=onn
+
         END DO Loop_Elements
+
+
+
+
           matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
               matrix%column_numbering, dnnz, onnz)
           deallocate(dnnz)
@@ -1814,7 +1823,11 @@ contains
         nrowsp=nbrowsp*nblocksv
         ncolsp=nbcolsp*nblocksh
 
-        bs=nblocksv
+        bs=nbrows
+
+        print*, "CREATING BAIJ"
+
+
         !!MatCreateBAIJ
       	! d_nnz 	- array containing the number of nonzero blocks in diagonal portion of the local matrix
       	! o_nnz 	- array containing the number of nonzero blocks in off-diagonal portion of the local matrix
