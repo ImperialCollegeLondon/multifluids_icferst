@@ -1218,9 +1218,6 @@ start =
             element lump_momentum_inertia {
               empty
             }?,
-            element block_momentum_solve {
-              empty
-            }?,            
            ## Impose a maximum number of iterations for the saturation non-linear solver within the non-linear solver
            ## By default this number is 9. Recommended range: 3 to 9.
             element max_sat_its {
@@ -1637,7 +1634,11 @@ solver_options =
 
             element Disable_advance_preconditioner {
            empty}?
-        )}?
+        )}?,
+        ## Use this options to solve the momentum equations using the block aij format from PETSc (recommended solvers: PBJacobi and Jaocbi)
+        element block_momentum_solve {
+          empty
+        }?
        )}?
       )}
    )
