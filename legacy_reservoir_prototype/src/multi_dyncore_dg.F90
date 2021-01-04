@@ -7432,25 +7432,17 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
   !! if block_insert = true, then we use the more efficient block inserts into
   !! PETSc
-  block_insert=.false.
+  block_insert=.true.
   if (big_block) then
     if(block_insert) then
-      ! allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
-      allocate(valuesb(0:size(loc_dgm_pha)-1))
+      allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
       allocate(idxm(0:TOTELE-1))
       allocate(idxn(0:size(COLELE)-1))
       valuesb=0.0
     else
-      ! allocate(valuesb(0:size(loc_dgm_pha)-1))
-      ! allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
-      ! allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1))
-      ! allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
-
       allocate(valuesb(0:size(loc_dgm_pha)-1))
-      allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,1)-1,0:size(dgm_petsc%column_numbering%gnn2unn,1)-1))
-      allocate(idxm(0:size(dgm_petsc%row_numbering%gnn2unn,1)-1))
-      allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,1)-1))
-
+      !allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,1)-1,0:size(dgm_petsc%column_numbering%gnn2unn,1)-1))
+      valuesb=0.0
     end if
   else
     allocate(values(0:size(dgm_petsc%row_numbering%gnn2unn,2)-1,0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
@@ -7464,7 +7456,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
     ! print*, "MATGETINFO1", mal, nz_a
     ! !******************** PROFILNG THE PETSC MAT ***************!
-
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
   Loop_Elements20: DO ELE = 1, TOTELE
@@ -7472,10 +7463,15 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ELE_ROW_START=FINELE(ELE)
       ELE_ROW_START_NEXT=FINELE(ELE+1)
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
-
       ! Block diagonal and off diagonal terms...
-      !starting the counters for contgious memory assignment
+
+      ! starting the counters for contgiuous memory assignment of matrix values
+      ! and block indices
       nnn=0
+      if(block_insert) then
+        nn=0
+      end if
+
       Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
         JCOLELE=COLELE(COUNT_ELE) !!(big block )for each block row this is the non-zero block column index
         IF(JCOLELE==ELE) THEN
@@ -7486,7 +7482,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ENDIF
         ! COLUMN ORIENTED uing sequential insertions/add
         ! Contiguous memory assignment
-        nn=0
+        if(.not.block_insert) then
+          nn=0
+        end if
+
         DO U_JLOC=1,U_NLOC
           DO JPHASE=1,NPHASE
             DO JDIM=1,NDIM
@@ -7494,37 +7493,38 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
               DO U_ILOC=1,U_NLOC
                 DO IPHASE=1,NPHASE
                   DO IDIM=1,NDIM
-
                     ! if (.not. node_owned(velocity,((ELE-1)*U_NLOC + U_ILOC))) cycle
                     ! [big_blocks] are for block sizes based on ndim*nphase*u_nloc
                     ! [not big_blocks] are for block sizes based on ndim*nphase
                     if(big_block) then
-                      ! [block_insert] this inserts the blocks either as a whole block (more efficient: DOESNT WORK)
+                      ! [block_insert] this inserts the blocks either as a whole block row
                       ! or
-                      ! [.not. block_inser] inserts as a set of values (less efficient due to the search algorithm: WORKS)
-                        if(block_insert) then
+                      ! [.not. block_inser] inserts as a single block
+                        ! if(block_insert) then
                           !! this version requires the RHS and packed_velocity
                           !! vector pointers to be re-shaped with new numbering
                           !! global_index=matrix%gnn2unn(block_index,local_index)
                           valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                          ! ! global index counters 2 (block rows/columns)
                           GLOBI=ELE
                           GLOBJ=JCOLELE
-                        else
-                          ! global index counters 1 (local rows/columns in a block)
-                          I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
-                          J = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
-                          ! global index counters 2 (block rows/columns)
-                          GLOBI=ELE       ! non-zero block row
-                          GLOBJ=JCOLELE   ! non-zero block column per block row
-                          !global index of each value in the non-zero block
-                          ! idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
-                          ! idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
+                        ! else
+                          ! ! global index counters 1 (local rows/columns in a block)
+                          ! I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
+                          ! J = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
 
-                          idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(I,GLOBI)
-                          idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(J,GLOBJ)
-                          !rank-2 array of the non-zero block per non-zero block column (jcolele) per ele
-                          values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                        end if
+
+                          ! !global index of each value in the non-zero block
+                          !**** this is the OLD numbering for petsc
+                          ! ! idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
+                          ! ! idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
+                          !**** this is the new numbering for petsc
+                          ! idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(I,GLOBI)
+                          ! idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(J,GLOBJ)
+
+                          ! !rank-2 array of the non-zero block per non-zero block column (jcolele) per ele
+                          ! values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                        ! end if
                     else
                       I=IDIM + (IPHASE-1)*NDIM
                       J=JDIM + (JPHASE-1)*NDIM
@@ -7540,7 +7540,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                 END DO
               END DO
             END DO
-              !! enter values at a time for 'small' block matrix size
+              !! enter values at a time for 'small' block matrix size (uses an in-efficient
+              !! search algorithm inside petsc)
               if(.not.big_block) then
                 call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
                               values, INSERT_VALUES,ierr)
@@ -7550,44 +7551,41 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         END DO
 
         if(big_block) then
-          ! this nested loop creates the rank-1 array of values corresponding
-          ! to each non-zero block from the rank-2 array (contiguous memory)
-          ! REMOVE ONCE GLOBAL INDEX/BLOCK INDEX ISSUE IS SOLVED
-          nn=0
-          DO J=1, size(values,1)
-            DO I=1, size(values,2)
-              valuesb(nn)=values(I-1,J-1)
-              nn=nn+1
-            END DO
-          END DO
-          ! [block_insert] this inserts the blocks either as a whole block (more efficient: DOESNT WORK)
-          ! or
-          ! [.not. block_inser] inserts as a set of values (less efficient due to the search algorithm: WORKS)
           if(block_insert) then
-
-            call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
-                          valuesb, ADD_VALUES, ierr)
-            dgm_petsc%is_assembled=.false.
+            idxn(nnn)=GLOBJ-1
           else
             !!!********* remove once global index/block index issue is resolved ***
-
+            ! this nested loop creates the rank-1 array of values corresponding
+            ! to each non-zero block from the rank-2 array (contiguous memory)
+            ! nn=0
+            ! DO J=1, size(values,1)
+            !   DO I=1, size(values,2)
+            !     valuesb(nn)=values(I-1,J-1)
+            !     nn=nn+1
+            !   END DO
+            ! END DO
             call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, ADD_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
             !!********************************************************************
-            ! call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
-            !               values, ADD_VALUES, ierr)
-            ! dgm_petsc%is_assembled=.false.
           end if
         end if
 
       nnn=nnn+1
       END DO Between_Elements_And_Boundary20
+
+      !! inserting values a block row at a time
+      if(big_block) then
+        if(block_insert) then
+          call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, size(idxn(0:nnn-1)), idxn(0:nnn-1), &
+                        valuesb(0:nn-1), ADD_VALUES, ierr)
+          dgm_petsc%is_assembled=.false.
+        end if
+      end if
+
+
   END DO Loop_Elements20
 
-
-!  call assemble(dgm_petsc)
-  !
   ! !!******************** PROFILNG THE PETSC MAT ***************!
   ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
   ! mal = info(MAT_INFO_BLOCK_SIZE)
@@ -7595,10 +7593,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ! print*, "MATGETINFO2", mal, nz_a
   ! !!**********************************************************!
 
-  if(block_insert) then
+  if(big_block) then
     deallocate(valuesb)
   else
-    deallocate(valuesb)
     deallocate(values)
   end if
   deallocate(idxm)
