@@ -7423,15 +7423,16 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
 
   real :: info(MAT_INFO_SIZE)
   real :: mal, nz_a
-  integer:: blocki, blockj, nn, nnn
-  integer :: nb
+  integer:: nn, nnn
   logical :: skip, block_insert
 
 
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC)) !!a
 
-  !! if block_insert = true, then we use the more efficient block inserts into
-  !! PETSc
+  ! [big_blocks] are for block sizes based on ndim*nphase*u_nloc
+  ! [not big_blocks] are for block sizes based on ndim*nphase
+  ! [block_insert] this inserts the blocks either as a whole block row
+  ! [.not. block_inser] inserts as a single block
   block_insert=.true.
   if (big_block) then
     if(block_insert) then
@@ -7456,6 +7457,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
     ! print*, "MATGETINFO1", mal, nz_a
     ! !******************** PROFILNG THE PETSC MAT ***************!
+    
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
   Loop_Elements20: DO ELE = 1, TOTELE
@@ -7491,15 +7493,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             DO JDIM=1,NDIM
 
               DO U_ILOC=1,U_NLOC
-                DO IPHASE=1,NPHASE
+                DO IPHASE=1,NPHASEnb
                   DO IDIM=1,NDIM
-                    ! if (.not. node_owned(velocity,((ELE-1)*U_NLOC + U_ILOC))) cycle
-                    ! [big_blocks] are for block sizes based on ndim*nphase*u_nloc
-                    ! [not big_blocks] are for block sizes based on ndim*nphase
+                    if (.not. node_owned(velocity,((ELE-1)*U_NLOC + U_ILOC))) cycle
                     if(big_block) then
-                      ! [block_insert] this inserts the blocks either as a whole block row
-                      ! or
-                      ! [.not. block_inser] inserts as a single block
                         ! if(block_insert) then
                           !! this version requires the RHS and packed_velocity
                           !! vector pointers to be re-shaped with new numbering
@@ -7513,7 +7510,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                           ! I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
                           ! J = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
 
-
+nb
                           ! !global index of each value in the non-zero block
                           !**** this is the OLD numbering for petsc
                           ! ! idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
