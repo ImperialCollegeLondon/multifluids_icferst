@@ -1433,6 +1433,7 @@ contains
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
+      real :: expo
 
       ScalarAdvectionField_Diffusion = 0.0
       if ( Mdims%ncomp > 1 ) then
@@ -1477,6 +1478,9 @@ contains
             !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
             sfield=>extract_scalar_field(state(1),"Porosity")
             den => extract_tensor_field( packed_state,"PackedDensity" )
+            !expo used to switch between boussinesq (density ==1) or normal
+            expo = 1.; if (has_boussinesq_aprox) expo = 0.
+
             ScalarAdvectionField_Diffusion = 0.
 
             if (present_and_true(calculate_solute_diffusivity)) then
@@ -1493,7 +1497,7 @@ contains
                       do idim = 1, Mdims%ndim
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) =    &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) +    &
-                        (sfield%val(ele_nod) *den%val(1, 1, cv_inod)* node_val( diffusivity, idim, idim, mat_inod ))
+                        (sfield%val(ele_nod) *den%val(1, 1, cv_inod)**expo * node_val( diffusivity, idim, idim, mat_inod ))
                       enddo
                   end do
                 end do
