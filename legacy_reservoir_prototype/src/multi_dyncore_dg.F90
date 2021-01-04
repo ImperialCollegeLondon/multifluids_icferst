@@ -7493,7 +7493,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             DO JDIM=1,NDIM
 
               DO U_ILOC=1,U_NLOC
-                DO IPHASE=1,NPHASEnb
+                DO IPHASE=1,NPHASE
                   DO IDIM=1,NDIM
                     if (.not. node_owned(velocity,((ELE-1)*U_NLOC + U_ILOC))) cycle
                     if(big_block) then
