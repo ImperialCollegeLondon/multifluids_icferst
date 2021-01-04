@@ -7509,8 +7509,6 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                           ! ! global index counters 1 (local rows/columns in a block)
                           ! I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
                           ! J = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
-
-nb
                           ! !global index of each value in the non-zero block
                           !**** this is the OLD numbering for petsc
                           ! ! idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
