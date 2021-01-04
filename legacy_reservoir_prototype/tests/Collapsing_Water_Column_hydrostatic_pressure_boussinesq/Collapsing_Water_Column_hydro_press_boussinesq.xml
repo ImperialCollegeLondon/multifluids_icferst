@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>Collapsing_Water_Column_hydro_press_boussinesq</name>
+  <name>CWC_boussinesq</name>
   <owner userid="pablo.salinas"/>
   <tags>components mpml hydro_solver boussinesq</tags>
   <problem_definition length="short" nprocs="1">
@@ -8,15 +8,15 @@
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="Collapsing_Water_Column" language="python">Collapsing_Water_Column_hydro_press_boussinesq = False
+    <test name="CWC_boussinesq" language="python">CWC_boussinesq = False
 with open("log", "rb") as f:
     linelist = f.readlines()           # Read the first line.
     last = linelist[len(linelist)-1]   # The last line
 f.close 
 
-if 'OK' in last: Collapsing_Water_Column_hydro_press_boussinesq = True
+if 'OK' in last: CWC_boussinesq = True
 
-assert(Collapsing_Water_Column_hydro_press_boussinesq)</test>
+assert(CWC_boussinesq)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
