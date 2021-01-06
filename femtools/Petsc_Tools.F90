@@ -395,7 +395,7 @@ contains
        ! *** Parallel case with halo:
        ! the hard work is done inside get_universal_numbering() for the case fpg=1
        ! for fpg>1 we just ask for a numbering for the groups and pad it out afterwards
-       call get_universal_numbering(halo, petsc_numbering%gnn2unn(:,1:ngroups))
+       call get_universal_numbering_baij(halo, petsc_numbering%gnn2unn(:,1:ngroups))
        ! petsc uses base 0
        petsc_numbering%gnn2unn(:,1:ngroups) = petsc_numbering%gnn2unn(:,1:ngroups)-1
        petsc_numbering%nprivatenodes=halo_nowned_nodes(halo)
