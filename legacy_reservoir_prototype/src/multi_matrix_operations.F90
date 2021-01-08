@@ -1672,11 +1672,18 @@ contains
             ! call allocate(matrix%column_numbering,element_count(velocity),&
             !     product(velocity%dim)*nloc,halo = halo)
 
-          call allocatebaij(matrix%row_numbering, product(velocity%dim)*nloc ,&
-              element_count(velocity),halo = halo)
-          call allocatebaij(matrix%column_numbering,product(velocity%dim)*nloc,&
-              element_count(velocity),halo = halo)
+          ! call allocatebaij(matrix%row_numbering, product(velocity%dim)*nloc ,&
+          !     element_count(velocity),halo = halo)
+          ! call allocatebaij(matrix%column_numbering,product(velocity%dim)*nloc,&
+          !     element_count(velocity),halo = halo)
 
+          call allocatebaij(matrix%row_numbering, element_count(velocity), product(velocity%dim)*nloc ,&
+              halo = halo)
+          call allocatebaij(matrix%column_numbering, element_count(velocity), product(velocity%dim)*nloc,&
+              halo = halo)
+
+            !print*, size(matrix%row_numbering%gnn2unn, 2), size(matrix%row_numbering%gnn2unn, 1)
+            ! STOP 1111
 
           else
             call allocate(matrix%row_numbering,node_count(velocity),&
@@ -1688,7 +1695,7 @@ contains
         if (.not. IsParallel()) then
           !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
           ! allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
-          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
+          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
 
           nnz=0.0
           if(big_block) THEN
@@ -1726,12 +1733,9 @@ contains
                   onn=onn+1
               ENDIF
             END DO Between_Elements_And_Boundary
-          dnnz(ele)=dnn
-          onnz(ele)=onn
-
+            dnnz(ele-1)=dnn
+            onnz(ele-1)=onn
         END DO Loop_Elements
-
-
 
 
           matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
@@ -1739,6 +1743,8 @@ contains
           deallocate(dnnz)
           deallocate(onnz)
         end if
+
+
 
         call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_FALSE, ierr)
         call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr)
@@ -1775,8 +1781,10 @@ contains
       nblocksh=size(col_numbering%gnn2unn, 2)
 
 
+
       !bs=nblocksv ! block size (block row size)
-      bs=nbrows
+      bs=nblocksv
+
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, nnz, M, ierr)
@@ -1824,9 +1832,8 @@ contains
         ncolsp=nbcolsp*nblocksh
 
         bs=nbrows
-
+        print*, nrows, nbrows,nblocksv, nbcolsp, ncolsp
         print*, "CREATING BAIJ"
-
 
         !!MatCreateBAIJ
       	! d_nnz 	- array containing the number of nonzero blocks in diagonal portion of the local matrix
@@ -1840,6 +1847,10 @@ contains
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
 #endif
+
+    print*, "FINISHEDS BAIJ"
+    STOP 11111
+
       end function full_CreateMPIBAIJ
 
 end module matrix_operations

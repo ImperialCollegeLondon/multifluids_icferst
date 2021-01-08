@@ -367,14 +367,16 @@ contains
 
     fpg=1
     ngroups=blocks
+    petsc_numbering%group_size=fpg
+
     ! first we set up the petsc numbering for the first entry of each group only:
     if (.not.associated(petsc_numbering%halo)) then
        ! *** Serial case *or* parallel without halo
        ! standard, trivial numbering, starting at 0:
        start=0 ! start of blocks
        do g=0, ngroups-1
-            petsc_numbering%gnn2unn(:, g+1)=(/(start + i, i=0, nnodes-1)/)
-            start=start+nnodes
+            petsc_numbering%gnn2unn(:,g+1)=(/(start + i, i=0, nnodes-1)/)
+            start=start+blocks
        end do
 
        if (isParallel()) then
