@@ -1667,24 +1667,10 @@ contains
           nloc=node_count(velocity)/element_count(velocity)
 
           if(big_block) then
-            ! call allocate(matrix%row_numbering,element_count(velocity),&
-            !     product(velocity%dim)*nloc,halo = halo)
-            ! call allocate(matrix%column_numbering,element_count(velocity),&
-            !     product(velocity%dim)*nloc,halo = halo)
-
-          ! call allocatebaij(matrix%row_numbering, product(velocity%dim)*nloc ,&
-          !     element_count(velocity),halo = halo)
-          ! call allocatebaij(matrix%column_numbering,product(velocity%dim)*nloc,&
-          !     element_count(velocity),halo = halo)
-
-          call allocatebaij(matrix%row_numbering, element_count(velocity), product(velocity%dim)*nloc ,&
-              halo = halo)
-          call allocatebaij(matrix%column_numbering, element_count(velocity), product(velocity%dim)*nloc,&
-              halo = halo)
-
-            !print*, size(matrix%row_numbering%gnn2unn, 2), size(matrix%row_numbering%gnn2unn, 1)
-            ! STOP 1111
-
+            call allocatebaij(matrix%row_numbering, product(velocity%dim)*nloc ,&
+                element_count(velocity),halo = halo)
+            call allocatebaij(matrix%column_numbering,product(velocity%dim)*nloc,&
+                element_count(velocity),halo = halo)
           else
             call allocate(matrix%row_numbering,node_count(velocity),&
                 product(velocity%dim),halo = halo)
@@ -1695,7 +1681,7 @@ contains
         if (.not. IsParallel()) then
           !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
           ! allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
-          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
+          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
 
           nnz=0.0
           if(big_block) THEN
@@ -1781,10 +1767,8 @@ contains
       nblocksh=size(col_numbering%gnn2unn, 2)
 
 
-
       !bs=nblocksv ! block size (block row size)
-      bs=nblocksv
-
+      bs=nbrows
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, nnz, M, ierr)
