@@ -1,10 +1,11 @@
-nxlayers=7;
-nylayers=7;
+// Gmsh project created on Tue Jul  4 10:40:54 2017
+nxlayers=22;
+nylayers=20;
 Point(1) = {0., 0., 0.};
-Extrude {0.7, 0, 0} {
+Extrude {2.22, 0, 0} {
   Point{1}; Layers{nxlayers};
 }
-Extrude {0, 0.6, 0} {
+Extrude {0, 2.0, 0} {
   Line{1}; Layers{nylayers};
 }
 
