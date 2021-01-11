@@ -48,7 +48,7 @@ module multiphase_EOS
 contains
 
     !>@brief: Computes the density for the phases and the derivatives of the density
-    subroutine Calculate_All_Rhos( state, packed_state, Mdims )
+    subroutine Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp )
 
         implicit none
 
@@ -56,6 +56,8 @@ contains
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         type(multi_ndgln) :: ndgln
+        logical, optional, intent(in) :: get_RhoCp !This flags computes rhoCp instead of rho
+        !Local variables
         integer, dimension( : ), pointer :: cv_ndgln
         integer :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
         real, dimension( : ), allocatable :: Rho, dRhodP, rho_porous, drhodp_porous, &
@@ -65,7 +67,7 @@ contains
         type( tensor_field ), pointer :: field1, field2, field3, field4
         type( scalar_field ), pointer :: Cp_s, Density
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
-        logical :: boussinesq, compute_rhoCP
+        logical :: compute_rhoCP
         logical, parameter :: harmonic_average=.false.
 
 
@@ -79,8 +81,11 @@ contains
                 ewrite(1,*) "WARNING: Black-Oil model activated but three phases are not present and/or there are components"
             end if
         end if
-
-        compute_rhoCP = have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")
+        !Only obtain RhoCP if CP is defined and when solving for Temperature, else, return Rho
+        compute_rhoCP = .false.
+        if (present_and_true(get_RhoCp)) then
+          compute_rhoCP = have_option("/material_phase[0]/phase_properties/scalar_field::HeatCapacity")
+        end if
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
@@ -119,9 +124,9 @@ contains
         allocate( Density_Bulk( nphase * cv_nonods ) ); Density_Bulk = 0.0
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
-        allocate( drhodp_porous( cv_nonods ) )
-        drhodp_porous = 0.
-        if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant')) then
+        allocate( drhodp_porous( cv_nonods ) ); drhodp_porous = 0.
+        if (have_option('/porous_media/porous_properties/scalar_field::porous_compressibility/prescribed/value::WholeMesh/constant') &
+            .and. .not. has_boussinesq_aprox) then!If boussinesq then we do not consider variations in rock density either
           call Calculate_porous_Rho_dRhoP(state,packed_state,Mdims, cv_ndgln, cv_nloc,cv_nonods,totele, rho_porous, drhodp_porous  )
         end if
         do icomp = 1, ncomp
@@ -172,8 +177,11 @@ contains
 
                     ! rho = rho +  a_i * rho_i
                     Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho +drhodp_porous
-
+                    if (has_boussinesq_aprox) then !disable time-derivative terms
+                      PackedDRhoDPressure%val( 1, iphase, : ) = 0.
+                    else
+                      PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho +drhodp_porous
+                    end if
                     Density_Component( sc : ec ) = Rho
 
                     Cp_s => extract_scalar_field( state( nphase + icomp ), &
@@ -185,8 +193,11 @@ contains
 
                  else
                     Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous
-
+                    if (has_boussinesq_aprox) then!disable time-derivative terms
+                      PackedDRhoDPressure%val( 1, iphase, : ) = 0.
+                    else
+                      PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho + drhodp_porous
+                    end if
                     Density_Component( sc : ec ) = Rho
 
                     ! harmonic average
@@ -195,7 +206,6 @@ contains
                          'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
                     if ( stat == 0 .and. compute_rhoCP) then
                       call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
-
                       do cv_nod = 1, cv_nonods
                          ip = ( iphase - 1 ) * cv_nonods + cv_nod
                          DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) )
@@ -204,16 +214,17 @@ contains
                  end if
 
               else
-                 Density_Bulk( sp : ep ) = Rho
+                Density_Bulk( sp : ep ) = Rho
+                if (has_boussinesq_aprox) then !disable time-derivative terms
+                  PackedDRhoDPressure%val( 1, iphase, : ) = 0.
+                else
                  PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP + drhodp_porous
-
+                end if
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
                  !Cp_s => extract_scalar_field( state( iphase ), 'SoluteMassFractionHeatCapacity', stat )
                  if ( stat == 0 .and. compute_rhoCP) then
                    call assign_val(Cp,Cp_s % val)
                    DensityCp_Bulk( sp : ep ) = Rho * Cp
-                   if( have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) &
-                   DensityCp_Bulk( sp : ep ) = Rho
                  end if
               end if
 
@@ -246,8 +257,7 @@ contains
            end if
         end do ! iphase
 
-        boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
-        !if ( boussinesq ) field2 % val = 1.0
+        ! if (has_boussinesq_aprox .and. .not. is_porous_media) field2 % val = 1.0
         deallocate( Rho, dRhodP, Component_l)
         if (allocated(drhodp_porous)) deallocate(drhodp_porous)
         deallocate( Density_Component, Density_Bulk )
@@ -555,10 +565,6 @@ contains
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/P0/', eos_coefs( 3 ) )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ), default = 0. )
             call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_E/', eos_coefs( 5 ), default = 0. )
-            if (have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )) THEN
-              !Effectively dissable the pressure dependency
-              eos_coefs( 5 ) = 1e50
-            end if
             !!$ den = den0/(1+Beta(T1-T0))
             !We use RHo as auxiliar variable here as the we do not perturbate the temperature
             Rho = eos_coefs(1)/(1 + eos_coefs(4)*(temperature_local-eos_coefs(2) )  )
@@ -1427,6 +1433,7 @@ contains
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod
       logical, parameter :: harmonic_average=.false.
+      real :: expo
 
       ScalarAdvectionField_Diffusion = 0.0
       if ( Mdims%ncomp > 1 ) then
@@ -1471,6 +1478,9 @@ contains
             !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
             sfield=>extract_scalar_field(state(1),"Porosity")
             den => extract_tensor_field( packed_state,"PackedDensity" )
+            !expo used to switch between boussinesq (density ==1) or normal
+            expo = 1.; if (has_boussinesq_aprox) expo = 0.
+
             ScalarAdvectionField_Diffusion = 0.
 
             if (present_and_true(calculate_solute_diffusivity)) then
@@ -1487,7 +1497,7 @@ contains
                       do idim = 1, Mdims%ndim
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) =    &
                         ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) +    &
-                        (sfield%val(ele_nod) *den%val(1, 1, cv_inod)* node_val( diffusivity, idim, idim, mat_inod ))
+                        (sfield%val(ele_nod) *den%val(1, 1, cv_inod)**expo * node_val( diffusivity, idim, idim, mat_inod ))
                       enddo
                   end do
                 end do
@@ -1639,7 +1649,6 @@ contains
       real :: vel_av
       real, dimension(3, 3) :: DispCoeffMat
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
-      logical :: boussinesq
       type(tensor_field), intent(inout) :: tracer
       real, dimension(:), pointer :: tdisp
 
@@ -1647,9 +1656,6 @@ contains
       SoluteDispersion = 0.
       DispCoeffMat = 0.
       DispDiaComp = 0.
-
-
-      boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
       den => extract_tensor_field( packed_state,"PackedDensity" )
       sfield=>extract_scalar_field(state(1),"Porosity")
@@ -1722,7 +1728,7 @@ contains
                     sfield%val(ele_nod)*DispDiaComp(idim1)
                   endif
 
-                  if (boussinesq) then
+                  if (has_boussinesq_aprox) then
                     SoluteDispersion( mat_inod, idim1, idim2, iphase ) =&
                     SoluteDispersion( mat_inod, idim1, idim2, iphase )
                   else
@@ -2791,5 +2797,86 @@ contains
 
     end subroutine initialise_porous_media
 
+    !>@brief: For boussinesq porous media we need the reference density to ensure consistency when mixing with the porous density/Cp etc.
+    !!> In this subroutine we retrieve the value given a phase, component.
+    real function retrieve_reference_density(state, packed_state, iphase, icomp, nphase)
+      implicit none
+      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      integer, intent(in) :: iphase, icomp, nphase
+      !local variables
+      character( len = option_path_len ) :: eos_option_path
+      character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python
+      real :: ref_rho
+      type (scalar_field) :: sfield
+      type (scalar_field), pointer :: pnt_sfield
+      type (vector_field), pointer :: position
+      !Provide input to find out EOS used
+      if( icomp > 0 ) then
+          eos_option_path = &
+          trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+          ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+          '/prognostic/phase_properties/Density' )
+      else
+          eos_option_path = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/phase_properties/Density' )
+      end if
+      !Retrieve the equation of state path
+      call Assign_Equation_of_State( eos_option_path )
+      !Paths for comparison
+      if ( icomp > 0 ) then
+          option_path_comp = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+              ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+              '/prognostic/phase_properties/Density/compressible' )
+          option_path_incomp = trim( '/material_phase[' // int2str(nphase + icomp - 1 ) // &
+              ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+              '/prognostic/phase_properties/Density/incompressible' )
+          option_path_python = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+              ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+              '/prognostic/phase_properties/Density/python_state' )
+      else
+          option_path_comp = trim( '/material_phase[' // int2str( iphase - 1 ) // &
+              ']/phase_properties/Density/compressible' )
+          option_path_incomp = trim( '/material_phase[' // int2str( iphase - 1 ) // &
+              ']/phase_properties/Density/incompressible' )
+          option_path_python = trim( '/material_phase[' // int2str( iphase - 1 ) // &
+              ']/phase_properties/Density/python_state' )
+      end if
+
+      Conditional_EOS_Option: if( trim( eos_option_path ) == trim( option_path_incomp ) ) then
+        !!$ Constant representation
+        call get_option( trim( eos_option_path ), ref_rho )
+      else if( trim( eos_option_path ) == trim( option_path_comp ) // '/stiffened_gas' ) then
+        !!$ Den = C0 / T * ( P - C1 )
+        call get_option( trim( eos_option_path) // '/eos_option1' , ref_rho )
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
+        !!$ Den = C0 * P +C1
+
+        pnt_sfield => extract_scalar_field(state(1),1)
+        position => get_external_coordinate_field(packed_state, pnt_sfield%mesh)
+        call allocate (sfield, pnt_sfield%mesh, "Temporary_linear_Coefficient_B")
+        !Retrieve coefficients
+        call initialise_field(sfield, trim( option_path_comp )//"/linear_in_pressure/coefficient_B" , position)
+        ref_rho = sfield%val(1)
+        call deallocate(sfield)
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure/include_internal_energy' ) then
+        !!$ Den = C0 * P/T +C1
+        call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', ref_rho )
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
+        call get_option( trim( eos_option_path ) // '/coefficient_A', ref_rho )
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
+        !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
+        call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
+      else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
+        call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', ref_rho)
+      elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
+        !Here the user has to specify by hand under the boussinesq option
+        if (.not.have_option(trim( option_path_python ) // '/Boussinesq_approximation/reference_density')) then
+          FLAbort("Porous media with boussinesq REQUIRES a reference density for all the phases.")
+        end if
+        call get_option( trim( option_path_python ) // '/Boussinesq_approximation/reference_density', ref_rho)
+      end if Conditional_EOS_Option
+      !Copy value to send out of the function
+      retrieve_reference_density = ref_rho
+    end function
 
 end module multiphase_EOS

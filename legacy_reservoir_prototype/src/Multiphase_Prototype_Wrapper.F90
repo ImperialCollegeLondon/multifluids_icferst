@@ -898,7 +898,7 @@ contains
                 l = option_count("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/boundary_conditions")
 
                 if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/Density/compressible")) then
-                  if (l < 1) then
+                  if (l < 1 .and. .not. has_boussinesq_aprox) then
                     if (GetProcNo() == 1) then
                       ewrite(0, *) "################################################################################"
                       ewrite(0, *) "#WARNING: Compressible flow REQUIRES boundary conditions, run at your own risk.#"
@@ -1093,6 +1093,9 @@ contains
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
         has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
+        !Check boussinesq flag
+        has_boussinesq_aprox = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" ) &
+                     .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation")
 
         ! Check if Porous media model initialisation
         is_porous_initialisation =  have_option("/porous_media/FWL")

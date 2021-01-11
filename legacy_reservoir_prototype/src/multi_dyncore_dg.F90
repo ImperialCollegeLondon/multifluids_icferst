@@ -210,6 +210,29 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+
+           !Need to change this to use a reference density/rho_cp so for porous media the rock/fluid ratio is kept
+           if (has_boussinesq_aprox) then
+             if (is_porous_media) then
+               do iphase = 1, Mdims%nphase
+                 !Retrieve CP (considered constant) to get rhoCp
+                 sfield => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
+                 !If compositional then component Cp
+                 if (lcomp > 0) then
+                   sfield => extract_scalar_field( state( Mdims%nphase + lcomp ), 'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                   den_all((lcomp - 1 ) * Mdims%nphase + iphase,:) = sfield%val(1) * retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                 else
+                   den_all(iphase,:) = sfield%val(1) * retrieve_reference_density(state, packed_state, iphase, lcomp, Mdims%nphase)
+                 end if
+               end do
+              !Copy to old to ensure no time variation
+              denold_all = den_all
+             else
+             !We do not consider variations of density nor CP in transport
+             den_all = 1.0; denold_all = 1.0
+            end if
+           end if
+
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
 
                if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
@@ -481,7 +504,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                 cv_inod = ndgln%cv((ele-1)*Mdims%cv_nloc+iloc)
                 cv_counter( cv_inod ) = cv_counter( cv_inod ) + 1.0
                 porous_heat_coef( cv_inod ) = porous_heat_coef( cv_inod ) + &
-                    density_porous%val(p_den ) * Cp_porous%val( h_cap )!*(1.0-porosity%val(ele_nod))
+                density_porous%val(p_den ) * Cp_porous%val( h_cap )
                 porous_heat_coef_old( cv_inod ) = porous_heat_coef_old( cv_inod ) + &
                     density_porous_old%val(p_den ) * Cp_porous%val( h_cap )
             end do
@@ -830,7 +853,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer :: Phase_with_Ovrel
            !temperature backup for the petsc bug
            logical :: repeat_assemb_solve
-           logical :: boussinesq
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
            real, parameter :: min_concentration = 0.
            integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
@@ -847,8 +869,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end if
              end do
            end if
-
-           boussinesq = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
@@ -869,7 +889,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            p => extract_tensor_field( packed_state, "PackedFEPressure" )
 
-           if (boussinesq) then
+           if (has_boussinesq_aprox) then
+             !We do not consider variations of density in transport
                den_all = 1
                denold_all =1
            else
@@ -1897,7 +1918,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         type( vector_field ) :: deltap, rhs_p
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
-        logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, boussinesq, fem_density_buoyancy
+        logical :: cty_proj_after_adapt, high_order_Ph, FEM_continuity_equation, fem_density_buoyancy
         logical, parameter :: EXPLICIT_PIPES2 = .true.
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
@@ -1960,7 +1981,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         FEM_continuity_equation = have_option( "/geometry/Advance_options/FE_Pressure/FEM_continuity_equation" )
         cty_proj_after_adapt = have_option( "/mesh_adaptivity/hr_adaptivity/project_continuity" )
-        boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
         got_free_surf = .false.
         do i = 1, get_boundary_condition_count(pressure)
@@ -2023,14 +2043,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
            if ( .not. have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) )&
                 call calculate_u_source_cv( Mdims, state, uden_all, U_SOURCE_CV_ALL )
-           if ( boussinesq ) then
-              UDEN_ALL=1.0; UDENOLD_ALL=1.0
-           end if
-           if (solve_stokes) then
-             !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
-             !By making uden =0. these terms will be effectively zeroed.
-              UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
-           end if
+        end if
+
+        if (solve_stokes) then
+          !For Stokes we need to disable all the inertia terms that are dependant on velocity and density
+          !By making uden =0. these terms will be effectively zeroed.
+          UDEN_ALL=0.0; UDENOLD_ALL=0.0  ! turn off the time derivative term
         end if
 
         if ( have_option( '/blasting' ) ) then
@@ -2160,7 +2178,7 @@ end if
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             JUST_BL_DIAG_MAT, UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, &
             IGOT_THETA_FLUX, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
+            RETRIEVE_SOLID_CTY, IPLIKE_GRAD_SOU,FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON ) !
         deallocate(UDIFFUSION_ALL)
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -2898,7 +2916,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        FEM_continuity_equation, boussinesq, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
+        FEM_continuity_equation, calculate_mass_delta, outfluxes, DIAG_BIGM_CON, BIGM_CON) !-ao
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -2917,7 +2935,7 @@ end if
         type(pipe_coords), dimension(:), intent(in):: eles_with_pipe
         type (multi_pipe_package), intent(in) :: pipes_aux
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
-        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,FEM_continuity_equation,boussinesq
+        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,FEM_continuity_equation
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
@@ -2988,18 +3006,14 @@ end if
 
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
         ALLOCATE( DENOLD_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
-        IF ( Mdisopt%volfra_use_theta_flux ) THEN ! We have already put density in theta...
+        IF ( Mdisopt%volfra_use_theta_flux .or. has_boussinesq_aprox) THEN ! We have already put density in theta... or
+          !boussinesq so we do not consider variations of density for the continuity equation
            DEN_OR_ONE = 1.
            DENOLD_OR_ONE = 1.
         ELSE
            DEN_OR_ONE = DEN_ALL
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
-        if ( boussinesq ) then
-           DEN_OR_ONE = 1.0
-           DENOLD_OR_ONE = 1.0
-
-        end if
         ! no q scheme
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
@@ -7846,7 +7860,7 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       type( tensor_field ), pointer :: rho, volfra, pfield
       type( vector_field ), pointer :: gravity_direction
 
-      logical :: boussinesq, got_free_surf, same_mesh
+      logical :: got_free_surf, same_mesh
       integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
       integer, dimension( : ), pointer :: findph, colph
 
@@ -7867,7 +7881,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
 
 
       ewrite(3,*) "inside high_order_pressure_solve"
-      boussinesq =  have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" )
 
       call get_option( '/timestepping/timestep', dt )
 
@@ -7964,7 +7977,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
       ! set the gravity term
       rho => extract_tensor_field( packed_state, "PackedDensity" )
       volfra => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
       gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
 
@@ -7974,7 +7986,6 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                  gravity_magnitude * gravity_direction % val( idim, 1 )
          end do
       end do
-
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
 
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. ); call zero( matrix )
@@ -8034,12 +8045,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  if ( boussinesq ) then
-                     den_gi( :, iphase ) = 1.0
-                  else
+                  ! if ( has_boussinesq_aprox ) then
+                  !    den_gi( :, iphase ) = 1.0
+                  ! else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
-                  end if
+                  ! end if
 
                   sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
                         tmp_cvfen( cv_iloc, : ) * u_absorbin(  1, iphase, mat_inod )

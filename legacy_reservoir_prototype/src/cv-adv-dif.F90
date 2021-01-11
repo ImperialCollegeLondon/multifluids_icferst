@@ -667,8 +667,8 @@ contains
           do iphase = 1, final_phase
             !Tracer, if prognostic then the value is being modified               !The tracer name includes Packed...
             IGOT_T_CONST(iphase, 1:2) = have_option('/material_phase::['//int2str(iphase-1)//']/scalar_field::'//trim(tracer%name(7:))//'/prescribed')
-            !Density, if incompressible then it must be constant
-            IGOT_T_CONST(iphase, 3:4) = have_option('/material_phase::['//int2str(iphase-1)//']/phase_properties/Density/incompressible')
+            !Density, if incompressible then it must be constant (or if boussinesq it is considered constant for transport)
+            IGOT_T_CONST(iphase, 3:4) = has_boussinesq_aprox .or. have_option('/material_phase::['//int2str(iphase-1)//']/phase_properties/Density/incompressible')
             !Saturation if we are transporting a multiphase tracer
             IF(use_volume_frac_t2) &
               IGOT_T_CONST(iphase, 5:6) = have_option('/material_phase::['//int2str(iphase-1)//']/scalar_field::PhaseVolumeFraction/prescribed')
@@ -829,6 +829,7 @@ contains
           else
               FEMDENOLD_ALL=old_density%val(1,1:final_phase,:)
           end if
+
           IF ( present(saturation) ) then
               if (.not. is_constant(saturation)) then
                   FEMT2_ALL=psi(FEM_IT)%ptr%val(1,1:final_phase,:)
@@ -854,8 +855,7 @@ contains
 !###############################TO HERE###############################
 !IS ALL RUBBISH AND NEEDS TO BE REDONE; THERE IS A QUESTION MARK ON THE NEED OF CREATING A FE REPRESENTATION OF THE FIELDS
 !CERTAINLY FOR POROUS MEDIA IT IS USELESS AND CURRENTLY IN THIS SECTION WE ARE COPYING FIELDS FOR THE SAKE OF IT...
-!THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES, WHICH I THINK CAN ALSO BE DONE IN A MORE EFFICIENT WAY
-! (USING GEOMETRIC INFORMATION) RATHER THAN USING THE SHAPE FUNCTIONS... IT WOULD REDUCE THE AUTOMATIC FLEXIBILITY WE CURRENTLY HAVE, BUT JUST A BIT...
+!THE ONLY USEFUL PART CURRENTLY IS THE CALCULATION OF THE BARYCENTRES AND VOLUMES
 !##############################################################################
 
           IF (PRESENT(MASS_ELE_TRANSP)) &

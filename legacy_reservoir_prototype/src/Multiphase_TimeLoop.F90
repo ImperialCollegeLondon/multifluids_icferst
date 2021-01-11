@@ -679,6 +679,7 @@ contains
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call Calculate_All_Rhos( state, packed_state, Mdims, get_RhoCp = .true. )
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, multi_absorp, dt, &
@@ -691,15 +692,14 @@ contains
                         ! thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, nonlinear_iteration = its, Courant_number = Courant_number)
 
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-
                 else IF (is_magma) then !... in which case we solve for enthalpy instead
 
                   tracer_field=>extract_tensor_field(packed_state,"PackedEnthalpy")
                   density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                   saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                   velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-
+                  !Recalculate densities
+                  call Calculate_All_Rhos( state, packed_state, Mdims )
                   call set_nu_to_u( packed_state )
                   ewrite(3,*)'Now advecting Enthalpy Field'
                   call ENTHALPY_ASSEM_SOLVE( state, packed_state, &
@@ -719,8 +719,7 @@ contains
                   call enthalpy_to_temperature(Mdims, state, packed_state, magma_phase_coef)
                   ! ! Update the composition
                   call cal_solidfluidcomposition(state, packed_state, Mdims, magma_phase_coef)
-                  !Recalculate densities
-                  call Calculate_All_Rhos( state, packed_state, Mdims )
+
                 END IF Conditional_ScalarAdvectionField
 
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
@@ -735,6 +734,8 @@ contains
                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                   !Recalculate densities before computations
+                   call Calculate_All_Rhos( state, packed_state, Mdims )
                    call SOLUTE_ASSEM_SOLVE( state, packed_state, &
                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                        tracer_field,velocity_field,density_field, multi_absorp, dt, &

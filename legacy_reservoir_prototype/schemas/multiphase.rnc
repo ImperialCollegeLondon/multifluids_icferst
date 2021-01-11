@@ -3759,10 +3759,14 @@ element Density{(
                            }
                         }
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
+                      ## For porous media only the formulate, including linear pressure, with a reference density work with this.
                         element Boussinesq_approximation { empty }?}|
                      ## The "Dummy" diagnotic field on the pressure mesh is required for this option
-                     element python_state{
-                       scalar_python_diagnostic_algorithm
+                     element python_state{(
+                       scalar_python_diagnostic_algorithm,
+                        element Boussinesq_approximation { (
+                        ## For porous media a reference density is necessary when using the Boussinesq approximation
+                        element reference_density{real}?) }?)
                      }
                     ),
                     ## Linearises a P2 field. Use this if having stability issues with high-order discretisations
