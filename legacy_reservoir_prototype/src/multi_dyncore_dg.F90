@@ -2382,9 +2382,10 @@ end if
                   end do
                 end do
               end do
-              do j = 1, size(Mmat%PIVIT_MAT,1)
-                Mmat%PIVIT_MAT(j, j, ele) = Mmat%PIVIT_MAT(j, j, ele) * MASS_ELE(ele)/dble(Mdims%u_nloc)
-              end do
+              !Don't multiply by the mass of the elements, A already include this!
+              ! do j = 1, size(Mmat%PIVIT_MAT,1)
+              !   Mmat%PIVIT_MAT(j, j, ele) = Mmat%PIVIT_MAT(j, j, ele) * MASS_ELE(ele)/dble(Mdims%u_nloc)
+              ! end do
             end do
           else
             !Just the mass matrix
