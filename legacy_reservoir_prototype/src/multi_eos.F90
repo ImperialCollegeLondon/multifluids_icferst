@@ -549,7 +549,6 @@ contains
                 Rho = Rho - eos_coefs( 4 ) * (temperature % val - eos_coefs( 3 ))
               end if
               Rho = Rho * eos_coefs( 1 )
-
               ! Rho = Rho * eos_coefs( 1 )
               dRhodP = 0.0
               deallocate( eos_coefs )

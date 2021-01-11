@@ -210,7 +210,6 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
-
            !Need to change this to use a reference density/rho_cp so for porous media the rock/fluid ratio is kept
            if (has_boussinesq_aprox) then
              if (is_porous_media) then
@@ -232,7 +231,6 @@ contains
              den_all = 1.0; denold_all = 1.0
             end if
            end if
-
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
 
                if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
