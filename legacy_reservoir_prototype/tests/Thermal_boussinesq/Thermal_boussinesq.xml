@@ -2,14 +2,14 @@
 <testproblem>
   <name>Thermal_boussinesq</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml tbc</tags>
+  <tags>porous mpml boussinesq thermal</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst uniform_ates.mpml</command_line>
   </problem_definition>
   <variables>
-    <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
+    <variable name="max_temp1" language="python">from fluidity_tools import stat_parser as stat
 max_temp1 = stat("uniform_ates_1.stat")["phase1"]["Temperature"]["max"][-1]</variable>
-    <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat
+    <variable name="int_temp1" language="python">from fluidity_tools import stat_parser as stat
 int_temp1 = stat("uniform_ates_1.stat")["phase1"]["Temperature"]["integral"][-1]</variable>
   </variables>
   <pass_tests>
