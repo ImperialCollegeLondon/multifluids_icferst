@@ -8043,12 +8043,12 @@ subroutine high_order_pressure_solve( Mdims, ndgln,  u_rhs, state, packed_state,
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  ! if ( has_boussinesq_aprox ) then
-                  !    den_gi( :, iphase ) = 1.0
-                  ! else
+                  if ( has_boussinesq_aprox ) then
+                     den_gi( :, iphase ) = 1.0
+                  else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
-                  ! end if
+                  end if
 
                   sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
                         tmp_cvfen( cv_iloc, : ) * u_absorbin(  1, iphase, mat_inod )
