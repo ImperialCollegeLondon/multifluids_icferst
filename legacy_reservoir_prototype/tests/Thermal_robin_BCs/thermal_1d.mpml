@@ -58,28 +58,18 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">0.01</real_value>
+      <real_value rank="0">0.1</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">0.1</real_value>
+      <real_value rank="0">5</real_value>
     </finish_time>
   </timestepping>
   <material_phase name="phase1">
     <phase_properties>
       <Density>
-        <compressible>
-          <linear_in_pressure>
-            <coefficient_A>
-              <real_value rank="0">0</real_value>
-            </coefficient_A>
-            <coefficient_B>
-              <constant>
-                <real_value rank="0">1</real_value>
-              </constant>
-            </coefficient_B>
-          </linear_in_pressure>
-          <Boussinesq_approximation/>
-        </compressible>
+        <incompressible>
+          <real_value rank="0">1</real_value>
+        </incompressible>
       </Density>
       <Viscosity>
         <tensor_field name="Viscosity" rank="2">
@@ -150,9 +140,9 @@
             <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="up">
+        <boundary_conditions name="closed">
           <surface_ids>
-            <integer_value shape="1" rank="1">9</integer_value>
+            <integer_value shape="4" rank="1">7 8 9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -160,66 +150,6 @@
               <x_component>
                 <constant>
                   <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="down">
-          <surface_ids>
-            <integer_value shape="1" rank="1">10</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">1</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="outlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">1.0</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -267,18 +197,26 @@
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">1e-8</real_value>
+            <real_value rank="0">1</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="left">
           <surface_ids>
             <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">1</real_value>
-            </constant>
+          <type name="robin">
+            <order_zero_coefficient>
+              <constant>
+                <real_value rank="0">20</real_value>
+                <comment>considering a natural convection factor of 2 and a temperature outside of 10</comment>
+              </constant>
+            </order_zero_coefficient>
+            <order_one_coefficient>
+              <constant>
+                <real_value rank="0">2</real_value>
+                <comment>natural convection of 2</comment>
+              </constant>
+            </order_one_coefficient>
           </type>
         </boundary_conditions>
         <boundary_conditions name="all_but_inlet">
