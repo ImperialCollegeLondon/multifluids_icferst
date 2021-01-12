@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Thermal_boussinesq</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml tbc</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/icferst uniform_ates.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
+max_temp1 = stat("uniform_ates_1.stat")["phase1"]["Temperature"]["max"][-1]</variable>
+    <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat
+int_temp1 = stat("uniform_ates_1.stat")["phase1"]["Temperature"]["integral"][-1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final max temperature 1" language="python">assert(abs(max_temp1 - 298)/298 &lt; 0.01)</test>
+    <test name="Assert integral temperature 1" language="python">assert(abs(int_temp1 - 14.5e10)/14.5e10 &lt; 0.01)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
