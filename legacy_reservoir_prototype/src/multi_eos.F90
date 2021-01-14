@@ -221,7 +221,7 @@ contains
                  PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP + drhodp_porous
                 end if
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
-                 !Cp_s => extract_scalar_field( state( iphase ), 'SoluteMassFractionHeatCapacity', stat )
+                 !Cp_s => extract_scalar_field( state( iphase ), 'ConcentrationHeatCapacity', stat )
                  if ( stat == 0 .and. compute_rhoCP) then
                    call assign_val(Cp,Cp_s % val)
                    DensityCp_Bulk( sp : ep ) = Rho * Cp
@@ -389,12 +389,12 @@ contains
         real, dimension( : ), allocatable :: ro0
 
         type( tensor_field ), pointer :: pressure
-        type( scalar_field ), pointer :: temperature, density, salt_concentration
+        type( scalar_field ), pointer :: temperature, density, Concentration
         character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python, buffer
         character( len = python_func_len ) :: pycode
         logical, save :: initialised = .false.
         logical :: have_temperature_field
-        logical :: have_salt_field
+        logical :: have_concentration_field
         real, parameter :: toler = 1.e-10
         real, dimension( : ), allocatable, save :: reference_pressure
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
@@ -417,8 +417,8 @@ contains
 
         temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
         have_temperature_field = ( stat == 0 )
-        salt_concentration => extract_scalar_field( state( iphase ), 'SoluteMassFraction', stat )
-        have_salt_field = ( stat == 0 )
+        Concentration => extract_scalar_field( state( iphase ), 'Concentration', stat )
+        have_concentration_field = ( stat == 0 )
 
         assert( node_count( pressure ) == size( rho ) )
         assert( node_count( pressure ) == size( drhodp ) )
@@ -534,7 +534,7 @@ contains
             deallocate( eos_coefs )
 
           elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
-              !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
+              !!$ Den = den0 * ( 1 + alpha * concentration - beta * DeltaT )
 
               allocate( eos_coefs( 4 ) ) ; eos_coefs = 0.
               call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 1 ) )
@@ -542,8 +542,8 @@ contains
               call get_option( trim( eos_option_path ) // '/T0', eos_coefs( 3 ), default = 298. )
               call get_option( trim( eos_option_path ) // '/beta', eos_coefs( 4 ), default = 0. )
               Rho = 1.0
-              if (have_salt_field) then!Add the concentration contribution
-                Rho =  Rho + eos_coefs( 2 ) * salt_concentration % val
+              if (have_concentration_field) then!Add the concentration contribution
+                Rho =  Rho + eos_coefs( 2 ) * Concentration % val
               end if
               if (have_temperature_field) then !add the temperature contribution
                 Rho = Rho - eos_coefs( 4 ) * (temperature % val - eos_coefs( 3 ))
@@ -1467,7 +1467,7 @@ contains
         end do
       else
         if (present_and_true(calculate_solute_diffusivity)) then
-          diffusivity => extract_tensor_field( state(1), 'SoluteMassFractionDiffusivity', stat )
+          diffusivity => extract_tensor_field( state(1), 'ConcentrationDiffusivity', stat )
         else
           diffusivity => extract_tensor_field( state(1), 'TemperatureDiffusivity', stat )
         endif
@@ -1486,7 +1486,7 @@ contains
               do iphase = 1, Mdims%nphase
                 !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
                 if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
-                diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
 
                 do ele = 1, Mdims%totele
                   ele_nod = min(size(sfield%val), ele)
@@ -1539,7 +1539,7 @@ contains
             ScalarAdvectionField_Diffusion = 0.
             do iphase = 1, Mdims%nphase
               if (present_and_true(calculate_solute_diffusivity)) then
-                diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
               else
                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
               endif
@@ -1561,7 +1561,7 @@ contains
             ScalarAdvectionField_Diffusion = 0.
             do iphase = 1, Mdims%nphase
               if (present_and_true(calculate_solute_diffusivity)) then
-                diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+                diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
               else
                 diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
               endif
@@ -1672,7 +1672,7 @@ contains
       do iphase = 1, Mdims%n_in_pres
         if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
-        diffusivity => extract_tensor_field( state(iphase), 'SoluteMassFractionDiffusivity', stat )
+        diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
 
         do ele = 1, Mdims%totele
           ele_nod = min(size(sfield%val), ele)

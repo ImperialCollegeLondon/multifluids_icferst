@@ -841,7 +841,7 @@ contains
               call add_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", stat = stat)
               if (have_option('/material_phase[0]/scalar_field::Temperature')) then
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 4)
-              elseif (have_option('/material_phase[0]/scalar_field::SoluteMassFraction')) then
+              elseif (have_option('/material_phase[0]/scalar_field::Concentration')) then
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 5)
               else !If nothing, then pressure
                 call set_option(trim(option_path)//"/Infinite_norm_tol/adaptive_non_linear_iterations", 1)
@@ -942,13 +942,13 @@ contains
             end if
             !Easiest way to create the diffusivity field is to move where it was inside velocity!SPRINT_TO_DO NEED TO CHANGE THIS!
             if (have_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity")) then
-              ! FLAbort("Solute Diffusivity specified but no prognostic SoluteMassFraction field specified.")! Not all the phases need to have concentration defined
-              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic")) then
+              ! FLAbort("Solute Diffusivity specified but no prognostic Concentration field specified.")! Not all the phases need to have concentration defined
+              if (have_option ("/material_phase["// int2str( i - 1 )//"]/scalar_field::Concentration/prognostic")) then
                 call copy_option("/material_phase["// int2str( i - 1 )//"]/phase_properties/tensor_field::Solute_Diffusivity",&
-                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::SoluteMassFraction/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
+                  "/material_phase["// int2str( i - 1 )//"]/scalar_field::Concentration/prognostic/tensor_field::Diffusivity")!SPRINT_TO_DO NAME THIS THERMAL_CONDUCTIVITY
               else
                 call get_option("/material_phase["// int2str( i - 1 )//"]/name", option_name)
-                ewrite(0, *) "ERROR: Solute_Diffusivity specified for phase: "// trim(option_name)// " but SoluteMassFraction is not defined."
+                ewrite(0, *) "ERROR: Solute_Diffusivity specified for phase: "// trim(option_name)// " but Concentration is not defined."
                 stop
               end if
             end if
@@ -1092,7 +1092,7 @@ contains
         is_blasting = have_option( '/blasting' )
         !Has temperature
         has_temperature = have_option( '/material_phase[0]/scalar_field::Temperature/' )
-        has_salt = have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/' )
+        has_concentration = have_option( '/material_phase[0]/scalar_field::Concentration/' )
         !Check boussinesq flag
         has_boussinesq_aprox = have_option( "/material_phase[0]/phase_properties/Density/compressible/Boussinesq_approximation" ) &
                      .or. have_option( "/material_phase[0]/phase_properties/Density/python_state/Boussinesq_approximation")

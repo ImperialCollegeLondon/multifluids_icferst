@@ -129,7 +129,7 @@ contains
             NonLinearIteration, NonLinearIteration_Components, itimeflag
         real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
-        logical :: have_temperature_field, have_salt_field, have_component_field, have_extra_DiffusionLikeTerm, &
+        logical :: have_temperature_field, have_concentration_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
         !!$ Shape function related fields:
         integer :: scvngi_theta, igot_t2, igot_theta_flux
@@ -381,8 +381,8 @@ contains
         do istate = 1, Mdims%nstate
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::Temperature' ) ) &
                 have_temperature_field = .true.
-            if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::SoluteMassFraction' ) ) &
-                have_salt_field = .true.
+            if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/scalar_field::Concentration' ) ) &
+                have_concentration_field = .true.
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
@@ -725,18 +725,18 @@ contains
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
 
 
-               !$ Solve advection of the scalar 'SoluteMassFraction':
-               Conditional_ScalarAdvectionField2: if( have_salt_field .and. &
-                   have_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic' ) ) then
-                   ewrite(3,*)'Now advecting SoluteMassFraction Field'
+               !$ Solve advection of the scalar 'Concentration':
+               Conditional_ScalarAdvectionField2: if( have_concentration_field .and. &
+                   have_option( '/material_phase[0]/scalar_field::Concentration/prognostic' ) ) then
+                   ewrite(3,*)'Now advecting Concentration Field'
                    call set_nu_to_u( packed_state )
-                   tracer_field=>extract_tensor_field(packed_state,"PackedSoluteMassFraction")
+                   tracer_field=>extract_tensor_field(packed_state,"PackedConcentration")
                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                    !Recalculate densities before computations
                    call Calculate_All_Rhos( state, packed_state, Mdims )
-                   call SOLUTE_ASSEM_SOLVE( state, packed_state, &
+                   call Concentration_assem_solve( state, packed_state, &
                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                        tracer_field,velocity_field,density_field, multi_absorp, dt, &
                        suf_sig_diagten_bc, Porosity_field%val, &
@@ -1239,9 +1239,9 @@ contains
             !local variables
             type( scalar_field ), pointer :: s_field, s_field2, s_field3
             integer                       :: idim
-            real, dimension(2)            :: min_max_limits_before, solute_min_max_limits_before
+            real, dimension(2)            :: min_max_limits_before, concentration_min_max_limits_before
             type (tensor_field), pointer  :: tempfield, ComponentMassFraction
-            type (tensor_field), pointer  :: saltfield
+            type (tensor_field), pointer  :: Concentration
 
             if (numberfields_CVGalerkin_interp > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
@@ -1255,13 +1255,13 @@ contains
                 min_max_limits_before(1) = minval(tempfield%val); call allmin(min_max_limits_before(1))
                 min_max_limits_before(2) = maxval(tempfield%val); call allmax(min_max_limits_before(2))
             end if
-            if (has_salt) then
-                saltfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
-                solute_min_max_limits_before(1) = minval(saltfield%val); call allmin(solute_min_max_limits_before(1))
-                solute_min_max_limits_before(2) = maxval(saltfield%val); call allmax(solute_min_max_limits_before(2))
+            if (has_concentration) then
+                concentration => extract_tensor_field( packed_state, "PackedConcentration" )
+                concentration_min_max_limits_before(1) = minval(concentration%val); call allmin(concentration_min_max_limits_before(1))
+                concentration_min_max_limits_before(2) = maxval(concentration%val); call allmax(concentration_min_max_limits_before(2))
                 !sprint_to_do: check the boundedness of the mass fraction (and also the temperature) field
-                !solute_min_max_limits_before(1) = 0.; call allmin(solute_min_max_limits_before(1))
-                !solute_min_max_limits_before(2) = 1.0; call allmax(solute_min_max_limits_before(2))
+                !concentration_min_max_limits_before(1) = 0.; call allmin(concentration_min_max_limits_before(1))
+                !concentration_min_max_limits_before(2) = 1.0; call allmax(concentration_min_max_limits_before(2))
             end if
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
@@ -1402,7 +1402,7 @@ contains
                 end if
                 if (.not. have_option("/numerical_methods/do_not_bound_after_adapt")) then
                   if (has_temperature) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedTemperature", min_max_limits = min_max_limits_before)
-                  if (has_salt) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedSoluteMassFraction" ,min_max_limits = solute_min_max_limits_before)
+                  if (has_concentration) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col, "PackedConcentration" ,min_max_limits = concentration_min_max_limits_before)
                 end if
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields_CVGalerkin_interp > 0) then

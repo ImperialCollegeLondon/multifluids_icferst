@@ -293,7 +293,7 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="SoluteMassFraction" rank="0">
+    <scalar_field name="Concentration" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">

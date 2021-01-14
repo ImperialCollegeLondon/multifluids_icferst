@@ -494,7 +494,7 @@ contains
         default_consv_vel =0.
         if (is_porous_media) default_consv_vel = 1.
         !####GENERAL TRACER SETTINGS, ALL OF THEM WILL HAVE THE SAME SETTINGS####!SPRINT_TO_DO THESE DEFAULT OPTIONS SHOULD DEPEND ON SIMULATION QUALITY
-        !!$ SoluteMassFraction and temperature have the same settings for the time being
+        !!$ Concentration and temperature have the same settings for the time being
         !Advanced options
         option_path = "/geometry/Advance_options/"
         option_path2 = trim(option_path)//'Space_Discretisation::Tracer/advection_scheme'
@@ -950,10 +950,10 @@ contains
             call insert_sfield(packed_state,"FEEnthalpy",1,nphase)
         end if
 
-        if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
-            call insert_sfield(packed_state,"SoluteMassFraction",1,nphase,&
+        if (option_count("/material_phase/scalar_field::Concentration")>0) then
+            call insert_sfield(packed_state,"Concentration",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
-        if (.not. is_porous_media) call insert_sfield(packed_state,"FESoluteMassFraction",1,nphase)
+        if (.not. is_porous_media) call insert_sfield(packed_state,"FEConcentration",1,nphase)
         end if
 
         !Here we add iteratively all the fields named PassiveTracer_NUMBER
@@ -1266,19 +1266,19 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Enthalpy"),"Enthalpy")
                 end if
 
-                !! Solute Mass fraction
+                !! Concentration
                 if(have_option(trim(state(i)%option_path)&
-                    //'/scalar_field::SoluteMassFraction')) then
-                    call unpack_sfield(state(i),packed_state,"OldSoluteMassFraction",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"SoluteMassFraction"),&
-                        extract_scalar_field(state(i),"OldSoluteMassFraction")))
-                    call unpack_sfield(state(i),packed_state,"IteratedSoluteMassFraction",1,iphase,&
-                        check_paired(extract_scalar_field(state(i),"SoluteMassFraction"),&
-                        extract_scalar_field(state(i),"IteratedSoluteMassFraction")))
-                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionSource",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"SoluteMassFractionAbsorption",1,iphase)!Diagnostic fields do not get along with this...
-                    call unpack_sfield(state(i),packed_state,"SoluteMassFraction",1,iphase)
-                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"SoluteMassFraction"),"SoluteMassFraction")
+                    //'/scalar_field::Concentration')) then
+                    call unpack_sfield(state(i),packed_state,"OldConcentration",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Concentration"),&
+                        extract_scalar_field(state(i),"OldConcentration")))
+                    call unpack_sfield(state(i),packed_state,"IteratedConcentration",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"Concentration"),&
+                        extract_scalar_field(state(i),"IteratedConcentration")))
+                    call unpack_sfield(state(i),packed_state,"ConcentrationSource",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"ConcentrationAbsorption",1,iphase)!Diagnostic fields do not get along with this...
+                    call unpack_sfield(state(i),packed_state,"Concentration",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Concentration"),"Concentration")
                 end if
 
 
@@ -1348,8 +1348,8 @@ contains
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Enthalpy")
         end if
 
-        if (option_count("/material_phase/scalar_field::SoluteMassFraction")>0) then
-            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"SoluteMassFraction")
+        if (option_count("/material_phase/scalar_field::Concentration")>0) then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Concentration")
         end if
 
         fields = option_count("/material_phase[0]/scalar_field")
@@ -2184,7 +2184,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
     real, dimension(:,:), pointer :: phasevolumefraction
-    type(tensor_field), pointer :: temperature, solutemassfraction, enthalpy
+    type(tensor_field), pointer :: temperature, Concentration, enthalpy
     real, dimension(:,:,:), pointer :: velocity
     character (len = OPTION_PATH_LEN) :: output_message =''
     !Variables for automatic non-linear iterations
@@ -2330,7 +2330,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                 case (4,5)!Tracer
 
                   temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
-                  solutemassfraction => extract_tensor_field(packed_state, "PackedSoluteMassFraction", stat2)
+                  Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
                   Check_temp_and_tracer = (stat1==0 .and. stat2==0)
                   auxI = 2
 
@@ -2347,17 +2347,17 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                     end if
                     reference_field(0,1,:) = pressure(1,1,:)
                     if (Check_temp_and_tracer) then
-                      reference_field(1,1:size(solutemassfraction%val,2),:) = solutemassfraction%val(1,1:size(solutemassfraction%val,2),:)
+                      reference_field(1,1:size(Concentration%val,2),:) = Concentration%val(1,1:size(Concentration%val,2),:)
                       !Special position for temperature, why not!
                       reference_field(3,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
                     else if (stat1==0) then
                       reference_field(1,1:size(temperature%val,2),:) = temperature%val(1,1:size(temperature%val,2),:)
                     else if (stat2==0) then
-                      reference_field(1,1:size(solutemassfraction%val,2),:) = solutemassfraction%val(1,1:size(solutemassfraction%val,2),:)
+                      reference_field(1,1:size(Concentration%val,2),:) = Concentration%val(1,1:size(Concentration%val,2),:)
                     end if
                     !Instead of enthalpy we may as well check the temperature field
                     ! temperature => extract_tensor_field([packed_state, PackedEnthalpy, stat])
-                    ! if (stat/=0) reference_field(1,:,:) = Enthalpy(1:size(solutemassfraction,1),:)
+                    ! if (stat/=0) reference_field(1,:,:) = Enthalpy(1:size(Concentration,1),:)
 
                     reference_field(2,:,:) = phasevolumefraction
                 case default !Default as pressure is always defined and changes more smoothly than velocity
@@ -2417,7 +2417,7 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
 
                 case (4,5)!Tracer
                   temperature => extract_tensor_field(packed_state, "PackedTemperature", stat1)
-                  solutemassfraction => extract_tensor_field(packed_state, "PackedSoluteMassFraction", stat2)
+                  Concentration => extract_tensor_field(packed_state, "PackedConcentration", stat2)
                   !#################TEMPERATURE############################
                   !Calculate normalized infinite norm of the difference
 
@@ -2435,7 +2435,14 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
                   end if
 
                   if (stat2==0) then
-                    ts_ref_val = maxval(abs(reference_field(1,1:size(solutemassfraction%val,2),:)-solutemassfraction%val(1, 1:size(solutemassfraction%val,2),:)))!/backtrack_or_convergence
+
+                    totally_min_max(1)=minval(reference_field(1,:,:))
+                    totally_min_max(2)=maxval(reference_field(1,:,:))!use stored temperature
+                    !For parallel
+                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+                    !Analyse the difference !Calculate infinite norm, not consider wells
+                    ts_ref_val = inf_norm_scalar_normalised(Concentration%val(1,1:size(Concentration%val,2),:), reference_field(1,1:size(Concentration%val,2),:), 1.0, totally_min_max)
+                    ! ts_ref_val = maxval(abs(reference_field(1,1:size(Concentration%val,2),:)-Concentration%val(1, 1:size(Concentration%val,2),:)))!/backtrack_or_convergence
                     inf_norm_val = maxval(abs(reference_field(2,:,:)-phasevolumefraction))!/backtrack_or_convergence
                   else
                     !Overwrite for the output message, since it is not being used by the tracer
@@ -2909,8 +2916,8 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
     Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure, Immobile_fraction,&
-    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, SoluteMassFraction,&
-    OldSoluteMassFraction, IteratedSoluteMassFraction,FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
+    EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term, Concentration,&
+    OldConcentration, IteratedConcentration,FEConcentration, OldFEConcentration, IteratedFEConcentration,&
     Enthalpy,OldEnthalpy, IteratedEnthalpy,FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy)
     !This subroutine returns a pointer to the desired values of a variable stored in packed state
     !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
@@ -2935,7 +2942,7 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
         Enthalpy, OldEnthalpy, IteratedEnthalpy, FEEnthalpy, OldFEEnthalpy, IteratedFEEnthalpy,&
-        SoluteMassFraction, OldSoluteMassFraction, IteratedSoluteMassFraction, FESoluteMassFraction, OldFESoluteMassFraction, IteratedFESoluteMassFraction,&
+        Concentration, OldConcentration, IteratedConcentration, FEConcentration, OldFEConcentration, IteratedFEConcentration,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate,&
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent, Imbibition_term
@@ -3090,29 +3097,29 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     end if
 
     !Arash
-    if (present(SoluteMassFraction)) then
-        tfield => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
-        SoluteMassFraction =>  tfield%val(1,:,:)
+    if (present(Concentration)) then
+        tfield => extract_tensor_field( packed_state, "PackedConcentration" )
+        Concentration =>  tfield%val(1,:,:)
     end if
-    if (present(OldSoluteMassFraction)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldSoluteMassFraction" )
-        OldSoluteMassFraction =>  tfield%val(1,:,:)
+    if (present(OldConcentration)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldConcentration" )
+        OldConcentration =>  tfield%val(1,:,:)
     end if
-    if (present(IteratedSoluteMassFraction)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedSoluteMassFraction" )
-        IteratedSoluteMassFraction =>  tfield%val(1,:,:)
+    if (present(IteratedConcentration)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedConcentration" )
+        IteratedConcentration =>  tfield%val(1,:,:)
     end if
-    if (present(FESoluteMassFraction)) then
-        tfield => extract_tensor_field( packed_state, "PackedFESoluteMassFraction" )
-        FESoluteMassFraction =>  tfield%val(1,:,:)
+    if (present(FEConcentration)) then
+        tfield => extract_tensor_field( packed_state, "PackedFEConcentration" )
+        FEConcentration =>  tfield%val(1,:,:)
     end if
-    if (present(OldFESoluteMassFraction)) then
-        tfield => extract_tensor_field( packed_state, "PackedOldFESoluteMassFraction" )
-        OldFESoluteMassFraction =>  tfield%val(1,:,:)
+    if (present(OldFEConcentration)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldFEConcentration" )
+        OldFEConcentration =>  tfield%val(1,:,:)
     end if
-    if (present(IteratedFESoluteMassFraction)) then
-        tfield => extract_tensor_field( packed_state, "PackedIteratedFESoluteMassFraction" )
-        IteratedFESoluteMassFraction =>  tfield%val(1,:,:)
+    if (present(IteratedFEConcentration)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedFEConcentration" )
+        IteratedFEConcentration =>  tfield%val(1,:,:)
     end if
 
 
@@ -3581,9 +3588,9 @@ end subroutine get_DarcyVelocity
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
-                if (has_salt) then
+                if (has_concentration) then
                     do iphase = 1, size(outfluxes%intflux,1)
-                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum solutemassfraction"
+                        write(tempstring(iphase),'(a, i0, a, i0, a)') "Phase", iphase,  "-S", outfluxes%outlet_id(ioutlet),  "- Maximum Concentration"
                         whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                     enddo
                 end if
@@ -3609,7 +3616,7 @@ end subroutine get_DarcyVelocity
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
                 enddo
             end if
-            if (has_salt) then
+            if (has_concentration) then
                 do iphase = 1, size(outfluxes%intflux,1)
                     write(tempstring(iphase),'(E17.11)') outfluxes%totout(3, iphase,ioutlet)
                     whole_line = trim(whole_line) //","// trim(tempstring(iphase))
@@ -3625,12 +3632,12 @@ end subroutine get_DarcyVelocity
     !>This subroutine should only be called if SELE is on the BOUNDARY
     !>Example of Mass_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
     !>Example of Vol_flux: ndotq(iphase) * SdevFuns%DETWEI(gi) * LIMDT(iphase)
-    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, Vol_flux, Mass_flux, tracer, temp_field, salt_field, start_phase, end_phase )
+    subroutine update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi, Vol_flux, Mass_flux, tracer, temp_field, concentration_field, start_phase, end_phase )
       implicit none
       integer, intent(in) :: sele, cv_nodi, start_phase, end_phase
       type (multi_outfluxes), intent(inout) :: outfluxes
       real, dimension(:, :,0:), intent(inout) :: bcs_outfluxes!the total mass entering the domain is captured by 'bcs_outfluxes'
-      type (tensor_field), pointer, intent(in) :: tracer, temp_field, salt_field
+      type (tensor_field), pointer, intent(in) :: tracer, temp_field, concentration_field
       real, dimension(:), intent(in) :: Vol_flux, Mass_flux
       !local variables
       integer :: iphase, iofluxes
@@ -3659,9 +3666,9 @@ end subroutine get_DarcyVelocity
                 end do
               end if
               !Maybe rather than max_sat would be better Mass of C? Mass_flux*Concentration
-              if (has_salt) then
+              if (has_concentration) then
                 do iphase = start_phase, end_phase
-                  outfluxes%totout(3, iphase, iofluxes) =  max(  salt_field%val(1,iphase,CV_NODI),&
+                  outfluxes%totout(3, iphase, iofluxes) =  max(  concentration_field%val(1,iphase,CV_NODI),&
                   outfluxes%totout(3, iphase, iofluxes)   )
                 end do
               end if

@@ -55,7 +55,7 @@
               <real_value rank="0">1000</real_value>
             </reference_density>
             <alpha>
-              <real_value rank="0">0.025</real_value>
+              <real_value rank="0">0.001461</real_value>
             </alpha>
           </concentration_dependant>
         </compressible>
@@ -219,12 +219,12 @@
         <consistent_interpolation/>
       </prognostic>
     </scalar_field>
-    <scalar_field name="SoluteMassFraction" rank="0">
+    <scalar_field name="Concentration" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0.02922</real_value>
+            <real_value rank="0">0.5</real_value>
             <comment>0.5M/l</comment>
           </constant>
         </initial_condition>
@@ -235,8 +235,7 @@
           <type name="dirichlet">
             <apply_weakly/>
             <constant>
-              <real_value rank="0">0.02922</real_value>
-              <comment>0.0005844 = 0.01 M/L</comment>
+              <real_value rank="0">0.5</real_value>
             </constant>
           </type>
         </boundary_conditions>
