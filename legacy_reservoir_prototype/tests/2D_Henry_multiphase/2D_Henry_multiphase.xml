@@ -12,7 +12,7 @@ max_sat1 = stat("2D_Henry_multiphase.stat")["air"]["PhaseVolumeFraction"]["max"]
     <variable name="max_sat2" language="python">from fluidity_tools import stat_parser as stat
 max_sat2 = stat("2D_Henry_multiphase.stat")["water"]["PhaseVolumeFraction"]["max"][-1]</variable>
     <variable name="int_conc2" language="python">from fluidity_tools import stat_parser as stat
-int_conc2 = stat("2D_Henry_multiphase.stat")["water"]["SoluteMassFraction"]["integral"][-1]</variable>
+int_conc2 = stat("2D_Henry_multiphase.stat")["water"]["Concentration"]["integral"][-1]</variable>
 
   </variables>
   <pass_tests>

@@ -65,9 +65,6 @@ module multi_SP
         integer :: reference_nod
         logical :: reference_node_owned
         real :: reference_value, top_coordinate, gravity_magnitude, conversor_to_miliVolts
-        !Because we solve for Concentration the Solute mass fraction, we need to convert to Moles/litre
-        !M/l = Concentration * density / Molar mass
-        real, parameter :: NaCl_g_mol = 58.44!g/mol
 
       !     !Retrieve fields
         X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -75,9 +72,9 @@ module multi_SP
         Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
         density =>extract_tensor_field(packed_state,"PackedDensity")
         nfields = 1
-        Concentration=>extract_tensor_field(packed_state,"PackedSoluteMassFraction", stat)
+        Concentration=>extract_tensor_field(packed_state,"PackedConcentration", stat)
         Temperature=>extract_tensor_field(packed_state,"PackedTemperature", stat)
-        if (has_salt) nfields = nfields + 1
+        if (has_concentration) nfields = nfields + 1
         if (has_temperature) nfields = nfields + 1
         allocate(F_fields(nfields, 1, Mdims%cv_nonods), K_fields(nfields, 1, Mdims%cv_nonods))
         allocate(rock_sat_conductivity(1, Mdims%cv_nonods))
@@ -90,9 +87,9 @@ module multi_SP
           F_fields(1, 1, cv_inod) = Pressure%val(1,1,cv_inod) - gravity_magnitude * density%val(1,1,cv_inod) * (top_coordinate - X_ALL%val(Mdims%ndim,cv_inod))
           k = 1
           ! F_fields(1, 1, cv_inod) = Saturation%val(1, 1, cv_inod); k = 1
-          if (has_salt) then
+          if (has_concentration) then
             !Convert to Moles/Litre
-            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod) * density%val(1, 1, cv_inod)/ NaCl_g_mol
+            F_fields(2, 1, cv_inod) = Concentration%val(1, 1, cv_inod)
             k = 2
           end if
           !Here the temperature can be in Kelvin or Celsius as we are looking at gradients
@@ -100,7 +97,7 @@ module multi_SP
         end do
 
         !Obtain the conductivity of the saturated rock
-        call get_rock_sat_conductivity(state, packed_state, Mdims, ndgln, Saturation%val(1, 1, :), F_fields(2,1,:), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
+        call get_rock_sat_conductivity(state, packed_state, Mdims, ndgln, Saturation%val(1, 1, :), Concentration%val(1, 1, :), Temperature%val(1, 1, :), rock_sat_conductivity(1,:))
         !Compute K_fields
         do k = 1, nfields
           call get_SP_coupling_coefficients(state, packed_state, Mdims, ndgln, rock_sat_conductivity(1,:), K_fields(k,1,:), &
@@ -194,7 +191,7 @@ module multi_SP
           call get_option("/porous_media/Self_Potential/Sat_exponent",sat_exp, default = 2.0 )
 
           porosity=>extract_vector_field(packed_state,"Porosity")
-          if (.not. has_salt) then
+          if (.not. has_concentration) then
             if (GetProcNo() == 1) then
               ewrite(0, *) "ERROR: For Self Potential calculation a concentration field is required."
               ewrite(0, *) "Self_potential will NOT be computed."
@@ -202,7 +199,7 @@ module multi_SP
             end if
           else !Compute water conductivity based on Temperature and concentration (Sen and Goode, 1992)
             do cv_inod = 1, Mdims%cv_nonods
-              if (has_temperature) temp = Temperature(cv_inod)                   !Water salt concentration
+              if (has_temperature) temp = Temperature(cv_inod)                   !Water concentration
               water_conductivity(cv_inod) = (5.6 + 0.27 * temp - 1.5e-4 * temp**2.)*(Concentration(cv_inod)+tol) &
               - Concentration(cv_inod)**1.5 * ( 2.36 + 0.099 * temp) / (1 + 0.214 * Concentration(cv_inod)**0.5)
             end do
@@ -278,7 +275,7 @@ module multi_SP
               Tna = get_Hittorf_transport_number(Concentration(cv_inod))
               Cf = Concentration(cv_inod) + Tol!To avoid divisions by zero
               if (has_temperature) temp = Temperature(cv_inod)
-              coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * temp/Cf            
+              coupling_coef_ed(cv_inod) = - 8.61e-2 * (2.*Tna - 1) * temp/Cf
               coupling_coef_ee(cv_inod) = - 8.61e-2 * temp/Cf
             end do
         end if

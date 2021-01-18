@@ -417,7 +417,7 @@ contains
           real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
           type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
           type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, salt_field
+          type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield, temp_field, concentration_field
 
           ! variables for pipes (that are needed in cv_assemb as well), allocatable because they are big and barely used
           Real, dimension(:), pointer :: MASS_CV
@@ -554,8 +554,8 @@ contains
                   temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
                   if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0.0
               end if
-              if (has_salt) then
-                  salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+              if (has_concentration) then
+                  concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
                   if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
               end if
           end if
@@ -584,7 +584,7 @@ contains
           end if
            if (tracer%name == "PackedTemperature" ) then
               !(tracer%name == "PackedEnthalpy")&
-              ! .or. tracer%name == "PackedSoluteMassFraction")  then !Not sure if it is required for temperature either...
+              ! .or. tracer%name == "PackedConcentration")  then !Not sure if it is required for temperature either...
               allocate( suf_t_bc( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ), &
                   suf_t_bc_rob2( 1,size(tracer_BCs%val,2),Mdims%cv_snloc*Mdims%stotel ) )
               call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, size(tracer_BCs%val,2), &!TEMPORARY, FIXME! sprint_to_do is this call needed?
@@ -1422,7 +1422,7 @@ contains
                                   INCOME_J = 1.
                               END WHERE
                               !Calculate the courant number for porous media
-                              !SPRINT_TO_DO Currently if temperature/solutemassfraction multiphase we are doing this more than once...
+                              !SPRINT_TO_DO Currently if temperature/Concentration multiphase we are doing this more than once...
                               if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
                                   !ndotq = velocity * normal                     !In the wells the flow is too fast and makes this misleading
                                   Courant_number(1) = max(Courant_number(1), abs ( dt * maxval(ndotq(1:final_phase)) / (VOLFRA_PORE( 1, ELE ) * hdc)))
@@ -1851,7 +1851,7 @@ contains
                             if (compute_outfluxes .and. on_domain_boundary) then
                               call update_outfluxes(bcs_outfluxes,outfluxes, sele, cv_nodi,  &
                                 ndotqnew * SdevFuns%DETWEI(gi) * LIMT, ndotqnew * SdevFuns%DETWEI(gi) * LIMDT, & !Vol_flux and Mass_flux
-                                old_tracer, temp_field, salt_field, 1, final_phase )
+                                old_tracer, temp_field, concentration_field, 1, final_phase )
                             end if
 
                           endif ! if(CV_NODJ.ge.CV_NODI) then
@@ -3489,7 +3489,7 @@ end if
                                 do iphase = 1, Mdims%nphase
                                     call allsum(outfluxes%totout(1, iphase, k))
                                     if (has_temperature) call allmax(outfluxes%totout(2, iphase, k))!Just interested in max temp
-                                    if (has_salt) call allsum(outfluxes%totout(3, iphase, k))
+                                    if (has_concentration) call allsum(outfluxes%totout(3, iphase, k))
                                 end do
                             end do
                         end if

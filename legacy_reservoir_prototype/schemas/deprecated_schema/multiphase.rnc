@@ -3529,7 +3529,7 @@ scalar_field_choice =
          ## Mass Fraction of Solute
          element scalar_field {
             attribute rank { "0" },
-            attribute name { "SoluteMassFraction" },
+            attribute name { "Concentration" },
             (
                element prognostic {
                   velocity_mesh_choice,

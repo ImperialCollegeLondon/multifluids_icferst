@@ -1019,7 +1019,7 @@ start =
           ## Activates the Self_potential solver. 
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase, 
-          ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a SoluteMassFraction field defined.
+          ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a Concentration field defined.
           ##
           ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
           element Self_Potential{(
@@ -1304,7 +1304,7 @@ geometry =
              }*,
              ## Specify a different time discretisation method for different fields
              ## You can use as inputs here: <b>PhaseVolumeFraction, Velocity or Tracer</b>.
-             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
+             ## Tracer accounts for Temperature, Concentration, etc.
              element Time_Discretisation {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1317,7 +1317,7 @@ geometry =
              }*,
              ## Specify a different flux calculation for different fields
              ## You can use as inputs here: PhaseVolumeFraction or Tracer.
-             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
+             ## Tracer accounts for Temperature, Concentration, etc.
              element Space_Discretisation {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1341,7 +1341,7 @@ geometry =
              ## For PhaseVolumeFraction the recommendation is one.
              ##
              ## You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
-             ## Tracer accounts for Temperature, SoluteMassFraction, etc.
+             ## Tracer accounts for Temperature, Concentration, etc.
              element Conservative_formulation_settings {
                 ##Name of the Field
                 attribute name { xsd:string },
@@ -1448,7 +1448,7 @@ solver_options =
                     ## A Variable to check has to be chosen:
                     ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
                     ##
-                    ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature</b>
+                    ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
                     ##
                     ## The field selected in "adaptive_timestep_nonlinear" has preference over this
                     element adaptive_non_linear_iterations{
@@ -1494,10 +1494,12 @@ solver_options =
                   )
                 }?,
               (
-                ## <b>For TEMPERATURE ONLY</b>, if there are no sources nor sinks
-                ## the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+                ## If there are no sources nor sinks
+                ## the non-linear solver can be accelerated by imposing physical constraints. 
                 ##
-	            ## This imposes that the temperature has to be between bounds.
+                ## <b>VERY RECOMMENDED</b>
+                ##
+	            ## This imposes the tracer to be between bounds.
                 element Impose_min_max{empty}?
               ),
               (
@@ -1517,7 +1519,7 @@ solver_options =
                 ## A Variable to check has to be chosen:
                 ## 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
                 ##
-                ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature</b>
+                ## <b> In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature</b>
                 
                 
                 element adaptive_timestep_nonlinear{
@@ -2515,11 +2517,10 @@ scalar_field_choice =
                }
             )
          }|
-         ## Mass Fraction of Solute//Concentration
-         ## Can be used as a tracer
+         ## Concentration field (SI units are mol/m^3).
          element scalar_field {
             attribute rank { "0" },
-            attribute name { "SoluteMassFraction" },
+            attribute name { "Concentration" },
             (
                element prognostic {
                   pressure_mesh_choice,

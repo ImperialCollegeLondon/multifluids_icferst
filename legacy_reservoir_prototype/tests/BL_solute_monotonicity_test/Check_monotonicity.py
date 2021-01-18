@@ -45,7 +45,7 @@ for test in range(2):
   if test == 0:
     data_name = 'phase1::PhaseVolumeFraction'
   else:
-    data_name = 'phase1::SoluteMassFraction'
+    data_name = 'phase1::Concentration'
 
   #Initial and last coordinate of the probe
   x0 = -0.5

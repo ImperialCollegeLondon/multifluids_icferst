@@ -224,7 +224,7 @@ module multi_data_types
                                           !>    Memory_type = 6-> Isotropic Symmetric tensors
         type (multi_field) :: Components
         type (multi_field) :: Temperature
-        type (multi_field) :: SaltConcentration
+        type (multi_field) :: Concentration
         type (multi_field) :: Velocity
         !>Magma absorption
         type (multi_field) :: Magma !>Initially to use memory type = 3  Isotropic coupled
@@ -444,7 +444,7 @@ contains
         if (associated(multi_absorp%Components%val))  call deallocate_multi_field(multi_absorp%Components, and_destroy2)
         if (associated(multi_absorp%Temperature%val)) call deallocate_multi_field(multi_absorp%Temperature, and_destroy2)
         if (associated(multi_absorp%Velocity%val))    call deallocate_multi_field(multi_absorp%Velocity, and_destroy2)
-        if (associated(multi_absorp%SaltConcentration%val))call deallocate_multi_field(multi_absorp%SaltConcentration, and_destroy2)
+        if (associated(multi_absorp%Concentration%val))call deallocate_multi_field(multi_absorp%Concentration, and_destroy2)
         if (associated(multi_absorp%Magma%val))    call deallocate_multi_field(multi_absorp%Magma, and_destroy2)
     end subroutine deallocate_multi_absorption
 
@@ -1411,7 +1411,7 @@ contains
         !(field -saturation, temperature-, Mdims%nphase, size(outfluxes%outlet_id))
         ! allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
 
-        ! if (has_salt) k = k + 2
+        ! if (has_concentration) k = k + 2
         allocate(outfluxes%totout(k, Mdims%nphase, size(outfluxes%outlet_id)))
 
         outfluxes%intflux= 0.

@@ -464,6 +464,7 @@ contains
     ! Move nodes if true
     mshopt(6) = .not. have_option(base_path // "/adaptivity_library/libadaptivity/disable_node_movement")
 
+
     twostg = .false.  ! Two stages of adapting, with no refinement on first
     togthr = .true.  ! Lumps node movement adaptivity in with connectivity
                      ! changes
@@ -551,13 +552,11 @@ contains
     if (present_and_true(adapt_error) .and. use_conservative_settings) then
         !edge_split can't be disabled, which is the one that tends to fail,
         !therefore we increase the number of sweeps and relax the tolerance
-        nsweep = 500!Increase drastically the number of sweeps, makes things slower but adaptivity seems to always work with this
-        !Disable all techniques but the very basics
-        ! mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
+        nsweep = 50!Increase the number of sweeps, slower but more robust
+        twostg = .true.  ! Two stages of adapting, with no refinement on first (recommended)
         if (second_try) then
           !Disable all techniques but the very basics
           mshopt(2:4) = .false.!Currently simple split elements and r-adaptivity
-    			mshopt(1) = .false.! <= Leave only r-adaptivity
           nsweep = 500!Increase even more the number of sweeps, should be cheaper every sweep since everything is disabled
     			!Relax convergence
     			dotop = dotop * 1.2; !MINCHG = MINCHG / 1.5!Commented out as already is hardcoded to 0.01 and has no effect

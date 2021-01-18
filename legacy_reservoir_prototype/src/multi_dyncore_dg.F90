@@ -56,7 +56,7 @@ module multiphase_1D_engine
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY, get_diagonal_mass_matrix
 
-    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, SOLUTE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
+    public  :: INTENERGE_ASSEM_SOLVE, ENTHALPY_ASSEM_SOLVE, Concentration_assem_solve, VolumeFraction_Assemble_Solve, &
     FORCE_BAL_CTY_ASSEM_SOLVE, generate_and_solve_Laplacian_system, Passive_Tracer_Assemble_Solve
 
 contains
@@ -183,8 +183,6 @@ contains
                 allocate(porous_heat_coef(Mdims%cv_nonods))
                 allocate(porous_heat_coef_old(Mdims%cv_nonods))
                 call effective_Cp_density(porous_heat_coef, porous_heat_coef_old)
-                !Start with the process to apply the min max principle
-                call force_min_max_principle(1)
                 end if
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity", stat )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity", stat )
@@ -299,6 +297,9 @@ contains
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
+           !Start with the process to apply the min max principle
+           if (is_porous_media .and. thermal) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
+
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
                 !we set up 5 iterations but if it converges => we exit straigth away
@@ -398,7 +399,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end do
 
                 !Control how it is converging and decide
-               if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
+               if(is_porous_media .and. thermal) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
 
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)
@@ -434,45 +435,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
       contains
-
-      !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
-      !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
-      subroutine force_min_max_principle(entrance)
-        integer, intent(in) :: entrance
-        !Local variables
-        logical, save :: first_time = .true., apply_minmax_principle
-        integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
-        type(tensor_field) :: tracer_BCs
-        real, parameter :: tol = 1e-8
-
-        select case (entrance)
-            case (1)
-                !Get variable for global convergence method
-                if (first_time) then
-                    first_time = .false.
-                    !Check diamond
-                    apply_minmax_principle = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')
-                end if
-                if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
-                    allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
-                    call get_entire_boundary_condition(tracer,&
-                        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
-                    !Use boundaries for min/max
-                    totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored temperature
-                    totally_min_max(2)=maxval(tracer_BCs%val)!use stored temperature
-                    !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
-                    totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored temperature
-                    totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored temperature
-                    !For parallel
-                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-                    deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
-                end if
-            case (2)
-                if (apply_minmax_principle) &
-                    tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
-        end select
-
-      end subroutine
 
       !>@brief: Checks convergence on the temperature field Calculation of the averaged heat capacity and density
       !> average = porosity * Cp_f*rho_f + (1-porosity) * CP_p*rho_p
@@ -655,7 +617,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            TDIFFUSION=0.0
            !Obtain diffusion coefficient for temperature
 
-           !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR SALT
+           !WE EITHER CREATE OUR OWN ARE TO SPECIFY THE DIFFUSION COEFFICIENT, LIKE FOR CONCENTRATION
            !OR WE NEED A PROGNOSTIC TEMPERATURE FIELD, WHICH IS "FINE" BUT STRANGE FOR THE USER
            call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, divide_by_rho_CP = .true.)
            !WE NEED SOMETHING SPECIAL FOR THIS AND LATENTHEAT*RHO IF WE HAVE COMPONENTS!
@@ -737,8 +699,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                      tracer%val(1,iphase,:)=solution%val(1,:)
                    end do
                  end if
-               !Control how it is converging and decide
-               !if(thermal) call force_min_max_principle(2)!Apply if required the min max principle
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                !Update halo communications
@@ -774,7 +734,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
   !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
   !> @brief Calls to generate and solve the transport equation for the concentration field.
   !---------------------------------------------------------------------------
-  SUBROUTINE SOLUTE_ASSEM_SOLVE( state, packed_state, &
+  SUBROUTINE Concentration_assem_solve( state, packed_state, &
        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density, multi_absorp, DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
@@ -856,14 +816,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
            integer, save :: nconc_in_pres
            type(vector_field) :: solution
-           !Retrieve the number of phases that have soluteMass fraction, and then if they are concecutive and start from the first one
+           !Retrieve the number of phases that have Concentration fraction, and then if they are concecutive and start from the first one
            if (nconc < 0) then
-             nconc = option_count("/material_phase/scalar_field::SoluteMassFraction")
+             nconc = option_count("/material_phase/scalar_field::Concentration")
              nconc_in_pres = nconc
              if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
              do iphase = 1, nconc_in_pres
-               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::SoluteMassFraction')) then
-                 FLAbort('SoluteMassFraction must either be defined in all the phases or to start from the first one and consecutively from that one.')
+               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::Concentration')) then
+                 FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
                end if
              end do
            end if
@@ -900,10 +860,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            IGOT_T2_loc = 1
 
-           call get_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/temporal_discretisation/' // &
+           call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
            Field_selector = 1
-           Q => extract_tensor_field( packed_state, "PackedSoluteMassFractionSource" )
+           Q => extract_tensor_field( packed_state, "PackedConcentrationSource" )
            T_source( :, : ) = Q % val( 1, :, : )
 
            !sprint to do, just pass down the other values...
@@ -929,14 +889,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION, tracer)
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
-
+           !Start with the process to apply the min max principle
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
 
            solver_option_path = "/solver_options/Linear_solver"
-           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::SoluteMassFraction')) then
-             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::SoluteMassFraction'
+           if (have_option('/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration')) then
+             solver_option_path = '/solver_options/Linear_solver/Custom_solver_configuration/field::Concentration'
            end if
            if(max_allowed_its < 0)  then
                call get_option( trim(solver_option_path)//"max_iterations",&
@@ -982,9 +943,11 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-                   !Ensure concentration is between 1 and sligthly above 0
+                   !Ensure that the solution is above zero always
+                  solution%val = max(solution%val,min_concentration)
+                   !Apply if required the min max principle
+                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
 
-                   solution%val = min(1., max(solution%val,min_concentration))
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
                      do iphase = 1 , nconc_in_pres
@@ -1008,10 +971,54 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (allocated(denold_all)) deallocate(denold_all)
            if (allocated(T_SOURCE)) deallocate(T_SOURCE)
            call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
+           ewrite(3,*) 'Leaving Concentration_assem_solve'
 
-  END SUBROUTINE SOLUTE_ASSEM_SOLVE
+  END SUBROUTINE Concentration_assem_solve
 
+
+  !>@brief: To help the stability of the system,if there are no sources/sinks it is known that
+  !> the temperature must fulfill the min max principle, therefore here values outside this rank are capped.
+  subroutine force_min_max_principle(Mdims, entrance, tracer, nonlinear_iteration, totally_min_max)
+    type(multi_dimensions), intent(in) :: Mdims
+    type(tensor_field), intent(inout) :: tracer
+    integer, intent(in) :: nonlinear_iteration
+    integer, intent(in) :: entrance
+    real, dimension(2), intent(inout) :: totally_min_max
+    !Local variables
+    logical, save :: first_time = .true., apply_minmax_principle
+    integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
+    type(tensor_field) :: tracer_BCs
+    real, parameter :: tol = 1e-30
+
+    select case (entrance)
+    case (1)
+      !Get variable for global convergence method
+      if (first_time) then
+        first_time = .false.
+        !Check diamond
+        apply_minmax_principle = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')
+      end if
+      if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
+        allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
+        call get_entire_boundary_condition(tracer,&
+        ['weakdirichlet','robin        '], tracer_BCs, WIC_T_BC_ALL)
+        !Use boundaries for min/max
+        totally_min_max(1)=minval(tracer_BCs%val, MASK = tracer_BCs%val > tol)!use stored value
+        totally_min_max(2)=maxval(tracer_BCs%val)!use stored value
+        !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
+        totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored value
+        totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored value
+
+        !For parallel
+        call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+        deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
+      end if
+    case (2)
+      if (apply_minmax_principle) &
+      tracer%val = max(min(tracer%val,totally_min_max(2)), totally_min_max(1))
+    end select
+
+  end subroutine
 
   !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
   !> @brief Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive_Tracer_N
@@ -1102,14 +1109,14 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
            integer, save :: nconc_in_pres
            type(vector_field) :: solution
-           !Retrieve the number of phases that have soluteMass fraction, and then if they are concecutive and start from the first one
+           !Retrieve the number of phases that have Concentration, and then if they are concecutive and start from the first one
            if (nconc < 0) then
              nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
              nconc_in_pres = nconc
              if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
              do iphase = 1, nconc_in_pres
                if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_Tracer_name))) then
-                 FLAbort('SoluteMassFraction must either be defined in all the phases or to start from the first one and consecutively from that one.')
+                 FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
                end if
              end do
            end if
@@ -1140,7 +1147,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            IGOT_T2_loc = 1
 
-           call get_option( '/material_phase[0]/scalar_field::SoluteMassFraction/prognostic/temporal_discretisation/' // &
+           call get_option( '/material_phase[0]/scalar_field::Concentration/prognostic/temporal_discretisation/' // &
                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
 
           !Retrieve source term
@@ -1168,6 +1175,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call get_option( trim(solver_option_path)//"max_iterations",&
                 max_allowed_its, default = 500)
            end if
+
+           !Start with the process to apply the min max principle
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
+
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
@@ -1208,8 +1219,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-                   !Ensure concentration is between 1 and sligthly above 0
-                   solution%val = min(1., max(solution%val,min_val))
+                   
+                   !Apply if required the min max principle
+                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
                      do iphase = 1 , nconc_in_pres
@@ -1233,7 +1245,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            if (allocated(denold_all)) deallocate(denold_all)
            if (allocated(T_SOURCE)) deallocate(T_SOURCE)
            call deallocate(solution); nullify(solution%val)
-           ewrite(3,*) 'Leaving SOLUTE_ASSEM_SOLVE'
+           ewrite(3,*) 'Leaving Concentration_assem_solve'
 
   END SUBROUTINE Passive_Tracer_Assemble_Solve
 

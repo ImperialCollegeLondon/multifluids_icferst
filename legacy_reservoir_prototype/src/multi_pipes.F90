@@ -133,7 +133,7 @@ contains
       real, parameter :: INFINY=1.0E+20
       integer, parameter :: WIC_B_BC_DIRICHLET = 1
       !Variables extra for outfluxes
-      type(tensor_field), pointer ::temp_field, salt_field
+      type(tensor_field), pointer ::temp_field, Concentration_field
       logical :: compute_outfluxes
 
       PetscScalar,parameter :: one = 1.0
@@ -151,8 +151,8 @@ contains
             temp_field => extract_tensor_field( packed_state, "PackedTemperature" )
             if (outfluxes%calculate_flux)outfluxes%totout(2, :,:) = 0
         end if
-        if (has_salt) then
-            salt_field => extract_tensor_field( packed_state, "PackedSoluteMassFraction" )
+        if (has_concentration) then
+            Concentration_field => extract_tensor_field( packed_state, "PackedConcentration" )
             if (outfluxes%calculate_flux)outfluxes%totout(3, :,:) = 0
         end if
 
@@ -830,7 +830,7 @@ contains
                     sele = sele_from_cv_nod(Mdims, ndgln, JCV_NOD)!We need SELE for this, not ideal but this operation is not done much overall
                     call update_outfluxes(bcs_outfluxes, outfluxes, sele, JCV_NOD,  &
                         NDOTQ * suf_area * LIMT, NDOTQ * suf_area * LIMDT, &!Vol_flux and Mass_flux
-                        T_ALL, temp_field, salt_field, wells_first_phase, final_phase*2 )
+                        T_ALL, temp_field, Concentration_field, wells_first_phase, final_phase*2 )
                   end if
 
               ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN

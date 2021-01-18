@@ -1247,7 +1247,7 @@ Each file has to describe a continuous well touching an external boundary.
               <a:documentation>Activates the Self_potential solver. 
 
 &lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, 
-temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a SoluteMassFraction field defined.
+temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a Concentration field defined.
 
 Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
               <element name="scalar_field">
@@ -1625,7 +1625,7 @@ Only the activated options will overwrite the values decided in simulation_quali
             <element name="Time_Discretisation">
               <a:documentation>Specify a different time discretisation method for different fields
 You can use as inputs here: &lt;b&gt;PhaseVolumeFraction, Velocity or Tracer&lt;/b&gt;.
-Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
+Tracer accounts for Temperature, Concentration, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1644,7 +1644,7 @@ Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
             <element name="Space_Discretisation">
               <a:documentation>Specify a different flux calculation for different fields
 You can use as inputs here: PhaseVolumeFraction or Tracer.
-Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
+Tracer accounts for Temperature, Concentration, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1671,7 +1671,7 @@ For transport equations this is recommended to be zero.
 For PhaseVolumeFraction the recommendation is one.
 
 You can use as inputs here: PhaseVolumeFraction, Velocity or Tracer.
-Tracer accounts for Temperature, SoluteMassFraction, etc.</a:documentation>
+Tracer accounts for Temperature, Concentration, etc.</a:documentation>
               <attribute name="name">
                 <a:documentation>Name of the Field</a:documentation>
                 <data type="string"/>
@@ -1789,7 +1789,7 @@ This can be used to control the number of non-linear interations dynamically.
 A Variable to check has to be chosen:
 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
 
-&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature&lt;/b&gt;
 
 The field selected in "adaptive_timestep_nonlinear" has preference over this</a:documentation>
                       <ref name="integer"/>
@@ -1837,10 +1837,12 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
               </optional>
               <optional>
                 <element name="Impose_min_max">
-                  <a:documentation>&lt;b&gt;For TEMPERATURE ONLY&lt;/b&gt;, if there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints. Recommended to use.
+                  <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints. 
 
-This imposes that the temperature has to be between bounds.</a:documentation>
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
                   <empty/>
                 </element>
               </optional>
@@ -1866,7 +1868,7 @@ By default the tolerance is 1e-2</a:documentation>
 A Variable to check has to be chosen:
 1 = Pressure; 2 = Velocity; 3 = PhaseVolumeFraction (default); 4 = Tracer
 
-&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for SoluteMassFraction and/or Temperature&lt;/b&gt;</a:documentation>
+&lt;b&gt; In all the cases Pressure and PhaseVolumeFraction are checked. Tracer accounts for Concentration and/or Temperature&lt;/b&gt;</a:documentation>
                   <ref name="integer"/>
                   <group>
                     <optional>
@@ -3003,13 +3005,12 @@ for fields within the same material_phase.</a:documentation>
         </element>
       </element>
       <element name="scalar_field">
-        <a:documentation>Mass Fraction of Solute//Concentration
-Can be used as a tracer</a:documentation>
+        <a:documentation>Concentration field (SI units are mol/m^3).</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
         <attribute name="name">
-          <value>SoluteMassFraction</value>
+          <value>Concentration</value>
         </attribute>
         <choice>
           <element name="prognostic">
