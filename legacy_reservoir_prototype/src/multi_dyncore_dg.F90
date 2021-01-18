@@ -1175,6 +1175,10 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                call get_option( trim(solver_option_path)//"max_iterations",&
                 max_allowed_its, default = 500)
            end if
+
+           !Start with the process to apply the min max principle
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
+
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
                 !Over-relaxation options. Unless explicitly decided in diamond this will be set to zero.
@@ -1215,8 +1219,9 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-                   !Ensure concentration is between 1 and sligthly above 0
-                   solution%val = min(1., max(solution%val,min_val))
+                   
+                   !Apply if required the min max principle
+                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
                      do iphase = 1 , nconc_in_pres
