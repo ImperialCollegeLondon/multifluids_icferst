@@ -1212,7 +1212,7 @@ that the well trajectories are preserved.
                   <optional>
                     <element name="Lock_sleeve_nodes">
                       <a:documentation>Lock nodes within the well volumes/sleeves.
-&lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;. 
+&lt;b&gt; Very useful to reduce oscillations in the system when using mesh adaptivity&lt;/b&gt;.
 Very recommended. ONLY WORKS FOR 3D.</a:documentation>
                       <ref name="comment"/>
                     </element>
@@ -1244,9 +1244,9 @@ Each file has to describe a continuous well touching an external boundary.
           </optional>
           <optional>
             <element name="Self_Potential">
-              <a:documentation>Activates the Self_potential solver. 
+              <a:documentation>Activates the Self_potential solver.
 
-&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase, 
+&lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase,
 temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a Concentration field defined.
 
 Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
@@ -1286,7 +1286,7 @@ coordinates, the nearest vertex will be selected.</a:documentation>
               </optional>
               <optional>
                 <element name="Results_in_Volts">
-                  <a:documentation>By default the results are shown in miliVolts, select this to show the results in Volts. </a:documentation>
+                  <a:documentation>By default the results are shown in miliVolts, select this to show the results in Volts.</a:documentation>
                   <empty/>
                 </element>
               </optional>
@@ -1375,7 +1375,7 @@ The following must be specified:
                 </element>
               </optional>
               <element name="ae">
-                <a:documentation>Eutectic point	</a:documentation>
+                <a:documentation>Eutectic point</a:documentation>
                 <ref name="real"/>
               </element>
               <element name="latent_heat">
@@ -1407,7 +1407,7 @@ The following must be specified:
               <ref name="real"/>
             </element>
             <element name="cut_b">
-              <a:documentation>the range above which the coupling terms follow the Hindered settling </a:documentation>
+              <a:documentation>the range above which the coupling terms follow the Hindered settling</a:documentation>
               <ref name="real"/>
             </element>
           </element>
@@ -1838,7 +1838,7 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
               <optional>
                 <element name="Impose_min_max">
                   <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints. 
+the non-linear solver can be accelerated by imposing physical constraints.
 
 &lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
 
@@ -1982,7 +1982,7 @@ D^-0.5 * A * D^-0.5 X'=  D^-0.5 b; and next X = D^-0.5 * X';
           </optional>
           <optional>
             <element name="solve_mom_iteratively">
-              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped. 
+              <a:documentation>Use this option to switch on the Anderson acceleration method for the momentum equations. The mass matrix is lumped.
 
 This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the stopping criterion for the infinite norm of the relative normalised pressure, by default 1e-7.&lt;/b&gt;</a:documentation>
               <ref name="real"/>
@@ -2008,9 +2008,9 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
                 <optional>
                   <element name="Disable_advance_preconditioner">
                     <a:documentation>Instead of using the mass matrix as preconditioner, use a preconditioner of the BfB type. This includes two pressure solvers
-but it is more efficient that the simple preconditioner (&lt;b&gt;This option disables this feature, NOT RECOMMENDED&lt;/b&gt;). 
+but it is more efficient that the simple preconditioner (&lt;b&gt;This option disables this feature, NOT RECOMMENDED&lt;/b&gt;).
 
-By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1 
+By default this method performs: (C^t M^-1 C)^-1 (C^t Ad^-0.5 A Ad^-0.5 C) (C^t M^-1 C)^-1
 
 If Momentum_preconditioner is on then the formula is: (C^t Ad^-1 M^-1 C)^-1 (C^t Ad^-1 A Ad^-1 C) (C^t Ad^-1 M^-1 C)^-1 (&lt;b&gt;Unstable&lt;/b&gt;)</a:documentation>
                     <empty/>
@@ -4396,23 +4396,24 @@ DEN = A * P ^ B
                 <ref name="real"/>
               </element>
             </element>
-            <element name="concentration_dependant">
-              <a:documentation>Concentration-dependant EOS
+            <element name="Boussinesq_eos">
+              <a:documentation>Boussinesq EOS
 
-Temperature and concentration can be considered simultaneously with this equation which is the recommended for the Boussinesq approximation.
+&lt;b&gt;This EOS is only to be used with boussinesq approximation.&lt;/b&gt;
 
-DEN = DEN0 * ( 1 + Alpha * C - Beta * (Temp -T0))
-
-C is the solute mass concentration and DEN0 is the reference density corresponding to C = 0
-
-Beta is the thermal expansion and a reference Temperature needs to be set.
-
-Note: this equation can be used only with concentration, temperature or both simultaneously.</a:documentation>
+DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))</a:documentation>
               <element name="reference_density">
                 <ref name="real"/>
               </element>
               <optional>
                 <element name="alpha">
+                  <a:documentation>Concentration density coefficient</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="C0">
+                  <a:documentation>Reference concentration (default 0)</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -4428,10 +4429,21 @@ Note: this equation can be used only with concentration, temperature or both sim
                   <ref name="real"/>
                 </element>
               </optional>
+              <optional>
+                <element name="P0">
+                  <a:documentation>Reference pressure (default 1e5 Pa)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="gamma">
+                  <a:documentation>Inverse of the liquid elasticity bulk modulus (Pa)</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
             <element name="Temperature_Pressure_correlation">
-              <a:documentation>Temperature-Pressure correlation for liquids ONLY. With the Boussinesq approximation, only temperature
-variation is considered.
+              <a:documentation>Temperature-Pressure correlation for liquids ONLY.
 
 Range of applicability: 0 to 2*10^9 Pa.
 
