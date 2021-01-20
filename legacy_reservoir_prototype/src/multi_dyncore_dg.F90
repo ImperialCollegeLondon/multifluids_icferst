@@ -2656,11 +2656,7 @@ end if
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if(block) then
-            Mmat%DGM_PETSC%row_numbering%nprivatenodes = element_count(packed_vel)
-            Mmat%DGM_PETSC%column_numbering%nprivatenodes = element_count(packed_vel)
             call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , block,option_path = trim(solver_option_velocity))
-            Mmat%DGM_PETSC%row_numbering%nprivatenodes = node_count(packed_vel)
-            Mmat%DGM_PETSC%column_numbering%nprivatenodes = node_count(packed_vel)
           else
             call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           end if
@@ -7424,18 +7420,18 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   real :: info(MAT_INFO_SIZE)
   real :: mal, nz_a
   integer:: nn, nnn
-  logical :: skip, block_insert
+  logical :: skip, multi_block
 
 
   ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC)) !!a
 
   ! [big_blocks] are for block sizes based on ndim*nphase*u_nloc
   ! [not big_blocks] are for block sizes based on ndim*nphase
-  ! [block_insert] this inserts the blocks either as a whole block row
-  ! [.not. block_inser] inserts as a single block
-  block_insert=.true.
+  ! [multi_block] this inserts the blocks as a whole block row (multiple block columns)
+  ! [.not. multi_block] inserts as a single block
+  multi_block=.true.
   if (big_block) then
-    if(block_insert) then
+    if(multi_block) then
       allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
       allocate(idxm(0:TOTELE-1))
       allocate(idxn(0:size(COLELE)-1))
@@ -7466,11 +7462,10 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
       ELE_ROW_START_NEXT=FINELE(ELE+1)
       ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
       ! Block diagonal and off diagonal terms...
-
       ! starting the counters for contgiuous memory assignment of matrix values
       ! and block indices
       nnn=0
-      if(block_insert) then
+      if(multi_block) then
         nn=0
       end if
 
@@ -7484,7 +7479,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         ENDIF
         ! COLUMN ORIENTED uing sequential insertions/add
         ! Contiguous memory assignment
-        if(.not.block_insert) then
+        if(.not.multi_block) then
           nn=0
         end if
 
@@ -7497,14 +7492,18 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                   DO IDIM=1,NDIM
                     if (.not. node_owned(velocity,((ELE-1)*U_NLOC + U_ILOC))) cycle
                     if(big_block) then
-                        ! if(block_insert) then
-                          !! this version requires the RHS and packed_velocity
-                          !! vector pointers to be re-shaped with new numbering
-                          !! global_index=matrix%gnn2unn(block_index,local_index)
+                      !!!********* remove once global index/block index issue is resolved ***
+                        ! if(multi_block) then
+                      !!********************************************************************
+
+                          !! Requires the RHS and packed_velocity
+                          !! vector pointers to be allocated as:
+                          !! global_index=matrix%gnn2unn(local_index,block_index)
                           valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                          ! ! global index counters 2 (block rows/columns)
+                          ! block index counters (block rows/columns)
                           GLOBI=ELE
                           GLOBJ=JCOLELE
+                        !!!********* remove once global index/block index issue is resolved ***
                         ! else
                           ! ! global index counters 1 (local rows/columns in a block)
                           ! I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
@@ -7520,6 +7519,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                           ! !rank-2 array of the non-zero block per non-zero block column (jcolele) per ele
                           ! values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
                         ! end if
+                        !!********************************************************************
                     else
                       I=IDIM + (IPHASE-1)*NDIM
                       J=JDIM + (JPHASE-1)*NDIM
@@ -7535,8 +7535,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                 END DO
               END DO
             END DO
-              !! enter values at a time for 'small' block matrix size (uses an in-efficient
-              !! search algorithm inside petsc)
+              !! enter multiple values at a time for 'small' block matrix size
+              !! (uses an in-efficient search algorithm inside petsc)
               if(.not.big_block) then
                 call MatSetValues(dgm_petsc%M, size(idxm), idxm, size(idxn), idxn, &
                               values, INSERT_VALUES,ierr)
@@ -7546,7 +7546,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         END DO
 
         if(big_block) then
-          if(block_insert) then
+          if(multi_block) then
             idxn(nnn)=GLOBJ-1
           else
             !!!********* remove once global index/block index issue is resolved ***
@@ -7559,26 +7559,23 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
             !     nn=nn+1
             !   END DO
             ! END DO
+            !!********************************************************************
             call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, ADD_VALUES, ierr)
             dgm_petsc%is_assembled=.false.
-            !!********************************************************************
           end if
         end if
 
       nnn=nnn+1
       END DO Between_Elements_And_Boundary20
-
       !! inserting values a block row at a time
       if(big_block) then
-        if(block_insert) then
+        if(multi_block) then
           call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, size(idxn(0:nnn-1)), idxn(0:nnn-1), &
                         valuesb(0:nn-1), ADD_VALUES, ierr)
           dgm_petsc%is_assembled=.false.
         end if
       end if
-
-
   END DO Loop_Elements20
 
   ! !!******************** PROFILNG THE PETSC MAT ***************!

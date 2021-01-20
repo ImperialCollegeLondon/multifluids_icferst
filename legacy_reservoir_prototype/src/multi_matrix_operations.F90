@@ -1726,6 +1726,8 @@ contains
 
           matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
               matrix%column_numbering, dnnz, onnz)
+
+              
           deallocate(dnnz)
           deallocate(onnz)
         end if
