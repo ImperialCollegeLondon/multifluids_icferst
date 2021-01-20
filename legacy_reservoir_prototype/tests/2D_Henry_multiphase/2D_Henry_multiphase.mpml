@@ -115,14 +115,14 @@
     <phase_properties>
       <Density>
         <compressible>
-          <concentration_dependant>
+          <Boussinesq_eos>
             <reference_density>
               <real_value rank="0">1000</real_value>
             </reference_density>
             <alpha>
               <real_value rank="0">0.025</real_value>
             </alpha>
-          </concentration_dependant>
+          </Boussinesq_eos>
         </compressible>
         <boundary_conditions name="right">
           <surface_ids>

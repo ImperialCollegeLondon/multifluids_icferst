@@ -533,23 +533,26 @@ contains
              dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
             deallocate( eos_coefs )
 
-          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
-              !!$ Den = den0 * ( 1 + alpha * concentration - beta * DeltaT )
+          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Boussinesq_eos' ) then
+              !!$ Den = den0 * ( 1 + alpha * DeltaC - beta * DeltaT + gamma * DeltaP)
 
-              allocate( eos_coefs( 4 ) ) ; eos_coefs = 0.
+              allocate( eos_coefs( 7 ) ) ; eos_coefs = 0.
               call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 1 ) )
-              call get_option( trim( eos_option_path ) // '/alpha', eos_coefs( 2 ), default  = 0.  )
-              call get_option( trim( eos_option_path ) // '/T0', eos_coefs( 3 ), default = 298. )
-              call get_option( trim( eos_option_path ) // '/beta', eos_coefs( 4 ), default = 0. )
+              call get_option( trim( eos_option_path ) // '/C0', eos_coefs( 2 ), default = 0. )
+              call get_option( trim( eos_option_path ) // '/alpha', eos_coefs( 3 ), default  = -1.)
+              call get_option( trim( eos_option_path ) // '/T0', eos_coefs( 4 ), default = 298. )
+              call get_option( trim( eos_option_path ) // '/beta', eos_coefs( 5 ), default = -1.)
+              call get_option( trim( eos_option_path ) // '/P0', eos_coefs( 6 ), default = 1e5 )
+              call get_option( trim( eos_option_path ) // '/gamma', eos_coefs( 7 ), default = -1.)
               Rho = 1.0
-              if (have_concentration_field) then!Add the concentration contribution
-                Rho =  Rho + eos_coefs( 2 ) * Concentration % val
-              end if
-              if (have_temperature_field) then !add the temperature contribution
-                Rho = Rho - eos_coefs( 4 ) * (temperature % val - eos_coefs( 3 ))
-              end if
+              !Add the concentration contribution
+              if (eos_coefs( 3 ) > 0 ) Rho =  Rho + eos_coefs( 3 ) * (Concentration % val - eos_coefs( 2 ) )
+              !add the temperature contribution
+              if (eos_coefs( 5 ) > 0) Rho = Rho - eos_coefs( 5 ) * (temperature % val - eos_coefs( 4 ))
+              !add pressure contribution
+              if (eos_coefs( 7 ) > 0. ) Rho =  Rho + eos_coefs( 7 ) * (pressure%val(1,1,:) - eos_coefs( 6 ) )
               Rho = Rho * eos_coefs( 1 )
-              ! Rho = Rho * eos_coefs( 1 )
+
               dRhodP = 0.0
               deallocate( eos_coefs )
           else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
@@ -793,8 +796,8 @@ contains
             elseif( have_option( trim( eos_option_path_out ) // '/exponential_in_pressure' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/exponential_in_pressure'
 
-              elseif( have_option( trim( eos_option_path_out ) // '/concentration_dependant' ) ) then
-                  eos_option_path_out = trim( eos_option_path_out ) // '/concentration_dependant'
+              elseif( have_option( trim( eos_option_path_out ) // '/Boussinesq_eos' ) ) then
+                  eos_option_path_out = trim( eos_option_path_out ) // '/Boussinesq_eos'
 
             elseif( have_option( trim( eos_option_path_out ) // '/Temperature_Pressure_correlation' ) ) then
                 eos_option_path_out = trim( eos_option_path_out ) // '/Temperature_Pressure_correlation'
@@ -2862,7 +2865,7 @@ contains
         call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B/constant', ref_rho )
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
         call get_option( trim( eos_option_path ) // '/coefficient_A', ref_rho )
-      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/concentration_dependant' ) then
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/Boussinesq_eos' ) then
         !!$ Den = den0 * ( 1 + alpha * solute mass fraction - beta * DeltaT )
         call get_option( trim( eos_option_path ) // '/reference_density', ref_rho )
       else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
