@@ -2,7 +2,7 @@
 <testproblem>
   <name>Boussinesq_eos_with_tracers</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous boussinesq mpml meow</tags>
+  <tags>porous boussinesq mpml </tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/icferst Boussinesq_eos_with_tracers.mpml</command_line>
   </problem_definition>
