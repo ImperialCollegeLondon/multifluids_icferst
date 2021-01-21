@@ -4406,14 +4406,14 @@ DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))</a:document
                 <ref name="real"/>
               </element>
               <optional>
-                <element name="alpha">
-                  <a:documentation>Concentration density coefficient</a:documentation>
+                <element name="C0">
+                  <a:documentation>Reference concentration (default 0)</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
               <optional>
-                <element name="C0">
-                  <a:documentation>Reference concentration (default 0)</a:documentation>
+                <element name="alpha">
+                  <a:documentation>Concentration density coefficient</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>

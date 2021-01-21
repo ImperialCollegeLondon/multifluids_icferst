@@ -3705,14 +3705,14 @@ element Density{(
                            element reference_density {
                               real
                            },
-                           ## Concentration density coefficient
-                           element alpha {
-                              real
-                           }?,
                            ## Reference concentration (default 0)
                            element C0 {
                               real
-                           }?,                           
+                           }?,     
+                           ## Concentration density coefficient
+                           element alpha {
+                              real
+                           }?,                      
                            ## Reference temperature (default 298)
                            element T0 {
                               real
