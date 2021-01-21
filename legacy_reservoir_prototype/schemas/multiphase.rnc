@@ -2448,7 +2448,12 @@ scalar_field_choice =
                     ## <b>VERY RECOMMENDED</b>
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                  element Impose_min_max{empty}?,
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field,
                      output_options
                }|
@@ -2491,7 +2496,12 @@ scalar_field_choice =
                     ## <b>VERY RECOMMENDED</b>
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                  element Impose_min_max{empty}?,                  
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,                  
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2535,7 +2545,12 @@ scalar_field_choice =
                     ## <b>VERY RECOMMENDED</b>
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                  element Impose_min_max{empty}?,                  
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,                  
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2717,7 +2732,12 @@ scalar_field_choice =
                     ## <b>VERY RECOMMENDED</b>
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                  element Impose_min_max{empty}?,
+                  element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2745,7 +2765,12 @@ scalar_field_choice =
                     ## <b>VERY RECOMMENDED</b>
                     ##
 	                  ## This imposes the tracer to be between bounds.
-                  element Impose_min_max{empty}?,
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {

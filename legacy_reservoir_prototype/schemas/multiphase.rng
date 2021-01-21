@@ -2927,7 +2927,18 @@ the non-linear solver can be accelerated by imposing physical constraints.
 &lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <empty/>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -2978,7 +2989,18 @@ the non-linear solver can be accelerated by imposing physical constraints.
 &lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <empty/>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3034,7 +3056,18 @@ the non-linear solver can be accelerated by imposing physical constraints.
 &lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <empty/>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3256,7 +3289,18 @@ the non-linear solver can be accelerated by imposing physical constraints.
 &lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <empty/>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3292,7 +3336,18 @@ the non-linear solver can be accelerated by imposing physical constraints.
 &lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
 
 This imposes the tracer to be between bounds.</a:documentation>
-                <empty/>
+                <optional>
+                  <element name="min_limit">
+                    <a:documentation>Impose min limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="max_limit">
+                    <a:documentation>Impose max limit by hand, otherwise obtained automatically. Only the first phase is read</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
