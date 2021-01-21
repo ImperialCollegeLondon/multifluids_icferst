@@ -4399,10 +4399,11 @@ DEN = A * P ^ B
             <element name="Boussinesq_eos">
               <a:documentation>Boussinesq EOS
 
-&lt;b&gt;This EOS is only to be used with boussinesq approximation.&lt;/b&gt;
+&lt;b&gt;This EOS imposes the boussinesq approximation.&lt;/b&gt;
 
 DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))</a:documentation>
               <element name="reference_density">
+                <a:documentation>This is the density value at reference properties</a:documentation>
                 <ref name="real"/>
               </element>
               <optional>
@@ -4441,6 +4442,26 @@ DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))</a:document
                   <ref name="real"/>
                 </element>
               </optional>
+              <zeroOrMore>
+                <element name="scalar_field">
+                  <a:documentation>Extra scalar fields can be added following the same formula.
+
+DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0) + field_Coef (field - field_reference) + ...)
+
+Introduce the same name as the scalar field being used. For example: PassiveTracer_CO2</a:documentation>
+                  <attribute name="name">
+                    <data type="string" datatypeLibrary=""/>
+                  </attribute>
+                  <element name="R0">
+                    <a:documentation>Reference value</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                  <element name="Coef">
+                    <a:documentation>Coefficient</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </element>
+              </zeroOrMore>
             </element>
             <element name="Temperature_Pressure_correlation">
               <a:documentation>Temperature-Pressure correlation for liquids ONLY.
