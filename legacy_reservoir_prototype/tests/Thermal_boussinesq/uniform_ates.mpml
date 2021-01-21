@@ -40,7 +40,6 @@
             <real_value rank="0">-1e3</real_value>
           </Vanishing_for_transport>
         </Vanishing_relaxation>
-        <Impose_min_max/>
       </Fixed_Point_Iteration>
     </Non_Linear_Solver>
   </solver_options>
@@ -269,6 +268,7 @@
     <scalar_field name="Temperature" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <python>
             <string_value lines="20" type="code" language="python">def val(X, t):
@@ -512,6 +512,7 @@
     <scalar_field name="Temperature" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <python>
             <string_value lines="20" type="code" language="python">def val(X, t):

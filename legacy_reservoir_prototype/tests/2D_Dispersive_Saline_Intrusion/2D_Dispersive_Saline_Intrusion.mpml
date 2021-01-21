@@ -40,7 +40,6 @@
             <real_value rank="0">-1e0</real_value>
           </Vanishing_for_transport>
         </Vanishing_relaxation>
-        <Impose_min_max/>
         <adaptive_timestep_nonlinear>
           <integer_value rank="0">5</integer_value>
           <PID_controller>
@@ -50,7 +49,7 @@
           </PID_controller>
           <max_timestep>
             <python>
-              <string_value type="code" lines="20" language="python">def val(t):
+              <string_value lines="20" type="code" language="python">def val(t):
  val = 300
  return val</string_value>
             </python>
@@ -300,6 +299,7 @@
     <scalar_field name="Concentration" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.00001</real_value>

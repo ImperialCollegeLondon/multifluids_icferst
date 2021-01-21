@@ -1494,15 +1494,6 @@ solver_options =
                   )
                 }?,
               (
-                ## If there are no sources nor sinks
-                ## the non-linear solver can be accelerated by imposing physical constraints.
-                ##
-                ## <b>VERY RECOMMENDED</b>
-                ##
-	            ## This imposes the tracer to be between bounds.
-                element Impose_min_max{empty}?
-              ),
-              (
                 ## Convergence criterion based on the
                 ## conservation of volume of each phase for the non-linear solver
             ##
@@ -2451,6 +2442,13 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                  element Impose_min_max{empty}?,
                   prognostic_scalar_field,
                      output_options
                }|
@@ -2486,7 +2484,14 @@ scalar_field_choice =
             attribute name { "Temperature" },
             (
                element prognostic {
-                  pressure_mesh_choice,
+                  pressure_mesh_choice,                   
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                  element Impose_min_max{empty}?,                  
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2524,6 +2529,13 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                  element Impose_min_max{empty}?,                  
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2699,6 +2711,13 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                  element Impose_min_max{empty}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2720,6 +2739,13 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                  element Impose_min_max{empty}?,
                   prognostic_scalar_field
                }|
                element prescribed {

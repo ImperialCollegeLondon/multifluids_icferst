@@ -135,6 +135,7 @@ contains
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -298,7 +299,8 @@ contains
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
 
            !Start with the process to apply the min max principle
-           if (is_porous_media .and. thermal) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
+           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nphase)
+           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -399,7 +401,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                end do
 
                 !Control how it is converging and decide
-               if(is_porous_media .and. thermal) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
+               if (impose_min_max)call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)!Apply if required the min max principle
 
                !Just after the solvers
                call deallocate(Mmat%petsc_ACV)
@@ -802,6 +804,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -890,7 +893,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
            !Start with the process to apply the min max principle
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
+           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
+           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -945,8 +949,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
                    !Ensure that the solution is above zero always
                   solution%val = max(solution%val,min_concentration)
-                   !Apply if required the min max principle
-                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
 
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
@@ -955,6 +957,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                     end do
                    end do
 
+                   !Apply if required the min max principle
+                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix
                    !Update halo communications
@@ -985,7 +989,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     integer, intent(in) :: entrance
     real, dimension(2), intent(inout) :: totally_min_max
     !Local variables
-    logical, save :: first_time = .true., apply_minmax_principle
+    logical :: apply_minmax_principle
     integer, allocatable, dimension( :,:,:) :: WIC_T_BC_ALL
     type(tensor_field) :: tracer_BCs
     real, parameter :: tol = 1e-30
@@ -993,11 +997,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
     select case (entrance)
     case (1)
       !Get variable for global convergence method
-      if (first_time) then
-        first_time = .false.
-        !Check diamond
-        apply_minmax_principle = have_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Impose_min_max')
-      end if
       if (apply_minmax_principle .and. nonlinear_iteration == 1) then!Only get the minmax the first non-linear iteration
         allocate (WIC_T_BC_ALL (1 , Mdims%ndim , surface_element_count(tracer) ))
         call get_entire_boundary_condition(tracer,&
@@ -1008,7 +1007,6 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
         !Check also domain?                    !For wells cannot consider zero values, this can be solved using Kelvin as proper scientists should do...
         totally_min_max(1)=min(totally_min_max(1), minval(tracer%val, MASK = tracer%val > tol))!use stored value
         totally_min_max(2)=max(totally_min_max(2), maxval(tracer%val))!use stored value
-
         !For parallel
         call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
         deallocate(WIC_T_BC_ALL); call deallocate(tracer_BCs)
@@ -1094,6 +1092,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            character(len=option_path_len) :: solver_option_path = "/solver_options/Linear_solver"
            !Variables to stabilize the non-linear iteration solver
            real, dimension(2), save :: totally_min_max = (/-1d9,1d9/)!Massive values by default just in case
+           logical :: impose_min_max
            real :: aux
            real, save :: inf_tolerance = -1
            !Variables to control the PETCs solver
@@ -1177,7 +1176,8 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            end if
 
            !Start with the process to apply the min max principle
-           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
+           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
+           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max)
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -1219,15 +1219,15 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                    ! call zero_non_owned(Mmat%CV_RHS)
                    call zero(solution)
                    call petsc_solve(solution,Mmat%petsc_ACV,Mmat%CV_RHS,trim(solver_option_path), iterations_taken = its_taken)
-                   
-                   !Apply if required the min max principle
-                   call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
+
                    !Copy solution back to tracer(not ideal...)
                    do ipres =1, mdims%npres
                      do iphase = 1 , nconc_in_pres
                       tracer%val(1,iphase+(ipres-1)*Mdims%n_in_pres,:) = solution%val(iphase+(ipres-1)*nconc_in_pres,:)
                     end do
                    end do
+                   !Apply if required the min max principle
+                   if (impose_min_max) call force_min_max_principle(Mdims, 2, tracer, nonlinear_iteration, totally_min_max)
 
                    !Just after the solvers
                    call deallocate(Mmat%petsc_ACV)!<=There is a bug, if calling Fluidity to deallocate the memory of the PETSC matrix

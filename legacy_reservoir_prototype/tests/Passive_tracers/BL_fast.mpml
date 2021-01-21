@@ -40,7 +40,6 @@
             <real_value rank="0">-1e2</real_value>
           </Vanishing_for_transport>
         </Vanishing_relaxation>
-        <Impose_min_max/>
       </Fixed_Point_Iteration>
     </Non_Linear_Solver>
   </solver_options>
@@ -239,6 +238,7 @@
     <scalar_field name="PassiveTracer" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.2</real_value>
@@ -264,6 +264,7 @@
     <scalar_field name="PassiveTracerVapour" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <constant>
             <real_value rank="0">0.2</real_value>

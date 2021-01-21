@@ -1836,17 +1836,6 @@ Tip: If running with temperature and single phase disable this setting it to 0.<
                 </element>
               </optional>
               <optional>
-                <element name="Impose_min_max">
-                  <a:documentation>If there are no sources nor sinks
-the non-linear solver can be accelerated by imposing physical constraints.
-
-&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
-
-This imposes the tracer to be between bounds.</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-              <optional>
                 <element name="Test_mass_consv">
                   <a:documentation>Convergence criterion based on the
 conservation of volume of each phase for the non-linear solver
@@ -2930,6 +2919,17 @@ i.e. excluding the components</a:documentation>
           <a:documentation>Field type</a:documentation>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <empty/>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
             <ref name="output_options"/>
           </element>
@@ -2970,6 +2970,17 @@ i.e. excluding the components</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <empty/>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -3015,6 +3026,17 @@ for fields within the same material_phase.</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <empty/>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -3226,6 +3248,17 @@ Passive Tracers do not have diffusion and the boussinesq approximation for this 
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <empty/>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
@@ -3251,6 +3284,17 @@ This is just an example of how it works.</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="pressure_mesh_choice"/>
+            <optional>
+              <element name="Impose_min_max">
+                <a:documentation>If there are no sources nor sinks
+the non-linear solver can be accelerated by imposing physical constraints.
+
+&lt;b&gt;VERY RECOMMENDED&lt;/b&gt;
+
+This imposes the tracer to be between bounds.</a:documentation>
+                <empty/>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
           </element>
           <element name="prescribed">
