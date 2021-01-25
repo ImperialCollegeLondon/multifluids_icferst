@@ -2621,48 +2621,11 @@ end if
       !!>@brief: !For magma, we use the Bercovici et al. 2001 (doi.org/10.1029/2000JB900430) formulation,
       !!> which generates a singular system if both phases act like Darcy.
       !!> The solution is to solve for the first phase as the sum of all the other phases for momentum, this removes the coupling term from that equation
-      !!> Here we chamge the system to do this
+      !!> Here we chamge the system to do this, for this we need to change the C matric and U_RHS
       subroutine add_eqs_to_solid_phase()
         implicit none
         !Local variables
-        integer :: U_JLOC, U_ILOC, JPHASE, JDIM, IPHASE, IDIM, ele, k, U_INOD
-
-
-        !Modify the momentum matrix
-        do ele = 1, Mdims%totele
-          DO U_JLOC = 1, Mdims%u_nloc
-            DO U_ILOC = 1, Mdims%u_nloc
-              DO JPHASE = 1, Mdims%nphase
-                DO JDIM = 1, Mdims%ndim
-                  DO IPHASE = 2, Mdims%nphase
-                    DO IDIM = 1, Mdims%ndim
-                      DIAG_BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, ELE ) = &
-                      DIAG_BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, ELE ) + &
-                      DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )
-                    end do
-                  end do
-                end do
-              end do
-            end do
-          end do
-        end do
-        do k = 1, size(BIGM_CON, 7)
-          DO U_JLOC = 1, Mdims%u_nloc
-            DO U_ILOC = 1, Mdims%u_nloc
-              DO JPHASE = 1, Mdims%nphase
-                DO JDIM = 1, Mdims%ndim
-                  DO IPHASE = 2, Mdims%nphase
-                    DO IDIM = 1, Mdims%ndim
-                      BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, k ) = &
-                      BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, k ) + &
-                      BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, k )
-                    end do
-                  end do
-                end do
-              end do
-            end do
-          end do
-        end do
+        integer :: JPHASE, IDIM, k, U_INOD
 
         !Modify the RHS term as well to keep consistency
         do U_INOD = 1, Mdims%u_nonods

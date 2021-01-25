@@ -438,6 +438,8 @@ contains
   !>@brief:This subroutine calculates the coupling term for the magma modelling
   !>and adds it to the absorptiont term to impose the coupling between phase
   !>NOTE: It gives for GRANTED that the memory type is 3!!!! (see multi_data_types)
+  !> Despite Bercovici uses a coupling term for both phases, here we do not put it on the first phase
+  !> as that equation is generated in such a way that the coupling term is removed
   subroutine calculate_Magma_absorption(Mdims, state, packed_state, Magma_absorp, ndgln, c_phi_series)
     implicit none
     type( state_type ), dimension( : ), intent( inout ) :: state
@@ -461,7 +463,7 @@ contains
         DO CV_ILOC = 1, Mdims%cv_nloc
             mat_nod = ndgln%mat( ( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC )
             cv_inod = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            DO IPHASE = 1, Mdims%nphase
+            DO IPHASE = 2, Mdims%nphase!Not phase 1
               magma_coupling = c_value(saturation%val(1,2, cv_inod))
               do jphase = 1, Mdims%nphase
                 if (jphase == iphase) then
