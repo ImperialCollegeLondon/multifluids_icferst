@@ -2008,6 +2008,10 @@ end if
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
         end IF
+
+        !For magma, we change phase 1 to be the sum of the other phases equation
+        if (is_magma) call add_eqs_to_solid_phase()
+
         ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
         lump_diag_mom=.false.
         lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media))
@@ -2612,6 +2616,73 @@ end if
 
         ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
       end subroutine
+
+
+      !!>@brief: !For magma, we use the Bercovici et al. 2001 (doi.org/10.1029/2000JB900430) formulation,
+      !!> which generates a singular system if both phases act like Darcy.
+      !!> The solution is to solve for the first phase as the sum of all the other phases for momentum, this removes the coupling term from that equation
+      !!> Here we chamge the system to do this
+      subroutine add_eqs_to_solid_phase()
+        implicit none
+        !Local variables
+        integer :: U_JLOC, U_ILOC, JPHASE, JDIM, IPHASE, IDIM, ele, k, U_INOD
+
+
+        !Modify the momentum matrix
+        do ele = 1, Mdims%totele
+          DO U_JLOC = 1, Mdims%u_nloc
+            DO U_ILOC = 1, Mdims%u_nloc
+              DO JPHASE = 1, Mdims%nphase
+                DO JDIM = 1, Mdims%ndim
+                  DO IPHASE = 2, Mdims%nphase
+                    DO IDIM = 1, Mdims%ndim
+                      DIAG_BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, ELE ) = &
+                      DIAG_BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, ELE ) + &
+                      DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )
+                    end do
+                  end do
+                end do
+              end do
+            end do
+          end do
+        end do
+        do k = 1, size(BIGM_CON, 7)
+          DO U_JLOC = 1, Mdims%u_nloc
+            DO U_ILOC = 1, Mdims%u_nloc
+              DO JPHASE = 1, Mdims%nphase
+                DO JDIM = 1, Mdims%ndim
+                  DO IPHASE = 2, Mdims%nphase
+                    DO IDIM = 1, Mdims%ndim
+                      BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, k ) = &
+                      BIGM_CON( IDIM, JDIM, 1, JPHASE, U_ILOC, U_JLOC, k ) + &
+                      BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, k )
+                    end do
+                  end do
+                end do
+              end do
+            end do
+          end do
+        end do
+
+        !Modify the RHS term as well to keep consistency
+        do U_INOD = 1, Mdims%u_nonods
+          do jphase = 2, Mdims%nphase
+            do idim = 1, Mdims%ndim
+              Mmat%U_RHS( idim, 1, U_INOD ) = Mmat%U_RHS( idim, 1, U_INOD ) + Mmat%U_RHS( idim, jphase, U_INOD )
+            end do
+          end do
+        end do
+
+        !Modify the C matrix
+        do k = 1, size(Mmat%C,3)
+          do jphase = 2, Mdims%nphase
+            do idim = 1, Mdims%ndim
+              Mmat%C( IDIM, 1, k ) = Mmat%C( IDIM, 1, k ) + Mmat%C( IDIM, jphase, k )
+            end do
+          end do
+        end do
+
+      end subroutine add_eqs_to_solid_phase
 
         !!>@brief: Compute a CV pressure from a FE representation
         subroutine calc_CVPres_from_FEPres()
