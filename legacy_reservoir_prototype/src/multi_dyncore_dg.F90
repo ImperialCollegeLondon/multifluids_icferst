@@ -2628,14 +2628,15 @@ end if
         integer :: JPHASE, IDIM, k, U_INOD
 
         !Modify the RHS term as well to keep consistency
-        do U_INOD = 1, Mdims%u_nonods
-          do jphase = 2, Mdims%nphase
-            do idim = 1, Mdims%ndim
-              Mmat%U_RHS( idim, 1, U_INOD ) = Mmat%U_RHS( idim, 1, U_INOD ) + Mmat%U_RHS( idim, jphase, U_INOD )
+        if (.not. Mmat%stored) then!We only want to do this when the gradient matrix Mmat%C is computed 
+          do U_INOD = 1, Mdims%u_nonods
+            do jphase = 2, Mdims%nphase
+              do idim = 1, Mdims%ndim
+                Mmat%U_RHS( idim, 1, U_INOD ) = Mmat%U_RHS( idim, 1, U_INOD ) + Mmat%U_RHS( idim, jphase, U_INOD )
+              end do
             end do
           end do
-        end do
-
+        end if
         !Modify the C matrix
         do k = 1, size(Mmat%C,3)
           do jphase = 2, Mdims%nphase
