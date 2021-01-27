@@ -93,24 +93,17 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Temperature_Pressure_correlation>
-            <rho0>
+          <Boussinesq_eos>
+            <reference_density>
               <real_value rank="0">1000</real_value>
-            </rho0>
+            </reference_density>
             <T0>
               <real_value rank="0">293</real_value>
             </T0>
-            <P0>
-              <real_value rank="0">1.1e5</real_value>
-            </P0>
-            <coefficient_Beta>
+            <beta>
               <real_value rank="0">8.8e-5</real_value>
-            </coefficient_Beta>
-            <coefficient_E>
-              <real_value rank="0">2.15e9</real_value>
-            </coefficient_E>
-          </Temperature_Pressure_correlation>
-          <Boussinesq_approximation/>
+            </beta>
+          </Boussinesq_eos>
         </compressible>
       </Density>
       <Viscosity>
@@ -331,24 +324,17 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Temperature_Pressure_correlation>
-            <rho0>
+          <Boussinesq_eos>
+            <reference_density>
               <real_value rank="0">1000</real_value>
-            </rho0>
+            </reference_density>
             <T0>
               <real_value rank="0">293</real_value>
             </T0>
-            <P0>
-              <real_value rank="0">1.1e5</real_value>
-            </P0>
-            <coefficient_Beta>
+            <beta>
               <real_value rank="0">8.8e-5</real_value>
-            </coefficient_Beta>
-            <coefficient_E>
-              <real_value rank="0">2.15e9</real_value>
-            </coefficient_E>
-          </Temperature_Pressure_correlation>
-          <Boussinesq_approximation/>
+            </beta>
+          </Boussinesq_eos>
         </compressible>
       </Density>
       <Viscosity>

@@ -1248,7 +1248,7 @@ Each file has to describe a continuous well touching an external boundary.
 
 &lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase,
 temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a Concentration field defined.
-Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities 
+Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
 in your solution due to the logarithmic nature of the system to solve for. This is uncommon, for fresh water the salt concentration is still 1e-2.
 
 Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
@@ -4502,7 +4502,10 @@ DEN = A * P ^ B
 
 &lt;b&gt;This EOS imposes the boussinesq approximation.&lt;/b&gt;
 
-DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))</a:documentation>
+DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
+
+NOTE: This equation is only valid when density varies less than 5%.
+Internally it is bounded to not vary more than 10%</a:documentation>
               <element name="reference_density">
                 <a:documentation>This is the density value at reference properties</a:documentation>
                 <ref name="real"/>
@@ -4563,41 +4566,6 @@ Introduce the same name as the scalar field being used. For example: PassiveTrac
                   </element>
                 </element>
               </zeroOrMore>
-            </element>
-            <element name="Temperature_Pressure_correlation">
-              <a:documentation>Temperature-Pressure correlation for liquids ONLY.
-
-Range of applicability: 0 to 2*10^9 Pa.
-
-rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
-
-where rho0 is the reference density at temperature T0 and pressure P0;
-
-Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
-
-E is the liquid elasticity bulk modulus (N/m^2);
-
-NOTE: if temperature is not defined the temperature is defined as zero.</a:documentation>
-              <element name="rho0">
-                <a:documentation>Reference density</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="T0">
-                <a:documentation>Reference temperature</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="P0">
-                <a:documentation>Reference Pressure</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="coefficient_Beta">
-                <a:documentation>volumetric expansion coefficient (m^3/m^3 Celsius)</a:documentation>
-                <ref name="real"/>
-              </element>
-              <element name="coefficient_E">
-                <a:documentation>liquid elasticity bulk modulus (N/m^2)</a:documentation>
-                <ref name="real"/>
-              </element>
             </element>
           </choice>
           <optional>

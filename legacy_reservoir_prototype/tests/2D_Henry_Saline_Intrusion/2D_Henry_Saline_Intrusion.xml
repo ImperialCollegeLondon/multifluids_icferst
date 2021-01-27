@@ -2,7 +2,7 @@
 <testproblem>
   <name>2D_Henry_Saline_Intrusion</name>
   <owner userid="Arash.Hamzehloo"/>
-  <tags>porous mpml adaptivity transport solute saline intrusion tbc</tags>
+  <tags>porous mpml adaptivity transport solute saline intrusion</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python ./*.py &gt; log</command_line>
   </problem_definition>

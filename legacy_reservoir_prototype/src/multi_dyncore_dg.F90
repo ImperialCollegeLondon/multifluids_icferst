@@ -297,9 +297,8 @@ contains
            ! Check for a python-set source field when solving for temperature/internal energy
            python_vfield => extract_vector_field( state(1), "TSourcE", python_stat )
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
-
            !Start with the process to apply the min max principle
-           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nphase)
+           impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%nphase)
            if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
@@ -1114,20 +1113,19 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            logical :: boussinesq = .true.
            !Parameters for stabilisation and compact solving, i.e. solving only concentration for some phases
            real, parameter :: min_val = 0.
-           integer, save :: nconc = -1 !> Number of phases with concentration, this works if the phases with concentration start from the first one and are consecutive
-           integer, save :: nconc_in_pres
+           integer :: nconc !> Number of phases with tracer, this works if the phases with concentration start from the first one and are consecutive
+           integer :: nconc_in_pres
            type(vector_field) :: solution
-           !Retrieve the number of phases that have Concentration, and then if they are concecutive and start from the first one
-           if (nconc < 0) then
-             nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
-             nconc_in_pres = nconc
-             if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
-             do iphase = 1, nconc_in_pres
-               if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_Tracer_name))) then
-                 FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
-               end if
-             end do
-           end if
+
+           !Retrieve the number of phases that have this tracer, and then if they are concecutive and start from the first one
+           nconc = option_count("/material_phase/scalar_field::"//trim(Passive_Tracer_name))
+           nconc_in_pres = nconc
+           if (Mdims%npres > 1) nconc_in_pres = max(nconc_in_pres / 2, 1)
+           do iphase = 1, nconc_in_pres
+             if (.not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(Passive_Tracer_name))) then
+               FLAbort('Concentration must either be defined in all the phases or to start from the first one and consecutively from that one.')
+             end if
+           end do
 
            if (present(Permeability_tensor_field)) then
               perm => Permeability_tensor_field
