@@ -118,14 +118,14 @@
               <real_value rank="0">1</real_value>
             </reference_density>
             <alpha>
-              <real_value rank="0">1.5</real_value>
+              <real_value rank="0">3e-2</real_value>
             </alpha>
             <scalar_field name="PassiveTracer_Example2">
               <R0>
                 <real_value rank="0">0.1</real_value>
               </R0>
               <Coef>
-                <real_value rank="0">2</real_value>
+                <real_value rank="0">3e-2</real_value>
               </Coef>
             </scalar_field>
           </Boussinesq_eos>

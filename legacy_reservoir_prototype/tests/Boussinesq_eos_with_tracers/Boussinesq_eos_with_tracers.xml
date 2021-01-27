@@ -13,8 +13,8 @@ max_den = stat("Boussinesq_eos_with_tracers.stat")["phase1"]["Density"]["max"][-
 min_den = stat("Boussinesq_eos_with_tracers.stat")["phase1"]["Density"]["min"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max density" language="python">assert(abs(max_den - 3)/3 &lt; 0.01)</test>
-    <test name="Assert final min density" language="python">assert(abs(min_den - 3)/3 &lt; 0.01)</test>
+    <test name="Assert final max density" language="python">assert(abs(max_den - 1.036)/1.036 &lt; 0.01)</test>
+    <test name="Assert final min density" language="python">assert(abs(min_den - 1.036)/1.036 &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
