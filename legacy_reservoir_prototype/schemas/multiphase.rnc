@@ -1020,6 +1020,8 @@ start =
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
           ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a Concentration field defined.
+          ## Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
+          ## in your solution due to the logarithmic nature of the system to solve for. This is uncommon, for fresh water the salt concentration is still 1e-2.
           ##
           ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
           element Self_Potential{(
@@ -1493,15 +1495,6 @@ solver_options =
                     }?
                   )
                 }?,
-              (
-                ## If there are no sources nor sinks
-                ## the non-linear solver can be accelerated by imposing physical constraints.
-                ##
-                ## <b>VERY RECOMMENDED</b>
-                ##
-	            ## This imposes the tracer to be between bounds.
-                element Impose_min_max{empty}?
-              ),
               (
                 ## Convergence criterion based on the
                 ## conservation of volume of each phase for the non-linear solver
@@ -2451,6 +2444,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field,
                      output_options
                }|
@@ -2487,6 +2492,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2524,6 +2541,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2699,6 +2728,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                  element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -2720,6 +2761,18 @@ scalar_field_choice =
             (
                element prognostic {
                   pressure_mesh_choice,
+                    ## If there are no sources nor sinks
+                    ## the non-linear solver can be accelerated by imposing physical constraints.
+                    ##
+                    ## <b>VERY RECOMMENDED</b>
+                    ##
+	                  ## This imposes the tracer to be between bounds.
+                                    element Impose_min_max{(
+                    ##Impose min limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element min_limit{real}?,
+                    ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
+                    element max_limit{real}?
+                  )}?,
                   prognostic_scalar_field
                }|
                element prescribed {
@@ -3698,21 +3751,25 @@ element Density{(
                         }|
                         ## Boussinesq EOS
                         ##
-			                  ## <b>This EOS is only to be used with boussinesq approximation.</b>
+			                  ## <b>This EOS imposes the boussinesq approximation.</b>
                         ##
                         ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0))
+                        ##
+                        ## NOTE: This equation is only valid when density varies less than 5%.
+                        ## Internally it is bounded to not vary more than 10%
                         element Boussinesq_eos {
+                           ## This is the density value at reference properties
                            element reference_density {
                               real
                            },
+                           ## Reference concentration (default 0)
+                           element C0 {
+                              real
+                           }?,
                            ## Concentration density coefficient
                            element alpha {
                               real
                            }?,
-                           ## Reference concentration (default 0)
-                           element C0 {
-                              real
-                           }?,                           
                            ## Reference temperature (default 298)
                            element T0 {
                               real
@@ -3728,42 +3785,22 @@ element Density{(
                            ## Inverse of the liquid elasticity bulk modulus (Pa)
                            element gamma {
                               real
-                           }?
-                        }|
-                        ## Temperature-Pressure correlation for liquids ONLY.
-                        ##
-                        ## Range of applicability: 0 to 2*10^9 Pa.
-                        ##
-                        ## rho1 = rho0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
-                        ##
-                        ## where rho0 is the reference density at temperature T0 and pressure P0;
-                        ##
-                        ## Beta is volumetric expansion coefficient (m^3/m^3 Celsius);
-                        ##
-                        ## E is the liquid elasticity bulk modulus (N/m^2);
-                        ##
-                        ## NOTE: if temperature is not defined the temperature is defined as zero.
-                        element Temperature_Pressure_correlation {
-                           ## Reference density
-                           element rho0 {
+                           }?,
+                           ## Extra scalar fields can be added following the same formula.
+                           ##
+                           ## DEN = DEN0 * ( 1 + Alpha (C -C0) - Beta (Temp -T0) + Gamma (P - P0) + field_Coef (field - field_reference) + ...)
+                           ##
+                           ## Introduce the same name as the scalar field being used. For example: PassiveTracer_CO2
+                           element scalar_field{(
+                           attribute name { string },
+                           ## Reference value
+                           element R0 {
                               real
                            },
-                           ## Reference temperature
-                           element T0 {
+                           ## Coefficient
+                           element Coef {
                               real
-                           },
-                           ## Reference Pressure
-                           element P0 {
-                              real
-                           },
-                           ## volumetric expansion coefficient (m^3/m^3 Celsius)
-                           element coefficient_Beta {
-                              real
-                           },
-                           ## liquid elasticity bulk modulus (N/m^2)
-                           element coefficient_E {
-                              real
-                           }
+                           })}*
                         }
                       ),      ## Use the boussinesq approximation. Useful for small variations of density.
                       ## For porous media only the formulate, including linear pressure, with a reference density work with this.

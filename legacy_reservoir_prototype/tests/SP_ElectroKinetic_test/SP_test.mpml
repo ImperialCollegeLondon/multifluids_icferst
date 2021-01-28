@@ -224,7 +224,7 @@
         <mesh name="PressureMesh"/>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">0.5</real_value>
+            <real_value rank="0">0.0005</real_value>
             <comment>0.5M/l</comment>
           </constant>
         </initial_condition>
@@ -235,7 +235,7 @@
           <type name="dirichlet">
             <apply_weakly/>
             <constant>
-              <real_value rank="0">0.5</real_value>
+              <real_value rank="0">0.0005</real_value>
             </constant>
           </type>
         </boundary_conditions>

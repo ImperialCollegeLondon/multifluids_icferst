@@ -40,7 +40,6 @@
             <real_value rank="0">-1e3</real_value>
           </Vanishing_for_transport>
         </Vanishing_relaxation>
-        <Impose_min_max/>
       </Fixed_Point_Iteration>
     </Non_Linear_Solver>
   </solver_options>
@@ -94,24 +93,17 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Temperature_Pressure_correlation>
-            <rho0>
+          <Boussinesq_eos>
+            <reference_density>
               <real_value rank="0">1000</real_value>
-            </rho0>
+            </reference_density>
             <T0>
               <real_value rank="0">293</real_value>
             </T0>
-            <P0>
-              <real_value rank="0">1.1e5</real_value>
-            </P0>
-            <coefficient_Beta>
+            <beta>
               <real_value rank="0">8.8e-5</real_value>
-            </coefficient_Beta>
-            <coefficient_E>
-              <real_value rank="0">2.15e9</real_value>
-            </coefficient_E>
-          </Temperature_Pressure_correlation>
-          <Boussinesq_approximation/>
+            </beta>
+          </Boussinesq_eos>
         </compressible>
       </Density>
       <Viscosity>
@@ -269,6 +261,7 @@
     <scalar_field name="Temperature" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <python>
             <string_value lines="20" type="code" language="python">def val(X, t):
@@ -331,24 +324,17 @@
     <phase_properties>
       <Density>
         <compressible>
-          <Temperature_Pressure_correlation>
-            <rho0>
+          <Boussinesq_eos>
+            <reference_density>
               <real_value rank="0">1000</real_value>
-            </rho0>
+            </reference_density>
             <T0>
               <real_value rank="0">293</real_value>
             </T0>
-            <P0>
-              <real_value rank="0">1.1e5</real_value>
-            </P0>
-            <coefficient_Beta>
+            <beta>
               <real_value rank="0">8.8e-5</real_value>
-            </coefficient_Beta>
-            <coefficient_E>
-              <real_value rank="0">2.15e9</real_value>
-            </coefficient_E>
-          </Temperature_Pressure_correlation>
-          <Boussinesq_approximation/>
+            </beta>
+          </Boussinesq_eos>
         </compressible>
       </Density>
       <Viscosity>
@@ -512,6 +498,7 @@
     <scalar_field name="Temperature" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <Impose_min_max/>
         <initial_condition name="WholeMesh">
           <python>
             <string_value lines="20" type="code" language="python">def val(X, t):

@@ -390,7 +390,7 @@ contains
 
         type( tensor_field ), pointer :: pressure
         type( scalar_field ), pointer :: temperature, density, Concentration
-        character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python, buffer
+        character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python, buffer, option_name
         character( len = python_func_len ) :: pycode
         logical, save :: initialised = .false.
         logical :: have_temperature_field
@@ -400,7 +400,7 @@ contains
         real, dimension( : ), allocatable :: eos_coefs, perturbation_pressure, RhoPlus, RhoMinus
         real, dimension( : ), allocatable :: pressure_back_up, density_back_up, temperature_local
         real :: dt, current_time
-        integer :: ncoef, stat
+        integer :: ncoef, stat, nfields, ifield
         !Variables for python function for the coefficient_B for linear density (this is for bathymetry)
         type (scalar_field) :: sfield
         type (scalar_field), pointer :: pnt_sfield
@@ -551,35 +551,26 @@ contains
               if (eos_coefs( 5 ) > 0) Rho = Rho - eos_coefs( 5 ) * (temperature % val - eos_coefs( 4 ))
               !add pressure contribution
               if (eos_coefs( 7 ) > 0. ) Rho =  Rho + eos_coefs( 7 ) * (pressure%val(1,1,:) - eos_coefs( 6 ) )
+              !Now add values from scalar fields such as passive tracers
+              buffer = "/material_phase["// int2str( iphase -1 ) //"]/phase_properties/Density/compressible/Boussinesq_eos/"
+              nfields = option_count(trim(buffer)//"scalar_field")
+              do ifield = 1, nfields
+                call get_option(trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/name",option_name)
+                pnt_sfield => extract_scalar_field( state( iphase ), trim(option_name), stat )
+                if (stat /=0) then
+                  FLAbort("ERROR: Field defined for Boussinesq EOS does not exists. Field name: "// trim(option_name))
+                end if!We now reuse coefficients
+                call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/R0", eos_coefs( 2 ))!Reference
+                call get_option( trim(buffer)//"scalar_field["// int2str( ifield - 1 )//"]/Coef", eos_coefs( 3 ))!Coefficient
+                !Now include into EOS
+                Rho =  Rho + eos_coefs( 3 ) * (pnt_sfield % val - eos_coefs( 2 ) )
+              end do
+              !Finally multiply by the reference density
               Rho = Rho * eos_coefs( 1 )
-
+              !Ensure that the density does not vary more than 10%, in theory it should never pass 5%
+              Rho = min(max(Rho, eos_coefs( 1 )/1.1), eos_coefs( 1 )*1.1)
               dRhodP = 0.0
               deallocate( eos_coefs )
-          else if( trim( eos_option_path ) == trim( option_path_comp ) // '/Temperature_Pressure_correlation' ) then
-            !!$ den = den0/(1+Beta(T1-T0))/(1-(P1-P0)/E)
-            allocate( temperature_local( node_count( pressure ) ) ) ; temperature_local = 0.
-            if ( have_temperature_field ) temperature_local = max(temperature % val,1e-8)!avoid possible oscillations introduced by unphysical values of temperature
-                                                                                        !appearing while achieving convergence
-
-            allocate( eos_coefs( 5 ) ) ; eos_coefs = 0.
-            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/rho0', eos_coefs( 1 ) )
-            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/T0/', eos_coefs( 2 ), default = 0. )
-            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/P0/', eos_coefs( 3 ) )
-            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_Beta/', eos_coefs( 4 ), default = 0. )
-            call get_option( trim( option_path_comp ) // '/Temperature_Pressure_correlation/coefficient_E/', eos_coefs( 5 ), default = 0. )
-            !!$ den = den0/(1+Beta(T1-T0))
-            !We use RHo as auxiliar variable here as the we do not perturbate the temperature
-            Rho = eos_coefs(1)/(1 + eos_coefs(4)*(temperature_local-eos_coefs(2) )  )
-            perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
-            !we add the pressure part =>1-(P1-P0)/E
-            RhoPlus = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5)+perturbation_pressure -eos_coefs(3))/eos_coefs(5)) )
-            RhoMinus = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5)-perturbation_pressure-eos_coefs(3))/eos_coefs(5)) )
-            dRhodP =  0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
-            Rho = Rho /(1-( (min(max(pressure%val(1,1,:),-101325.),eos_coefs( 5 )*0.5) -eos_coefs(3))/eos_coefs(5)) ) !to avoid possible oscillations the pressure is imposed to be between the range of applicability of the formula.
-
-            !we add the pressure part =>1-(P1-P0)/E
-
-            deallocate( temperature_local, eos_coefs )
         elseif( trim( eos_option_path ) == trim( option_path_python ) ) then
 
 #ifdef HAVE_NUMPY
