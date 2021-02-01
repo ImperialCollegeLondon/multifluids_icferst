@@ -2952,7 +2952,10 @@ This imposes the tracer to be between bounds.</a:documentation>
             <ref name="output_options"/>
           </element>
           <element name="diagnostic">
-            <ref name="scalar_diagnostic_algorithms"/>
+            <choice>
+              <ref name="scalar_diagnostic_algorithms"/>
+              <ref name="internal_algorithm"/>
+            </choice>
             <ref name="pressure_mesh_choice"/>
             <ref name="diagnostic_scalar_field"/>
             <ref name="output_options"/>

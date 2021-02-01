@@ -2465,7 +2465,8 @@ scalar_field_choice =
                      output_options
                }|
                element diagnostic {
-                  scalar_diagnostic_algorithms,
+                  (scalar_diagnostic_algorithms|
+                  internal_algorithm),
                   pressure_mesh_choice,
                   diagnostic_scalar_field,
                      output_options
