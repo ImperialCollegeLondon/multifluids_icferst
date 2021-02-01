@@ -114,7 +114,7 @@ legacy_internal_algorithm =
    )
 internal_velocity_source_algorithm =
    (
-      ## Some code paths (e.g. porous media and the traffic model)
+      ## Some code paths
       ## use their own internal diagnostic source field. Select
       ## this option to these these internal algorithms.
       element algorithm {
@@ -124,7 +124,7 @@ internal_velocity_source_algorithm =
    )
 internal_velocity_absorption_algorithm =
    (
-      ## Some code paths (e.g. porous media and the traffic model)
+      ## Some code paths
       ## use their own internal diagnostic absorption field. Select
       ## this option to these these internal algorithms.
       element algorithm {
@@ -249,14 +249,17 @@ vector_galerkin_projection_algorithm =
    )
 helmholtz_smoothed_scalar_algorithm =
    (
-      ## Smooth a scalar field by inverting a Helmholtz operator.
+      ## Smooth a scalar field by inverting a Helmholtz operator based on a scalar lengthscale.
+      ## Dirichlet boundary conditions from the source field are applied to the filtered field.
       element algorithm {
          attribute name { "helmholtz_smoothed_scalar" },
          attribute material_phase_support { "single" },
          component_source_field,
-         ## The characteristic length scale used by the smoother.
-         element smoothing_length_scale {
-             real_dim_symmetric_tensor
+         ## The characteristic scale factor alpha used by the smoother.
+         ## The length scale is alpha*local element width (a scalar)
+         ## 2 is recommended.
+         element smoothing_scale_factor {
+             real
          },
          ## Solver options.
          element solver {
@@ -266,14 +269,37 @@ helmholtz_smoothed_scalar_algorithm =
    )
 helmholtz_smoothed_vector_algorithm =
    (
-      ## Smooth a vector field by inverting a Helmholtz operator.
+      ## Smooth a vector field by inverting a Helmholtz operator based on a scalar lengthscale.
+      ## Dirichlet boundary conditions from the source field are applied to the filtered field.
       element algorithm {
          attribute name { "helmholtz_smoothed_vector" },
          attribute material_phase_support { "single" },
          vector_source_field,
-         ## The characteristic length scale used by the smoother.
-         element smoothing_length_scale {
-             real_dim_symmetric_tensor
+         ## The characteristic scale factor alpha used by the smoother.
+         ## The length scale is alpha*local element width (a scalar)
+         ## 2 is recommended.
+         element smoothing_scale_factor {
+             real
+         },
+         ## Solver options.
+         element solver {
+            linear_solver_options_sym
+         }
+      }
+   )
+helmholtz_smoothed_tensor_algorithm =
+   (
+      ## Smooth a tensor field by inverting a Helmholtz operator based on a scalar lengthscale.
+      ## Dirichlet boundary conditions are not applied to the filtered field.
+      element algorithm {
+         attribute name { "helmholtz_smoothed_tensor" },
+         attribute material_phase_support { "single" },
+         tensor_source_field,
+         ## The characteristic scale factor alpha used by the smoother.
+         ## The length scale is alpha*local element width (a scalar)
+         ## 2 is recommended.
+         element smoothing_scale_factor {
+             real
          },
          ## Solver options.
          element solver {
@@ -283,14 +309,16 @@ helmholtz_smoothed_vector_algorithm =
    )
 helmholtz_anisotropic_smoothed_scalar_algorithm =
    (
-      ## Smooth a scalar field by inverting a Helmholtz operator.
+      ## Smooth a scalar field by inverting a Helmholtz operator based on a tensor lengthscale.
+      ## Dirichlet boundary conditions from the source field are applied to the filtered field.
       element algorithm {
          attribute name { "helmholtz_anisotropic_smoothed_scalar" },
          attribute material_phase_support { "single" },
          scalar_source_field,
-         ## The scale factor used by the smoother, applied to the mesh size tensor.
+         ## The characteristic scale factor alpha used by the smoother.
+         ## The length scale is alpha*local element size (a tensor).
          ## 2 is recommended.
-         element smoothing_length_scale {
+         element smoothing_scale_factor {
              real
          },
          ## Solver options.
@@ -301,14 +329,16 @@ helmholtz_anisotropic_smoothed_scalar_algorithm =
    )
 helmholtz_anisotropic_smoothed_vector_algorithm =
    (
-      ## Smooth a vector field by inverting a Helmholtz operator.
+      ## Smooth a vector field by inverting a Helmholtz operator based on a tensor lengthscale.
+      ## Dirichlet boundary conditions from the source field are applied to the filtered field.
       element algorithm {
          attribute name { "helmholtz_anisotropic_smoothed_vector" },
          attribute material_phase_support { "single" },
          vector_source_field,
-         ## The scale factor used by the smoother, applied to the mesh size tensor.
+         ## The characteristic scale factor alpha used by the smoother.
+         ## The length scale is alpha*local element size (a tensor).
          ## 2 is recommended.
-         element smoothing_length_scale {
+         element smoothing_scale_factor {
              real
          },
          ## Solver options.
@@ -319,14 +349,16 @@ helmholtz_anisotropic_smoothed_vector_algorithm =
    )
 helmholtz_anisotropic_smoothed_tensor_algorithm =
    (
-      ## Smooth a tensor field by inverting a Helmholtz operator.
+      ## Smooth a tensor field by inverting a Helmholtz operator based on a tensor lengthscale.
+      ## Dirichlet boundary conditions are not applied to the filtered field.
       element algorithm {
          attribute name { "helmholtz_anisotropic_smoothed_tensor" },
          attribute material_phase_support { "single" },
          tensor_source_field,
-         ## The scale factor used by the smoother, applied to the mesh size tensor.
+         ## The characteristic scale factor alpha used by the smoother.
+         ## The length scale is alpha*local element size (a tensor).
          ## 2 is recommended.
-         element smoothing_length_scale {
+         element smoothing_scale_factor {
              real
          },
          ## Solver options.
@@ -402,18 +434,52 @@ vector_difference_algorithm =
          }?
       }
    )
+tensor_difference_algorithm =
+   (
+      ## Difference between two tensor fields, field 1 - field 2
+      element algorithm {
+         attribute name { "tensor_difference" },
+         attribute material_phase_support { "single" },
+         tensor_source_field_1,
+         tensor_source_field_2,
+         ## If enabled, the absolute value of the difference is taken
+         element absolute_difference {
+            comment
+         }?
+      }
+   ) 
+   
 
 # Time aggregated diagnostics
 
-# Temporal maximum diagnostic algorithm. 
-temporalmax_algorithm =
+# Temporal maximum diagnostic algorithm for scalar fields. 
+scalar_temporalmax_algorithm =
    (
-      ## temporalmax (source field). Calculates the nodewise maximum over time. Note: Does not work with adaptive meshes!
+      ## temporalmax (scalar source field). Calculates the nodewise maximum over time. Note: Does not work with adaptive meshes!
       element algorithm {
-        attribute name { "temporalmax" },
+        attribute name { "temporalmax_scalar" },
         attribute material_phase_support { "single" },
         attribute persistent { "true" },
         scalar_source_field,
+        ## This sets a spinning up time.
+        element spin_up_time {
+               real
+        }?,
+        ## Do not set an initial condition until you know what you are doing. Initial condition is mainly needed for checkpointing. 
+        element initial_condition {
+            attribute name { "WholeMesh" },
+            input_choice_initial_condition_real
+         }?
+      }
+   )
+vector_temporalmax_algorithm =
+   (
+      ## temporalmax (vector source field). Calculates the nodewise maximum over time. Note: Does not work with adaptive meshes!
+      element algorithm {
+        attribute name { "temporalmax_vector" },
+        attribute material_phase_support { "single" },
+        attribute persistent { "true" },
+        vector_source_field,
         ## This sets a spinning up time.
         element spin_up_time {
                real
@@ -606,6 +672,15 @@ vector_laplacian_algorithm =
          vector_source_field
       }
    )
+grad_vector_algorithm =
+   (
+      ## algorithm for the full tensor gradient of a vector field
+       element algorithm {
+         attribute name { "grad_vector" },
+         attribute material_phase_support { "single "},
+         vector_source_field
+      }
+   )
 strain_rate_algorithm =
    (
       ## algorithm for the strain rate of a vector field
@@ -622,6 +697,16 @@ tensor_second_invariant_algorithm =
          attribute name { "tensor_second_invariant" },
          attribute material_phase_support { "single "},
          tensor_source_field
+      }
+   )
+strain_rate_second_invariant_algorithm =
+   (
+      ## Algorithm for the second invariant of the strain_rate tensor field.
+      ## Note that the strain rate tensor is calculated automatically as a part
+      ## of this algorithm and, hence, a separate tensor field is not required.
+       element algorithm {
+         attribute name { "strain_rate_second_invariant" },
+         attribute material_phase_support { "single "}
       }
    )
 hessian_algorithm =
@@ -653,7 +738,6 @@ grad_normal_algorithm =
          }?
       }
    )
-
 # Momentum diagnostics
 buoyancy_algorithm =
    (
@@ -757,21 +841,6 @@ projection_scalar_potential_algorithm =
         }
       }
    )
-vector_potential_algorithm =
-   (
-      ## Computes the vector potential A where:
-      ##   F = nabla phi + nabla x A + H
-      ## with a strong Dirichlet boundary condition of zero on all boundaries.
-      element algorithm {
-         attribute name { "vector_potential" },
-         attribute material_phase_support { "single" },
-         vector_source_field,
-         ## Linear solver options.
-         element solver {
-            linear_solver_options_sym
-         }
-      }
-   )
 geostrophic_velocity_algorithm =
    (
       ## Compute the velocity in geostrophic balance with a pressure field
@@ -801,15 +870,56 @@ bulk_viscosity_algorithm =
    (
        ## The average (or bulk) viscosity formed from the MaterialViscosity for
        ## each material_phase, weighted according to the MaterialVolumeFraction
-       ## fields from each material_phase:
-       ##
-       ##   \bar\nu = \alpha^i\nu^i
-       ##  
-       ## where \bar\nu is the bulk viscosity, \alpha^i is the volume fraction
-       ## for material i and \nu^i is the viscosity of material i
+       ## from each material_phase.
        element algorithm {
           attribute name { "bulk_viscosity" },
-          attribute material_phase_support { "multiple "}
+          attribute material_phase_support { "multiple" },
+          attribute depends { "MaterialViscosity" },
+          (
+            ## Use an arithmetic mean (default):
+            ##
+            ##   \bar\nu = \alpha^i\nu^i
+            ##  
+            ## where \bar\nu is the bulk viscosity, \alpha^i is the volume fraction
+            ## for material i and \nu^i is the viscosity of material i.
+            element mean {
+              attribute name { "arithmetic" },
+              empty
+            }|
+            ## Use a harmonic mean:
+            ##
+            ##   1./\bar\nu = \alpha^i/\nu^i
+            ##  
+            ## where \bar\nu is the bulk viscosity, \alpha^i is the volume fraction
+            ## for material i and \nu^i is the viscosity of material i.
+            element mean {
+              attribute name { "harmonic" },
+              empty
+            }|
+            ## Use a geometric mean:
+            ##
+            ##   \bar\nu = (\nu^i)^(\alpha^i)
+            ##  
+            ## where \bar\nu is the bulk viscosity, \alpha^i is the volume fraction
+            ## for material i and \nu^i is the viscosity of material i.
+            element mean {
+              attribute name { "geometric" },
+              empty
+            }
+          )
+       }
+   )
+sediment_concentration_dependent_viscosity_algorithm =
+   (
+       ## Effective viscosity is affected by sediment concentration. This 
+       ## algorithm computes the viscosity based upon the combined concentrations
+       ## of the sediment fields and the zero concentration viscosity
+       ##
+       ##   \nu = \nu_0(1-c/0.65)^{-1.625}
+       ##
+       element algorithm {
+          attribute name { "sediment_concentration_dependent_viscosity" },
+          attribute material_phase_support { "single"}
        }
    )
 imposed_material_velocity_source_algorithm =
@@ -1011,6 +1121,13 @@ free_surface_history_algorithm =
          element spin_up_time { 
                 real
          }?,
+         ## How often to calculate the harmonics. Default is just before output dumps. You can set this
+         ## variable to calculate the diagnostics more often if required. 0 would calculate every timestep
+         ## Note: harmonic calaulations are quite expensive. The value below applies to all tidal harmonics
+         ## in the simulation
+         element calculation_period {
+            integer
+         }?,
          ## Internal use only
          element saved_snapshots_times {
             real_vector
@@ -1193,42 +1310,23 @@ tidal_harmonic_algorithm =
 
 # Multiphase diagnostic algorithms
 
-scalar_gaussian_algorithm =
-   (
-      ## Simple gaussian for interface adaptivity
-      element algorithm {
-         attribute name { "scalar_gaussian" },
-         attribute material_phase_support { "single" },
-         scalar_source_field,
-	 ## Centre of Gaussian 
-         element centre {
-            real
-         },
-         ## Scale factor
-         element scale {
-            real
-         }
-      }
-   )
-
 particle_reynolds_number_algorithm = 
    (
       ## Diagnostic algorithm used in multiphase simulations.
-      ## Calculates the particle Reynolds number, (density_c*|u_c-u_p|*d)/viscosity_c
-      ## where _c and _p denote the continuous and particle phases respectively,
-      ## and d is the particle diameter.
+      ## Calculates the particle Reynolds number, (vfrac_f*density_f * |u_f - u_p| * d)/viscosity_f
+      ## where the subscripts _f and _p denote the fluid (i.e. continuous) and particle (i.e. dispersed)
+      ## phases respectively, and d is the particle diameter.
       element algorithm {
          attribute name { "particle_reynolds_number" },
          attribute material_phase_support { "multiple" },
          ## The particle Reynolds number depends on the Velocity field of both the continuous and dispersed phases,
-         ## and also the Density and Viscosity fields of the continuous phase.
+         ## and also the Density, PhaseVolumeFraction and Viscosity fields of the continuous phase.
          element depends {
             anystring
          },
          ## The particle diameter
-         element particle_diameter {
-            real
-         },
+         (element particle_diameter { real }|
+          element particle_diameter_use_scalar_field { anystring }),
          ## The name of the state representing the continuous phase
          element continuous_phase_name {
             string
@@ -1236,6 +1334,16 @@ particle_reynolds_number_algorithm =
       }
    )
 
+apparent_density_algorithm = 
+   (
+      ## Diagnostic algorithm used in multiphase flow simulations.
+      ## Calculates the apparent density of the material_phase,
+      ## i.e. Density multiplied by the PhaseVolumeFraction field.
+      element algorithm {
+         attribute name { "apparent_density" },
+         attribute material_phase_support { "multiple" }
+      }
+   )
 
 # Misc
 
@@ -1274,41 +1382,59 @@ universal_column_id_algorithm =
       }
    )
 
-scalar_distance_function =
+mesh_quality_algorithm =
    (
-      ## distance from zeor contour of source field
+      ## Mesh Quality function. Basics taken from VTK. See the documentation
+      ## there for further details of specific function choices.
+      ##
+      ## The output mesh for this field must be discontinous P0 and the
+      ## underlying CoordinateMesh must consist of linear triangles
+      ##  or tetrahedra only.
+
       element algorithm {
-         attribute name { "scalar_distance_function" },
-         attribute material_phase_support { "multiple" },
-         scalar_source_field,
-	 (
-	 element method {
-	    attribute name { "HamiltonJacobi" }
-	 }|
-	 element method {
-	    attribute name { "Hybrid" }
-	 }|
-	 element method {
-	    attribute name { "MarchingMethod" }
-	 }
-	 ),
-         element depends {
-            anystring
-         },
-	 element zero_level {
-            real
-         }
+        attribute name { "mesh_quality" },
+        attribute material_phase_support { "single" },
+	(
+	  element quality_function{ attribute name{"radius_ratio" } }|
+	  element quality_function{ attribute name{"aspect_ratio" } }|
+	  element quality_function{ attribute name{"aspect_frobenius" } }|
+	  element quality_function{ attribute name{"edge_ratio" } }|
+	  element quality_function{ attribute name{"condition" } }|
+          element quality_function{ attribute name{"min_angle" } }|		
+          element quality_function{ attribute name{"max_angle" } }|
+          element quality_function{ attribute name{"shape" } }|		
+          element quality_function{ attribute name{"shape_and_size" } }|
+	  element quality_function{ attribute name{"area_or_volume"} }
+	)
       }
    )
 
-darcy_velocity_algorithm =
+viscous_dissipation_algorithm =
    (
-      ## Algorithm to calculate the phase Darcy velocity.
+      ## algorithm for calculating the viscous dissipation.
+       element algorithm {
+         attribute name { "viscous_dissipation" },
+         attribute material_phase_support { "single "}
+      }
+   )
+
+# Mass matrix
+   
+finite_element_lumped_mass_matrix =
+   (
+      ## The finite element lumped mass matrix.
       element algorithm {
-         attribute name { "darcy_velocity"},	   
-         element solver {
-           linear_solver_options_sym
-     	 }?
+        attribute name { "finite_element_lumped_mass_matrix" },
+        attribute material_phase_support { "single" }
+      }
+   )
+   
+control_volume_mass_matrix =
+   (
+      ## The control volume mass matrix.
+      element algorithm {
+        attribute name { "control_volume_mass_matrix" },
+        attribute material_phase_support { "single" }
       }
    )
 
@@ -1325,7 +1451,30 @@ scalar_time_averaged_algorithm =
          ## When to start sampling? Defaults to simulation start time.
          element spin_up_time {
             real
+         }?,
+         ## If enabled, the average of the absolute value is taken
+         element absolute_values {
+            comment
          }?
+      }
+   )
+
+
+scalar_period_averaged_algorithm = 
+   (
+      ## Algorithm for calulating an average of a scalar field over 
+      ## a set period, e.g. daily
+      ## Note that we assume the simulation starts at zero for the
+      ## averaging period,
+      ## This field needs to be interpolated between adapts.
+      element algorithm {
+         attribute name { "period_averaged_scalar" },
+         attribute material_phase_support { "single" },
+         scalar_source_field,
+         ## Over what time period to average over?
+         element averaging_period {
+            real
+         }
       }
    )
 
@@ -1355,22 +1504,10 @@ vector_time_averaged_algorithm =
          ## When to start sampling?  Defaults to simulation start time.
          element spin_up_time {
             real
-         }?
-      }
-   )
-
-vector_squared_time_averaged_algorithm =
-   (
-      ## Algorithm for time averaging vector fields.
-      ## This includes cross-products.
-      ## This field needs to be interpolated between adapts.
-      element algorithm {
-         attribute name { "time_averaged_vector_squared" },
-         attribute material_phase_support { "single" },
-         vector_source_field,
-         ## When to start sampling?  Defaults to simulation start time.
-         element spin_up_time {
-            real
+         }?,
+         ## If enabled, the average of the absolute value is taken
+         element absolute_values {
+            comment
          }?
       }
    )
@@ -1391,26 +1528,110 @@ vector_scalar_time_averaged_algorithm =
       }
    )
 
+# surface algorithm
+
+surface_horizontal_divergence_algorithm = 
+   (
+      ## Algorithm calculates the horizontally restricted divergence of
+      ## a horizontal vector living on the specified surface.
+      element algorithm {
+         attribute name { "surface_horizontal_divergence" },
+         attribute material_phase_support { "single" },
+         vector_source_field,
+         element surface_ids {
+            integer_vector
+         }
+      }
+   )
+
+subtract_average_algorithm =
+   (
+      ## Algorithm that subtracts the average from a scalar field. The integral
+      ## of the resulting diagnostic field is therefore zero.
+      ##
+      ## This is useful for fields that are only defined up to a constant. During
+      ## their solve it is typically best to remove this freedom by using the 
+      ## "remove_null_space" option (which effectively introduces a mesh dependent 
+      ## constraint on the sum of the nodal values). For diagnostic purposes however,
+      ## it may be useful to impose the more natural constraint that the integrated
+      ## average is zero.
+      element algorithm {
+         attribute name { "subtract_average" },
+         attribute material_phase_support { "single" },
+         scalar_source_field
+      }
+   )
+
+subtract_point_value_algorithm =
+   (
+      ## Algorithm that subtracts the scalar field value in a certain point 
+      ## from that same field. The resulting diagnostic field will therefore be zero in that point.
+      ##
+      ## This is useful for fields that are only defined up to a constant. It is similar
+      ## to pinning using a reference node during the solve, except it is only imposed afterwards.
+      ## This can be useful because during the solve it is typically better to pin the 
+      ## arbitrary constant with the "remove_null_space" option instead.
+      element algorithm {
+         attribute name { "subtract_point_value" },
+         attribute material_phase_support { "single" },
+         scalar_source_field,
+         element coordinates {
+            ## coordinates of the point whose value should be subtracted
+            real_dim_vector
+         }
+      }
+   )
+
+subtract_surface_average_algorithm =
+   (
+      ## Algorithm that subtracts the surface average from a scalar field. The 
+      ## surface integral of the resulting diagnostic field is therefore zero.
+      ##
+      ## This is useful for fields that are only defined up to a constant. During
+      ## their solve it is typically best to remove this freedom by using the 
+      ## "remove_null_space" option (which effectively introduces a mesh dependent 
+      ## constraint on the sum of the nodal values). For diagnostic purposes however,
+      ## it may be useful to impose a more natural constraint such as the surface 
+      ## integral being zero.
+      element algorithm {
+         attribute name { "subtract_surface_average" },
+         attribute material_phase_support { "single" },
+         scalar_source_field,
+         element surface_ids {
+            integer_vector
+         }
+      }
+   )
+
+
 scalar_diagnostic_algorithms = universal_numbering_diagnostic_algorithm
+scalar_diagnostic_algorithms |= viscous_dissipation_algorithm
 scalar_diagnostic_algorithms |= universal_column_id_algorithm
 scalar_diagnostic_algorithms |= tidal_harmonic_algorithm
 scalar_diagnostic_algorithms |= tensor_second_invariant_algorithm
+scalar_diagnostic_algorithms |= strain_rate_second_invariant_algorithm
 scalar_diagnostic_algorithms |= temporalmin_algorithm
-scalar_diagnostic_algorithms |= temporalmax_algorithm
+scalar_diagnostic_algorithms |= surface_horizontal_divergence_algorithm
+scalar_diagnostic_algorithms |= scalar_temporalmax_algorithm
 scalar_diagnostic_algorithms |= scalar_time_averaged_algorithm
+scalar_diagnostic_algorithms |= scalar_period_averaged_algorithm
 scalar_diagnostic_algorithms |= scalar_sum_algorithm
 scalar_diagnostic_algorithms |= scalar_squared_time_averaged_algorithm
 scalar_diagnostic_algorithms |= scalar_potential_algorithm
 scalar_diagnostic_algorithms |= scalar_laplacian_algorithm
-scalar_diagnostic_algorithms |= scalar_gaussian_algorithm
+scalar_diagnostic_algorithms |= subtract_surface_average_algorithm
+scalar_diagnostic_algorithms |= subtract_point_value_algorithm
+scalar_diagnostic_algorithms |= subtract_average_algorithm
 scalar_diagnostic_algorithms |= scalar_galerkin_projection_algorithm
-scalar_diagnostic_algorithms |= scalar_distance_function
 scalar_diagnostic_algorithms |= scalar_difference_algorithm
 scalar_diagnostic_algorithms |= scalar_copy_algorithm
 scalar_diagnostic_algorithms |= scalar_advection_algorithm
+scalar_diagnostic_algorithms |= scalar_edge_lengths_algorithm
 scalar_diagnostic_algorithms |= projection_scalar_potential_algorithm
 scalar_diagnostic_algorithms |= particle_reynolds_number_algorithm
+scalar_diagnostic_algorithms |= apparent_density_algorithm
 scalar_diagnostic_algorithms |= node_halo_diagnostic_algorithm
+scalar_diagnostic_algorithms |= mesh_quality_algorithm
 scalar_diagnostic_algorithms |= lumped_mass_smoothed_scalar_algorithm
 scalar_diagnostic_algorithms |= l2norm_algorithm
 scalar_diagnostic_algorithms |= helmholtz_smoothed_scalar_algorithm
@@ -1424,12 +1645,15 @@ scalar_diagnostic_algorithms |= element_halo_diagnostic_algorithm
 scalar_diagnostic_algorithms |= div_algorithm
 scalar_diagnostic_algorithms |= curl_2d_algorithm
 scalar_diagnostic_algorithms |= column_id_algorithm
+scalar_diagnostic_algorithms |= finite_element_lumped_mass_matrix
+scalar_diagnostic_algorithms |= control_volume_mass_matrix
 scalar_diagnostic_algorithms |= scalar_python_diagnostic_algorithm
+scalar_diagnostic_algorithms |= internal_algorithm
 
 vector_diagnostic_algorithms = vector_time_averaged_algorithm
+vector_diagnostic_algorithms |= vector_temporalmax_algorithm
 vector_diagnostic_algorithms |= vector_sum_algorithm
 vector_diagnostic_algorithms |= vector_scalar_time_averaged_algorithm
-vector_diagnostic_algorithms |= vector_potential_algorithm
 vector_diagnostic_algorithms |= vector_laplacian_algorithm
 vector_diagnostic_algorithms |= vector_galerkin_projection_algorithm
 vector_diagnostic_algorithms |= vector_difference_algorithm
@@ -1443,14 +1667,15 @@ vector_diagnostic_algorithms |= grad_algorithm
 vector_diagnostic_algorithms |= geostrophic_velocity_algorithm
 vector_diagnostic_algorithms |= finite_element_divergence_transpose_algorithm
 vector_diagnostic_algorithms |= eigenvalues_symmetric_algorithm
-vector_diagnostic_algorithms |= darcy_velocity_algorithm
 vector_diagnostic_algorithms |= curl_algorithm
 vector_diagnostic_algorithms |= vector_python_diagnostic_algorithm
 
-tensor_diagnostic_algorithms = vector_squared_time_averaged_algorithm
-tensor_diagnostic_algorithms |= tensor_copy_algorithm
+tensor_diagnostic_algorithms = tensor_copy_algorithm
+tensor_diagnostic_algorithms |= grad_vector_algorithm
 tensor_diagnostic_algorithms |= strain_rate_algorithm
 tensor_diagnostic_algorithms |= hessian_algorithm
+tensor_diagnostic_algorithms |= helmholtz_smoothed_tensor_algorithm
 tensor_diagnostic_algorithms |= helmholtz_anisotropic_smoothed_tensor_algorithm
 tensor_diagnostic_algorithms |= field_tolerance_algorithm
 tensor_diagnostic_algorithms |= tensor_python_diagnostic_algorithm
+tensor_diagnostic_algorithms |= tensor_difference_algorithm
