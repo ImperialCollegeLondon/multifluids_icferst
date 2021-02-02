@@ -1900,11 +1900,16 @@ contains
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
-                        momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        !Currently only magma uses momentum_diffusion2
-                        if (iphase==1 .and. is_magma) then !only the solid phase has bulk viscosity
-                          momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                        if (is_magma) then
+                          if (iphase==1) then !only the solid phase has viscosity terms
+                            momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
+                            !Currently only magma uses momentum_diffusion2
+                            momentum_diffusion2%val(1, 1, iphase, mat_nod)  = zeta(mu_tmp( 1, 1, iloc ), exp_zeta_function, saturation%val(cv_nod))
+                          end if
+                        else
+                          momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                         end if
+
                         if(cg_mesh) then
                           mat_nod = cv_nod * multiplier + (1 - multiplier)! this is for CG
                         else
