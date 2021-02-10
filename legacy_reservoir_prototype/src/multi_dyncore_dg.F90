@@ -2262,7 +2262,7 @@ end if
             call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
             conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
             ref_CDP_tensor%val = CDP_tensor%val
-print *, conv_test
+! print *, conv_test
             !We use deltaP as residual check for convergence
             if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
               if (getprocno() == 1) then
