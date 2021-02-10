@@ -2009,9 +2009,6 @@ end if
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
         end IF
 
-        !For magma, we change phase 1 to be the sum of the other phases equation
-        if (is_magma) call add_eqs_to_solid_phase()
-
         ! extract diag_big and bigm here, then popualate allocate, solve and deallocate dgm_here.
         lump_diag_mom=.false.
         lump_diag_mom=(have_option("/numerical_methods/lump_momentum_inertia") .and. (.not. is_porous_media))
@@ -2060,6 +2057,8 @@ end if
             end if
         end if
 
+        !For magma, we change phase 1 to be the sum of the other phases equation
+        if (is_magma) call add_eqs_to_solid_phase() !This has to go just after the call of high_order_pressure_solve
 
         !"########################UPDATE VELOCITY STEP####################################"
         !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
@@ -2190,7 +2189,7 @@ end if
           real, dimension(:,:), allocatable :: BAK_matrix, ref_pressure
           real :: conv_test, total_max, total_min, Omega, exponent_diag
           logical :: restart_now
-          type(tensor_field) :: aux_velocity
+          type(tensor_field) :: aux_velocity, ref_CDP_tensor
           type( vector_field ) :: packed_vel, packed_CDP_tensor, packed_aux_velocity
           real, dimension(2) :: totally_min_max
 
@@ -2229,6 +2228,8 @@ end if
             if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) exponent_diag = exponent_diag + 0.5!Need more of Ad
           end if
 
+          call allocate(ref_cdp_tensor,velocity%mesh,"refCDP",dim = velocity%dim); call zero(ref_cdp_tensor)
+
           i = 1
           allocate(stored_field(Mdims%cv_nonods, stokes_max_its))
           allocate(field_residuals(Mdims%cv_nonods, stokes_max_its))
@@ -2238,11 +2239,11 @@ end if
           !Update stored values
           stored_field(:, i) = P_all%val(1,1,:)
           restart_now = .false.
-          do k = 1, stokes_max_its*Max_restarts
+          stokesloop: do k = 1, stokes_max_its*Max_restarts
 
             !Proceed to restart the AA method, by throwing away everything!
             if (i>stokes_max_its .or. restart_now) then
-              deallocate(BAK_matrix)
+              if (allocated (BAK_matrix)) deallocate(BAK_matrix)
               ! i = 1; stored_field(:, i) = P_all%val(1,1,:)!<=stable but requires three loops without acceleration
               !We try to rduce the time without acceleration by re-using some information
               !from the previous loop
@@ -2252,21 +2253,22 @@ end if
               i = 2; stored_field(:, i) = P_all%val(1,1,:)
               restart_now = .false.
             end if
-
+            !Compute grad P as a proxy of velocity
+            call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, P_ALL%val, CDP_tensor)
             !Check normalised relative pressure convergence
-            totally_min_max(1)=minval(ref_pressure)!use stored field
-            totally_min_max(2)=maxval(ref_pressure)!use stored field
+            totally_min_max(1)=minval(CDP_tensor%val)!use stored field
+            totally_min_max(2)=maxval(CDP_tensor%val)!use stored field
             !For parallel
             call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
-            conv_test = inf_norm_scalar_normalised(P_ALL%val(1,:,:), ref_pressure, 1.0, totally_min_max)
-            ref_pressure = P_ALL%val(1,:,:)
-
+            conv_test = inf_norm_vector_normalised(CDP_tensor%val, ref_CDP_tensor%val, totally_min_max)
+            ref_CDP_tensor%val = CDP_tensor%val
+print *, conv_test
             !We use deltaP as residual check for convergence
             if ( conv_test < solver_tolerance .or.  k == stokes_max_its*Max_restarts) then
               if (getprocno() == 1) then
                 ewrite(show_FPI_conv,*)"Iterations taken in the AA method for Stokes: ", k
               end if
-              return
+              exit stokesloop
             end if
             M = i - 2; if (M <= 0) M = stokes_max_its + M
               !Find the optimal combination of pressure fields that minimise the residual
@@ -2320,10 +2322,11 @@ end if
             !Update stored values
             stored_field(:, i) = P_all%val(1,1,:)
 
-          end do
+          end do stokesloop
           if (Special_precond) then
             call deallocate(aux_velocity)
           end if
+          call deallocate(ref_CDP_tensor)
           deallocate(field_residuals, stored_field, ref_pressure)
         end subroutine Stokes_Anderson_acceleration
 
@@ -2628,20 +2631,10 @@ end if
         integer :: JPHASE, IDIM, k, U_INOD
 
         !Modify the RHS term as well to keep consistency
-        if (.not. Mmat%stored) then!We only want to do this when the gradient matrix Mmat%C is computed 
-          do U_INOD = 1, Mdims%u_nonods
-            do jphase = 2, Mdims%nphase
-              do idim = 1, Mdims%ndim
-                Mmat%U_RHS( idim, 1, U_INOD ) = Mmat%U_RHS( idim, 1, U_INOD ) + Mmat%U_RHS( idim, jphase, U_INOD )
-              end do
-            end do
-          end do
-        end if
-        !Modify the C matrix
-        do k = 1, size(Mmat%C,3)
+        do U_INOD = 1, Mdims%u_nonods
           do jphase = 2, Mdims%nphase
             do idim = 1, Mdims%ndim
-              Mmat%C( IDIM, 1, k ) = Mmat%C( IDIM, 1, k ) + Mmat%C( IDIM, jphase, k )
+              Mmat%U_RHS( idim, 1, U_INOD ) = Mmat%U_RHS( idim, 1, U_INOD ) + Mmat%U_RHS( idim, jphase, U_INOD )
             end do
           end do
         end do

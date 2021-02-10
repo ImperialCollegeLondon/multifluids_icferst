@@ -1970,7 +1970,7 @@ This is ACTIVATED by default for Stokes/Magma flow. &lt;b&gt;Specify here the st
                 <optional>
                   <element name="Max_restarts">
                     <a:documentation>Maximum number of restarts allowed before moving to the next non-linear iteration. The default is 5.</a:documentation>
-                    <ref name="real"/>
+                    <ref name="integer"/>
                   </element>
                 </optional>
                 <optional>

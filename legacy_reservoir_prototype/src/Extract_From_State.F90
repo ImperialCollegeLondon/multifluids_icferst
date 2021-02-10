@@ -60,7 +60,7 @@ module Copy_Outof_State
         Get_Ele_Type, Get_Discretisation_Options, inf_norm_scalar_normalised, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
-        have_option_for_any_phase, Get_Ele_Type_new,&
+        have_option_for_any_phase, Get_Ele_Type_new,inf_norm_vector_normalised, &
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux, calculate_internal_volume, prepare_absorptions, &
         EnterForceBalanceEquation, update_outfluxes
 
@@ -2347,11 +2347,18 @@ subroutine Adaptive_NonLinear(Mdims, packed_state, reference_field, its,&
             select case (variable_selection)
 
                 case (2)!Velocity
-                    inf_norm_val = maxval(abs(reference_field-velocity))
+                    ! inf_norm_val = maxval(abs(reference_field-velocity))
+                    do auxI = 1, Mdims%ndim
+                      totally_min_max(1)=minval(reference_field(auxI,:,:))
+                      totally_min_max(2)=maxval(reference_field(auxI,:,:))
+                    end do
+                    !For parallel
+                    call allmin(totally_min_max(1)); call allmax(totally_min_max(2))
+                    inf_norm_val = inf_norm_vector_normalised(velocity, reference_field, totally_min_max)
                     ts_ref_val = inf_norm_val!Use the infinite norm for the time being
                     tolerance_between_non_linear = 1d9!Only infinite norm for the time being
                 case (3)!Phase volume fraction
-                    !Calculate infinite norm, not consider wells
+                    !Calculate infinite norm, not considering wells
                     inf_norm_val = maxval(abs(reference_field(1,1:Mdims%n_in_pres,:)-phasevolumefraction(1:Mdims%n_in_pres,:)))/backtrack_or_convergence
 
                     !Calculate value of the functional (considering wells and reservoir)
@@ -2706,6 +2713,20 @@ real function inf_norm_scalar_normalised(tracer, reference_tracer, dumping, tota
     inf_norm_scalar_normalised = inf_norm_scalar_normalised/dumping
 
 end function
+
+!> Calculate the inf norm of the normalised field, so the field goes from 0 to 1
+real function inf_norm_vector_normalised(vel, reference_vel, totally_min_max)
+    implicit none
+    real, dimension(:,:,:), intent(in) :: vel, reference_vel
+    real, dimension(2), intent(in) :: totally_min_max
+    !Local variables
+    integer :: cv_inod, iphase
+    !Same as normalising values but should be quicker
+    inf_norm_vector_normalised = maxval(abs(reference_vel-vel))/max((totally_min_max(2)-totally_min_max(1)), 1e-5)
+
+    call allmax(inf_norm_vector_normalised)
+
+end function inf_norm_vector_normalised
 
 !> @brief: We create a potential to optimize F = sum (f**2), so the solution is when this potential
 !>reaches a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
