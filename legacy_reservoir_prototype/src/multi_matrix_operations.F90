@@ -1651,7 +1651,6 @@ contains
         end if
 
         matrix%name="BlockMomentumMatrix"
-
         if (associated(halo)) then
             allocate(matrix%row_halo)
             matrix%row_halo = halo
@@ -1663,9 +1662,7 @@ contains
             nullify(matrix%row_halo)
             nullify(matrix%column_halo)
         end if
-
           nloc=node_count(velocity)/element_count(velocity)
-
           if(big_block) then
             call allocatebaij(matrix%row_numbering, product(velocity%dim)*nloc ,&
                 element_count(velocity),halo = halo)
@@ -1677,62 +1674,53 @@ contains
             call allocate(matrix%column_numbering,node_count(velocity),&
                 product(velocity%dim),halo = halo)
           end if
-        !!!########## BLOCK matrix creation
-        if (.not. IsParallel()) then
-          !ALLOCATE(nnz(0:size(matrix%column_numbering%gnn2unn,1)-1))
-          ! allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 1)-1))
-          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
 
+          !! - calculating the non-zero blocks in the
+          !    [serial] the non-zero columns per block row of the matrix
+          !    [parallel] diagonal and off-diagonal columns per block row of the matrix
+        if (.not. IsParallel()) then
+          allocate(nnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
           nnz=0.0
-          if(big_block) THEN
-            DO ELE = 1, element_count(velocity)
-              nnz(ELE-1)=(FINELE(ELE+1)-FINELE(ELE))
-            END DO
+          if(big_block) then
+            do ele = 1, element_count(velocity)
+              nnz(ele-1)=(finele(ele+1)-finele(ele))
+            end do
           else
-            DO ELE = 1, element_count(velocity)
-              DO iloc=1, nloc
-                  i=(ELE-1)*NLOC + ILOC
-                  nnz(i-1)=(FINELE(ELE+1)-FINELE(ELE))
+            do ele = 1, element_count(velocity)
+              do iloc=1, nloc
+                  i=(ele-1)*nloc + iloc
+                  nnz(i-1)=(finele(ele+1)-finele(ele))
               end do
-            END DO
+            end do
           endif
-          matrix%M=full_CreateSeqBAIJ(blocks, matrix%row_numbering, &
+          matrix%m=full_createseqbaij(blocks, matrix%row_numbering, &
             matrix%column_numbering, nnz)
           deallocate(nnz)
-
         else
-
-          print*, " petsc MPI baij"
-
-        !! - calculating the non-zero blocks in the diagonal and off-diagonal of the matrix
         allocate(dnnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
         allocate(onnz(0:size(matrix%row_numbering%gnn2unn, 2)-1))
-        Loop_Elements: DO ELE = 1, element_count(velocity)
+        LOOP_ELEMENTS: do ele = 1, element_count(velocity)
             dnn=0
             onn=0
-            Between_Elements_And_Boundary: DO COUNT_ELE=FINELE(ELE), FINELE(ELE+1)-1
-              JCOLELE=COLELE(COUNT_ELE) !!(big block )for each block row this is the non-zero block column index
-              IF(JCOLELE==ELE) THEN
-                  ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
+            BETWEEN_ELEMENTS_AND_BOUNDARY: do count_ele=finele(ele), finele(ele+1)-1
+              jcolele=colele(count_ele) !
+              if(jcolele==ele) then
+                  ! block diagonal terms (assume full coupling between the
+                  ! phases and dimensions)...
                   dnn=dnn+1
-              ELSE
+              else
                   onn=onn+1
-              ENDIF
-            END DO Between_Elements_And_Boundary
+              endif
+            end do BETWEEN_ELEMENTS_AND_BOUNDARY
             dnnz(ele-1)=dnn
             onnz(ele-1)=onn
-        END DO Loop_Elements
-
+        end do LOOP_ELEMENTS
 
           matrix%M=full_CreateMPIBAIJ(blocks, matrix%row_numbering, &
               matrix%column_numbering, dnnz, onnz)
-
-              
           deallocate(dnnz)
           deallocate(onnz)
         end if
-
-
 
         call MatSetOption(matrix%M, MAT_KEEP_NONZERO_PATTERN , PETSC_FALSE, ierr)
         call MatSetOption(matrix%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE, ierr)
@@ -1769,8 +1757,10 @@ contains
       nblocksh=size(col_numbering%gnn2unn, 2)
 
 
-      !bs=nblocksv ! block size (block row size)
+      ! block size (block row size)
       bs=nbrows
+
+      ewrite(1,*) "Creating the sequential BAIJ"
 #if PETSC_VERSION_MINOR>=8
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, nnz, M, ierr)
@@ -1778,7 +1768,7 @@ contains
     call MatCreateSeqBAIJ(MPI_COMM_SELF,bs, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, nnz, M, ierr)
 #endif
-
+      ewrite(1,*) "Creating the sequential BAIJ"
     end function full_CreateSeqBAIJ
 
   !---------------------------------------------------------------------------
@@ -1814,28 +1804,27 @@ contains
         nbcolsp=col_numbering%nprivatenodes
         ! number of private rows and cols in total
         ! (this will be the number of local rows and cols for petsc)
-        nrowsp=nbrowsp*nblocksv
-        ncolsp=nbcolsp*nblocksh
+        nrowsp=nbrowsp*nbrows
+        ncolsp=nbcolsp*nbcols
 
         bs=nbrows
-        print*, nrows, nbrows,nblocksv, nbcolsp, ncolsp
-        print*, "CREATING BAIJ"
 
+        ewrite(1,*) "Creating the parallel BAIJ"
         !!MatCreateBAIJ
       	! d_nnz 	- array containing the number of nonzero blocks in diagonal portion of the local matrix
       	! o_nnz 	- array containing the number of nonzero blocks in off-diagonal portion of the local matrix
 #if PETSC_VERSION_MINOR>=8
     ! call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
     ! PETSC_DEFAULT_INTEGER, d_nnz, PETSC_DEFAULT_INTEGER, o_nnz, M, ierr)
-    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, nbrowsp, nbcolsp, nrows, ncols, &
+
+    !! testing: let PETSc decide size of local vector
+    call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
 #else
     call MatCreateBAIJ(MPI_COMM_FEMTOOLS, bs, PETSC_DECIDE, PETSC_DECIDE, nrows, ncols, &
     PETSC_DEFAULT_INTEGER, dnnz, PETSC_DEFAULT_INTEGER, onnz, M, ierr)
 #endif
-
-    print*, "FINISHEDS BAIJ"
-    STOP 11111
+      ewrite(1,*), "Finished creating Parallel BAIJ"
 
       end function full_CreateMPIBAIJ
 

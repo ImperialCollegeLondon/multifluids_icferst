@@ -687,16 +687,16 @@ contains
 
   end subroutine get_unn_multiple_components_order_trailing_receives
 
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine get_universal_numbering_baij(halo, unns)
     !!< For the supplied halo, retrieve the complete universal node numbering
     !!< list
-
     type(halo_type), intent(in) :: halo
     integer, dimension(node_count(halo)), intent(out) :: unns
-
     assert(has_global_to_universal_numbering(halo))
-
     select case(halo_ordering_scheme(halo))
       case(HALO_ORDER_GENERAL)
         call get_universal_numbering_order_general_baij(halo, unns)
@@ -705,17 +705,20 @@ contains
       case default
         FLAbort("Unrecognised halo ordering scheme")
     end select
-
   end subroutine get_universal_numbering_baij
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine get_universal_numbering_order_general_baij(halo, unns)
     type(halo_type), intent(in) :: halo
     integer, dimension(node_count(halo)), intent(out) :: unns
-
     unns=halo%gnn_to_unn
-
   end subroutine get_universal_numbering_order_general_baij
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine get_universal_numbering_order_trailing_receives_baij(halo, unns)
     type(halo_type), intent(in) :: halo
     integer, dimension(node_count(halo)), intent(out) :: unns
@@ -733,7 +736,10 @@ contains
          halo%receives_gnn_to_unn
 
   end subroutine get_universal_numbering_order_trailing_receives_baij
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine get_universal_numbering_multiple_components_baij(halo, unns)
     !!< For the supplied halo, retrieve the complete universal numbering
     !!< of the degrees of freedom in a multi-component field,
@@ -760,7 +766,10 @@ contains
     end select
 
   end subroutine get_universal_numbering_multiple_components_baij
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine get_unn_multiple_components_order_general_baij(halo, unns)
     !!< For the supplied halo, retrieve the complete universal numbering
     !!< of the degrees of freedom in a multi-component field
@@ -819,7 +828,10 @@ contains
     end do
 
   end subroutine get_unn_multiple_components_order_general_baij
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine get_unn_multiple_components_order_trailing_receives_baij(halo, unns)
     !!< For the supplied halo, retrieve the complete universal numbering
     !!< of the degrees of freedom in a multi-component field
@@ -830,51 +842,59 @@ contains
     integer, dimension(:), pointer :: receives
     integer :: owned_nodes, ncomponents, out_unn, out_unn_base, remote_gnn
     integer :: i, j, k, unn, my_nowned_nodes
-
+    integer :: unloc
     assert(trailing_receives_consistent(halo))
     assert(size(unns) >= halo_nowned_nodes(halo) + size(halo%receives_gnn_to_unn))
     assert(has_global_to_universal_numbering(halo))
 
+    ! ncomponents = size(unns, 2)
+
+    ! ! first our owned nodes
+    ! my_nowned_nodes = halo_nowned_nodes(halo) !!number of nodes - halos
     ncomponents = size(unns, 2)
-
-
-
     ! first our owned nodes
-    my_nowned_nodes = 6 !halo_nowned_nodes(halo) !!number of nodes - halos
+    my_nowned_nodes = size(unns, 1) !!number of nodes - halos
 
-    print*, size(unns,1), size(unns,2), size(unns)
-    print*, "index", my_nowned_nodes, ncomponents, size(halo%receives_gnn_to_unn)
+    unloc = (halo_nowned_nodes(halo)+size(halo%receives_gnn_to_unn))/size(unns, 2)
+
+    ! print*, unloc, size(unns,1), size(unns,2), size(unns)
+    ! print*, "index 2", my_nowned_nodes, size(halo%receives_gnn_to_unn)
 
     !! ncomponents = (my_owned_nodes+size(halo%receives_gnn_to_unn))/u_nloc
 
     do i = 1, my_nowned_nodes
       ! the multi-component unn uses a base of unn_base*ncomponents
-      out_unn = ncomponents*halo%my_owned_nodes_unn_base + i
+      out_unn = (ncomponents*unloc)*halo%my_owned_nodes_unn_base + i
+!      print*,halo%my_owned_nodes_unn_base , halo%my_owned_nodes_unn_base/size(unns, 1)
+!      out_unn = halo%my_owned_nodes_unn_base/ncomponents + i
+      !! blocks
       do k = 1, ncomponents
-        unns(i, k) = out_unn
-        out_unn = out_unn + my_nowned_nodes
+        unns(i,k) = out_unn
+        out_unn = out_unn + (ncomponents*unloc)
       end do
     end do
-
-    print*, halo_proc_count(halo)
 
     ! then fill in the receiving nodes
     do i = 1, halo_proc_count(halo)
       receives => halo_receives(halo, i)
       ! base for the created multi-component unns of owned nodes on proces i:
-      out_unn_base = halo%owned_nodes_unn_base(i)*ncomponents
+      !out_unn_base = halo%owned_nodes_unn_base(i)*ncomponents
+      out_unn_base = halo%owned_nodes_unn_base(i)/ncomponents
       ! nodes owned by process i:
       owned_nodes = halo%owned_nodes_unn_base(i+1)-halo%owned_nodes_unn_base(i)
       do j = 1, size(receives)
 
-        unn = halo%receives_gnn_to_unn(receives(j)-my_nowned_nodes)
+        ! print*, "R", size(receives), receives(j),receives(j)-halo_nowned_nodes(halo)
+
+        unn = halo%receives_gnn_to_unn(receives(j)-halo_nowned_nodes(halo))
+!        unn = halo%receives_gnn_to_unn(receives(j)-ncomponents)
         ! global no as owned node on process i:
         remote_gnn = unn-halo%owned_nodes_unn_base(i)
-
         ! start with unn for component 1
         out_unn = out_unn_base+remote_gnn
         do k = 1, ncomponents
-          unns(receives(j), k) = out_unn
+          !print*, (receives(j)-1)/ncomponents
+          unns( (receives(j)-1)/ncomponents,k) = out_unn
           out_unn = out_unn + owned_nodes
         end do
 

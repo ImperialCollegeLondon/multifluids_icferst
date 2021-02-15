@@ -186,7 +186,6 @@ contains
     integer, dimension(:), allocatable:: ghost_marker
     integer i, g, f, start, offset, fpg
     integer nuniversalnodes, ngroups, ierr
-
     allocate( petsc_numbering%gnn2unn(1:nnodes, 1:nfields) )
 
     if (present(halo)) then
@@ -210,11 +209,8 @@ contains
     petsc_numbering%group_size=fpg
 
     ! first we set up the petsc numbering for the first entry of each group only:
-
     if (.not.associated(petsc_numbering%halo)) then
-
        ! *** Serial case *or* parallel without halo
-
        ! standard, trivial numbering, starting at 0:
        start=0 ! start of each group of fields
        do g=0, ngroups-1
@@ -392,7 +388,8 @@ contains
        ! offset+local number
        petsc_numbering%offset=petsc_numbering%gnn2unn(1,1)
     else
-       ! *** Parallel case with halo:
+
+           ! *** Parallel case with halo:
        ! the hard work is done inside get_universal_numbering() for the case fpg=1
        ! for fpg>1 we just ask for a numbering for the groups and pad it out afterwards
        call get_universal_numbering_baij(halo, petsc_numbering%gnn2unn(:,1:ngroups))
@@ -404,14 +401,15 @@ contains
 
     if (isParallel()) then
        ! work out the length of global(universal) vector
+
        call mpi_allreduce(petsc_numbering%nprivatenodes, nuniversalnodes, 1, MPI_INTEGER, &
            MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
-       petsc_numbering%universal_length=nuniversalnodes*blocks
+       petsc_numbering%universal_length=nuniversalnodes!*blocks !! this is not balanced
+
     else
        ! trivial in serial case:
        petsc_numbering%universal_length=nnodes*blocks
     end if
-
 
     nullify( petsc_numbering%ghost_nodes )
     nullify( petsc_numbering%ghost2unn )
@@ -609,7 +607,10 @@ contains
   end subroutine VectorField2Petsc
 
 
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine VectorFields2PetscBaij(fields, petsc_numbering, vec)
     !!< Assembles field into (previously created) petsc Vec using petsc_numbering for the DOFs of the fields combined
     type(vector_field), dimension(:), intent(in):: fields
@@ -648,7 +649,10 @@ contains
 
   end subroutine VectorFields2PetscBaij
 
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine VectorField2PetscBaij(field, petsc_numbering, vec)
     !!< Assembles given field into (previously created) petsc Vec using petsc_numbering
     type(vector_field), intent(in):: field
@@ -1024,7 +1028,10 @@ contains
   end subroutine Petsc2VectorField
 
 
-
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine Petsc2VectorFieldsBaij(vec, petsc_numbering, fields)
   !!< Copies the values of a PETSc Vec into vector fields. The PETSc Vec
   !!< must have been assembled using the same petsc_numbering.
@@ -1094,7 +1101,11 @@ contains
     end if
 
   end subroutine Petsc2VectorFieldsBaij
-
+  
+  !---------------------------------------------------------------------------
+  !> @author Asiri Obeysekara
+  !> @brief Block AIJ version
+  !---------------------------------------------------------------------------
   subroutine Petsc2VectorFieldBaij(vec, petsc_numbering, field)
   !!< Copies the values of a PETSc Vec into a vector field. The PETSc Vec
   !!< must have been assembled using the same petsc_numbering.

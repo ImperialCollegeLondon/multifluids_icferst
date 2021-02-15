@@ -2611,7 +2611,6 @@ end if
         !> If block = .true. here velocity is solved as a block petsc matrix
         !---------------------------------------------------------------------------
         subroutine solve_and_update_velocity(Mmat,Velocity, CDP_tensor, U_RHS, diagonal_A,block)
-
           implicit none
           type (multi_matrices), intent(inout) :: Mmat
           real, dimension(Mdims%ndim * Mdims%nphase, Mdims%u_nonods), intent(in) :: U_RHS!Conversion to two entries
@@ -2642,7 +2641,6 @@ end if
                 end do
               end do
             end do
-
             rhs%val = rhs%val + u_rhs_block
             deallocate(u_rhs_block)
           else
@@ -2651,7 +2649,6 @@ end if
             rhs = as_packed_vector(CDP_tensor)
             rhs%val = rhs%val + U_RHS
           end if
-
           packed_vel%val = 0.
           !Rescale RHS (it is given that the matrix has been already re-scaled)
           if (rescale_mom_matrices) rhs%val = rhs%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
@@ -2660,7 +2657,6 @@ end if
           else
             call petsc_solve( packed_vel, Mmat%DGM_PETSC, RHS , option_path = trim(solver_option_velocity), iterations_taken = its_taken)
           end if
-
           !If the system is re-scaled then now it is time to recover the correct solution
           if (rescale_mom_matrices) packed_vel%val = packed_vel%val / sqrt(diagonal_A%val) !Recover original X; X = D^-0.5 * X'
           if (its_taken >= max_allowed_V_its) solver_not_converged = .true.
@@ -7386,29 +7382,29 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  !>@brief: This subroutine combines the distributed and block diagonal for an element
  !> and inserts into the block CSR petsc matrix in blocks of values
  !---------------------------------------------------------------------------
-SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
-  DGM_PETSC, &
-  FINELE, COLELE,  NDIM, NPHASE, U_NLOC, TOTELE, velocity, pressure, Mmat,big_block)  ! Element connectivity.
-  IMPLICIT NONE
-  INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, TOTELE
+subroutine comb_vel_matrix_diag_dist_block(diag_bigm_con, bigm_con, &
+  dgm_petsc, &
+  finele, colele,  ndim, nphase, u_nloc, totele, velocity, pressure, mmat,big_block)  ! element connectivity.
+  implicit none
+  integer, intent( in ) :: ndim, nphase, u_nloc, totele
 
-  REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
-  REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
-  type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
-  INTEGER, DIMENSION(: ), intent( in ) :: FINELE
-  INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-  type(multi_matrices), intent(inout) :: Mmat
+  real, dimension( :,:,:, :,:,:, : ), intent( in ) :: diag_bigm_con
+  real, dimension( :,:,:, :,:,:, : ), intent( in ) :: bigm_con
+  type( petsc_csr_matrix ), intent( inout ) :: dgm_petsc
+  integer, dimension(: ), intent( in ) :: finele
+  integer, dimension( : ), intent( in ) :: colele
+  type(multi_matrices), intent(inout) :: mmat
   type( tensor_field ) :: velocity
   type( tensor_field ) :: pressure
   logical, intent(in) :: big_block
-  !Local variables
+  !local variables
   integer:: row, col
   PetscErrorCode:: ierr
 
-  INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
-  INTEGER :: U_ILOC,U_JLOC, IPHASE,JPHASE, IDIM,JDIM, I,J, GLOBI, GLOBJ
-  INTEGER :: COUNT_ELE,JCOLELE, IMAT, JMAT
-  real, dimension(:,:,:, :,:,:), allocatable :: LOC_DGM_PHA
+  integer :: ele,ele_row_start,ele_row_start_next,ele_in_row
+  integer :: u_iloc,u_jloc, iphase,jphase, idim,jdim, i,j, globi, globj
+  integer :: count_ele,jcolele, imat, jmat
+  real, dimension(:,:,:, :,:,:), allocatable :: loc_dgm_pha
   integer, dimension(:), pointer :: neighbours
 
   PetscScalar, dimension(:), allocatable:: valuesb
@@ -7423,7 +7419,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   logical :: skip, multi_block
 
 
-  ALLOCATE(LOC_DGM_PHA(NDIM,NDIM,NPHASE,NPHASE,U_NLOC,U_NLOC)) !!a
+  allocate(loc_dgm_pha(ndim,ndim,nphase,nphase,u_nloc,u_nloc)) !!a
 
   ! [big_blocks] are for block sizes based on ndim*nphase*u_nloc
   ! [not big_blocks] are for block sizes based on ndim*nphase
@@ -7432,9 +7428,9 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   multi_block=.true.
   if (big_block) then
     if(multi_block) then
-      allocate(valuesb(0:size(loc_dgm_pha)*size(COLELE)-1))
-      allocate(idxm(0:TOTELE-1))
-      allocate(idxn(0:size(COLELE)-1))
+      allocate(valuesb(0:size(loc_dgm_pha)*size(colele)-1))
+      allocate(idxm(0:totele-1))
+      allocate(idxn(0:size(colele)-1))
       valuesb=0.0
     else
       allocate(valuesb(0:size(loc_dgm_pha)-1))
@@ -7447,20 +7443,20 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
     allocate(idxn(0:size(dgm_petsc%column_numbering%gnn2unn,2)-1))
   end if
 
-    ! !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
-    ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
-    ! mal = info(MAT_INFO_BLOCK_SIZE)
-    ! nz_a = info(MAT_INFO_NZ_ALLOCATED)
-    ! print*, "MATGETINFO1", mal, nz_a
-    ! !******************** PROFILNG THE PETSC MAT ***************!
+    !******DEBUGGING********* PROFILNG THE PETSC MAT ***************!
+    call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
+    mal = info(MAT_INFO_BLOCK_SIZE)
+    nz_a = info(MAT_INFO_NZ_ALLOCATED)
+    print*, "MATGETINFO1", mal, nz_a
+    !******************** PROFILNG THE PETSC MAT ***************!
 
     call MatSetOption(dgm_petsc%M, MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 
-  Loop_Elements20: DO ELE = 1, TOTELE
+  Loop_Elements20: do ele = 1, totele
 
-      ELE_ROW_START=FINELE(ELE)
-      ELE_ROW_START_NEXT=FINELE(ELE+1)
-      ELE_IN_ROW = ELE_ROW_START_NEXT - ELE_ROW_START
+      ele_row_start=finele(ele)
+      ele_row_start_next=finele(ele+1)
+      ele_in_row = ele_row_start_next - ele_row_start
       ! Block diagonal and off diagonal terms...
       ! starting the counters for contgiuous memory assignment of matrix values
       ! and block indices
@@ -7469,72 +7465,71 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         nn=0
       end if
 
-      Between_Elements_And_Boundary20: DO COUNT_ELE=ELE_ROW_START, ELE_ROW_START_NEXT-1
-        JCOLELE=COLELE(COUNT_ELE) !!(big block )for each block row this is the non-zero block column index
-        IF(JCOLELE==ELE) THEN
-            ! Block diagonal terms (Assume full coupling between the phases and dimensions)...
-            LOC_DGM_PHA(:,:,:, :,:,:) = DIAG_BIGM_CON(:,:,:, :,:,:, ELE) + BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
-        ELSE
-            LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
-        ENDIF
-        ! COLUMN ORIENTED uing sequential insertions/add
-        ! Contiguous memory assignment
+      Between_Elements_And_Boundary20: do count_ele=ele_row_start, ele_row_start_next-1
+        jcolele=colele(count_ele) !!(big block )for each block row this is the non-zero block column index
+        if(jcolele==ele) then
+            ! block diagonal terms (assume full coupling between the phases and dimensions)...
+            loc_dgm_pha(:,:,:, :,:,:) = diag_bigm_con(:,:,:, :,:,:, ele) + bigm_con(:,:,:, :,:,:, count_ele)
+        else
+            loc_dgm_pha(:,:,:, :,:,:) = bigm_con(:,:,:, :,:,:, count_ele)
+        endif
+        ! column oriented uing sequential insertions/add
+        ! contiguous memory assignment
         if(.not.multi_block) then
           nn=0
         end if
 
-        DO U_JLOC=1,U_NLOC
-          DO JPHASE=1,NPHASE
-            DO JDIM=1,NDIM
+        do u_jloc=1,u_nloc
+          do jphase=1,nphase
+            do jdim=1,ndim
 
-              DO U_ILOC=1,U_NLOC
-                DO IPHASE=1,NPHASE
-                  DO IDIM=1,NDIM
-                    if (.not. node_owned(velocity,((ELE-1)*U_NLOC + U_ILOC))) cycle
+              do u_iloc=1,u_nloc
+                do iphase=1,nphase
+                  do idim=1,ndim
+                    if (.not. node_owned(velocity,((ele-1)*u_nloc + u_iloc))) cycle
                     if(big_block) then
                       !!!********* remove once global index/block index issue is resolved ***
                         ! if(multi_block) then
-                      !!********************************************************************
-
-                          !! Requires the RHS and packed_velocity
+                      !!*******************************************************************
+                          !! requires the rhs and packed_velocity
                           !! vector pointers to be allocated as:
                           !! global_index=matrix%gnn2unn(local_index,block_index)
-                          valuesb(nn)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                          valuesb(nn)=loc_dgm_pha( idim,jdim,iphase,jphase,u_iloc,u_jloc)
                           ! block index counters (block rows/columns)
-                          GLOBI=ELE
-                          GLOBJ=JCOLELE
+                          globi=ele
+                          globj=jcolele
                         !!!********* remove once global index/block index issue is resolved ***
                         ! else
                           ! ! global index counters 1 (local rows/columns in a block)
-                          ! I = IDIM+(IPHASE-1)*ndim+(U_ILOC-1)*ndim*nphase
-                          ! J = JDIM+(JPHASE-1)*ndim+(U_JLOC-1)*ndim*nphase
+                          ! i = idim+(iphase-1)*ndim+(u_iloc-1)*ndim*nphase
+                          ! j = jdim+(jphase-1)*ndim+(u_jloc-1)*ndim*nphase
                           ! !global index of each value in the non-zero block
-                          !**** this is the OLD numbering for petsc
-                          ! ! idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
-                          ! ! idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
+                          !**** this is the old numbering for petsc
+                          ! ! idxm(i-1)=dgm_petsc%row_numbering%gnn2unn(globi,i)
+                          ! ! idxn(j-1)=dgm_petsc%column_numbering%gnn2unn(globj,j)
                           !**** this is the new numbering for petsc
-                          ! idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(I,GLOBI)
-                          ! idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(J,GLOBJ)
+                          ! idxm(i-1)=dgm_petsc%row_numbering%gnn2unn(i,globi)
+                          ! idxn(j-1)=dgm_petsc%column_numbering%gnn2unn(j,globj)
 
                           ! !rank-2 array of the non-zero block per non-zero block column (jcolele) per ele
-                          ! values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                          ! values(i-1,j-1)=loc_dgm_pha( idim,jdim,iphase,jphase,u_iloc,u_jloc)
                         ! end if
                         !!********************************************************************
                     else
-                      I=IDIM + (IPHASE-1)*NDIM
-                      J=JDIM + (JPHASE-1)*NDIM
-                      GLOBI=(ELE-1)*U_NLOC + U_ILOC
-                      GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                      idxm(I-1)=dgm_petsc%row_numbering%gnn2unn(GLOBI,I)
-                      idxn(J-1)=dgm_petsc%column_numbering%gnn2unn(GLOBJ,J)
-                      values(I-1,J-1)=LOC_DGM_PHA( IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                      i=idim + (iphase-1)*ndim
+                      j=jdim + (jphase-1)*ndim
+                      globi=(ele-1)*u_nloc + u_iloc
+                      globj=(jcolele-1)*u_nloc + u_jloc
+                      idxm(i-1)=dgm_petsc%row_numbering%gnn2unn(globi,i)
+                      idxn(j-1)=dgm_petsc%column_numbering%gnn2unn(globj,j)
+                      values(i-1,j-1)=loc_dgm_pha( idim,jdim,iphase,jphase,u_iloc,u_jloc)
                     end if
 
                   nn=nn+1
-                  END DO
-                END DO
-              END DO
-            END DO
+                  end do
+                end do
+              end do
+            end do
               !! enter multiple values at a time for 'small' block matrix size
               !! (uses an in-efficient search algorithm inside petsc)
               if(.not.big_block) then
@@ -7542,23 +7537,23 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
                               values, INSERT_VALUES,ierr)
                 dgm_petsc%is_assembled=.false.
               endif
-          END DO
-        END DO
+          end do
+        end do
 
         if(big_block) then
           if(multi_block) then
-            idxn(nnn)=GLOBJ-1
+            idxn(nnn)=globj-1
           else
             !!!********* remove once global index/block index issue is resolved ***
             ! this nested loop creates the rank-1 array of values corresponding
             ! to each non-zero block from the rank-2 array (contiguous memory)
             ! nn=0
-            ! DO J=1, size(values,1)
-            !   DO I=1, size(values,2)
-            !     valuesb(nn)=values(I-1,J-1)
+            ! do j=1, size(values,1)
+            !   do i=1, size(values,2)
+            !     valuesb(nn)=values(i-1,j-1)
             !     nn=nn+1
-            !   END DO
-            ! END DO
+            !   end do
+            ! end do
             !!********************************************************************
             call MatSetValuesBlocked(dgm_petsc%M, 1, GLOBI-1, 1, GLOBJ-1, &
                           valuesb, ADD_VALUES, ierr)
@@ -7567,7 +7562,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
         end if
 
       nnn=nnn+1
-      END DO Between_Elements_And_Boundary20
+      end do Between_Elements_And_Boundary20
       !! inserting values a block row at a time
       if(big_block) then
         if(multi_block) then
@@ -7576,7 +7571,8 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
           dgm_petsc%is_assembled=.false.
         end if
       end if
-  END DO Loop_Elements20
+  end do Loop_Elements20
+
 
   ! !!******************** PROFILNG THE PETSC MAT ***************!
   ! call MatGetInfo(dgm_petsc%M, MAT_LOCAL,info, ierr)
@@ -7584,6 +7580,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   ! nz_a = info(MAT_INFO_NZ_USED)
   ! print*, "MATGETINFO2", mal, nz_a
   ! !!**********************************************************!
+
 
   if(big_block) then
     deallocate(valuesb)
@@ -7594,7 +7591,7 @@ SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK(DIAG_BIGM_CON, BIGM_CON, &
   deallocate(idxn)
   deallocate(loc_dgm_pha)
   return
-END SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST_BLOCK
+end subroutine comb_vel_matrix_diag_dist_block
 
 
  SUBROUTINE USE_POSINMAT_C_STORE(COUNT, U_INOD, P_JNOD,  &
