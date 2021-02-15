@@ -81,14 +81,14 @@
             <value name="WholeMesh">
               <anisotropic_symmetric>
                 <constant>
-                  <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">1. 0 0 1.</real_value>
+                  <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">1. 1 1 1.</real_value>
                 </constant>
               </anisotropic_symmetric>
             </value>
           </prescribed>
         </tensor_field>
         <viscosity_scheme>
-          <tensor_form/>
+          <stress_form/>
           <linear_scheme>
             <high_order/>
           </linear_scheme>

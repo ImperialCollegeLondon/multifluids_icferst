@@ -2026,7 +2026,6 @@ end if
           deallocate( bigm_con)
         end if
 
-
         ! form pres eqn.
         if (.not.Mmat%Stored .or. .not.is_porous_media) then
           !Retrieve the diagonal of the momentum matrix only once if required
@@ -2040,8 +2039,6 @@ end if
           !Now invert the Mass matrix
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
-
-
         ! solve using a projection method
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim = velocity%dim); call zero(cdp_tensor)
         ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
@@ -2063,7 +2060,7 @@ end if
         !"########################UPDATE VELOCITY STEP####################################"
         !(Is this needed? The pressure hasn't changed yet, so the old velocity should do)!SPRINT_TO_DO
         !MAYBE ONLY AFTER ADAPT/START OF TIME?
-        IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
+        IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE) THEN
             !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
             CALL Mass_matrix_MATVEC( velocity % VAL, Mmat%PIVIT_MAT, Mmat%U_RHS + CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
@@ -2117,7 +2114,7 @@ end if
 
         !"########################UPDATE PRESSURE STEP####################################"
         !We may apply the Anderson acceleration method
-        if (solve_stokes .or. solve_mom_iteratively ) then
+        if ((solve_stokes .or. solve_mom_iteratively)) then
           call Stokes_Anderson_acceleration(packed_state, Mdims, Mmat, Mspars, INV_B, rhs_p, ndgln, &
                                           MASS_ELE, diagonal_A, velocity, P_all, deltap, cmc_petsc, stokes_max_its)
           call deallocate(cmc_petsc); call deallocate(rhs_p); call deallocate(Mmat%DGM_PETSC)
@@ -2362,7 +2359,8 @@ end if
 
         !---------------------------------------------------------------------------
         !> @author Pablo Salinas
-        !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not
+        !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
+        !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
         subroutine generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
           implicit none
@@ -2371,17 +2369,21 @@ end if
           real, dimension(:), intent(in) :: MASS_ELE
           type( vector_field ), intent(in) :: diagonal_A
           !Local variables
-          integer :: i, j
+          integer :: j
 
+          integer :: final_phase
 
-          !Initialise to zero
-          Mmat%PIVIT_MAT = 0.
+          !For magma we want to populate the mass matrix only for the first phase
+          final_phase = Mdims%nphase
+          if (is_magma) final_phase = 1
+          !Matrix already initialised ! Mmat%PIVIT_MAT = 0.
+
           if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
             do ele = 1, Mdims%totele
               DO U_JLOC = 1, Mdims%u_nloc
                 u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                DO JPHASE = 1, Mdims%nphase
+                DO JPHASE = 1, final_phase
                   DO JDIM = 1, Mdims%ndim
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
@@ -2395,10 +2397,17 @@ end if
               ! end do
             end do
           else
-            !Just the mass matrix
-            do i = 1, size(Mmat%PIVIT_MAT,3)
-              do j = 1, size(Mmat%PIVIT_MAT,1)
-                Mmat%PIVIT_MAT(j, j, i) = MASS_ELE(i)/dble(Mdims%u_nloc)
+            do ele = 1, Mdims%totele
+              DO U_JLOC = 1, Mdims%u_nloc
+                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
+                DO JPHASE = 1, final_phase
+                  DO JDIM = 1, Mdims%ndim
+                    JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                    J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
+                    !Just the mass matrix
+                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)
+                  end do
+                end do
               end do
             end do
           end if
@@ -2422,6 +2431,7 @@ end if
           packed_vel = as_packed_vector(Velocity)
           rhs = as_packed_vector(CDP_tensor)
 
+! call MatView(Mmat%DGM_PETSC%M,   PETSC_VIEWER_STDOUT_SELF, ipres)
           !Compute - u_new = A^-1( - Gradient * P + RHS)
           packed_vel%val = 0.
           rhs%val = rhs%val + U_RHS
@@ -2439,6 +2449,7 @@ end if
     call deallocate(packed_vel); call deallocate(rhs)
 #endif
 
+! print *, velocity % VAL(1,:1,:)
 
         end subroutine solve_and_update_velocity
         !---------------------------------------------------------------------------
@@ -3900,7 +3911,9 @@ end if
             !For magma it seems that we need this term
             if (.not. is_magma) zero_or_two_thirds = 0.!Disable "Laplacian" of velocity
             !Lumps the absorption terms and RHS; More consistent with the lumping of the mass matrix
-            lump_mass = .true. ;lump_absorption = .true.
+            ! lump_mass = .true.; lump_absorption = .true.
+            lump_mass = .true.; lump_absorption = .false.
+
         end if
 
        IF( GOT_DIFFUS .or. get_gradU ) THEN
@@ -4077,6 +4090,7 @@ end if
                         LOC_U_ABSORB( I, I, MAT_ILOC ) = 1.0
                     END DO
                 ELSE
+
                     LOC_U_ABSORB( :, :, MAT_ILOC ) = U_ABSORB( :, :, MAT_INOD )
                     ! Switch on for solid fluid-coupling...
                     IF(RETRIEVE_SOLID_CTY) THEN
@@ -4366,7 +4380,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                                                 + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
                                         END IF
-                                        IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
+                                        IF ( .NOT.Mmat%NO_MATRIX_STORE) THEN
                                           IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
                                             IF ( LUMP_DIAG_MOM ) THEN !!-ao new lumping terms
                                               IF ( LUMP_MASS ) THEN
@@ -4414,9 +4428,11 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                   DO JPHASE = 1, Mdims%nphase
                     DO JDIM = 1, Mdims%ndim
                       JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
+                      ! J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                       DO IPHASE = 1, Mdims%nphase
                         DO IDIM = 1, Mdims%ndim
                           IPHA_IDIM = IDIM + (IPHASE-1)*Mdims%ndim
+                          I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                           IF ( LUMP_MASS ) THEN
                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
@@ -4425,7 +4441,12 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
                             + NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+
                           END IF
+                          !Lump to phases
+                          J = IDIM+(JPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
+                          Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + &
+                            NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
                         end do
                       end do
                     end do

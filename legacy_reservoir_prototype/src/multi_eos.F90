@@ -1826,14 +1826,12 @@ contains
 
   ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
-      if ( is_porous_media) then
-         momentum_diffusion=0.0
-      else
+      momentum_diffusion=0.0
+      if ( .not. is_porous_media) then
         if (have_option('/material_phase[0]/phase_properties/Viscosity/tensor_field::Viscosity/prescribed/value::WholeMesh/isotropic') &
          .AND. have_option('/material_phase[0]/phase_properties/Viscosity/viscosity_scheme/stress_form') ) then
         print *, "WARNING: PLEASE ENSURE THAT YOU USE ANISOTROPIC SYMMETRIC WHEN USING STRESS FORM OF VISCOSITY, Otherwise your results are likely to be wrong"
         end if
-         momentum_diffusion=0.0
          t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
          !Multiplier to control the index for the viscosity when the viscosity is constant
          multiplier = 1
