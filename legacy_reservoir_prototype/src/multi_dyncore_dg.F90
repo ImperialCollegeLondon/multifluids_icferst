@@ -2035,7 +2035,7 @@ end if
             call allocate(diagonal_A, Mdims%nphase*Mdims%ndim, velocity%mesh, "diagonal_A")
             call extract_diagonal(Mmat%DGM_PETSC, diagonal_A)
           end if
-          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
+          if (solve_stokes .or. solve_mom_iteratively) call generate_Pivit_matrix_Stokes(state, Mdims, Mmat, MASS_ELE, diagonal_A)
           !Now invert the Mass matrix
           CALL Mass_matrix_inversion(Mmat%PIVIT_MAT, Mdims )
         end if
@@ -2184,7 +2184,7 @@ end if
           real, dimension(:,:), allocatable :: stored_field, field_residuals
           real,save :: solver_tolerance = -1
           real, dimension(:,:), allocatable :: BAK_matrix, ref_pressure
-          real :: conv_test, total_max, total_min, Omega, exponent_diag
+          real :: conv_test, total_max, total_min, Omega
           logical :: restart_now
           type(tensor_field) :: aux_velocity, ref_CDP_tensor
           type( vector_field ) :: packed_vel, packed_CDP_tensor, packed_aux_velocity
@@ -2220,9 +2220,6 @@ end if
           if (Special_precond) then
             call allocate(aux_velocity,velocity%mesh,"aux_velocity",dim = velocity%dim); call zero(aux_velocity)
             packed_aux_velocity = as_packed_vector(aux_velocity)
-            exponent_diag = 0.5!Default
-            if (have_option("/solver_options/Momemtum_matrix/rescale_mom_matrices")) exponent_diag = exponent_diag - 0.5!Already multiplied by Ad^-0.5
-            if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) exponent_diag = exponent_diag + 0.5!Need more of Ad
           end if
 
           call allocate(ref_cdp_tensor,velocity%mesh,"refCDP",dim = velocity%dim); call zero(ref_cdp_tensor)
@@ -2295,13 +2292,10 @@ end if
               !Multiply by the gradient (C)
               call C_MULT2_MULTI_PRES(Mdims, Mspars, Mmat, deltap%val, CDP_tensor)!The equations are for deltap not Pressure!
               !Now multiply by the inverse of the lumped mass matrix (to keeps the units consistent)
-              call mult_inv_Mass_vel_vector(Mdims, ndgln, CDP_tensor%val, MASS_ELE)
-              !Diag_A^-0.5 x previous
-              if (exponent_diag > 1d-8) packed_CDP_tensor%val = packed_CDP_tensor%val / diagonal_A%val**exponent_diag
+              ! call mult_inv_Mass_vel_vector(Mdims, ndgln, CDP_tensor%val, MASS_ELE)
+              CALL Mass_matrix_MATVEC( CDP_tensor % VAL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, ndgln%u )
               !A x previous
               call mult( packed_aux_velocity, Mmat%DGM_PETSC, packed_CDP_tensor )
-              !Diag_A^-0.5 x previous
-              if (exponent_diag > 1d-8) packed_aux_velocity%val = packed_aux_velocity%val / diagonal_A%val**exponent_diag
               !Ct x previous
               call compute_DIV_U(Mdims, Mmat, Mspars, aux_velocity%val, INV_B, rhs_p)
               !Solve again the system to finish the preconditioner
@@ -2362,14 +2356,16 @@ end if
         !> @brief Generates a lumped mass matrix for Stokes. It can either have also the diagonal of A or not.
         !> For magma only the first phase is imposed here as for Darcy the Mass matrix is generated in ASSEM_FORCE_CTY
         !---------------------------------------------------------------------------
-        subroutine generate_Pivit_matrix_Stokes(Mdims, Mmat, MASS_ELE, diagonal_A)
+        subroutine generate_Pivit_matrix_Stokes(state, Mdims, Mmat, MASS_ELE, diagonal_A)
           implicit none
+          type( state_type ), dimension( : ), intent( inout ) :: state
           type(multi_dimensions), intent(in) :: Mdims
           type (multi_matrices), intent(inout) :: Mmat
           real, dimension(:), intent(in) :: MASS_ELE
           type( vector_field ), intent(in) :: diagonal_A
           !Local variables
           integer :: j
+          type( tensor_field ), pointer :: viscosity
 
           integer :: final_phase
 
@@ -2377,35 +2373,37 @@ end if
           final_phase = Mdims%nphase
           if (is_magma) final_phase = 1
           !Matrix already initialised ! Mmat%PIVIT_MAT = 0.
-
           if (have_option("/solver_options/Momemtum_matrix/solve_mom_iteratively/Momentum_preconditioner")) then
             !Introduce the diagonal of A into the Mass matrix (not ideal...)
             do ele = 1, Mdims%totele
               DO U_JLOC = 1, Mdims%u_nloc
                 u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                DO JPHASE = 1, final_phase
-                  DO JDIM = 1, Mdims%ndim
+                DO JDIM = 1, Mdims%ndim
+                  DO JPHASE = 1, final_phase
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                     Mmat%PIVIT_MAT(J, J, ELE) =  diagonal_A%val(JPHA_JDIM, u_jnod )
                   end do
                 end do
               end do
+
               !Don't multiply by the mass of the elements, A already include this!
               ! do j = 1, size(Mmat%PIVIT_MAT,1)
               !   Mmat%PIVIT_MAT(j, j, ele) = Mmat%PIVIT_MAT(j, j, ele) * MASS_ELE(ele)/dble(Mdims%u_nloc)
               ! end do
             end do
           else
-            do ele = 1, Mdims%totele
-              DO U_JLOC = 1, Mdims%u_nloc
-                u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
-                DO JPHASE = 1, final_phase
+            DO JPHASE = 1, final_phase
+              viscosity => extract_tensor_field(state(jphase), "Viscosity")
+              do ele = 1, Mdims%totele
+                DO U_JLOC = 1, Mdims%u_nloc
+                  u_jnod = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
                   DO JDIM = 1, Mdims%ndim
                     JPHA_JDIM = JDIM + (JPHASE-1)*Mdims%ndim
                     J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
                     !Just the mass matrix
-                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc)
+!once this is working, viscosity and density need to be chose CV-averaged wise!
+                    Mmat%PIVIT_MAT(J, J, ELE) =   MASS_ELE(ele)/dble(Mdims%u_nloc) * (viscosity%val(1,1,1))
                   end do
                 end do
               end do
