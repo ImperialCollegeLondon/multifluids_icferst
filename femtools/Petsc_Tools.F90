@@ -334,7 +334,7 @@ contains
   !> @brief wrapper for petsc_numbering assuming Block matrices
   !---------------------------------------------------------------------------
   subroutine allocate_petsc_numbering_baij(petsc_numbering, &
-       nnodes, blocks, halo)
+       fields, blocks, halo)
     !!< Set ups the 'universal'(what most people call global)
     !!< numbering used in PETSc. In serial this is trivial
     !!< but could still be used for reordering schemes.
@@ -343,15 +343,15 @@ contains
     !! number of nodes and fields:
     !! (here 'blocks' counts the number of blocks, so
     !!  e.g. for nphases velocity fields in 3 dimensions with tet nfields=#of elements)
-    integer, intent(in):: nnodes, blocks
+    integer, intent(in):: fields, blocks
     !! for parallel: halo information
     type(halo_type), pointer, optional :: halo
     !! If supplied number these as -1, so they'll be skipped by Petsc
     integer, dimension(:), allocatable:: ghost_marker
     integer i, g, f, start, offset, fpg
-    integer nuniversalnodes, ngroups, ierr
+    integer nuniversalnodes, ngroups, ierr, nnodes
 
-    allocate( petsc_numbering%gnn2unn(1:nnodes, 1:blocks) )
+    allocate( petsc_numbering%gnn2unn(1:fields, 1:blocks) )
 
     if (present(halo)) then
        if (associated(halo)) then
@@ -369,14 +369,15 @@ contains
        ! standard, trivial numbering, starting at 0:
        start=0 ! start of blocks
        do g=0, ngroups-1
-            petsc_numbering%gnn2unn(:, g+1)=(/(start + i, i=0, nnodes-1)/)
-            start=start+nnodes
+            petsc_numbering%gnn2unn(:, g+1)=(/(start + i, i=0, fields-1)/)
+            start=start+fields
        end do
 
        if (isParallel()) then
           ! universal numbering can now be worked out trivially
           ! by calculating the offset (start of the universal number
           ! range for each process)
+          nnodes=fields
           call mpi_scan(nnodes, offset, 1, MPI_INTEGER, &
                MPI_SUM, MPI_COMM_FEMTOOLS, ierr)
           offset=offset-nnodes
@@ -389,7 +390,7 @@ contains
        petsc_numbering%offset=petsc_numbering%gnn2unn(1,1)
     else
 
-           ! *** Parallel case with halo:
+        ! *** Parallel case with halo:
        ! the hard work is done inside get_universal_numbering() for the case fpg=1
        ! for fpg>1 we just ask for a numbering for the groups and pad it out afterwards
        call get_universal_numbering_baij(halo, petsc_numbering%gnn2unn(:,1:ngroups))
@@ -408,7 +409,7 @@ contains
 
     else
        ! trivial in serial case:
-       petsc_numbering%universal_length=nnodes*blocks
+       petsc_numbering%universal_length=fields*blocks
     end if
 
     nullify( petsc_numbering%ghost_nodes )
@@ -1101,7 +1102,7 @@ contains
     end if
 
   end subroutine Petsc2VectorFieldsBaij
-  
+
   !---------------------------------------------------------------------------
   !> @author Asiri Obeysekara
   !> @brief Block AIJ version

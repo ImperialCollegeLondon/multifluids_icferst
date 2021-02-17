@@ -1705,10 +1705,12 @@ contains
             BETWEEN_ELEMENTS_AND_BOUNDARY: do count_ele=finele(ele), finele(ele+1)-1
               jcolele=colele(count_ele) !
               if(jcolele==ele) then
-                  ! block diagonal terms (assume full coupling between the
-                  ! phases and dimensions)...
+                  ! block diagonal (assume full coupling between the
+                  ! phases and dimensions)
                   dnn=dnn+1
               else
+                ! block off-diagonal (assume full coupling between the
+                ! phases and dimensions)
                   onn=onn+1
               endif
             end do BETWEEN_ELEMENTS_AND_BOUNDARY
