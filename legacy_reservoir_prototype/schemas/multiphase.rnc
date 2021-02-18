@@ -2456,6 +2456,17 @@ scalar_field_choice =
                     ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
                     element max_limit{real}?
                   )}?,
+                  ## Diffusivity for field (in S.I. m^2/s ).
+                  element tensor_field {
+                     attribute name { "Diffusivity" },
+                     attribute rank { "2" },
+                     (
+                        element prescribed {
+                            mesh_choice?,
+                            prescribed_tensor_field_no_adapt
+                        }
+                     )
+                  }?,
                   prognostic_scalar_field,
                      output_options
                }|
@@ -2505,17 +2516,6 @@ scalar_field_choice =
                     ##Impose max limit by hand, otherwise obtained automatically. Only the first phase is read
                     element max_limit{real}?
                   )}?,
-                  ## Diffusivity for field (in S.I. m^2/s ).
-                  element tensor_field {
-                     attribute name { "Diffusivity" },
-                     attribute rank { "2" },
-                     (
-                        element prescribed {
-                            mesh_choice?,
-                            prescribed_tensor_field_no_adapt
-                        }
-                     )
-                  }?,
                   prognostic_scalar_field
                }|
                element prescribed {

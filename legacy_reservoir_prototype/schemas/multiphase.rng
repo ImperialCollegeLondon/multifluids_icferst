@@ -2943,6 +2943,23 @@ This imposes the tracer to be between bounds.</a:documentation>
                 </optional>
               </element>
             </optional>
+            <optional>
+              <element name="tensor_field">
+                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
+                <attribute name="name">
+                  <value>Diffusivity</value>
+                </attribute>
+                <attribute name="rank">
+                  <value>2</value>
+                </attribute>
+                <element name="prescribed">
+                  <optional>
+                    <ref name="mesh_choice"/>
+                  </optional>
+                  <ref name="prescribed_tensor_field_no_adapt"/>
+                </element>
+              </element>
+            </optional>
             <ref name="prognostic_scalar_field"/>
             <ref name="output_options"/>
           </element>
@@ -3006,23 +3023,6 @@ This imposes the tracer to be between bounds.</a:documentation>
                     <ref name="real"/>
                   </element>
                 </optional>
-              </element>
-            </optional>
-            <optional>
-              <element name="tensor_field">
-                <a:documentation>Diffusivity for field (in S.I. m^2/s ).</a:documentation>
-                <attribute name="name">
-                  <value>Diffusivity</value>
-                </attribute>
-                <attribute name="rank">
-                  <value>2</value>
-                </attribute>
-                <element name="prescribed">
-                  <optional>
-                    <ref name="mesh_choice"/>
-                  </optional>
-                  <ref name="prescribed_tensor_field_no_adapt"/>
-                </element>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
