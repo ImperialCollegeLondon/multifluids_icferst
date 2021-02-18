@@ -1461,7 +1461,6 @@ contains
           end do
         end do
       else
-
         !Note that for the temperature field this is actually the thermal conductivity (in S.I. watts per meter-kelvin => W/(m·K) ).
         if (is_porous_media) then
           !####DIFFUSIVITY FOR POROUS MEDIA ONLY####
@@ -1470,18 +1469,15 @@ contains
           !expo used to switch between boussinesq (density ==1) or normal
           expo = 1.; if (has_boussinesq_aprox) expo = 0.
 
-          ScalarAdvectionField_Diffusion = 0.
-
           if (present_and_true(calculate_solute_diffusivity) .or. present(TracerName)) then
             do iphase = 1, Mdims%nphase
               !Check if the field is defined for that phase, if the property is defined but not the field then ignore the property
               if (present_and_true(calculate_solute_diffusivity)) then
-                if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
                 diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
               else if (present(TracerName)) then
-                if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/scalar_field::'//trim(TracerName)//'/prognostic/tensor_field::Diffusivity')) cycle
                 diffusivity => extract_tensor_field( state(iphase), trim(TracerName)//'Diffusivity', stat )
               end if
+              if (stat /= 0) cycle!If no field defined then cycle
 
               do ele = 1, Mdims%totele
                 ele_nod = min(size(sfield%val), ele)
@@ -1508,6 +1504,7 @@ contains
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             do iphase = 1, Mdims%nphase
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
+              if (stat /= 0) cycle!If no field defined then cycle
               tfield => extract_tensor_field( state(1), 'porous_thermal_conductivity', stat )
               do ele = 1, Mdims%totele
                 ele_nod = min(size(sfield%val), ele)
@@ -1551,7 +1548,6 @@ contains
           !     end do
           !   end do
         else
-          ScalarAdvectionField_Diffusion = 0.
           do iphase = 1, Mdims%nphase
 
             if (present_and_true(calculate_solute_diffusivity)) then
@@ -1561,6 +1557,7 @@ contains
             else
               diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
             endif
+            if (stat /= 0) cycle!If no field defined then cycle
             do ele = 1, Mdims%totele
               !                     ele_nod = min(size(sfield%val), ele)
               !t_ele_nod = min(size(tfield%val, 3), ele)
