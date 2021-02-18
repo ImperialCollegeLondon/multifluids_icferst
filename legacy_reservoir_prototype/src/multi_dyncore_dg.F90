@@ -299,7 +299,7 @@ contains
            if (python_stat==0 .and. Field_selector==1) T_SOURCE = python_vfield%val
            !Start with the process to apply the min max principle
            impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", Mdims%nphase)
-           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -352,7 +352,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media .and. thermal) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
                    if (assemble_collapsed_to_one_phase) OvRelax_param = OvRelax_param/ dble(mdims%n_in_pres)
                else
                 Phase_with_Ovrel = -1
@@ -888,12 +888,12 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
            !Calculates solute dispersion with specific longitudinal and transverse dispersivity
            if (have_option("/porous_media/Dispersion/scalar_field::Longitudinal_Dispersivity")) then
-             call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION, tracer)
+             call calculate_solute_dispersity( state, packed_state, Mdims, ndgln, CDISPERSION)
              TDIFFUSION = TDIFFUSION + CDISPERSION
            end if
            !Start with the process to apply the min max principle
            impose_min_max = have_option_for_any_phase("/scalar_field::"//trim(tracer%name(7:))//"/prognostic/Impose_min_max", nconc)
-           if (impose_min_max) call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
+           call force_min_max_principle(Mdims, 1, tracer, nonlinear_iteration, totally_min_max, trim(tracer%name(7:)))
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
            NITS_FLUX_LIM = 5!<= currently looping here more does not add anything as RHS and/or velocity are not updated
@@ -912,7 +912,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
                if (is_porous_media) then
                    !Get information for capillary pressure to be use in CV_ASSEMB
                    Phase_with_Ovrel = 1
-                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, for_transport = .true.)
+                   call getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Ovrel, totally_min_max, .true.)
                else
                 Phase_with_Ovrel = -1
                end if
@@ -7616,7 +7616,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
  !!>@brief: This subroutine calculates the overrelaxation parameter (Vanishing relaxation) we introduce in the saturation equation
  !> Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
  !> For more information read: doi.org/10.1016/j.cma.2019.07.004
- subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, for_transport)
+ subroutine getOverrelaxation_parameter(state, packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, totally_min_max, for_transport)
      implicit none
      type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent(inout) :: packed_state
@@ -7624,6 +7624,7 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
      type(multi_ndgln), intent(in) :: ndgln
      real, dimension(:), intent(inout) :: Overrelaxation
      integer, intent(inout) :: Phase_with_Pc
+     real, dimension(:), optional :: totally_min_max
      logical, optional, intent(in) :: for_transport
      !Local variables
      real, save :: domain_length = -1
@@ -7694,6 +7695,8 @@ if (solve_stokes) cycle!sprint_to_do P.Salinas: For stokes I don't think any of 
              Artificial_Pe = .true.
              if (present_and_true(for_transport)) then
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation/Vanishing_for_transport', Pe_aux)
+                !This method was designed for fields between 0 and 1, so for transport fields, we need to adjust Pe_aux to ensure consistency
+                if (present(totally_min_max)) Pe_aux = Pe_aux*(totally_min_max(2) - totally_min_max(1)) !THIS means making it HIGHER
              else
                 call get_option('/solver_options/Non_Linear_Solver/Fixed_Point_Iteration/Vanishing_relaxation', Pe_aux)
              end if

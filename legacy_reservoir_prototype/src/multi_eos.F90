@@ -1578,7 +1578,7 @@ contains
             !    do idim = 1, Mdims%ndim
             !        ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, iphase )
             !    end do
-            !end dopacked
+            !end do
           end if
         end if
       end if
@@ -1627,7 +1627,7 @@ contains
     end subroutine calculate_diffusivity
 
     !>@brief: Dispersion for isotropic porous media
-    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion, tracer)
+    subroutine calculate_solute_dispersity(state, packed_state, Mdims, ndgln, SoluteDispersion)
       type(state_type), dimension(:), intent(in) :: state
       type( state_type ), intent( inout ) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
@@ -1635,14 +1635,13 @@ contains
       real, dimension(:, :, :, :), intent(inout) :: SoluteDispersion
       !Local variables
       type(scalar_field), pointer :: component, sfield, ldfield, tdfield
-      type(tensor_field), pointer :: diffusivity, den
+      type(tensor_field), pointer :: den
       type (vector_field_pointer), dimension(Mdims%n_in_pres) ::darcy_velocity
       integer :: icomp, iphase, idim, stat, ele, idim1, idim2
       integer :: iloc, mat_inod, cv_inod, ele_nod, t_ele_nod, u_iloc, u_nod, u_nloc, cv_loc, cv_iloc, ele_nod_disp
       real :: vel_av
       real, dimension(3, 3) :: DispCoeffMat
       real, dimension(3) :: vel_comp, vel_comp2, DispDiaComp
-      type(tensor_field), intent(inout) :: tracer
       real, dimension(:), pointer :: tdisp
 
 
@@ -1666,7 +1665,6 @@ contains
       do iphase = 1, Mdims%n_in_pres
         if ( .not. have_option( '/material_phase['// int2str( iphase -1 ) //']/phase_properties/tensor_field::Solute_Diffusivity')) cycle
         darcy_velocity(iphase)%ptr => extract_vector_field(state(iphase),"DarcyVelocity")
-        diffusivity => extract_tensor_field( state(iphase), 'ConcentrationDiffusivity', stat )
 
         do ele = 1, Mdims%totele
           ele_nod = min(size(sfield%val), ele)
