@@ -1244,12 +1244,12 @@ Each file has to describe a continuous well touching an external boundary.
           </optional>
           <optional>
             <element name="Self_Potential">
-              <a:documentation>Activates the Self_potential solver.
+              <a:documentation>Activates the Self_potential solver. (S.I. Volts)
 
 &lt;b&gt;IMPORTANT&lt;/b&gt;: For the self-potential solver the &lt;b&gt;first phase&lt;/b&gt; must be the aqueous phase,
 temperature, if present, must be in &lt;b&gt;Kelvin&lt;/b&gt; and the aqueous phase must have a Concentration field defined.
 Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
-in your solution due to the logarithmic nature of the system to solve for. This is uncommon, for fresh water the salt concentration is still 1e-5.
+in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
 
 Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.</a:documentation>
               <element name="scalar_field">

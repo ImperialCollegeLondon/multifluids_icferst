@@ -1016,12 +1016,12 @@ start =
                  attribute file_path { string }
                 }*
              }?,
-          ## Activates the Self_potential solver.
+          ## Activates the Self_potential solver. (S.I. Volts)
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
           ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a Concentration field defined.
           ## Also, if the minimum concentration is very small, for example below 1e-2, you should expect instabilities
-          ## in your solution due to the logarithmic nature of the system to solve for. This is uncommon, for fresh water the salt concentration is still 1e-5.
+          ## in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
           ##
           ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
           element Self_Potential{(
