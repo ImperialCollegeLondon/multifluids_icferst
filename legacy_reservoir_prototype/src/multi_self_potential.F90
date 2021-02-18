@@ -64,7 +64,7 @@ module multi_SP
         type( vector_field ), pointer :: X_ALL
         integer :: reference_nod
         logical :: reference_node_owned
-        real :: reference_value, top_coordinate, gravity_magnitude, conversor_to_miliVolts
+        real :: reference_value, top_coordinate, gravity_magnitude
 
       !     !Retrieve fields
         X_ALL => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -127,9 +127,7 @@ module multi_SP
         !Share the value between all the processors
         call allsum(reference_value)
         !Apply the reference to ensure that the reference node is zero
-        conversor_to_miliVolts = 1e3
-        if (have_option("/porous_media/Self_Potential/Results_in_Volts") ) conversor_to_miliVolts = 1.0!Leave as Volts
-        SelfPotential%val = (SelfPotential%val - reference_value)*conversor_to_miliVolts!to show in mVolts
+        SelfPotential%val = (SelfPotential%val - reference_value)
         deallocate(rock_sat_conductivity, F_fields, K_fields)
       end subroutine Assemble_and_solve_SP
 

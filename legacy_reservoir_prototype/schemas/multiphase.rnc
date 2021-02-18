@@ -1053,10 +1053,6 @@ start =
 	         element Sat_exponent {
 	         	real
 		        }?,
-		       ## By default the results are shown in miliVolts, select this to show the results in Volts.
-	         element Results_in_Volts {
-	         	empty
-		        }? ,
            ## Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
            ## <b>IMPORTANT:</b>The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.
            element python_Rock_sat_conductivity_code{

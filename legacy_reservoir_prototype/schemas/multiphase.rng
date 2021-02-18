@@ -1287,12 +1287,6 @@ coordinates, the nearest vertex will be selected.</a:documentation>
                 </element>
               </optional>
               <optional>
-                <element name="Results_in_Volts">
-                  <a:documentation>By default the results are shown in miliVolts, select this to show the results in Volts.</a:documentation>
-                  <empty/>
-                </element>
-              </optional>
-              <optional>
                 <element name="python_Rock_sat_conductivity_code">
                   <a:documentation>Rock saturated conductivity term (sigma). If this option is on the coded result will be used instead of the internal formula.
 &lt;b&gt;IMPORTANT:&lt;/b&gt;The scalar field Dummy needs to be generated in the first phase and the results from the python code need to be imposed into that field.</a:documentation>

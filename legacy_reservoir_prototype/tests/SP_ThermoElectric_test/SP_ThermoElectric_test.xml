@@ -13,8 +13,8 @@ min_SP = stat("SP_test.stat")["phase1"]["Self_Potential"]["min"][-1]</variable>
 max_SP = stat("SP_test.stat")["phase1"]["Self_Potential"]["max"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final min Self Potential" language="python">assert(min_SP &lt; 0.01)</test>
-    <test name="Assert final max Self Potential" language="python">assert(abs((max_SP - 11.21)/11.21) &lt; 0.01)</test>
+    <test name="Assert final min Self Potential" language="python">assert(min_SP*1000 &lt; 0.01)</test>
+    <test name="Assert final max Self Potential" language="python">assert(abs((max_SP*1000 - 11.21)/11.21) &lt; 0.01)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
