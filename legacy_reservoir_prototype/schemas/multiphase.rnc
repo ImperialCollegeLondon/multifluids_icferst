@@ -2464,7 +2464,13 @@ scalar_field_choice =
                         element prescribed {
                             mesh_choice?,
                             prescribed_tensor_field_no_adapt
-                        }
+                        }|
+                      element diagnostic {
+                         (
+                            tensor_python_diagnostic_algorithm
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
                      )
                   }?,
                   prognostic_scalar_field,
@@ -2760,7 +2766,13 @@ scalar_field_choice =
                         element prescribed {
                             mesh_choice?,
                             prescribed_tensor_field_no_adapt
-                        }
+                        }|
+                      element diagnostic {
+                         (
+                            tensor_python_diagnostic_algorithm
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
                      )
                   }?,
                   prognostic_scalar_field
@@ -2804,7 +2816,13 @@ scalar_field_choice =
                         element prescribed {
                             mesh_choice?,
                             prescribed_tensor_field_no_adapt
-                        }
+                        }|
+                      element diagnostic {
+                         (
+                            tensor_python_diagnostic_algorithm
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
                      )
                   }?,
                   prognostic_scalar_field
@@ -3966,14 +3984,12 @@ phase_properties_options =
                         mesh_choice?,
                         prescribed_tensor_field_no_adapt
                     }|
-                    ## For electrical modelling only - holds electrical conductivity
-                    element diagnostic {
-                       (
-                          tensor_python_diagnostic_algorithm |
-                          internal_algorithm
-                       ),
-                       diagnostic_tensor_field
-                    }
+                      element diagnostic {
+                         (
+                            tensor_python_diagnostic_algorithm
+                         ),
+                         diagnostic_scalar_field_no_adapt
+                      }
                  )
               }?,
                 ## Stabilisation for Inertia dominated flow.

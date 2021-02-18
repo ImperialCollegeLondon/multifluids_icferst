@@ -2952,12 +2952,18 @@ This imposes the tracer to be between bounds.</a:documentation>
                 <attribute name="rank">
                   <value>2</value>
                 </attribute>
-                <element name="prescribed">
-                  <optional>
-                    <ref name="mesh_choice"/>
-                  </optional>
-                  <ref name="prescribed_tensor_field_no_adapt"/>
-                </element>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="tensor_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3334,12 +3340,18 @@ This imposes the tracer to be between bounds.</a:documentation>
                 <attribute name="rank">
                   <value>2</value>
                 </attribute>
-                <element name="prescribed">
-                  <optional>
-                    <ref name="mesh_choice"/>
-                  </optional>
-                  <ref name="prescribed_tensor_field_no_adapt"/>
-                </element>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="tensor_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -3398,12 +3410,18 @@ This imposes the tracer to be between bounds.</a:documentation>
                 <attribute name="rank">
                   <value>2</value>
                 </attribute>
-                <element name="prescribed">
-                  <optional>
-                    <ref name="mesh_choice"/>
-                  </optional>
-                  <ref name="prescribed_tensor_field_no_adapt"/>
-                </element>
+                <choice>
+                  <element name="prescribed">
+                    <optional>
+                      <ref name="mesh_choice"/>
+                    </optional>
+                    <ref name="prescribed_tensor_field_no_adapt"/>
+                  </element>
+                  <element name="diagnostic">
+                    <ref name="tensor_python_diagnostic_algorithm"/>
+                    <ref name="diagnostic_scalar_field_no_adapt"/>
+                  </element>
+                </choice>
               </element>
             </optional>
             <ref name="prognostic_scalar_field"/>
@@ -4804,12 +4822,8 @@ alternating directions. Devised by C.Pain.</a:documentation>
               <ref name="prescribed_tensor_field_no_adapt"/>
             </element>
             <element name="diagnostic">
-              <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
-              <choice>
-                <ref name="tensor_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
-              <ref name="diagnostic_tensor_field"/>
+              <ref name="tensor_python_diagnostic_algorithm"/>
+              <ref name="diagnostic_scalar_field_no_adapt"/>
             </element>
           </choice>
         </element>
