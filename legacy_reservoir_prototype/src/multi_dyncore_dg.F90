@@ -1026,7 +1026,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
 
   end subroutine
 
-  !> @author Chris Pain, Pablo Salinas, Arash Hamzeloo
+  !> @author Chris Pain, Pablo Salinas
   !> @brief Calls to generate and solve the transport equation for n passive tracers defined in diamond as Passive_Tracer_N
   !> Where N is an integer which is continuous starting from 1
   !> A boussinesq approximation is enforced on these tracers as the are totally INERT
@@ -1168,8 +1168,7 @@ temp_bak = tracer%val(1,:,:)!<= backup of the tracer field, just in case the pet
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            TDIFFUSION=0.0
 
-           !FOR THE TIME BEING NO DIFFUSION FOR INERT TRACERS
-           ! call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION)
+           call calculate_diffusivity( state, packed_state, Mdims, ndgln, TDIFFUSION, TracerName= trim(Passive_Tracer_name))
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
