@@ -8,9 +8,9 @@
   </problem_definition>
   <variables>
       <variable name="min_SP" language="python">from fluidity_tools import stat_parser as stat
-min_SP = stat("SP_test.stat")["phase1"]["Self_Potential"]["min"][-1]</variable>
+min_SP = stat("SP_test.stat")["phase1"]["SelfPotential"]["min"][-1]</variable>
       <variable name="max_SP" language="python">from fluidity_tools import stat_parser as stat
-max_SP = stat("SP_test.stat")["phase1"]["Self_Potential"]["max"][-1]</variable>
+max_SP = stat("SP_test.stat")["phase1"]["SelfPotential"]["max"][-1]</variable>
   </variables>
   <pass_tests>
     <test name="Assert final min Self Potential" language="python">assert(abs((min_SP*1000 - -5.34)/5.34) &lt; 0.01)</test>

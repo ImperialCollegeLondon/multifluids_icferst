@@ -339,8 +339,8 @@
         <output/>
       </prescribed>
     </tensor_field>
-    <Self_Potential>
-      <scalar_field name="Self_Potential">
+    <SelfPotential>
+      <scalar_field name="SelfPotential">
         <diagnostic>
           <mesh name="PressureMesh"/>
           <algorithm name="Internal" material_phase_support="multiple"/>
@@ -370,6 +370,6 @@
  field.set( i, val )</string_value>
         </algorithm>
       </python_ElectroKinetic_code>
-    </Self_Potential>
+    </SelfPotential>
   </porous_media>
 </icferst_options>

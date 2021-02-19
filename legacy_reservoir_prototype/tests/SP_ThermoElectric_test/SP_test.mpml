@@ -442,8 +442,8 @@
         </prescribed>
       </tensor_field>
     </porous_properties>
-    <Self_Potential>
-      <scalar_field name="Self_Potential">
+    <SelfPotential>
+      <scalar_field name="SelfPotential">
         <diagnostic>
           <mesh name="PressureMesh"/>
           <algorithm name="Internal" material_phase_support="multiple"/>
@@ -491,6 +491,6 @@
  field.set( i, val )</string_value>
         </algorithm>
       </python_Thermoelectric_code>
-    </Self_Potential>
+    </SelfPotential>
   </porous_media>
 </icferst_options>

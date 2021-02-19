@@ -1016,7 +1016,7 @@ start =
                  attribute file_path { string }
                 }*
              }?,
-          ## Activates the Self_potential solver. (S.I. Volts)
+          ## Activates the SelfPotential solver. (S.I. Volts)
           ##
           ## <b>IMPORTANT</b>: For the self-potential solver the <b>first phase</b> must be the aqueous phase,
           ## temperature, if present, must be in <b>Kelvin</b> and the aqueous phase must have a Concentration field defined.
@@ -1024,9 +1024,9 @@ start =
           ## in your solution due to the logarithmic nature of the system to solve for, fresh water has a higher concentration that that.
           ##
           ## Note: Unless defined on the python fields, the equations to compute the terms are the ones detailed in Mutlaq et al. 2020.
-          element Self_Potential{(
+          element SelfPotential{(
             element scalar_field {
-               attribute name { "Self_Potential" },
+               attribute name { "SelfPotential" },
                (
                 element diagnostic {
                   pressure_mesh_choice,

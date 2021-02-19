@@ -1213,7 +1213,7 @@ contains
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
-                    if (have_option("/porous_media/Self_Potential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_TimeStep
             else if (have_option('/io/dump_period')) then
@@ -1228,7 +1228,7 @@ contains
                     if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps , non_linear_iterations = FPI_eq_taken)  ! Write stat file
                     not_to_move_det_yet = .false. ;
                     !Time to compute the self-potential if required
-                    if (have_option("/porous_media/Self_Potential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
+                    if (have_option("/porous_media/SelfPotential")) call Assemble_and_solve_SP(Mdims, state, packed_state, ndgln, Mmat, Mspars, CV_funs, CV_GIdims)
                     call write_state( dump_no, state ) ! Now writing into the vtu files
                 end if Conditional_Dump_RealTime
             end if

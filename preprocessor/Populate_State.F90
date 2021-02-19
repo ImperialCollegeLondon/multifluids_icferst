@@ -1365,9 +1365,9 @@ contains
               end if
            end do
         end if
-        if (have_option("/porous_media/Self_Potential")) then
-          call allocate_and_insert_scalar_field('/porous_media/Self_Potential/scalar_field::Self_Potential', &
-             states(1), field_name='Self_Potential')
+        if (have_option("/porous_media/SelfPotential")) then
+          call allocate_and_insert_scalar_field('/porous_media/SelfPotential/scalar_field::SelfPotential', &
+             states(1), field_name='SelfPotential')
         end if
     end if
 

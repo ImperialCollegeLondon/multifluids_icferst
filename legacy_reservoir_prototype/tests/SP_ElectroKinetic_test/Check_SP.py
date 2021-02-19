@@ -44,7 +44,7 @@ AutomaticVTU_Number = AutoNumber
 showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
-data_name = 'Self_Potential'
+data_name = 'SelfPotential'
 
 #Initial and last coordinate of the probe
 x0 = 0.0
