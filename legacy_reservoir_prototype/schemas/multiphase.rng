@@ -2952,9 +2952,16 @@ This imposes the tracer to be between bounds.</a:documentation>
                       <ref name="mesh_choice"/>
                     </optional>
                     <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
-                    <ref name="tensor_python_diagnostic_algorithm"/>
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
                   </element>
                 </choice>
@@ -3340,9 +3347,16 @@ This imposes the tracer to be between bounds.</a:documentation>
                       <ref name="mesh_choice"/>
                     </optional>
                     <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
-                    <ref name="tensor_python_diagnostic_algorithm"/>
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
                   </element>
                 </choice>
@@ -3410,9 +3424,16 @@ This imposes the tracer to be between bounds.</a:documentation>
                       <ref name="mesh_choice"/>
                     </optional>
                     <ref name="prescribed_tensor_field_no_adapt"/>
+                    <ref name="output_options"/>
                   </element>
                   <element name="diagnostic">
-                    <ref name="tensor_python_diagnostic_algorithm"/>
+                    <group>
+                      <optional>
+                        <ref name="mesh_choice"/>
+                      </optional>
+                      <ref name="tensor_python_diagnostic_algorithm"/>
+                      <ref name="output_options"/>
+                    </group>
                     <ref name="diagnostic_scalar_field_no_adapt"/>
                   </element>
                 </choice>
@@ -4763,13 +4784,16 @@ alternating directions. Devised by C.Pain.</a:documentation>
                 <ref name="mesh_choice"/>
               </optional>
               <ref name="prescribed_tensor_field_no_adapt"/>
+              <ref name="output_options"/>
             </element>
             <element name="diagnostic">
-              <a:documentation>For electrical modelling only - holds electrical conductivity</a:documentation>
-              <choice>
+              <group>
+                <optional>
+                  <ref name="mesh_choice"/>
+                </optional>
                 <ref name="tensor_python_diagnostic_algorithm"/>
-                <ref name="internal_algorithm"/>
-              </choice>
+                <ref name="output_options"/>
+              </group>
               <ref name="diagnostic_tensor_field"/>
             </element>
           </choice>
@@ -4814,9 +4838,16 @@ alternating directions. Devised by C.Pain.</a:documentation>
                 <ref name="mesh_choice"/>
               </optional>
               <ref name="prescribed_tensor_field_no_adapt"/>
+              <ref name="output_options"/>
             </element>
             <element name="diagnostic">
-              <ref name="tensor_python_diagnostic_algorithm"/>
+              <group>
+                <optional>
+                  <ref name="mesh_choice"/>
+                </optional>
+                <ref name="tensor_python_diagnostic_algorithm"/>
+                <ref name="output_options"/>
+              </group>
               <ref name="diagnostic_scalar_field_no_adapt"/>
             </element>
           </choice>

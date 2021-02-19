@@ -2459,11 +2459,14 @@ scalar_field_choice =
                      (
                         element prescribed {
                             mesh_choice?,
-                            prescribed_tensor_field_no_adapt
+                            prescribed_tensor_field_no_adapt,
+                            output_options
                         }|
                       element diagnostic {
-                         (
-                            tensor_python_diagnostic_algorithm
+                         (  
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
                          ),
                          diagnostic_scalar_field_no_adapt
                       }
@@ -2761,11 +2764,14 @@ scalar_field_choice =
                      (
                         element prescribed {
                             mesh_choice?,
-                            prescribed_tensor_field_no_adapt
+                            prescribed_tensor_field_no_adapt,
+                            output_options
                         }|
                       element diagnostic {
-                         (
-                            tensor_python_diagnostic_algorithm
+                         (  
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
                          ),
                          diagnostic_scalar_field_no_adapt
                       }
@@ -2811,11 +2817,14 @@ scalar_field_choice =
                      (
                         element prescribed {
                             mesh_choice?,
-                            prescribed_tensor_field_no_adapt
+                            prescribed_tensor_field_no_adapt,
+                            output_options
                         }|
                       element diagnostic {
                          (
-                            tensor_python_diagnostic_algorithm
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
                          ),
                          diagnostic_scalar_field_no_adapt
                       }
@@ -3941,13 +3950,14 @@ phase_properties_options =
                  (
                     element prescribed {
                         mesh_choice?,
-                        prescribed_tensor_field_no_adapt
+                        prescribed_tensor_field_no_adapt,
+                            output_options
                     }|
-                    ## For electrical modelling only - holds electrical conductivity
                     element diagnostic {
                        (
-                          tensor_python_diagnostic_algorithm |
-                          internal_algorithm
+                          mesh_choice?,
+                          tensor_python_diagnostic_algorithm ,
+                            output_options
                        ),
                        diagnostic_tensor_field
                     }
@@ -3978,11 +3988,14 @@ phase_properties_options =
                  (
                     element prescribed {
                         mesh_choice?,
-                        prescribed_tensor_field_no_adapt
+                        prescribed_tensor_field_no_adapt,
+                            output_options
                     }|
                       element diagnostic {
                          (
-                            tensor_python_diagnostic_algorithm
+                            mesh_choice?,
+                            tensor_python_diagnostic_algorithm,
+                            output_options
                          ),
                          diagnostic_scalar_field_no_adapt
                       }
