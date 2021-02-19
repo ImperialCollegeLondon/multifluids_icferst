@@ -168,19 +168,15 @@ f = interp1d(Analytical_X, Analytical_Y,kind ='linear')
 #COnvert tuple to array
 Experimental_Y = []
 for item in FS:
-    Experimental_Y.extend(item) * 1000#analytical is in miliVolts
+    Experimental_Y.extend(item) 
 
 
 
 L1_sum = 0.0
-L2_sum = 0.0
-L1_sum_shock_front = 0.0
-L2_sum_shock_front = 0.0
 N_shock = 0
-Infinite_Norm = 0.0
 for i in range(len(Experimental_X)):
     if (i==0):#The first position is exact, so no need to interpolate
-        L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
+        L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i]*1000)#Analytical is in miliVolts
         continue
     position = Experimental_X[i]
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
@@ -189,9 +185,8 @@ for i in range(len(Experimental_X)):
         print 'The size of the Experimental and reference experiments is different'
         quit
 
-    if (abs(x - Experimental_Y[i])> Infinite_Norm):
-        Infinite_Norm = abs(x - Experimental_Y[i])
-    L1_sum = L1_sum + abs(x - Experimental_Y[i])     
+
+    L1_sum = L1_sum + abs(x - Experimental_Y[i]*1000)#Analytical is in miliVolts   
         
         
 L1_norm= L1_sum / len(Experimental_X)  
